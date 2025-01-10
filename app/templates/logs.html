@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Страница отслеживания действий пользователей{% endblock %}
+
+{% block content %}
+    <!-- Кнопка возврата на главную страницу -->
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary">
+            Вернуться на страницу "Справочники"
+        </a>
+    </div>
+
+    <div class="container py-5">
+        <h1 class="text-center mb-4">Логи</h1>
+
+        <!-- Форма фильтрации -->
+        <form method="get" action="{{ url_for('logs.view_logs') }}" class="row g-3 mb-4">
+            <div class="col-md-5">
+                <input type="text" name="username" class="form-control" placeholder="Фильтр по пользователю" value="{{ username_filter }}">
+            </div>
+            <div class="col-md-5">
+                <input type="text" name="action" class="form-control" placeholder="Фильтр по действию" value="{{ action_filter }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Применить фильтр</button>
+            </div>
+        </form>
+
+        <!-- Таблица с логами -->
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover">
+                <thead class="table-primary">
+                    <tr>
+                        <th><a href="{{ url_for('logs.view_logs', sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc') }}">Время</a></th>
+                        <th><a href="{{ url_for('logs.view_logs', sort_by='username', sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc') }}">Пользователь</a></th>
+                        <th><a href="{{ url_for('logs.view_logs', sort_by='action', sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc') }}">Действие</a></th>
+                        <th>Детали</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs.items %}
+                        <tr>
+                            <td>{{ log.timestamp }}</td>
+                            <td>{{ log.username }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.details }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Пагинация -->
+        <nav aria-label="Логи навигация">
+            <ul class="pagination justify-content-center">
+                {% if logs.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.prev_num, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}">Предыдущая</a>
+                    </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">Страница {{ logs.page }} из {{ logs.pages }}</span>
+                </li>
+                {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.next_num, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}">Следующая</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый субъект РФ{% endblock %}
+
+{% block content %}
+  <div class="container mt-5">
+      <h2>Добавить субъект РФ</h2>
+      <form action="{{ url_for('app_bp.add_region') }}" method="POST">
+        <div class="mb-3">
+            <label for="name" class="form-label">Наименование субъекта РФ</label>
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <div class="mb-3">
+            <label for="fo_id" class="form-label">ФО</label>
+            <select id="fo_id" name="fo_id" class="form-select" required>
+                <option value="" disabled selected>Выберите тип</option>
+                {% for fo in fo_items %}
+                <option value="{{ fo.id }}">{{ fo.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+        <a href="{{ url_for('app_bp.region') }}" class="btn btn-secondary">Отмена</a>
+      </form>
+  </div>
+{% endblock %}

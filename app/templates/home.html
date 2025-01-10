@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Стартовая страница{% endblock %}
+
+{% block content %}
+  <div class="text-center mb-5">
+        <h1 class="display-4">Добро пожаловать</h1>
+  </div>
+    {% if current_user.is_authenticated %}
+     <div class="row text-center">
+      <!-- Справочники -->
+      <div class="col-md-4">
+          <div class="card shadow-sm">
+              <div class="card-body">
+                  <a href="{{ url_for('app_bp.reference') }}" class="btn btn-primary">Справочники</a>
+              </div>
+          </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Справочники{% endblock %}
+
+{% block content %}
+    <!-- Кнопка возврата на главную страницу -->
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary">
+            Вернуться на главную страницу
+        </a>
+    </div>
+
+    <div class="container mt-5">
+            <h2>Справочники</h2>
+            <ul>
+                <li>
+                    <a href="{{ url_for('app_bp.fo_list') }}" class="btn btn-link">Федеральные округа</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('app_bp.region_list') }}" class="btn btn-link">Субъекты РФ</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('app_bp.oes_list') }}" class="btn btn-link">Объединенные энергосистемы</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('logs.view_logs') }}" class="btn btn-link">Запись логов</a>
+                </li>
+            </ul>
+    </div>
+{% endblock %}
