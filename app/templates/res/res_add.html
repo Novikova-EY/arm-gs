@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новую ОЭС{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить региональную энергосистему</h2>
+
+    <!-- Форма ввода данных -->
+    <form action="{{ url_for('app_bp.add_res_routes') }}" method="POST">
+        {{ form.hidden_tag() }}
+        
+        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
+        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
+        <input type="hidden" name="res_filter" value="{{ request.args.get('res_filter', '') }}">
+        <input type="hidden" name="oes_filter" value="{{ request.args.get('oes_filter', '') }}">
+        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
+        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+
+        <!-- Название -->
+        <div class="mb-3">
+            <strong for="name" class="form-label">Название региональной энергосистемы</strong>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Выбор ОЭС -->
+        <div class="mb-3">
+            <strong for="oes" class="form-label">ОЭС</strong>
+            <select name="oes" id="oesDropdown" class="form-select">
+                <option value="">Все ОЭС</option>
+                {% for oes in form.oes.choices %}
+                    <option value="{{ oes[0] }}" {% if form.oes.data and oes[0] == form.oes.data %}selected{% endif %}>
+                        {{ oes[1] }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <!-- Ошибки валидации -->
+            {% if form.oes.errors %}
+                <div class="text-danger">
+                    {{ form.oes.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Субъекты РФ -->
+        <div class="mb-3">
+            <strong for="regions" class="form-label">Субъекты РФ</strong>
+            <div id="selectedRegions" class="mt-3">
+                <span id="selectedRegionsText">Ничего не выбрано</span>
+            </div>
+
+            <div class="dropdown">
+                <button 
+                    class="form-select dropdown-toggle text-start w-100" 
+                    type="button" 
+                    id="regionDropdown" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
+                    Выберите субъекты РФ
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="regionDropdown">
+                    {% for region in form.regions.choices %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="{{ form.regions.name }}" value="{{ region[0] }}" 
+                                   data-region-name="{{ region[1] }}"
+                                   class="region-checkbox"
+                                   {% if form.regions.data and region[0] in form.regions.data %}checked{% endif %}>
+                            {{ region[1] }}
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Ошибки валидации -->
+            {% if form.regions.errors %}
+                <div class="text-danger">
+                    {{ form.regions.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Кнопки сохранения записи и возвращения назад -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+
+            <a href="{{ url_for('app_bp.res_list', 
+                        sort_by=request.args.get('sort_by', 'id'),
+                        sort_dir=request.args.get('sort_dir', 'asc'),
+                        res_filter=request.args.get('res_filter', ''),
+                        oes_filter=request.args.get('oes_filter', ''),
+                        per_page=request.args.get('per_page', 10),
+                        page=request.args.get('page', 1)) }}" 
+                        class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+
+
+<script>
+    // Обработчик изменения состояния чекбоксов
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkboxes = document.querySelectorAll('.region-checkbox');
+        const selectedRegionsText = document.getElementById('selectedRegionsText');
+
+        // Функция для обновления текста выбранных субъектов
+        function updateSelectedRegions() {
+            const selected = Array.from(checkboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.getAttribute('data-region-name'));
+            
+            selectedRegionsText.textContent = selected.length > 0 ? selected.join(', ') : 'Ничего не выбрано';
+        }
+
+        // Добавляем слушатели событий изменения для чекбоксов
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedRegions);
+        });
+
+        // Инициализируем отображение выбранных субъектов
+        updateSelectedRegions();
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const radios = document.querySelectorAll('.form-check-input');
+        const selectedOesText = document.getElementById('selectedOesText');
+
+        // Обновление текста выбранного значения
+        function updateSelectedOes() {
+            const selected = Array.from(radios).find(radio => radio.checked);
+            selectedOesText.textContent = selected ? selected.getAttribute('data-oes-name') : 'Ничего не выбрано';
+        }
+
+        // Добавление обработчиков событий
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateSelectedOes);
+        });
+
+        // Инициализация отображения
+        updateSelectedOes();
+    });
+</script>
+{% endblock %}

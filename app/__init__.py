@@ -40,5 +40,5 @@ def create_app():
 # Функция загрузки пользователя
 @login_manager.user_loader
 def load_user(user_id):
-    from app.models import User  # Импортируем модель внутри функции, чтобы избежать циклического импорта
+    from app.models.auth_models import User  # Импортируем модель внутри функции, чтобы избежать циклического импорта
     return User.query.get(int(user_id))

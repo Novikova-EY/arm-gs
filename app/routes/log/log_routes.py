@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from app.models import Log
+from app.models.log_models import Log
 from app import db
 
 logs_bp = Blueprint('logs', __name__)
@@ -31,4 +31,4 @@ def view_logs():
     per_page = 10
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    return render_template('logs.html', logs=logs, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir)
+    return render_template('logs/logs.html', logs=logs, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir)

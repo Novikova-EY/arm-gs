@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый ФО{% endblock %}
+
+{% block content %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить ФО</h2>
+
+      <!-- Форма ввода данных -->
+      <form action="{{ url_for('app_bp.add_fo_routes') }}" method="POST">
+        {{ form.hidden_tag() }}
+        
+        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
+        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
+        <input type="hidden" name="fo_filter" value="{{ request.args.get('fo_filter', '') }}">
+        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
+        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+
+        <!-- Название -->
+        <div class="mb-3">
+            <label for="name" class="form-label">Наименование ФО</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Кнопки сохранения записи и возвращения назад -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+
+            <a href="{{ url_for('app_bp.fo_list', 
+                        sort_by=request.args.get('sort_by', 'id'),
+                        sort_dir=request.args.get('sort_dir', 'asc'),
+                        fo_filter=request.args.get('fo_filter', ''),
+                        per_page=request.args.get('per_page', 10),
+                        page=request.args.get('page', 1)) }}" 
+                        class="btn btn-secondary" type="button">Отмена</a>
+        </div>
+    </form>
+  </div>
+{% endblock %}

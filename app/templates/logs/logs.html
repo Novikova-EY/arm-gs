@@ -11,7 +11,7 @@
     </div>
 
     <div class="container py-5">
-        <h1 class="text-center mb-4">Логи</h1>
+        <h1 class="text-center mb-4">Действия пользователей</h1>
 
         <!-- Форма фильтрации -->
         <form method="get" action="{{ url_for('logs.view_logs') }}" class="row g-3 mb-4">
@@ -28,7 +28,7 @@
 
         <!-- Таблица с логами -->
         <div class="table-responsive">
-            <table class="table table-bordered table-striped table-hover">
+            <table class="table table-bordered table-striped table-hover lh-sm" style="font-size: 12px;">
                 <thead class="table-primary">
                     <tr>
                         <th><a href="{{ url_for('logs.view_logs', sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc') }}">Время</a></th>

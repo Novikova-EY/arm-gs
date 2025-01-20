@@ -1,54 +1,66 @@
-import logging
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
-from app.models import User, db, Role
+from app.models.auth_models import User, db, Role
+from app.models.log_models import Log
 
-# Настройка логирования для авторизации
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Функция логирования действий
+
+def log_to_db(username, action, details=None):
+    """Записывает лог действия пользователя в базу данных."""
+    try:
+        log_entry = Log(username=username, action=action, details=details)
+        db.session.add(log_entry)
+        db.session.commit()
+    except Exception as e:
+        print(f"Ошибка записи лога: {e}")
+
+# Создание Blueprint для маршрутов авторизации
 
 auth_bp = Blueprint('auth', __name__)
 
 # Авторизация пользователя
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    logger.info("Попытка входа в систему.")
+    log_to_db('Система', 'Попытка входа на страницу авторизации')
     try:
         if request.method == 'POST':
             email = request.form.get('email', '').strip()
             password = request.form.get('password', '').strip()
-            logger.info(f"Получены данные для входа: email={email}")
+            log_to_db('Система', f'Попытка входа с email: {email}')
 
             user = User.query.filter_by(email=email).first()
             if user and user.check_password(password):
                 login_user(user)
                 session['username'] = user.username
-                logger.info(f"Успешный вход пользователя: {user.username}")
+                log_to_db(user.username, 'Успешный вход в систему')
                 flash('Вы успешно вошли.', 'success')
                 return redirect(url_for('start.index'))
             else:
-                logger.warning(f"Неудачная попытка входа с email: {email}")
+                log_to_db('Система', f'Неудачная попытка входа с email: {email}')
                 flash('Неправильный email или пароль.', 'danger')
     except Exception as e:
-        logger.error(f"Ошибка во время входа: {e}")
+        log_to_db('Система', f'Ошибка во время входа: {e}')
         flash('Произошла ошибка. Попробуйте снова.', 'danger')
 
     return render_template('login.html')
 
 # Регистрация нового пользователя
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    logger.info("Попытка регистрации нового пользователя.")
+    log_to_db('Система', 'Попытка регистрации нового пользователя')
     try:
         if request.method == 'POST':
             username = request.form.get('username', '').strip()
             email = request.form.get('email', '').strip()
             password = request.form.get('password', '').strip()
 
-            logger.info(f"Получены данные для регистрации: username={username}, email={email}")
+            log_to_db('Система', f'Получены данные для регистрации: username={username}, email={email}')
 
             if User.query.filter_by(email=email).first():
-                logger.warning(f"Попытка регистрации с существующим email: {email}")
+                log_to_db('Система', f'Попытка регистрации с существующим email: {email}')
                 flash('Пользователь с таким email уже существует.', 'warning')
                 return redirect(url_for('auth.register'))
 
@@ -57,25 +69,26 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            logger.info(f"Успешная регистрация пользователя: {username}")
+            log_to_db(username, 'Успешная регистрация')
             flash('Регистрация прошла успешно. Вы можете войти.', 'success')
             return redirect(url_for('auth.login'))
     except Exception as e:
-        logger.error(f"Ошибка во время регистрации: {e}")
+        log_to_db('Система', f'Ошибка во время регистрации: {e}')
         flash('Произошла ошибка при регистрации. Попробуйте снова.', 'danger')
 
     return render_template('register.html')
 
 # Выход из учетной записи пользователя
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
     try:
         username = session.pop('username', 'Неизвестный пользователь')
         logout_user()
-        logger.info(f"Пользователь {username} вышел из системы.")
+        log_to_db(username, 'Пользователь вышел из системы')
         flash('Вы успешно вышли.', 'success')
     except Exception as e:
-        logger.error(f"Ошибка при выходе из системы: {e}")
+        log_to_db('Система', f'Ошибка при выходе из системы: {e}')
         flash('Произошла ошибка при выходе. Попробуйте снова.', 'danger')
     return redirect(url_for('auth.login'))

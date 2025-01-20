@@ -3,28 +3,37 @@
 {% block title %}Справочники{% endblock %}
 
 {% block content %}
-    <!-- Кнопка возврата на главную страницу -->
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary">
-            Вернуться на главную страницу
-        </a>
-    </div>
+    <div class="d-flex justify-content-end mb-3 mt-4">
+        <!-- Кнопка возврата на главную страницу -->
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary me-2">Вернуться на главную страницу</a>
+        
+        <!-- Страница с логами -->
+        <a href="{{ url_for('logs.view_logs') }}" class="btn btn-secondary">Запись логов</a>
+    </div>   
 
-    <div class="container mt-5">
-            <h2>Справочники</h2>
-            <ul>
-                <li>
-                    <a href="{{ url_for('app_bp.fo_list') }}" class="btn btn-link">Федеральные округа</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('app_bp.region_list') }}" class="btn btn-link">Субъекты РФ</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('app_bp.oes_list') }}" class="btn btn-link">Объединенные энергосистемы</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('logs.view_logs') }}" class="btn btn-link">Запись логов</a>
-                </li>
-            </ul>
+    <div class="container mt-5 mb-5">
+        <h2 class="text-center">Справочники</h2>
+        <div class="container mb-3">
+            <div class="row align-items-start mb-3">
+                <div class="col">
+                    <a href="{{ url_for('app_bp.fo_list') }}" class="btn btn-outline-primary w-100">Федеральные округа</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('app_bp.oes_list') }}" class="btn btn-outline-primary w-100">Объединенные энергосистемы</a>
+                </div>
+            </div>
+    
+            <div class="row align-items-start">
+                <div class="col">
+                    <a href="{{ url_for('app_bp.region_list') }}" class="btn btn-outline-primary w-100">Субъекты РФ</a>
+                </div>                
+                <div class="col">
+                    <a href="{{ url_for('app_bp.res_list') }}" class="btn btn-outline-primary w-100">Региональные энергосистемы</a>
+                </div>
+            </div>
+        </div>
     </div>
+    
 {% endblock %}
+
+

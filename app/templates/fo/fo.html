@@ -10,20 +10,26 @@
             Вернуться на страницу "Справочники"
         </a>
     </div>
-    
+
     <h1 class="text-center mb-4">Список федеральных округов</h1>
 
-    <!-- Фильтрация -->
     <form method="GET" action="{{ url_for('app_bp.fo_list') }}" class="mb-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <!-- Фильтрация -->
-            <div class="col-md-6">
-                <div class="input-group">
-                    {{ form.name_filter(class="form-control", value=name_filter) }}
-                    <button type="submit" class="btn btn-primary">Поиск</button>
+        <div class="d-flex justify-content-between align-items-start w-100">
+            <!-- Блок с полем для поиска -->
+            <div class="d-flex align-items-start w-100">
+                <!-- Поле для ввода текста -->
+                <div class="me-2 w-75">
+                    {{ form.fo_filter(class="form-control", value=fo_filter, placeholder="Поиск по ФО") }}
                 </div>
+
+                <!-- Кнопки "Поиск" и "Сбросить поиск" -->
+                <div class="d-flex">
+                    <button type="submit" class="btn btn-outline-primary me-2" style="width: 120px;">Поиск</button>
+                    <a href="{{ url_for('app_bp.fo_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Сбросить</a>
+                </div>                
             </div>
-            <!-- Выбор количества страниц для пагинации -->
+
+            <!-- Блок выбора количества строк для отображения -->
             <div class="col-md-auto">
                 <select name="per_page" class="form-select" onchange="this.form.submit()">
                     <option value="5" {% if per_page == 5 %}selected{% endif %}>5 строк</option>
@@ -33,17 +39,40 @@
                 </select>
             </div>
         </div>
-    </form>  
+    </form>
 
     <!-- Таблица данных -->
     <form method="POST" action="{{ url_for('app_bp.fo_list') }}">
         {{ form.csrf_token }}
+        {{ form.page(value=pagination.page) }} <!-- Скрытое поле для текущей страницы -->
+
+        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
+        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
+        <input type="hidden" name="fo_filter" value="{{ request.args.get('fo_filter', '') }}">
+        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
+        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+
+        <!-- Кнопки сохранения изменений и добавления новой записи -->
+        <div class="d-flex justify-content-between mt-3 mb-3">
+            <button type="submit" class="btn btn-success">Сохранить изменения</button>
+
+            <a href="{{ url_for('app_bp.add_fo_routes', 
+            sort_by=request.args.get('sort_by', 'id'),
+            sort_dir=request.args.get('sort_dir', 'asc'),
+            fo_filter=request.args.get('fo_filter', ''),
+            per_page=request.args.get('per_page', 10),
+            page=request.args.get('page', 1)) }}" class="btn btn-primary">
+            Добавить новую запись
+        </a>
+        </div>
+
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
+            <table class="table table-hover table-striped table-bordered table-responsive">
                 <thead class="table-dark">
                     <tr>
-                        <th>
-                            <a href="{{ url_for('app_bp.fo_list', page=pagination.page, name_filter=name_filter, sort_by='number', sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-white">
+                        <!-- Шапка таблицы. Столбец "№" -->
+                        <th class="text-center">
+                            <a href="{{ url_for('app_bp.fo_list', page=pagination.page, per_page=per_page, fo_filter=fo_filter, sort_by='number', sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-white">
                                 №
                                 {% if sort_by == 'number' %}
                                     {% if sort_dir == 'asc' %}
@@ -54,8 +83,10 @@
                                 {% endif %}
                             </a>
                         </th>
-                        <th>
-                            <a href="{{ url_for('app_bp.fo_list', page=pagination.page, name_filter=name_filter, sort_by='name', sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-white">
+
+                        <!-- Шапка таблицы. Столбец "ФО" -->
+                        <th class="text-center">
+                            <a href="{{ url_for('app_bp.fo_list', page=pagination.page, per_page=per_page, fo_filter=fo_filter, sort_by='name', sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-white">
                                 Наименование ФО
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
@@ -66,35 +97,39 @@
                                 {% endif %}
                             </a>
                         </th>
+
+                        <!-- Шапка таблицы. Столбец "Удалить" -->
                         <th class="text-center">Удалить</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in fo_list %}
                     <tr>
-                        <td>
+                        <!-- Строки таблицы. Столбец "№" -->
+                        <td class="text-center">
                             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             <input type="hidden" name="fo_ids[]" value="{{ item.id }}">
                         </td>
+
+                        <!-- Строки таблицы. Столбец "ФО" -->
                         <td>
                             <input type="text" name="fo_names[]" class="form-control" value="{{ item.name }}">
                         </td>
+
+                        <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
                         <td class="text-center">
                             <input type="checkbox" name="fo_delete[]" value="{{ item.id }}" class="form-check-input">
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3" class="text-center">Нет данных для отображения</td>
+                        <td colspan="4" class="text-center">Нет данных для отображения</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <div class="d-flex justify-content-between mt-3">
-            <button type="submit" class="btn btn-success">Сохранить изменения</button>
-            <a href="{{ url_for('app_bp.add_fo') }}" class="btn btn-primary">Добавить новую запись</a>
-        </div>
+
     </form>
 
     <!-- Пагинация -->
@@ -102,21 +137,21 @@
         <ul class="pagination justify-content-center">
             {% if pagination.has_prev %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('app_bp.fo_list', page=pagination.prev_num, name_filter=name_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
+                <a class="page-link" href="{{ url_for('app_bp.fo_list', page=pagination.prev_num, fo_filter=fo_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
                     &laquo; Назад
                 </a>
             </li>
             {% else %}
             <li class="page-item disabled"><a class="page-link">&laquo; Назад</a></li>
             {% endif %}
-    
+
             {% for page in pagination.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=1) %}
             {% if page %}
                 {% if page == pagination.page %}
                 <li class="page-item active"><a class="page-link">{{ page }}</a></li>
                 {% else %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('app_bp.fo_list', page=page, name_filter=name_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
+                    <a class="page-link" href="{{ url_for('app_bp.fo_list', page=page, fo_filter=fo_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
                         {{ page }}
                     </a>
                 </li>
@@ -125,10 +160,10 @@
             <li class="page-item disabled"><a class="page-link">…</a></li>
             {% endif %}
             {% endfor %}
-    
+
             {% if pagination.has_next %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('app_bp.fo_list', page=pagination.next_num, name_filter=name_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
+                <a class="page-link" href="{{ url_for('app_bp.fo_list', page=pagination.next_num, fo_filter=fo_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir) }}">
                     Вперёд &raquo;
                 </a>
             </li>
@@ -140,18 +175,25 @@
 
     <!-- Импорт/экспорт -->
     <div class="row mt-5">
+        <!-- Экспорт данных таблицы с фильтрами в Excel-->
         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.import_fo_to_sql') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ url_for('app_bp.import_fo_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
                 {{ form.csrf_token }}
-                <button type="submit" class="btn btn-primary w-100">Импорт</button>
+                <button type="submit" class="btn btn-danger w-100">Импорт</button>
                 <div class="mb-3">
                     <input type="file" name="file" id="file" class="form-control">
                 </div>
             </form>
         </div>
+
+        <!-- Экспорт данных таблицы с фильтрами в Excel-->
         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.export_fo_to_excel', name_filter=name_filter, sort_by=sort_by, sort_dir=sort_dir) }}" method="GET">
-                <button type="submit" class="btn btn-success w-100">Экспорт</button>
+            <form action="{{ url_for('app_bp.export_fo_to_excel_routes') }}" method="GET">
+                {{ form.csrf_token }}
+                <input type="hidden" name="fo_filter" value="{{ fo_filter }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                <button type="submit" class="btn btn-warning w-100">Экспорт</button>
             </form>
         </div>
     </div>
