@@ -24,26 +24,31 @@
             width: 100%; /* Сообщения занимают всю ширину контейнера */
         }
         .filter-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
         }
+
         .filter-item {
             flex: 1 1 auto;
-            max-width: 200px; /* Фиксированная ширина полей */
+            max-width: 100%; /* Убираем фиксированную ширину */
         }
+
         .select2-container {
-            width: 200px ; /* Фиксируем ширину поля */
+            width: 100%; /* Ширина будет зависеть от родительского контейнера */
         }
+
         .select2-dropdown {
-            width: auto ; /* Делаем выпадающий список широким */
+            width: auto; /* Автоматическая ширина выпадающего списка */
         }
+
         .select2-results {
-            max-width: none important; /* Убираем ограничения по ширине */
-            min-width: 200px; /* Минимальная ширина */
+            max-width: none !important; /* Убираем ограничения по ширине */
+            min-width: 200px; /* Минимальная ширина, чтобы не было слишком узко */
             white-space: nowrap; /* Запрещаем перенос строк */
         }
+
 
     </style>
 </head>

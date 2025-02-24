@@ -188,22 +188,23 @@
                     
                     <div class="p-3" style="width: 20%;">
                         <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
-                            <!-- Скрытые поля для сохранения параметров -->
+                            <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
                             {% for key, value in request.args.items() %}
-                                {% if key != "per_page" %}
+                                {% if key != "per_page" and key != "start_year" and key != "end_year" %}
                                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                                 {% endif %}
                             {% endfor %}
                     
+                            <!-- Поля выбора года -->
                             <label for="start_year">Год начала:</label>
-                            <select name="start_year" id="start_year" class="form-select">
+                            <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
                                 {% for year in range(2021, 2043) %}
                                 <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
                             </select>
                     
                             <label for="end_year">Год конца:</label>
-                            <select name="end_year" id="end_year" class="form-select">
+                            <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
                                 {% for year in range(2022, 2043) %}
                                 <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
@@ -213,15 +214,7 @@
                         </form>
                     </div>
                     
-                    <!-- Чекбокс "Отображать ограничения мощности" -->
-                    <div class="p-3 text-center" style="width: 10%;">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
-                            <label class="form-check-label" for="toggleP_Ogr">
-                                Отображать ограничения мощности
-                            </label>
-                        </div>
-                    </div>
+                    
                     
                     <!-- Чекбокс "Отображать располагаемую мощность" -->
                     <div class="p-3 text-center" style="width: 10%;">
@@ -229,6 +222,16 @@
                             <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
                             <label class="form-check-label" for="toggleP_Rasp">
                                 Отображать располагаемую мощность
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Чекбокс "Отображать ограничения мощности" -->
+                    <div class="p-3 text-center" style="width: 10%;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
+                            <label class="form-check-label" for="toggleP_Ogr">
+                                Отображать ограничения мощности
                             </label>
                         </div>
                     </div>
@@ -301,23 +304,23 @@
                 {% for station in station_list %}
                     <!-- Строка для станции -->
                     <tr>
-                        <td class="text-start" style="vertical-align: middle; font-weight: bold;">
+                        <td class="text-center station-rowspan-td" colspan="3" style="vertical-align: middle; font-weight: bold;">
                             {{ station.regional_district.name }}
                         </td>
-                        <td class="text-center" style="vertical-align: middle; font-weight: bold;" >
-                            <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}">
+                        <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
+                            <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
                                 {{ station.name }}
                             </a>
                         </td>
-                        <td class="text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
                             {{ station.gen_companies }}
-                        </td>                    
+                        </td>
                     </tr>
-        
+            
                     <!-- Строки с машинами -->
                     {% for machine in station.machines %}
                         <!-- Первая строка: p_ust -->
-                        <tr class="text-center" style="vertical-align: middle;">
+                        <tr class="text-center machine-row" style="vertical-align: middle;">
                             <td class="rowspan-td" rowspan="3">{{ machine.machine_group }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.machine_name }}</td>
@@ -325,9 +328,9 @@
                             <td class="rowspan-td" rowspan="3">{{ machine.station_type.name }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.tes_type.name }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.tes_machine_type.name }}</td>
-                        
+                            
                             {% for year in range(start_year, end_year + 1) %}
-                            <td>
+                            <td class="text-center power-column">
                                 {% set p_ust_value = machine.machine_powers
                                                     | selectattr('year.number', 'equalto', year)
                                                     | map(attribute='p_ust')
@@ -339,9 +342,9 @@
                                 {% endif %}
                             </td>
                             {% endfor %}
-                        
+            
                             {% for year in range(start_year, end_year + 1) %}
-                            <td class="rowspan-td" rowspan="3">
+                            <td class="power-column rowspan-td" rowspan="3">
                                 {% set fuel = machine.machine_fuels
                                             | selectattr('year.number', 'equalto', year)
                                             | map(attribute='fuel')
@@ -354,11 +357,11 @@
                             </td>
                             {% endfor %}
                         </tr>
-                        
+            
                         <!-- Вторая строка: p_ogr -->
                         <tr class="text-center p-ogr-row">
                             {% for year in range(start_year, end_year + 1) %}
-                            <td>
+                            <td class="power-column">
                                 {% set p_ogr_value = machine.machine_powers
                                                     | selectattr('year.number', 'equalto', year)
                                                     | map(attribute='p_ogr')
@@ -371,11 +374,11 @@
                             </td>
                             {% endfor %}
                         </tr>
-                        
+            
                         <!-- Третья строка: p_rasp -->
                         <tr class="text-center p-rasp-row">
                             {% for year in range(start_year, end_year + 1) %}
-                            <td>
+                            <td class="power-column">
                                 {% set p_rasp_value = machine.machine_powers
                                                     | selectattr('year.number', 'equalto', year)
                                                     | map(attribute='p_rasp')
@@ -389,16 +392,16 @@
                             {% endfor %}
                         </tr>
                     {% endfor %}
-
+            
                     <!-- Строки с суммарной мощностью по годам -->
                     {% if not tes_machine_type_filter %}
-                    <tr style="vertical-align: middle;">
-                        <td class="total-row-cell text-start" rowspan="3" colspan="7" style="font-weight: bold;">
+                    <tr class="text-center total-power-row" style="vertical-align: middle;">
+                        <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                             Всего по станции:
                         </td>
                         {% for year in range(start_year, end_year + 1) %}
-                        <td class="text-center" style="font-weight: bold;">
-                            {% set p_ust_value = stations_yearly_p_ust[station.id].get(year, 0) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {% set p_ust_value = stations_yearly_p_ust.get(station.id, {}).get(year, 0) %}
                             {% if p_ust_value == 0 %}
                                 &mdash;
                             {% else %}
@@ -409,8 +412,8 @@
                     </tr>
                     <tr class="text-center p-ogr-row">
                         {% for year in range(start_year, end_year + 1) %}
-                        <td style="font-weight: bold;">
-                            {% set p_ogr_value = stations_yearly_p_ogr[station.id].get(year, 0) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {% set p_ogr_value = stations_yearly_p_ogr.get(station.id, {}).get(year, 0) %}
                             {% if p_ogr_value == 0 %}
                                 &mdash;
                             {% else %}
@@ -421,8 +424,8 @@
                     </tr>
                     <tr class="text-center p-rasp-row">
                         {% for year in range(start_year, end_year + 1) %}
-                        <td style="font-weight: bold;">
-                            {% set p_rasp_value = stations_yearly_p_rasp[station.id].get(year, 0) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {% set p_rasp_value = stations_yearly_p_rasp.get(station.id, {}).get(year, 0) %}
                             {% if p_rasp_value == 0 %}
                                 &mdash;
                             {% else %}
@@ -432,11 +435,9 @@
                         {% endfor %}
                     </tr>
                     {% endif %}
-                    
-
                 {% endfor %}
-
-                </tbody>
+            </tbody>
+            
         </table>
     </div>
 </div>
@@ -478,7 +479,7 @@
     });
 </script>
 
-<!-- Скрипт для отображения строк -->
+<!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
 <script>
     $(document).ready(function() {
         // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
@@ -491,9 +492,6 @@
             let originalRowspan = parseInt($(this).attr('rowspan'), 10);
             let totalMachines = (originalRowspan - 1) / 3;
             $(this).data('total-machines', totalMachines);
-            if (!$(this).find("a").length) {
-                $(this).html(`<a href="/station_details/${stationID}" class="text-decoration-none">${stationName}</a>`);
-            }
         });
 
         // Функция обновления строк
@@ -515,7 +513,7 @@
                 $('.p-rasp-row').hide();
             }
 
-            // Сколько строк агрегата хотим показывать (1..3)?
+            // Количество отображаемых строк на агрегат (1..3)
             let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
 
             // Обновляем rowspan для ячейки "Всего по станции"
@@ -534,6 +532,14 @@
                 $(this).attr('rowspan', newRowSpan);
             });
 
+            // Обновляем корректное отображение суммарных мощностей
+            $('.power-column').each(function() {
+                let totalRow = $(this).closest('tr').find('.total-row-cell');
+                if (totalRow.length) {
+                    totalRow.attr('rowspan', aggregatorRows);
+                }
+            });
+
         }
 
         // Обновляем строки при загрузке страницы
@@ -549,67 +555,96 @@
 <!-- Скрипт для определения количества знаков после запятой -->
 <script>
     $(document).ready(function() {
-      // 1. Сохраняем исходный текст (или значение) из каждой ячейки в data-атрибут,
-      //    чтобы при переключении округления мы могли вернуть неокруглённое значение.
-      $('td').each(function() {
-        const originalText = $(this).text().trim();
-        // Сохраняем в data-атрибут:
-        $(this).data('original-value', originalText);
-      });
-  
-      // Функция для округления одного значения
-      function roundValue(value, digits) {
-        // Если ячейка пустая, прочерк или не является числом, возвращаем как есть
-        if (!value || value === '—') {
-          return value;
-        }
-  
-        // Пытаемся привести к числу
-        let num = parseFloat(value.replace(',', '.')); 
-        // Если не число (NaN), возвращаем исходное
-        if (isNaN(num)) {
-          return value;
-        }
-  
-        switch (digits) {
-          // "int" => округлить до целого
-          case 'int':
-            return Math.round(num);
-          // "0" => не округлять => показываем исходное, как есть
-          case '0':
-            return value;
-          // иначе округляем до указанного количества знаков
-          default:
-            const d = parseInt(digits, 10);
-            // toFixed вернёт строку с точкой, если хотите, можно заменить '.' на ','
-            return num.toFixed(d).replace('.', ',');
-        }
-      }
-  
-      // Функция обновления всех ячеек в таблице
-      function updateValues() {
-        const roundingDigits = $('#rounding_digits').val();
-  
-        $('td').each(function() {
-            let link = $(this).find("a");
-            if (link.length) {
-                link.text(roundValue(link.text(), roundingDigits));
-            } else {
-                const original = $(this).data('original-value');
-                $(this).text(roundValue(original, roundingDigits));
-            }
+        // 1. Сохраняем исходный текст (или значение) из каждой ячейки в data-атрибут
+        $('.power-column').each(function() {
+            const originalText = $(this).text().trim();
+            $(this).attr('data-original-value', originalText);
         });
-      }
-  
-      // При изменении режима округления пересчитываем
-      $('#rounding_digits').on('change', function() {
+
+        // Функция для округления одного значения
+        function roundValue(value, digits) {
+            // Если ячейка пустая, прочерк или не является числом, возвращаем как есть
+            if (!value || value === '—' || value === '-' || value.includes('&mdash;')) {
+                return value;
+            }
+
+            // Пытаемся привести к числу
+            let num = parseFloat(value.replace(',', '.')); 
+            if (isNaN(num)) {
+                return value;
+            }
+
+            switch (digits) {
+                case 'int': // Округление до целого
+                    return Math.round(num);
+                case '0': // Без округления, оставляем как есть
+                    return value;
+                default:
+                    const d = parseInt(digits, 10);
+                    return num.toFixed(d).replace('.', ','); // Используем запятую вместо точки
+            }
+        }
+
+        // Функция обновления всех ячеек в таблице
+        function updateValues() {
+            const roundingDigits = $('#rounding_digits').val();
+
+            $('.power-column').each(function() {
+                const original = $(this).attr('data-original-value'); // Берём сохранённое значение
+                const newText = roundValue(original, roundingDigits);
+                $(this).text(newText);
+            });
+        }
+
+        // При изменении режима округления пересчитываем
+        $('#rounding_digits').on('change', function() {
+            updateValues();
+        });
+
+        // Инициализация округления при загрузке страницы
         updateValues();
-      });
-  
-      // Инициализация округления при загрузке страницы (по умолчанию выбрано "1 знак")
-      updateValues();
     });
-  </script>
+
+</script>
+
+<!-- Скрипт для динамического отображения выбранного периода -->
+<script>
+    function updateHiddenFields() {
+        let form = document.getElementById("yearForm");
+
+        // Получаем новые значения годов
+        let startYear = document.getElementById("start_year").value;
+        let endYear = document.getElementById("end_year").value;
+
+        // Проверяем, есть ли уже скрытые поля start_year и end_year
+        let startYearInput = form.querySelector("input[name='start_year']");
+        let endYearInput = form.querySelector("input[name='end_year']");
+
+        // Если поля уже есть, обновляем их значения, иначе создаем новые
+        if (startYearInput) {
+            startYearInput.value = startYear;
+        } else {
+            let newStartInput = document.createElement("input");
+            newStartInput.type = "hidden";
+            newStartInput.name = "start_year";
+            newStartInput.value = startYear;
+            form.appendChild(newStartInput);
+        }
+
+        if (endYearInput) {
+            endYearInput.value = endYear;
+        } else {
+            let newEndInput = document.createElement("input");
+            newEndInput.type = "hidden";
+            newEndInput.name = "end_year";
+            newEndInput.value = endYear;
+            form.appendChild(newEndInput);
+        }
+    }
+</script>
+
+
+
 
 <!-- Скрипт для поиска по типу энергосистемы -->
 <script>
