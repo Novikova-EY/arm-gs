@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Страница "Электростанция (подробно)"{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+{% set filters = [
+    'page', 'condition_type_filter', 'gen_company_filter', 'station_name_filter',
+    'station_type_filter', 'machine_type_filter', 'tes_type_filter', 'tes_machine_type_filter',
+    'energy_system_type_filter', 'union_energy_system_filter', 'regional_energy_system_filter',
+    'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
+    'sort_by', 'sort_dir', 'per_page'
+] %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('app_bp.station_list', **request.args
+        ) }}" class="btn btn-secondary">
+            Вернуться на страницу "Электростанции"
+        </a>
+    </div>
+    
+
+    <body>
+        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+        {% for param in filters %}
+        <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
+        {% endfor %}
+
+        <div class="container-fluid mt-4">
+            <h2 class="mb-4">Информация о станции</h2>
+    
+            <!-- Карточка с основной информацией -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title text-decoration-underline mb-3">
+                        <strong>{{ station.name }}</strong>
+                    </h5>
+                    <p><strong>Собственник:</strong> {{ station.gen_companies or '-' }}</p>
+                    <p><strong>Тип электростанции:</strong> {{ station.station_type if station.station_type else '-' }}</p>
+                    <p><strong>Группа:</strong> {{ station.group.name if station.group else '-' }}</p>
+                    <p><strong>Местоположение:</strong> {{ station.location or '-' }}</p>
+                    <p><strong>Примечание:</strong> {{ station.note or '-' }}</p>
+                </div>
+            </div>
+
+            
+            <!-- Форма для выбора годов -->
+            <div class="d-flex justify-content-end align-items-center">
+                <div class="form-check me-3">
+                    <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
+                    <label class="form-check-label" for="toggleP_Rasp">
+                        Отображать располагаемую мощность
+                    </label>
+                </div>
+                
+                <form method="GET" action="{{ url_for('app_bp.station_details', station_id=station.id) }}" 
+                    class="d-flex align-items-center" id="yearForm">
+                    
+                    <!-- Год начала -->
+                    <label for="start_year" class="me-2">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select me-3" style="width: 120px;">
+                        {% for year in range(2021, 2043) %}
+                            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <!-- Год конца -->
+                    <label for="end_year" class="me-2">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select me-3" style="width: 120px;">
+                        {% for year in range(2022, 2043) %}
+                            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="btn btn-outline-success" style="width: 120px;">Применить</button>
+                </form>
+            </div>
+
+
+            <!-- Таблица с агрегатами (Machines) -->
+            <h3>Агрегаты станции</h3>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered table-responsive">
+                    <thead class="table-success">
+                        <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                            <th rowspan="2">гр.</th>
+                            <th rowspan="2">cт.№</th>
+                            <th rowspan="2">Тип агрегата</th>
+                            <th rowspan="2">Год ввода</th>
+                            <th rowspan="2">Тип энергоблока</th>
+                            <th rowspan="2">Тип ТЭС</th>
+                            <th rowspan="2">Тип агрегата ТЭС</th>
+                            <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
+                            <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
+                        </tr>
+                        <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                            <!-- Столбцы для годов с start_year по end_year + 1 -->
+                            {% for year in range(start_year, end_year + 1) %}
+                                <th>{{ year }}</th>
+                            {% endfor %}
+                            <!-- Столбцы для годов с start_year по end_year + 1 -->
+                            {% for year in range(start_year, end_year + 1) %}
+                                <th>{{ year }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Строки с машинами -->
+                        {% if station.machines %}
+                            {% for machine in station.machines %}
+                            <tr class="text-center" style="vertical-align: middle;">
+                                <td class="rowspan-td" rowspan="2">{{ machine.machine_group }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.machine_number }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.machine_name }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.date_exploitation }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.station_type.name }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.tes_type.name }}</td>
+                                <td class="rowspan-td" rowspan="2">{{ machine.tes_machine_type.name }}</td>
+
+                                <!-- Cтрока с значениями p_ust -->
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td>
+                                    {% set p_ust_value = machine.machine_powers | selectattr('year.number', 'equalto', year) | map(attribute='p_ust') | first %}
+                                    {% if p_ust_value is not none and p_ust_value is number %}
+                                        {{ p_ust_value | round(1) }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+
+                                <!-- Cтрока с значениями fuel -->
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td class="rowspan-td" rowspan="2">
+                                    {% set fuel = machine.machine_fuels | selectattr('year.number', 'equalto', year) | map(attribute='fuel') | first %}
+                                    {% if fuel %}
+                                        {{ fuel.fuel_type.name }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                
+                            <!-- Вторая строка с значениями p_rasp -->
+                            <tr class="text-center p-rasp-row">
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td>
+                                    {% set p_rasp_value = machine.machine_powers | selectattr('year.number', 'equalto', year) | map(attribute='p_rasp') | first %}
+                                    {% if p_rasp_value is not none and p_rasp_value is number %}
+                                        {{ p_rasp_value | round(1) }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                            
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ end_year - start_year }}" class="text-center">Машины не найдены</td>
+                        </tr>
+                        {% endif %}
+                        
+                        
+                        <!-- Строки с суммарной мощностью по годам -->
+                        <tr>
+                            <td colspan="7" rowspan="3" style="vertical-align: middle;"><strong>Всего по станции:</strong></td>
+                        </tr>
+                
+                        <tr class="text-center">
+                            {% for year in range(start_year, end_year + 1) %}
+                            <td>
+                                {% if stations_yearly_p_ust is defined %}
+                                    <strong>{{ stations_yearly_p_ust.get(year, 0) | round(1) }}</strong>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                
+                        <tr class="text-center p-rasp-row">
+                            {% for year in range(start_year, end_year + 1) %}
+                            <td>
+                                {% if stations_yearly_p_rasp is defined %}
+                                    <strong>{{ stations_yearly_p_rasp.get(year, 0) | round(1) }}</strong>
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+
+<!-- Подключаем jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Подключаем Select2 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+
+<!-- Скрипт для отображения строк с располагаемой мощностью -->
+<script>
+    $(document).ready(function() {
+        function togglePRasp() {
+            let isChecked = $('#toggleP_Rasp').prop('checked');
+
+            // Скрытие или показ строк p_rasp
+            $('.p-rasp-row').toggle(isChecked);
+
+            // Изменение rowspan у всех td, отвечающих за машины
+            $('.rowspan-td').each(function() {
+                let originalRowspan = $(this).data('original-rowspan');
+                if (!originalRowspan) {
+                    $(this).data('original-rowspan', $(this).attr('rowspan'));
+                }
+                $(this).attr('rowspan', isChecked ? $(this).data('original-rowspan') : '1');
+            });
+
+            // Изменение rowspan у всех station-rowspan-td
+            $('.station-rowspan-td').each(function() {
+                let totalMachines = $(this).data('total-machines');
+                if (!totalMachines) {
+                    let originalRowspan = parseInt($(this).attr('rowspan'), 10);
+                    $(this).data('total-machines', (originalRowspan - 1) / 2);
+                }
+                let newRowspan = isChecked ? $(this).data('total-machines') * 2 + 1 : $(this).data('total-machines') + 1;
+                $(this).attr('rowspan', newRowspan);
+            });
+        }
+
+        // Обработчик изменения чекбокса
+        $('#toggleP_Rasp').on('change', togglePRasp);
+
+        // Вызов при загрузке страницы
+        togglePRasp();
+    });
+</script>
+
+{% endif %}
+{% endblock %}

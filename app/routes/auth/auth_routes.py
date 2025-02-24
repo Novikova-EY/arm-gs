@@ -1,8 +1,9 @@
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy.exc import IntegrityError
 from app.models.auth_models import User, db, Role
-from app.models.log_models import Log
+from app.models.logs_models import Log
 
 # Функция логирования действий
 
@@ -65,6 +66,9 @@ def register():
                 return redirect(url_for('auth.register'))
 
             user_role = Role.query.filter_by(name='Пользователь-гость').first()
+            if not user_role:
+                raise ValueError("Роль 'Пользователь-гость' не найдена.")
+            
             user = User(username=username, email=email, role=user_role)
             user.set_password(password)
             db.session.add(user)
@@ -72,9 +76,15 @@ def register():
             log_to_db(username, 'Успешная регистрация')
             flash('Регистрация прошла успешно. Вы можете войти.', 'success')
             return redirect(url_for('auth.login'))
-    except Exception as e:
-        log_to_db('Система', f'Ошибка во время регистрации: {e}')
+    except IntegrityError as e:
+        log_to_db('Система', f'Ошибка целостности данных при регистрации: {e}')
         flash('Произошла ошибка при регистрации. Попробуйте снова.', 'danger')
+    except ValueError as e:
+        log_to_db('Система', f'Ошибка проверки данных при регистрации: {e}')
+        flash(f'Ошибка: {e}. Пожалуйста, попробуйте еще раз.', 'danger')
+    except Exception as e:
+        log_to_db('Система', f'Неизвестная ошибка при регистрации: {e}')
+        flash('Произошла непредвиденная ошибка при регистрации. Попробуйте позже.', 'danger')
 
     return render_template('register.html')
 

@@ -3,6 +3,7 @@
 {% block title %}Страница отслеживания действий пользователей{% endblock %}
 
 {% block content %}
+<div class="container mt-4">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
         <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary">
@@ -69,4 +70,5 @@
             </ul>
         </nav>
     </div>
+</div>
 {% endblock %}

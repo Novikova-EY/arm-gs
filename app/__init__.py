@@ -1,12 +1,14 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_migrate import Migrate
 
 db = SQLAlchemy()
 login_manager = LoginManager()
+migrate = Migrate()
+
 
 def create_app():
-
     app = Flask(__name__)
 
     # Подключение конфигурации
@@ -14,6 +16,36 @@ def create_app():
 
     # Инициализация базы данных
     db.init_app(app)
+
+    # Импорт моделей
+    from app.models.energy_systems_models import (
+        EnergySystemType,
+        EnergyArea,
+        RegionalEnergySystem,
+        UnionEnergySystem,
+    )
+    from app.models.territories_models import (
+        FederalDistrict,
+        RegionalDistrict,
+    )    
+    from app.models.fuels_models import Fuel, FuelType, FuelCategory
+    from app.models.gen_companies_models import GenCompany
+    from app.models.stations_models import (
+        ConditionType,
+        StationType,
+        TesType,
+        StationGroup,
+        Station,
+        Machine,
+        MachineType,
+        Boiler,
+    )
+
+    # Настройка мапперов
+    db.configure_mappers()
+
+    # Инициализация миграций
+    migrate.init_app(app, db)
 
     # Инициализация LoginManager
     login_manager.init_app(app)
@@ -23,8 +55,8 @@ def create_app():
 
     # Создание таблиц, если они не существуют
     with app.app_context():
-        db.create_all()
-    
+        db.create_all()  # Создаем все таблицы, если они ещё не созданы
+
     # Регистрация маршрутов
     from app.routes.auth import auth_bp
     from app.routes.app import app_bp
@@ -34,8 +66,9 @@ def create_app():
     app.register_blueprint(app_bp, url_prefix='/app')  # Префикс для общих маршрутов
     app.register_blueprint(auth_bp, url_prefix='/auth')  # Префикс для авторизации
     app.register_blueprint(logs_bp, url_prefix='/log')  # Префикс для просмотра логов
-    
+
     return app
+
 
 # Функция загрузки пользователя
 @login_manager.user_loader

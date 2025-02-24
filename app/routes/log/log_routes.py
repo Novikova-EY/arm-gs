@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from app.models.log_models import Log
+from app.models.logs_models import Log
 from app import db
 
 logs_bp = Blueprint('logs', __name__)

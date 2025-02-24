@@ -1,0 +1,20 @@
+<!-- Форма для выбора годов -->
+<form method="GET" action="{{ url_for('app_bp.stations_list') }}" class="d-flex justify-content-between align-items-center" id="yearForm">
+    <!-- Год начала -->
+    <label for="start_year" class="me-2">Год начала:</label>
+    <select name="start_year" id="start_year" class="form-select me-2" style="width: 120px;" onchange="updateYearSelection()">
+        {% for year in range(2021, 2043) %}
+            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Год конца -->
+    <label for="end_year" class="me-2">Год конца:</label>
+    <select name="end_year" id="end_year" class="form-select" style="width: 120px;" onchange="updateYearSelection()">
+        {% for year in range(2022, 2043) %}
+            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+    </select>
+
+    <a href="{{ url_for('app_bp.stations_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Применить</a>
+</form>
