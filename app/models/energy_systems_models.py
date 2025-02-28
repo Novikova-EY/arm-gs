@@ -72,6 +72,9 @@ class RegionalEnergySystem(db.Model):
     # наименование региональной энергосистемы
     name = db.Column(db.String(255), nullable=False)
 
+    # полное наименование региональной энергосистемы
+    name_full = db.Column(db.String(255), nullable=False)
+
     # id объединенной энергосистемы
     id_union_energy_system = db.Column(
         db.Integer, 

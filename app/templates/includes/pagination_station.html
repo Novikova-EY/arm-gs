@@ -1,41 +1,45 @@
-    <!-- Пагинация -->
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            {% if pagination.has_prev %}
-            <li class="page-item">
-                <a class="page-link" href="{{ 
-                    url_for('app_bp.station_list', 
-                    page=pagination.prev_num, 
-                    start_year=start_year,
-                    end_year=end_year, 
-                    condition_type_filter=condition_type_filter,
-                    gen_company_filter=gen_company_filter,
-                    station_name_filter=station_name_filter,
-                    station_type_filter=station_type_filter,
-                    machine_type_filter=machine_type_filter,
-                    tes_type_filter=tes_type_filter,
-                    tes_machine_type_filter=tes_machine_type_filter,
-                    energy_system_type_filter=energy_system_type_filter,
-                    union_energy_system_filter=union_energy_system_filter,
-                    regional_energy_system_filter=regional_energy_system_filter,
-                    federal_district_filter=federal_district_filter,
-                    regional_district_filter=regional_district_filter,
-                    station_fuel_type_filter=station_fuel_type_filter,
-                    per_page=per_page, 
-                    sort_by=sort_by, 
-                    sort_dir=sort_dir) }}">
-                    &laquo; Назад
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled"><a class="page-link">&laquo; Назад</a></li>
-            {% endif %}
+<!-- Пагинация -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% set total_pages = pagination.total_pages %}
+        {% set current_page = pagination.page %}
 
-            {% for page in pagination.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=1) %}
-            {% if page %}
-                {% if page == pagination.page %}
-                <li class="page-item active"><a class="page-link">{{ page }}</a></li>
-                {% else %}
+        <!-- Кнопка "Назад" -->
+        {% if current_page > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="{{ 
+                url_for('app_bp.station_list', 
+                page=current_page - 1, 
+                start_year=start_year,
+                end_year=end_year, 
+                condition_type_filter=condition_type_filter,
+                gen_company_filter=gen_company_filter,
+                station_name_filter=station_name_filter,
+                station_type_filter=station_type_filter,
+                machine_type_filter=machine_type_filter,
+                tes_type_filter=tes_type_filter,
+                tes_machine_type_filter=tes_machine_type_filter,
+                energy_system_type_filter=energy_system_type_filter,
+                union_energy_system_filter=union_energy_system_filter,
+                regional_energy_system_filter=regional_energy_system_filter,
+                federal_district_filter=federal_district_filter,
+                regional_district_filter=regional_district_filter,
+                station_fuel_type_filter=station_fuel_type_filter,
+                per_page=per_page, 
+                sort_by=sort_by, 
+                sort_dir=sort_dir) }}">
+                &laquo; Назад
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><a class="page-link">&laquo; Назад</a></li>
+        {% endif %}
+
+        <!-- Номера страниц -->
+        {% for page in range(1, total_pages + 1) %}
+            {% if page == current_page %}
+                <li class="page-item active"><span class="page-link">{{ page }}</span></li>
+            {% else %}
                 <li class="page-item">
                     <a class="page-link" href="{{ 
                         url_for('app_bp.station_list', 
@@ -61,40 +65,38 @@
                         {{ page }}
                     </a>
                 </li>
-                {% endif %}
-            {% else %}
-            <li class="page-item disabled"><a class="page-link">…</a></li>
             {% endif %}
-            {% endfor %}
+        {% endfor %}
 
-            {% if pagination.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="{{ 
-                    url_for('app_bp.station_list', 
-                    page=pagination.next_num, 
-                    start_year=start_year,
-                    end_year=end_year, 
-                    condition_type_filter=condition_type_filter,
-                    gen_company_filter=gen_company_filter,
-                    station_name_filter=station_name_filter,
-                    station_type_filter=station_type_filter,
-                    machine_type_filter=machine_type_filter,
-                    tes_type_filter=tes_type_filter,
-                    tes_machine_type_filter=tes_machine_type_filter,
-                    energy_system_type_filter=energy_system_type_filter,
-                    union_energy_system_filter=union_energy_system_filter,
-                    regional_energy_system_filter=regional_energy_system_filter,
-                    federal_district_filter=federal_district_filter,
-                    regional_district_filter=regional_district_filter,
-                    station_fuel_type_filter=station_fuel_type_filter,
-                    per_page=per_page, 
-                    sort_by=sort_by, 
-                    sort_dir=sort_dir) }}">
-                    Вперёд &raquo;
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled"><a class="page-link">Вперёд &raquo;</a></li>
-            {% endif %}
-        </ul>
-    </nav>
+        <!-- Кнопка "Вперёд" -->
+        {% if current_page < total_pages %}
+        <li class="page-item">
+            <a class="page-link" href="{{ 
+                url_for('app_bp.station_list', 
+                page=current_page + 1,
+                start_year=start_year,
+                end_year=end_year, 
+                condition_type_filter=condition_type_filter,
+                gen_company_filter=gen_company_filter,
+                station_name_filter=station_name_filter,
+                station_type_filter=station_type_filter,
+                machine_type_filter=machine_type_filter,
+                tes_type_filter=tes_type_filter,
+                tes_machine_type_filter=tes_machine_type_filter,
+                energy_system_type_filter=energy_system_type_filter,
+                union_energy_system_filter=union_energy_system_filter,
+                regional_energy_system_filter=regional_energy_system_filter,
+                federal_district_filter=federal_district_filter,
+                regional_district_filter=regional_district_filter,
+                station_fuel_type_filter=station_fuel_type_filter,
+                per_page=per_page, 
+                sort_by=sort_by, 
+                sort_dir=sort_dir) }}">
+                Вперёд &raquo;
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><a class="page-link">Вперёд &raquo;</a></li>
+        {% endif %}
+    </ul>
+</nav>

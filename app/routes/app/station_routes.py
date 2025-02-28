@@ -1,15 +1,15 @@
+from config import Config
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file
 )
 from . import app_bp
 from app.models.logs_models import Log
-from app.models.energy_systems_models import RegionalEnergySystem
-from app.models import Station, Machine, MachinePower, Year
 from app.forms.station_forms import StationFilterForm
+from app.models import Station, Year
 from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
-    log_to_db, get_total_with_filter, import_station_list_from_excel, export_station_list_to_excel
+    log_to_db, import_station_list_from_excel, export_station_list_to_excel, calculate_station_power_values
 )
 from flask_login import login_required
 from app.routes.auth import role_required
@@ -36,30 +36,29 @@ def station_list():
 
     # Получение параметров запроса
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", "10")
+    if per_page == "all":
+        per_page = None
+    else:
+        per_page = int(per_page)
+    
+    print(f"Используемый per_page после обработки: {per_page}")
+          
+    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
+    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+
     condition_type_filter = request.args.get("condition_type_filter", "")
-    station_name_filter = request.args.get("station_name_filter", "").strip()
-    start_year = request.args.get("start_year", type=int)
-    end_year = request.args.get("end_year", type=int)
-    station_type_filter = request.args.get("station_type_filter", "")
-    tes_type_filter = request.args.get("tes_type_filter", "")
-    tes_machine_type_filter = request.args.get("tes_type_filter", "")
-    energy_system_type_filter = request.args.get("energy_system_type_filter", "")
-    union_energy_system_filter = request.args.get("union_energy_system_filter", "")
-    regional_energy_system_filter = request.args.get("regional_energy_system_filter", "")
-    federal_district_filter = request.args.get("federal_district_filter", "")
-    regional_district_filter = request.args.get("regional_district_filter", "")
+    energy_system_type_filter = request.args.getlist("energy_system_type_filter", type=int)
+    union_energy_system_filter = request.args.getlist("union_energy_system_filter", type=int)
+    regional_energy_system_filter = request.args.getlist("regional_energy_system_filter", type=int)
+    federal_district_filter = request.args.getlist("federal_district_filter", type=int)
+    regional_district_filter = request.args.getlist("regional_district_filter", type=int)
     gen_company_filter = request.args.get("gen_company_filter", "").strip()
-    station_type_filter = request.args.get("station_type_filter", "").strip()
-    tes_type_filter = request.args.get("tes_type_filter", "").strip()
+    station_name_filter = request.args.get("station_name_filter", "").strip()
+    station_type_filter = request.args.getlist("station_type_filter", type=int)
+    tes_type_filter = request.args.getlist("tes_type_filter", type=int)
     tes_machine_type_filter = request.args.getlist('tes_machine_type_filter', type=int)
     station_fuel_type_filter = request.args.get("station_fuel_type_filter", "")
-    
-    # Проверка на пустое значение для start_year и end_year
-    if start_year is None:
-        start_year = 2021  # Значение по умолчанию
-    if end_year is None:
-        end_year = 2032  # Значение по умолчанию
         
     sort_by = request.args.get("sort_by", "id")
     sort_dir = request.args.get("sort_dir", "asc")
@@ -73,17 +72,15 @@ def station_list():
         sort_dir = request.form.get("sort_dir", "asc")
 
         condition_type_filter = request.form.get("condition_type_filter", "")
-        station_name_filter = request.args.get("station_name_filter", "").strip()
-        station_type_filter = request.form.get("station_type_filter", "")
-        tes_type_filter = request.form.get("tes_type_filter", "")
-        tes_machine_type_filter = request.form.get("tes_type_filter", "")
-        regional_energy_system_filter = request.form.get("regional_energy_system_filter", "")
-        federal_energy_system_filter = request.form.get("federal_energy_system_filter", "")
-        energy_system_type_filter = request.form.get("energy_system_type_filter", "")
-        union_energy_system_filter = request.form.get("union_energy_system_filter", "")
+        energy_system_type_filter = request.form.getlist("energy_system_type_filter", type=int)
+        union_energy_system_filter = request.form.getlist("union_energy_system_filter", type=int)
+        regional_energy_system_filter = request.form.getlist("regional_energy_system_filter", type=int)
+        federal_district_filter = request.args.getlist("federal_district_filter", type=int)
+        regional_district_filter = request.args.getlist("regional_district_filter", type=int)
         gen_company_filter = request.form.get("gen_company_filter", "").strip()
-        station_type_filter = request.form.get("station_type_filter", "")
-        tes_type_filter = request.form.get("tes_type_filter", "")
+        station_name_filter = request.args.get("station_name_filter", "").strip()
+        station_type_filter = request.form.getlist("station_type_filter", type=int)
+        tes_type_filter = request.form.getlist("tes_type_filter", type=int)
         tes_machine_type_filter = request.args.getlist('tes_machine_type_filter', type=int)
         station_fuel_type_filter = request.form.get("station_fuel_type_filter", "")
 
@@ -121,12 +118,13 @@ def station_list():
                                 page=page,
                                 per_page=per_page,
                                 condition_type_filter = condition_type_filter,
-                                station_name_filter = station_name_filter,
-                                regional_energy_system_filter = regional_energy_system_filter,
-                                federal_energy_system_filter = federal_energy_system_filter,
                                 energy_system_type_filter = energy_system_type_filter,
                                 union_energy_system_filter = union_energy_system_filter,
+                                regional_energy_system_filter = regional_energy_system_filter,
+                                federal_district_filter = federal_district_filter,
+                                regional_district_filter = regional_district_filter,
                                 gen_company_filter = gen_company_filter,
+                                station_name_filter = station_name_filter,
                                 station_type_filter = station_type_filter,
                                 tes_type_filter = tes_type_filter,
                                 tes_machine_type_filter = tes_machine_type_filter,
@@ -150,55 +148,27 @@ def station_list():
                                 regional_district_filter,
                                 sort_by, 
                                 sort_dir)
-    
+
+    if pagination["page"] > pagination["total_pages"]:
+        pagination["page"] = pagination["total_pages"]
+
+    print("Общее количество станций:", pagination["total_count"])
+    print("Элементов на странице:", len(pagination["stations"]))
+    print("Текущая страница:", pagination["page"])
+    print("Всего страниц:", pagination["total_pages"])
+
+
     # Собираем уникальные компании для каждой станции
-    for station in pagination.items:
+    for station in pagination["stations"]:
         gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
         station.gen_companies = ", ".join(gen_companies)
 
     # Собираем типы энергоблоков для каждой станции
-    for station in pagination.items:
+    for station in pagination["stations"]:
         station_type = {machine.station_type.name for machine in station.machines if machine.station_type}
         station.station_type = ", ".join(station_type)
 
-    # Вычисление сумм для p_ust и p_rasp
-    stations_yearly_p_ust = {}
-    stations_yearly_p_ogr = {}
-    stations_yearly_p_rasp = {}
-
-    from decimal import Decimal
-
-    stations_yearly_p_ust = {}
-    stations_yearly_p_ogr = {}
-    stations_yearly_p_rasp = {}
-
-    for station in pagination.items:
-        yearly_p_ust_station = {}
-        yearly_p_ogr_station = {}
-        yearly_p_rasp_station = {}
-
-        for machine in station.machines:
-            for machine_power in machine.machine_powers:
-                year = machine_power.year.number
-
-                p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust else Decimal(0)
-                p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr else Decimal(0)
-                p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp else Decimal(0)
-
-                if year in yearly_p_ust_station:
-                    yearly_p_ust_station[year] += p_ust
-                    yearly_p_ogr_station[year] += p_ogr
-                    yearly_p_rasp_station[year] += p_rasp
-                else:
-                    yearly_p_ust_station[year] = p_ust
-                    yearly_p_ogr_station[year] = p_ogr
-                    yearly_p_rasp_station[year] = p_rasp
-
-        # Сохраняем суммы без округления
-        stations_yearly_p_ust[station.id] = yearly_p_ust_station
-        stations_yearly_p_ogr[station.id] = yearly_p_ogr_station
-        stations_yearly_p_rasp[station.id] = yearly_p_rasp_station
-
+    stations_yearly_p_ust, stations_yearly_p_ogr, stations_yearly_p_rasp = calculate_station_power_values(pagination["stations"])
    
     # Подготовка данных для формы
     energy_system_type_list = get_energy_system_types()
@@ -212,25 +182,12 @@ def station_list():
     tes_type_list = get_tes_types()
     tes_machine_type_list = get_tes_machine_types()
 
-
-    if tes_machine_type_filter:
-        filtered_stations = []
-
-        for station in pagination.items:
-            # Отбираем только те машины, у которых тип есть в списке фильтра
-            filtered_machines = [m for m in station.machines if m.id_tes_machine_type in tes_machine_type_filter]
-
-            if filtered_machines:
-                station.machines = filtered_machines
-                filtered_stations.append(station)
-
-        pagination.items = filtered_stations
-        pagination.total = len(filtered_stations)
+    year_features = {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
 
     return render_template(
         "stations/stations.html",
         form=form,
-        station_list=pagination.items,
+        station_list=pagination["stations"],
         pagination=pagination,
         start_year=start_year,
         end_year=end_year, 
@@ -259,9 +216,10 @@ def station_list():
         stations_yearly_p_ust=stations_yearly_p_ust,
         stations_yearly_p_ogr=stations_yearly_p_ogr,
         stations_yearly_p_rasp=stations_yearly_p_rasp,
+        year_features=year_features,
         sort_by=sort_by,
         sort_dir=sort_dir,
-        per_page=per_page
+        per_page = per_page
     )
 
 @app_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
@@ -393,6 +351,7 @@ def import_station_list_to_sql_routes():
         flash("Ошибка импорта данных.", "danger")
 
     return redirect(url_for("app_bp.station_list"))
+
 
 @app_bp.route('/export_stations', methods=['GET'])
 def export_station_list():

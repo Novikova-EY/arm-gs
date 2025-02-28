@@ -35,11 +35,11 @@
     <div class="container-fluid mt-4">
         <div class="row g-3">
             <!-- Первая строка фильтров -->
-            <div class="col-12">
-                <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="filter-container">
+            <div class="col-12 ">
+                <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="filter-container d-flex">
                     
                     <!-- Тип энергосистемы -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" multiple>
                             <option value="">Тип энергосистемы</option>
                             {% for energy_system_type in energy_system_type_list %}
@@ -52,7 +52,7 @@
                     </div>
             
                     <!-- ОЭС -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" multiple>
                             <option value="">Объединенная энергосистема (ОЭС)</option>
                             {% for union_energy_system in union_energy_system_list %}
@@ -65,7 +65,7 @@
                     </div>
 
                     <!-- Региональная ЭС -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" multiple>
                             <option value="">Региональная энергосистема</option>
                             {% for regional_energy_system in regional_energy_system_list %}
@@ -78,7 +78,7 @@
                     </div>
             
                     <!-- Федеральный округ -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <select id="federal_district" name="federal_district_filter" class="form-select select2" multiple>
                             <option value="">Федеральный округ</option>
                             {% for federal_district in federal_district_list %}
@@ -91,7 +91,7 @@
                     </div>
             
                     <!-- Субъект РФ -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <select id="regional_district" name="regional_district_filter" class="form-select select2" multiple>
                             <option value="">Субъект РФ</option>
                             {% for regional_district in regional_district_list %}
@@ -104,21 +104,21 @@
                     </div>
             
                     <!-- Электростанция -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
                     </div>
             
                     <!-- Генерирующая компания -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
                     </div>
-            
+                     
                     <!-- Кнопки -->
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <button type="submit" class="btn btn-outline-primary w-100">Поиск</button>
                     </div>
             
-                    <div class="filter-item">
+                    <div class="filter-item flex-grow-1">
                         <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-outline-secondary w-100">Сбросить</a>
                     </div>
                 </form>
@@ -134,13 +134,13 @@
                             <div class="me-2 w-100">
                                 <input type="file" name="file" id="file" class="form-control">
                             </div>
-                            <button type="submit" class="btn btn-danger">Импорт</button>
+                            <button type="submit" class="btn btn-outline-danger">Импорт</button>
                         </form>
                     </div>
 
                     <!-- Кнопка выгрузки данных в Excel -->
                     <div class="p-3" style="width: 15%;">
-                        <button id="exportExcel" class="btn btn-success">Выгрузить в Excel (Приложение А ЭЭС СиПР)</button>
+                        <button id="exportExcel" class="btn btn-outline-success">Выгрузить в Excel <br> (СиПР ЭЭС. Приложение А)</button>
                     </div>                        
                     
                     <!-- Пустой блок -->
@@ -176,7 +176,15 @@
                         </form>
                     </div>
                     
-                    
+                    <!-- Чекбокс "Отображать ограничения мощности" -->
+                    <div class="p-3 text-center" style="width: 10%;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
+                            <label class="form-check-label" for="toggleP_Ogr">
+                                Отображать ограничения мощности
+                            </label>
+                        </div>
+                    </div>
                     
                     <!-- Чекбокс "Отображать располагаемую мощность" -->
                     <div class="p-3 text-center" style="width: 10%;">
@@ -184,16 +192,6 @@
                             <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
                             <label class="form-check-label" for="toggleP_Rasp">
                                 Отображать располагаемую мощность
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- Чекбокс "Отображать ограничения мощности" -->
-                    <div class="p-3 text-center" style="width: 10%;">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
-                            <label class="form-check-label" for="toggleP_Ogr">
-                                Отображать ограничения мощности
                             </label>
                         </div>
                     </div>
@@ -206,7 +204,7 @@
                             <option value="1" selected>1 знак</option>
                             <option value="2">2 знака</option>
                             <option value="3">3 знака</option>
-                            <option value="int">Целое число</option>
+                            <option value="-1">Целое число</option>
                         </select>
                     </div>
 
@@ -214,23 +212,31 @@
                     <div class="p-3" style="width: 5%;">
                         <form method="GET" action="{{ url_for('app_bp.station_list') }}">
                             {% for key, value in request.args.items() %}
-                                {% if key != "per_page" %}  <!-- Исключаем дублирование per_page -->
+                                {% if key != "per_page" %}  <!-- Исключаем дублирование `per_page` -->
                                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                                 {% endif %}
                             {% endfor %}
-
+                    
                             <select name="per_page" class="form-select" onchange="this.form.submit()">
-                                {% for count in [1, 2, 3, 4, 5, 10, 25, 50, 100, 150, 200] %}
-                                    <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>{{ count }} станц.</option>
+                                {% for count in [1, 5, 10, 50, 100] %}
+                                    <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>
+                                        {{ count }} станц.
+                                    </option>
                                 {% endfor %}
+                                <option value="all" {% if per_page == "all" %}selected{% endif %}>Все</option>  <!-- Новая опция -->
                             </select>
                         </form>
                     </div>
+                    
+                    
+
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <p><strong>Найдено станций: {{ pagination["total_count"] }}</strong></p>
+
     <!-- Таблица с данными -->
     <div class="table-responsive">
         <table class="table table-hover table-striped table-bordered table-responsive">
@@ -239,19 +245,19 @@
             <thead class="table-success">
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th colspan="7">Электростанция</th>
-                    <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
+                    <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                 </tr>
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 50px;">гр.</th>
-                    <th style="width: 80px;">cт.№</th>
-                    <th style="width: 150px;">Тип агрегата</th>
-                    <th style="width: 250px;">Год ввода</th>
+                    <th style="width: 80px;">cт. №</th>
+                    <th style="width: 250px;">Тип агрегата</th>
+                    <th style="width: 100px;">Год ввода</th>
                     <!-- Тип электростанции -->
                     <th style="width: 150px; text-align: center;">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Тип электростанции</strong>
+                                <strong>Тип эл.станции</strong>
                             </button>
                             <ul class="dropdown-menu w-100">
                                 {% for station_type in station_type_list %}
@@ -259,7 +265,8 @@
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="station_type_filter"
                                                 value="{{ station_type.id }}"
-                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}>
+                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                                            >
                                             {{ station_type.name }}
                                         </label>
                                     </li>
@@ -268,6 +275,7 @@
                         </div>
                     </th>
 
+                    <!-- Тип ТЭС -->
                     <th style="width: 150px; text-align: center;">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
@@ -287,7 +295,7 @@
                             </ul>
                         </div>
                     </th>
-                    
+                    <!-- Тип агрегата ТЭС -->
                     <th style="width: 150px; text-align: center;">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
@@ -307,17 +315,33 @@
                             </ul>
                         </div>
                     </th>
-                    
-                    
-                    
+                    <th style="width: 50px; text-align: center;">
+                        Тип <br> мощ-ти
+                    </th>
+                    <!-- Столбцы для годов с start_year по end_year + 1 -->
+
+                    {% for year in range(start_year, end_year + 1) %}
+                    <th style="width: 50px; text-align: center;">
+                        {{ year }}
+                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                            {% if year_features[year] is defined %}
+                                {{ year_features[year].name }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
 
                     <!-- Столбцы для годов с start_year по end_year + 1 -->
+
                     {% for year in range(start_year, end_year + 1) %}
-                    <th>{{ year }}</th>
-                    {% endfor %}
-                    <!-- Столбцы для годов с start_year по end_year + 1 -->
-                    {% for year in range(start_year, end_year + 1) %}
-                        <th>{{ year }}</th>
+                    <th style="width: 50px; text-align: center;">
+                        {{ year }}
+                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                            {% if year_features[year] is defined %}
+                                {{ year_features[year].name }}
+                            {% endif %}
+                        </div>
+                    </th>
                     {% endfor %}
                 </tr>
                 </tr>
@@ -344,6 +368,7 @@
                     <!-- Строки с машинами -->
                     {% for machine in station.machines %}
                         <!-- Первая строка: p_ust -->
+                        
                         <tr class="text-center machine-row" style="vertical-align: middle;">
                             <td class="rowspan-td" rowspan="3">{{ machine.machine_group }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
@@ -353,8 +378,10 @@
                             <td class="rowspan-td" rowspan="3">{{ machine.tes_type.name }}</td>
                             <td class="rowspan-td" rowspan="3">{{ machine.tes_machine_type.name }}</td>
                             
+                            <td class="text-center" style="font-weight: bold;">Руст</td>
                             {% for year in range(start_year, end_year + 1) %}
                             <td class="text-center power-column">
+                                
                                 {% set p_ust_value = machine.machine_powers
                                                     | selectattr('year.number', 'equalto', year)
                                                     | map(attribute='p_ust')
@@ -366,7 +393,7 @@
                                 {% endif %}
                             </td>
                             {% endfor %}
-            
+                            
                             {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column rowspan-td" rowspan="3">
                                 {% set fuel = machine.machine_fuels
@@ -384,6 +411,7 @@
             
                         <!-- Вторая строка: p_ogr -->
                         <tr class="text-center p-ogr-row">
+                            <td class="text-center" style="font-weight: bold;">Рогр</td>
                             {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column">
                                 {% set p_ogr_value = machine.machine_powers
@@ -401,6 +429,7 @@
             
                         <!-- Третья строка: p_rasp -->
                         <tr class="text-center p-rasp-row">
+                            <td class="text-center" style="font-weight: bold;">Ррасп</td>
                             {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column">
                                 {% set p_rasp_value = machine.machine_powers
@@ -423,6 +452,7 @@
                         <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                             Всего по станции:
                         </td>
+                        <td class="text-center" style="font-weight: bold;">Руст</td>
                         {% for year in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {% set p_ust_value = stations_yearly_p_ust.get(station.id, {}).get(year, 0) %}
@@ -435,6 +465,7 @@
                         {% endfor %}
                     </tr>
                     <tr class="text-center p-ogr-row">
+                        <td class="text-center" style="font-weight: bold;">Рогр</td>
                         {% for year in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {% set p_ogr_value = stations_yearly_p_ogr.get(station.id, {}).get(year, 0) %}
@@ -447,6 +478,7 @@
                         {% endfor %}
                     </tr>
                     <tr class="text-center p-rasp-row">
+                        <td class="text-center" style="font-weight: bold;">Ррасп</td>
                         {% for year in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {% set p_rasp_value = stations_yearly_p_rasp.get(station.id, {}).get(year, 0) %}
@@ -475,33 +507,140 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <!-- Подключаем Select2 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
+<!-- Скрипт для фильтров поиска по ОЭС, РЭС, ФО и субъектов РФ -->
 <script>
     $(document).ready(function() {
-        $('.select2').select2({
-            placeholder: 'Выберите значение',
-            allowClear: true,
-            width: '200px',  // Поля фиксированной ширины
-            dropdownAutoWidth: true // Выпадающий список подстраивается под текст
+        console.log("✅ jQuery загружен! Версия:", $.fn.jquery);
+        console.log("✅ Select2 загружен! Версия:", $.fn.select2 ? $.fn.select2.defaults.version : "❌ Select2 НЕ НАЙДЕН!");
+
+        if (!$.fn.select2) {
+            alert("⚠️ Ошибка: библиотека Select2 не загружена!");
+            return;
+        }
+
+        // Загружаем фильтры из Flask
+        let selectedValues = JSON.parse('{{ energy_system_type_filter | tojson | safe }}');
+        let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
+        let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');
+        let selectedFederalValues = JSON.parse('{{ federal_district_filter | tojson | safe }}');
+        let selectedRegionalDistrictValues = JSON.parse('{{ regional_district_filter | tojson | safe }}');
+        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson | safe }}');
+        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson | safe }}');
+
+        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
+        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
+
+        console.log("📌 ОЭС -> Региональные ЭС:", regionalEnergySystemsMapping);
+        console.log("📌 Список региональных ЭС:", allRegionalSystems);
+        console.log("📌 ФО -> Субъекты РФ:", regionalDistrictsMapping);
+        console.log("📌 Список субъектов РФ:", allRegionalDistricts);
+
+        function initializeSelect2(selector, placeholder) {
+            if ($(selector).length) {
+                $(selector).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false
+                });
+            } else {
+                console.error(`❌ Ошибка: Элемент ${selector} не найден!`);
+            }
+        }
+
+        initializeSelect2('#union_energy_system', 'ОЭС');
+        initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
+        initializeSelect2('#federal_district', 'Федеральный округ');
+        initializeSelect2('#regional_district', 'Субъект РФ');
+        initializeSelect2('#energy_system_type', 'Выберите тип энергосистемы');
+
+        // Функция для обновления региональных ЭС и сохранения выбранных значений
+        function updateRegionalEnergySystemOptions(selectedUnionIDs) {
+            console.log("🔹 Выбраны ОЭС:", selectedUnionIDs);
+
+            if (!$('#regional_energy_system').length) return;
+
+            let regionalOptions = '';
+            let allowedRegionalSystems = new Set();
+
+            selectedUnionIDs.forEach(unionID => {
+                (regionalEnergySystemsMapping[unionID] || []).forEach(resID => {
+                    allowedRegionalSystems.add(resID);
+                });
+            });
+
+            let previouslySelected = new Set($('#regional_energy_system').val() || []);
+
+            allRegionalSystems.forEach(system => {
+                if (allowedRegionalSystems.has(system.id)) {
+                    let selectedAttr = previouslySelected.has(String(system.id)) || selectedRegionalValues.includes(String(system.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${system.id}" ${selectedAttr}>${system.name}</option>`;
+                }
+            });
+
+            $('#regional_energy_system').html(regionalOptions).trigger('change');
+        }
+
+        // Функция для обновления субъектов РФ и сохранения выбранных значений
+        function updateRegionalDistrictOptions(selectedFederalIDs) {
+            console.log("🔹 Выбраны ФО:", selectedFederalIDs);
+
+            if (!$('#regional_district').length) return;
+
+            let regionalOptions = '';
+            let allowedRegionalDistricts = new Set();
+
+            selectedFederalIDs.forEach(federalID => {
+                (regionalDistrictsMapping[federalID] || []).forEach(rdID => {
+                    allowedRegionalDistricts.add(rdID);
+                });
+            });
+
+            let previouslySelected = new Set($('#regional_district').val() || []);
+
+            allRegionalDistricts.forEach(district => {
+                if (allowedRegionalDistricts.has(district.id)) {
+                    let selectedAttr = previouslySelected.has(String(district.id)) || selectedRegionalDistrictValues.includes(String(district.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${district.id}" ${selectedAttr}>${district.name}</option>`;
+                }
+            });
+
+            $('#regional_district').html(regionalOptions).trigger('change');
+        }
+
+        // Устанавливаем значения, если они есть
+        if (selectedValues.length > 0) {
+            $('#energy_system_type').val(selectedValues).trigger('change');
+        }
+
+        // Обновление региональных ЭС при изменении ОЭС
+        $('#union_energy_system').on('change', function() {
+            let selectedUnionIDs = $(this).val() || [];
+            updateRegionalEnergySystemOptions(selectedUnionIDs);
         });
 
-        // Принудительно делаем выпадающий список шире
-        $('.select2').on('select2:open', function () {
-            $('.select2-dropdown').css('width', 'auto');
+        // Обновление субъектов РФ при изменении ФО
+        $('#federal_district').on('change', function() {
+            let selectedFederalIDs = $(this).val() || [];
+            updateRegionalDistrictOptions(selectedFederalIDs);
         });
+
+        // Загружаем связанные фильтры при загрузке страницы
+        if (selectedUnionValues.length > 0) {
+            updateRegionalEnergySystemOptions(selectedUnionValues);
+            $('#union_energy_system').val(selectedUnionValues).trigger('change');
+        }
+
+        if (selectedFederalValues.length > 0) {
+            updateRegionalDistrictOptions(selectedFederalValues);
+            $('#federal_district').val(selectedFederalValues).trigger('change');
+        }
     });
 </script>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("ID типов электростанций:");
-        document.querySelectorAll("#stationType option").forEach(opt => {
-            console.log(opt.textContent, "=>", opt.value);
-        });
-    });
-</script>
 
 <!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
 <script>
@@ -631,113 +770,7 @@
 
 </script>
 
-<!-- Скрипт для динамического отображения выбранного периода -->
-<script>
-    function updateHiddenFields() {
-        let form = document.getElementById("yearForm");
-
-        // Получаем новые значения годов
-        let startYear = document.getElementById("start_year").value;
-        let endYear = document.getElementById("end_year").value;
-
-        // Проверяем, есть ли уже скрытые поля start_year и end_year
-        let startYearInput = form.querySelector("input[name='start_year']");
-        let endYearInput = form.querySelector("input[name='end_year']");
-
-        // Если поля уже есть, обновляем их значения, иначе создаем новые
-        if (startYearInput) {
-            startYearInput.value = startYear;
-        } else {
-            let newStartInput = document.createElement("input");
-            newStartInput.type = "hidden";
-            newStartInput.name = "start_year";
-            newStartInput.value = startYear;
-            form.appendChild(newStartInput);
-        }
-
-        if (endYearInput) {
-            endYearInput.value = endYear;
-        } else {
-            let newEndInput = document.createElement("input");
-            newEndInput.type = "hidden";
-            newEndInput.name = "end_year";
-            newEndInput.value = endYear;
-            form.appendChild(newEndInput);
-        }
-    }
-</script>
-
 <!-- Скрипт для поиска по фильтрам в шапке таблицы -->
-<script>
-    $(document).ready(function () {
-        // Инициализация Select2
-        $('.select2').select2({
-            width: '100%',
-            placeholder: "Выберите...",
-            allowClear: true
-        });
-
-        // Функция обновления таблицы при закрытии выпадающего списка
-        $('.filter-dropdown').on('change', function () {
-            updateFilters();
-        });
-
-        function updateFilters() {
-            let form = document.createElement("form");
-            form.method = "GET";
-            form.action = "{{ url_for('app_bp.station_list') }}";
-
-            // Добавляем текущие параметры запроса (чтобы сохранить их при фильтрации)
-            {% for key, value in request.args.items() %}
-                if ("{{ key }}" !== "station_type_filter" && "{{ key }}" !== "tes_type_filter" && "{{ key }}" !== "tes_machine_type_filter") {
-                    let input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "{{ key }}";
-                    input.value = "{{ value }}";
-                    form.appendChild(input);
-                }
-            {% endfor %}
-
-            // Добавляем фильтры в форму
-            let stationTypeValues = $('#stationType').val();
-            if (stationTypeValues) {
-                stationTypeValues.forEach(value => {
-                    let input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "station_type_filter";
-                    input.value = value;
-                    form.appendChild(input);
-                });
-            }
-
-            let tesTypeValues = $('#tesType').val();
-            if (tesTypeValues) {
-                tesTypeValues.forEach(value => {
-                    let input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "tes_type_filter";
-                    input.value = value;
-                    form.appendChild(input);
-                });
-            }
-
-            let tesMachineTypeValues = $('#tesMachineType').val();
-            if (tesMachineTypeValues) {
-                tesMachineTypeValues.forEach(value => {
-                    let input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "tes_machine_type_filter";
-                    input.value = value;
-                    form.appendChild(input);
-                });
-            }
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-</script>
-
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // Найдём все чекбоксы в выпадающих фильтрах
@@ -750,16 +783,22 @@
             form.method = "GET";
             form.action = "{{ url_for('app_bp.station_list') }}";
 
-            // Сохранение других параметров запроса
-            {% for key, value in request.args.items() %}
-                if (!["station_type_filter", "tes_type_filter", "tes_machine_type_filter"].includes("{{ key }}")) {
+            // Список параметров, которые НЕ нужно добавлять
+            let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];
+
+            // Jinja2 передает параметры в JSON-объекте
+            let params = JSON.parse('{{ request.args.to_dict() | tojson | safe }}');
+
+            // Добавляем другие параметры запроса (кроме исключенных)
+            for (let key in params) {
+                if (!excludeKeys.includes(key)) {
                     let input = document.createElement("input");
                     input.type = "hidden";
-                    input.name = "{{ key }}";
-                    input.value = "{{ value }}";
+                    input.name = key;
+                    input.value = params[key];
                     form.appendChild(input);
                 }
-            {% endfor %}
+            }
 
             // Добавление выбранных значений в форму
             document.querySelectorAll('.dropdown-menu input[type="checkbox"]:checked').forEach(checkbox => {
@@ -776,172 +815,30 @@
     });
 </script>
 
-
-
-
-<!-- Скрипт для поиска по типу энергосистемы -->
+<!-- Скрипт для сброса предыдущих значений при поиска по фильтрам в шапке таблицы -->
 <script>
-    $(document).ready(function() {
-        let selectedValue = "{{ energy_system_type_filter }}";
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', function() {
+                let params = new URLSearchParams(window.location.search);
+                let filterName = this.name;
 
-        $('#energy_system_type').select2({
-            placeholder: 'Тип энергосистемы',
-            allowClear: true
-        });
+                // 🔹 Удаляем ВСЕ старые значения этого фильтра
+                params.delete(filterName);
 
-        if (selectedValue) {
-            $('#energy_system_type').val(selectedValue).trigger('change');
-        }
-    });
-</script>
+                // 🔹 Добавляем в URL только отмеченные чекбоксы
+                document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                    params.append(filterName, cb.value);
+                });
 
-<!-- Скрипт для поиска по ОЭС -->
-<script>
-    $(document).ready(function() {
-        let selectedValue = "{{ union_energy_system_filter }}";
-
-        $('#union_energy_system').select2({
-            placeholder: 'ОЭС',
-            allowClear: true
-        });
-
-        if (selectedValue) {
-            $('#union_energy_system').val(selectedValue).trigger('change');
-        }
-    });
-</script>
-
-<!-- Скрипт для поиска по региональной ЭС -->
-<script>
-    $(document).ready(function() {
-        let selectedUnionValue = "{{ union_energy_system_filter }}";
-        let selectedRegionalValue = "{{ regional_energy_system_filter }}";
-
-        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson }}');
-        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson }}');
-
-        // Инициализируем Select2
-        $('#union_energy_system').select2({
-            placeholder: 'ОЭС',
-            allowClear: true
-        });
-
-        $('#regional_energy_system').select2({
-            placeholder: 'Региональная энергосистема',
-            allowClear: true
-        });
-
-        function updateRegionalEnergySystemOptions(unionID) {
-            let regionalOptions = '<option value="">Региональная энергосистема</option>';
-            let regionalSystems = regionalEnergySystemsMapping[unionID] || [];
-
-            console.log(`Обновляем список региональных ЭС для ОЭС ID ${unionID}:`, regionalSystems);
-
-            allRegionalSystems.forEach(system => {
-                if (regionalSystems.includes(system.id)) {
-                    let selectedAttr = system.id == selectedRegionalValue ? "selected" : "";
-                    regionalOptions += `<option value="${system.id}" ${selectedAttr}>${system.name}</option>`;
-                }
+                // 🔹 Перенаправляем на новый URL (без дубликатов)
+                window.location.href = window.location.pathname + "?" + params.toString();
             });
-
-            $('#regional_energy_system').html(regionalOptions).trigger('change');
-        }
-
-        // При изменении ОЭС обновляем список региональных энергосистем
-        $('#union_energy_system').on('change', function() {
-            let selectedUnionID = $(this).val();
-            updateRegionalEnergySystemOptions(selectedUnionID);
         });
-
-        // Если уже выбрана ОЭС, обновляем региональные энергосистемы при загрузке страницы
-        if (selectedUnionValue) {
-            updateRegionalEnergySystemOptions(selectedUnionValue);
-            $('#union_energy_system').val(selectedUnionValue).trigger('change');
-        }
     });
 </script>
 
-<!-- Скрипт для поиска по ФО -->
-<script>
-    $(document).ready(function() {
-        let selectedValue = "{{ federal_district_filter }}";
-
-        $('#federal_district').select2({
-            placeholder: 'Федеральный округ',
-            allowClear: true
-        });
-
-        if (selectedValue) {
-            $('#federal_district').val(selectedValue).trigger('change');
-        }
-    });
-</script>
-
-<!-- Скрипт для поиска по субъекту РФ -->
-<script>
-    $(document).ready(function() {
-        console.log("✅ jQuery загружен!");
-
-        let selectedFederalValue = "{{ federal_district_filter }}";
-        let selectedRegionalValue = "{{ regional_district_filter }}";
-
-        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
-        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
-
-        console.log("Выбранный ФО:", selectedFederalValue);
-        console.log("Выбранный субъект РФ:", selectedRegionalValue);
-        console.log("Связи ФО -> Субъекты РФ:", regionalDistrictsMapping);
-        console.log("Все субъекты РФ:", allRegionalDistricts);
-
-        // Инициализируем Select2
-        $('#federal_district').select2({
-            placeholder: 'Федеральный округ',
-            allowClear: true
-        });
-
-        $('#regional_district').select2({
-            placeholder: 'Субъект РФ',
-            allowClear: true
-        });
-
-        function updateRegionalDistrictOptions(federalID) {
-            let regionalOptions = '<option value="">Субъект РФ</option>';
-            let regionalDistricts = regionalDistrictsMapping[federalID] || [];
-
-            console.log(`Обновляем субъекты РФ для ФО ID ${federalID}:`, regionalDistricts);
-
-            // Очищаем список субъектов
-            $('#regional_district').empty();
-
-            // Добавляем дефолтное значение
-            $('#regional_district').append('<option value="">Субъект РФ</option>');
-
-            allRegionalDistricts.forEach(district => {
-                if (regionalDistricts.includes(district.id)) {
-                    let selectedAttr = district.id == selectedRegionalValue ? "selected" : "";
-                    $('#regional_district').append(`<option value="${district.id}" ${selectedAttr}>${district.name}</option>`);
-                }
-            });
-
-            // Вручную обновляем Select2, чтобы он "перерисовал" список
-            $('#regional_district').trigger('change');
-        }
-
-        // При изменении ФО обновляем список субъектов РФ
-        $('#federal_district').on('change', function() {
-            let selectedFederalID = $(this).val();
-            updateRegionalDistrictOptions(selectedFederalID);
-        });
-
-        // Если уже выбран ФО, обновляем субъекты РФ при загрузке страницы
-        if (selectedFederalValue) {
-            updateRegionalDistrictOptions(selectedFederalValue);
-            $('#federal_district').val(selectedFederalValue).trigger('change');
-        }
-    });
-</script>
-
-<!-- Скрипт чтобы не сбрасывались фильтры при выгрузку в Excel -->
+<!-- Скрипт чтобы не сбрасывались фильтры при выгрузке в Excel -->
 <script>
     document.getElementById("exportExcel").addEventListener("click", function(event) {
         event.preventDefault();
