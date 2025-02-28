@@ -18,7 +18,6 @@ def log_to_db(username, action, details=None):
         print(f"Ошибка записи лога: {e}")
 
 
-
 def get_stations_list(
     page, 
     per_page,
@@ -62,7 +61,6 @@ def get_stations_list(
 
     # Считаем общее число станций (уникальных ID) 
     total_count = db.session.query(func.count()).select_from(station_ids_subq).scalar()
-    print(f"Общее количество станций (фильтрация + distinct): {total_count}")
 
     # Расчёт общего числа страниц
     if per_page is None:
@@ -83,8 +81,6 @@ def get_stations_list(
             .limit(per_page)
             .all()
         )
-
-    print(f"Фактически загружено станций на странице: {len(stations)}")
 
     return {
         "total_count": total_count,

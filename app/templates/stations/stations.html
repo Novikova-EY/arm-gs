@@ -37,10 +37,16 @@
             <!-- Первая строка фильтров -->
             <div class="col-12 ">
                 <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="filter-container d-flex">
-                    
+                    <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
+                    {% for key, value in request.args.items() %}
+                        {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter"] %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+
                     <!-- Тип энергосистемы -->
                     <div class="filter-item flex-grow-1">
-                        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" multiple>
+                        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Тип энергосистемы</option>
                             {% for energy_system_type in energy_system_type_list %}
                                 <option value="{{ energy_system_type.id }}" 
@@ -53,7 +59,7 @@
             
                     <!-- ОЭС -->
                     <div class="filter-item flex-grow-1">
-                        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" multiple>
+                        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Объединенная энергосистема (ОЭС)</option>
                             {% for union_energy_system in union_energy_system_list %}
                                 <option value="{{ union_energy_system.id }}" 
@@ -66,7 +72,7 @@
 
                     <!-- Региональная ЭС -->
                     <div class="filter-item flex-grow-1">
-                        <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" multiple>
+                        <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Региональная энергосистема</option>
                             {% for regional_energy_system in regional_energy_system_list %}
                                 <option value="{{ regional_energy_system.id }}" 
@@ -79,7 +85,7 @@
             
                     <!-- Федеральный округ -->
                     <div class="filter-item flex-grow-1">
-                        <select id="federal_district" name="federal_district_filter" class="form-select select2" multiple>
+                        <select id="federal_district" name="federal_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Федеральный округ</option>
                             {% for federal_district in federal_district_list %}
                                 <option value="{{ federal_district.id }}" 
@@ -92,7 +98,7 @@
             
                     <!-- Субъект РФ -->
                     <div class="filter-item flex-grow-1">
-                        <select id="regional_district" name="regional_district_filter" class="form-select select2" multiple>
+                        <select id="regional_district" name="regional_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Субъект РФ</option>
                             {% for regional_district in regional_district_list %}
                                 <option value="{{ regional_district.id }}" 
@@ -104,12 +110,12 @@
                     </div>
             
                     <!-- Электростанция -->
-                    <div class="filter-item flex-grow-1">
+                    <div class="filter-item flex-grow-1" onchange="this.form.submit()">
                         {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
                     </div>
             
                     <!-- Генерирующая компания -->
-                    <div class="filter-item flex-grow-1">
+                    <div class="filter-item flex-grow-1" onchange="this.form.submit()">
                         {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
                     </div>
                      
@@ -510,7 +516,6 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
-<!-- Скрипт для фильтров поиска по ОЭС, РЭС, ФО и субъектов РФ -->
 <script>
     $(document).ready(function() {
         console.log("✅ jQuery загружен! Версия:", $.fn.jquery);
@@ -521,47 +526,39 @@
             return;
         }
 
-        // Загружаем фильтры из Flask
-        let selectedValues = JSON.parse('{{ energy_system_type_filter | tojson | safe }}');
-        let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
-        let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');
-        let selectedFederalValues = JSON.parse('{{ federal_district_filter | tojson | safe }}');
-        let selectedRegionalDistrictValues = JSON.parse('{{ regional_district_filter | tojson | safe }}');
-        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson | safe }}');
-        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson | safe }}');
-
-        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
-        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
-
-        console.log("📌 ОЭС -> Региональные ЭС:", regionalEnergySystemsMapping);
-        console.log("📌 Список региональных ЭС:", allRegionalSystems);
-        console.log("📌 ФО -> Субъекты РФ:", regionalDistrictsMapping);
-        console.log("📌 Список субъектов РФ:", allRegionalDistricts);
-
         function initializeSelect2(selector, placeholder) {
             if ($(selector).length) {
                 $(selector).select2({
                     placeholder: placeholder,
                     allowClear: true,
                     width: '100%',
-                    closeOnSelect: false
+                    closeOnSelect: false, // Оставляем открытым для множественного выбора
+                    minimumResultsForSearch: Infinity
                 });
             } else {
                 console.error(`❌ Ошибка: Элемент ${selector} не найден!`);
             }
         }
 
+        initializeSelect2('#energy_system_type', 'Часть энергосистемы России');
         initializeSelect2('#union_energy_system', 'ОЭС');
         initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
         initializeSelect2('#federal_district', 'Федеральный округ');
         initializeSelect2('#regional_district', 'Субъект РФ');
-        initializeSelect2('#energy_system_type', 'Выберите тип энергосистемы');
 
-        // Функция для обновления региональных ЭС и сохранения выбранных значений
+        let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
+        let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');
+        let selectedFederalValues = JSON.parse('{{ federal_district_filter | tojson | safe }}');
+        let selectedRegionalDistrictValues = JSON.parse('{{ regional_district_filter | tojson | safe }}');
+
+        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson | safe }}');
+        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson | safe }}');
+
+        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
+        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
+
         function updateRegionalEnergySystemOptions(selectedUnionIDs) {
             console.log("🔹 Выбраны ОЭС:", selectedUnionIDs);
-
-            if (!$('#regional_energy_system').length) return;
 
             let regionalOptions = '';
             let allowedRegionalSystems = new Set();
@@ -572,23 +569,28 @@
                 });
             });
 
-            let previouslySelected = new Set($('#regional_energy_system').val() || []);
+            let previousSelected = $('#regional_energy_system').val() || [];
+            let newSelected = [];
 
             allRegionalSystems.forEach(system => {
                 if (allowedRegionalSystems.has(system.id)) {
-                    let selectedAttr = previouslySelected.has(String(system.id)) || selectedRegionalValues.includes(String(system.id)) ? "selected" : "";
+                    let selectedAttr = previousSelected.includes(String(system.id)) ? "selected" : "";
                     regionalOptions += `<option value="${system.id}" ${selectedAttr}>${system.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(system.id));
                 }
             });
 
-            $('#regional_energy_system').html(regionalOptions).trigger('change');
+            $('#regional_energy_system').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_energy_system').trigger('change.select2');
+                }, 100);
+            }
         }
 
-        // Функция для обновления субъектов РФ и сохранения выбранных значений
         function updateRegionalDistrictOptions(selectedFederalIDs) {
             console.log("🔹 Выбраны ФО:", selectedFederalIDs);
-
-            if (!$('#regional_district').length) return;
 
             let regionalOptions = '';
             let allowedRegionalDistricts = new Set();
@@ -599,47 +601,63 @@
                 });
             });
 
-            let previouslySelected = new Set($('#regional_district').val() || []);
+            let previousSelected = $('#regional_district').val() || [];
+            let newSelected = [];
 
             allRegionalDistricts.forEach(district => {
                 if (allowedRegionalDistricts.has(district.id)) {
-                    let selectedAttr = previouslySelected.has(String(district.id)) || selectedRegionalDistrictValues.includes(String(district.id)) ? "selected" : "";
+                    let selectedAttr = previousSelected.includes(String(district.id)) ? "selected" : "";
                     regionalOptions += `<option value="${district.id}" ${selectedAttr}>${district.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(district.id));
                 }
             });
 
-            $('#regional_district').html(regionalOptions).trigger('change');
+            $('#regional_district').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_district').trigger('change.select2');
+                }, 100);
+            }
         }
 
-        // Устанавливаем значения, если они есть
-        if (selectedValues.length > 0) {
-            $('#energy_system_type').val(selectedValues).trigger('change');
+        function arraysEqual(a, b) {
+            return JSON.stringify(a.sort()) === JSON.stringify(b.sort());
         }
 
-        // Обновление региональных ЭС при изменении ОЭС
         $('#union_energy_system').on('change', function() {
             let selectedUnionIDs = $(this).val() || [];
             updateRegionalEnergySystemOptions(selectedUnionIDs);
         });
 
-        // Обновление субъектов РФ при изменении ФО
         $('#federal_district').on('change', function() {
             let selectedFederalIDs = $(this).val() || [];
             updateRegionalDistrictOptions(selectedFederalIDs);
         });
 
-        // Загружаем связанные фильтры при загрузке страницы
+        $('#union_energy_system').on('select2:clear', function() {
+            console.log("🗑 ОЭС очищен, сбрасываем РЭС");
+            $('#regional_energy_system').val([]).empty().append('<option value="">Выберите региональную энергосистему</option>').trigger('change.select2');
+        });
+
+        $('#federal_district').on('select2:clear', function() {
+            console.log("🗑 ФО очищен, сбрасываем субъекты РФ");
+            $('#regional_district').val([]).empty().append('<option value="">Выберите субъект РФ</option>').trigger('change.select2');
+        });
+
         if (selectedUnionValues.length > 0) {
             updateRegionalEnergySystemOptions(selectedUnionValues);
-            $('#union_energy_system').val(selectedUnionValues).trigger('change');
+            $('#union_energy_system').val(selectedUnionValues);
         }
 
         if (selectedFederalValues.length > 0) {
             updateRegionalDistrictOptions(selectedFederalValues);
-            $('#federal_district').val(selectedFederalValues).trigger('change');
+            $('#federal_district').val(selectedFederalValues);
         }
+
     });
 </script>
+
 
 
 <!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
