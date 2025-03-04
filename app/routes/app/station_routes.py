@@ -45,8 +45,6 @@ def station_list():
     else:
         per_page = int(per_page)
     
-    print(f"Используемый per_page после обработки: {per_page}")
-          
     start_year = request.args.get("start_year", Config.START_YEAR, type=int)
     end_year = request.args.get("end_year", Config.END_YEAR, type=int)
 
@@ -190,10 +188,6 @@ def station_list():
     if pagination["page"] > pagination["total_pages"]:
         pagination["page"] = pagination["total_pages"]
 
-    # Сохраняем отображённые заголовки
-    if page == 1:
-        session["shown_headers"] = []
-
     print("Общее количество станций:", pagination["total_count"])
     print("Элементов на странице:", len(pagination["stations"]))
     print("Текущая страница:", pagination["page"])
@@ -259,7 +253,6 @@ def station_list():
         total_pages=pagination["total_pages"],
         current_page=pagination["page"],
         per_page=pagination["per_page"],
-        shown_headers=session.get("shown_headers", []),
         start_year=start_year,
         end_year=end_year, 
         energy_system_type_list=energy_system_type_list,
