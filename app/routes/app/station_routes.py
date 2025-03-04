@@ -150,6 +150,22 @@ def station_list():
                                 regional_district_filter
                                 )
 
+    # ✅ Фильтруем машины В КОНТРОЛЛЕРЕ
+    if tes_type_filter or tes_machine_type_filter:
+        for station in pagination["stations"]:
+            station.machines = [
+                machine for machine in station.machines
+                if (not tes_type_filter or machine.id_tes_type in tes_type_filter) and
+                   (not tes_machine_type_filter or machine.id_tes_machine_type in tes_machine_type_filter)
+            ]
+
+    # ✅ Если после фильтрации у станции нет машин — удаляем её
+    pagination["stations"] = [station for station in pagination["stations"] if station.machines]
+
+    # ✅ Обновляем total_count после удаления станций без машин
+    pagination["total_count"] = len(pagination["stations"])
+    pagination["total_pages"] = max(1, (pagination["total_count"] + per_page - 1) // per_page) if per_page else 1
+    
     if pagination["page"] > pagination["total_pages"]:
         pagination["page"] = pagination["total_pages"]
 
@@ -161,9 +177,6 @@ def station_list():
     print("Элементов на странице:", len(pagination["stations"]))
     print("Текущая страница:", pagination["page"])
     print("Всего страниц:", pagination["total_pages"])
-
-    for station in pagination["stations"]:
-        print(f"ID: {station.id}, Название: {station.name}, Субъект: {station.regional_district}")
 
     # Собираем уникальные компании для каждой станции
     for station in pagination["stations"]:
@@ -217,13 +230,10 @@ def station_list():
     regional_energy_systems_yearly_p_ogr = {int(k): v for k, v in regional_energy_systems_yearly_p_ogr.items()}
     regional_energy_systems_yearly_p_rasp = {int(k): v for k, v in regional_energy_systems_yearly_p_rasp.items()}
 
-
-    pagination_result = group_stations_hierarchy(pagination["stations"], page, per_page)
-
     return render_template(
         "stations/stations.html",
         form=form,
-        stations_grouped=pagination_result["grouped_stations"],
+        stations_grouped=pagination["grouped_stations"],
         total_count=pagination["total_count"],
         total_pages=pagination["total_pages"],
         current_page=pagination["page"],

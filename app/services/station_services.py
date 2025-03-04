@@ -32,21 +32,16 @@ def get_stations_list(
     union_energy_system_filter=None, 
     regional_energy_system_filter=None, 
     federal_district_filter=None, 
-    regional_district_filter=None
+    regional_district_filter=None, 
 ):
     """
-    Получает список станций с учетом фильтров и корректной пагинацией.
-    Возвращает dict с полями:
-      - total_count (всего станций)
-      - page (текущая страница)
-      - per_page (размер страницы)
-      - total_pages (всего страниц)
-      - stations (список станций или их полей)
+    Получает список СТАНЦИЙ с учётом фильтров и корректной пагинацией.
+    1) Фильтруем станции + машины (если нужно) -> subquery с уникальными ID станций
+    2) Считаем total_count по этому subquery
+    3) Выбираем объекты Station, у которых ID в subquery, применяя OFFSET/LIMIT
     """
 
-    from sqlalchemy import select
-
-    # 1. Получаем subquery с "сырым" набором ID
+    # 1) Получаем subquery с уникальными Station.id, учитывая все фильтры
     station_ids_subq = get_filtered_station_ids(
         condition_type_filter,
         gen_company_filter,
@@ -61,64 +56,38 @@ def get_stations_list(
         regional_district_filter,
     )
 
-    # ✅ Исправленный код: используем select()
-    station_ids_subq = select(station_ids_subq)
+    # Считаем общее число станций (уникальных ID) 
+    total_count = db.session.query(func.count()).select_from(station_ids_subq).scalar()
 
-    # 2. Собираем основной запрос
-    station_query = (
-        db.session.query(Station)
-        .join(RegionalDistrict, Station.id_regional_district == RegionalDistrict.id)
-        .join(Machine, Machine.id_station == Station.id)
-        .join(StationType, Machine.id_station_type == StationType.id)
-        .join(regional_district_regional_energy_system, 
-            RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id)
-        .join(RegionalEnergySystem, 
-            regional_district_regional_energy_system.c.regional_energy_system_id == RegionalEnergySystem.id)
-        .join(UnionEnergySystem, 
-            RegionalEnergySystem.id_union_energy_system == UnionEnergySystem.id)
-        .join(EnergySystemType, 
-            UnionEnergySystem.id_energy_system_type == EnergySystemType.id)
-        # ✅ Исправленный фильтр (оборачиваем subquery в select)
-        .filter(Station.id.in_(station_ids_subq))
-        .group_by(
-            Station.id,
-            RegionalDistrict.id,
-            StationType.id,
-            RegionalEnergySystem.id,
-            UnionEnergySystem.id,
-            EnergySystemType.id
-        )
-        .order_by(
-            EnergySystemType.id,
-            UnionEnergySystem.id,
-            RegionalEnergySystem.id,
-            RegionalDistrict.id,
-            StationType.id,
-            Station.name
-        )
+    # Расчёт общего числа страниц
+    if per_page is None:
+        total_pages = 1
+    else:
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    station_query = db.session.query(Station).filter(
+        Station.id.in_(db.session.query(station_ids_subq.c.id))
     )
 
-    # 3. Пагинация
-    total_count = station_query.count()
-    if not per_page:
-        per_page = total_count if total_count > 0 else 1
+    if per_page is None:
+        stations = station_query.all()
+    else:
+        stations = (
+            station_query
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
 
-    total_pages = max(1, (total_count + per_page - 1) // per_page)
-
-    # 4. Получаем нужную страницу
-    stations = (
-        station_query
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    grouped_data = group_stations_hierarchy(stations)
 
     return {
         "total_count": total_count,
         "page": page,
         "per_page": per_page,
         "total_pages": total_pages,
-        "stations": stations
+        "grouped_stations": grouped_data["grouped_stations"],  # Сохраняем иерархию
+        "stations": grouped_data["stations"]  # ✅ Теперь это список!
     }
 
 
@@ -133,103 +102,125 @@ def get_filtered_station_ids(
     union_energy_system_filter=None,
     regional_energy_system_filter=None,
     federal_district_filter=None,
-    regional_district_filter=None
+    regional_district_filter=None,
 ):
     """
-    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id), 
-    но уже с правильной сортировкой и группировкой.
+    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id).
+    Учитывает все фильтры, join на machines, если нужно, 
+    но при этом не загружает лишних полей.
     """
-    query = (
-        db.session.query(
-            Station.id,
-            EnergySystemType.id.label("energy_system_type_id"),
-            UnionEnergySystem.id.label("union_energy_system_id"),
-            RegionalEnergySystem.id.label("regional_energy_system_id"),
-            RegionalDistrict.id.label("regional_district_id"),
-            StationType.id.label("station_type_id"),
-        )
-        # Для присоединения таблиц EnergySystemType → UnionEnergySystem → RegionalEnergySystem → RegionalDistrict → StationType
-        .join(RegionalDistrict, Station.id_regional_district == RegionalDistrict.id)
-        .join(regional_district_regional_energy_system, 
-              RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id)
-        .join(RegionalEnergySystem, 
-              regional_district_regional_energy_system.c.regional_energy_system_id == RegionalEnergySystem.id)
-        .join(UnionEnergySystem, RegionalEnergySystem.id_union_energy_system == UnionEnergySystem.id)
-        .join(EnergySystemType, UnionEnergySystem.id_energy_system_type == EnergySystemType.id)
-        .join(Machine, Machine.id_station == Station.id)
-        .join(StationType, Machine.id_station_type == StationType.id)
-    )
 
-    # Применяем фильтры, если заданы (приведён ваш код-фильтра как пример)
+    # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
+    query = db.session.query(Station.id).join(Station.machines)
+
+    # 2) Применяем фильтры. Пример:
     if station_type_filter:
-        query = query.filter(StationType.id.in_(station_type_filter))
+        query = query.filter(Machine.id_station_type.in_(station_type_filter))
     if tes_type_filter:
         query = query.filter(Machine.id_tes_type.in_(tes_type_filter))
     if tes_machine_type_filter:
         query = query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
+    # Фильтрация по названию генерирующей компании
     if gen_company_filter:
         gen_companies = GenCompany.query.filter(GenCompany.name.ilike(f"%{gen_company_filter}%")).all()
         gen_company_ids = [company.id for company in gen_companies]
+        
         query = query.join(Station.machines).filter(Machine.id_gen_company.in_(gen_company_ids))
+
+    # Фильтрация по названию электростанции
     if station_name_filter:
         query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
+    
+    # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
-        query = query.filter(EnergySystemType.id.in_(energy_system_type_filter))
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(energy_system_type_filter)
+                        )
+                    )
+                )
+            )
+        )
+
+    # Фильтрация по объединённой энергосистеме
     if union_energy_system_filter:
-        query = query.filter(UnionEnergySystem.id.in_(union_energy_system_filter))
+        if not isinstance(union_energy_system_filter, list):
+            union_energy_system_filter = [union_energy_system_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                )
+            )
+        )
+
+    # Фильтрация по региональной энергосистеме
     if regional_energy_system_filter:
-        query = query.filter(RegionalEnergySystem.id.in_(regional_energy_system_filter))
+        if not isinstance(regional_energy_system_filter, list):
+            regional_energy_system_filter = [regional_energy_system_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
+                )
+            )
+        )
+
+    # Фильтрация по ФО
     if federal_district_filter:
-        query = query.filter(RegionalDistrict.federal_district.has(FederalDistrict.id.in_(federal_district_filter)))
+        if not isinstance(federal_district_filter, list):
+            federal_district_filter = [federal_district_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.federal_district.has(
+                    FederalDistrict.id.in_(federal_district_filter)  # Используем .in_()
+                )
+            )
+        )
+
+    # Фильтрация по субъекту РФ
     if regional_district_filter:
-        query = query.filter(RegionalDistrict.id.in_(regional_district_filter))
+        if not isinstance(regional_district_filter, list):
+            regional_district_filter = [regional_district_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.id.in_(regional_district_filter)  # Используем .in_()
+            )
+        )
+
+    # Фильтрация по состоянию электростанции
     if condition_type_filter:
-        query = query.filter(Station.id_condition_type == condition_type_filter)
+        query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
 
-    # Группировка
-    query = query.group_by(
-        Station.id,
-        EnergySystemType.id,
-        UnionEnergySystem.id,
-        RegionalEnergySystem.id,
-        RegionalDistrict.id,
-        StationType.id
-    )
 
-    # Сортировка по требуемой иерархии
-    query = query.order_by(
-        EnergySystemType.id,
-        UnionEnergySystem.id,
-        RegionalEnergySystem.id,
-        RegionalDistrict.id,
-        StationType.id,
-        Station.name
-    )
+    # 3) Делаем distinct(Station.id), чтобы каждая станция была 1 раз
+    query = query.distinct(Station.id)
 
-    # Возвращаем subquery только по Station.id
-    subquery = query.with_entities(Station.id).subquery()
-    return subquery
+    # 4) Возвращаем подзапрос 
+    return query.subquery()
 
 
 from collections import defaultdict
-from math import ceil
 
-def group_stations_hierarchy(stations, page, per_page):
+def group_stations_hierarchy(stations):
     grouped_data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
     
     for station in stations:
-        if station.machines:
-            # Получаем субъект РФ
-            regional_district_id = station.regional_district.id
-            
-            regional_energy_systems = station.regional_district.regional_energy_systems
+        regional_district_id = station.regional_district.id
+        regional_energy_systems = station.regional_district.regional_energy_systems
 
-            for regional_energy_system in regional_energy_systems:
-                regional_energy_system_id = regional_energy_system.id
-                union_energy_system_id = regional_energy_system.id_union_energy_system
-                energy_system_type_id = regional_energy_system.union_energy_system.id_energy_system_type
+        for regional_energy_system in regional_energy_systems:
+            regional_energy_system_id = regional_energy_system.id
+            union_energy_system_id = regional_energy_system.id_union_energy_system
+            energy_system_type_id = regional_energy_system.union_energy_system.id_energy_system_type
 
-            # Записываем в иерархию
             grouped_data[energy_system_type_id][union_energy_system_id][regional_energy_system_id][regional_district_id].append(station)
 
     # Сортируем станции внутри субъектов
@@ -241,15 +232,17 @@ def group_stations_hierarchy(stations, page, per_page):
 
 
     # Пагинация: формируем список всех станций
-    all_stations = [station for energy_system_type in grouped_data.values()
-                               for union_energy_system in energy_system_type.values()
-                               for regional_energy_system in union_energy_system.values()
-                               for regional_district in regional_energy_system.values()
-                               for station in regional_district]
+    all_stations = []
+    for energy_system_type in grouped_data.values():
+        for union_energy_system in energy_system_type.values():
+            for regional_energy_system in union_energy_system.values():
+                for regional_district in regional_energy_system.values():
+                    all_stations.extend(regional_district)  # Добавляем станции
     
 
     return {
         "grouped_stations": grouped_data,
+        "stations": all_stations  # Теперь это список!
     }
 
 

@@ -376,7 +376,7 @@
                         <!-- Строка: региональная энергосистема -->
                         {% for res_id, res_group in ues_group.items() %}
                         {% if res_id not in shown_headers %}
-                            <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
                                 <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ regional_energy_system_names[res_id] }}</td>
                             </tr>
                             {% set _ = shown_headers.append(res_id) %}
@@ -385,7 +385,7 @@
                             <!-- Строка: субъект РФ -->
                             {% for rd_id, rd_group in res_group.items() %}
                             {% if loop.first or rd_id not in shown_headers %}
-                                <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
                                     <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ regional_district_names[rd_id] }}</td>
                                 </tr>
                                 {% set _ = shown_headers.append(rd_id) %}
@@ -404,6 +404,9 @@
                                     </td>
                                     <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
                                         {{ station.gen_companies }}
+                                    </td>
+
+                                    <td class="text-center" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
                                     </td>
                                 </tr>
 
@@ -503,6 +506,9 @@
                                         {% endif %}
                                     </td>
                                     {% endfor %}
+
+                                    <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
+                                    </td>
                                 </tr>
 
                                 <!-- Вторая строка: p_ogr -->
@@ -540,7 +546,7 @@
                             <!-- ✅ Итоговые значения по субъекту -->
                             {% if loop.last %}
                             <!-- Первая строка: p_ust -->
-                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                            <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
                                 <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                                     {{ regional_district_names[rd_id] }}, всего
                                 </td>
@@ -555,11 +561,14 @@
                                     {% endif %}
                                 </td>
                                 {% endfor %}
+
+                                <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
+                                </td>
                             </tr>
                             
 
                             <!-- Вторая строка: p_ogr -->
-                            <tr class="text-center p-ogr-row">
+                            <tr class="table-secondary text-center p-ogr-row">
                                 <td class="text-center" style="font-weight: bold;">Рогр</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
@@ -574,7 +583,7 @@
                             </tr>
 
                             <!-- Третья строка: p_rasp -->
-                            <tr class="text-center p-rasp-row">
+                            <tr class="table-secondary text-center p-rasp-row">
                             <td class="text-center" style="font-weight: bold;">Ррасп</td>
                             {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
@@ -593,7 +602,7 @@
                             <!-- ✅ Итоговые значения по региональной энергосистеме -->
                             {% if loop.last %}
                             <!-- Первая строка: p_ust -->
-                            <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
                                 <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                                     {{ regional_energy_system_names[res_id] }}, всего
                                 </td>
@@ -608,10 +617,13 @@
                                     {% endif %}
                                 </td>
                                 {% endfor %}
+
+                                <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
+                                </td>
                             </tr>
 
                             <!-- Вторая строка: p_ogr -->
-                            <tr class="text-center p-ogr-row">
+                            <tr class="table-info text-center p-ogr-row">
                                 <td class="text-center" style="font-weight: bold;">Рогр</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
@@ -626,7 +638,7 @@
                             </tr>
 
                             <!-- Третья строка: p_rasp -->
-                            <tr class="text-center p-rasp-row">
+                            <tr class="table-info text-center p-rasp-row">
                                 <td class="text-center" style="font-weight: bold;">Ррасп</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
@@ -643,7 +655,7 @@
                             {% endfor %} <!-- Конец списка РЭС -->
 
                     {% endfor %} <!-- Конец списка ОЭС -->
-                    
+
                 {% endfor %} <!-- Конец списка типов энергосистем -->
                 
             </tbody>
