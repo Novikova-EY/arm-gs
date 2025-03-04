@@ -5,7 +5,7 @@ from flask import (
 from . import app_bp
 from app.models.logs_models import Log
 from app.forms.station_forms import StationFilterForm
-from app.models import Station
+from app.models import Station, Machine
 from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
@@ -15,6 +15,7 @@ from app.services.station_services import (
 )
 from flask_login import login_required
 from app.routes.auth import role_required
+from sqlalchemy import func
 
 def log_to_db(username, action, details=None):
     """Записывает лог действия пользователя в базу данных."""
@@ -156,16 +157,36 @@ def station_list():
             station.machines = [
                 machine for machine in station.machines
                 if (not tes_type_filter or machine.id_tes_type in tes_type_filter) and
-                   (not tes_machine_type_filter or machine.id_tes_machine_type in tes_machine_type_filter)
+                (not tes_machine_type_filter or machine.id_tes_machine_type in tes_machine_type_filter)
             ]
 
-    # ✅ Если после фильтрации у станции нет машин — удаляем её
-    pagination["stations"] = [station for station in pagination["stations"] if station.machines]
+        # ✅ Удаляем станции без машин
+        filtered_stations = [station for station in pagination["stations"] if station.machines]
 
-    # ✅ Обновляем total_count после удаления станций без машин
-    pagination["total_count"] = len(pagination["stations"])
-    pagination["total_pages"] = max(1, (pagination["total_count"] + per_page - 1) // per_page) if per_page else 1
-    
+        # ✅ Пересчитываем количество станций В БД с учетом фильтров
+        total_count_query = db.session.query(func.count(Station.id)).join(Station.machines)
+
+        if tes_type_filter:
+            total_count_query = total_count_query.filter(Machine.id_tes_type.in_(tes_type_filter))
+
+        if tes_machine_type_filter:
+            total_count_query = total_count_query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
+
+        # ✅ Общее число станций в БД (не только на текущей странице)
+        total_count = total_count_query.scalar()
+
+        # ✅ Пересчитываем количество страниц
+        total_pages = max(1, (total_count + per_page - 1) // per_page) if per_page else 1
+
+        # ✅ Если после фильтрации страница пустая и есть предыдущие страницы — показываем предыдущую
+        if not filtered_stations and page > 1:
+            return redirect(url_for('your_view_function', page=page - 1, per_page=per_page))
+
+        # ✅ Обновляем данные в pagination
+        pagination["stations"] = filtered_stations
+        pagination["total_count"] = total_count
+        pagination["total_pages"] = total_pages
+
     if pagination["page"] > pagination["total_pages"]:
         pagination["page"] = pagination["total_pages"]
 

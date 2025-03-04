@@ -134,7 +134,7 @@ def regional_energy_system_list():
     
     # Подготовка данных для формы
     union_energy_system_list = get_union_energy_system()
-    form.union_energy_system.choices = [(0, "Не указан")] + [(o.id, o.name) for o in union_energy_system_list]
+    form.union_energy_system.choices = [(o.id, o.name) for o in union_energy_system_list]
     
     regional_districts_list = get_regional_districts()  # Получаем все субъекты РФ
 

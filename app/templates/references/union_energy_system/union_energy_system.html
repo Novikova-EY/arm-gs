@@ -4,10 +4,10 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container mt-4">
+<div class="container mt-2">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary">
+        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary fs-6">
             Вернуться на страницу "Справочники"
         </a>
     </div>
@@ -231,7 +231,7 @@
 
                         <!-- Строки таблицы. Столбец "Тип энергосистемы" -->
                         <td>
-                            <select name="energy_system_types[]" class="form-select">
+                            <select name="energy_system_types[]" class="form-select" required>
                                 {% for energy_system_type_item in energy_system_types %}
                                 <option value="{{ energy_system_type_item[0] }}" 
                                         {% if energy_system_type_item[0] == item.id_energy_system_type %}selected{% endif %}>

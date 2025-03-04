@@ -25,18 +25,18 @@
         }
         .filter-container {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
-            align-items: flex-start;
+            align-items: center;
         }
 
         .filter-item {
-            display: flex;
-            flex-direction: column;
+            flex: 1 1 auto;
+            max-width: 100%; /* Убираем фиксированную ширину */
         }
 
         .select2-container {
-            width: 100%;
-            flex-direction: column;
+            width: 100%; /* Ширина будет зависеть от родительского контейнера */
         }
 
         .select2-dropdown {
@@ -89,23 +89,25 @@
     </style>
 </head>
 
-<body class="container-fluid my-3">
-    <div class="d-flex justify-content-end">
+<body class="container-fluid mt-2">
+    <div class="d-flex justify-content-end align-items-center">
         {% if current_user.is_authenticated %}
-            <span class="me-3">{{ current_user.username }}</span>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger btn-sm">Выйти</a>
+            <span class="me-4 fs-4 fw-bold">{{ current_user.username }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-6">Выйти</a>
         {% else %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary btn-sm me-2">Войти</a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-sm">Регистрация</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-6">Войти</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary fs-6">Регистрация</a>
         {% endif %}
     </div>
+    
+    
     
     <!-- Сообщения об ошибках -->
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
-    <div class="alert-container mt-3">
+    <div class="alert-container position-fixed top-0 start-50 translate-middle-x mt-4 w-50" style="z-index: 1050;">
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ category }} alert-dismissible fade show fs-6 fw-bold text-center shadow-lg" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -113,6 +115,7 @@
     </div>
     {% endif %}
     {% endwith %}
+
         
     {% block content %}
     {% endblock %}

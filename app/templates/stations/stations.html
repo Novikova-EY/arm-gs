@@ -4,9 +4,9 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-2">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary me-2">Вернуться на главную страницу</a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-6">Вернуться на главную страницу</a>
     </div>
 
     <h1 class="text-center mb-4">Таблица электростанций</h1>
@@ -359,7 +359,9 @@
                 {% for es_type_id, es_type_group in stations_grouped.items() %}
                 {% if es_type_id not in shown_headers %}
                     <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                         <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ energy_system_type_names[es_type_id] }}</td>
+                        {% endif %}
                     </tr>
                     {% set _ = shown_headers.append(es_type_id) %}
                 {% endif %}
@@ -368,7 +370,9 @@
                     {% for ues_id, ues_group in es_type_group.items() %}
                     {% if ues_id not in shown_headers %}
                         <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                             <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ union_energy_system_names[ues_id] }}</td>
+                            {% endif %}
                         </tr>
                         {% set _ = shown_headers.append(ues_id) %}
                     {% endif %}
@@ -377,7 +381,9 @@
                         {% for res_id, res_group in ues_group.items() %}
                         {% if res_id not in shown_headers %}
                             <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                                 <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ regional_energy_system_names[res_id] }}</td>
+                                {% endif %}
                             </tr>
                             {% set _ = shown_headers.append(res_id) %}
                         {% endif %}
@@ -386,7 +392,9 @@
                             {% for rd_id, rd_group in res_group.items() %}
                             {% if loop.first or rd_id not in shown_headers %}
                                 <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                                     <td colspan = "{{ 10 + (end_year - start_year) * 2 }} "> {{ regional_district_names[rd_id] }}</td>
+                                    {% endif %}
                                 </tr>
                                 {% set _ = shown_headers.append(rd_id) %}
                             {% endif %}
@@ -491,6 +499,7 @@
 
                                 <!-- Строки с суммарной мощностью по годам по-станционно -->
                                 <!-- Первая строка: p_ust -->
+                                {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                                 <tr class="text-center total-power-row" style="vertical-align: middle;">
                                     <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                                         Всего по станции:
@@ -540,10 +549,12 @@
                                     </td>
                                     {% endfor %}
                                 </tr>
+                                {% endif %}
 
                                 {% endfor %} <!-- Конец списка станций -->
                             
                             <!-- ✅ Итоговые значения по субъекту -->
+                            {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                             {% if loop.last %}
                             <!-- Первая строка: p_ust -->
                             <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
@@ -597,9 +608,11 @@
                             {% endfor %}
                             
                             {% endif %}
+                            {% endif %}
                             {% endfor %} <!-- Конец списка субъектов -->
                             
                             <!-- ✅ Итоговые значения по региональной энергосистеме -->
+                            {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                             {% if loop.last %}
                             <!-- Первая строка: p_ust -->
                             <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
@@ -651,6 +664,7 @@
                                 </td>
                                 {% endfor %}
 
+                            {% endif %}
                             {% endif %}
                             {% endfor %} <!-- Конец списка РЭС -->
 
@@ -913,7 +927,7 @@
             }
 
             switch (digits) {
-                case 'int': // Округление до целого
+                case '-1': // Округление до целого
                     return Math.round(num);
                 case '0': // Без округления, оставляем как есть
                     return value;

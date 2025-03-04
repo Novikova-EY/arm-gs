@@ -135,7 +135,7 @@ def regional_district_list():
 
     # Подготовка данных для формы
     federal_districts = get_federal_district_list()
-    form.federal_district.choices = [(0, "Не указан")] + [(t.id, t.name) for t in federal_districts]
+    form.federal_district.choices = [(t.id, t.name) for t in federal_districts]
 
     return render_template(
         "references/regional_district/regional_district.html",

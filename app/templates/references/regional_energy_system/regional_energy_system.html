@@ -5,10 +5,10 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container mt-4">
+<div class="container mt-2">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary">
+        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary fs-6">
             Вернуться на страницу "Справочники"
         </a>
     </div>

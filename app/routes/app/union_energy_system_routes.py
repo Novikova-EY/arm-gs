@@ -136,7 +136,7 @@ def union_energy_system_list():
 
     # Подготовка данных для формы
     energy_system_types = get_energy_system_types()
-    form.energy_system_type.choices = [(0, "Не указан")] + [(t.id, t.name) for t in energy_system_types]
+    form.energy_system_type.choices = [(t.id, t.name) for t in energy_system_types]
 
     return render_template(
         "references/union_energy_system/union_energy_system.html",
