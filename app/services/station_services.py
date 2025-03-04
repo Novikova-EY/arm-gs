@@ -1,11 +1,12 @@
 from app import db
 from app.models.logs_models import Log
-from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType
+from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, regional_district_regional_energy_system
 from app.models.territories_models import RegionalDistrict, FederalDistrict
-from app.models.stations_models import ConditionType, Machine, MachineType, Station, StationType, TesType
-from app.models import Station, Machine, MachinePower, MachineFuel, ConditionType, Fuel, RegionalDistrict, GenCompany, StationType, MachineType, TesType, TesMachineType
+from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, ConditionType, MachineType, TesType, TesMachineType
+from app.models import Year, Fuel, GenCompany  
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import func
+from decimal import Decimal
 
 
 def log_to_db(username, action, details=None):
@@ -31,18 +32,21 @@ def get_stations_list(
     union_energy_system_filter=None, 
     regional_energy_system_filter=None, 
     federal_district_filter=None, 
-    regional_district_filter=None, 
-    sort_by="id", 
-    sort_dir="asc"
+    regional_district_filter=None
 ):
     """
-    Получает список СТАНЦИЙ с учётом фильтров и корректной пагинацией.
-    1) Фильтруем станции + машины (если нужно) -> subquery с уникальными ID станций
-    2) Считаем total_count по этому subquery
-    3) Выбираем объекты Station, у которых ID в subquery, применяя OFFSET/LIMIT
+    Получает список станций с учетом фильтров и корректной пагинацией.
+    Возвращает dict с полями:
+      - total_count (всего станций)
+      - page (текущая страница)
+      - per_page (размер страницы)
+      - total_pages (всего страниц)
+      - stations (список станций или их полей)
     """
 
-    # 1) Получаем subquery с уникальными Station.id, учитывая все фильтры
+    from sqlalchemy import select
+
+    # 1. Получаем subquery с "сырым" набором ID
     station_ids_subq = get_filtered_station_ids(
         condition_type_filter,
         gen_company_filter,
@@ -55,32 +59,59 @@ def get_stations_list(
         regional_energy_system_filter,
         federal_district_filter,
         regional_district_filter,
-        sort_by,
-        sort_dir
     )
 
-    # Считаем общее число станций (уникальных ID) 
-    total_count = db.session.query(func.count()).select_from(station_ids_subq).scalar()
+    # ✅ Исправленный код: используем select()
+    station_ids_subq = select(station_ids_subq)
 
-    # Расчёт общего числа страниц
-    if per_page is None:
-        total_pages = 1
-    else:
-        total_pages = max(1, (total_count + per_page - 1) // per_page)
-
-    station_query = db.session.query(Station).filter(
-        Station.id.in_(db.session.query(station_ids_subq.c.id))
-    )
-
-    if per_page is None:
-        stations = station_query.all()
-    else:
-        stations = (
-            station_query
-            .offset((page - 1) * per_page)
-            .limit(per_page)
-            .all()
+    # 2. Собираем основной запрос
+    station_query = (
+        db.session.query(Station)
+        .join(RegionalDistrict, Station.id_regional_district == RegionalDistrict.id)
+        .join(Machine, Machine.id_station == Station.id)
+        .join(StationType, Machine.id_station_type == StationType.id)
+        .join(regional_district_regional_energy_system, 
+            RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id)
+        .join(RegionalEnergySystem, 
+            regional_district_regional_energy_system.c.regional_energy_system_id == RegionalEnergySystem.id)
+        .join(UnionEnergySystem, 
+            RegionalEnergySystem.id_union_energy_system == UnionEnergySystem.id)
+        .join(EnergySystemType, 
+            UnionEnergySystem.id_energy_system_type == EnergySystemType.id)
+        # ✅ Исправленный фильтр (оборачиваем subquery в select)
+        .filter(Station.id.in_(station_ids_subq))
+        .group_by(
+            Station.id,
+            RegionalDistrict.id,
+            StationType.id,
+            RegionalEnergySystem.id,
+            UnionEnergySystem.id,
+            EnergySystemType.id
         )
+        .order_by(
+            EnergySystemType.id,
+            UnionEnergySystem.id,
+            RegionalEnergySystem.id,
+            RegionalDistrict.id,
+            StationType.id,
+            Station.name
+        )
+    )
+
+    # 3. Пагинация
+    total_count = station_query.count()
+    if not per_page:
+        per_page = total_count if total_count > 0 else 1
+
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    # 4. Получаем нужную страницу
+    stations = (
+        station_query
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
 
     return {
         "total_count": total_count,
@@ -102,111 +133,124 @@ def get_filtered_station_ids(
     union_energy_system_filter=None,
     regional_energy_system_filter=None,
     federal_district_filter=None,
-    regional_district_filter=None,
-    sort_by="id",
-    sort_dir="asc"
+    regional_district_filter=None
 ):
     """
-    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id).
-    Учитывает все фильтры, join на machines, если нужно, 
-    но при этом не загружает лишних полей.
+    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id), 
+    но уже с правильной сортировкой и группировкой.
     """
+    query = (
+        db.session.query(
+            Station.id,
+            EnergySystemType.id.label("energy_system_type_id"),
+            UnionEnergySystem.id.label("union_energy_system_id"),
+            RegionalEnergySystem.id.label("regional_energy_system_id"),
+            RegionalDistrict.id.label("regional_district_id"),
+            StationType.id.label("station_type_id"),
+        )
+        # Для присоединения таблиц EnergySystemType → UnionEnergySystem → RegionalEnergySystem → RegionalDistrict → StationType
+        .join(RegionalDistrict, Station.id_regional_district == RegionalDistrict.id)
+        .join(regional_district_regional_energy_system, 
+              RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id)
+        .join(RegionalEnergySystem, 
+              regional_district_regional_energy_system.c.regional_energy_system_id == RegionalEnergySystem.id)
+        .join(UnionEnergySystem, RegionalEnergySystem.id_union_energy_system == UnionEnergySystem.id)
+        .join(EnergySystemType, UnionEnergySystem.id_energy_system_type == EnergySystemType.id)
+        .join(Machine, Machine.id_station == Station.id)
+        .join(StationType, Machine.id_station_type == StationType.id)
+    )
 
-    # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
-    query = db.session.query(Station.id).join(Station.machines)
-
-    # 2) Применяем фильтры. Пример:
+    # Применяем фильтры, если заданы (приведён ваш код-фильтра как пример)
     if station_type_filter:
-        query = query.filter(Machine.id_station_type.in_(station_type_filter))
+        query = query.filter(StationType.id.in_(station_type_filter))
     if tes_type_filter:
         query = query.filter(Machine.id_tes_type.in_(tes_type_filter))
     if tes_machine_type_filter:
         query = query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
-    # Фильтрация по названию генерирующей компании
     if gen_company_filter:
         gen_companies = GenCompany.query.filter(GenCompany.name.ilike(f"%{gen_company_filter}%")).all()
         gen_company_ids = [company.id for company in gen_companies]
-        
         query = query.join(Station.machines).filter(Machine.id_gen_company.in_(gen_company_ids))
-
-    # Фильтрация по названию электростанции
     if station_name_filter:
         query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
-    
-    # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(energy_system_type_filter)
-                        )
-                    )
-                )
-            )
-        )
-
-    # Фильтрация по объединённой энергосистеме
+        query = query.filter(EnergySystemType.id.in_(energy_system_type_filter))
     if union_energy_system_filter:
-        if not isinstance(union_energy_system_filter, list):
-            union_energy_system_filter = [union_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по региональной энергосистеме
+        query = query.filter(UnionEnergySystem.id.in_(union_energy_system_filter))
     if regional_energy_system_filter:
-        if not isinstance(regional_energy_system_filter, list):
-            regional_energy_system_filter = [regional_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по ФО
+        query = query.filter(RegionalEnergySystem.id.in_(regional_energy_system_filter))
     if federal_district_filter:
-        if not isinstance(federal_district_filter, list):
-            federal_district_filter = [federal_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.federal_district.has(
-                    FederalDistrict.id.in_(federal_district_filter)  # Используем .in_()
-                )
-            )
-        )
-
-    # Фильтрация по субъекту РФ
+        query = query.filter(RegionalDistrict.federal_district.has(FederalDistrict.id.in_(federal_district_filter)))
     if regional_district_filter:
-        if not isinstance(regional_district_filter, list):
-            regional_district_filter = [regional_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.id.in_(regional_district_filter)  # Используем .in_()
-            )
-        )
-
-    # Фильтрация по состоянию электростанции
+        query = query.filter(RegionalDistrict.id.in_(regional_district_filter))
     if condition_type_filter:
-        query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
+        query = query.filter(Station.id_condition_type == condition_type_filter)
+
+    # Группировка
+    query = query.group_by(
+        Station.id,
+        EnergySystemType.id,
+        UnionEnergySystem.id,
+        RegionalEnergySystem.id,
+        RegionalDistrict.id,
+        StationType.id
+    )
+
+    # Сортировка по требуемой иерархии
+    query = query.order_by(
+        EnergySystemType.id,
+        UnionEnergySystem.id,
+        RegionalEnergySystem.id,
+        RegionalDistrict.id,
+        StationType.id,
+        Station.name
+    )
+
+    # Возвращаем subquery только по Station.id
+    subquery = query.with_entities(Station.id).subquery()
+    return subquery
 
 
-    # 3) Делаем distinct(Station.id), чтобы каждая станция была 1 раз
-    query = query.distinct(Station.id)
+from collections import defaultdict
+from math import ceil
 
-    # 4) Возвращаем подзапрос 
-    return query.subquery()
+def group_stations_hierarchy(stations, page, per_page):
+    grouped_data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+    
+    for station in stations:
+        if station.machines:
+            # Получаем субъект РФ
+            regional_district_id = station.regional_district.id
+            
+            regional_energy_systems = station.regional_district.regional_energy_systems
+
+            for regional_energy_system in regional_energy_systems:
+                regional_energy_system_id = regional_energy_system.id
+                union_energy_system_id = regional_energy_system.id_union_energy_system
+                energy_system_type_id = regional_energy_system.union_energy_system.id_energy_system_type
+
+            # Записываем в иерархию
+            grouped_data[energy_system_type_id][union_energy_system_id][regional_energy_system_id][regional_district_id].append(station)
+
+    # Сортируем станции внутри субъектов
+    for energy_system_type in grouped_data.values():
+        for union_energy_system in energy_system_type.values():
+            for regional_energy_system in union_energy_system.values():
+                for regional_district in regional_energy_system.values():
+                    regional_district.sort(key=lambda station: (station.machines[0].station_type.id, station.name))
+
+
+    # Пагинация: формируем список всех станций
+    all_stations = [station for energy_system_type in grouped_data.values()
+                               for union_energy_system in energy_system_type.values()
+                               for regional_energy_system in union_energy_system.values()
+                               for regional_district in regional_energy_system.values()
+                               for station in regional_district]
+    
+
+    return {
+        "grouped_stations": grouped_data,
+    }
 
 
 def get_filtered_stations(
@@ -348,7 +392,13 @@ def get_tes_machine_types():
 
 def get_energy_system_types():
     """Получает список типов энергосистем."""
-    return EnergySystemType.query.order_by(EnergySystemType.id).all()
+    energy_system_type_list = EnergySystemType.query.order_by(EnergySystemType.id).all()
+
+    energy_system_type_names = {
+        energy_system_type.id: energy_system_type.name for energy_system_type in db.session.query(EnergySystemType).all()
+    }
+
+    return energy_system_type_list, energy_system_type_names
 
 
 def get_union_energy_systems():
@@ -359,13 +409,17 @@ def get_union_energy_systems():
         joinedload(UnionEnergySystem.regional_energy_systems)
     ).order_by(UnionEnergySystem.id).all()
 
+    union_energy_system_names = {
+        union_energy_system.id: union_energy_system.name for union_energy_system in db.session.query(UnionEnergySystem).all()
+    }
+
     # Создаем словарь, где ключ - ID ОЭС, а значение - список ID региональных энергосистем
     regional_energy_system_mapping = {
         ues.id: [res.id for res in ues.regional_energy_systems] if ues.regional_energy_systems else []
         for ues in union_energy_systems
     }
 
-    return union_energy_systems, regional_energy_system_mapping
+    return union_energy_systems, union_energy_system_names, regional_energy_system_mapping
 
 
 def get_regional_energy_systems():
@@ -375,6 +429,10 @@ def get_regional_energy_systems():
     regional_energy_systems = RegionalEnergySystem.query.options(
         joinedload(RegionalEnergySystem.union_energy_system)
     ).order_by(RegionalEnergySystem.id).all()
+    
+    regional_energy_system_names = {
+        regional_energy_system.id: regional_energy_system.name_full for regional_energy_system in db.session.query(RegionalEnergySystem).all()
+    }
     
     # Преобразуем данные в удобный формат
     regional_energy_systems_list = [
@@ -387,7 +445,7 @@ def get_regional_energy_systems():
         for res in regional_energy_systems
     ]
 
-    return regional_energy_systems_list
+    return regional_energy_systems_list, regional_energy_system_names
 
 
 def get_federal_districts():
@@ -415,6 +473,10 @@ def get_regional_districts():
         joinedload(RegionalDistrict.federal_district)  # Предварительная загрузка ФО
     ).order_by(RegionalDistrict.id).all()
     
+    regional_district_names = {
+        regional_district.id: regional_district.name for regional_district in db.session.query(RegionalDistrict).all()
+    }
+
     # Создаём список субъектов РФ с дополнительной информацией о ФО
     regional_districts_list = [
         {
@@ -426,49 +488,202 @@ def get_regional_districts():
         for rd in regional_districts
     ]
 
-    return regional_districts_list
+    return regional_districts_list, regional_district_names
 
 
+def get_year_features():
+    """
+    Получает словарь с year.number как ключом и year.year_feature как значением.
+    :return: Словарь year_features
+    """
+    return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
+
+from collections import defaultdict
 from decimal import Decimal
 
-def calculate_station_power_values(stations):
-    """
-    Вычисляет суммарные значения p_ust, p_ogr и p_rasp для списка станций.
+def aggregate_station_power_values(stations):
+    # Словари для хранения мощностей
+    stations_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    stations_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    stations_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
     
-    :param stations: Список объектов Station.
-    :return: Словари stations_yearly_p_ust, stations_yearly_p_ogr, stations_yearly_p_rasp.
-    """
-    stations_yearly_p_ust = {}
-    stations_yearly_p_ogr = {}
-    stations_yearly_p_rasp = {}
+    total_yearly_p_ust = defaultdict(Decimal)
+    total_yearly_p_ogr = defaultdict(Decimal)
+    total_yearly_p_rasp = defaultdict(Decimal)
 
+    # Для каждой станции
     for station in stations:
-        yearly_p_ust_station = {}
-        yearly_p_ogr_station = {}
-        yearly_p_rasp_station = {}
-
+        # Создаем словари для хранения мощностей по годам для каждой станции
+        yearly_p_ust_station = defaultdict(Decimal)
+        yearly_p_ogr_station = defaultdict(Decimal)
+        yearly_p_rasp_station = defaultdict(Decimal)
+        
+        # Для каждой машины на станции
         for machine in station.machines:
+            if not machine.machine_powers:
+                continue  # Пропускаем машину, если нет данных по мощности
+
+            # Для каждой записи о мощности машины
             for machine_power in machine.machine_powers:
+                try:
+                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
+                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
+                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
+                except (ValueError, TypeError) as e:
+                    p_ust = p_ogr = p_rasp = Decimal(0)
+
                 year = machine_power.year.number
 
-                p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust else Decimal(0)
-                p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr else Decimal(0)
-                p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp else Decimal(0)
+                # Подсчеты по мощности для каждой станции
+                yearly_p_ust_station[year] += p_ust
+                yearly_p_ogr_station[year] += p_ogr
+                yearly_p_rasp_station[year] += p_rasp
+                
+                # Подсчеты по мощности для всех станций (по всем годам)
+                total_yearly_p_ust[year] += p_ust
+                total_yearly_p_ogr[year] += p_ogr
+                total_yearly_p_rasp[year] += p_rasp
 
-                if year in yearly_p_ust_station:
-                    yearly_p_ust_station[year] += p_ust
-                    yearly_p_ogr_station[year] += p_ogr
-                    yearly_p_rasp_station[year] += p_rasp
-                else:
-                    yearly_p_ust_station[year] = p_ust
-                    yearly_p_ogr_station[year] = p_ogr
-                    yearly_p_rasp_station[year] = p_rasp
+        # Записываем данные в общий словарь для станций
+        for year in yearly_p_ust_station:
+            stations_yearly_p_ust[station.id][year] = yearly_p_ust_station[year]
+            stations_yearly_p_ogr[station.id][year] = yearly_p_ogr_station[year]
+            stations_yearly_p_rasp[station.id][year] = yearly_p_rasp_station[year]
 
-        stations_yearly_p_ust[station.id] = yearly_p_ust_station
-        stations_yearly_p_ogr[station.id] = yearly_p_ogr_station
-        stations_yearly_p_rasp[station.id] = yearly_p_rasp_station
+    # Возвращаем данные по мощностям для всех станций и общие суммарные значения
+    return {
+        'stations': {
+            'p_ust': stations_yearly_p_ust,
+            'p_ogr': stations_yearly_p_ogr,
+            'p_rasp': stations_yearly_p_rasp,
+        },
+        'total': {
+            'p_ust': total_yearly_p_ust,
+            'p_ogr': total_yearly_p_ogr,
+            'p_rasp': total_yearly_p_rasp,
+        }
+    }
 
-    return stations_yearly_p_ust, stations_yearly_p_ogr, stations_yearly_p_rasp
+
+def aggregate_power_by_regional_district(stations):
+    # Словари для хранения мощностей по субъектам
+    regional_district_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    regional_district_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    regional_district_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+
+    # Для каждой станции
+    for station in stations:
+        regional_district_id = station.regional_district.id  # Получаем ID субъекта станции
+        
+        # Для каждой машины на станции
+        for machine in station.machines:
+            if not machine.machine_powers:
+                continue  # Пропускаем машину, если нет данных по мощности
+
+            # Для каждой записи о мощности машины
+            for machine_power in machine.machine_powers:
+                try:
+                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
+                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
+                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
+                except (ValueError, TypeError):
+                    p_ust = p_ogr = p_rasp = Decimal(0)
+
+                year = machine_power.year.number
+
+                # Агрегируем мощности по субъектам и годам
+                regional_district_yearly_p_ust[regional_district_id][year] += p_ust
+                regional_district_yearly_p_ogr[regional_district_id][year] += p_ogr
+                regional_district_yearly_p_rasp[regional_district_id][year] += p_rasp
+
+    # Возвращаем агрегированные данные по субъектам
+    return {
+        'regional_districts': {
+            'p_ust': regional_district_yearly_p_ust,
+            'p_ogr': regional_district_yearly_p_ogr,
+            'p_rasp': regional_district_yearly_p_rasp,
+        }
+    }
+
+
+def aggregate_power_by_regional_energy_system(stations):
+    # Словари для хранения мощностей по региональным энергосистемам
+    regional_energy_system_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    regional_energy_system_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    regional_energy_system_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+
+    # Для каждой станции
+    for station in stations:
+        for regional_energy_system in station.regional_district.regional_energy_systems:
+            regional_energy_system_id = regional_energy_system.id  # ID региональной энергосистемы
+        
+        # Для каждой машины на станции
+        for machine in station.machines:
+            if not machine.machine_powers:
+                continue  # Пропускаем машину, если нет данных по мощности
+
+            # Для каждой записи о мощности машины
+            for machine_power in machine.machine_powers:
+                try:
+                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
+                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
+                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
+                except (ValueError, TypeError):
+                    p_ust = p_ogr = p_rasp = Decimal(0)
+
+                year = machine_power.year.number
+
+                # Агрегируем мощности по региональным энергосистемам и годам
+                regional_energy_system_yearly_p_ust[regional_energy_system_id][year] += p_ust
+                regional_energy_system_yearly_p_ogr[regional_energy_system_id][year] += p_ogr
+                regional_energy_system_yearly_p_rasp[regional_energy_system_id][year] += p_rasp
+
+    # Возвращаем агрегированные данные по региональным энергосистемам
+    return {
+        'regional_energy_systems': {
+            'p_ust': regional_energy_system_yearly_p_ust,
+            'p_ogr': regional_energy_system_yearly_p_ogr,
+            'p_rasp': regional_energy_system_yearly_p_rasp,
+        }
+    }
+
+def aggregate_total_power_values(stations):
+    # Словари для хранения мощностей
+    total_yearly_p_ust = defaultdict(Decimal)
+    total_yearly_p_ogr = defaultdict(Decimal)
+    total_yearly_p_rasp = defaultdict(Decimal)
+
+    # Для каждой станции
+    for station in stations:
+        # Для каждой машины на станции
+        for machine in station.machines:
+            if not machine.machine_powers:
+                continue  # Пропускаем машину, если нет данных по мощности
+
+            # Для каждой записи о мощности машины
+            for machine_power in machine.machine_powers:
+                try:
+                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
+                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
+                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
+                except (ValueError, TypeError) as e:
+                    p_ust = p_ogr = p_rasp = Decimal(0)
+
+                year = machine_power.year.number
+
+                # Подсчеты по мощности для всех станций (по всем годам)
+                total_yearly_p_ust[year] += p_ust
+                total_yearly_p_ogr[year] += p_ogr
+                total_yearly_p_rasp[year] += p_rasp
+
+    # Возвращаем данные по мощностям для всех станций и общие суммарные значения
+    return {
+        'total': {
+            'p_ust': total_yearly_p_ust,
+            'p_ogr': total_yearly_p_ogr,
+            'p_rasp': total_yearly_p_rasp,
+        }
+    }
 
 
 import re
@@ -770,6 +985,7 @@ def import_station_list_from_excel(file, user):
                 previous_was_machine = False 
 
     return {'message': f'Данные успешно загружены пользователем {user}'}
+
 
 from io import BytesIO
 
