@@ -240,6 +240,7 @@ def group_stations_hierarchy(stations):
                     all_stations.extend(regional_district)  # Добавляем станции
     
 
+
     return {
         "grouped_stations": grouped_data,
         "stations": all_stations  # Теперь это список!
@@ -640,6 +641,7 @@ def aggregate_power_by_regional_energy_system(stations):
         }
     }
 
+
 def aggregate_total_power_values(stations):
     # Словари для хранения мощностей
     total_yearly_p_ust = defaultdict(Decimal)
@@ -698,11 +700,11 @@ def clean_name(name_to_change):
     name = name.replace('\xa0', ' ')  # Заменяем неразрывные пробелы на обычные
     name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
 
-    # Исправляем кавычки внутри текста
-    name = re.sub(r'"\s*([^"]+?)\s*"', r'«\1»', name)  # Заменяем все пары "..." на «...»
+    # Исправляем кавычки "..." → «...» (основная замена)
+    name = re.sub(r'"\s*([^"]+?)\s*"', r'«\1»', name)
 
-    # Дополнительная обработка, если внутри кавычек были другие кавычки
-    name = re.sub(r'«([^«»]+)«([^«»]+)»', r'«\1„\2»', name)  # Вложенные кавычки «...„...»»
+    # Исправляем случай, когда есть вложенные двойные кавычки внутри угловых
+    name = re.sub(r'«([^«»]*)"([^«»]+?)»', r'«\1«\2»»', name)
 
     return name
 

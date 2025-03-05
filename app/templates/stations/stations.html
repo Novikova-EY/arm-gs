@@ -506,7 +506,6 @@
                                     <!-- Итоговые значения по-станционно -->
                                     <!-- Первая строка: p_ust -->
                                     {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
-                                        {% if loop.last and current_page == total_pages %}
                                         <tr class="text-center total-power-row" style="vertical-align: middle;">
                                             <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
                                                 Всего по станции:
@@ -556,7 +555,6 @@
                                             </td>
                                             {% endfor %}
                                         </tr>
-                                        {% endif %}
                                     {% endif %}
 
                                 {% endfor %} <!-- Конец списка станций -->

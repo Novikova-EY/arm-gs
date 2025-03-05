@@ -85,16 +85,23 @@ def update_gen_company(data, user):
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 def gen_company_name_clear(name_to_change):
-    """
-    Приводит наименование в правильный вид
-    """
-    import re
+    if not isinstance(name_to_change, str):
+        return name_to_change
+    
+    # Проверка на строку 'nan', игнорируем её
+    if name_to_change.strip().lower() == "nan":
+        return None
+    
+    # Очищаем строку
+    name = name_to_change.strip()
+    name = name.replace('\xa0', ' ')  # Заменяем неразрывные пробелы на обычные
+    name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
 
-    name = name_to_change.strip() # Удаление пробелов в начале и конце строки
-    name = name.replace('\xa0', ' ') # Замена неразрывных пробелов на обычные
-    name = re.sub(r'\s+', ' ', name) # Замена множественных пробелов одним пробелом
-    name = re.sub(r'"\s*(\w)', r'«\1', name) # Замена " перед словом на «
-    name = re.sub(r'(\w)\s*"', r'\1»', name) # Замена " после слова на »
+    # Исправляем кавычки "..." → «...» (основная замена)
+    name = re.sub(r'"\s*([^"]+?)\s*"', r'«\1»', name)
+
+    # Исправляем случай, когда есть вложенные двойные кавычки внутри угловых
+    name = re.sub(r'«([^«»]*)"([^«»]+?)»', r'«\1«\2»»', name)
 
     return name
 
