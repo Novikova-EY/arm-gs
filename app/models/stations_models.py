@@ -60,6 +60,13 @@ class TesType(db.Model):
         back_populates='tes_type',
         cascade="all, delete-orphan"
     )
+
+    # связь с таблицей "связь типа ТЭС и года"
+    machine_tes_types = db.relationship(
+        'MachineTesType', 
+        back_populates='tes_type', 
+        cascade="all, delete-orphan"
+    )
     
 
 # Модель для групп станций
@@ -287,6 +294,13 @@ class Machine(db.Model):
         cascade="all, delete-orphan"
     )  
 
+    # связь с таблицей типов ТЭС агрегатов электростанции
+    machine_tes_types = db.relationship(
+        'MachineTesType', 
+        back_populates='machine_tes_type',
+        cascade="all, delete-orphan"
+    )  
+
     # год ввода в эксплуатацию
     date_exploitation = db.Column(db.String(10), nullable=True)
     
@@ -296,13 +310,13 @@ class Machine(db.Model):
     # фактическая дата ввода в работу
     date_commission_fact = db.Column(db.String(10), nullable=True)
 
-    # ожидаемый год присоединения
+    # ожидаемая дата присоединения
     date_joining_expected = db.Column(db.String(10), nullable=True)
 
     # фактическая дата присоединения
     date_joining_fact = db.Column(db.String(10), nullable=True)
 
-    # дата отсоединения
+    # фактическая дата отсоединения
     date_detatchment_fact = db.Column(db.String(10), nullable=True)
 
     # ожидаемый год вывода из эксплуатации
@@ -443,4 +457,53 @@ class MachineFuel(db.Model):
         nullable=True)
     fuel = db.relationship(
         'Fuel', 
-        back_populates='machine_fuels') 
+        back_populates='machine_fuels')
+    
+# Промежуточная таблица для связи "многие ко многим" между Year и TesTypes
+machine_tes_type_year_association = db.Table(
+    'machine_tes_type_year_association',
+    db.metadata,
+    db.Column('machine_tes_type_id', db.Integer, db.ForeignKey('machine_tes_types.id', ondelete="RESTRICT"), primary_key=True),
+    db.Column('year_id', db.Integer, db.ForeignKey('years.id', ondelete="RESTRICT"), primary_key=True)
+)
+
+# Модель для типов ТЭС агрегатов электростанции
+class MachineTesType(db.Model):
+    __tablename__ = 'machine_tes_types'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Связь с годами через промежуточную таблицу
+    years = db.relationship(
+        'Year', 
+        secondary=machine_tes_type_year_association,
+        back_populates='machine_tes_types'
+    )
+
+    # id года
+    year_number = db.Column(
+        db.Integer, 
+        db.ForeignKey('years.number', ondelete='RESTRICT'),
+        nullable=True
+    )
+    year = db.relationship(
+        'Year', 
+        back_populates='machine_tes_types'
+    )
+
+    # id агрегата электростанции
+    id_machine = db.Column(
+        db.Integer, 
+        db.ForeignKey('machines.id', ondelete='RESTRICT'), nullable=True)
+    machine_tes_type = db.relationship(
+        'Machine', 
+        back_populates='machine_tes_types')
+
+    # Тип ТЭС
+    id_tes_type = db.Column(
+        db.Integer, 
+        db.ForeignKey('tes_types.id', ondelete='RESTRICT'),
+        nullable=True)
+    tes_type = db.relationship(
+        'TesType', 
+        back_populates='machine_tes_types') 

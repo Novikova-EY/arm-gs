@@ -1,5 +1,5 @@
 from app import db
-from app.models.stations_models import machine_power_year_association, machine_fuel_year_association
+from app.models.stations_models import machine_power_year_association, machine_fuel_year_association, machine_tes_type_year_association
 
 # Модель для признаков года
 class YearFeature(db.Model):
@@ -42,5 +42,11 @@ class Year(db.Model):
     machine_fuels = db.relationship(
         'MachineFuel',
         secondary=machine_fuel_year_association,
+        back_populates='years'
+    )
+
+    machine_tes_types = db.relationship(
+        'MachineTesType',
+        secondary=machine_tes_type_year_association,
         back_populates='years'
     )

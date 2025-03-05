@@ -10,8 +10,8 @@ from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
     log_to_db, import_station_list_from_excel, export_station_list_to_excel, get_year_features, 
-    aggregate_station_power_values, aggregate_power_by_regional_district, group_stations_hierarchy,
-    aggregate_power_by_regional_energy_system
+    aggregate_station_power_values, aggregate_power_by_regional_district, get_station_by_id, get_machine_by_id, 
+    get_station_types, get_gen_companies, aggregate_power_by_regional_energy_system
 )
 from flask_login import login_required
 from app.routes.auth import role_required
@@ -195,13 +195,11 @@ def station_list():
 
     # Собираем уникальные компании для каждой станции
     for station in pagination["stations"]:
-        gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
-        station.gen_companies = ", ".join(gen_companies)
+        get_gen_companies(station)
 
     # Собираем типы энергоблоков для каждой станции
     for station in pagination["stations"]:
-        station_type = {machine.station_type.name for machine in station.machines if machine.station_type}
-        station.station_type = ", ".join(station_type)
+        get_station_types(station)
 
     # Сортировка машин внутри каждой станции по id_station_type
     for station in pagination["stations"]:
@@ -294,7 +292,132 @@ def station_list():
         year_features=year_features,
     )
 
+@app_bp.route("/stations_grouped_values", methods=["GET", "POST"])
+@login_required
+@role_required('super-admin')
+def stations_grouped_values():
+    """Маршрут для отображения списка электростанций."""
+    user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Открыта страница электростанций")
+
+    form = StationFilterForm()
+
+    # Получение параметров запроса
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", "10")
+    if per_page == "all":
+        per_page = None
+    else:
+        per_page = int(per_page)
+    
+    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
+    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+
+    condition_type_filter = request.args.get("condition_type_filter", "")
+    energy_system_type_filter = request.args.getlist("energy_system_type_filter", type=int)
+    union_energy_system_filter = request.args.getlist("union_energy_system_filter", type=int)
+    regional_energy_system_filter = request.args.getlist("regional_energy_system_filter", type=int)
+    federal_district_filter = request.args.getlist("federal_district_filter", type=int)
+    regional_district_filter = request.args.getlist("regional_district_filter", type=int)
+    gen_company_filter = request.args.get("gen_company_filter", "").strip()
+    station_name_filter = request.args.get("station_name_filter", "").strip()
+    station_type_filter = request.args.getlist("station_type_filter", type=int)
+    tes_type_filter = request.args.getlist("tes_type_filter", type=int)
+    tes_machine_type_filter = request.args.getlist('tes_machine_type_filter', type=int)
+    station_fuel_type_filter = request.args.get("station_fuel_type_filter", "")
+        
+
+    # Получение данных для отображения
+    pagination = get_stations_list(
+        page=None,
+        per_page=None,
+        condition_type_filter=condition_type_filter,
+        gen_company_filter=gen_company_filter,
+        station_name_filter=station_name_filter,
+        station_type_filter=station_type_filter,
+        tes_type_filter=tes_type_filter,
+        tes_machine_type_filter=tes_machine_type_filter,
+        energy_system_type_filter=energy_system_type_filter,
+        union_energy_system_filter=union_energy_system_filter,
+        regional_energy_system_filter=regional_energy_system_filter,
+        federal_district_filter=federal_district_filter,
+        regional_district_filter=regional_district_filter
+    )
+
+    # Подготовка данных для формы
+    energy_system_type_list, energy_system_type_names = get_energy_system_types()
+
+    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
+    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
+    federal_district_list, regional_district_mapping = get_federal_districts()
+
+    regional_district_list, regional_district_names  = get_regional_districts()
+    regional_district_dict = {int(regional_district["id"]): regional_district for regional_district in regional_district_list}
+
+    year_features = get_year_features()
+
+    station_power_values = aggregate_station_power_values(pagination["stations"])
+    stations_yearly_p_ust = station_power_values['stations']['p_ust']
+    stations_yearly_p_ogr = station_power_values['stations']['p_ogr']
+    stations_yearly_p_rasp = station_power_values['stations']['p_rasp']
+
+    regional_district_power_values = aggregate_power_by_regional_district(pagination["stations"])
+    regional_districts_yearly_p_ust = regional_district_power_values['regional_districts']['p_ust']
+    regional_districts_yearly_p_ogr = regional_district_power_values['regional_districts']['p_ogr']
+    regional_districts_yearly_p_rasp = regional_district_power_values['regional_districts']['p_rasp']
+
+    regional_districts_yearly_p_ust = {int(k): v for k, v in regional_districts_yearly_p_ust.items()}
+    regional_districts_yearly_p_ogr = {int(k): v for k, v in regional_districts_yearly_p_ogr.items()}
+    regional_districts_yearly_p_rasp = {int(k): v for k, v in regional_districts_yearly_p_rasp.items()}
+
+    regional_energy_system_power_values = aggregate_power_by_regional_energy_system(pagination["stations"])
+    regional_energy_systems_yearly_p_ust = regional_energy_system_power_values['regional_energy_systems']['p_ust']
+    regional_energy_systems_yearly_p_ogr = regional_energy_system_power_values['regional_energy_systems']['p_ogr']
+    regional_energy_systems_yearly_p_rasp = regional_energy_system_power_values['regional_energy_systems']['p_rasp']
+
+    regional_energy_systems_yearly_p_ust = {int(k): v for k, v in regional_energy_systems_yearly_p_ust.items()}
+    regional_energy_systems_yearly_p_ogr = {int(k): v for k, v in regional_energy_systems_yearly_p_ogr.items()}
+    regional_energy_systems_yearly_p_rasp = {int(k): v for k, v in regional_energy_systems_yearly_p_rasp.items()}
+
+    return render_template(
+        "stations/stations_grouped_values.html",
+        form=form,
+        stations_grouped=pagination["grouped_stations"],
+        start_year=start_year,
+        end_year=end_year, 
+        energy_system_type_list=energy_system_type_list,
+        energy_system_type_names=energy_system_type_names,
+        union_energy_system_list=union_energy_system_list,
+        union_energy_system_names=union_energy_system_names,
+        regional_energy_system_list=regional_energy_system_list,
+        regional_energy_system_names=regional_energy_system_names,
+        regional_energy_system_mapping=regional_energy_system_mapping,
+        federal_district_list=federal_district_list,
+        regional_district_list=regional_district_list,
+        regional_district_names=regional_district_names,
+        regional_district_dict=regional_district_dict,
+        regional_district_mapping=regional_district_mapping,
+        energy_system_type_filter=energy_system_type_filter,
+        union_energy_system_filter=union_energy_system_filter,
+        regional_energy_system_filter=regional_energy_system_filter,
+        federal_district_filter=federal_district_filter,
+        regional_district_filter=regional_district_filter,
+        station_fuel_type_filter=station_fuel_type_filter,
+        stations_yearly_p_ust=stations_yearly_p_ust,
+        stations_yearly_p_ogr=stations_yearly_p_ogr,
+        stations_yearly_p_rasp=stations_yearly_p_rasp,
+        regional_districts_yearly_p_ust=regional_districts_yearly_p_ust,
+        regional_districts_yearly_p_ogr=regional_districts_yearly_p_ogr,
+        regional_districts_yearly_p_rasp=regional_districts_yearly_p_rasp,
+        regional_energy_systems_yearly_p_ust=regional_energy_systems_yearly_p_ust,
+        regional_energy_systems_yearly_p_ogr=regional_energy_systems_yearly_p_ogr,
+        regional_energy_systems_yearly_p_rasp=regional_energy_systems_yearly_p_rasp,
+        year_features=year_features,
+    )
+
 @app_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
+@login_required
+@role_required('super-admin')
 def station_details(station_id):
     """Маршрут для отображения сведений об электростанции."""
     
@@ -304,88 +427,28 @@ def station_details(station_id):
     form = StationFilterForm()
 
     # Получение параметров запроса с дефолтными значениями
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
     start_year = request.args.get("start_year", 2021, type=int)
     end_year = request.args.get("end_year", 2031, type=int)
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-
-
-    # Если запрос `POST`, обновляем фильтры
-    if request.method == "POST":
-        # Обновляем параметры пагинации
-        page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 10, type=int)
-        sort_by = request.form.get("sort_by", "id")
-        sort_dir = request.form.get("sort_dir", "asc")
-
-        return redirect(url_for("app_bp.station_details", 
-                                station_id=station_id, 
-                                page=page, 
-                                per_page=per_page, 
-                                start_year=start_year,
-                                end_year=end_year, 
-                                sort_by=sort_by, 
-                                sort_dir=sort_dir))
-
 
     # Получаем данные по станции
-    station = Station.query.get_or_404(station_id)
-    # Собираем уникальные компании для каждой станции
-    gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
-    station.gen_companies = ", ".join(gen_companies)
+    station = get_station_by_id(station_id)
+    get_gen_companies(station)
+    get_station_types(station)
 
-    # Собираем типы энергоблоков для каждой станции
-    station_type = {machine.station_type.name for machine in station.machines if machine.station_type}
-    station.station_type = ", ".join(station_type)
-
-    # Получение данных для отображения
-    pagination = get_stations_list(page, 
-                                per_page,
-                                start_year,
-                                end_year, 
-                                sort_by, 
-                                sort_dir)
-
-
-    # Вычисление сумм для p_ust и p_rasp
-    stations_yearly_p_ust = {}
-    stations_yearly_p_rasp = {}
-
-    # Для каждой станции создаем отдельные словари
-    yearly_p_ust_station = {}
-    yearly_p_rasp_station = {}
+    station_power_values = aggregate_station_power_values([station])
+    stations_yearly_p_ust = station_power_values['stations']['p_ust']
+    stations_yearly_p_ogr = station_power_values['stations']['p_ogr']
+    stations_yearly_p_rasp = station_power_values['stations']['p_rasp']
     
-    # Обрабатываем машины станции
-    for machine in station.machines:
-        for machine_power in machine.machine_powers:
-            year = machine_power.year.number
-            # Суммируем p_ust и p_rasp для каждого года
-            if year in yearly_p_ust_station:
-                yearly_p_ust_station[year] += machine_power.p_ust if machine_power.p_ust else 0
-                yearly_p_rasp_station[year] += machine_power.p_rasp if machine_power.p_rasp else 0
-            else:
-                yearly_p_ust_station[year] = machine_power.p_ust if machine_power.p_ust else 0
-                yearly_p_rasp_station[year] = machine_power.p_rasp if machine_power.p_rasp else 0
-    
-    # Сохраняем результаты для этой станции в общий словарь
-    stations_yearly_p_ust = yearly_p_ust_station
-    stations_yearly_p_rasp = yearly_p_rasp_station
-    
-
     return render_template(
         "stations/station_details.html",
         form=form,
         station=station,
-        pagination=pagination,
-        stations_yearly_p_ust=stations_yearly_p_ust,
-        stations_yearly_p_rasp=stations_yearly_p_rasp,
         start_year=start_year,
         end_year=end_year, 
-        sort_by=sort_by,
-        sort_dir=sort_dir,
-        per_page=per_page
+        stations_yearly_p_ust=stations_yearly_p_ust,
+        stations_yearly_p_ogr=stations_yearly_p_ogr,
+        stations_yearly_p_rasp=stations_yearly_p_rasp,
     )
 
 
@@ -436,7 +499,7 @@ def export_station_list():
                         'station_type_filter', 'tes_type_filter', 'tes_machine_type_filter', 
                         'energy_system_type_filter', 'union_energy_system_filter', 
                         'regional_energy_system_filter', 'federal_district_filter', 
-                        'regional_district_filter', 'sort_by', 'sort_dir'
+                        'regional_district_filter'
                     ]}
 
 

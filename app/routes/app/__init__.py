@@ -11,4 +11,5 @@ from .regional_energy_system_routes import *
 from .gen_company_routes import *
 from .fuel_routes import *
 from .station_routes import *
+from .machine_routes import *
 

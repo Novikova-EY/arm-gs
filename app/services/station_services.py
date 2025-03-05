@@ -20,8 +20,8 @@ def log_to_db(username, action, details=None):
 
 
 def get_stations_list(
-    page, 
-    per_page,
+    page=None, 
+    per_page=None,
     condition_type_filter=None, 
     gen_company_filter=None, 
     station_name_filter=None, 
@@ -113,7 +113,7 @@ def get_filtered_station_ids(
     # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
     query = db.session.query(Station.id).join(Station.machines)
 
-    # 2) Применяем фильтры. Пример:
+    # 2) Применяем фильтры.
     if station_type_filter:
         query = query.filter(Machine.id_station_type.in_(station_type_filter))
     if tes_type_filter:
@@ -357,6 +357,40 @@ def get_filtered_stations(
         query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
 
     return query
+
+
+def get_station_by_id(station_id):
+    station = (
+        db.session.query(Station)
+        .filter_by(id=station_id)
+        .join(Station.machines)
+        .first()
+    )
+    
+    return station
+
+def get_machine_by_id(machine_id):
+    machine = (
+        db.session.query(Machine)
+        .filter_by(id=machine_id)
+        .first()
+    )
+    
+    return machine
+
+def get_station_types(station):
+    if not station or not station.machines:
+        return None
+
+    gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
+    return ", ".join(gen_companies) if gen_companies else None
+
+def get_gen_companies(station):
+    if not station or not station.machines:
+        return None
+
+    station_types = {machine.station_type.name for machine in station.machines if machine.station_type}
+    return ", ".join(station_types) if station_types else None
 
 
 def get_condition_type():
