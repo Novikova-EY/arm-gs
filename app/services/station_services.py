@@ -369,6 +369,7 @@ def get_station_by_id(station_id):
     
     return station
 
+
 def get_machine_by_id(machine_id):
     machine = (
         db.session.query(Machine)
@@ -378,6 +379,7 @@ def get_machine_by_id(machine_id):
     
     return machine
 
+
 def get_station_types(station):
     if not station or not station.machines:
         return None
@@ -385,13 +387,18 @@ def get_station_types(station):
     gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
     return ", ".join(gen_companies) if gen_companies else None
 
+
 def get_gen_companies(station):
     if not station or not station.machines:
         return None
 
-    station_types = {machine.station_type.name for machine in station.machines if machine.station_type}
-    return ", ".join(station_types) if station_types else None
+    gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
+    return ", ".join(gen_companies) if gen_companies else None
 
+
+def get_gen_companies_list():
+    """Получает список типов состояний."""
+    return GenCompany.query.order_by(GenCompany.id).all()
 
 def get_condition_type():
     """Получает список типов состояний."""
@@ -713,6 +720,32 @@ def aggregate_total_power_values(stations):
             'p_rasp': total_yearly_p_rasp,
         }
     }
+
+from datetime import datetime
+import re
+
+def convert_to_iso_date(value):
+    """
+    Преобразует введённую строку в нужный формат:
+      - Если введён год (YYYY), возвращает его без изменений.
+      - Если введена дата (DD.MM.YYYY), преобразует в YYYY-MM-DD.
+      - Если значение пустое, возвращает None.
+    """
+    if not value or not value.strip():
+        return None
+    
+    value = value.strip()
+
+    # Если введён только год (YYYY), оставляем его без изменений
+    if re.match(r'^\d{4}$', value):
+        return value
+
+    # Если введена полная дата в формате DD.MM.YYYY
+    try:
+        date_obj = datetime.strptime(value, '%d.%m.%Y')
+        return date_obj.strftime('%Y-%m-%d')
+    except ValueError:
+        raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
 
 
 import re

@@ -4,7 +4,6 @@ from wtforms.validators import Length, DataRequired, Optional, NumberRange
 
 
 class RegionalEnergySystemFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком региональных энергосистем"""
     csrf_token = HiddenField()
 
     regional_energy_system_ids = HiddenField("ID")

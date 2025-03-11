@@ -3,7 +3,6 @@ from wtforms import StringField, IntegerField, SelectField, TextAreaField, Submi
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 
 class StationFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком субъектов РФ"""
     csrf_token = HiddenField()
 
     # ID электростанции (автогенерация)

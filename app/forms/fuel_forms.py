@@ -3,7 +3,6 @@ from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import Length, DataRequired, Optional, NumberRange
 
 class OesFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком типов топлива"""
     csrf_token = HiddenField()
 
     fuel_ids = HiddenField("ID")

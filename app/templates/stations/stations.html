@@ -868,7 +868,7 @@
     });
 </script>
 
-<!-- Скрипт для сброса предыдущих значений при поиска по фильтрам в шапке таблицы -->
+<!-- Скрипт для сброса предыдущих значений при поиске по фильтрам в шапке таблицы -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
@@ -903,74 +903,72 @@
 
 <!-- Скрипт подсвечивания изменяющихся значений -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll("tr").forEach(row => {
-        let powerCells = row.querySelectorAll(".power-column");
-        let fuelCells = row.querySelectorAll(".fuel-column");
-        
-        let previousPowerCell = null;
-        let previousFuelCell = null;
-
-        powerCells.forEach((cell, index) => {
-            let currentValue = cell.textContent.trim();
-            let currentNumericValue = parseFloat(currentValue.replace(',', '.'));
-            let isCurrentDash = currentValue === "-" || currentValue === "—";
-            cell.setAttribute("data-prev-value", currentValue);
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll("tr").forEach(row => {
+            let powerCells = row.querySelectorAll(".power-column");
+            let fuelCells = row.querySelectorAll(".fuel-column");
             
-            if (previousPowerCell) {
-                let previousValue = previousPowerCell.getAttribute("data-prev-value");
-                let previousNumericValue = parseFloat(previousValue.replace(',', '.'));
-                let isPreviousDash = previousValue === "-" || previousValue === "—";
+            let previousPowerCell = null;
+            let previousFuelCell = null;
 
-                if (previousNumericValue === 0 && currentNumericValue !== 0) {
-                    previousPowerCell.classList.add("highlight-green");
-                    cell.classList.add("highlight-green");
-                } else if (previousNumericValue !== 0 && currentNumericValue === 0) {
-                    previousPowerCell.classList.add("highlight-red");
-                    cell.classList.add("highlight-red");
-                } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
-                    previousPowerCell.classList.add("highlight-blue");
-                    cell.classList.add("highlight-blue");
-                }
-            }
-            previousPowerCell = cell;
-        });
-
-        fuelCells.forEach((cell, index) => {
-            let currentValue = cell.textContent.trim();
-            let isCurrentDash = currentValue === "-" || currentValue === "—";
-            cell.setAttribute("data-prev-value", currentValue);
-            
-            if (previousFuelCell) {
-                let previousValue = previousFuelCell.getAttribute("data-prev-value");
-                let isPreviousDash = previousValue === "-" || previousValue === "—";
+            powerCells.forEach((cell, index) => {
+                let currentValue = cell.textContent.trim();
+                let currentNumericValue = parseFloat(currentValue.replace(',', '.'));
+                let isCurrentDash = currentValue === "-" || currentValue === "—";
+                cell.setAttribute("data-prev-value", currentValue);
                 
-                if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
-                    previousFuelCell.classList.add("highlight-blue");
-                    cell.classList.add("highlight-blue");
+                if (previousPowerCell) {
+                    let previousValue = previousPowerCell.getAttribute("data-prev-value");
+                    let previousNumericValue = parseFloat(previousValue.replace(',', '.'));
+                    let isPreviousDash = previousValue === "-" || previousValue === "—";
+
+                    if (previousNumericValue === 0 && currentNumericValue !== 0) {
+                        previousPowerCell.classList.add("highlight-green");
+                        cell.classList.add("highlight-green");
+                    } else if (previousNumericValue !== 0 && currentNumericValue === 0) {
+                        previousPowerCell.classList.add("highlight-red");
+                        cell.classList.add("highlight-red");
+                    } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+                        previousPowerCell.classList.add("highlight-blue");
+                        cell.classList.add("highlight-blue");
+                    }
                 }
-            }
-            previousFuelCell = cell;
+                previousPowerCell = cell;
+            });
+
+            fuelCells.forEach((cell, index) => {
+                let currentValue = cell.textContent.trim();
+                let isCurrentDash = currentValue === "-" || currentValue === "—";
+                cell.setAttribute("data-prev-value", currentValue);
+                
+                if (previousFuelCell) {
+                    let previousValue = previousFuelCell.getAttribute("data-prev-value");
+                    let isPreviousDash = previousValue === "-" || previousValue === "—";
+                    
+                    if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+                        previousFuelCell.classList.add("highlight-blue");
+                        cell.classList.add("highlight-blue");
+                    }
+                }
+                previousFuelCell = cell;
+            });
         });
     });
-});
 
-// Добавляем стили для подсветки
-const style = document.createElement("style");
-style.innerHTML = `
-    .highlight-green {
-        background-color: lightgreen !important;
-    }
-    .highlight-red {
-        background-color: lightcoral !important;
-    }
-    .highlight-blue {
-        background-color: lightblue !important;
-    }
-`;
-document.head.appendChild(style);
-
-
+    // Добавляем стили для подсветки
+    const style = document.createElement("style");
+    style.innerHTML = `
+        .highlight-green {
+            background-color: lightgreen !important;
+        }
+        .highlight-red {
+            background-color: lightcoral !important;
+        }
+        .highlight-blue {
+            background-color: lightblue !important;
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endif %}
 {% endblock %}

@@ -9,20 +9,17 @@
     'page', 'condition_type_filter', 'gen_company_filter', 'station_name_filter',
     'station_type_filter', 'machine_type_filter', 'tes_type_filter', 'tes_machine_type_filter',
     'energy_system_type_filter', 'union_energy_system_filter', 'regional_energy_system_filter',
-    'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
+    'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter', 'station_id',
     'per_page'
 ] %}
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.station_list', **request.args
-        ) }}" class="btn btn-secondary">
+        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary">
             Вернуться на страницу "Электростанция"
         </a>
     </div>
     
-
-    <body>
         <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
         {% for param in filters %}
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
@@ -31,222 +28,638 @@
         <div class="container-fluid mt-4">
             <h2 class="mb-4">Информация об агрегате станции</h2>
     
-            <!-- Карточка с основной информацией -->
-            <div class="container-fluid mt-4">
-                <div class="d-flex gap-4 justify-content-start">
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <h4 class="card-title text-decoration-underline mb-3">
-                                <strong>{{ machine.machine_station.name }}</strong>
-                            </h4>
-                            <p class="fs-5"><strong>Группа:</strong> {{  machine.machine_group or '-' }}</p>
-                            <p class="fs-5"><strong>Станционный номер:</strong> {{ machine.machine_number | default('-') }}</p>
-                            <p class="fs-5"><strong>Название:</strong> {{ machine.machine_name | default('-') }}</p>
-                            <p class="fs-5"><strong>Собственник:</strong> {{  machine.gen_company.name or '-' }}</p>
-                            <p class="fs-5"><strong>Примечание:</strong> {{ machine.note | default('-') }}</p>
-                            <p class="fs-5"><strong>Тип энергоблока:</strong> {{ machine.station_type.name | default('-') }}</p>
-                            <p class="fs-5"><strong>Тип агрегата:</strong> {{ machine.tes_type.name | default('-') }}</p>
-                            <p class="fs-5"><strong>Тип агрегата ТЭС:</strong> {{ machine.tes_machine_type.name | default('-') }}</p>
+        <!-- Фильтры -->
+        <div class="container-fluid mt-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-end align-items-center w-100">
+                        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3" style="width: 53%;">
+                            <strong>{{ station.name }} - Агрегат № {{ machine.machine_number }}</strong>
+                        </a>
+
+                        <div class="p-3" style="width: 20%;">
+                            <form method="GET" action="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
+                                <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
+                                {% for key, value in request.args.items() %}
+                                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                    {% endif %}
+                                {% endfor %}
+                        
+                                <!-- Поля выбора года -->
+                                <label for="start_year">Год начала:</label>
+                                <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                                    {% for year in range(2021, 2043) %}
+                                    <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                        
+                                <label for="end_year">Год конца:</label>
+                                <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                                    {% for year in range(2022, 2043) %}
+                                    <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                        
+                                <button type="submit" class="btn btn-outline-success">Применить</button>
+                            </form>
+                        </div>
+                
+                        
+                        <!-- Чекбокс "Отображать ограничения мощности" -->
+                        <div class="p-3 text-center" style="width: 10%;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
+                                <label class="form-check-label" for="toggleP_Ogr">
+                                    Отображать <br> ограничения мощности
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Чекбокс "Отображать располагаемую мощность" -->
+                        <div class="p-3 text-center" style="width: 10%;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
+                                <label class="form-check-label" for="toggleP_Rasp">
+                                    Отображать <br> располагаемую мощность
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Выпадающий список выбора количества знаков для округления -->
+                        <div class="p-3" style="width: 7%;">
+                            <label for="rounding_digits">Округлить до:</label>
+                            <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
+                                <option value="0">Не округлять</option>
+                                <option value="1" selected>1 знак</option>
+                                <option value="2">2 знака</option>
+                                <option value="3">3 знака</option>
+                                <option value="-1">Целое число</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Карточка с основной информацией -->
+        <form method="POST" action="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
+            {{ form.csrf_token }}
+            
+            <!-- Скрытое поле для ID агрегата -->
+            {{ form.id_machine }}
+            <div class="container-fluid">
+                <div class="row">
+                    <!-- Первый блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                
+                                <!-- Номер агрегата -->
+                                <div class="mb-3">
+                                    {{ form.machine_number.label(class="form-label") }}
+                                    {{ form.machine_number(class="form-control fw-bold") }}
+                                    {% if form.machine_number.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.machine_number.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Название агрегата -->
+                                <div class="mb-3">
+                                    {{ form.machine_name.label(class="form-label") }}
+                                    {{ form.machine_name(class="form-control fw-bold") }}
+                                    {% if form.machine_name.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.machine_name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Состояние агрегата станции -->
+                                <div class="mb-3">
+                                    {{ form.id_condition_type.label(class="form-label") }}
+                                    {{ form.id_condition_type(class="form-select") }}
+                                    {% if form.id_condition_type.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_condition_type.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Организация-собственник агрегата станции -->
+                                <div class="mb-3">
+                                    {{ form.id_gen_company.label(class="form-label") }}
+                                    {{ form.id_gen_company(class="form-select") }}
+                                    {% if form.id_gen_company.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_gen_company.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Номер/название группы агрегата -->
+                                <div class="mb-3">
+                                    {{ form.machine_group.label(class="form-label") }}
+                                    {{ form.machine_group(class="form-control") }}
+                                    {% if form.machine_group.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.machine_group.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+
+                            </div>
+                        </div>
+                    </div>
+                    
+
+                    <!-- Второй блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <!-- Энергорайон агрегата станции -->
+                                <div class="mb-3">
+                                    {{ form.id_energy_area.label(class="form-label") }}
+                                    {{ form.id_energy_area(class="form-select") }}
+                                    {% if form.id_energy_area.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_energy_area.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Тип электростанции -->
+                                <div class="mb-3">
+                                    {{ form.id_station_type.label(class="form-label") }}
+                                    {{ form.id_station_type(class="form-select") }}
+                                    {% if form.id_station_type.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_station_type.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Тип агрегата -->
+                                <div class="mb-3">
+                                    {{ form.id_machine_type.label(class="form-label") }}
+                                    {{ form.id_machine_type(class="form-select") }}
+                                    {% if form.id_machine_type.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_machine_type.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Год ввода в эксплуатацию -->
+                                <div class="mb-3">
+                                    {{ form.date_exploitation.label(class="form-label") }}
+                                    {{ form.date_exploitation(class="form-control") }}
+                                    {% if form.date_exploitation.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_exploitation.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Примечание -->
+                                <div class="mb-3">
+                                    {{ form.note.label(class="form-label") }}
+                                    {{ form.note(class="form-control") }}
+                                    {% if form.note.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.note.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+
+                            </div>
                         </div>
                     </div>
 
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <p class="fs-5"><strong>Дата ввода в эксплуатацию:</strong> {{ machine.date_exploitation | default('-') }}</p>
-                            <p class="fs-5"><strong>Ожидаемый год ввода в работу:</strong> {{ machine.date_commission_expected | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата ввода в работу:</strong> {{ machine.date_commission_fact | default('-') }}</p>
-                            <p class="fs-5"><strong>Ожидаемая дата присоединения:</strong> {{ machine.date_joining_expected | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата присоединения:</strong> {{ machine.date_joining_fact | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата отсоединения:</strong> {{ machine.date_detatchment_fact | default('-') }}</p>
-                            <p class="fs-5"><strong>Ожидаемый год вывода из эксплуатации:</strong> {{ machine.date_decompressing_expected | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата вывода из эксплуатации:</strong> {{ machine.date_decompressing_fact | default('-') }}</p>
-                            <p class="fs-5"><strong>Ожидаемый год модернизации:</strong> {{ machine.date_modernization_expected | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата перемаркировки:</strong> {{ machine.date_relabing_fact | default('-') }}</p>
-                            <p class="fs-5"><strong>Фактическая дата уточнения:</strong> {{ machine.date_update_fact | default('-') }}</p>
+                    <!-- Третий блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <!-- Ожидаемый год ввода в работу -->
+                                <div class="mb-3">
+                                    {{ form.date_commission_expected.label(class="form-label") }}
+                                    {{ form.date_commission_expected(class="form-control") }}
+                                    {% if form.date_commission_expected.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_commission_expected.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата ввода в работу -->
+                                <div class="mb-3">
+                                    {{ form.date_commission_fact.label(class="form-label") }}
+                                    {{ form.date_commission_fact(class="form-control") }}
+                                    {% if form.date_commission_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_commission_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Ожидаемая дата присоединения -->
+                                <div class="mb-3">
+                                    {{ form.date_joining_expected.label(class="form-label") }}
+                                    {{ form.date_joining_expected(class="form-control") }}
+                                    {% if form.date_joining_expected.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_joining_expected.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата присоединения -->
+                                <div class="mb-3">
+                                    {{ form.date_joining_fact.label(class="form-label") }}
+                                    {{ form.date_joining_fact(class="form-control") }}
+                                    {% if form.date_joining_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_joining_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата отсоединения -->
+                                <div class="mb-3">
+                                    {{ form.date_detatchment_fact.label(class="form-label") }}
+                                    {{ form.date_detatchment_fact(class="form-control") }}
+                                    {% if form.date_detatchment_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_detatchment_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Четвертый блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+
+                                <!-- Ожидаемый год вывода из эксплуатации -->
+                                <div class="mb-3">
+                                    {{ form.date_decompressing_expected.label(class="form-label") }}
+                                    {{ form.date_decompressing_expected(class="form-control") }}
+                                    {% if form.date_decompressing_expected.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_decompressing_expected.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата вывода из эксплуатации -->
+                                <div class="mb-3">
+                                    {{ form.date_decompressing_fact.label(class="form-label") }}
+                                    {{ form.date_decompressing_fact(class="form-control") }}
+                                    {% if form.date_decompressing_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_decompressing_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата перемаркировки -->
+                                <div class="mb-3">
+                                    {{ form.date_relabing_fact.label(class="form-label") }}
+                                    {{ form.date_relabing_fact(class="form-control") }}
+                                    {% if form.date_relabing_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_relabing_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Ожидаемый год модернизации -->
+                                <div class="mb-3">
+                                    {{ form.date_modernization_expected.label(class="form-label") }}
+                                    {{ form.date_modernization_expected(class="form-control") }}
+                                    {% if form.date_modernization_expected.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_modernization_expected.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата уточнения -->
+                                <div class="mb-3">
+                                    {{ form.date_update_fact.label(class="form-label") }}
+                                    {{ form.date_update_fact(class="form-control") }}
+                                    {% if form.date_update_fact.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_update_fact.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="container-fluid mt-4">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <div class="d-flex justify-content-end align-items-center w-100">
-                            <div class="p-3 text-center" style="width: 53%;">
-                            </div>
-
-                            <div class="p-3" style="width: 20%;">
-                                <form method="GET" action="{{ url_for('app_bp.machine_details', machine_id=machine.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
-                                    <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
-                                    {% for key, value in request.args.items() %}
-                                        {% if key != "per_page" and key != "start_year" and key != "end_year" %}
-                                            <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                        {% endif %}
-                                    {% endfor %}
-                            
-                                    <!-- Поля выбора года -->
-                                    <label for="start_year">Год начала:</label>
-                                    <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
-                                        {% for year in range(2021, 2043) %}
-                                        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
-                                        {% endfor %}
-                                    </select>
-                            
-                                    <label for="end_year">Год конца:</label>
-                                    <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
-                                        {% for year in range(2022, 2043) %}
-                                        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
-                                        {% endfor %}
-                                    </select>
-                            
-                                    <button type="submit" class="btn btn-outline-success">Применить</button>
-                                </form>
-                            </div>
-                            
-                            <!-- Чекбокс "Отображать ограничения мощности" -->
-                            <div class="p-3 text-center" style="width: 10%;">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
-                                    <label class="form-check-label" for="toggleP_Ogr">
-                                        Отображать <br> ограничения мощности
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <!-- Чекбокс "Отображать располагаемую мощность" -->
-                            <div class="p-3 text-center" style="width: 10%;">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
-                                    <label class="form-check-label" for="toggleP_Rasp">
-                                        Отображать <br> располагаемую мощность
-                                    </label>
-                                </div>
-                            </div>
-        
-                            <!-- Выпадающий список выбора количества знаков для округления -->
-                            <div class="p-3" style="width: 7%;">
-                                <label for="rounding_digits">Округлить до:</label>
-                                <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
-                                    <option value="0">Не округлять</option>
-                                    <option value="1" selected>1 знак</option>
-                                    <option value="2">2 знака</option>
-                                    <option value="3">3 знака</option>
-                                    <option value="-1">Целое число</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Таблица с агрегатами (Machines) -->
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead class="table-success">
+                        <tr class="text-center fw-bold align-middle">
+                          <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
+                        </tr>
+                        <tr class="text-center align-middle">
+                            <th class="first-column" style="width: 50px;"></th>
+                            {% for p in advanced_form.powers %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ p.year.data }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {{ year_features[p.year.data].name }}
+                                    </div>
+                                </th>
+                            {% endfor %}
+                      </thead>
+                      <tbody>
+                        <tr class="text-center align-middle total-power-row">
+                            <!-- "p_ust" -->
+                            <td class="first-column fw-bold" style="width: 50px;">Руст</td>
+                            {% for p in advanced_form.powers %}
+                                {{ p.year(type="hidden") }}
+                                <td class="power-column align-middle text-center">
+                                    {{ p.p_ust(class="form-control text-center") }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                          
+                        <tr class="text-center align-middle p-ogr-row">
+                            <!-- "p_ogr" -->
+                            <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
+                            {% for p in advanced_form.powers %}
+                                {{ p.year(type="hidden") }}
+                                <td class="power-column align-middle text-center">
+                                    {{ p.p_ogr(class="form-control text-center") }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                      
+                        <tr class="text-center align-middle p-rasp-row">
+                            <!-- "p_ogr" -->
+                            <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
+                            {% for p in advanced_form.powers %}
+                                {{ p.year(type="hidden") }}
+                                <td class="power-column align-middle text-center">
+                                    {{ p.p_rasp(class="form-control text-center") }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                      </tbody>
+                </table>
             </div>
 
-            <!-- Таблица с агрегатами (Machines) -->
-            <h3>Агрегаты станции</h3>
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered table-responsive">
+                <table class="table table-hover table-striped table-bordered">
                     <thead class="table-success">
-                        <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                            <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
-                            <th colspan="{{ end_year - start_year + 1 }}">Тип ТЭС</th>
-                            <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
+                        <tr class="text-center fw-bold align-middle">
+                            <th colspan="{{ end_year - start_year + 2 }}">Тип ТЭС</th>
                         </tr>
-                        <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                            <th style="width: 50px; text-align: center;">
-                                Тип <br> мощ-ти
-                            </th>
-                            <!-- Столбцы для годов с start_year по end_year + 1 -->
-                            {% for year in range(start_year, end_year + 1) %}
-                                <th>{{ year }}</th>
-                            {% endfor %}
-                            <!-- Столбцы для годов с start_year по end_year + 1 -->
-                            {% for year in range(start_year, end_year + 1) %}
-                                <th>{{ year }}</th>
-                            {% endfor %}
-                            <!-- Столбцы для годов с start_year по end_year + 1 -->
-                            {% for year in range(start_year, end_year + 1) %}
-                                <th>{{ year }}</th>
+                        <tr class="text-center align-middle">
+                            <th class="first-column"></th>
+                            {% for t in advanced_form.tes_types %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ t.year.data }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {{ year_features[t.year.data].name }}
+                                    </div>
+                                </th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Строки с машинами -->
-                        <td class="text-center" style="font-weight: bold;">
-                            Руст
-                        </td>
-                        {% for year in range(start_year, end_year + 1) %}
-                        <td class="text-center power-column">
-                            {% set p_ust_value = machine.machine_powers
-                                                | selectattr('year.number', 'equalto', year)
-                                                | map(attribute='p_ust')
-                                                | first %}
-                            {% if p_ust_value == 0 %}
-                                &mdash;
-                            {% else %}
-                                {{ p_ust_value }}
-                            {% endif %}
-                        </td>
-                        {% endfor %}
-
-                        <!-- Cтрока с значениями fuel -->
-                        {% for year in range(start_year, end_year + 1) %}
-                        <td class="text-center fuel-column rowspan-td" rowspan="3">
-                            {% set fuel = machine.machine_fuels | selectattr('year.number', 'equalto', year) | map(attribute='fuel') | first %}
-                            {% if fuel %}
-                                {{ fuel.fuel_type.name }}
-                            {% else %}
-                                &mdash;
-                            {% endif %}
-                        </td>
-                        {% endfor %}
-                        </tr>
-            
-                        <!-- Вторая строка: p_ogr -->
-                        <tr class="text-center p-ogr-row">
-                            <td class="text-center" style="font-weight: bold;">Рогр</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column">
-                                {% set p_ogr_value = machine.machine_powers
-                                                    | selectattr('year.number', 'equalto', year)
-                                                    | map(attribute='p_ogr')
-                                                    | first %}
-                                {% if p_ogr_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_ogr_value }}
-                                {% endif %}
-                            </td>
+                        <tr class="text-center align-middle tes-type-column">
+                            <!-- Тип ТЭС -->
+                            <td class="first-column fw-bold">Тип ТЭС</td>
+                            {% for t in advanced_form.tes_types %}
+                                {{ t.year(type="hidden") }}
+                                <td class="align-middle text-center">
+                                    {{ t.tes_type(class="form-select text-center") }}
+                                </td>
                             {% endfor %}
                         </tr>
-            
-                        <!-- Третья строка: p_rasp -->
-                        <tr class="text-center p-rasp-row">
-                            <td class="text-center" style="font-weight: bold;">Ррасп</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column">
-                                {% set p_rasp_value = machine.machine_powers
-                                                    | selectattr('year.number', 'equalto', year)
-                                                    | map(attribute='p_rasp')
-                                                    | first %}
-                                {% if p_rasp_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_rasp_value }}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                       
                     </tbody>
                 </table>
             </div>
-        </div>
-    </body>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead class="table-success">
+                        <tr class="text-center fw-bold align-middle">
+                            <th colspan="{{ end_year - start_year + 2 }}">Топливо</th>
+                        </tr>
+                        <tr class="text-center align-middle">
+                            <th class="first-column"></th>
+                            {% for f in advanced_form.fuels %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ f.year.data }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {{ year_features[f.year.data].name }}
+                                    </div>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="text-center align-middle fuel-column">
+                            <!-- Топливо -->
+                            <td class="first-column fw-bold">Тип топлива</td>
+                            {% for f in advanced_form.fuels %}
+                                {{ f.year(type="hidden") }}
+                                <td class="align-middle text-center">
+                                    {{ f.fuel_type(class="form-select text-center") }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            
+            <!-- Контейнер для кнопок -->
+            <div class="d-flex justify-content-end mt-3 gap-3">
+                <!-- Кнопка "Сохранить" -->
+                <button type="submit" class="btn btn-primary w-20 p-3 m-2">Сохранить</button>
+            
+                <!-- Кнопка "Сбросить" -->
+                <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
+                   class="btn btn-secondary w-20 p-3 m-2">
+                    Сбросить
+                </a>
+            </div>
+        </form>       
+
 
 <!-- Подключаем jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <!-- Подключаем Select2 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+<script>
+    let defaultTesType = "{{ default_tes_type }}";  // Берём значение с сервера
+    console.log("DEBUG: defaultTesType =", defaultTesType);  // Проверяем переданное значение
+
+    $("select[id^='adv_tes_types-']").each(function() {
+        let id = $(this).attr("id");
+
+        if (!$(this).val() || $(this).val() === "1") {  // Если пусто или "1", меняем
+            $(this).val(defaultTesType).trigger("change");  
+        }
+
+        console.log("TES_TYPE установлено для", id, ":", $(this).val());
+    });
+
+</script>
+
+<!-- Скрипт для сохранения всех настроек при нажатии на кнопку сохранить -->
+<script>
+    $(document).ready(function () {
+    // 1️⃣ Загружаем сохранённые настройки из localStorage
+    function loadSettings() {
+        if (localStorage.getItem("start_year")) {
+            $("#start_year").val(localStorage.getItem("start_year"));
+        }
+        if (localStorage.getItem("end_year")) {
+            $("#end_year").val(localStorage.getItem("end_year"));
+        }
+        if (localStorage.getItem("rounding_digits")) {
+            $("#rounding_digits").val(localStorage.getItem("rounding_digits"));
+        }
+        $("#toggleP_Ogr").prop("checked", localStorage.getItem("toggleP_Ogr") === "true");
+        $("#toggleP_Rasp").prop("checked", localStorage.getItem("toggleP_Rasp") === "true");
+    }
+
+    // 2️⃣ Функция сохранения текущих значений в localStorage
+    function saveSettings() {
+        localStorage.setItem("start_year", $("#start_year").val());
+        localStorage.setItem("end_year", $("#end_year").val());
+        localStorage.setItem("rounding_digits", $("#rounding_digits").val());
+        localStorage.setItem("toggleP_Ogr", $("#toggleP_Ogr").prop("checked"));
+        localStorage.setItem("toggleP_Rasp", $("#toggleP_Rasp").prop("checked"));
+    }
+
+    // 3️⃣ При изменении параметров — сразу сохраняем
+    $("#start_year, #end_year, #rounding_digits, #toggleP_Ogr, #toggleP_Rasp").on("change", function () {
+        saveSettings();
+    });
+
+    // 4️⃣ При нажатии "Сохранить" сохраняем параметры в localStorage
+    $("form").on("submit", function () {
+        saveSettings();
+    });
+
+    // 5️⃣ Загружаем настройки при загрузке страницы
+    loadSettings();
+
+    // 6️⃣ Логика округления значений
+    $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
+        let inputField = $(this).find("input");
+        if (inputField.length) {
+            let originalValue = inputField.val().trim();
+            inputField.attr("data-original-value", originalValue);
+        }
+    });
+
+    function roundValue(value, digits) {
+        if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
+            return value;
+        }
+
+        let num = parseFloat(value.replace(",", "."));
+        if (isNaN(num)) {
+            return value;
+        }
+
+        switch (digits) {
+            case "-1":
+                return Math.round(num);
+            case "0":
+                return value;
+            default:
+                return num.toFixed(parseInt(digits, 10)).replace(".", ",");
+        }
+    }
+
+    function updateValues() {
+        const roundingDigits = $("#rounding_digits").val();
+        $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
+            let inputField = $(this).find("input");
+            if (inputField.length) {
+                let original = inputField.attr("data-original-value");
+                let newValue = roundValue(original, roundingDigits);
+                inputField.val(newValue);
+            }
+        });
+    }
+
+    $("#rounding_digits").on("change", function () {
+        updateValues();
+    });
+
+    $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
+        $(this).attr("data-original-value", $(this).val());
+    });
+
+    updateValues();
+});
+
+</script>
 
 <!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
 <script>
@@ -323,56 +736,151 @@
 
 <!-- Скрипт для определения количества знаков после запятой -->
 <script>
-    $(document).ready(function() {
-        // 1. Сохраняем исходный текст (или значение) из каждой ячейки в data-атрибут
-        $('.power-column').each(function() {
-            const originalText = $(this).text().trim();
-            $(this).attr('data-original-value', originalText);
-        });
+$(document).ready(function () {
+    // 1️⃣ Сохраняем исходные значения всех input полей
+    $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
+        let inputField = $(this).find("input");
 
-        // Функция для округления одного значения
-        function roundValue(value, digits) {
-            // Если ячейка пустая, прочерк или не является числом, возвращаем как есть
-            if (!value || value === '—' || value === '-' || value.includes('&mdash;')) {
-                return value;
-            }
+        if (inputField.length) {
+            let originalValue = inputField.val().trim();
+            inputField.attr("data-original-value", originalValue); // Сохраняем в data-атрибут
+        }
+    });
 
-            // Пытаемся привести к числу
-            let num = parseFloat(value.replace(',', '.')); 
-            if (isNaN(num)) {
-                return value;
-            }
-
-            switch (digits) {
-                case '-1': // Округление до целого
-                    return Math.round(num);
-                case '0': // Без округления, оставляем как есть
-                    return value;
-                default:
-                    const d = parseInt(digits, 10);
-                    return num.toFixed(d).replace('.', ','); // Используем запятую вместо точки
-            }
+    // 2️⃣ Функция для округления одного значения
+    function roundValue(value, digits) {
+        if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
+            return value;
         }
 
-        // Функция обновления всех ячеек в таблице
-        function updateValues() {
-            const roundingDigits = $('#rounding_digits').val();
-
-            $('.power-column').each(function() {
-                const original = $(this).attr('data-original-value'); // Берём сохранённое значение
-                const newText = roundValue(original, roundingDigits);
-                $(this).text(newText);
-            });
+        let num = parseFloat(value.replace(",", "."));
+        if (isNaN(num)) {
+            return value; // Если не число, не трогаем
         }
 
-        // При изменении режима округления пересчитываем
-        $('#rounding_digits').on('change', function() {
-            updateValues();
-        });
+        switch (digits) {
+            case "-1": // Округление до целого
+                return Math.round(num);
+            case "0": // Без округления
+                return value;
+            default:
+                return num.toFixed(parseInt(digits, 10)).replace(".", ","); // Запятая вместо точки
+        }
+    }
 
-        // Инициализация округления при загрузке страницы
+    // 3️⃣ Функция обновления значений в input полях
+    function updateValues() {
+        const roundingDigits = $("#rounding_digits").val();
+
+        $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
+            let inputField = $(this).find("input");
+
+            if (inputField.length) {
+                let original = inputField.attr("data-original-value"); // Берём исходное значение
+                let newValue = roundValue(original, roundingDigits);
+                inputField.val(newValue); // Обновляем input
+            }
+        });
+    }
+
+    // 4️⃣ Обновляем значения при изменении режима округления
+    $("#rounding_digits").on("change", function () {
         updateValues();
     });
+
+    // 5️⃣ Обновление значений при редактировании, чтобы сохранялись исходные
+    $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
+        $(this).attr("data-original-value", $(this).val()); // Обновляем оригинальное значение
+    });
+
+    // 6️⃣ Инициализация округления при загрузке страницы
+    updateValues();
+});
+
+</script>
+
+<!-- Скрипт подсвечивания изменяющихся значений -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("tr").forEach(row => {
+        let powerCells = row.querySelectorAll(".power-column input");
+        let fuelCells = row.querySelectorAll(".fuel-column select");
+        let tesTypeCells = row.querySelectorAll(".tes-type-column select");
+
+        let previousPowerValue = null;
+        let previousFuelValue = null;
+        let previousTesTypeValue = null;
+
+        function normalizeValue(value) {
+            if (value === null || value === "" || value === "None") return 0;  // Интерпретируем пустые строки и None как 0
+            let numValue = parseFloat(value.toString().replace(',', '.'));
+            return isNaN(numValue) ? 0 : numValue;
+        }
+
+        // Подсветка изменений мощности (p_ust, p_ogr, p_rasp)
+        powerCells.forEach((input, index) => {
+            let currentValue = normalizeValue(input.value.trim());
+            input.setAttribute("data-prev-value", currentValue);
+
+            if (previousPowerValue !== null) {
+                let prevValue = normalizeValue(previousPowerValue);
+
+                if (prevValue === 0 && currentValue !== 0) {
+                    input.classList.add("highlight-green");
+                    powerCells[index - 1].classList.add("highlight-green");
+                } else if (prevValue !== 0 && currentValue === 0) {
+                    input.classList.add("highlight-red");
+                    powerCells[index - 1].classList.add("highlight-red");
+                } else if (prevValue !== currentValue) {
+                    input.classList.add("highlight-blue");
+                    powerCells[index - 1].classList.add("highlight-blue");
+                }
+            }
+            previousPowerValue = input.value.trim();
+        });
+
+        // Подсветка изменений топлива
+        fuelCells.forEach((select, index) => {
+            let currentValue = select.value;
+            let prevValue = previousFuelValue;
+
+            if (prevValue !== null && prevValue !== currentValue && prevValue !== "None") {
+                select.classList.add("highlight-blue");
+                fuelCells[index - 1].classList.add("highlight-blue");
+            }
+            previousFuelValue = currentValue;
+        });
+
+        // Подсветка изменений типа ТЭС
+        tesTypeCells.forEach((select, index) => {
+            let currentValue = select.value;
+            let prevValue = previousTesTypeValue;
+
+            if (prevValue !== null && prevValue !== currentValue && prevValue !== "None") {
+                select.classList.add("highlight-blue");
+                tesTypeCells[index - 1].classList.add("highlight-blue");
+            }
+            previousTesTypeValue = currentValue;
+        });
+    });
+});
+
+// Добавляем стили для подсветки
+const style = document.createElement("style");
+style.innerHTML = `
+    .highlight-green {
+        background-color: lightgreen !important;
+    }
+    .highlight-red {
+        background-color: lightcoral !important;
+    }
+    .highlight-blue {
+        background-color: lightblue !important;
+    }
+`;
+document.head.appendChild(style);
+
+
 
 </script>
 

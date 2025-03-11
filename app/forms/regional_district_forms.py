@@ -3,7 +3,6 @@ from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import Length, DataRequired, Optional, NumberRange
 
 class RegionalDistrictFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком субъектов РФ"""
     csrf_token = HiddenField()
 
     regional_district_ids = HiddenField("ID")

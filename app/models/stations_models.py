@@ -234,7 +234,7 @@ class Machine(db.Model):
     # номер агрегата
     machine_number = db.Column(db.String(80), nullable=False)
 
-    # тип агрегата
+    # название агрегата
     machine_name = db.Column(db.String(255), nullable=False)
 
     # номер/название группы агрегата
@@ -358,27 +358,11 @@ class Boiler(db.Model):
         back_populates='boilers')
 
 
-# Промежуточная таблица для связи "многие ко многим" между Year и MachinePower
-machine_power_year_association = db.Table(
-    'machine_power_year_association',
-    db.metadata,
-    db.Column('machine_power_id', db.Integer, db.ForeignKey('machine_powers.id', ondelete="RESTRICT"), primary_key=True),
-    db.Column('year_id', db.Integer, db.ForeignKey('years.id', ondelete="RESTRICT"), primary_key=True)
-)
-
-
 # Модель мощностей агрегатов электростанции
 class MachinePower(db.Model):
     __tablename__ = 'machine_powers'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-    # Связь с годами через промежуточную таблицу
-    years = db.relationship(
-        'Year', 
-        secondary=machine_power_year_association,
-        back_populates='machine_powers'
-    )
 
     # id года
     year_number = db.Column(
@@ -409,27 +393,12 @@ class MachinePower(db.Model):
     p_rasp = db.Column(db.Float)
 
 
-# Промежуточная таблица для связи "многие ко многим" между Year и MachineFuel
-machine_fuel_year_association = db.Table(
-    'machine_fuel_year_association',
-    db.metadata,
-    db.Column('machine_fuel_id', db.Integer, db.ForeignKey('machine_fuels.id', ondelete="RESTRICT"), primary_key=True),
-    db.Column('year_id', db.Integer, db.ForeignKey('years.id', ondelete="RESTRICT"), primary_key=True)
-)
-
 
 # Модель для топлива агрегатов электростанции
 class MachineFuel(db.Model):
     __tablename__ = 'machine_fuels'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-    # Связь с годами через промежуточную таблицу
-    years = db.relationship(
-        'Year', 
-        secondary=machine_fuel_year_association,
-        back_populates='machine_fuels'
-    )
 
     # id года
     year_number = db.Column(
@@ -459,26 +428,12 @@ class MachineFuel(db.Model):
         'Fuel', 
         back_populates='machine_fuels')
     
-# Промежуточная таблица для связи "многие ко многим" между Year и TesTypes
-machine_tes_type_year_association = db.Table(
-    'machine_tes_type_year_association',
-    db.metadata,
-    db.Column('machine_tes_type_id', db.Integer, db.ForeignKey('machine_tes_types.id', ondelete="RESTRICT"), primary_key=True),
-    db.Column('year_id', db.Integer, db.ForeignKey('years.id', ondelete="RESTRICT"), primary_key=True)
-)
 
 # Модель для типов ТЭС агрегатов электростанции
 class MachineTesType(db.Model):
     __tablename__ = 'machine_tes_types'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-    # Связь с годами через промежуточную таблицу
-    years = db.relationship(
-        'Year', 
-        secondary=machine_tes_type_year_association,
-        back_populates='machine_tes_types'
-    )
 
     # id года
     year_number = db.Column(

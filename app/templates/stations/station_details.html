@@ -203,7 +203,7 @@
                                     <td class="rowspan-td" rowspan="3">{{ machine.machine_group }}</td>
                                     <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
                                     <td class="rowspan-td" rowspan="3">
-                                        <a href="{{ url_for('app_bp.machine_details', machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                        <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                                             {{ machine.machine_name }}
                                         </a>
                                     </td>

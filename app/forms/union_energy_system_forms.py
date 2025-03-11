@@ -3,7 +3,6 @@ from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import Length, DataRequired, Optional, NumberRange
 
 class UnionEnergySystemFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком ОЭС"""
     csrf_token = HiddenField()
 
     union_energy_system_ids = HiddenField("ID")

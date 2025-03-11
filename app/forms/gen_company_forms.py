@@ -3,7 +3,6 @@ from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import Length, DataRequired, Optional, NumberRange
 
 class GenCompanyFilterForm(FlaskForm):
-    """Форма фильтрации и управления списком генерирующих компаний"""
     csrf_token = HiddenField()
 
     gen_company_ids = HiddenField("ID")
