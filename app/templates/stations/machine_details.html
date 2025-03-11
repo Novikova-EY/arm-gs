@@ -36,33 +36,33 @@
                 <div class="d-flex gap-4 justify-content-start">
                     <div class="card mb-4 w-50">
                         <div class="card-body">
-                            <h5 class="card-title text-decoration-underline mb-3">
+                            <h4 class="card-title text-decoration-underline mb-3">
                                 <strong>{{ machine.machine_station.name }}</strong>
-                            </h5>
-                            <p><strong>Группа:</strong> {{  machine.machine_group or '-' }}</p>
-                            <p><strong>Станционный номер:</strong> {{ machine.machine_number | default('-') }}</p>
-                            <p><strong>Название:</strong> {{ machine.machine_name | default('-') }}</p>
-                            <p><strong>Собственник:</strong> {{  machine.gen_company.name or '-' }}</p>
-                            <p><strong>Примечание:</strong> {{ machine.note | default('-') }}</p>
-                            <p><strong>Тип энергоблока:</strong> {{ machine.station_type.name | default('-') }}</p>
-                            <p><strong>Тип агрегата:</strong> {{ machine.tes_type.name | default('-') }}</p>
-                            <p><strong>Тип агрегата ТЭС:</strong> {{ machine.tes_machine_type.name | default('-') }}</p>
+                            </h4>
+                            <p class="fs-5"><strong>Группа:</strong> {{  machine.machine_group or '-' }}</p>
+                            <p class="fs-5"><strong>Станционный номер:</strong> {{ machine.machine_number | default('-') }}</p>
+                            <p class="fs-5"><strong>Название:</strong> {{ machine.machine_name | default('-') }}</p>
+                            <p class="fs-5"><strong>Собственник:</strong> {{  machine.gen_company.name or '-' }}</p>
+                            <p class="fs-5"><strong>Примечание:</strong> {{ machine.note | default('-') }}</p>
+                            <p class="fs-5"><strong>Тип энергоблока:</strong> {{ machine.station_type.name | default('-') }}</p>
+                            <p class="fs-5"><strong>Тип агрегата:</strong> {{ machine.tes_type.name | default('-') }}</p>
+                            <p class="fs-5"><strong>Тип агрегата ТЭС:</strong> {{ machine.tes_machine_type.name | default('-') }}</p>
                         </div>
                     </div>
 
                     <div class="card mb-4 w-50">
                         <div class="card-body">
-                            <p><strong>Дата ввода в эксплуатацию:</strong> {{ machine.date_exploitation | default('-') }}</p>
-                            <p><strong>Ожидаемый год ввода в работу:</strong> {{ machine.date_commission_expected | default('-') }}</p>
-                            <p><strong>Фактическая дата ввода в работу:</strong> {{ machine.date_commission_fact | default('-') }}</p>
-                            <p><strong>Ожидаемая дата присоединения:</strong> {{ machine.date_joining_expected | default('-') }}</p>
-                            <p><strong>Фактическая дата присоединения:</strong> {{ machine.date_joining_fact | default('-') }}</p>
-                            <p><strong>Фактическая дата отсоединения:</strong> {{ machine.date_detatchment_fact | default('-') }}</p>
-                            <p><strong>Ожидаемый год вывода из эксплуатации:</strong> {{ machine.date_decompressing_expected | default('-') }}</p>
-                            <p><strong>Фактическая дата вывода из эксплуатации:</strong> {{ machine.date_decompressing_fact | default('-') }}</p>
-                            <p><strong>Ожидаемый год модернизации:</strong> {{ machine.date_modernization_expected | default('-') }}</p>
-                            <p><strong>Фактическая дата перемаркировки:</strong> {{ machine.date_relabing_fact | default('-') }}</p>
-                            <p><strong>Фактическая дата уточнения:</strong> {{ machine.date_update_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Дата ввода в эксплуатацию:</strong> {{ machine.date_exploitation | default('-') }}</p>
+                            <p class="fs-5"><strong>Ожидаемый год ввода в работу:</strong> {{ machine.date_commission_expected | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата ввода в работу:</strong> {{ machine.date_commission_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Ожидаемая дата присоединения:</strong> {{ machine.date_joining_expected | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата присоединения:</strong> {{ machine.date_joining_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата отсоединения:</strong> {{ machine.date_detatchment_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Ожидаемый год вывода из эксплуатации:</strong> {{ machine.date_decompressing_expected | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата вывода из эксплуатации:</strong> {{ machine.date_decompressing_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Ожидаемый год модернизации:</strong> {{ machine.date_modernization_expected | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата перемаркировки:</strong> {{ machine.date_relabing_fact | default('-') }}</p>
+                            <p class="fs-5"><strong>Фактическая дата уточнения:</strong> {{ machine.date_update_fact | default('-') }}</p>
                         </div>
                     </div>
                 </div>
@@ -106,7 +106,7 @@
                             <!-- Чекбокс "Отображать ограничения мощности" -->
                             <div class="p-3 text-center" style="width: 10%;">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
+                                    <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
                                     <label class="form-check-label" for="toggleP_Ogr">
                                         Отображать <br> ограничения мощности
                                     </label>
