@@ -25,19 +25,19 @@ class StationFilterForm(FlaskForm):
     # Наименование собственника
     name_owner = StringField(
         'Наименование собственника',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[Optional(), Length(max=80)]
     )
 
     # Наименование совмещенное
     name_compined = StringField(
         'Наименование совмещенное',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[Optional(), Length(max=80)]
     )
 
     # Наименование дополнительное
     name_additional = StringField(
         'Наименование дополнительное',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[Optional(), Length(max=80)]
     )
 
     # ID типа электростанции
@@ -62,15 +62,6 @@ class StationFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
-    # ОЭС 
-    union_energy_system = SelectField(
-        'ОЭС',
-        coerce=int,
-        choices=[],  # Заполняется динамически
-        validators=[Optional()]
-    )
-
-
     # Список видов топлива
     fuel_types = TextAreaField(
         'Виды топлива',
@@ -80,17 +71,17 @@ class StationFilterForm(FlaskForm):
     # Номер КТО
     kto = StringField(
         'Номер КТО',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[Optional(), Length(max=80)]
     )
 
     # Местоположение
     location = StringField(
         'Местоположение',
-        validators=[DataRequired(), Length(max=255)]
+        validators=[Optional(), Length(max=255)]
     )
 
     # ID группы электростанций
-    id_group = SelectField(
+    id_station_group = SelectField(
         'Группа электростанций',
         coerce=int,
         choices=[],  # Заполняется динамически
@@ -197,4 +188,3 @@ class StationFilterForm(FlaskForm):
         coerce=int,
         validators=[Optional(), NumberRange(min=5, max=200)]
     )
-

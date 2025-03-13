@@ -10,6 +10,7 @@ from app.models.energy_systems_models import (
     EnergySystemType,
     UnionEnergySystem,
     RegionalEnergySystem,
+    EnergyArea,
     regional_district_regional_energy_system,
 )
 from app.models.auth_models import Role
@@ -402,6 +403,7 @@ with app.app_context():
             ### 8. Добавляем типы топлива
             print("Добавление типов топлива")
             fuel_types = [
+                (0, "не указано"),
                 (1, "газ"),
                 (2, "уголь"),
                 (3, "прочее"),
@@ -416,6 +418,7 @@ with app.app_context():
             ### 9. Добавляем виды топлива
             print("Добавление видов топлива")
             fuels = [
+                (0, "не указано", 0),
                 (1, "газ естественный природный", 1),
                 (2, "газ естественный попутный", 1),
                 (3, "газ искусственный доменный", 1),
@@ -568,9 +571,10 @@ with app.app_context():
             db.session.commit()
             print(f"{len(tes_machine_types)} типов агрегатов ТЭС.")
 
-            ### 13. Добавляем типы агрегатов'
+            ### 14. Добавляем типы агрегатов'
             print("Добавление типы агрегатов")
             machine_types = [
+                (0, "не указано"),
                 (1, "гидротурбина"),
                 (2, "ядерный реактор"),
                 (3, "турбина газовая"),
@@ -584,21 +588,19 @@ with app.app_context():
             print(f"{len(machine_types)} типы агрегатов.")
 
 
-            ### 14. Добавляем признаки для годов
-            print("Добавление признаков для года")
-            year_features = [
-                (1, "факт"),
-                (2, "текущий (оценка)"),
-                (3, "план"),
+            ### 15. Добавляем энергорайон по умолчанию
+            print("Добавление энергорайон по умолчанию")
+            energy_areas = [
+                (0, "не указано"),
             ]
-            for id_, name in year_features:
-                if not db.session.get(YearFeature, id_):
-                    db.session.add(YearFeature(id=id_, name=name))
+            for id_, name in energy_areas:
+                if not db.session.get(EnergyArea, id_):
+                    db.session.add(EnergyArea(id=id_, name=name))
             db.session.commit()
-            print(f"{len(year_features)} признаков для года добавлено.")
+            print(f"{len(energy_areas)} признаков для года добавлено.")
 
             
-            ### 14. Добавляем года
+            ### 16. Добавляем года
             print("Добавление годов")
             years = [
                 (1, "2021", 1),
@@ -637,6 +639,20 @@ with app.app_context():
                     db.session.add(Year(id=id_, number=number, id_year_feature=year_feature_id))
             db.session.commit()
             print(f"{len(years)} годов добавлено.")
+
+
+            ### 17. Добавляем признаки для годов
+            print("Добавление признаков для года")
+            year_features = [
+                (1, "факт"),
+                (2, "текущий (оценка)"),
+                (3, "план"),
+            ]
+            for id_, name in year_features:
+                if not db.session.get(YearFeature, id_):
+                    db.session.add(YearFeature(id=id_, name=name))
+            db.session.commit()
+            print(f"{len(year_features)} признаков для года добавлено.")
 
 
             print("Все данные успешно загружены!")

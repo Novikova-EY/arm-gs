@@ -34,7 +34,7 @@
                 <div class="col-12">
                     <div class="d-flex justify-content-end align-items-center w-100">
                         <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3" style="width: 53%;">
-                            <strong>{{ station.name }} - Агрегат № {{ machine.machine_number }}</strong>
+                            <strong>{{ station.name }}</strong>
                         </a>
 
                         <div class="p-3" style="width: 20%;">
@@ -105,6 +105,7 @@
         <!-- Карточка с основной информацией -->
         <form method="POST" action="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
             {{ form.csrf_token }}
+            {{ advanced_form.csrf_token }}
             
             <!-- Скрытое поле для ID агрегата -->
             {{ form.id_machine }}
@@ -114,6 +115,19 @@
                     <div class="col-md-3">
                         <div class="card mb-4">
                             <div class="card-body">
+
+                                <!-- Номер/название группы агрегата -->
+                                <div class="mb-3">
+                                    {{ form.machine_group.label(class="form-label") }}
+                                    {{ form.machine_group(class="form-control") }}
+                                    {% if form.machine_group.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.machine_group.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
                                 
                                 <!-- Номер агрегата -->
                                 <div class="mb-3">
@@ -167,20 +181,6 @@
                                     {% endif %}
                                 </div>
 
-                                <!-- Номер/название группы агрегата -->
-                                <div class="mb-3">
-                                    {{ form.machine_group.label(class="form-label") }}
-                                    {{ form.machine_group(class="form-control") }}
-                                    {% if form.machine_group.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.machine_group.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
-
                             </div>
                         </div>
                     </div>
@@ -229,19 +229,19 @@
                                     {% endif %}
                                 </div>
 
-                                <!-- Год ввода в эксплуатацию -->
+                                <!-- Тип агрегата ТЭС -->
                                 <div class="mb-3">
-                                    {{ form.date_exploitation.label(class="form-label") }}
-                                    {{ form.date_exploitation(class="form-control") }}
-                                    {% if form.date_exploitation.errors %}
+                                    {{ form.id_tes_machine_type.label(class="form-label") }}
+                                    {{ form.id_tes_machine_type(class="form-select") }}
+                                    {% if form.id_tes_machine_type.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_exploitation.errors %}
+                                            {% for error in form.id_tes_machine_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
                                     {% endif %}
                                 </div>
-                                
+
                                 <!-- Примечание -->
                                 <div class="mb-3">
                                     {{ form.note.label(class="form-label") }}
@@ -254,6 +254,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
+
                                 
 
                             </div>
@@ -264,6 +265,21 @@
                     <div class="col-md-3">
                         <div class="card mb-4">
                             <div class="card-body">
+
+                                
+                                <!-- Год ввода в эксплуатацию -->
+                                <div class="mb-3">
+                                    {{ form.date_exploitation.label(class="form-label") }}
+                                    {{ form.date_exploitation(class="form-control") }}
+                                    {% if form.date_exploitation.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.date_exploitation.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
                                 <!-- Ожидаемый год ввода в работу -->
                                 <div class="mb-3">
                                     {{ form.date_commission_expected.label(class="form-label") }}
@@ -450,7 +466,7 @@
                         </tr>
                       
                         <tr class="text-center align-middle p-rasp-row">
-                            <!-- "p_ogr" -->
+                            <!-- "p_rasp" -->
                             <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
@@ -551,21 +567,6 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
-<script>
-    let defaultTesType = "{{ default_tes_type }}";  // Берём значение с сервера
-    console.log("DEBUG: defaultTesType =", defaultTesType);  // Проверяем переданное значение
-
-    $("select[id^='adv_tes_types-']").each(function() {
-        let id = $(this).attr("id");
-
-        if (!$(this).val() || $(this).val() === "1") {  // Если пусто или "1", меняем
-            $(this).val(defaultTesType).trigger("change");  
-        }
-
-        console.log("TES_TYPE установлено для", id, ":", $(this).val());
-    });
-
-</script>
 
 <!-- Скрипт для сохранения всех настроек при нажатии на кнопку сохранить -->
 <script>
@@ -736,67 +737,77 @@
 
 <!-- Скрипт для определения количества знаков после запятой -->
 <script>
-$(document).ready(function () {
-    // 1️⃣ Сохраняем исходные значения всех input полей
-    $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
-        let inputField = $(this).find("input");
-
-        if (inputField.length) {
-            let originalValue = inputField.val().trim();
-            inputField.attr("data-original-value", originalValue); // Сохраняем в data-атрибут
-        }
-    });
-
-    // 2️⃣ Функция для округления одного значения
-    function roundValue(value, digits) {
-        if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
-            return value;
-        }
-
-        let num = parseFloat(value.replace(",", "."));
-        if (isNaN(num)) {
-            return value; // Если не число, не трогаем
-        }
-
-        switch (digits) {
-            case "-1": // Округление до целого
-                return Math.round(num);
-            case "0": // Без округления
-                return value;
-            default:
-                return num.toFixed(parseInt(digits, 10)).replace(".", ","); // Запятая вместо точки
-        }
-    }
-
-    // 3️⃣ Функция обновления значений в input полях
-    function updateValues() {
-        const roundingDigits = $("#rounding_digits").val();
-
+    $(document).ready(function () {
+        // Сохраняем исходные значения всех input полей
         $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
             let inputField = $(this).find("input");
-
+    
             if (inputField.length) {
-                let original = inputField.attr("data-original-value"); // Берём исходное значение
-                let newValue = roundValue(original, roundingDigits);
-                inputField.val(newValue); // Обновляем input
+                let originalValue = inputField.val().trim();
+                inputField.attr("data-original-value", originalValue); // Сохраняем в data-атрибут
             }
         });
-    }
-
-    // 4️⃣ Обновляем значения при изменении режима округления
-    $("#rounding_digits").on("change", function () {
+    
+        // Функция для округления одного значения
+        function roundValue(value, digits) {
+            if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
+                return value;
+            }
+    
+            let num = parseFloat(value.replace(",", "."));
+            if (isNaN(num)) {
+                return value; // Если не число, не трогаем
+            }
+    
+            switch (digits) {
+                case "-1": // Округление до целого
+                    return Math.round(num);
+                case "0": // Без округления (но заменяем точку на запятую)
+                    return num.toString().replace(".", ",");  
+                default:
+                    return num.toFixed(parseInt(digits, 10)).replace(".", ","); // Округляем
+            }
+        }
+    
+        // Функция обновления значений в input полях
+        function updateValues() {
+            const roundingDigits = $("#rounding_digits").val();
+    
+            $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
+                let inputField = $(this).find("input");
+    
+                if (inputField.length) {
+                    let original = inputField.attr("data-original-value"); // Берём исходное значение
+                    let newValue = roundValue(original, roundingDigits);
+                    inputField.val(newValue); // Обновляем input
+                }
+            });
+        }
+    
+        // Обновляем значения при изменении режима округления
+        $("#rounding_digits").on("change", function () {
+            updateValues();
+        });
+    
+        // Обновление значений при редактировании, чтобы сохранялись исходные
+        $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
+            $(this).attr("data-original-value", $(this).val()); // Обновляем оригинальное значение
+        });
+    
+        // Перед отправкой формы заменяем запятые на точки
+        $("form").on("submit", function () {
+            $(".power-column input, .p-ogr-row input, .p-rasp-row input").each(function () {
+                let inputField = $(this);
+                let value = inputField.val();
+                if (value.includes(",")) {
+                    inputField.val(value.replace(",", ".")); // Меняем запятую на точку перед отправкой
+                }
+            });
+        });
+    
+        // 7️⃣ Инициализация округления при загрузке страницы
         updateValues();
     });
-
-    // 5️⃣ Обновление значений при редактировании, чтобы сохранялись исходные
-    $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
-        $(this).attr("data-original-value", $(this).val()); // Обновляем оригинальное значение
-    });
-
-    // 6️⃣ Инициализация округления при загрузке страницы
-    updateValues();
-});
-
 </script>
 
 <!-- Скрипт подсвечивания изменяющихся значений -->

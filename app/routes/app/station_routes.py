@@ -1,17 +1,17 @@
 from config import Config
 from flask import (
-    render_template, request, redirect, url_for, flash, session, current_app, send_file
+    render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
 )
 from . import app_bp
 from app.models.logs_models import Log
 from app.forms.station_forms import StationFilterForm
-from app.models import Station, Machine
+from app.models import Station, Machine, RegionalDistrict, StationGroup, RegionalEnergySystem, ConditionType
 from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
     log_to_db, import_station_list_from_excel, export_station_list_to_excel, get_year_features, 
-    aggregate_station_power_values, aggregate_power_by_regional_district, get_station_by_id, get_machine_by_id, 
-    get_station_types, get_gen_companies, aggregate_power_by_regional_energy_system
+    aggregate_station_power_values, aggregate_power_by_regional_district, get_station_by_id, get_condition_type, 
+    get_station_types_list, get_gen_companies_list, aggregate_power_by_regional_energy_system, get_station_groups
 )
 from flask_login import login_required
 from app.routes.auth import role_required
@@ -195,11 +195,11 @@ def station_list():
 
     # Собираем уникальные компании для каждой станции
     for station in pagination["stations"]:
-        get_gen_companies(station)
+        get_gen_companies_list(station)
 
     # Собираем типы энергоблоков для каждой станции
     for station in pagination["stations"]:
-        get_station_types(station)
+        get_station_types_list(station)
 
     # Сортировка машин внутри каждой станции по id_station_type
     for station in pagination["stations"]:
@@ -419,10 +419,12 @@ def stations_grouped_values():
 @login_required
 @role_required('super-admin')
 def station_details(station_id):
-    """Маршрут для отображения сведений об электростанции."""
-    
+    """Маршрут для отображения сведений об электростанции с логированием изменений."""
+
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, f"Открыта страница электростанции ID {station_id}")
+    station = get_station_by_id(station_id)
+    regional_district_name = station.regional_district.name if station and station.regional_district else "не указано"
+    log_to_db(user, f"Открыта страница электростанции {station.name} ({regional_district_name})")
 
     form = StationFilterForm()
 
@@ -431,15 +433,155 @@ def station_details(station_id):
     end_year = request.args.get("end_year", 2031, type=int)
 
     # Получаем данные по станции
-    station = get_station_by_id(station_id)
-    get_gen_companies(station)
-    get_station_types(station)
+    station.gen_companies = get_gen_companies_list(station)
+    station.station_type = get_station_types_list(station)
+    condition_types = get_condition_type()
+    station_groups = get_station_groups()
 
     station_power_values = aggregate_station_power_values([station])
     stations_yearly_p_ust = station_power_values['stations']['p_ust']
     stations_yearly_p_ogr = station_power_values['stations']['p_ogr']
     stations_yearly_p_rasp = station_power_values['stations']['p_rasp']
-    
+
+    # Загружаем списки данных из сервисов
+    regional_districts_list, regional_district_names = get_regional_districts()
+    federal_districts, regional_district_mapping = get_federal_districts()
+    regional_energy_systems_list, regional_energy_system_names = get_regional_energy_systems()
+    union_energy_systems, union_energy_system_names, _ = get_union_energy_systems()
+    energy_system_types, energy_system_type_names = get_energy_system_types()
+
+    # Заполняем список субъектов РФ
+    form.id_regional_district.choices = [(d["id"], d["name"]) for d in regional_districts_list]
+    form.id_condition_type.choices = [(ct.id, ct.name) for ct in condition_types] or [(0, "не указано")]
+    form.id_station_group.choices = [(ct.id, ct.name) for ct in station_groups] or [(0, "не указано")]
+
+    if request.method == "GET":
+        form.process(obj=station)
+
+    if request.method == "POST":
+
+        if not form.validate():
+            print("Ошибки в form:", form.errors)
+
+        if form.validate_on_submit():
+            try:
+                changes = []
+                
+                if station.name != form.name.data:
+                    changes.append(f"Название: {station.name} → {form.name.data}")
+                    station.name = form.name.data
+                
+                new_condition_type_id = int(form.id_condition_type.data)  # Преобразуем в int
+                new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
+                if new_condition_type:
+                    old_value = station.condition_type.name if station.condition_type else "не указано"
+                    new_value = new_condition_type.name
+                    if old_value != new_value:
+                        changes.append(f"Состояние: {old_value} → {new_value}")
+                    station.id_condition_type = new_condition_type.id  # Обновляем ID состояния
+                else:
+                    flash("Ошибка: выбранное состояние не найдено!", "danger")
+
+
+                # Проверяем группу станции
+                new_group_id = form.id_station_group.data
+                if new_group_id:
+                    group_exists = db.session.query(StationGroup).filter_by(id=new_group_id).first()
+                    if group_exists:
+                        if station.id_group != new_group_id:
+                            old_group = station.group.name if station.group else "не указано"
+                            new_group = group_exists.name
+                            changes.append(f"Группа: {old_group} → {new_group}")
+                            station.id_group = new_group_id
+                    else:
+                        flash("Выбранная группа не существует!", "warning")
+
+                # Проверяем примечание
+                new_note = form.note.data.strip() if form.note.data.strip() else None
+                if station.note != new_note:
+                    changes.append(f"Примечание: {station.note} → {new_note}")
+                    station.note = new_note
+
+                # Проверяем субъект РФ
+                if station.id_regional_district != form.id_regional_district.data:
+                    old_value = station.regional_district.name if station.regional_district else "не указано"
+                    new_value = next((d["name"] for d in regional_districts_list if d["id"] == form.id_regional_district.data), "не указано")
+                    changes.append(f"Субъект РФ: {old_value} → {new_value}")
+                    station.id_regional_district = form.id_regional_district.data
+
+                # Проверяем местоположение
+                new_location = form.location.data.strip() if form.location.data.strip() else None
+                if station.location != new_location:
+                    changes.append(f"Местоположение: {station.location} → {new_location}")
+                    station.location = new_location  # ✅ Записываем None вместо ''
+
+                # Обновляем федеральный округ
+                new_regional_district_obj = db.session.query(RegionalDistrict).filter_by(id=form.id_regional_district.data).first()
+
+                if new_regional_district_obj:
+                    old_federal_district = station.regional_district.federal_district.name if station.regional_district.federal_district else "не указано"
+                    new_federal_district = new_regional_district_obj.federal_district.name if new_regional_district_obj.federal_district else "не указано"
+                    if old_federal_district != new_federal_district:
+                        changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
+                    station.regional_district = new_regional_district_obj  # ✅ Теперь присваиваем ORM-объект
+
+                # Обновляем энергосистему
+                related_res_obj = db.session.query(RegionalEnergySystem).filter(
+                    RegionalEnergySystem.id.in_(
+                        regional_district_mapping.get(station.regional_district.id, [])
+                    )
+                ).first()
+
+
+                related_res_obj = (
+                    db.session.query(RegionalEnergySystem)
+                    .join(RegionalDistrict, RegionalEnergySystem.regional_districts)
+                    .filter(RegionalDistrict.id == station.id_regional_district)
+                    .first()
+                )
+
+                if related_res_obj:
+                    old_regional_energy_system = (
+                        station.regional_district.regional_energy_systems[0].name
+                        if station.regional_district.regional_energy_systems
+                        else "не указано"
+                    )
+                    new_regional_energy_system = related_res_obj.name
+
+                    if old_regional_energy_system != new_regional_energy_system:
+                        changes.append(f"Региональная энергосистема: {old_regional_energy_system} → {new_regional_energy_system}")
+
+                    old_union_energy_system = (
+                        station.regional_district.regional_energy_systems[0].union_energy_system.name
+                        if station.regional_district.regional_energy_systems and station.regional_district.regional_energy_systems[0].union_energy_system
+                        else "не указано"
+                    )
+                    new_union_energy_system = (
+                        related_res_obj.union_energy_system.name if related_res_obj.union_energy_system else "не указано"
+                    )
+
+                    if old_union_energy_system != new_union_energy_system:
+                        changes.append(f"ОЭС: {old_union_energy_system} → {new_union_energy_system}")
+
+                    station.regional_district.regional_energy_systems = [related_res_obj]  # ✅ Теперь ORM-объект
+
+
+                # Сохраняем в БД
+                db.session.commit()
+
+                if changes:
+                    log_to_db(user, f"Изменения в электростанции {station.name} ({regional_district_name})", details="; ".join(changes))
+
+                flash("Изменения в электростанции успешно обновлены!", "success")
+                return redirect(url_for("app_bp.station_details", station_id=station.id, **request.args))
+
+            except Exception as e:
+                db.session.rollback()
+                print(f"❌ Ошибка при обновлении: {str(e)}")
+                flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
+                log_to_db(user, f"Ошибка обновления электростанции {station.name} ({regional_district_name})", details=str(e))
+
+   
     return render_template(
         "stations/station_details.html",
         form=form,
@@ -449,7 +591,47 @@ def station_details(station_id):
         stations_yearly_p_ust=stations_yearly_p_ust,
         stations_yearly_p_ogr=stations_yearly_p_ogr,
         stations_yearly_p_rasp=stations_yearly_p_rasp,
-    )
+        federal_districts=federal_districts,
+        regional_districts_list=regional_districts_list,
+        regional_energy_systems_list=regional_energy_systems_list,
+        union_energy_systems=union_energy_systems,
+        energy_system_types=energy_system_types, )
+
+
+@app_bp.route("/get_energy_system_data/<int:regional_district_id>", methods=["GET"])
+def get_energy_system_data(regional_district_id):
+    regional_district = db.session.query(RegionalDistrict).filter_by(id=regional_district_id).first()
+
+    if not regional_district:
+        return jsonify({"error": "Регион не найден"}), 404
+
+    federal_district = regional_district.federal_district.name if regional_district.federal_district else "Нет данных"
+
+    # Получаем все возможные энергосистемы для данного субъекта РФ
+    energy_systems = regional_district.regional_energy_systems
+
+    if not energy_systems:
+        return jsonify({"error": "Нет данных по энергосистеме"}), 404
+
+    # Ищем правильную РЭС (если их несколько)
+    regional_energy_system = next((res.name for res in energy_systems if res.union_energy_system), energy_systems[0].name)
+
+    # Определяем ОЭС по найденной РЭС
+    union_energy_system = next((res.union_energy_system.name for res in energy_systems if res.union_energy_system), "Нет данных")
+
+    # Определяем тип энергосистемы
+    energy_system_type = next((res.union_energy_system.energy_system_type.name for res in energy_systems if res.union_energy_system), "Нет данных")
+
+    data = {
+        "federal_district": federal_district,
+        "regional_energy_system": regional_energy_system,
+        "union_energy_system": union_energy_system,
+        "energy_system_type": energy_system_type
+    }
+
+    return jsonify(data)
+
+
 
 
 from app import db

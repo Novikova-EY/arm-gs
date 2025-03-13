@@ -1,8 +1,9 @@
+from config import Config
 from app import db
 from app.models.logs_models import Log
-from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, regional_district_regional_energy_system
+from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyArea
 from app.models.territories_models import RegionalDistrict, FederalDistrict
-from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, ConditionType, MachineType, TesType, TesMachineType
+from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup
 from app.models import Year, Fuel, GenCompany  
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import func
@@ -380,7 +381,16 @@ def get_machine_by_id(machine_id):
     return machine
 
 
-def get_station_types(station):
+def get_station_types_list(station):
+    if not hasattr(station, "machines") or not station.machines:
+        return None  # Убедимся, что у station есть атрибут "machines"
+
+    station_type = next((machine.station_type for machine in station.machines if hasattr(machine, "station_type") and machine.station_type), None)
+    
+    return station_type
+
+
+def get_gen_companies_list(station):
     if not station or not station.machines:
         return None
 
@@ -388,21 +398,13 @@ def get_station_types(station):
     return ", ".join(gen_companies) if gen_companies else None
 
 
-def get_gen_companies(station):
-    if not station or not station.machines:
-        return None
-
-    gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
-    return ", ".join(gen_companies) if gen_companies else None
-
-
-def get_gen_companies_list():
-    """Получает список типов состояний."""
-    return GenCompany.query.order_by(GenCompany.id).all()
+def get_station_groups():
+    """Получает список групп электростанций'."""
+    return StationGroup.query.all()
 
 def get_condition_type():
     """Получает список типов состояний."""
-    return ConditionType.query.order_by(ConditionType.id).all()
+    return ConditionType.query.all()
 
 
 def get_station_type():
@@ -721,32 +723,6 @@ def aggregate_total_power_values(stations):
         }
     }
 
-from datetime import datetime
-import re
-
-def convert_to_iso_date(value):
-    """
-    Преобразует введённую строку в нужный формат:
-      - Если введён год (YYYY), возвращает его без изменений.
-      - Если введена дата (DD.MM.YYYY), преобразует в YYYY-MM-DD.
-      - Если значение пустое, возвращает None.
-    """
-    if not value or not value.strip():
-        return None
-    
-    value = value.strip()
-
-    # Если введён только год (YYYY), оставляем его без изменений
-    if re.match(r'^\d{4}$', value):
-        return value
-
-    # Если введена полная дата в формате DD.MM.YYYY
-    try:
-        date_obj = datetime.strptime(value, '%d.%m.%Y')
-        return date_obj.strftime('%Y-%m-%d')
-    except ValueError:
-        raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
-
 
 import re
 import pandas as pd
@@ -809,6 +785,7 @@ def convert_date(date_value):
 def safe_value(value):
     return None if pd.isna(value) or value in ['', ' '] else value
 
+
 # Функция для импорта списка станций с параметрами в базу данных
 def import_station_list_from_excel(file, user):
     xls = pd.ExcelFile(file)
@@ -820,8 +797,8 @@ def import_station_list_from_excel(file, user):
     last_machine = None
     previous_was_machine = False
 
-    start_year = 2021
-    end_year = 2031
+    start_year = Config.START_YEAR
+    end_year = Config.END_YEAR
 
     for index, row in df.iterrows():
         # Пропускаем полностью пустые строки
@@ -848,13 +825,19 @@ def import_station_list_from_excel(file, user):
                     id_condition_type=condition_type.id if condition_type else None,
                 )
                 db.session.add(station)
+                db.session.commit()
+                log_to_db(user, "Создание станции", f"Создана станция: {station_name}")
                 print("Создана электростанция", station_name)
             else:
+                changes = []
                 if station.id_regional_district != regional_district.id:
+                    changes.append(f"id_regional_district: {station.id_regional_district} → {regional_district.id}")
                     station.id_regional_district = regional_district.id if regional_district else None
-                    print("Обновлена электростанция", station_name)
+                    if changes:
+                        db.session.commit()
+                        log_to_db(user, "Обновление станции", f"Станция {station_name} обновлена: {', '.join(changes)}")
+                        print("Обновлена электростанция", station_name)
 
-            db.session.commit()
             current_station = station
             current_machine = None
             previous_was_machine = False
@@ -901,24 +884,92 @@ def import_station_list_from_excel(file, user):
 
             if machine:
                 print(f"Агрегат группы  {machine_group} № {machine_number} - {machine_name} уже существует, обновляем данные.")
-                machine.machine_name = machine_name
-                machine.machine_group = machine_group
-                machine.id_gen_company = gen_company.id if gen_company else None
-                machine.date_exploitation=row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None,
-                machine.note=clean_name(row['note']) if not pd.isna(row['note']) else None,
-                machine.id_station_type=StationType.query.filter_by(name=clean_name(row['station_type'])).first().id if not pd.isna(row['station_type']) else None,
-                machine.id_tes_type=TesType.query.filter_by(name=clean_name(row['tes_type'])).first().id if not pd.isna(row['tes_type']) else None,
-                machine.id_tes_machine_type=TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None,
-                machine.date_commission_expected=convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None,
-                machine.date_commission_fact=convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None,
-                machine.date_joining_expected=convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None,
-                machine.date_joining_fact=convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None,
-                machine.date_detatchment_fact=convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None,
-                machine.date_decompressing_expected=convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None,
-                machine.date_decompressing_fact=convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None,
-                machine.date_modernization_expected=convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None,
-                machine.date_relabing_fact=convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None
-                machine.date_update_fact=convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None
+
+                changes = []
+                if machine.machine_name != machine_name:
+                    changes.append(f"machine_name: {machine.machine_name} → {machine_name}")
+                    machine.machine_name = machine_name
+
+                if machine.machine_group != machine_group:
+                    changes.append(f"machine_group: {machine.machine_group} → {machine_group}")
+                    machine.machine_group = machine_group
+
+                if machine.id_gen_company != (gen_company.id if gen_company else None):
+                    changes.append(f"id_gen_company: {machine.id_gen_company} → {gen_company.id if gen_company else None}")
+                    machine.id_gen_company = gen_company.id if gen_company else None
+
+                if machine.id_station_type != (StationType.query.filter_by(name=clean_name(row['station_type'])).first().id if not pd.isna(row['station_type']) else None):
+                    changes.append(f"id_station_type: {machine.id_station_type} → {StationType.query.filter_by(name=clean_name(row['station_type'])).first().id if not pd.isna(row['station_type']) else None}")
+                    machine.id_station_type = StationType.query.filter_by(name=clean_name(row['station_type'])).first().id if not pd.isna(row['station_type']) else None
+
+                if machine.id_tes_type != (TesType.query.filter_by(name=clean_name(row['tes_type'])).first().id if not pd.isna(row['tes_type']) else None):
+                    changes.append(f"id_tes_type: {machine.id_tes_type} → {TesType.query.filter_by(name=clean_name(row['tes_type'])).first().id if not pd.isna(row['tes_type']) else None}")
+                    machine.id_tes_type = TesType.query.filter_by(name=clean_name(row['tes_type'])).first().id if not pd.isna(row['tes_type']) else None
+
+                if machine.id_tes_machine_type != (TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None):
+                    changes.append(f"id_tes_machine_type: {machine.id_tes_machine_type} → {TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None}")
+                    machine.id_tes_machine_type = TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None
+
+                if machine.id_machine_type != (MachineType.query.filter_by(id=0).first().id):
+                    changes.append(f"id_machine_type: {machine.id_machine_type} → {MachineType.query.filter_by(id=0).first().id}")
+                    machine.id_machine_type = MachineType.query.filter_by(id=0).first().id
+
+                if machine.id_energy_area != (EnergyArea.query.filter_by(id=0).first().id):
+                    changes.append(f"id_energy_area: {machine.id_energy_area} → {EnergyArea.query.filter_by(id=0).first().id}")
+                    machine.id_energy_area = EnergyArea.query.filter_by(id=0).first().id
+
+                if machine.date_exploitation != (row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None):
+                    changes.append(f"date_exploitation: {machine.date_exploitation} → {row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None}")
+                    machine.id_gen_company = gen_company.id if gen_company else None
+
+                if machine.date_commission_expected != (convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None):
+                    changes.append(f"date_commission_expected: {machine.date_commission_expected} → {convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None}")
+                    machine.date_commission_expected = convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None
+
+                if machine.date_commission_fact != (convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None):
+                    changes.append(f"date_commission_fact: {machine.date_commission_fact} → {convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None}")
+                    machine.date_commission_fact = convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None
+
+                if machine.date_joining_expected != (convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None):
+                    changes.append(f"date_joining_expected: {machine.date_joining_expected} → {convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None}")
+                    machine.date_joining_expected = convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None
+
+                if machine.date_joining_fact != (convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None):
+                    changes.append(f"date_joining_fact: {machine.date_joining_fact} → {convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None}")
+                    machine.date_joining_fact = convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None
+
+                if machine.date_detatchment_fact != (convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None):
+                    changes.append(f"date_detatchment_fact: {machine.date_detatchment_fact} → {convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None}")
+                    machine.date_detatchment_fact = convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None
+
+                if machine.date_decompressing_expected != (convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None):
+                    changes.append(f"date_decompressing_expected: {machine.date_decompressing_expected} → {convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None}")
+                    machine.date_decompressing_expected = convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None
+
+                if machine.date_decompressing_fact != (convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None):
+                    changes.append(f"date_decompressing_fact: {machine.date_decompressing_fact} → {convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None}")
+                    machine.date_decompressing_fact = convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None
+
+                if machine.date_modernization_expected != (convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None):
+                    changes.append(f"date_modernization_expected: {machine.date_modernization_expected} → {convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None}")
+                    machine.date_modernization_expected = convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None
+
+                if machine.date_relabing_fact != (convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None):
+                    changes.append(f"date_relabing_fact: {machine.date_relabing_fact} → {convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None}")
+                    machine.date_relabing_fact = convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None
+
+                if machine.date_update_fact != (convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None):
+                    changes.append(f"date_update_fact: {machine.date_update_fact} → {convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None}")
+                    machine.date_update_fact = convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None
+
+                if machine.note != (clean_name(row['note']) if not pd.isna(row['note']) else None):
+                    changes.append(f"note: {machine.note} → {clean_name(row['note']) if not pd.isna(row['note']) else None}")
+                    machine.note = clean_name(row['note']) if not pd.isna(row['note']) else None
+                
+                if changes:
+                    db.session.commit()
+                    log_to_db(user, "Обновление агрегата", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {', '.join(changes)}")
+
                 print(f"Обновлен агрегат группы  {machine_group} № {machine_number}, {machine_name}")
             else:
                 print(f"Создаем новый агрегат группы  {machine_group} № {machine_number} - {machine_name}.")
@@ -945,15 +996,17 @@ def import_station_list_from_excel(file, user):
                     date_relabing_fact=convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None,
                     date_update_fact=convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None
                 )
-                print("Создан агрегат", machine_number, machine_name)
                 db.session.add(machine)
+                db.session.commit()
+                log_to_db(user, "Создание агрегата", f"Создан агрегат: {machine_number} - {machine_name}")
+                print("Создан агрегат", machine_number, machine_name)
 
-            db.session.commit()
             current_machine = machine
             last_machine = current_machine
 
-            # Установленная мощность (p_ust) и топливо (MachineFuel)     
+            # Вносим установленную мощность, тип ТЭС и топливо     
             for year in range(start_year, end_year + 1):
+                # Вносим данные о мощности
                 p_ust = clean_name(row.get(f'p_{year}'))
                 p_ust = None if p_ust in ['', ' ', 'nan', 'NaN'] or pd.isna(p_ust) else p_ust
                 try:
@@ -964,21 +1017,41 @@ def import_station_list_from_excel(file, user):
                 if p_ust is None or current_machine.id_condition_type == ConditionType.query.filter_by(name="планируемый").first().id:
                     p_ust = 0
                 
-                print(f"Установленная мощность для машины {current_machine.machine_number}, год {year}: {p_ust}")
-
-                # Сохраняем данные о мощности
                 machine_power = MachinePower.query.filter_by(year_number=year, id_machine=current_machine.id).first()
                 if machine_power:
                     if machine_power.p_ust != p_ust:
                         machine_power.p_ust = p_ust
+                        log_to_db(user, "Обновление мощности", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: p_ust {machine_power.p_ust} → {p_ust}")
                 else:
-                    machine_power = MachinePower(
-                        year_number=year,
-                        id_machine=machine.id,
-                        p_ust=p_ust
-                    )
+                    machine_power = MachinePower(year_number=year, id_machine=machine.id, p_ust=p_ust)
                     db.session.add(machine_power)
+                    log_to_db(user, "Создание мощности", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: p_ust {p_ust}")
 
+                print(f"Установленная мощность для машины {current_machine.machine_number}, год {year}: {p_ust}")
+
+                # Вносим данные о типе ТЭС
+                tes_type = TesType.query.filter_by(id=current_machine.id_tes_type).first()
+
+                if tes_type:
+                    tes_type_id = tes_type.id
+                else:
+                    tes_type_id = None
+
+
+                machine_tes_type = MachineTesType.query.filter_by(year_number=year, id_machine=current_machine.id).first()
+
+                if machine_tes_type:
+                    if machine_tes_type.id_tes_type != tes_type_id:
+                        machine_tes_type.id_tes_type = tes_type_id
+                        log_to_db(user, "Обновление типа ТЭС", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: tes_type {machine_power.machine_tes_type.name} → {tes_type.machine_tes_type}")
+                else:
+                    machine_tes_type = MachineTesType(year_number=year, id_machine=machine.id, id_tes_type=tes_type_id)
+                    db.session.add(machine_tes_type)
+                    log_to_db(user, "Создание типа ТЭС", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: tes_type {machine_tes_type.name}")
+
+                print(f"Тип ТЭС для машины {current_machine.machine_number}, год {year}: {tes_type_id}")
+
+                # Вносим данные о типе топлива
                 fuel_name = clean_name(row.get(f'fuel_{year}'))
 
                 fuel_type_mapping = {
@@ -1000,24 +1073,22 @@ def import_station_list_from_excel(file, user):
                     machine_fuel = MachineFuel.query.filter_by(year_number=year, id_machine=current_machine.id).first()
                     
                     if not machine_fuel:
-                        machine_fuel = MachineFuel(
-                            year_number=year,
-                            id_machine=current_machine.id,
-                            id_fuel=fuel.id
-                        )
+                        machine_fuel = MachineFuel(year_number=year, id_machine=current_machine.id, id_fuel=fuel.id)
                         db.session.add(machine_fuel)
+                        log_to_db(user, "Создание вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {machine_fuel.name}")
                     else:
                         # Обновляем id_fuel, если оно изменилось
                         if machine_fuel.id_fuel != fuel.id:
                             machine_fuel.id_fuel = fuel.id
+                            log_to_db(user, "Обновление вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {machine_fuel.machine_fuel.name} → {tes_type.machine_fuel}")
                         
                         # Обновляем p_ust, если передано новое значение
                         if p_ust is not None:
                             machine_fuel.p_ust = p_ust
 
             db.session.commit()
-            print("Установленные мощности и топливо внесены")
             previous_was_machine = True
+            print("Установленные мощности, типы ТЭС и топливо внесены")
 
         # Располагаемая мощность (p_rasp)
         elif previous_was_machine: # если поля regional_district и station_name, machine_name и gen_company не заполнены, но шагом ранее был создан агрегат, то добавляем ему располагаему мощность
@@ -1042,11 +1113,61 @@ def import_station_list_from_excel(file, user):
                         machine_power.p_rasp = p_rasp if p_rasp is not None else machine_power.p_rasp
                         machine_power.p_ogr = machine_power.p_ust - machine_power.p_rasp
                         db.session.add(machine_power)
+                        log_to_db(user, "Обновление располагаемой мощности", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: p_rasp {machine_power.p_rasp} → {p_rasp}")
+
+                        # Проверка топлива
+                        machine_fuel = MachineFuel.query.filter_by(year_number=year, id_machine=current_machine.id).first()
+                        if p_rasp == 0 and machine_fuel:
+                            db.session.delete(machine_fuel)
+                            log_to_db(user, "Удаление топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: удалено топливо")
+                            print(f"Удаляем топливо для машины {current_machine.machine_number}, год {year}, так как p_rasp = 0")
+                        elif p_rasp > 0 and not machine_fuel:
+                            # Если располагаемая мощность больше 0, но топливо отсутствует, добавляем топливо
+                            fuel_name = clean_name(row.get(f'fuel_{year}'))
+                            fuel_type_id = fuel_type_mapping.get(fuel_name)
+
+                            if fuel_type_id:
+                                fuel = Fuel.query.filter_by(id_fuel_type=fuel_type_id).first()
+                                if fuel:
+                                    machine_fuel = MachineFuel(
+                                        year_number=year,
+                                        id_machine=current_machine.id,
+                                        id_fuel=fuel.id
+                                    )
+                                    db.session.add(machine_fuel)
+                                    log_to_db(user, "Добавление топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: добавлено топливо {fuel_name}")
+                                    print(f"Добавлено топливо {fuel_name} для машины {current_machine.machine_number}, год {year}")
 
                 db.session.commit()
                 previous_was_machine = False 
 
     return {'message': f'Данные успешно загружены пользователем {user}'}
+
+from datetime import datetime
+import re
+
+def convert_to_iso_date(value):
+    """
+    Преобразует введённую строку в нужный формат:
+      - Если введён год (YYYY), возвращает его без изменений.
+      - Если введена дата (DD.MM.YYYY), преобразует в YYYY-MM-DD.
+      - Если значение пустое, возвращает None.
+    """
+    if not value or not value.strip():
+        return None  # Если пусто, возвращаем None
+    
+    value = value.strip()
+
+    # Если введён только год (YYYY), оставляем его без изменений
+    if re.match(r'^\d{4}$', value):
+        return value  # Например, "2025" останется "2025"
+
+    # Если введена полная дата в формате DD.MM.YYYY
+    try:
+        date_obj = datetime.strptime(value, '%d.%m.%Y')
+        return date_obj.strftime('%Y-%m-%d')  # Преобразуем в ISO-формат
+    except ValueError:
+        raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
 
 
 from io import BytesIO

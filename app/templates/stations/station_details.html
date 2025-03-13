@@ -31,68 +31,99 @@
             <h2 class="mb-4">Информация о станции</h2>
     
             <!-- Карточка с основной информацией -->
-            <div class="container-fluid mt-4">
-                <div class="d-flex gap-4 justify-content-start">
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <h4 class="card-title text-decoration-underline mb-3">
-                                <strong>{{ station.name }}</strong>
-                            </h4>
-                            <p class="fs-5"><strong>Состояние:</strong> {{ station.condition_type.name or '-' }}</p>
-                            <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '-' }}</p>
-                            <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_type if station.station_type else '-' }}</p>
-                            <p class="fs-5"><strong>Группа:</strong> {{ station.group.name if station.group else '-' }}</p>
-                            <p class="fs-5"><strong>Примечание:</strong> {{ station.note or '-' }}</p>
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="container-fluid mt-4">
+                    <div class="d-flex gap-4 justify-content-start">
+                        <div class="card mb-4 w-50">
+                            <div class="card-body">
+                                <p class="fs-5"><strong>Название:</strong> 
+                                    <input type="text" name="name" class="fs-5 form-control d-inline-block w-auto"
+                                    value="{{ form.name.data or '' }}">
+                                </p>
+                                <p class="fs-5"><strong>Состояние:</strong> 
+                                    <span id="id_condition_type_span" >
+                                        {{ form.id_condition_type(class="form-select d-inline-block w-auto") }}
+                                    </span>
+                                </p>
+                                <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '-' }}</p>
+                                <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_type.name if station.station_type.name else '-' }}</p>
+                                <p class="fs-5"><strong>Группа электростанций:</strong> 
+                                    <span id="id_station_group_span">
+                                        {{ form.id_station_group(class="form-select d-inline-block w-auto") }}
+                                    </span>
+                                </p>
+                                <p class="fs-5"><strong>Примечание:</strong> 
+                                    <span id="note">
+                                        {{ form.note(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto;") }}
+                                    </span>
+                                </p>
+                                <!-- Кнопка "Сохранить" -->
+                                <button type="submit" class="btn btn-outline-primary">Сохранить изменения</button>
+                            
+                                <!-- Кнопка "Сбросить" -->
+                                <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" 
+                                class="btn btn-outline-secondary">
+                                    Сбросить
+                                </a>
+                            </div>
                         </div>
-                    </div>
-            
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <h4 class="card-title text-decoration-underline mb-3">
-                                <strong>Местоположение</strong>
-                            </h4>
-                            <p class="fs-5"><strong>Часть энергосистемы России:</strong> 
-                                {% if station.regional_district.regional_energy_systems %}
-                                    {% for res in station.regional_district.regional_energy_systems %}
-                                        {{ res.union_energy_system.energy_system_type.name }}
-                                    {% endfor %}
-                                {% else %}
-                                    Нет данных
-                                {% endif %}
-                            </p>
-            
-                            <p class="fs-5"><strong>ОЭС:</strong> 
-                                {% if station.regional_district.regional_energy_systems %}
-                                    {% for res in station.regional_district.regional_energy_systems %}
-                                        {{ res.union_energy_system.name }}
-                                    {% endfor %}
-                                {% else %}
-                                    Нет данных
-                                {% endif %}
-                            </p>
-            
-                            <p class="fs-5"><strong>Энергосистема:</strong> 
-                                {% if station.regional_district.regional_energy_systems %}
-                                    {% for res in station.regional_district.regional_energy_systems %}
-                                        {{ res.name }}
-                                    {% endfor %}
-                                {% else %}
-                                    Нет данных
-                                {% endif %}
-                            </p>
-            
-                            <p class="fs-5"><strong>Федеральный округ:</strong> 
-                                {{ station.regional_district.federal_district.name }}
-                            </p>
-            
-                            <p class="fs-5"><strong>Субъект РФ:</strong> 
-                                {{ station.regional_district.name }}
-                            </p>                        
+                
+                        <div class="card mb-4 w-50">
+                            <div class="card-body">
+                                <h4 class="card-title text-decoration-underline mb-3">
+                                    <strong>Местоположение</strong>
+                                </h4>
+                                
+                                <p class="fs-5"><strong>Часть энергосистемы России:</strong> 
+                                    <span id="energy_system_type">
+                                        {% if station.regional_district.regional_energy_systems %}
+                                            {{ station.regional_district.regional_energy_systems[0].union_energy_system.energy_system_type.name }}
+                                        {% else %} Нет данных {% endif %}
+                                    </span>
+                                </p>
+                            
+                                <p class="fs-5"><strong>ОЭС:</strong> 
+                                    <span id="union_energy_system">
+                                        {% if station.regional_district.regional_energy_systems %}
+                                            {{ station.regional_district.regional_energy_systems[0].union_energy_system.name }}
+                                        {% else %} Нет данных {% endif %}
+                                    </span>
+                                </p>
+                            
+                                <p class="fs-5"><strong>Региональная энергосистема:</strong> 
+                                    <span id="regional_energy_system">
+                                        {% if station.regional_district.regional_energy_systems %}
+                                            {{ station.regional_district.regional_energy_systems[0].name }}
+                                        {% else %} Нет данных {% endif %}
+                                    </span>
+                                </p>
+                            
+                                <p class="fs-5"><strong>Федеральный округ:</strong> 
+                                    <span id="federal_district">
+                                        {{ station.regional_district.federal_district.name }}
+                                    </span>
+                                </p>
+
+                                <p class="fs-5"><strong>Субъект РФ:</strong> 
+                                    <span id="id_regional_district_span">
+                                        {{ form.id_regional_district(class="form-select d-inline-block w-auto") }}
+                                    </span>
+                                </p>
+                            
+                                <p class="fs-5"><strong>Местоположение:</strong> 
+                                    <span id="location_span">
+                                        {{ form.location(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto;") }}
+                                    </span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+            </form>
             
+            <!-- Фильтры -->
             <div class="container-fluid mt-4">
                 <div class="row g-3">
                     <div class="col-12">
@@ -237,12 +268,17 @@
                                                     | map(attribute='fuel')
                                                     | first %}
                                         {% if fuel %}
-                                            {{ fuel.fuel_type.name }}
+                                            {% if fuel.fuel_type.id == 0 %}
+                                                &mdash;  <!-- Прочерк, если id = 0 -->
+                                            {% else %}
+                                                {{ fuel.fuel_type.name }}  <!-- Отображаем название топлива -->
+                                            {% endif %}
                                         {% else %}
-                                            &mdash;
+                                            &mdash;  <!-- Прочерк, если нет данных для топлива -->
                                         {% endif %}
                                     </td>
-                                    {% endfor %}
+                                {% endfor %}
+                                
 
                                 </tr>
                     
@@ -475,6 +511,96 @@
         updateValues();
     });
 
+</script>
+
+<!-- Скрипт подсвечивания изменяющихся значений -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Для всех ячеек с классом .power-column
+        document.querySelectorAll(".power-column").forEach(function (cell) {
+            const input = cell.querySelector("input, select, textarea");
+
+            // Инициализация начального значения для каждого элемента (если оно есть)
+            if (input) {
+                const originalValue = input.value.trim();
+                cell.setAttribute("data-prev-value", originalValue);  // Сохраняем первоначальное значение
+            }
+
+            // Слушаем событие изменения значений (например, при изменении input, select или textarea)
+            if (input) {
+                input.addEventListener("change", function () {
+                    const currentValue = input.value.trim();
+                    const previousValue = cell.getAttribute("data-prev-value");
+
+                    // Если значения изменились
+                    if (previousValue !== currentValue) {
+                        // Добавляем класс для подсветки
+                        if (previousValue === "" && currentValue !== "") {
+                            cell.classList.add("highlight-green");  // Из пустого в значение
+                        } else if (previousValue !== "" && currentValue === "") {
+                            cell.classList.add("highlight-red");  // Из значения в пустое
+                        } else {
+                            cell.classList.add("highlight-blue");  // Изменение значения
+                        }
+                    }
+
+                    // Обновляем значение в data-prev-value после изменения
+                    cell.setAttribute("data-prev-value", currentValue);
+                });
+            }
+        });
+    });
+    
+    // Добавляем стили для подсветки
+    const style = document.createElement("style");
+    style.innerHTML = `
+        .highlight-green {
+            background-color: lightgreen !important;
+        }
+        .highlight-red {
+            background-color: lightcoral !important;
+        }
+        .highlight-blue {
+            background-color: lightblue !important;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    
+    
+</script>
+
+<!-- Скрипт для автоматической подстановки данных по наименованию субъекта -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById("id_regional_district").addEventListener("change", function() {
+            let district_id = this.value;
+            
+            // Проверка, выбран ли субъект РФ
+            if (!district_id) return;
+    
+            fetch(`/app/get_energy_system_data/${district_id}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Данные с сервера:", data); // Отладка
+    
+                    // Проверяем, существуют ли элементы перед изменением
+                    if (document.getElementById("federal_district")) {
+                        document.getElementById("federal_district").innerText = data.federal_district || "Нет данных";
+                    }
+                    if (document.getElementById("union_energy_system")) {
+                        document.getElementById("union_energy_system").innerText = data.union_energy_system || "Нет данных";
+                    }
+                    if (document.getElementById("energy_system_type")) {
+                        document.getElementById("energy_system_type").innerText = data.energy_system_type || "Нет данных";
+                    }
+                    if (document.getElementById("regional_energy_system")) {
+                        document.getElementById("regional_energy_system").innerText = data.regional_energy_system || "Нет данных";
+                    }
+                })
+                .catch(error => console.error("Ошибка загрузки данных:", error));
+        });
+    });
 </script>
 
 {% endif %}

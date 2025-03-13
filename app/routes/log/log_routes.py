@@ -12,6 +12,11 @@ def view_logs():
     sort_by = request.args.get('sort_by', 'timestamp')  # Поле для сортировки
     sort_dir = request.args.get('sort_dir', 'desc')  # Направление сортировки
 
+    # Получение количества записей на странице (по умолчанию 10)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 25, 50, 100]:  # Защита от некорректных значений
+        per_page = 10
+
     # Запрос с фильтрацией
     query = Log.query
     if username_filter:
@@ -19,16 +24,21 @@ def view_logs():
     if action_filter:
         query = query.filter(Log.action.ilike(f"%{action_filter}%"))
 
-    # Сортировка
-    if sort_by in ['timestamp', 'username', 'action']:
-        if sort_dir == 'desc':
-            query = query.order_by(db.desc(getattr(Log, sort_by)))
-        else:
-            query = query.order_by(db.asc(getattr(Log, sort_by)))
+    # Проверка, существует ли поле сортировки, чтобы избежать ошибок
+    if hasattr(Log, sort_by):
+        column = getattr(Log, sort_by)
+        query = query.order_by(db.desc(column) if sort_dir == 'desc' else db.asc(column))
 
     # Пагинация
     page = request.args.get('page', 1, type=int)
-    per_page = 10
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    return render_template('logs/logs.html', logs=logs, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir)
+    return render_template(
+        'logs/logs.html',
+        logs=logs,
+        username_filter=username_filter,
+        action_filter=action_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        per_page=per_page  # Передаем, чтобы сохранить в шаблоне
+    )

@@ -52,10 +52,12 @@ class MachineFilterForm(FlaskForm):
         'Номер агрегата',
         validators=[DataRequired(), Length(max=80)]
     )
+
     machine_name = StringField(
         'Название агрегата',
         validators=[DataRequired(), Length(max=80)]
     )
+
     machine_group = StringField(
         'Номер/название группы агрегата',
         validators=[Optional(), Length(max=80)]
@@ -67,8 +69,16 @@ class MachineFilterForm(FlaskForm):
         choices=[],
         validators=[Optional()]
     )
+
     id_machine_type = SelectField(
         'Тип агрегата',
+        coerce=int,
+        choices=[],  # заполняем динамически
+        validators=[Optional()]
+    )
+
+    id_tes_machine_type = SelectField(
+        'Тип агрегата ТЭС',
         coerce=int,
         choices=[],  # заполняем динамически
         validators=[Optional()]
@@ -126,18 +136,26 @@ class MachineFilterForm(FlaskForm):
 
 
 class MachinePowerForm(FlaskForm):
+    class Meta:
+        csrf = False  # Отключаем CSRF для вложенной формы
+
     year = IntegerField('Год', render_kw={'readonly': True})
     p_ust = FloatField('Руст', validators=[Optional(), NumberRange(min=0)])
     p_ogr = FloatField('Рогр', validators=[Optional(), NumberRange(min=0)])
     p_rasp = FloatField('Ррасп', validators=[Optional(), NumberRange(min=0)])
 
 
+
 class MachineFuelForm(FlaskForm):
+    class Meta:
+        csrf = False
     year = IntegerField('Год', render_kw={'readonly': True})
     fuel_type = SelectField('Топливо', coerce=int, validators=[Optional()])
 
 
 class MachineTesTypeForm(FlaskForm):
+    class Meta:
+        csrf = False
     year = IntegerField('Год', render_kw={'readonly': True})
     tes_type = SelectField('Тип ТЭС', coerce=int, validators=[Optional()])
 
