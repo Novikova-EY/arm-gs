@@ -5,13 +5,15 @@ from flask import (
 from . import app_bp
 from app.models.logs_models import Log
 from app.forms.station_forms import StationFilterForm
-from app.models import Station, Machine, RegionalDistrict, StationGroup, RegionalEnergySystem, ConditionType
+from app.forms.machine_forms import MachineFilterSmallForm
+from app.models import Station, Machine, RegionalDistrict, StationGroup, RegionalEnergySystem, ConditionType, GenCompany
 from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
     log_to_db, import_station_list_from_excel, export_station_list_to_excel, get_year_features, 
     aggregate_station_power_values, aggregate_power_by_regional_district, get_station_by_id, get_condition_type, 
-    get_station_types_list, get_gen_companies_list, aggregate_power_by_regional_energy_system, get_station_groups
+    get_station_types_list, aggregate_power_by_regional_energy_system, get_station_groups, get_gen_companies,
+    import_fuel_tes_station_from_excel, group_machines_by_group_and_fuel, 
 )
 from flask_login import login_required
 from app.routes.auth import role_required
@@ -25,6 +27,8 @@ def log_to_db(username, action, details=None):
         db.session.commit()
     except Exception as e:
         print(f"Ошибка записи лога: {e}")
+
+
 from flask import session
 
 @app_bp.route("/station_list", methods=["GET", "POST"])
@@ -149,7 +153,7 @@ def station_list():
                                 regional_district_filter
                                 )
 
-    # ✅ Фильтруем машины В КОНТРОЛЛЕРЕ
+    # Фильтруем машины В КОНТРОЛЛЕРЕ
     if tes_type_filter or tes_machine_type_filter:
         for station in pagination["stations"]:
             station.machines = [
@@ -158,10 +162,10 @@ def station_list():
                 (not tes_machine_type_filter or machine.id_tes_machine_type in tes_machine_type_filter)
             ]
 
-        # ✅ Удаляем станции без машин
+        # Удаляем станции без машин
         filtered_stations = [station for station in pagination["stations"] if station.machines]
 
-        # ✅ Пересчитываем количество станций В БД с учетом фильтров
+        # Пересчитываем количество станций В БД с учетом фильтров
         total_count_query = db.session.query(func.count(Station.id)).join(Station.machines)
 
         if tes_type_filter:
@@ -170,17 +174,17 @@ def station_list():
         if tes_machine_type_filter:
             total_count_query = total_count_query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
 
-        # ✅ Общее число станций в БД (не только на текущей странице)
+        # Общее число станций в БД (не только на текущей странице)
         total_count = total_count_query.scalar()
 
-        # ✅ Пересчитываем количество страниц
+        # Пересчитываем количество страниц
         total_pages = max(1, (total_count + per_page - 1) // per_page) if per_page else 1
 
-        # ✅ Если после фильтрации страница пустая и есть предыдущие страницы — показываем предыдущую
+        # Если после фильтрации страница пустая и есть предыдущие страницы — показываем предыдущую
         if not filtered_stations and page > 1:
             return redirect(url_for('your_view_function', page=page - 1, per_page=per_page))
 
-        # ✅ Обновляем данные в pagination
+        # Обновляем данные в pagination
         pagination["stations"] = filtered_stations
         pagination["total_count"] = total_count
         pagination["total_pages"] = total_pages
@@ -193,13 +197,11 @@ def station_list():
     print("Текущая страница:", pagination["page"])
     print("Всего страниц:", pagination["total_pages"])
 
-    # Собираем уникальные компании для каждой станции
-    for station in pagination["stations"]:
-        get_gen_companies_list(station)
-
     # Собираем типы энергоблоков для каждой станции
     for station in pagination["stations"]:
         get_station_types_list(station)
+    
+    pagination["stations"] = group_machines_by_group_and_fuel(pagination["stations"])
 
     # Сортировка машин внутри каждой станции по id_station_type
     for station in pagination["stations"]:
@@ -291,6 +293,7 @@ def station_list():
         regional_energy_systems_yearly_p_rasp=regional_energy_systems_yearly_p_rasp,
         year_features=year_features,
     )
+
 
 @app_bp.route("/stations_grouped_values", methods=["GET", "POST"])
 @login_required
@@ -415,6 +418,7 @@ def stations_grouped_values():
         year_features=year_features,
     )
 
+
 @app_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
 @login_required
 @role_required('super-admin')
@@ -427,16 +431,16 @@ def station_details(station_id):
     log_to_db(user, f"Открыта страница электростанции {station.name} ({regional_district_name})")
 
     form = StationFilterForm()
+    form_machines = MachineFilterSmallForm()
 
     # Получение параметров запроса с дефолтными значениями
     start_year = request.args.get("start_year", 2021, type=int)
     end_year = request.args.get("end_year", 2031, type=int)
 
     # Получаем данные по станции
-    station.gen_companies = get_gen_companies_list(station)
-    station.station_type = get_station_types_list(station)
     condition_types = get_condition_type()
     station_groups = get_station_groups()
+    gen_companies = get_gen_companies()
 
     station_power_values = aggregate_station_power_values([station])
     stations_yearly_p_ust = station_power_values['stations']['p_ust']
@@ -454,6 +458,7 @@ def station_details(station_id):
     form.id_regional_district.choices = [(d["id"], d["name"]) for d in regional_districts_list]
     form.id_condition_type.choices = [(ct.id, ct.name) for ct in condition_types] or [(0, "не указано")]
     form.id_station_group.choices = [(ct.id, ct.name) for ct in station_groups] or [(0, "не указано")]
+    form_machines.id_gen_company.choices = [(gc.id, gc.name) for gc in gen_companies] or [(0, "не указано")]
 
     if request.method == "GET":
         form.process(obj=station)
@@ -463,22 +468,24 @@ def station_details(station_id):
         if not form.validate():
             print("Ошибки в form:", form.errors)
 
+        changes = []
+
         if form.validate_on_submit():
             try:
-                changes = []
-                
+                # Проверяем название станции
                 if station.name != form.name.data:
                     changes.append(f"Название: {station.name} → {form.name.data}")
                     station.name = form.name.data
                 
-                new_condition_type_id = int(form.id_condition_type.data)  # Преобразуем в int
+                # Проверяем состояние станции
+                new_condition_type_id = int(form.id_condition_type.data)
                 new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
                 if new_condition_type:
                     old_value = station.condition_type.name if station.condition_type else "не указано"
                     new_value = new_condition_type.name
                     if old_value != new_value:
                         changes.append(f"Состояние: {old_value} → {new_value}")
-                    station.id_condition_type = new_condition_type.id  # Обновляем ID состояния
+                    station.id_condition_type = new_condition_type.id
                 else:
                     flash("Ошибка: выбранное состояние не найдено!", "danger")
 
@@ -513,7 +520,7 @@ def station_details(station_id):
                 new_location = form.location.data.strip() if form.location.data.strip() else None
                 if station.location != new_location:
                     changes.append(f"Местоположение: {station.location} → {new_location}")
-                    station.location = new_location  # ✅ Записываем None вместо ''
+                    station.location = new_location
 
                 # Обновляем федеральный округ
                 new_regional_district_obj = db.session.query(RegionalDistrict).filter_by(id=form.id_regional_district.data).first()
@@ -523,7 +530,7 @@ def station_details(station_id):
                     new_federal_district = new_regional_district_obj.federal_district.name if new_regional_district_obj.federal_district else "не указано"
                     if old_federal_district != new_federal_district:
                         changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
-                    station.regional_district = new_regional_district_obj  # ✅ Теперь присваиваем ORM-объект
+                    station.regional_district = new_regional_district_obj
 
                 # Обновляем энергосистему
                 related_res_obj = db.session.query(RegionalEnergySystem).filter(
@@ -563,7 +570,7 @@ def station_details(station_id):
                     if old_union_energy_system != new_union_energy_system:
                         changes.append(f"ОЭС: {old_union_energy_system} → {new_union_energy_system}")
 
-                    station.regional_district.regional_energy_systems = [related_res_obj]  # ✅ Теперь ORM-объект
+                    station.regional_district.regional_energy_systems = [related_res_obj]
 
 
                 # Сохраняем в БД
@@ -577,14 +584,50 @@ def station_details(station_id):
 
             except Exception as e:
                 db.session.rollback()
-                print(f"❌ Ошибка при обновлении: {str(e)}")
+                print(f"Ошибка при обновлении: {str(e)}")
                 flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
                 log_to_db(user, f"Ошибка обновления электростанции {station.name} ({regional_district_name})", details=str(e))
 
-   
+        if not form_machines.validate():
+            print("Ошибки в form_machines:", form_machines.errors)
+
+        if form_machines.validate_on_submit():
+            for machine in station.machines:
+                fuel_so_key = f"fuel_so_{machine.id}"
+                gen_company_key = f"id_gen_company_{machine.id}"
+
+                new_fuel_so = request.form.get(fuel_so_key, "").strip()
+                new_gen_company_id = request.form.get(gen_company_key, type=int)
+
+                if machine.fuel_so != new_fuel_so:
+                    changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
+                    machine.fuel_so = new_fuel_so
+
+                # Обновляем собственника агрегата
+                if new_gen_company_id:
+                    new_gen_company = db.session.query(GenCompany).filter_by(id=new_gen_company_id).first()
+                    if new_gen_company:
+                        old_gen_company_name = machine.gen_company.name if machine.gen_company else "не указано"
+                        if machine.gen_company is None or machine.gen_company.id != new_gen_company_id:
+                            changes.append(f"Агрегат {machine.machine_number}: Собственник {old_gen_company_name} → {new_gen_company.name}")
+                            machine.gen_company = new_gen_company
+                    else:
+                        flash(f"Ошибка: выбранная генерирующая компания не существует!", "danger")
+
+
+            db.session.commit()
+
+            if changes:
+                log_to_db(user, f"Обновлены агрегаты станции {station.name}", details="; ".join(changes))
+                flash("Изменения агрегатов сохранены!", "success")
+
+            return redirect(url_for("app_bp.station_details", station_id=station.id, **request.args))
+
+    
     return render_template(
         "stations/station_details.html",
         form=form,
+        form_machines=form_machines,
         station=station,
         start_year=start_year,
         end_year=end_year, 
@@ -632,14 +675,12 @@ def get_energy_system_data(regional_district_id):
     return jsonify(data)
 
 
-
-
 from app import db
 from flask import request, send_file
 from datetime import datetime
 
-@app_bp.route("/import_stations_to_sql", methods=["POST"])
-def import_station_list_to_sql_routes():
+@app_bp.route("/import_stations_from_excel", methods=["POST"])
+def import_station_list_from_excel_routes():
     """Маршрут для импорта данных электростанций из Excel."""
     
     user = session.get('username', 'Неизвестный пользователь')
@@ -660,6 +701,42 @@ def import_station_list_to_sql_routes():
 
     try:
         result = import_station_list_from_excel(file, user)
+        flash(result['message'], "success")
+    except ValueError as e:
+        flash(str(e), "danger")
+    except Exception as e:
+        current_app.logger.error(f"Ошибка импорта: {e}")
+        flash("Ошибка импорта данных.", "danger")
+
+    return redirect(url_for("app_bp.station_list"))
+
+
+from app import db
+from flask import request, send_file
+from datetime import datetime
+
+@app_bp.route("/import_fuel_tes_station_from_excel", methods=["POST"])
+def import_fuel_tes_station_from_excel_routes():
+    """Маршрут для импорта данных по топливу электростанций из Excel."""
+    
+    user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат импорт данных по топливу электростанций из Excel")
+
+    if 'file' not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(url_for("app_bp.station_list"))
+
+    file = request.files['file']
+    if file.mimetype not in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("app_bp.station_list"))
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("app_bp.station_list"))
+
+    try:
+        result = import_fuel_tes_station_from_excel(file, user)
         flash(result['message'], "success")
     except ValueError as e:
         flash(str(e), "danger")

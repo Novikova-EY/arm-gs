@@ -115,9 +115,6 @@ class Station(db.Model):
     # наименование дополнительное    
     name_additional = db.Column(db.String(80), unique=True, nullable=True)
 
-    # топливо по СО ЕЭС    
-    fuel = db.Column(db.String(80), unique=True, nullable=True)
-    
     # id субъекта РФ
     id_regional_district = db.Column(
         db.Integer, 
@@ -150,6 +147,27 @@ class Station(db.Model):
     
     # примечание
     note = db.Column(db.String(80), unique=False, nullable=True)
+
+    @property
+    def gen_companies(self):
+        if not self.machines:
+            return None
+        gen_companies = {machine.gen_company.name for machine in self.machines if machine.gen_company}
+        return ", ".join(gen_companies) if gen_companies else None
+    
+    @property
+    def station_type(self):
+        if not self.machines:
+            return None  # Если нет агрегатов, возвращаем None
+        
+        station_types = {machine.station_type.name for machine in self.machines if machine.station_type}
+        
+        if len(station_types) == 1:
+            return next(iter(station_types))
+        elif len(station_types) > 1:
+            return "Разные типы"
+        else:
+            return None
 
 
 # Модель для типов агрегатов
@@ -239,6 +257,9 @@ class Machine(db.Model):
 
     # номер/название группы агрегата
     machine_group = db.Column(db.String(255), nullable=False)
+
+    # название агрегата
+    fuel_so = db.Column(db.String(255), nullable=False)
 
     # id типа электростанции (АЭС, ТЭС, ...)
     id_station_type = db.Column(

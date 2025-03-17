@@ -6,7 +6,7 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-6">Вернуться на главную страницу</a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
     </div>
 
     <h1 class="text-center mb-4">Таблица электростанций</h1>
@@ -36,11 +36,11 @@
     <div class="container-fluid mt-4">
         <div class="row g-3">
             <!-- Первая строка фильтров -->
-            <div class="col-12 ">
-                <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="filter-container d-flex">
+            <div class="col-12">
+                <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex flex-nowrap align-items-center gap-2">
                     <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
                     {% for key, value in request.args.items() %}
-                        {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter"] %}
+                        {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter"] %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                     {% endfor %}
@@ -136,7 +136,7 @@
                 <div class="d-flex align-items-center w-100">
                     <!-- Форма загрузки данных из Excel -->
                     <div class="p-3" style="width: 20%;">
-                        <form action="{{ url_for('app_bp.import_station_list_to_sql_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                        <form action="{{ url_for('app_bp.import_station_list_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
                             {{ form.csrf_token }}
                             <div class="me-2 w-100">
                                 <input type="file" name="file" id="file" class="form-control">
@@ -145,18 +145,32 @@
                         </form>
                     </div>
 
+                    <!-- Кнопка подгрузки данных по топливу -->
+                    <div class="p-3" style="width: 20%;">
+                        <form action="{{ url_for('app_bp.import_fuel_tes_station_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                            {{ form.csrf_token }}
+                            <div class="me-2 w-100">
+                                <input type="file" name="file" id="file" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger">Подгрузка <br> топлива</button>
+                        </form>
+                    </div>
+
                     <!-- Кнопка выгрузки данных в Excel -->
-                    <div class="p-3" style="width: 15%;">
+                    <div class="p-3" style="width: 14%;">
                         <button id="exportExcel" class="btn btn-outline-success">Выгрузить в Excel <br> (СиПР ЭЭС. Приложение А)</button>
                     </div>                        
                     
-                    <div class="p-3" tyle="width: 13%;">
+
+                    <!-- Кнопка выгрузки данных по регионам -->
+                    <div class="p-3" tyle="width: 5%;">
                         <a href="{{ url_for('app_bp.stations_grouped_values') }}" 
                            class="btn btn-outline-warning text-dark">
-                            Итоговые значения по регионам
+                            Итоговые значения <br> по регионам
                         </a>
                     </div>
                     
+                    <!-- Кнопка выбора годов -->
                     <div class="p-3" style="width: 20%;">
                         <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
                             <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
@@ -186,7 +200,7 @@
                     </div>
                     
                     <!-- Чекбокс "Отображать ограничения мощности" -->
-                    <div class="p-3 text-center" style="width: 10%;">
+                    <div class="p-3 text-center" style="width: 12%;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
                             <label class="form-check-label" for="toggleP_Ogr">
@@ -196,7 +210,7 @@
                     </div>
                     
                     <!-- Чекбокс "Отображать располагаемую мощность" -->
-                    <div class="p-3 text-center" style="width: 10%;">
+                    <div class="p-3 text-center" style="width: 12%;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
                             <label class="form-check-label" for="toggleP_Rasp">
@@ -253,15 +267,16 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="7">Электростанция</th>
+                    <th colspan="8">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                 </tr>
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 50px;">гр.</th>
                     <th style="width: 80px;">cт. №</th>
-                    <th style="width: 250px;">Тип агрегата</th>
+                    <th style="width: 200px;">Тип агрегата</th>
                     <th style="width: 100px;">Год ввода</th>
+                    
                     <!-- Тип электростанции -->
                     <th style="width: 150px; text-align: center;">
                         <div class="dropdown">
@@ -324,6 +339,7 @@
                             </ul>
                         </div>
                     </th>
+                    <th style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
                     <th style="width: 50px; text-align: center;">
                         Тип <br> мощ-ти
                     </th>
@@ -386,27 +402,29 @@
                                                 {{ station.name }}
                                             </a>
                                         </td>
-                                        <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
-                                            {{ station.gen_companies }}
-                                        </td>
-
-                                        <td class="text-center" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
+                                        <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+                                            {{ station.gen_companies if station.gen_companies else '—' }}
                                         </td>
                                     </tr>
 
                                         {% for machine in station.machines %}
                                         <!-- Первая строка: p_ust -->
                                         <tr class="text-center machine-row" style="vertical-align: middle;">
-                                            <td class="rowspan-td" rowspan="3">{{ machine.machine_group }}</td>
+                                            {% if machine.group_rowspan > 0 %}
+                                                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">{{ machine.machine_group }}</td>
+                                            {% endif %}
                                             <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
                                             <td class="rowspan-td" rowspan="3">
                                                 <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                                                     {{ machine.machine_name }}
                                                 </a></td>
                                             <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
-                                            <td class="rowspan-td" rowspan="3">{{ machine.station_type.name }}</td>
-                                            <td class="rowspan-td" rowspan="3">{{ machine.tes_type.name }}</td>
-                                            <td class="rowspan-td" rowspan="3">{{ machine.tes_machine_type.name }}</td>
+                                            <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else '—'}}</td>
+                                            <td class="rowspan-td" rowspan="3">{{ machine.tes_type.name if machine.tes_type.name else '—'}}</td>
+                                            <td class="rowspan-td" rowspan="3">{{ machine.tes_machine_type.name if machine.tes_machine_type.name else '—'}}</td>
+                                            {% if machine.fuel_rowspan > 0 %}
+                                                <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}">{{ machine.fuel_so }}</td>
+                                            {% endif %}
                                             
                                             <td class="text-center" style="font-weight: bold;">Руст</td>
                                             {% for year in range(start_year, end_year + 1) %}
@@ -432,12 +450,12 @@
                                                             | first %}
                                                 {% if fuel %}
                                                     {% if fuel.fuel_type.id == 0 %}
-                                                        &mdash;  <!-- Прочерк, если id = 0 -->
+                                                        &mdash;
                                                     {% else %}
-                                                        {{ fuel.fuel_type.name }}  <!-- Отображаем название топлива -->
+                                                        {{ fuel.fuel_type.name }}
                                                     {% endif %}
                                                 {% else %}
-                                                    &mdash;  <!-- Прочерк, если нет данных для топлива -->
+                                                    &mdash;
                                                 {% endif %}
                                             </td>
                                         {% endfor %}
@@ -485,7 +503,7 @@
                                     <!-- Первая строка: p_ust -->
                                     {% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
                                         <tr class="text-center total-power-row" style="vertical-align: middle;">
-                                            <td class="total-row-cell" rowspan="3" colspan="7" style="font-weight: bold;">
+                                            <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold;">
                                                 Всего по станции:
                                             </td>
                                             <td class="text-center" style="font-weight: bold;">Руст</td>
@@ -915,7 +933,7 @@
         document.querySelectorAll("tr").forEach(row => {
             let powerCells = row.querySelectorAll(".power-column");
             let fuelCells = row.querySelectorAll(".fuel-column");
-            
+
             let previousPowerCell = null;
             let previousFuelCell = null;
 
@@ -923,20 +941,34 @@
                 let currentValue = cell.textContent.trim();
                 let currentNumericValue = parseFloat(currentValue.replace(',', '.'));
                 let isCurrentDash = currentValue === "-" || currentValue === "—";
+
+                if (!Number.isFinite(currentNumericValue)) {
+                    currentNumericValue = null;
+                }
+
                 cell.setAttribute("data-prev-value", currentValue);
-                
+
                 if (previousPowerCell) {
                     let previousValue = previousPowerCell.getAttribute("data-prev-value");
                     let previousNumericValue = parseFloat(previousValue.replace(',', '.'));
                     let isPreviousDash = previousValue === "-" || previousValue === "—";
 
-                    if (previousNumericValue === 0 && currentNumericValue !== 0) {
+                    if (!Number.isFinite(previousNumericValue)) {
+                        previousNumericValue = null;
+                    }
+
+                    console.log(`Мощность: было ${previousValue} (${previousNumericValue}), стало ${currentValue} (${currentNumericValue})`);
+
+                    if ((previousNumericValue === 0 || isPreviousDash) && currentNumericValue > 0) {
+                        console.log("✅ Подсветка ЗЕЛЕНЫМ (увеличение мощности 0/прочерк → X)");
                         previousPowerCell.classList.add("highlight-green");
                         cell.classList.add("highlight-green");
-                    } else if (previousNumericValue !== 0 && currentNumericValue === 0) {
+                    } else if (previousNumericValue > 0 && (currentNumericValue === 0 || isCurrentDash)) {
+                        console.log("❌ Подсветка КРАСНЫМ (мощность X → 0/прочерк)");
                         previousPowerCell.classList.add("highlight-red");
                         cell.classList.add("highlight-red");
                     } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+                        console.log("🔵 Подсветка СИНИМ (изменение мощности)");
                         previousPowerCell.classList.add("highlight-blue");
                         cell.classList.add("highlight-blue");
                     }
@@ -948,12 +980,23 @@
                 let currentValue = cell.textContent.trim();
                 let isCurrentDash = currentValue === "-" || currentValue === "—";
                 cell.setAttribute("data-prev-value", currentValue);
-                
+
                 if (previousFuelCell) {
                     let previousValue = previousFuelCell.getAttribute("data-prev-value");
                     let isPreviousDash = previousValue === "-" || previousValue === "—";
-                    
-                    if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+
+                    console.log(`Топливо: было "${previousValue}", стало "${currentValue}"`);
+
+                    if (isPreviousDash && !isCurrentDash) {
+                        console.log("✅ Подсветка ЗЕЛЕНЫМ (появилось топливо)");
+                        previousFuelCell.classList.add("highlight-green");
+                        cell.classList.add("highlight-green");
+                    } else if (!isPreviousDash && isCurrentDash) {
+                        console.log("❌ Подсветка КРАСНЫМ (топливо исчезло)");
+                        previousFuelCell.classList.add("highlight-red");
+                        cell.classList.add("highlight-red");
+                    } else if (previousValue !== currentValue) {
+                        console.log("🔵 Подсветка СИНИМ (изменение топлива)");
                         previousFuelCell.classList.add("highlight-blue");
                         cell.classList.add("highlight-blue");
                     }
@@ -977,6 +1020,32 @@
         }
     `;
     document.head.appendChild(style);
+</script>
+
+
+<!-- Скрипт высоты ячеек групп и топлива по СО ЕЭС в зав-ти от отображения располагаемой мощности и ограничений мощности-->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function updateFuelCellRowspans() {
+            let showPOgr  = document.getElementById("toggleP_Ogr").checked;
+            let showPRasp = document.getElementById("toggleP_Rasp").checked;
+            let rowMultiplier = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+
+            document.querySelectorAll(".fuel-cell").forEach(cell => {
+                let baseRowspan = parseInt(cell.getAttribute("data-base-rowspan"), 10) || 1;
+                cell.setAttribute("rowspan", baseRowspan * rowMultiplier);
+                cell.style.display = "table-cell";
+            });
+        }
+
+        document.getElementById("toggleP_Ogr").addEventListener("change", updateFuelCellRowspans);
+        document.getElementById("toggleP_Rasp").addEventListener("change", updateFuelCellRowspans);
+
+        document.querySelectorAll(".fuel-cell").forEach(cell => {
+            cell.setAttribute("data-base-rowspan", cell.getAttribute("rowspan") || "1");
+        });
+        updateFuelCellRowspans();
+    });
 </script>
 {% endif %}
 {% endblock %}

@@ -84,7 +84,33 @@ def update_gen_company(data, user):
         log_to_db(user, "Неизвестная ошибка обновления генерирующей компании", str(e))
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
-def gen_company_name_clear(name_to_change):
+
+import re
+
+# Подход: Просто меняем кавычки слева направо по принципу
+# нечетная кавычка = открывающая «
+# четная кавычка = закрывающая »
+
+def replace_quotes_sequentially(text: str) -> str:
+    result = list(text)
+    quote_indices = []
+    for i, ch in enumerate(text):
+        if ch == '"':
+            quote_indices.append(i)
+
+    # Заменяем по очереди:
+    for idx, pos in enumerate(quote_indices):
+        if idx % 2 == 0:
+            # нечетный индекс пары (с точки зрения человеческого счёта) – «
+            result[pos] = '«'
+        else:
+            # чётный индекс пары – »
+            result[pos] = '»'
+
+    return ''.join(result)
+
+
+def clean_name(name_to_change):
     if not isinstance(name_to_change, str):
         return name_to_change
     
@@ -97,13 +123,18 @@ def gen_company_name_clear(name_to_change):
     name = name.replace('\xa0', ' ')  # Заменяем неразрывные пробелы на обычные
     name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
 
-    # Исправляем кавычки "..." → «...» (основная замена)
-    name = re.sub(r'"\s*([^"]+?)\s*"', r'«\1»', name)
-
-    # Исправляем случай, когда есть вложенные двойные кавычки внутри угловых
-    name = re.sub(r'«([^«»]*)"([^«»]+?)»', r'«\1«\2»»', name)
-
+    # Заменяем пробел-тире-пробел на пробел-длинное тире-пробел
+    name = re.sub(r'\s-\s', ' – ', name)
+    
+    # Расстановка кавычек в зависимости от их положения
+    name = re.sub(r'(?<=\s)"(\S)', r' «\1', name)  # Открывающая кавычка перед словом
+    name = re.sub(r'(?<=\w)"(?=\w)', r' «', name)  # Открывающая кавычка внутри слова с пробелом перед ней
+    name = re.sub(r'"(?=\s|$)', r'»', name)  # Закрывающая кавычка в конце слова
+    name = re.sub(r'(?<!«)(\S)"', r'\1»', name)  # Закрывающая кавычка, если перед ней нет открывающей
+    name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
+    
     return name
+
 
 
 def add_gen_company(data, user):
@@ -123,7 +154,7 @@ def add_gen_company(data, user):
         name = record.get("name")
          
         # Очистка и обработка имени
-        name = gen_company_name_clear(name)
+        name = clean_name(name)
 
         # Проверка на наличие необходимых данных
         if not name:
@@ -227,7 +258,7 @@ def import_gen_company_from_excel(file, user):
             raise ValueError("Неверный формат файла. Отсутствуют необходимые столбцы.")
 
         # Очистка данных
-        data['name'] = data['name'].apply(gen_company_name_clear)
+        data['name'] = data['name'].apply(clean_name)
         data = data.drop_duplicates(subset=['name']).dropna(subset=['name'])
 
         # Разрываем связь с gen_companies в machines

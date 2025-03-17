@@ -132,5 +132,3 @@ class UnionEnergySystem(db.Model):
         'EnergySystemType',
         back_populates='union_energy_systems'
     )
-
-

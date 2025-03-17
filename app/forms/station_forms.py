@@ -40,12 +40,10 @@ class StationFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
-    # ID типа электростанции
-    id_station_type = SelectField(
+    # Список генерирующих компаний
+    station_type = TextAreaField(
         'Тип электростанции',
-        coerce=int,
-        choices=[],  # Заполняется динамически
-        validators=[Optional()]
+        validators=[Optional(), Length(max=256)]
     )
 
     # Список генерирующих компаний
@@ -66,6 +64,12 @@ class StationFilterForm(FlaskForm):
     fuel_types = TextAreaField(
         'Виды топлива',
         validators=[Optional(), Length(max=256)]
+    )
+
+        # Местоположение
+    fuel_so = StringField(
+        'Топливо (по СО ЕЭС)',
+        validators=[Optional(), Length(max=255)]
     )
 
     # Номер КТО

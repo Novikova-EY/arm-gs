@@ -63,6 +63,11 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
+    fuel_so = StringField(
+        'Топливо (по СО ЕЭС)',
+        validators=[Optional(), Length(max=80)]
+    )
+
     id_station_type = SelectField(
         'Тип электростанции',
         coerce=int,
@@ -133,6 +138,45 @@ class MachineFilterForm(FlaskForm):
         'Примечание',
         validators=[Optional(), Length(max=80)]
     )
+
+class MachineFilterSmallForm(FlaskForm):
+    csrf_token = HiddenField()
+
+    id_machine = HiddenField("ID")
+
+    id_gen_company = SelectField(
+        'Организация-собственник',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
+    fuel_so = StringField(
+        'Топливо (по СО ЕЭС)',
+        validators=[Optional(), Length(max=80)]
+    )
+
+    id_station_type = SelectField(
+        'Тип электростанции',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
+    id_machine_type = SelectField(
+        'Тип агрегата',
+        coerce=int,
+        choices=[],  # заполняем динамически
+        validators=[Optional()]
+    )
+
+    id_tes_machine_type = SelectField(
+        'Тип агрегата ТЭС',
+        coerce=int,
+        choices=[],  # заполняем динамически
+        validators=[Optional()]
+    )
+
 
 
 class MachinePowerForm(FlaskForm):

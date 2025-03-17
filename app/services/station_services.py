@@ -3,11 +3,13 @@ from app import db
 from app.models.logs_models import Log
 from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyArea
 from app.models.territories_models import RegionalDistrict, FederalDistrict
-from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup
+from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup, Machine
 from app.models import Year, Fuel, GenCompany  
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import func
 from decimal import Decimal
+from app.services.gen_company_services import clean_name
+from collections import defaultdict
 
 
 def log_to_db(username, action, details=None):
@@ -208,7 +210,42 @@ def get_filtered_station_ids(
     return query.subquery()
 
 
-from collections import defaultdict
+def group_machines_by_group_and_fuel(stations):
+    """Сначала группирует машины по fuel_so, затем по machine_group, рассчитывает rowspan независимо."""
+
+    for station in stations:
+        # Группировка машин по fuel_so (топливо сначала)
+        fuel_groups = defaultdict(list)
+        for machine in station.machines:
+            fuel_groups[machine.fuel_so].append(machine)
+
+        # Теперь внутри каждой группы fuel_so группируем по machine_group
+        fuel_sorted_machines = []  # Список с машинами в новом порядке
+        for fuel, fuel_machines in fuel_groups.items():
+            # Применяем rowspan для fuel_so
+            fuel_machines[0].fuel_rowspan = len(fuel_machines)
+            for machine in fuel_machines[1:]:
+                machine.fuel_rowspan = 0  # Остальные скрывают ячейку топлива
+
+            # Группировка внутри fuel_so по machine_group
+            group_groups = defaultdict(list)
+            for machine in fuel_machines:
+                group_groups[machine.machine_group].append(machine)
+
+            # Применяем rowspan для machine_group внутри fuel_so
+            for group, group_machines in group_groups.items():
+                group_machines[0].group_rowspan = len(group_machines)
+                for machine in group_machines[1:]:
+                    machine.group_rowspan = 0  # Остальные скрывают ячейку группы
+
+                # Добавляем в итоговый список
+                fuel_sorted_machines.extend(group_machines)
+
+        # Обновляем порядок машин в станции
+        station.machines = fuel_sorted_machines
+
+    return stations
+
 
 def group_stations_hierarchy(stations):
     grouped_data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
@@ -390,6 +427,10 @@ def get_station_types_list(station):
     return station_type
 
 
+def get_gen_companies():
+    """Получает список генкомпаний'."""
+    return GenCompany.query.order_by(GenCompany.id).all()
+
 def get_gen_companies_list(station):
     if not station or not station.machines:
         return None
@@ -401,6 +442,7 @@ def get_gen_companies_list(station):
 def get_station_groups():
     """Получает список групп электростанций'."""
     return StationGroup.query.all()
+
 
 def get_condition_type():
     """Получает список типов состояний."""
@@ -729,28 +771,6 @@ import pandas as pd
 from app import db
 from datetime import datetime
 
-# Функция для очистки текста
-def clean_name(name_to_change):
-    if not isinstance(name_to_change, str):
-        return name_to_change
-    
-    # Проверка на строку 'nan', игнорируем её
-    if name_to_change.strip().lower() == "nan":
-        return None
-    
-    # Очищаем строку
-    name = name_to_change.strip()
-    name = name.replace('\xa0', ' ')  # Заменяем неразрывные пробелы на обычные
-    name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
-
-    # Исправляем кавычки "..." → «...» (основная замена)
-    name = re.sub(r'"\s*([^"]+?)\s*"', r'«\1»', name)
-
-    # Исправляем случай, когда есть вложенные двойные кавычки внутри угловых
-    name = re.sub(r'«([^«»]*)"([^«»]+?)»', r'«\1«\2»»', name)
-
-    return name
-
 
 # Функция для конверстиции даты в формат 'гггг-мм-дд'
 def convert_date(date_value):
@@ -789,7 +809,7 @@ def safe_value(value):
 # Функция для импорта списка станций с параметрами в базу данных
 def import_station_list_from_excel(file, user):
     xls = pd.ExcelFile(file)
-    df = xls.parse('станции', header=0)
+    df = xls.parse('список', header=0)
     df = df.dropna(how='all')
 
     current_station = None
@@ -797,8 +817,8 @@ def import_station_list_from_excel(file, user):
     last_machine = None
     previous_was_machine = False
 
-    start_year = Config.START_YEAR
-    end_year = Config.END_YEAR
+    start_year = 2021
+    end_year = 2031
 
     for index, row in df.iterrows():
         # Пропускаем полностью пустые строки
@@ -829,14 +849,16 @@ def import_station_list_from_excel(file, user):
                 log_to_db(user, "Создание станции", f"Создана станция: {station_name}")
                 print("Создана электростанция", station_name)
             else:
-                changes = []
-                if station.id_regional_district != regional_district.id:
-                    changes.append(f"id_regional_district: {station.id_regional_district} → {regional_district.id}")
-                    station.id_regional_district = regional_district.id if regional_district else None
-                    if changes:
-                        db.session.commit()
-                        log_to_db(user, "Обновление станции", f"Станция {station_name} обновлена: {', '.join(changes)}")
-                        print("Обновлена электростанция", station_name)
+                changes = {}
+                if station.id_regional_district != (regional_district.id if regional_district else None):
+                    changes['id_regional_district'] = regional_district.id if regional_district else None
+                
+                if changes:
+                    for key, value in changes.items():
+                        setattr(station, key, value)
+                    db.session.commit()
+                    log_to_db(user, "Обновление станции", f"Обновлена станция: {station.name}, изменения: {changes}")
+                    print("Обновлена электростанция", station_name)
 
             current_station = station
             current_machine = None
@@ -857,7 +879,6 @@ def import_station_list_from_excel(file, user):
                     machine_group = str(int(machine_group)) if machine_group.is_integer() else str(machine_group)
                 else:
                     machine_group = str(machine_group).strip()
-
 
             machine_number = clean_name(row.get('machine_number'))
 
@@ -910,13 +931,13 @@ def import_station_list_from_excel(file, user):
                     changes.append(f"id_tes_machine_type: {machine.id_tes_machine_type} → {TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None}")
                     machine.id_tes_machine_type = TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None
 
-                if machine.id_machine_type != (MachineType.query.filter_by(id=0).first().id):
-                    changes.append(f"id_machine_type: {machine.id_machine_type} → {MachineType.query.filter_by(id=0).first().id}")
-                    machine.id_machine_type = MachineType.query.filter_by(id=0).first().id
+                if machine.id_machine_type != (MachineType.query.filter_by(id=100).first().id):
+                    changes.append(f"id_machine_type: {machine.id_machine_type} → {MachineType.query.filter_by(id=100).first().id}")
+                    machine.id_machine_type = MachineType.query.filter_by(id=100).first().id
 
-                if machine.id_energy_area != (EnergyArea.query.filter_by(id=0).first().id):
-                    changes.append(f"id_energy_area: {machine.id_energy_area} → {EnergyArea.query.filter_by(id=0).first().id}")
-                    machine.id_energy_area = EnergyArea.query.filter_by(id=0).first().id
+                if machine.id_energy_area != (EnergyArea.query.filter_by(id=100).first().id):
+                    changes.append(f"id_energy_area: {machine.id_energy_area} → {EnergyArea.query.filter_by(id=100).first().id}")
+                    machine.id_energy_area = EnergyArea.query.filter_by(id=100).first().id
 
                 if machine.date_exploitation != (row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None):
                     changes.append(f"date_exploitation: {machine.date_exploitation} → {row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None}")
@@ -984,6 +1005,8 @@ def import_station_list_from_excel(file, user):
                     note=clean_name(row['note']) if not pd.isna(row['note']) else None,
                     id_station_type=StationType.query.filter_by(name=clean_name(row['station_type'])).first().id if not pd.isna(row['station_type']) else None,
                     id_tes_type=TesType.query.filter_by(name=clean_name(row['tes_type'])).first().id if not pd.isna(row['tes_type']) else None,
+                    id_machine_type=MachineType.query.filter_by(id=100).first().id,
+                    id_energy_area=EnergyArea.query.filter_by(id=100).first().id,
                     id_tes_machine_type=TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None,
                     date_commission_expected=convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None,
                     date_commission_fact=convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None,
@@ -1021,11 +1044,15 @@ def import_station_list_from_excel(file, user):
                 if machine_power:
                     if machine_power.p_ust != p_ust:
                         machine_power.p_ust = p_ust
-                        log_to_db(user, "Обновление мощности", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: p_ust {machine_power.p_ust} → {p_ust}")
+                        log_to_db(user, "Обновление мощности", 
+                                f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, "
+                                f"год {year}: p_ust {machine_power.p_ust} → {p_ust}")
                 else:
                     machine_power = MachinePower(year_number=year, id_machine=machine.id, p_ust=p_ust)
                     db.session.add(machine_power)
-                    log_to_db(user, "Создание мощности", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: p_ust {p_ust}")
+                    log_to_db(user, "Создание мощности", 
+                            f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, "
+                            f"год {year}: p_ust {p_ust}")
 
                 print(f"Установленная мощность для машины {current_machine.machine_number}, год {year}: {p_ust}")
 
@@ -1034,22 +1061,44 @@ def import_station_list_from_excel(file, user):
 
                 if tes_type:
                     tes_type_id = tes_type.id
+                    tes_type_name = tes_type.name  # Теперь это безопасно
+
+                    machine_tes_type = MachineTesType.query.filter_by(
+                        year_number=year, 
+                        id_machine=current_machine.id
+                    ).first()
+
+                    if p_ust == 0:
+                        tes_type_id = 100
+                    else:
+                        tes_type = TesType.query.filter_by(id=current_machine.id_tes_type).first()
+                        tes_type_id = tes_type.id if tes_type else None
+
+
+                    if machine_tes_type:
+                        if machine_tes_type.id_tes_type != tes_type_id:
+                            log_to_db(
+                                user, "Обновление типа ТЭС", 
+                                f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: "
+                                f"tes_type {machine_tes_type.tes_type.name if machine_tes_type.tes_type else 'не указано'} → {tes_type_name}"
+                            )
+                            machine_tes_type.id_tes_type = tes_type_id
+                    else:
+                        machine_tes_type = MachineTesType(
+                            year_number=year, 
+                            id_machine=current_machine.id,  # Исправлено (было `machine.id`)
+                            id_tes_type=tes_type_id
+                        )
+                        db.session.add(machine_tes_type)
+                        log_to_db(
+                            user, "Создание типа ТЭС", 
+                            f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: tes_type {tes_type_name}"
+                        )
+
+                    print(f"Тип ТЭС для машины {current_machine.machine_number}, год {year}: {tes_type_id}")
                 else:
-                    tes_type_id = None
-
-
-                machine_tes_type = MachineTesType.query.filter_by(year_number=year, id_machine=current_machine.id).first()
-
-                if machine_tes_type:
-                    if machine_tes_type.id_tes_type != tes_type_id:
-                        machine_tes_type.id_tes_type = tes_type_id
-                        log_to_db(user, "Обновление типа ТЭС", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: tes_type {machine_power.machine_tes_type.name} → {tes_type.machine_tes_type}")
-                else:
-                    machine_tes_type = MachineTesType(year_number=year, id_machine=machine.id, id_tes_type=tes_type_id)
-                    db.session.add(machine_tes_type)
-                    log_to_db(user, "Создание типа ТЭС", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: tes_type {machine_tes_type.name}")
-
-                print(f"Тип ТЭС для машины {current_machine.machine_number}, год {year}: {tes_type_id}")
+                    print(f"У машины {current_machine.machine_number} нет типа ТЭС.")
+                    tes_type_id = None  # Безопасное присвоение None
 
                 # Вносим данные о типе топлива
                 fuel_name = clean_name(row.get(f'fuel_{year}'))
@@ -1075,12 +1124,12 @@ def import_station_list_from_excel(file, user):
                     if not machine_fuel:
                         machine_fuel = MachineFuel(year_number=year, id_machine=current_machine.id, id_fuel=fuel.id)
                         db.session.add(machine_fuel)
-                        log_to_db(user, "Создание вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {machine_fuel.name}")
+                        log_to_db(user, "Создание вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {fuel.name}")
                     else:
                         # Обновляем id_fuel, если оно изменилось
                         if machine_fuel.id_fuel != fuel.id:
                             machine_fuel.id_fuel = fuel.id
-                            log_to_db(user, "Обновление вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {machine_fuel.machine_fuel.name} → {tes_type.machine_fuel}")
+                            log_to_db(user, "Обновление вида топлива", f"Станция: {current_station.name}, агрегат: {current_machine.machine_number} - {current_machine.machine_name}, год {year}: machine_fuel {fuel.name} → {machine_fuel.fuel.name}")
                         
                         # Обновляем p_ust, если передано новое значение
                         if p_ust is not None:
@@ -1142,6 +1191,84 @@ def import_station_list_from_excel(file, user):
                 previous_was_machine = False 
 
     return {'message': f'Данные успешно загружены пользователем {user}'}
+
+
+def import_fuel_tes_station_from_excel(file, user):
+    xls = pd.ExcelFile(file)
+    df = xls.parse('Приложение А_ЕЭС', header=0)
+    df = df.dropna(how='all')
+
+    index = 7
+    for index, row in df.iterrows():
+        # Пропускаем полностью пустые строки
+        if row.isnull().all():
+            continue
+
+        print(f"Обрабатываем строку {index}: {row.to_dict()}")
+
+        if not (pd.isna(row['name']) and pd.isna(row['gen_company'])):
+            if not pd.isna(row['name']) and pd.isna(row['gen_company']):
+                print("Пропускаем строку, так как есть имя, но нет генкомпании.")
+            else:
+                print(f"Обрабатываем строку с именем: {row['name']} и генкомпанией: {row['gen_company']}")
+                station_name = clean_name(row['name'])
+                gen_company_name = clean_name(row['gen_company'])
+
+                # Проверка на NaN для генкомпании
+                if pd.isna(gen_company_name):
+                    print("Ошибка: значение генкомпании NaN")
+                else:
+                    if not pd.isna(gen_company_name):
+                        gen_company_obj = GenCompany.query.filter_by(name=gen_company_name).first()
+                    else:
+                        gen_company_obj = None
+
+                    if gen_company_obj:
+                        print(f"Генкомпания найдена: {gen_company_obj.name}")
+                    else:
+                        print(f"Генкомпания с именем {gen_company_name} не найдена.")
+
+                fuel_name = clean_name(row['fuel']) if not pd.isna(row['fuel']) else None
+
+                # Проверяем, если fuel_name является NaN
+                if pd.isna(fuel_name):
+                    print("Ошибка: топливо не указано, пропускаем строку.")
+                    continue  # Пропускаем строку, если топливо не указано
+
+                # Находим станцию, у которой совпадает имя и генкомпания хотя бы у одной машины
+                if not pd.isna(station_name) and not pd.isna(gen_company_name):
+                    station = Station.query.join(Machine).filter(
+                        Station.name == station_name,
+                        Machine.gen_company == gen_company_obj
+                    ).first()
+                else:
+                    station = None
+
+                if station:
+                    print(f"✅ Станция найдена: {station_name}")
+
+                    if station.machines:
+                        updated_machines = 0
+                        for machine in station.machines:
+                            if machine.fuel_so != fuel_name:
+                                machine.fuel_so = fuel_name
+                                updated_machines += 1
+
+                        if updated_machines > 0:
+                            db.session.commit()
+                            log_to_db(user, "Обновление топлива машин", f"Станция: {station_name}, обновлено агрегатов: {updated_machines}")
+                            print(f"Обновлено топливо для {updated_machines} агрегатов станции '{station_name}'.")
+                        else:
+                            print(f"Все агрегаты станции '{station_name}' уже имеют актуальное топливо.")
+                    else:
+                        print(f"У станции '{station_name}' нет агрегатов, обновлять нечего.")
+                else:
+                    print(f"Ошибка: Станция '{station_name}' с генкомпанией '{gen_company_name}' не найдена. Проверьте корректность данных!")
+        else:
+            print("Имя и генкомпания отсутствуют, пропускаем строку.")
+
+    return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
+
 
 from datetime import datetime
 import re
