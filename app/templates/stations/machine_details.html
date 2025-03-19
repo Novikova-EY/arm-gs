@@ -1066,6 +1066,48 @@
     document.head.appendChild(style);
 </script>
 
+<!-- Пересчет значений по введенных p_rasp или p_ogr -->
+
+<script>
+$(document).ready(function () {
+    function calculatePower(event) {
+        let inputField = $(event.target); // Определяем, где произошло изменение
+        let cell = inputField.closest("td"); // Получаем ячейку с input
+        let year = cell.find("input[type='hidden']").val(); // Получаем год из скрытого input
+
+        // Находим соответствующие значения p_ust, p_ogr, p_rasp для этого года
+        let p_ust_cell = $(".total-power-row td").filter(function () {
+            return $(this).find("input[type='hidden']").val() == year;
+        }).find("input:not([type='hidden'])");
+
+        let p_ogr_cell = $(".p-ogr-row td").filter(function () {
+            return $(this).find("input[type='hidden']").val() == year;
+        }).find("input:not([type='hidden'])");
+
+        let p_rasp_cell = $(".p-rasp-row td").filter(function () {
+            return $(this).find("input[type='hidden']").val() == year;
+        }).find("input:not([type='hidden'])");
+
+        let p_ust = parseFloat(p_ust_cell.val()) || 0;
+
+        if (inputField.closest("tr").hasClass("p-ogr-row")) {
+            let p_ogr = parseFloat(inputField.val()) || 0;
+            p_rasp_cell.val(p_ust - p_ogr);
+        } else if (inputField.closest("tr").hasClass("p-rasp-row")) {
+            let p_rasp = parseFloat(inputField.val()) || 0;
+            p_ogr_cell.val(p_ust - p_rasp);
+        }
+    }
+
+    $(".p-ogr-row .pftt-select, .p-rasp-row .pftt-select").on("input", calculatePower);
+});
+</script>
+
+
+
+
+
+
 
 
 {% endif %}

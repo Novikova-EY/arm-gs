@@ -746,48 +746,70 @@ def import_fuel_tes_station_from_excel_routes():
 
     return redirect(url_for("app_bp.station_list"))
 
+from flask import send_file, redirect, url_for, flash, request, session, current_app
+from zipfile import ZipFile
+from io import BytesIO
+from datetime import datetime
 
 @app_bp.route('/export_stations', methods=['GET'])
 def export_station_list():
     """Маршрут для экспорта данных в Excel."""
     user = session.get('username', 'Неизвестный пользователь')
     
-    filters = {key: request.args.getlist(key) if key == 'tes_machine_type_filter' else request.args.get(key) 
-                    for key in [
-                        'condition_type_filter', 'gen_company_filter', 'station_name_filter', 
-                        'station_type_filter', 'tes_type_filter', 'tes_machine_type_filter', 
-                        'energy_system_type_filter', 'union_energy_system_filter', 
-                        'regional_energy_system_filter', 'federal_district_filter', 
-                        'regional_district_filter'
-                    ]}
+    filters = {
+        key: request.args.get(key)
+        for key in [
+            'energy_system_type_filter', 'union_energy_system_filter', 
+            'regional_energy_system_filter', 'federal_district_filter', 
+            'regional_district_filter'
+        ]
+    }
+
+    # Фильтруем None-значения, чтобы `url_for()` не получил их
+    filters = {k: v for k, v in filters.items() if v}
 
 
     try:
         # Получение данных для экспорта
-        excel_data = export_station_list_to_excel(user, filters)
-        log_to_db(user, "Экспорт завершён", f"Фильтр: {filters}")
+        excel_files = export_station_list_to_excel(user, filters)
 
         # Проверка наличия данных
-        if excel_data is None or excel_data.getbuffer().nbytes == 0:
-            flash("Нет данных для экспорта.", "warning")
-            return redirect(url_for("app_bp.station_list"))
-        
-        # Формирование имени файла
-        filename = f"Приложение А_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-
-        if not excel_data or excel_data.getbuffer().nbytes == 0:
-            print("Ошибка: Файл пустой или None")
+        if not excel_files:
             flash("Нет данных для экспорта.", "warning")
             return redirect(url_for("app_bp.station_list", **filters))
 
-        # Возврат файла через send_file
-        return send_file(
-            excel_data,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=filename
-        )
-    
+        # Если `export_station_list_to_excel()` вернул один файл — обрабатываем его отдельно
+        if isinstance(excel_files, tuple) and len(excel_files) == 2:
+            file_name, file_obj = excel_files
+            return send_file(
+                file_obj,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                as_attachment=True,
+                download_name=file_name
+            )
+
+        # Если возвращён список, проверяем его содержимое
+        if isinstance(excel_files, list) and all(isinstance(i, tuple) and len(i) == 2 for i in excel_files):
+            # Создаём ZIP-архив
+            zip_buffer = BytesIO()
+            with ZipFile(zip_buffer, 'w') as zip_file:
+                for file_name, file_obj in excel_files:
+                    zip_file.writestr(file_name, file_obj.getvalue())
+
+            zip_buffer.seek(0)
+
+            return send_file(
+                zip_buffer,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=f"Экспорт_станций_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+            )
+
+        # Если формат данных неверный — логируем ошибку
+        current_app.logger.error(f"Ошибка экспорта: Неверный формат данных {type(excel_files)}")
+        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
+        return redirect(url_for("app_bp.station_list", **filters))
+
     except Exception as e:
         current_app.logger.error(f"Ошибка экспорта: {e}")
         print(f"Ошибка экспорта: {e}")

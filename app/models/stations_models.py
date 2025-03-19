@@ -106,14 +106,14 @@ class Station(db.Model):
     # наименование диспетчерское (основное)
     name = db.Column(db.String(255), unique=True, nullable=False, index=True)
     
-    # наименование собственника
-    name_owner = db.Column(db.String(80), unique=True, nullable=True)
+    # наименование от СО ЕЭС (оперативная информация)
+    name_so = db.Column(db.String(80), unique=True, nullable=True)
     
-    # наименование совмещенное
-    name_compined = db.Column(db.String(80), unique=True, nullable=True)
+    # наименование совмещенное (Гурьева А)
+    name_combined = db.Column(db.String(80), unique=True, nullable=True)
     
-    # наименование дополнительное    
-    name_additional = db.Column(db.String(80), unique=True, nullable=True)
+    # архивные наименования    
+    name_archive = db.Column(db.String(80), unique=True, nullable=True)
 
     # id субъекта РФ
     id_regional_district = db.Column(
@@ -149,6 +149,30 @@ class Station(db.Model):
     note = db.Column(db.String(80), unique=False, nullable=True)
 
     @property
+    def regional_energy_system(self):
+        if self.regional_district and self.regional_district.regional_energy_systems:
+            return ", ".join(res.name for res in self.regional_district.regional_energy_systems)
+        return None
+    
+    @property
+    def union_energy_system(self):
+        if self.regional_district and self.regional_district.regional_energy_systems:
+            union_systems = {res.union_energy_system.name for res in self.regional_district.regional_energy_systems if res.union_energy_system}
+            return ", ".join(union_systems) if union_systems else None
+        return None
+    
+    @property
+    def federal_district(self):
+        return self.regional_district.federal_district.name if self.regional_district and self.regional_district.federal_district else None
+    
+    @property
+    def energy_system_type(self):
+        if self.regional_district and self.regional_district.regional_energy_systems:
+            types = {res.union_energy_system.energy_system_type.name for res in self.regional_district.regional_energy_systems if res.union_energy_system and res.union_energy_system.energy_system_type}
+            return ", ".join(types) if types else None
+        return None
+    
+    @property
     def gen_companies(self):
         if not self.machines:
             return None
@@ -168,6 +192,21 @@ class Station(db.Model):
             return "Разные типы"
         else:
             return None
+        
+    def power_by_year(self):
+        power_data = {}
+        for machine in self.machines:
+            for mp in machine.machine_powers:
+                year = mp.year.number if mp.year else "Unknown"
+                if year not in power_data:
+                    power_data[year] = {"p_ust": 0, "p_rasp": 0, "p_ogr": 0}
+                if mp.p_ust:
+                    power_data[year]["p_ust"] += mp.p_ust
+                if mp.p_rasp:
+                    power_data[year]["p_rasp"] += mp.p_rasp
+                if mp.p_ogr:
+                    power_data[year]["p_ogr"] += mp.p_ogr
+        return power_data
 
 
 # Модель для типов агрегатов

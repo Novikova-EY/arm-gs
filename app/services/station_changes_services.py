@@ -21,6 +21,67 @@ def log_to_db(username, action, details=None):
     except Exception as e:
         print(f"Ошибка записи лога: {e}")
 
+from app.models import Machine, db
+
+from app.models import Machine, MachinePower, db
+from sqlalchemy import and_
+
+from app.models import Machine, MachinePower, db
+from sqlalchemy import and_, func
+
+from app.models import Machine, MachinePower, db
+from sqlalchemy import and_, func
+
+def get_machines_with_power_changes(station_id=None):
+    """
+    Получает всю выборку агрегатов по всем годам и отмечает изменения p_ust.
+    """
+
+    # Подзапрос: получаем предыдущие значения p_ust для каждого агрегата
+    subquery = db.session.query(
+        MachinePower.id_machine,
+        MachinePower.year_number.label("prev_year"),
+        MachinePower.p_ust.label("prev_p_ust")
+    ).subquery()
+
+    # Основной запрос: выбираем все агрегаты и их мощности по годам
+    query = db.session.query(
+        Machine.id,
+        Machine.machine_name,
+        Machine.id_station,
+        MachinePower.year_number,
+        MachinePower.p_ust,
+        subquery.c.prev_p_ust.label("prev_p_ust"),
+        (MachinePower.p_ust != subquery.c.prev_p_ust).label("is_changed")  # Флаг изменения мощности
+    ).join(MachinePower, Machine.id == MachinePower.id_machine
+    ).outerjoin(subquery, and_(
+        MachinePower.id_machine == subquery.c.id_machine,
+        MachinePower.year_number == subquery.c.prev_year + 1  # Берем мощность за предыдущий год
+    )).order_by(Machine.id, MachinePower.year_number)
+
+    # Фильтр по станции, если передан
+    if station_id:
+        query = query.filter(Machine.id_station == station_id)
+
+    results = query.all()
+
+    # Формируем JSON-ответ
+    data = []
+    for machine in results:
+        data.append({
+            "id": machine.id,
+            "name": machine.machine_name,
+            "station_id": machine.id_station,
+            "year": machine.year_number,
+            "p_ust": machine.p_ust,
+            "prev_p_ust": machine.prev_p_ust,
+            "is_changed": bool(machine.is_changed)  # Преобразуем SQLAlchemy-булево значение в Python
+        })
+
+    return data
+
+
+
 
 def get_stations_list(
     page=None, 
@@ -1296,11 +1357,11 @@ def convert_to_iso_date(value):
     except ValueError:
         raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
 
-import traceback
+
 from io import BytesIO
 
 def export_station_list_to_excel(user, filters=None):
-    """Экспортирует данные электростанций в Excel, создавая отдельный файл для каждого субъекта РФ."""
+    """Экспортирует данные электростанций в Excel и возвращает бинарный поток."""
 
     log_to_db(user, "Начата выгрузка таблицы электростанций из базы данных")
     log_to_db(user, "Параметры экспорта", f"Фильтры: {filters}")
@@ -1308,259 +1369,232 @@ def export_station_list_to_excel(user, filters=None):
     query = get_filtered_stations(**filters)
     station_list = query.all()
 
-    total_stations = len(station_list)
-    log_to_db(user, "Найдено станций в БД", f"{total_stations} записей")
-
-    if not station_list:
-        log_to_db(user, "Экспорт остановлен", "Нет данных для экспорта.")
-        return None
-
-    all_years = list(range(2024, 2032))
-    output_files = []
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-
-    # Группируем станции по субъекту РФ
-    regional_districts = {"Без субъекта": []}
-    regional_systems = {}
+    # Собираем уникальные компании для каждой станции
     for station in station_list:
-        district_name = station.regional_district.name if station.regional_district else "Без субъекта"
-        if district_name not in regional_districts:
-            regional_districts[district_name] = []
-        regional_districts[district_name].append(station)
+        gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
+        station.gen_companies = "\n".join(gen_companies)  # Добавляем перенос строки
 
-        regional_system_name = station.regional_energy_system if station.regional_energy_system else "Неизвестно"
-        if regional_system_name not in regional_systems:
-            regional_systems[regional_system_name] = set()
-        regional_systems[regional_system_name].add(district_name)
+    # Получаем список всех годов
+    all_years = list(range(2024, 2032))
 
-    processed_stations = 0
-    
-    for district_name, stations in regional_districts.items():
-        log_to_db(user, f"Выгрузка данных по форме Приложения А к СиПР ЭЭС: {district_name} (Энергосистема: {regional_system_name}) | Найдено станций: {len(stations)}")
-        if not stations:
-            continue
-        try:
-            data = []
+    data = []
 
-            # Добавляем строку с названием региональной энергосистемы
-            first_station = stations[0]
-            regional_system_name = first_station.regional_energy_system if first_station.regional_energy_system else "Неизвестно"
+    # Получаем название **региональной энергосистемы** для субъекта РФ
+    regional_energy_system_name = ""
+    if station.regional_district and station.regional_district.regional_energy_systems:
+        regional_energy_system_name = ", ".join(
+            res.name_full for res in station.regional_district.regional_energy_systems
+        )
 
-            # Получаем список субъектов для данной энергосистемы
-            subject_list = sorted(regional_systems.get(regional_system_name, set()))
+    # Добавляем строку с региональной энергосистемой
+    data.append({
+        "Электростанция": regional_energy_system_name,
+        "Генерирующая компания": "",
+        "Станционный номер": "",
+        "Тип генерирующего оборудования": "",
+        "Вид топлива": "",
+        **{year: "" for year in all_years},
+        "Примечание": "",
+    })
 
-            # Определяем, что писать в region_label
-            if len(subject_list) > 1:
-                region_label = f"{regional_system_name}, в том числе {district_name}"
-            else:
-                region_label = regional_system_name  # Если субъект один, пишем его напрямую
+    for station in station_list:
+        station_total_p_ust = {year: 0 for year in all_years}  # Словарь для суммарной мощности
+            
+        # Добавляем строку с названием электростанции
+        data.append({
+            "Электростанция": station.name,
+            "Генерирующая компания": station.gen_companies,
+            "Станционный номер": "",
+            "Тип генерирующего оборудования": "",
+            "Вид топлива": "",
+            **{year: "" for year in all_years},
+            "Примечание": "",
+        })
 
-            data.append({
-                "Электростанция": region_label,
+
+        for machine in station.machines:
+            row = {
+                "Электростанция": machine.machine_group,
                 "Генерирующая компания": "",
-                "Станционный номер": "",
-                "Тип генерирующего оборудования": "",
+                "Станционный номер": machine.machine_number,
+                "Тип генерирующего оборудования": machine.machine_name,
                 "Вид топлива": "",
                 **{year: "" for year in all_years},
-                "Примечание": "",
-            })
+                "Примечание": machine.note,
+            }
 
-            for station in stations:
-                processed_stations += 1
-                power_data = station.power_by_year() or {}
-
-                # Добавляем строку с названием электростанции
-                data.append({
-                    "Электростанция": station.name,
-                    "Генерирующая компания": station.gen_companies,
-                    "Станционный номер": "",
-                    "Тип генерирующего оборудования": "",
-                    "Вид топлива": "",
-                    **{year: "" for year in all_years},
-                    "Примечание": "",
-                })
-
-                # Добавляем строки с установленной мощностью по машинам электростанции
-                for machine in station.machines:
-                    row = {
-                        "Электростанция": machine.machine_group,
-                        "Генерирующая компания": "",
-                        "Станционный номер": machine.machine_number,
-                        "Тип генерирующего оборудования": machine.machine_name,
-                        "Вид топлива": "",
-                        **{year: f"{power_data.get(year, {}).get('p_ust', 0):.1f}".replace('.', ',') for year in all_years},
-                        "Примечание": machine.note or "",
-                    }
-                    data.append(row)
-
-                # Добавляем строку "Установленная мощность, всего" по станции
-                total_row = {
-                    "Электростанция": "Установленная мощность, всего",
-                    "Генерирующая компания": "",
-                    "Станционный номер": "–",
-                    "Тип генерирующего оборудования": "–",
-                    "Вид топлива": "–",
-                    **{year: f"{power_data.get(year, {}).get('p_ust', 0):.1f}".replace('.', ',') for year in all_years},
-                    "Примечание": "",
-                }
-                data.append(total_row)
-
-            df = pd.DataFrame(data)
-            df = df.fillna("")
-
-            # Создание Excel-файла
-            output = BytesIO()
-            sheet_name = f"Приложение А"
-            file_name = f"Приложение_А_{district_name}_{timestamp}.xlsx".replace(" ", "_")
-            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                df.to_excel(writer, index=False, header=False, startrow=6, sheet_name=sheet_name)
-                workbook = writer.book
-                worksheet = writer.sheets['Приложение А']
-
-                title_format =  workbook.add_format({
-                    'font_name': 'Times New Roman',  # Устанавливаем шрифт
-                    'font_size': 13,                 # Размер шрифта 13pt
-                    'bold': True,
-                    'align': 'center',               # Выравнивание текста по левому краю
-                    'valign': 'vcenter',             # Выравнивание по центру по вертикали
-                })
-
-                subtitle_format = workbook.add_format({
-                    'font_name': 'Times New Roman',  # Устанавливаем шрифт
-                    'font_size': 13,                 # Размер шрифта 13pt
-                    'align': 'left',                 # Выравнивание текста по левому краю
-                    'valign': 'vcenter',             # Выравнивание по центру по вертикали
-                    'text_wrap': True,               # Перенос слов (разрыв строк)
-                })
-
-                text_format = workbook.add_format({
-                    'font_name': 'Times New Roman',  # Устанавливаем шрифт
-                    'font_size': 10,                 # Размер шрифта 10pt
-                    'align': 'left',                 # Выравнивание текста по левому краю
-                    'valign': 'vcenter',             # Выравнивание по центру по вертикали
-                    'text_wrap': True,               # Перенос слов (разрыв строк)
-                    'border': 1                      # Границы ячейки
-                })
-
-                text_center_format = workbook.add_format({
-                    'font_name': 'Times New Roman',  # Устанавливаем шрифт
-                    'font_size': 10,                 # Размер шрифта 10pt
-                    'align': 'center',               # Выравнивание текста по центру
-                    'valign': 'vcenter',             # Выравнивание по центру по вертикали
-                    'text_wrap': True,               # Перенос слов (разрыв строк)
-                    'border': 1                      # Границы ячейки
-                })
-
-                # Заголовки
-                worksheet.merge_range("A1:N1", "ПРИЛОЖЕНИЕ А", title_format)
-                worksheet.merge_range("A2:N2", "Перечень электростанций, действующих и планируемых к сооружению, расширению, модернизации и выводу из эксплуатации", title_format)
-                worksheet.merge_range("A3:N3", "", title_format)
-                worksheet.merge_range("A4:N4", "Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до 2030 года", subtitle_format)
-                worksheet.set_row(3, 42)
-
-                # Шапка таблицы
-                col_names = ["Электростанция", "Генерирующая компания", "Станционный номер",
-                            "Тип генерирующего оборудования", "Вид топлива", "Примечание"]
-                num_cols = len(col_names) - 1  # Без "Примечание"
-
-                # Объединяем и форматируем первый столбец (первая колонка шапки)
-                worksheet.merge_range(4, 0, 5, 0, col_names[0], text_format)
-
-                # Объединяем и форматируем остальные столбцы
-                for col_num in range(1, num_cols):  # Начинаем с 1, чтобы не дублировать первый столбец
-                    worksheet.merge_range(4, col_num, 5, col_num, col_names[col_num], text_center_format)
-
-                # Первая строка над мощностями
-                worksheet.merge_range(4, num_cols, 4, num_cols + len(all_years) - 1, "Установленная мощность (МВт)", text_center_format)
-
-                # Заменяем первый год на "По состоянию на 01.01.<год>"
-                first_year = all_years[0]  # Берем первый год из списка
-                year_headers = ["По состоянию на 01.01.{}".format(first_year)] + [str(year) for year in all_years[1:]]
-
-                # Вторая строка - годы
-                for idx, year in enumerate(year_headers):
-                    col_num = num_cols + idx
-                    worksheet.write(5, col_num, year, text_center_format)
-
-                # Устанавливаем особую ширину для первого года
-                first_year_col_idx = num_cols  # Столбец первого года
-                worksheet.set_column(first_year_col_idx, first_year_col_idx, 12.86, text_center_format)
-
-                # Устанавливаем стандартную ширину для остальных годов
-                for idx in range(1, len(all_years)):  # Пропускаем первый год
-                    col_num = num_cols + idx
-                    worksheet.set_column(col_num, col_num, 8, text_center_format)
-
-                # Добавляем "Примечание" в 1 строке
-                worksheet.merge_range(4, num_cols + len(all_years), 5, num_cols + len(all_years), "Примечание", text_center_format)
-
-                # Определяем индекс нужного столбца
-                station_column_name = "Электростанция"
-                gen_company_column_name = "Генерирующая компания"
-                machine_number_column_name = "Станционный номер"
-                machine_name_column_name = "Тип генерирующего оборудования"
-                fuel_type_name = "Вид топлива"
-                note_column_name = "Примечание"
-
-                station_col_idx = df.columns.get_loc(station_column_name)
-                gen_company_col_idx = df.columns.get_loc(gen_company_column_name)
-                machine_number_col_idx = df.columns.get_loc(machine_number_column_name)
-                machine_name_col_idx = df.columns.get_loc(machine_name_column_name)
-                fuel_type_col_idx = df.columns.get_loc(fuel_type_name)
-                p_ust_col_idxs = {year: df.columns.get_loc(year) for year in all_years}
-                note_column_col_idx = df.columns.get_loc(note_column_name)
-
-                # Применяем ширину (217 пикселей ≈ 30 Excel ширина) и формат только к этому столбцу
-                worksheet.set_column(station_col_idx, station_col_idx, 30.29, text_format)
-                worksheet.set_column(gen_company_col_idx, gen_company_col_idx, 17, text_center_format)
-                worksheet.set_column(machine_number_col_idx, machine_number_col_idx, 12, text_center_format)
-                worksheet.set_column(machine_name_col_idx, machine_name_col_idx, 20.86, text_center_format)
-                worksheet.set_column(fuel_type_col_idx, fuel_type_col_idx, 11.29, text_center_format)
-                
-                worksheet.set_column(note_column_col_idx, note_column_col_idx, 28.71, text_format)
-
-                # Определяем диапазон объединения (все столбцы)
-                start_col = 0
-                end_col = len(df.columns) - 1  # Последний столбец
-
-                # Найти индекс строки, где находится региональная энергосистема (первое её появление в data)
-                regional_row_idx = next(
-                    (i for i, row in enumerate(data) if row["Электростанция"] == region_label),
-                    None
+            # Добавляем мощности по годам
+            for year in all_years:
+                power_value = next(
+                    (p.p_ust for p in machine.machine_powers if p.year.number == year), 0
                 )
+                row[year] = f"{power_value:.1f}".replace('.', ',')
+                station_total_p_ust[year] += power_value  # Считаем суммарную мощность
 
-                # Объединяем ячейки в Excel
-                worksheet.merge_range(regional_row_idx + 6, start_col, regional_row_idx + 6, end_col,  # +6 из-за заголовков
-                                    region_label, text_format)
+            data.append(row)
 
-                # Определяем последнюю заполненную строку
-                last_row = len(df) + 6  # +5 из-за заголовков
+        # 🔹 Добавляем строку "Установленная мощность, всего" по станции
+        total_row = {
+            "Электростанция": "Установленная мощность, всего",
+            "Генерирующая компания": "",
+            "Станционный номер": "–",
+            "Тип генерирующего оборудования": "–",
+            "Вид топлива": "–",
+            **{year: f"{station_total_p_ust[year]:.1f}".replace('.', ',') for year in all_years},
+            "Примечание": "",
+        }
 
-                # Определяем последний используемый столбец
-                last_col = len(df.columns)
+        data.append(total_row)
 
-                # Создаем пустой стиль (без границ, выравнивания и других атрибутов)
-                empty_format = workbook.add_format()
+    log_to_db(user, "Подготовка данных для экспорта электростанций в Excel", f"Записей для экспорта: {len(data)}")
 
-                # Снимаем форматирование с пустых строк после таблицы
-                for row_num in range(last_row, 1000):  # 1000 - большое число, можно сделать динамическим
-                    worksheet.set_row(row_num, None, empty_format)
+    df = pd.DataFrame(data)
+    df = df.fillna("")
 
-                # Снимаем форматирование с пустых столбцов после таблицы
-                for col_num in range(last_col + 1, 50):  # 50 - запасное число столбцов
-                    worksheet.set_column(col_num, col_num, None, empty_format)
+    # Создание Excel-файла
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, header=False, startrow=6, sheet_name="Приложение А")
+        workbook = writer.book
+        workbook.use_nan_inf_to_errors = True
+        worksheet = writer.sheets["Приложение А"]
 
-            output.seek(0)
-            output_files.append((file_name, output))
-    
-        except Exception as e:
-            error_message = f"❌ Ошибка экспорта субъекта {district_name}: {str(e)}\n{traceback.format_exc()}"
-            log_to_db(user, error_message)
-            print(error_message)
+        title_format =  workbook.add_format({
+            'font_name': 'Times New Roman',  # Устанавливаем шрифт
+            'font_size': 13,                 # Размер шрифта 13pt
+            'bold': True,
+            'align': 'center',               # Выравнивание текста по левому краю
+            'valign': 'vcenter',             # Выравнивание по центру по вертикали
+        })
 
-    log_to_db(user, "Экспорт завершён", f"Обработано {processed_stations} из {total_stations} станций.")
+        subtitle_format = workbook.add_format({
+            'font_name': 'Times New Roman',  # Устанавливаем шрифт
+            'font_size': 13,                 # Размер шрифта 13pt
+            'align': 'left',                 # Выравнивание текста по левому краю
+            'valign': 'vcenter',             # Выравнивание по центру по вертикали
+            'text_wrap': True,               # Перенос слов (разрыв строк)
+        })
 
-    return output_files[0] if len(output_files) == 1 else output_files
+        text_format = workbook.add_format({
+            'font_name': 'Times New Roman',  # Устанавливаем шрифт
+            'font_size': 10,                 # Размер шрифта 10pt
+            'align': 'left',                 # Выравнивание текста по левому краю
+            'valign': 'vcenter',             # Выравнивание по центру по вертикали
+            'text_wrap': True,               # Перенос слов (разрыв строк)
+            'border': 1                      # Границы ячейки
+        })
+
+        text_center_format = workbook.add_format({
+            'font_name': 'Times New Roman',  # Устанавливаем шрифт
+            'font_size': 10,                 # Размер шрифта 10pt
+            'align': 'center',               # Выравнивание текста по центру
+            'valign': 'vcenter',             # Выравнивание по центру по вертикали
+            'text_wrap': True,               # Перенос слов (разрыв строк)
+            'border': 1                      # Границы ячейки
+        })
+
+
+        # Заголовки
+        worksheet.merge_range("A1:N1", "ПРИЛОЖЕНИЕ А", title_format)
+        worksheet.merge_range("A2:N2", "Перечень электростанций, действующих и планируемых к сооружению, расширению, модернизации и выводу из эксплуатации", title_format)
+        worksheet.merge_range("A3:N3", "", title_format)
+        worksheet.merge_range("A4:N4", "Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до 2030 года", subtitle_format)
+        worksheet.set_row(3, 42)
+
+       # Шапка таблицы
+        col_names = ["Электростанция", "Генерирующая компания", "Станционный номер",
+                    "Тип генерирующего оборудования", "Вид топлива", "Примечание"]
+        num_cols = len(col_names) - 1  # Без "Примечание"
+
+        # Объединяем и форматируем первый столбец (первая колонка шапки)
+        worksheet.merge_range(4, 0, 5, 0, col_names[0], text_format)
+
+        # Объединяем и форматируем остальные столбцы
+        for col_num in range(1, num_cols):  # Начинаем с 1, чтобы не дублировать первый столбец
+            worksheet.merge_range(4, col_num, 5, col_num, col_names[col_num], text_center_format)
+
+        # Первая строка над мощностями
+        worksheet.merge_range(4, num_cols, 4, num_cols + len(all_years) - 1, "Установленная мощность (МВт)", text_center_format)
+
+        # ✅ Заменяем первый год на "По состоянию на 01.01.<год>"
+        first_year = all_years[0]  # Берем первый год из списка
+        year_headers = ["По состоянию на 01.01.{}".format(first_year)] + [str(year) for year in all_years[1:]]
+
+        # Вторая строка - годы
+        for idx, year in enumerate(year_headers):
+            col_num = num_cols + idx
+            worksheet.write(5, col_num, year, text_center_format)
+
+        # ✅ Устанавливаем особую ширину для первого года
+        first_year_col_idx = num_cols  # Столбец первого года
+        worksheet.set_column(first_year_col_idx, first_year_col_idx, 12.86, text_center_format)
+
+        # ✅ Устанавливаем стандартную ширину для остальных годов
+        for idx in range(1, len(all_years)):  # Пропускаем первый год
+            col_num = num_cols + idx
+            worksheet.set_column(col_num, col_num, 8, text_center_format)
+
+        # Добавляем "Примечание" в 1 строке
+        worksheet.merge_range(4, num_cols + len(all_years), 5, num_cols + len(all_years), "Примечание", text_center_format)
+
+# Определяем индекс нужного столбца
+        station_column_name = "Электростанция"
+        gen_company_column_name = "Генерирующая компания"
+        machine_number_column_name = "Станционный номер"
+        machine_name_column_name = "Тип генерирующего оборудования"
+        fuel_type_name = "Вид топлива"
+        note_column_name = "Примечание"
+
+        station_col_idx = df.columns.get_loc(station_column_name)
+        gen_company_col_idx = df.columns.get_loc(gen_company_column_name)
+        machine_number_col_idx = df.columns.get_loc(machine_number_column_name)
+        machine_name_col_idx = df.columns.get_loc(machine_name_column_name)
+        fuel_type_col_idx = df.columns.get_loc(fuel_type_name)
+        p_ust_col_idxs = {year: df.columns.get_loc(year) for year in all_years}
+        note_column_col_idx = df.columns.get_loc(note_column_name)
+
+        # Применяем ширину (217 пикселей ≈ 30 Excel ширина) и формат только к этому столбцу
+        worksheet.set_column(station_col_idx, station_col_idx, 30.29, text_format)
+        worksheet.set_column(gen_company_col_idx, gen_company_col_idx, 17, text_center_format)
+        worksheet.set_column(machine_number_col_idx, machine_number_col_idx, 12, text_center_format)
+        worksheet.set_column(machine_name_col_idx, machine_name_col_idx, 20.86, text_center_format)
+        worksheet.set_column(fuel_type_col_idx, fuel_type_col_idx, 11.29, text_center_format)
+        
+        worksheet.set_column(note_column_col_idx, note_column_col_idx, 28.71, text_format)
+
+        # Определяем диапазон объединения (все столбцы)
+        start_col = 0
+        end_col = len(df.columns) - 1  # Последний столбец
+
+        # Найти индекс строки, где находится региональная энергосистема (первое её появление в data)
+        regional_row_idx = next(i for i, row in enumerate(data) if row["Электростанция"] == regional_energy_system_name)
+
+        # Объединяем ячейки в Excel
+        worksheet.merge_range(regional_row_idx + 6, start_col, regional_row_idx + 6, end_col,  # +6 из-за заголовков
+                            regional_energy_system_name, text_format)
+
+        # Определяем последнюю заполненную строку
+        last_row = len(df) + 6  # +5 из-за заголовков
+
+        # Определяем последний используемый столбец
+        last_col = len(df.columns)
+
+        # Создаем пустой стиль (без границ, выравнивания и других атрибутов)
+        empty_format = workbook.add_format()
+
+        # Снимаем форматирование с пустых строк после таблицы
+        for row_num in range(last_row, 1000):  # 1000 - большое число, можно сделать динамическим
+            worksheet.set_row(row_num, None, empty_format)
+
+        # Снимаем форматирование с пустых столбцов после таблицы
+        for col_num in range(last_col + 1, 50):  # 50 - запасное число столбцов
+            worksheet.set_column(col_num, col_num, None, empty_format)
+
+
+    output.seek(0)
+
+    log_to_db(user, "Экспорт завершён", f"Экспортировано записей: {len(data)}")
+    return output
 
 
 
