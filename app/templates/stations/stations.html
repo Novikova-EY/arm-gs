@@ -46,8 +46,8 @@
                     {% endfor %}
 
                     <!-- Тип энергосистемы -->
-                    <div class="filter-item flex-grow-1">
-                        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" style="width: 12,5%;" onchange="this.form.submit()" multiple>
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Тип энергосистемы</option>
                             {% for energy_system_type in energy_system_type_list %}
                                 <option value="{{ energy_system_type.id }}" 
@@ -59,8 +59,8 @@
                     </div>
             
                     <!-- ОЭС -->
-                    <div class="filter-item flex-grow-1" >
-                        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" style="width: 12,5%;"onchange="this.form.submit()" multiple>
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Объединенная энергосистема (ОЭС)</option>
                             {% for union_energy_system in union_energy_system_list %}
                                 <option value="{{ union_energy_system.id }}" 
@@ -72,8 +72,8 @@
                     </div>
 
                     <!-- Региональная ЭС -->
-                    <div class="filter-item flex-grow-1" >
-                        <select id="regional_energy_system" name="regional_energy_system_filter" style="width: 12,5%;" class="form-select select2" onchange="this.form.submit()" multiple>
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Региональная энергосистема</option>
                             {% for regional_energy_system in regional_energy_system_list %}
                                 <option value="{{ regional_energy_system.id }}" 
@@ -85,8 +85,8 @@
                     </div>
             
                     <!-- Федеральный округ -->
-                    <div class="filter-item flex-grow-1" >
-                        <select id="federal_district" name="federal_district_filter" style="width: 12,5%;" class="form-select select2" onchange="this.form.submit()" multiple>
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="federal_district" name="federal_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Федеральный округ</option>
                             {% for federal_district in federal_district_list %}
                                 <option value="{{ federal_district.id }}" 
@@ -98,8 +98,8 @@
                     </div>
             
                     <!-- Субъект РФ -->
-                    <div class="filter-item flex-grow-1">
-                        <select id="regional_district" name="regional_district_filter" style="width: 12,5%;" class="form-select select2" onchange="this.form.submit()" multiple>
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="regional_district" name="regional_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
                             <option value="">Субъект РФ</option>
                             {% for regional_district in regional_district_list %}
                                 <option value="{{ regional_district.id }}" 
@@ -111,22 +111,22 @@
                     </div>
             
                     <!-- Электростанция -->
-                    <div class="filter-item flex-grow-1" onchange="this.form.submit()" style="width: 12,5%;">
+                    <div class="filter-item" style="width: 15%;" onchange="this.form.submit()">
                         {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
                     </div>
             
                     <!-- Генерирующая компания -->
-                    <div class="filter-item flex-grow-1" onchange="this.form.submit()" style="width: 12,5%;">
+                    <div class="filter-item" style="width: 15%;" onchange="this.form.submit()">
                         {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
                     </div>
                      
                     <!-- Кнопки -->
-                    <div class="filter-item flex-grow-1" style="width: 12,5%;">
+                    <div class="filter-item">
                         <button type="submit" class="btn btn-outline-primary w-100">Поиск</button>
                     </div>
             
-                    <div class="filter-item flex-grow-1">
-                        <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-outline-secondary w-100">Сбросить</a>
+                    <div class="filter-item">
+                        <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-outline-danger w-100">Сбросить</a>
                     </div>
                 </form>
             </div>
@@ -163,10 +163,10 @@
                     
 
                     <!-- Кнопка выгрузки данных по регионам -->
-                    <div class="p-3" tyle="width: 5%;">
+                    <div class="p-3" tyle="width: 10%;">
                         <a href="{{ url_for('app_bp.stations_grouped_values') }}" 
-                           class="btn btn-outline-warning text-dark">
-                            Итоговые значения <br> по регионам
+                           class="btn btn-outline-warning text-dark" style="white-space: nowrap;">
+                            Данные по<br>регионам
                         </a>
                     </div>
                     
@@ -200,21 +200,21 @@
                     </div>
                     
                     <!-- Чекбокс "Отображать ограничения мощности" -->
-                    <div class="p-3 text-center" style="width: 12%;">
+                    <div class="p-3 text-center" style="width: 10%;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
                             <label class="form-check-label" for="toggleP_Ogr">
-                                Отображать ограничения мощности
+                                Отображать<br>ограничения мощности
                             </label>
                         </div>
                     </div>
                     
                     <!-- Чекбокс "Отображать располагаемую мощность" -->
-                    <div class="p-3 text-center" style="width: 12%;">
+                    <div class="p-3 text-center" style="width: 10%;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
                             <label class="form-check-label" for="toggleP_Rasp">
-                                Отображать располагаемую мощность
+                                Отображать<br>располагаемую мощность
                             </label>
                         </div>
                     </div>
@@ -230,6 +230,28 @@
                             <option value="-1">Целое число</option>
                         </select>
                     </div>
+
+                    <!-- Форма выбора количества электростанций на листе -->
+                    <div class="p-3" style="width: 5%;">
+                        <label for="rounding_digits">Показать:</label>
+                        <form method="GET" action="{{ url_for('app_bp.station_list') }}">
+                            {% for key, value in request.args.items() %}
+                                {% if key != "per_page" %}  <!-- Исключаем дублирование `per_page` -->
+                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                {% endif %}
+                            {% endfor %}
+                    
+                            <select name="per_page" class="form-select" onchange="this.form.submit()">
+                                {% for count in [1, 5, 10, 50, 100] %}
+                                    <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>
+                                        {{ count }} станц.
+                                    </option>
+                                {% endfor %}
+                                <option value="all" {% if per_page == "all" %}selected{% endif %}>Все</option>  <!-- Новая опция -->
+                            </select>
+                        </form>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -411,10 +433,14 @@
                                                                     | selectattr('year.number', 'equalto', year)
                                                                     | map(attribute='p_ust')
                                                                     | first %}
-                                                {% if p_ust_value == 0 %}
+                                                {% if p_ust_value == 0%}
                                                     &mdash;
                                                 {% else %}
-                                                    {{ p_ust_value }}
+                                                    {% if p_ust_value == None %}
+
+                                                    {% else %}
+                                                        {{ p_ust_value }}
+                                                    {% endif %}
                                                 {% endif %}
                                             </td>
                                             {% endfor %}
@@ -451,7 +477,11 @@
                                                 {% if p_ogr_value == 0 %}
                                                     &mdash;
                                                 {% else %}
-                                                    {{ p_ogr_value }}
+                                                    {% if p_ogr_value == None %}
+
+                                                        {% else %}
+                                                            {{ p_ogr_value }}
+                                                        {% endif %}
                                                 {% endif %}
                                             </td>
                                             {% endfor %}
@@ -469,7 +499,11 @@
                                                 {% if p_rasp_value == 0 %}
                                                     &mdash;
                                                 {% else %}
-                                                    {{ p_rasp_value }}
+                                                    {% if p_rasp_value == None %}
+
+                                                        {% else %}
+                                                            {{ p_rasp_value }}
+                                                        {% endif %}
                                                 {% endif %}
                                             </td>
                                             {% endfor %}
@@ -543,6 +577,11 @@
         </table>
     </div>
 </div>
+
+<!-- Пагинация -->
+<div>
+    {% include 'includes/pagination_station.html' %}
+</div> 
 
 <!-- Подключаем jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

@@ -47,13 +47,13 @@
 
         <!-- Выбор ОЭС -->
         <div class="mb-3">
-            <label for="union_energy_systemtype" class="form-label">Тип энергосистемы</label>
-            {{ form.union_energy_system_type(class="form-select", id="union_energy_system_type") }}
+            <label for="energy_system_type" class="form-label">Тип энергосистемы</label>
+            {{ form.energy_system_type(class="form-select", id="energy_system_type") }}
             
             <!-- Ошибки валидации -->
-            {% if form.union_energy_system_type.errors %}
+            {% if form.energy_system_type.errors %}
                 <div class="text-danger">
-                    {{ form.union_energy_system_type.errors|join(', ') }}
+                    {{ form.energy_system_type.errors|join(', ') }}
                 </div>
             {% endif %}
         </div>

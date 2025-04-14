@@ -63,3 +63,17 @@ class RegionalDistrict(db.Model):
     stations = db.relationship(
         'Station', 
         back_populates='regional_district')
+    
+    # связь с таблицей "Энергорайоны""
+    energy_areas = db.relationship(
+        'EnergyArea',
+        back_populates='regional_district',
+        cascade='all, delete-orphan'
+    )
+
+    # связь с таблицей "Энергоузлы""
+    energy_units = db.relationship(
+        'EnergyUnit',
+        back_populates='regional_district',
+        cascade='all, delete-orphan'
+    )

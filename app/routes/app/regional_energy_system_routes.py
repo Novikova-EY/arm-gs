@@ -49,11 +49,12 @@ def regional_energy_system_list():
             sort_by = request.form.get("sort_by", "id")
             sort_dir = request.form.get("sort_dir", "asc")
             regional_energy_system_filter = request.form.get("regional_energy_system_filter", "").strip()
-            union_energy_system_filter = request.args.get("union_energy_system_filter", "").strip()
+            union_energy_system_filter = request.form.get("union_energy_system_filter", "").strip()
 
             # Получение данных из формы
             regional_energy_system_ids = request.form.getlist("regional_energy_system_ids[]")
             regional_energy_system_names = request.form.getlist("regional_energy_system_names[]")
+            regional_energy_system_full_names = request.form.getlist("regional_energy_system_full_names[]")
             union_energy_system_ids = request.form.getlist("union_energy_system[]")
             regional_energy_system_delete = request.form.getlist("regional_energy_system_delete[]")
             
@@ -70,18 +71,6 @@ def regional_energy_system_list():
                 selected_districts = request.form.getlist(f"regional_districts_{system_id}[]")  # Получаем все субъекты для конкретной энергосистемы
                 regional_districts_mapping[int(system_id)] = [int(d) for d in selected_districts if d.isdigit()]  # Игнорируем "on"
 
-            # Формируем данные для обновления
-            regional_energy_system_data = []
-            for regional_energy_system_id, regional_energy_system_name, union_energy_system_id in zip(
-                regional_energy_system_ids, regional_energy_system_names, union_energy_system_ids
-            ):
-                regional_energy_system_data.append({
-                    "id": int(regional_energy_system_id) if regional_energy_system_id else None,
-                    "name": regional_energy_system_name.strip(),
-                    "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
-                    "regional_districts": regional_districts_mapping.get(int(regional_energy_system_id), [])  # Получаем список субъектов
-                })
-
             # Удаление записей
             if regional_energy_system_delete:
                 delete_regional_energy_system_list(regional_energy_system_delete, user)
@@ -89,10 +78,11 @@ def regional_energy_system_list():
 
             # Формирование данных для обновления
             regional_energy_system_data = []
-            for regional_energy_system_id, regional_energy_system_name, union_energy_system_id in zip(regional_energy_system_ids, regional_energy_system_names, union_energy_system_ids):
+            for regional_energy_system_id, regional_energy_system_name, regional_energy_system_name_full, union_energy_system_id in zip(regional_energy_system_ids, regional_energy_system_names, regional_energy_system_full_names, union_energy_system_ids):
                 regional_energy_system_data.append({
                     "id": int(regional_energy_system_id) if regional_energy_system_id else None,
                     "name": regional_energy_system_name.strip(),
+                    "name_full": regional_energy_system_name_full.strip(),
                     "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
                     "regional_districts": regional_districts_mapping.get(int(regional_energy_system_id), [])  # Получаем ID субъектов РФ
                 })
@@ -162,7 +152,7 @@ def add_regional_energy_system_routes():
     log_to_db(user, "Открыта страница добавления региональной энергосистемы")
 
     # Создание формы
-    form = AddRegionalEnergySystemForm()
+    form = AddRegionalEnergySystemForm(request.form)
 
     # Получение списка типов ОЭС и регионов
     try:
@@ -205,7 +195,7 @@ def add_regional_energy_system_routes():
                 for error in errors:
                     flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
             return render_template(
-                "regional_energy_system/regional_energy_system_add.html",
+                "references/regional_energy_system/regional_energy_system_add.html",
                 form=form
             )
         
@@ -214,6 +204,7 @@ def add_regional_energy_system_routes():
             new_regional_energy_system_id = add_regional_energy_system([
                 {
                     "name": form.name.data,
+                    "name_full": form.name_full.data,
                     "union_energy_system_id": form.union_energy_system.data,
                     "regional_districts": form.regional_districts.data
                 }
@@ -221,11 +212,9 @@ def add_regional_energy_system_routes():
             flash("Новая запись успешно добавлена.", "success")
             log_to_db(user, "Добавление новой региональной энергосистемы", f"Имя: {form.name.data}, ОЭС: {form.union_energy_system.data}")
 
-            # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = get_total_with_filter(regional_energy_system_filter, union_energy_system_filter)
             last_page = (total_records + per_page - 1) // per_page
 
-            # Если текущая страница больше последней, корректируем её
             page = min(page, last_page)
 
             return redirect(url_for(
@@ -239,18 +228,15 @@ def add_regional_energy_system_routes():
                 highlight_id=new_regional_energy_system_id
             ))
         except ValueError as e:
-            # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
             log_to_db(user, "Ошибка добавления новой региональной энергосистемы", str(e))
         except Exception as e:
-            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
             log_to_db(user, "Неизвестная ошибка добавления новой региональной энергосистемы", str(e))
 
-    # Рендеринг формы
     return render_template(
-        "regional_energy_system/regional_energy_system_add.html", 
+        "references/regional_energy_system/regional_energy_system_add.html", 
         form=form, 
         union_energy_system=form.union_energy_system.choices, 
         regional_districts=regional_districts, 

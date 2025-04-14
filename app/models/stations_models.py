@@ -124,6 +124,16 @@ class Station(db.Model):
         'RegionalDistrict', 
         back_populates='stations')
     
+    # id энергоузла (связь с таблицей "Энергоузлы")
+    id_energy_unit = db.Column(
+        db.Integer,
+        db.ForeignKey('energy_units.id', ondelete='RESTRICT'),
+        nullable=False
+    )
+    energy_unit = db.relationship(
+        'EnergyUnit', 
+        back_populates='stations')
+    
     # номер КТО
     kto = db.Column(db.String(80), unique=True, nullable=True)
     
@@ -286,7 +296,7 @@ class Machine(db.Model):
         nullable=True)
     energy_area = db.relationship(
         'EnergyArea', 
-        back_populates='energy_area_machines')
+        back_populates='machines')
 
     # номер агрегата
     machine_number = db.Column(db.String(80), nullable=False)
@@ -298,7 +308,7 @@ class Machine(db.Model):
     machine_group = db.Column(db.String(255), nullable=False)
 
     # название агрегата
-    fuel_so = db.Column(db.String(255), nullable=False)
+    fuel_so = db.Column(db.String(255), nullable=True)
 
     # id типа электростанции (АЭС, ТЭС, ...)
     id_station_type = db.Column(
@@ -395,7 +405,7 @@ class Machine(db.Model):
     date_update_fact = db.Column(db.String(10), nullable=True)
     
     # примечание
-    note = db.Column(db.String(256), unique=False, nullable=True)
+    note = db.Column(db.String(512), unique=False, nullable=True)
 
 
 # Модель для котла электростанции

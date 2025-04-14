@@ -34,6 +34,8 @@ def get_regional_energy_system_list(page, per_page, regional_energy_system_filte
     # Сортировка
     if sort_by == "name":
         query = query.order_by(RegionalEnergySystem.name.desc() if sort_dir == "desc" else RegionalEnergySystem.name.asc())
+    elif sort_by == "name_full":
+        query = query.order_by(RegionalEnergySystem.name_full.desc() if sort_dir == "desc" else RegionalEnergySystem.name_full.asc())
     elif sort_by == "union_energy_system":
         query = query.join(UnionEnergySystem).order_by(
             UnionEnergySystem.name.desc() if sort_dir == "desc" else UnionEnergySystem.name.asc()
@@ -89,6 +91,7 @@ def update_regional_energy_system(data, user):
         for record in data:
             regional_energy_system_id = record.get("id")
             name = record.get("name")
+            name_full = record.get("name_full")
             union_energy_system_id = record.get("union_energy_system_id")
             regional_district_ids = record.get("regional_districts", [])  # Список ID регионов
 
@@ -106,6 +109,7 @@ def update_regional_energy_system(data, user):
                 regional_energy_system = RegionalEnergySystem.query.get(regional_energy_system_id)
                 if regional_energy_system:
                     regional_energy_system.name = name
+                    regional_energy_system.name_full = name_full
                     regional_energy_system.id_union_energy_system = union_energy_system_id
 
                     # Обновление связей «многие ко многим»
@@ -125,7 +129,7 @@ def update_regional_energy_system(data, user):
                             regional_energy_system.regional_districts.remove(district)
             else:
                 # Создание новой записи
-                new_regional_energy_system = RegionalEnergySystem(name=name, id_union_energy_system=union_energy_system_id)
+                new_regional_energy_system = RegionalEnergySystem(name=name, name_full=name_full, id_union_energy_system=union_energy_system_id)
                 db.session.add(new_regional_energy_system)
                 db.session.flush()  # Получение ID новой записи
 
@@ -163,6 +167,7 @@ def add_regional_energy_system(data, user):
     for record in data:
         regional_energy_system_id = record.get("id")
         name = record.get("name")
+        name_full = record.get("name_full")
         union_energy_system_id = record.get("union_energy_system_id")
         regional_district_ids = record.get("regional_districts", [])
 
@@ -183,6 +188,7 @@ def add_regional_energy_system(data, user):
                 
                 # Обновление полей записи
                 regional_energy_system.name = name
+                regional_energy_system.name_full = name_full
                 regional_energy_system.id_union_energy_system = union_energy_system_id
                 
                 # Обновление связей «многие ко многим»
@@ -213,7 +219,7 @@ def add_regional_energy_system(data, user):
                 log_to_db(user, "Ошибка обновления", f"субъектов РФ с ID {regional_energy_system_id} не существует.")
                 raise ValueError(f"Запись с ID {regional_energy_system_id} не найдена.")
         else:
-            new_regional_energy_system = RegionalEnergySystem(name=name, id_union_energy_system=union_energy_system_id)
+            new_regional_energy_system = RegionalEnergySystem(name=name, name_full=name_full, id_union_energy_system=union_energy_system_id)
                        
             db.session.add(new_regional_energy_system)
 
@@ -374,10 +380,11 @@ def export_regional_energy_system_to_excel(user, regional_energy_system_filter=N
 
     # Преобразование данных
     data = [{
-        "Порядковый номер": idx + 1,  # Добавляем порядковый номер (начиная с 1)
+        "Порядковый номер": idx + 1,
         "Региональная энергосистема": o.name,
+        "Региональная энергосистема (полное название)": o.name_full,
         "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указан",
-        "Субъекты РФ": ", ".join([district.name for district in o.regional_districts]) if o.regional_districts else "Не указан"
+        "Субъекты РФ": ", ".join([district.name_full for district in o.regional_districts]) if o.regional_districts else "Не указан"
     } for idx, o in enumerate(regional_energy_system_items)]
 
     if not data:

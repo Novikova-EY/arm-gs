@@ -43,18 +43,26 @@
         </div>
     </form>
 
+    {% set per_page = request.args.get('per_page', 10) | int %}
+    {% set page = request.args.get('page', 1) | int %}
+    {% set sort_by = request.args.get('sort_by', 'id') %}
+    {% set sort_dir = request.args.get('sort_dir', 'asc') %}
+    {% set regional_energy_system_filter = request.args.get('regional_energy_system_filter', '') %}
+    {% set union_energy_system_filter = request.args.get('union_energy_system_filter', '') %}
+
+
     <!-- Таблица данных -->
     <form method="POST" action="{{ url_for('app_bp.regional_energy_system_list') }}">
         {{ form.csrf_token }}
         {{ form.page(value=pagination.page) }} <!-- Скрытое поле для текущей страницы -->
 
-        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
-        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-        <input type="hidden" name="regional_energy_system_filter" value="{{ request.args.get('regional_energy_system_filter', '') }}">
-        <input type="hidden" name="union_energy_system_filter" value="{{ request.args.get('union_energy_system_filter', '') }}">
-        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
-
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        <input type="hidden" name="regional_energy_system_filter" value="{{ regional_energy_system_filter }}">
+        <input type="hidden" name="union_energy_system_filter" value="{{ union_energy_system_filter }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <input type="hidden" name="page" value="{{ page }}">
+        
         <!-- Кнопки сохранения изменений и добавления новой записи -->
         <div class="d-flex justify-content-between mt-3 mb-3">
             <button type="submit" class="btn btn-success">Сохранить изменения</button>
@@ -74,7 +82,7 @@
                 <thead class="table-dark">
                     <tr>
                         <!-- Шапка таблицы. Столбец "№" -->
-                        <th class="text-center">
+                        <th class="text-center align-middle">
                             <a href="{{ url_for('app_bp.regional_energy_system_list', 
                             page=pagination.page, 
                             per_page=per_page, 
@@ -94,7 +102,7 @@
                         </th>
 
                         <!-- Шапка таблицы. Столбец "Региональная энергосистема" -->
-                        <th class="text-center">
+                        <th class="text-center align-middle">
                             <a href="{{ url_for('app_bp.regional_energy_system_list', 
                             page=pagination.page, 
                             per_page=per_page, 
@@ -113,11 +121,31 @@
                             </a>
                         </th>
 
+                        <!-- Шапка таблицы. Столбец "Региональная энергосистема (полное название)" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('app_bp.regional_energy_system_list', 
+                            page=pagination.page, 
+                            per_page=per_page, 
+                            regional_energy_system_filter=regional_energy_system_filter,
+                            union_energy_system_filter=union_energy_system_filter, 
+                            sort_by='name_full', 
+                            sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" class="text-white">
+                                Региональная энергосистема <br> (полное название)
+                                {% if sort_by == 'name_full' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
                         <!-- Шапка таблицы. Столбец "Субъекты РФ" -->
-                        <th colspan="2" class="text-center">Субъекты РФ</th>
+                        <th colspan="2" class="text-center align-middle">Субъекты РФ</th>
 
                         <!-- Шапка таблицы. Столбец "ОЭС" -->
-                        <th class="text-center">
+                        <th class="text-center align-middle">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
                                     <a href="{{ url_for('app_bp.regional_energy_system_list', 
@@ -180,7 +208,7 @@
                         </th>
 
                         <!-- Шапка таблицы. Столбец "Удалить" -->
-                        <th class="text-center">Удалить</th>
+                        <th class="text-center align-middle">Удалить</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -200,7 +228,17 @@
                                 style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
                                 rows="1"
                                 oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ item.name }}</textarea>
-                        </td>     
+                        </td>
+                        
+                        <!-- Строки таблицы. Столбец "Региональная энергосистема" -->
+                        <td>
+                            <textarea 
+                                name="regional_energy_system_full_names[]" 
+                                class="form-control" 
+                                style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
+                                rows="1"
+                                oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ item.name_full }}</textarea>
+                        </td> 
                                 
                         <!-- Строки таблицы. Столбец "Перечень субъектов РФ, к которым относится региональная энергосистема" -->
                         <td>

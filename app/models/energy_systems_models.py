@@ -32,34 +32,84 @@ class EnergySystemType(db.Model):
 
 # Модель для энергорайона
 class EnergyArea(db.Model):
-    # название таблицы в базе данных
     __tablename__ = 'energy_areas'
 
-    # id энергорайона
     id = db.Column(db.Integer, primary_key=True)
-
-    # наименование энергорайона
     name = db.Column(db.String(80), unique=True, nullable=False)
 
-    # id региональной энергосистемы 
-    id_regional_energy_system = db.Column(
+    # внешний ключ на субъект РФ (региональный округ)
+    id_regional_district = db.Column(
         db.Integer,
-        db.ForeignKey('regional_energy_systems.id', ondelete='RESTRICT'),
-        nullable=True
+        db.ForeignKey('regional_districts.id', ondelete='RESTRICT'),
+        nullable=False
     )
-    
-    
-    # связь с таблицей "Региональные энергосистемы"
-    regional_energy_systems = db.relationship(
-        'RegionalEnergySystem',
+
+    # связь с моделью RegionalDistrict
+    regional_district = db.relationship(
+        'RegionalDistrict',
         back_populates='energy_areas'
     )
 
-    # связь с таблицей "Агрегаты электростанции"
-    energy_area_machines = db.relationship(
-        'Machine', 
-        back_populates='energy_area')
+    # связь с агрегатами
+    machines = db.relationship(
+        'Machine',
+        back_populates='energy_area'
+    )
 
+    @property
+    def union_energy_system(self):
+        for res in self.regional_district.regional_energy_systems:
+            if res.union_energy_system:
+                return res.union_energy_system
+        return None
+
+    @property
+    def regional_energy_system(self):
+        for res in self.regional_district.regional_energy_systems:
+            return res
+        return None
+
+
+# Модель для энергоузла
+class EnergyUnit(db.Model):
+    __tablename__ = 'energy_units'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+
+    # внешний ключ на один субъект РФ (один региональный округ)
+    id_regional_district = db.Column(
+        db.Integer,
+        db.ForeignKey('regional_districts.id', ondelete='RESTRICT'),
+        nullable=False
+    )
+
+    # связь с моделью RegionalDistrict
+    regional_district = db.relationship(
+        'RegionalDistrict',
+        back_populates='energy_units'
+    )
+
+    # связь со станциями
+    stations = db.relationship(
+        'Station',
+        back_populates='energy_unit'
+    )
+
+    @property
+    def union_energy_system(self):
+        for res in self.regional_district.regional_energy_systems:
+            if res.union_energy_system:
+                return res.union_energy_system
+        return None
+
+    @property
+    def regional_energy_system(self):
+        for res in self.regional_district.regional_energy_systems:
+            return res
+        return None
+
+    
 
 # Модель для региональной энергосистемы
 class RegionalEnergySystem(db.Model):
@@ -92,12 +142,6 @@ class RegionalEnergySystem(db.Model):
     regional_districts = db.relationship(
         'RegionalDistrict',
         secondary=regional_district_regional_energy_system,
-        back_populates='regional_energy_systems'
-    )
-
-    # связь с таблицей "Энергорайоны"
-    energy_areas = db.relationship(
-        'EnergyArea',
         back_populates='regional_energy_systems'
     )
 

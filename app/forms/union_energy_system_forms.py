@@ -67,7 +67,7 @@ class AddUnionEnergySystemForm(FlaskForm):
         ]
     )
 
-    union_energy_system_type = SelectField(
+    energy_system_type = SelectField(
         'Тип энергосистемы',
         choices=[],  # Заполняется в контроллере
         coerce=int,

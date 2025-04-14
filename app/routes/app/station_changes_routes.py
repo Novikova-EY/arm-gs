@@ -3,6 +3,7 @@ from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
 )
 from . import app_bp
+from app import db
 from app.models.logs_models import Log
 from app.forms.station_forms import StationFilterForm
 from app.forms.machine_forms import MachineFilterSmallForm

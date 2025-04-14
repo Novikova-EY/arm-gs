@@ -177,15 +177,17 @@
     <!-- Импорт/экспорт -->
     <div class="row mt-5">
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
-        <div class="col-md-6">
-            <form action="{{ url_for('app_bp.import_gen_company_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
-                {{ form.csrf_token }}
-                <button type="submit" class="btn btn-danger w-100">Импорт</button>
-                <div class="mb-3">
-                    <input type="file" name="file" id="file" class="form-control">
-                </div>
-            </form>
-        </div>
+        <!--
+            <div class="col-md-6">
+                <form action="{{ url_for('app_bp.import_gen_company_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
+                    {{ form.csrf_token }}
+                    <button type="submit" class="btn btn-danger w-100">Импорт</button>
+                    <div class="mb-3">
+                        <input type="file" name="file" id="file" class="form-control">
+                    </div>
+                </form>
+            </div>
+        -->
 
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
         <div class="col-md-6">

@@ -16,6 +16,14 @@ class RegionalEnergySystemFilterForm(FlaskForm):
         ]
     )
 
+    name_full = StringField(
+        'Региональная энергосистема (полное название)',
+        validators=[
+            DataRequired(message="Поле 'Региональная энергосистема (полное название)' обязательно для заполнения."),
+            Length(min=3, max=255, message="Длина имени должна быть от 3 до 255 символов.")
+        ]
+    )
+    
     union_energy_system = SelectField(
         'ОЭС',
         choices=[],
@@ -39,7 +47,7 @@ class RegionalEnergySystemFilterForm(FlaskForm):
         render_kw={"placeholder": "Введите региональную энергосистему"}
     )
 
-    union_enerfy_system_filter = StringField(
+    union_energy_system_filter = StringField(
         "Фильтр по ОЭС",
         validators=[Length(max=100)],
         render_kw={"placeholder": "Введите ОЭС"}
@@ -67,18 +75,26 @@ class AddRegionalEnergySystemForm(FlaskForm):
         ]
     )
 
-    union_enerfy_system = SelectField(
+    name_full = StringField(
+        'Региональная энергосистема (полное название)',
+        validators=[
+            DataRequired(message="Поле 'Региональная энергосистема (полное название)' обязательно для заполнения."),
+            Length(min=3, max=255, message="Длина имени должна быть от 3 до 255 символов.")
+        ]
+    )
+
+    union_energy_system = SelectField(
         'ОЭС',
         choices=[],  # Заполняется в контроллере
         coerce=int,
         validators=[DataRequired(message="Пожалуйста, выберите ОЭС.")]
     )
 
-    regional_energy_systems = SelectMultipleField(
+    regional_districts = SelectMultipleField(
         'Субъекты РФ',
-        choices=[],  # Заполняется в контроллере
+        choices=[],
         coerce=int,
-        validators=[DataRequired(message="Пожалуйста, выберите субъекты РФ.")],
+        validators=[Optional()],
         render_kw={'multiple': True}  # Позволяет выбирать несколько значений
     )
 

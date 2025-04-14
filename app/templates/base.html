@@ -108,13 +108,13 @@
 </head>
 
 <body class="container-fluid mt-2">
-    <div class="d-flex justify-content-end align-items-center">
+    <div class="d-flex justify-content-end m-3">
         {% if current_user.is_authenticated %}
             <span class="me-4 fs-4 fw-bold">{{ current_user.username }}</span>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-6">Выйти</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-6 m-3">Выйти</a>
         {% else %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-6">Войти</a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary fs-6">Регистрация</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-6 m-3">Войти</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary fs-6 m-3">Регистрация</a>
         {% endif %}
     </div>
     

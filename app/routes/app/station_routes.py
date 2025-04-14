@@ -205,7 +205,9 @@ def station_list():
 
     # Сортировка машин внутри каждой станции по id_station_type
     for station in pagination["stations"]:
-        station.machines.sort(key=lambda machine: machine.id_station_type)
+        station.machines.sort(
+            key=lambda machine: (machine.id_station_type is None, machine.id_station_type)
+        )
    
     # Подготовка данных для формы
     energy_system_type_list, energy_system_type_names = get_energy_system_types()
@@ -750,7 +752,6 @@ from flask import send_file, redirect, url_for, flash, request, session, current
 from zipfile import ZipFile
 from io import BytesIO
 from datetime import datetime
-
 @app_bp.route('/export_stations', methods=['GET'])
 def export_station_list():
     """Маршрут для экспорта данных в Excel."""
@@ -776,10 +777,10 @@ def export_station_list():
         # Проверка наличия данных
         if not excel_files:
             flash("Нет данных для экспорта.", "warning")
-            return redirect(url_for("app_bp.station_list", **filters))
+            return redirect(url_for("app_bp.station_list"))
 
-        # Если `export_station_list_to_excel()` вернул один файл — обрабатываем его отдельно
-        if isinstance(excel_files, tuple) and len(excel_files) == 2:
+        # Если возвращён один файл, отправляем его напрямую
+        if isinstance(excel_files, tuple):
             file_name, file_obj = excel_files
             return send_file(
                 file_obj,
@@ -788,27 +789,20 @@ def export_station_list():
                 download_name=file_name
             )
 
-        # Если возвращён список, проверяем его содержимое
-        if isinstance(excel_files, list) and all(isinstance(i, tuple) and len(i) == 2 for i in excel_files):
-            # Создаём ZIP-архив
-            zip_buffer = BytesIO()
-            with ZipFile(zip_buffer, 'w') as zip_file:
-                for file_name, file_obj in excel_files:
-                    zip_file.writestr(file_name, file_obj.getvalue())
+        # Если файлов несколько, создаём ZIP-архив
+        zip_buffer = BytesIO()
+        with ZipFile(zip_buffer, 'w') as zip_file:
+            for file_name, file_obj in excel_files:
+                zip_file.writestr(file_name, file_obj.getvalue())
 
-            zip_buffer.seek(0)
+        zip_buffer.seek(0)
 
-            return send_file(
-                zip_buffer,
-                mimetype="application/zip",
-                as_attachment=True,
-                download_name=f"Экспорт_станций_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-            )
-
-        # Если формат данных неверный — логируем ошибку
-        current_app.logger.error(f"Ошибка экспорта: Неверный формат данных {type(excel_files)}")
-        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
-        return redirect(url_for("app_bp.station_list", **filters))
+        return send_file(
+            zip_buffer,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=f"Экспорт_станций_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        )
 
     except Exception as e:
         current_app.logger.error(f"Ошибка экспорта: {e}")

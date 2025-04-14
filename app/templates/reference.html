@@ -17,7 +17,7 @@
         <h2 class="text-center">Справочники</h2>
         <div class="container mb-3">
             <div class="row align-items-start mb-3">
-                <h4 class="text-center">Справочники территорий</h2>
+                <h4 class="text-center">Справочники территорий РФ</h2>
                 <div class="col">
                     <a href="{{ url_for('app_bp.federal_district_list') }}" class="btn btn-outline-primary fs-4 w-100">Федеральные округа</a>
                 </div>
@@ -34,6 +34,9 @@
                 <div class="col">
                     <a href="{{ url_for('app_bp.regional_energy_system_list') }}" class="btn btn-outline-primary fs-4 w-100">Региональные энергосистемы</a>
                 </div>
+                <div class="col">
+                    <a href="{{ url_for('app_bp.energy_area_list') }}" class="btn btn-outline-primary fs-4 w-100">Энергорайоны</a>
+                </div>  
             </div>
 
             <div class="row align-items-start mb-3">
@@ -44,9 +47,9 @@
             </div>
 
             <div class="row align-items-start mb-3">
-                <h4 class="text-center">Справочник типов топлива</h2>           
+                <h4 class="text-center">Справочник топлива</h2>           
                 <div class="col">
-                    <a href="{{ url_for('app_bp.fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы топлива</a>
+                    <a href="{{ url_for('app_bp.fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Топливо</a>
                 </div>
             </div>
         </div>
