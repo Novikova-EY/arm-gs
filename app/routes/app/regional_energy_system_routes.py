@@ -8,21 +8,9 @@ from app.services.regional_energy_system_services import (
     get_regional_energy_system_list, get_union_energy_system, update_regional_energy_system, add_regional_energy_system, delete_regional_energy_system_list, get_regional_districts,
     import_regional_energy_system_from_excel, export_regional_energy_system_to_excel, log_to_db, get_total_with_filter
 )
-
-
 from app import db
 from app.models.logs_models import Log
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-
+from app.services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/regional_energy_system", methods=["GET", "POST"])

@@ -23,10 +23,24 @@ class EnergyUnitFilterForm(FlaskForm):
         validators=[DataRequired(message="Пожалуйста, выберите субъект РФ.")],
     )
 
+    regional_energy_system = SelectField(
+        'Региональная энергосистема',
+        choices=[],
+        coerce=int,
+        validators=[DataRequired(message="Пожалуйста, выберите региональную энергосистему.")],
+    )
+
+    union_energy_system = SelectField(
+        'ОЭС',
+        choices=[],
+        coerce=int,
+        validators=[DataRequired(message="Пожалуйста, выберите ОЭС.")],
+    )
+    
     energy_unit_delete = HiddenField("Удалить")
 
     energy_unit_filter = StringField(
-        "Фильтр по энергорайонам",
+        "Фильтр по энергоузлам",
         validators=[Length(max=100)],
         render_kw={"placeholder": "Введите энергоузел"}
     )
@@ -76,4 +90,42 @@ class AddEnergyUnitForm(FlaskForm):
         choices=[],
         coerce=int,
         validators=[DataRequired(message="Пожалуйста, выберите субъект РФ.")],
+    )
+
+    regional_energy_system = SelectField(
+        'Региональная энергосистема',
+        choices=[],
+        coerce=int,
+        validators=[Optional()],
+    )
+
+    union_energy_system = SelectField(
+        'ОЭС',
+        choices=[],
+        coerce=int,
+        validators=[Optional()],
+    )
+
+    energy_area_filter = StringField(
+        "Фильтр по энергорайонам",
+        validators=[Length(max=100)],
+        render_kw={"placeholder": "Введите энергорайон"}
+    )
+
+    regional_district_filter = StringField(
+        "Фильтр по субъекту РФ",
+        validators=[Length(max=100)],
+        render_kw={"placeholder": "Введите субъект РФ"}
+    )
+
+    regional_energy_system_filter = StringField(
+        "Фильтр по региональной энергосистеме",
+        validators=[Length(max=100)],
+        render_kw={"placeholder": "Введите региональную энергосистему"}
+    )
+
+    union_energy_system_filter = StringField(
+        "Фильтр по ОЭС",
+        validators=[Length(max=100)],
+        render_kw={"placeholder": "Введите ОЭС"}
     )

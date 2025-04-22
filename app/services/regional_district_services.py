@@ -4,15 +4,7 @@ from app.models.territories_models import FederalDistrict, RegionalDistrict
 from sqlalchemy import text, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
+from app.services.logging_service import log_to_db
 
 
 def get_regional_district_list(page, per_page, regional_district_filter=None, federal_district_filter=None, sort_by="id", sort_dir="asc"):

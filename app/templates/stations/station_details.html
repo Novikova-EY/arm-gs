@@ -355,7 +355,7 @@
                                 <td class="text-center" style="font-weight: bold;">Руст</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
-                                    {% set p_ust_value = stations_yearly_p_ust.get(station.id, {}).get(year, 0) %}
+                                    {% set p_ust_value = station.powers_by_year.get(year, {}).get("p_ust", "-") %}
                                     {% if p_ust_value == 0 %}
                                         &mdash;
                                     {% else %}
@@ -373,7 +373,7 @@
                                 <td class="text-center" style="font-weight: bold;">Рогр</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
-                                    {% set p_ogr_value = stations_yearly_p_ogr.get(station.id, {}).get(year, 0) %}
+                                    {% set p_ogr_value = station.powers_by_year.get(year, {}).get("p_ogr", "-") %}
                                     {% if p_ogr_value == 0 %}
                                         &mdash;
                                     {% else %}
@@ -388,7 +388,7 @@
                                 <td class="text-center" style="font-weight: bold;">Ррасп</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
-                                    {% set p_rasp_value = stations_yearly_p_rasp.get(station.id, {}).get(year, 0) %}
+                                    {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp", "-") %}
                                     {% if p_rasp_value == 0 %}
                                         &mdash;
                                     {% else %}

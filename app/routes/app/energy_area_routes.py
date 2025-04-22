@@ -10,17 +10,7 @@ from app.services.energy_area_services import (
     get_energy_area_list, get_regional_energy_system, get_union_energy_system, update_energy_area, add_energy_area, delete_energy_area_list, get_regional_districts,
     export_energy_area_to_excel, log_to_db, get_total_with_filter
 )
-
-
-def log_to_db(username, action, details=None):
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-
+from app.services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/energy_areas", methods=["GET", "POST"])

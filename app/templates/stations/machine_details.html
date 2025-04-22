@@ -505,7 +505,7 @@
                                 {{ t.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
                                     {% if t.tes_type.data %}
-                                        {{ t.tes_type(class="form-select text-center pftt-select fs-5") }}
+                                        {{ t.tes_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
                                     {% else %}
                                         —
                                         <input type="hidden" name="{{ t.tes_type.name }}" value="">
@@ -543,10 +543,10 @@
                                 {{ f.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
                                     {% if f.fuel_type.data %}
-                                        {{ f.fuel_type(class="form-select text-center pftt-select fs-5") }}
+                                    {{ f.fuel_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
                                     {% else %}
                                         <input type="hidden" name="{{ f.fuel_type.name }}" value="100">
-                                        {{ f.fuel_type(class="form-select text-center pftt-select fs-5", value=100) }}
+                                        {{ f.fuel_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -922,193 +922,6 @@
         updateValues();
     });
 </script>
-
-<!-- Скрипт подсвечивания изменяющихся значений -->
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll("tr").forEach(row => {
-            let powerCells = row.querySelectorAll(".power-column");
-            let fuelCells = row.querySelectorAll(".fuel-column");
-            let tesCells = row.querySelectorAll(".tes-column");
-
-            let previousPowerCell = null;
-            let previousFuelCell = null;
-            let previousTesCell = null;
-
-            // Функция обработки изменений в select
-            function handleSelectChange(event) {
-                let cell = event.target.closest("td");
-                let newValue = event.target.value;
-                let prevValue = cell.getAttribute("data-prev-value");
-
-                if (prevValue !== newValue) {
-                    if (prevValue === "100" && newValue !== "100") {
-                        console.log("✅ Подсветка ЗЕЛЕНЫМ (было пустое, появилось значение)");
-                        cell.classList.add("highlight-green");
-                    } else if (prevValue !== "100" && newValue === "100") {
-                        console.log("❌ Подсветка КРАСНЫМ (значение исчезло)");
-                        cell.classList.add("highlight-red");
-                    } else {
-                        console.log("🔵 Подсветка СИНИМ (изменение значения)");
-                        cell.classList.add("highlight-blue");
-                    }
-                }
-                cell.setAttribute("data-prev-value", newValue);
-            }
-
-            // Обработка мощностей
-            powerCells.forEach((cell, index) => {
-                let inputField = cell.querySelector("input");
-                let currentValue = inputField ? inputField.value.trim() : cell.textContent.trim();
-                let currentNumericValue = parseFloat(currentValue.replace(',', '.'));
-                let isCurrentDash = currentValue === "-" || currentValue === "—" || currentValue === "";
-
-                if (!Number.isFinite(currentNumericValue)) {
-                    currentNumericValue = null;
-                }
-
-                cell.setAttribute("data-prev-value", currentValue);
-
-                if (previousPowerCell) {
-                    let previousInput = previousPowerCell.querySelector("input");
-                    let previousValue = previousInput ? previousInput.value.trim() : previousPowerCell.textContent.trim();
-                    let previousNumericValue = parseFloat(previousValue.replace(',', '.'));
-                    let isPreviousDash = previousValue === "-" || previousValue === "—" || previousValue === "";
-
-                    if (!Number.isFinite(previousNumericValue)) {
-                        previousNumericValue = null;
-                    }
-
-                    if ((previousNumericValue === 0 || isPreviousDash) && currentNumericValue > 0) {
-                        previousPowerCell.classList.add("highlight-green");
-                        cell.classList.add("highlight-green");
-                    } else if (previousNumericValue > 0 && (currentNumericValue === 0 || isCurrentDash)) {
-                        previousPowerCell.classList.add("highlight-red");
-                        cell.classList.add("highlight-red");
-                    } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
-                        previousPowerCell.classList.add("highlight-blue");
-                        cell.classList.add("highlight-blue");
-                    }
-                }
-                previousPowerCell = cell;
-            });
-
-            // Обработка топлива
-            fuelCells.forEach((cell, index) => {
-                let selectField = cell.querySelector("select");
-                let currentValue = selectField ? selectField.value.trim() : cell.textContent.trim();
-
-                cell.setAttribute("data-prev-value", currentValue);
-
-                if (previousFuelCell) {
-                    let previousSelect = previousFuelCell.querySelector("select");
-                    let previousValue = previousSelect ? previousSelect.value.trim() : previousFuelCell.textContent.trim();
-
-                    if (previousValue === "100" && currentValue !== "100") {
-                        previousFuelCell.classList.add("highlight-green");
-                        cell.classList.add("highlight-green");
-                    } else if (previousValue !== "100" && currentValue === "100") {
-                        previousFuelCell.classList.add("highlight-red");
-                        cell.classList.add("highlight-red");
-                    } else if (previousValue !== currentValue) {
-                        previousFuelCell.classList.add("highlight-blue");
-                        cell.classList.add("highlight-blue");
-                    }
-                }
-                previousFuelCell = cell;
-            });
-
-            // Обработка типа ТЭС
-            tesCells.forEach((cell, index) => {
-                let selectField = cell.querySelector("select");
-                let currentValue = selectField ? selectField.value.trim() : cell.textContent.trim();
-
-                cell.setAttribute("data-prev-value", currentValue);
-
-                if (previousTesCell) {
-                    let previousSelect = previousTesCell.querySelector("select");
-                    let previousValue = previousSelect ? previousSelect.value.trim() : previousTesCell.textContent.trim();
-
-                    if (previousValue === "100" && currentValue !== "100") {
-                        previousTesCell.classList.add("highlight-green");
-                        cell.classList.add("highlight-green");
-                    } else if (previousValue !== "100" && currentValue === "100") {
-                        previousTesCell.classList.add("highlight-red");
-                        cell.classList.add("highlight-red");
-                    } else if (previousValue !== currentValue) {
-                        previousTesCell.classList.add("highlight-blue");
-                        cell.classList.add("highlight-blue");
-                    }
-                }
-                previousTesCell = cell;
-            });
-
-            // Добавляем обработчик изменения выбора в select
-            row.querySelectorAll("select").forEach(select => {
-                select.addEventListener("change", handleSelectChange);
-            });
-        });
-    });
-
-    // Добавляем стили для подсветки
-    const style = document.createElement("style");
-    style.innerHTML = `
-        .highlight-green {
-            background-color: lightgreen !important;
-        }
-        .highlight-red {
-            background-color: lightcoral !important;
-        }
-        .highlight-blue {
-            background-color: lightblue !important;
-        }
-    `;
-    document.head.appendChild(style);
-</script>
-
-<!-- Пересчет значений по введенных p_rasp или p_ogr -->
-
-<script>
-$(document).ready(function () {
-    function calculatePower(event) {
-        let inputField = $(event.target); // Определяем, где произошло изменение
-        let cell = inputField.closest("td"); // Получаем ячейку с input
-        let year = cell.find("input[type='hidden']").val(); // Получаем год из скрытого input
-
-        // Находим соответствующие значения p_ust, p_ogr, p_rasp для этого года
-        let p_ust_cell = $(".total-power-row td").filter(function () {
-            return $(this).find("input[type='hidden']").val() == year;
-        }).find("input:not([type='hidden'])");
-
-        let p_ogr_cell = $(".p-ogr-row td").filter(function () {
-            return $(this).find("input[type='hidden']").val() == year;
-        }).find("input:not([type='hidden'])");
-
-        let p_rasp_cell = $(".p-rasp-row td").filter(function () {
-            return $(this).find("input[type='hidden']").val() == year;
-        }).find("input:not([type='hidden'])");
-
-        let p_ust = parseFloat(p_ust_cell.val()) || 0;
-
-        if (inputField.closest("tr").hasClass("p-ogr-row")) {
-            let p_ogr = parseFloat(inputField.val()) || 0;
-            p_rasp_cell.val(p_ust - p_ogr);
-        } else if (inputField.closest("tr").hasClass("p-rasp-row")) {
-            let p_rasp = parseFloat(inputField.val()) || 0;
-            p_ogr_cell.val(p_ust - p_rasp);
-        }
-    }
-
-    $(".p-ogr-row .pftt-select, .p-rasp-row .pftt-select").on("input", calculatePower);
-});
-</script>
-
-
-
-
-
-
-
 
 {% endif %}
 {% endblock %}

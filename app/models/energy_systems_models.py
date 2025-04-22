@@ -35,9 +35,9 @@ class EnergyArea(db.Model):
     __tablename__ = 'energy_areas'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(256), unique=True, nullable=False)
 
-    # внешний ключ на субъект РФ (региональный округ)
+    # внешний ключ на субъект РФ
     id_regional_district = db.Column(
         db.Integer,
         db.ForeignKey('regional_districts.id', ondelete='RESTRICT'),
@@ -50,6 +50,19 @@ class EnergyArea(db.Model):
         back_populates='energy_areas'
     )
 
+    # внешний ключ на региональную энергосистему
+    id_regional_energy_system = db.Column(
+        db.Integer,
+        db.ForeignKey('regional_energy_systems.id', ondelete='RESTRICT'),
+        nullable=False
+    )
+
+    # связь с моделью RegionalEnergySystem
+    regional_energy_system = db.relationship(
+        'RegionalEnergySystem',
+        back_populates='energy_areas'
+    )
+
     # связь с агрегатами
     machines = db.relationship(
         'Machine',
@@ -58,15 +71,8 @@ class EnergyArea(db.Model):
 
     @property
     def union_energy_system(self):
-        for res in self.regional_district.regional_energy_systems:
-            if res.union_energy_system:
-                return res.union_energy_system
-        return None
-
-    @property
-    def regional_energy_system(self):
-        for res in self.regional_district.regional_energy_systems:
-            return res
+        if self.regional_energy_system and self.regional_energy_system.union_energy_system:
+            return self.regional_energy_system.union_energy_system
         return None
 
 
@@ -75,18 +81,27 @@ class EnergyUnit(db.Model):
     __tablename__ = 'energy_units'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(256), unique=True, nullable=False)
 
-    # внешний ключ на один субъект РФ (один региональный округ)
+    # внешний ключ на субъект РФ
     id_regional_district = db.Column(
         db.Integer,
         db.ForeignKey('regional_districts.id', ondelete='RESTRICT'),
         nullable=False
     )
-
-    # связь с моделью RegionalDistrict
     regional_district = db.relationship(
         'RegionalDistrict',
+        back_populates='energy_units'
+    )
+
+    # внешний ключ на региональную энергосистему
+    id_regional_energy_system = db.Column(
+        db.Integer,
+        db.ForeignKey('regional_energy_systems.id', ondelete='RESTRICT'),
+        nullable=False
+    )
+    regional_energy_system = db.relationship(
+        'RegionalEnergySystem',
         back_populates='energy_units'
     )
 
@@ -98,17 +113,9 @@ class EnergyUnit(db.Model):
 
     @property
     def union_energy_system(self):
-        for res in self.regional_district.regional_energy_systems:
-            if res.union_energy_system:
-                return res.union_energy_system
+        if self.regional_energy_system and self.regional_energy_system.union_energy_system:
+            return self.regional_energy_system.union_energy_system
         return None
-
-    @property
-    def regional_energy_system(self):
-        for res in self.regional_district.regional_energy_systems:
-            return res
-        return None
-
     
 
 # Модель для региональной энергосистемы
@@ -130,9 +137,6 @@ class RegionalEnergySystem(db.Model):
         db.Integer, 
         db.ForeignKey('union_energy_systems.id', ondelete='RESTRICT'), 
         nullable=True)
-    
-
-    # cвязь с таблицей "Объединенные энергосистемы"
     union_energy_system = db.relationship(
         'UnionEnergySystem',
         back_populates='regional_energy_systems'
@@ -143,6 +147,20 @@ class RegionalEnergySystem(db.Model):
         'RegionalDistrict',
         secondary=regional_district_regional_energy_system,
         back_populates='regional_energy_systems'
+    )
+
+    # связь с таблицей "Энергоузлы""
+    energy_units = db.relationship(
+        'EnergyUnit',
+        back_populates='regional_energy_system',
+        cascade='all, delete-orphan'
+    )
+
+    # связь с таблицей "Энергорайоны""
+    energy_areas = db.relationship(
+        'EnergyArea',
+        back_populates='regional_energy_system',
+        cascade='all, delete-orphan'
     )
 
 

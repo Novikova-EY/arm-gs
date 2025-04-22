@@ -1,0 +1,52 @@
+<!-- Итоговые значения по-станционно -->
+
+{% if not station_type_filter and not tes_type_filter and not tes_machine_type_filter%}
+    <!-- Первая строка: p_ust -->
+    <tr class="text-center total-power-row" style="vertical-align: middle;">
+        <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold;">
+            Всего по станции:
+        </td>
+        <td class="text-center" style="font-weight: bold;">Руст</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column" style="font-weight: bold;">
+            {% set p_ust_value = station.powers_by_year.get(year, {}).get("p_ust", "-") %}
+            {% if p_ust_value == 0 %}
+                &mdash;
+            {% else %}
+                {{ p_ust_value }}
+            {% endif %}
+        </td>
+        {% endfor %}
+
+    </tr>
+
+    <!-- Вторая строка: p_ogr -->
+    <tr class="text-center p-ogr-row">
+        <td class="text-center" style="font-weight: bold;">Рогр</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column" style="font-weight: bold;">
+            {% set p_ogr_value = station.powers_by_year.get(year, {}).get("p_ogr", "-") %}
+            {% if p_ogr_value == 0 %}
+                &mdash;
+            {% else %}
+                {{ p_ogr_value }}
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+
+    <!-- Третья строка: p_rasp -->
+    <tr class="text-center p-rasp-row">
+        <td class="text-center" style="font-weight: bold;">Ррасп</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column" style="font-weight: bold;">
+            {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp", "-") %}
+            {% if p_rasp_value == 0 %}
+                &mdash;
+            {% else %}
+                {{ p_rasp_value }}
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+{% endif %}

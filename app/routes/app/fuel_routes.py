@@ -7,21 +7,9 @@ from app.services.fuel_services import (
     get_fuel_list, get_fuel_types, update_fuel, add_fuel, delete_fuel_list,
     import_fuel_from_excel, export_fuel_to_excel, log_to_db, get_total_fuel_records
 )
-
-
 from app import db
 from app.models.logs_models import Log
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-
+from app.services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/fuel", methods=["GET", "POST"])

@@ -11,17 +11,7 @@ from app.services.union_energy_system_services import (
 
 from app import db
 from app.models.logs_models import Log
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-
+from app.services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/union_energy_system", methods=["GET", "POST"])

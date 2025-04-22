@@ -30,6 +30,9 @@ class Year(db.Model):
     id_year_feature = db.Column(db.Integer, db.ForeignKey('year_features.id', ondelete='RESTRICT'), nullable=True)
     year_feature = db.relationship('YearFeature', back_populates='years')
 
+    # Связь с `StationPower`
+    station_powers = db.relationship('StationPower', back_populates='year')
+
     # Связь с `MachinePower`
     machine_powers = db.relationship('MachinePower', back_populates='year')
 

@@ -12,24 +12,13 @@ from app.services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
     log_to_db, import_station_list_from_excel, export_station_list_to_excel, get_year_features, 
-    aggregate_station_power_values, aggregate_power_by_regional_district, get_station_by_id, get_condition_type, 
-    get_station_types_list, aggregate_power_by_regional_energy_system, get_station_groups, get_gen_companies,
+    get_station_by_id, get_condition_type, get_station_types_list, get_station_groups, get_gen_companies,
     import_fuel_tes_station_from_excel, group_machines_by_group_and_fuel, 
 )
 from flask_login import login_required
 from app.routes.auth import role_required
 from sqlalchemy import func
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-
+from app.services.logging_service import log_to_db
 from flask import session
 
 @app_bp.route("/station_changes", methods=["GET", "POST"])
@@ -223,29 +212,6 @@ def station_changes():
     tes_machine_type_list = get_tes_machine_types()
     year_features = get_year_features()
 
-    station_power_values = aggregate_station_power_values(pagination["stations"])
-    stations_yearly_p_ust = station_power_values['stations']['p_ust']
-    stations_yearly_p_ogr = station_power_values['stations']['p_ogr']
-    stations_yearly_p_rasp = station_power_values['stations']['p_rasp']
-
-    regional_district_power_values = aggregate_power_by_regional_district(pagination["stations"])
-    regional_districts_yearly_p_ust = regional_district_power_values['regional_districts']['p_ust']
-    regional_districts_yearly_p_ogr = regional_district_power_values['regional_districts']['p_ogr']
-    regional_districts_yearly_p_rasp = regional_district_power_values['regional_districts']['p_rasp']
-
-    regional_districts_yearly_p_ust = {int(k): v for k, v in regional_districts_yearly_p_ust.items()}
-    regional_districts_yearly_p_ogr = {int(k): v for k, v in regional_districts_yearly_p_ogr.items()}
-    regional_districts_yearly_p_rasp = {int(k): v for k, v in regional_districts_yearly_p_rasp.items()}
-
-    regional_energy_system_power_values = aggregate_power_by_regional_energy_system(pagination["stations"])
-    regional_energy_systems_yearly_p_ust = regional_energy_system_power_values['regional_energy_systems']['p_ust']
-    regional_energy_systems_yearly_p_ogr = regional_energy_system_power_values['regional_energy_systems']['p_ogr']
-    regional_energy_systems_yearly_p_rasp = regional_energy_system_power_values['regional_energy_systems']['p_rasp']
-
-    regional_energy_systems_yearly_p_ust = {int(k): v for k, v in regional_energy_systems_yearly_p_ust.items()}
-    regional_energy_systems_yearly_p_ogr = {int(k): v for k, v in regional_energy_systems_yearly_p_ogr.items()}
-    regional_energy_systems_yearly_p_rasp = {int(k): v for k, v in regional_energy_systems_yearly_p_rasp.items()}
-
     return render_template(
         "stations/stations.html",
         form=form,
@@ -283,14 +249,5 @@ def station_changes():
         federal_district_filter=federal_district_filter,
         regional_district_filter=regional_district_filter,
         station_fuel_type_filter=station_fuel_type_filter,
-        stations_yearly_p_ust=stations_yearly_p_ust,
-        stations_yearly_p_ogr=stations_yearly_p_ogr,
-        stations_yearly_p_rasp=stations_yearly_p_rasp,
-        regional_districts_yearly_p_ust=regional_districts_yearly_p_ust,
-        regional_districts_yearly_p_ogr=regional_districts_yearly_p_ogr,
-        regional_districts_yearly_p_rasp=regional_districts_yearly_p_rasp,
-        regional_energy_systems_yearly_p_ust=regional_energy_systems_yearly_p_ust,
-        regional_energy_systems_yearly_p_ogr=regional_energy_systems_yearly_p_ogr,
-        regional_energy_systems_yearly_p_rasp=regional_energy_systems_yearly_p_rasp,
         year_features=year_features,
     )

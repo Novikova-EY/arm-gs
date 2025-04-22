@@ -237,111 +237,226 @@
                                 <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
                                     <td colspan = "{{ 3 + end_year - start_year }} "> {{ regional_district_names[rd_id] }}</td>
                                 </tr>
+
+                                <!-- Строки: энергоузлы -->
+                                {% for eu_id, eu_group in rd_group.items() %}
+                                {% if eu_id != 100 %}
+                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ 3 + end_year - start_year }}">{{ energy_unit_names[eu_id] }}</td>
+                                    </tr>
+
+                                    <!-- Итоговые значения по энергоузлу -->
+                                    <tr class="table-success text-center">
+                                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                            {{ energy_unit_names[eu_id] }}, всего
+                                        </td>
+                                        <td class="text-center" style="font-weight: bold;">Руст</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_ust.get(eu_id, {}).get(year, 0) %}
+                                                {{ val if val else '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr class="table-success text-center p-ogr-row">
+                                        <td class="text-center" style="font-weight: bold;">Рогр</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_ogr.get(eu_id, {}).get(year, 0) %}
+                                                {{ val if val else '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr class="table-success text-center p-rasp-row">
+                                        <td class="text-center" style="font-weight: bold;">Ррасп</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_rasp.get(eu_id, {}).get(year, 0) %}
+                                                {{ val if val else '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endif %}
+                                {% endfor %} <!-- Конец списка энергоузлов -->
                            
                                 <!-- ✅ Итоговые значения по субъекту -->
-                                <!-- Первая строка: p_ust -->
                                 <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
                                     <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
                                         {{ regional_district_names[rd_id] }}, всего
                                     </td>
                                     <td class="text-center" style="font-weight: bold;">Руст</td>
                                     {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_ust.get(rd_id, {}).get(year, 0) %}
+                                            {{ val if val else '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr class="table-secondary text-center p-ogr-row">
+                                    <td class="text-center" style="font-weight: bold;">Рогр</td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_ogr.get(rd_id, {}).get(year, 0) %}
+                                            {{ val if val else '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr class="table-secondary text-center p-rasp-row">
+                                    <td class="text-center" style="font-weight: bold;">Ррасп</td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_rasp.get(rd_id, {}).get(year, 0) %}
+                                            {{ val if val else '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %} <!-- Конец списка субъектов -->
+                            
+                            <!-- ✅ Итоговые значения по региональной энергосистеме -->
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                    {{ regional_energy_system_names[res_id] }}, всего
+                                </td>
+                                <td class="text-center" style="font-weight: bold;">Руст</td>
+                                {% for year in range(start_year, end_year + 1) %}
                                     <td class="power-column" style="font-weight: bold;">
-                                        {% set p_ust_value = regional_districts_yearly_p_ust.get(rd_id, {}).get(year, 0) | default(0) %}
+                                        {% set p_ust_value = regional_energy_systems_yearly_p_ust.get(res_id, {}).get(year, 0) | default(0) %}
                                         {% if p_ust_value == 0 %}
                                             &mdash;
                                         {% else %}
                                             {{ p_ust_value }}
                                         {% endif %}
                                     </td>
-                                    {% endfor %}
-                                </tr>
-                                
-
-                                <!-- Вторая строка: p_ogr -->
-                                <tr class="table-secondary text-center p-ogr-row">
-                                    <td class="text-center" style="font-weight: bold;">Рогр</td>
-                                    {% for year in range(start_year, end_year + 1) %}
-                                    <td class="power-column" style="font-weight: bold;">
-                                        {% set p_ogr_value = regional_districts_yearly_p_ogr.get(rd_id, {}).get(year, 0) %}
-                                        {% if p_ogr_value == 0 %}
-                                            &mdash;
-                                        {% else %}
-                                            {{ p_ogr_value }}
-                                        {% endif %}
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-
-                                <!-- Третья строка: p_rasp -->
-                                <tr class="table-secondary text-center p-rasp-row">
+                                {% endfor %}
+                            </tr>
+                            <tr class="table-info text-center p-ogr-row">
+                                <td class="text-center" style="font-weight: bold;">Рогр</td>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set p_ogr_value = regional_energy_systems_yearly_p_ogr.get(res_id, {}).get(year, 0) %}
+                                    {% if p_ogr_value == 0 %}
+                                        &mdash;
+                                    {% else %}
+                                        {{ p_ogr_value }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            <tr class="table-info text-center p-rasp-row">
                                 <td class="text-center" style="font-weight: bold;">Ррасп</td>
                                 {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
-                                    {% set p_rasp_value = regional_districts_yearly_p_rasp.get(rd_id, {}).get(year, 0) %}
+                                    {% set p_rasp_value = regional_energy_systems_yearly_p_rasp.get(res_id, {}).get(year, 0) %}
                                     {% if p_rasp_value == 0 %}
                                         &mdash;
                                     {% else %}
                                         {{ p_rasp_value }}
                                     {% endif %}
                                 </td>
-                                {% endfor %}
-                                    
-                            {% endfor %} <!-- Конец списка субъектов -->
-                            
-                        <!-- ✅ Итоговые значения по региональной энергосистеме -->
-                        <!-- Первая строка: p_ust -->
-                        <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                            {% endfor %}
+                        {% endfor %} <!-- Конец списка РЭС -->
+                        
+                        <!-- ✅ Итоги по ОЭС -->
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
                             <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
-                                {{ regional_energy_system_names[res_id] }}, всего
+                                {{ union_energy_system_names[ues_id] }}, всего
                             </td>
                             <td class="text-center" style="font-weight: bold;">Руст</td>
                             {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_ust_value = regional_energy_systems_yearly_p_ust.get(res_id, {}).get(year, 0) | default(0) %}
-                                {% if p_ust_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_ust_value }}
-                                {% endif %}
-                            </td>
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_ust.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val if val else '—' }}
+                                </td>
                             {% endfor %}
                         </tr>
-
-                        <!-- Вторая строка: p_ogr -->
-                        <tr class="table-info text-center p-ogr-row">
+                        <tr class="table-primary text-center p-ogr-row">
                             <td class="text-center" style="font-weight: bold;">Рогр</td>
                             {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_ogr_value = regional_energy_systems_yearly_p_ogr.get(res_id, {}).get(year, 0) %}
-                                {% if p_ogr_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_ogr_value }}
-                                {% endif %}
-                            </td>
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_ogr.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val if val else '—' }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="table-primary text-center p-rasp-row">
+                            <td class="text-center" style="font-weight: bold;">Ррасп</td>
+                            {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_rasp.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val if val else '—' }}
+                                </td>
                             {% endfor %}
                         </tr>
 
-                        <!-- Третья строка: p_rasp -->
-                        <tr class="table-info text-center p-rasp-row">
-                            <td class="text-center" style="font-weight: bold;">Ррасп</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_rasp_value = regional_energy_systems_yearly_p_rasp.get(res_id, {}).get(year, 0) %}
-                                {% if p_rasp_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_rasp_value }}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-
-                        {% endfor %} <!-- Конец списка РЭС -->
-
                     {% endfor %} <!-- Конец списка ОЭС -->
+                    
+                    <!-- ✅ Итоги по типу энергосистемы -->
+                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                            {{ energy_system_type_names[es_type_id] }}, всего
+                        </td>
+                        <td class="text-center" style="font-weight: bold;">Руст</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_ust.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-light text-center p-ogr-row">
+                        <td class="text-center" style="font-weight: bold;">Рогр</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_ogr.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-light text-center p-rasp-row">
+                        <td class="text-center" style="font-weight: bold;">Ррасп</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_rasp.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
 
                 {% endfor %} <!-- Конец списка типов энергосистем -->
+
+                <!-- ✅ Итоговые значения по России -->
+                 {% if not filters %}
+                    <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                            Россия, всего
+                        </td>
+                        <td class="text-center" style="font-weight: bold;">Руст</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_ust.get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-secondary text-center p-ogr-row">
+                        <td class="text-center" style="font-weight: bold;">Рогр</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_ogr.get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-secondary text-center p-rasp-row">
+                        <td class="text-center" style="font-weight: bold;">Ррасп</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_rasp.get(year, 0) %}
+                                {{ val if val else '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>

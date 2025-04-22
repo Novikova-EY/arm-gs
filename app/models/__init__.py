@@ -5,3 +5,4 @@ from .gen_companies_models import *
 from .logs_models import *
 from .territories_models import *
 from .years_models import *
+from .aggregeted_models import *

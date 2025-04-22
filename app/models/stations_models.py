@@ -134,6 +134,13 @@ class Station(db.Model):
         'EnergyUnit', 
         back_populates='stations')
     
+    # связь с таблицей мощностей агрегатов электростанции
+    station_powers = db.relationship(
+        'StationPower', 
+        back_populates='station_power',
+        cascade="all, delete-orphan"
+    )   
+
     # номер КТО
     kto = db.Column(db.String(80), unique=True, nullable=True)
     
@@ -190,34 +197,52 @@ class Station(db.Model):
         return ", ".join(gen_companies) if gen_companies else None
     
     @property
-    def station_type(self):
+    def station_types(self):
         if not self.machines:
-            return None  # Если нет агрегатов, возвращаем None
-        
-        station_types = {machine.station_type.name for machine in self.machines if machine.station_type}
-        
-        if len(station_types) == 1:
-            return next(iter(station_types))
-        elif len(station_types) > 1:
-            return "Разные типы"
-        else:
             return None
-        
-    def power_by_year(self):
-        power_data = {}
-        for machine in self.machines:
-            for mp in machine.machine_powers:
-                year = mp.year.number if mp.year else "Unknown"
-                if year not in power_data:
-                    power_data[year] = {"p_ust": 0, "p_rasp": 0, "p_ogr": 0}
-                if mp.p_ust:
-                    power_data[year]["p_ust"] += mp.p_ust
-                if mp.p_rasp:
-                    power_data[year]["p_rasp"] += mp.p_rasp
-                if mp.p_ogr:
-                    power_data[year]["p_ogr"] += mp.p_ogr
-        return power_data
 
+        types = {machine.station_type.name for machine in self.machines if machine.station_type}
+        
+        if not types:
+            return None
+        if len(types) == 1:
+            return next(iter(types))
+        return "Разные типы"
+
+
+# Модель мощностей агрегатов электростанции
+class StationPower(db.Model):
+    __tablename__ = 'station_powers'
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # id года
+    year_number = db.Column(
+        db.Integer, 
+        db.ForeignKey('years.number', ondelete='RESTRICT'),
+        nullable=True
+    )
+    year = db.relationship(
+        'Year', 
+        back_populates='station_powers'
+    )
+
+    # id электростанции
+    id_station = db.Column(
+        db.Integer, 
+        db.ForeignKey('stations.id', ondelete='RESTRICT'), nullable=True)
+    station_power = db.relationship(
+        'Station', 
+        back_populates='station_powers')
+
+    # Установленная мощность электростанции
+    p_ust = db.Column(db.Float)
+
+    # Ограничения установленной мощности электростанции
+    p_ogr = db.Column(db.Float)    
+    
+    # Располагаемая мощность электростанции
+    p_rasp = db.Column(db.Float)
 
 # Модель для типов агрегатов
 class MachineType(db.Model):
@@ -461,7 +486,6 @@ class MachinePower(db.Model):
     
     # Располагаемая мощность агрегата
     p_rasp = db.Column(db.Float)
-
 
 
 # Модель для топлива агрегатов электростанции

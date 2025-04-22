@@ -9,6 +9,7 @@ from .regional_district_routes import *
 from .union_energy_system_routes import *
 from .regional_energy_system_routes import *
 from .energy_area_routes import *
+from .energy_unit_routes import *
 from .gen_company_routes import *
 from .fuel_routes import *
 from .station_routes import *

@@ -10,25 +10,7 @@ from sqlalchemy import func
 from decimal import Decimal
 from app.services.gen_company_services import clean_name
 from collections import defaultdict
-
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
-from app.models import Machine, db
-
-from app.models import Machine, MachinePower, db
-from sqlalchemy import and_
-
-from app.models import Machine, MachinePower, db
-from sqlalchemy import and_, func
-
+from app.services.logging_service import log_to_db
 from app.models import Machine, MachinePower, db
 from sqlalchemy import and_, func
 
@@ -1122,7 +1104,7 @@ def import_station_list_from_excel(file, user):
 
                 if tes_type:
                     tes_type_id = tes_type.id
-                    tes_type_name = tes_type.name  # Теперь это безопасно
+                    tes_type_name = tes_type.name
 
                     machine_tes_type = MachineTesType.query.filter_by(
                         year_number=year, 

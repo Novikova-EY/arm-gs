@@ -5,15 +5,7 @@ from app.models.territories_models import RegionalDistrict
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
+from app.services.logging_service import log_to_db
 
 
 def get_regional_energy_system_list(page, per_page, regional_energy_system_filter=None, union_energy_system_filter=None, sort_by="id", sort_dir="asc"):

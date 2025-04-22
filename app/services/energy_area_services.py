@@ -3,16 +3,7 @@ from app.models.logs_models import Log
 from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergyArea
 from app.models.territories_models import RegionalDistrict
 from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import IntegrityError
-
-def log_to_db(username, action, details=None):
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
-
+from app.services.logging_service import log_to_db
 
 def get_energy_area_list(page, per_page, energy_area_filter=None, regional_district_filter=None, regional_energy_system_filter=None, union_energy_system_filter=None, sort_by="id", sort_dir="asc"):
     query = EnergyArea.query.options(
@@ -318,7 +309,7 @@ def export_energy_area_to_excel(user, energy_area_filter=None, regional_district
     try:
         writer = pd.ExcelWriter(output, engine="xlsxwriter")
         df.to_excel(writer, index=False, sheet_name="Энергорайоны")
-        writer.close()  # Обязательно закрываем writer перед `seek(0)`
+        writer.close()  # Закрываем writer перед `seek(0)`
     except Exception as e:
         log_to_db(user, "Ошибка создания Excel-файла", str(e))
         raise ValueError("Ошибка при создании Excel-файла.")

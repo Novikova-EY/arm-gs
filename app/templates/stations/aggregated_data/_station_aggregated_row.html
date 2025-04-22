@@ -1,0 +1,41 @@
+{# stations/_station_aggregated_row.html #}
+<tr class="text-center table-secondary aggregated-row">
+    <td colspan="8" style="font-weight: bold;">
+        Всего по 
+        {% if level == 'eu' %}энергоузлу{% endif %}
+        {% if level == 'rd' %}субъекту РФ{% endif %}
+        {% if level == 'res' %}региональной энергосистеме{% endif %}
+        {% if level == 'ues' %}ОЭС{% endif %}
+        {% if level == 'est' %}типу энергосистемы{% endif %}
+    </td>
+    <td style="font-weight: bold;">Руст</td>
+    {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set value = aggregated_by[level].p_ust.get(id, {}).get(year, None) %}
+            {{ value if value not in [None, 0] else '—' }}
+        </td>
+    {% endfor %}
+    <td class="aggregated-spacer" colspan="{{ 3 + (end_year - start_year) * 2 }}"></td>
+</tr>
+<tr class="text-center table-secondary aggregated-row">
+    <td colspan="8"></td>
+    <td style="font-weight: bold;">Рогр</td>
+    {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set value = aggregated_by[level].p_ogr.get(id, {}).get(year, None) %}
+            {{ value if value not in [None, 0] else '—' }}
+        </td>
+    {% endfor %}
+    <td class="aggregated-spacer" colspan="{{ 3 + (end_year - start_year) * 2 }}"></td>
+</tr>
+<tr class="text-center table-secondary aggregated-row">
+    <td colspan="8"></td>
+    <td style="font-weight: bold;">Ррасп</td>
+    {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set value = aggregated_by[level].p_rasp.get(id, {}).get(year, None) %}
+            {{ value if value not in [None, 0] else '—' }}
+        </td>
+    {% endfor %}
+    <td class="aggregated-spacer" colspan="{{ 3 + (end_year - start_year) * 2 }}"></td>
+</tr>

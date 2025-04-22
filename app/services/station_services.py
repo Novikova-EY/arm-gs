@@ -1,25 +1,29 @@
 from config import Config
 from app import db
 from app.models.logs_models import Log
-from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyArea
+from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyUnit
 from app.models.territories_models import RegionalDistrict, FederalDistrict
-from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup, Machine
-from app.models import Year, Fuel, GenCompany  
+from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup, Machine, StationPower
+from app.models import Year, Fuel, GenCompany, FuelType
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import func
 from decimal import Decimal
 from app.services.gen_company_services import clean_name
 from collections import defaultdict
-
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
+from app.services.logging_service import log_to_db
+from app.services.aggregation_services import (
+        aggregate_power_by_energy_unit,
+        aggregate_power_by_regional_district,
+        aggregate_power_by_regional_energy_system,
+        aggregate_power_by_union_energy_system,
+        aggregate_power_by_energy_system_type,
+        aggregate_total_power_by_all_system_types,
+        aggregate_energy_units_by_station_types,
+        aggregate_energy_units_by_tes_types,
+        aggregate_energy_units_by_tes_machine_types,
+        aggregate_energy_units_by_tes_types_with_fuel,
+        aggregate_energy_units_by_tes_machine_types_with_fuel,
+    )
 
 
 def get_stations_list(
@@ -36,6 +40,9 @@ def get_stations_list(
     regional_energy_system_filter=None, 
     federal_district_filter=None, 
     regional_district_filter=None, 
+    station_fuel_type_filter=None,
+    sort_by=None,
+    sort_dir=None,
 ):
     """
     Получает список СТАНЦИЙ с учётом фильтров и корректной пагинацией.
@@ -43,7 +50,7 @@ def get_stations_list(
     2) Считаем total_count по этому subquery
     3) Выбираем объекты Station, у которых ID в subquery, применяя OFFSET/LIMIT
     """
-
+   
     # 1) Получаем subquery с уникальными Station.id, учитывая все фильтры
     station_ids_subq = get_filtered_station_ids(
         condition_type_filter,
@@ -83,14 +90,14 @@ def get_stations_list(
         )
 
     grouped_data = group_stations_hierarchy(stations)
-
+    
     return {
         "total_count": total_count,
         "page": page,
         "per_page": per_page,
         "total_pages": total_pages,
-        "grouped_stations": grouped_data["grouped_stations"],  # Сохраняем иерархию
-        "stations": grouped_data["stations"]  # ✅ Теперь это список!
+        "grouped_stations": grouped_data["grouped_stations"],
+        "stations": grouped_data["stations"]
     }
 
 
@@ -246,42 +253,54 @@ def group_machines_by_group_and_fuel(stations):
 
     return stations
 
+from collections import defaultdict
 
 def group_stations_hierarchy(stations):
-    grouped_data = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
-    
+    grouped_data = defaultdict(  # energy_system_type
+        lambda: defaultdict(     # union_energy_system
+            lambda: defaultdict( # regional_energy_system
+                lambda: defaultdict(  # regional_district
+                    lambda: defaultdict(list)  # energy_unit
+                )
+            )
+        )
+    )
+
     for station in stations:
-        regional_district_id = station.regional_district.id if station.regional_district else None
-        regional_energy_systems = station.regional_district.regional_energy_systems
+        rd = station.regional_district
+        if not rd or not rd.regional_energy_systems:
+            continue
 
-        for regional_energy_system in regional_energy_systems:
-            regional_energy_system_id = regional_energy_system.id
-            union_energy_system_id = regional_energy_system.id_union_energy_system
-            energy_system_type_id = regional_energy_system.union_energy_system.id_energy_system_type
+        energy_unit_id = station.energy_unit.id if station.energy_unit else None
+        regional_district_id = rd.id
 
-            grouped_data[energy_system_type_id][union_energy_system_id][regional_energy_system_id][regional_district_id].append(station)
+        for res in rd.regional_energy_systems:
+            res_id = res.id
+            ues_id = res.id_union_energy_system
+            est_id = res.union_energy_system.id_energy_system_type if res.union_energy_system else None
 
-    # Сортируем станции внутри субъектов
+            grouped_data[est_id][ues_id][res_id][regional_district_id][energy_unit_id].append(station)
+
+    # Сортировка станций внутри EnergyUnit
     for energy_system_type in grouped_data.values():
         for union_energy_system in energy_system_type.values():
             for regional_energy_system in union_energy_system.values():
                 for regional_district in regional_energy_system.values():
-                    regional_district.sort(key=lambda station: (station.machines[0].station_type.id, station.name))
+                    for energy_unit in regional_district.values():
+                        energy_unit.sort(key=lambda station: (station.machines[0].station_type.id if station.machines else 0, station.name))
 
-
-    # Пагинация: формируем список всех станций
+    # Формируем плоский список всех станций
     all_stations = []
     for energy_system_type in grouped_data.values():
         for union_energy_system in energy_system_type.values():
             for regional_energy_system in union_energy_system.values():
                 for regional_district in regional_energy_system.values():
-                    all_stations.extend(regional_district)  # Добавляем станции
-    
-
+                    for energy_unit in regional_district.values():
+                        all_stations.extend(energy_unit)
 
     return {
         "grouped_stations": grouped_data,
-        "stations": all_stations  # Теперь это список!
+        "stations": all_stations
     }
 
 
@@ -301,7 +320,6 @@ def get_filtered_stations(
     sort_dir="asc"
 ):
     """Фильтрует станции по переданным параметрам"""
-
     query = db.session.query(Station).distinct().join(Station.machines)
 
     if station_type_filter:
@@ -450,7 +468,7 @@ def get_condition_type():
     return ConditionType.query.all()
 
 
-def get_station_type():
+def get_station_types():
     """Получает список типов электростанций'."""
     return StationType.query.order_by(StationType.id).all()
 
@@ -461,13 +479,21 @@ def get_machine_type():
 
 
 def get_tes_types():
-    """Получает список типов электростанций'."""
+    """Получает список типов ТЭС'."""
     return TesType.query.order_by(TesType.id).all()
 
 
 def get_tes_machine_types():
-    """Получает список типов электростанций'."""
+    """Получает список типов агрегатов ТЭС."""
     return TesMachineType.query.order_by(TesMachineType.id).all()
+
+def get_fuel_types():
+    """Получает список типов топлива'."""
+    return FuelType.query.order_by(FuelType.id).all()
+
+def get_energy_units():
+    """Получает список энергоузлов''."""
+    return EnergyUnit.query.order_by(EnergyUnit.id).all()
 
 
 def get_energy_system_types():
@@ -578,193 +604,256 @@ def get_year_features():
     """
     return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
 
-from collections import defaultdict
-from decimal import Decimal
 
-def aggregate_station_power_values(stations):
-    # Словари для хранения мощностей
-    stations_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
-    stations_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
-    stations_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+def extract_station_data_from_form(form):
+    from collections import defaultdict
+    station_data = []
+    regional_districts_mapping = defaultdict(list)
+
+    for system_id in form.getlist("station_ids[]"):
+        selected_districts = form.getlist(f"regional_districts_{system_id}[]")
+        regional_districts_mapping[int(system_id)] = [int(d) for d in selected_districts if d.isdigit()]
+
+    for station_id, station_name, union_energy_system_id in zip(
+        form.getlist("station_ids[]"),
+        form.getlist("station_names[]"),
+        form.getlist("union_energy_system_ids[]")
+    ):
+        station_data.append({
+            "id": int(station_id),
+            "name": station_name.strip(),
+            "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
+            "regional_districts": regional_districts_mapping.get(int(station_id), [])
+        })
+
+    return station_data
+
+
+def extract_filters_from_args(args):
+    return {
+        "page": args.get("page", 1, type=int),
+        "per_page": None if args.get("per_page") == "all" else args.get("per_page", 10, type=int),
+        "start_year": args.get("start_year", Config.START_YEAR, type=int),
+        "end_year": args.get("end_year", Config.END_YEAR, type=int),
+        "condition_type_filter": args.get("condition_type_filter", ""),
+        "energy_system_type_filter": args.getlist("energy_system_type_filter", type=int),
+        "union_energy_system_filter": args.getlist("union_energy_system_filter", type=int),
+        "regional_energy_system_filter": args.getlist("regional_energy_system_filter", type=int),
+        "federal_district_filter": args.getlist("federal_district_filter", type=int),
+        "regional_district_filter": args.getlist("regional_district_filter", type=int),
+        "gen_company_filter": args.get("gen_company_filter", "").strip(),
+        "station_name_filter": args.get("station_name_filter", "").strip(),
+        "station_type_filter": args.getlist("station_type_filter", type=int),
+        "tes_type_filter": args.getlist("tes_type_filter", type=int),
+        "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
+        "station_fuel_type_filter": args.get("station_fuel_type_filter", ""),
+        "sort_by": args.get("sort_by", "id"),
+        "sort_dir": args.get("sort_dir", "asc"),
+    }
+
+
+def extract_filters_from_form(form):
+    return extract_filters_from_args(form)
+
+
+def filter_machines(stations, tes_type_filter, tes_machine_type_filter):
+    if not tes_type_filter and not tes_machine_type_filter:
+        return stations
+
+    filtered_stations = []
+    for station in stations:
+        station.machines = [
+            m for m in station.machines
+            if (not tes_type_filter or m.id_tes_type in tes_type_filter) and
+               (not tes_machine_type_filter or m.id_tes_machine_type in tes_machine_type_filter)
+        ]
+        if station.machines:
+            filtered_stations.append(station)
+
+    return filtered_stations
+
+
+def load_station_power_by_year(station, start_year=None, end_year=None):
+    query = StationPower.query.filter_by(id_station=station.id)
+
+    if start_year is not None:
+        query = query.filter(StationPower.year_number >= start_year)
+    if end_year is not None:
+        query = query.filter(StationPower.year_number <= end_year)
+
+    result = query.all()
+
+    return {
+        sp.year_number: {
+            "p_ust": sp.p_ust,
+            "p_ogr": sp.p_ogr,
+            "p_rasp": sp.p_rasp
+        }
+        for sp in result
+    }
+
+
+def get_station_list_template_context(form, filters, pagination):
+    year_features = get_year_features()
+    energy_system_type_list, energy_system_type_names = get_energy_system_types()
+    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
+    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
+    federal_district_list, regional_district_mapping = get_federal_districts()
+    regional_district_list, regional_district_names = get_regional_districts()
+    regional_district_dict = {int(r["id"]): r for r in regional_district_list}
     
-    total_yearly_p_ust = defaultdict(Decimal)
-    total_yearly_p_ogr = defaultdict(Decimal)
-    total_yearly_p_rasp = defaultdict(Decimal)
+    energy_units = get_energy_units()
+    energy_unit_names = {eu.id: eu.name for eu in energy_units}
+    
+    station_type_names = get_station_types()
+    station_type_list = {st.id: st.name for st in station_type_names}
 
-    # Для каждой станции
-    for station in stations:
-        # Создаем словари для хранения мощностей по годам для каждой станции
-        yearly_p_ust_station = defaultdict(Decimal)
-        yearly_p_ogr_station = defaultdict(Decimal)
-        yearly_p_rasp_station = defaultdict(Decimal)
+    tes_type_names = get_tes_types()
+    tes_type_list = {tt.id: tt.name for tt in tes_type_names}
+
+    tes_machine_type_names = get_tes_machine_types()
+    tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
+
+    fuel_type_names = get_fuel_types()
+    fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
+
+    energy_units_power = aggregate_power_by_energy_unit(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_station_types_power = aggregate_energy_units_by_station_types(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_types_power = aggregate_energy_units_by_tes_types(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_machine_types_power = aggregate_energy_units_by_tes_machine_types(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_types_with_fuel_power = aggregate_energy_units_by_tes_types_with_fuel(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_machine_types_with_fuel_power = aggregate_energy_units_by_tes_machine_types_with_fuel(db.session, filters.get("start_year"), filters.get("end_year"))
+
+    regional_districts_power = aggregate_power_by_regional_district(db.session, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_power = aggregate_power_by_regional_energy_system(db.session, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_power = aggregate_power_by_union_energy_system(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_power = aggregate_power_by_energy_system_type(db.session, filters.get("start_year"), filters.get("end_year"))
+    total_power = aggregate_total_power_by_all_system_types(db.session, filters.get("start_year"), filters.get("end_year"))
+
+    return {
+        "form": form,
+        "stations_grouped": pagination["grouped_stations"],
+        "total_count": pagination["total_count"],
+        "total_pages": pagination["total_pages"],
+        "current_page": pagination["page"],
+        "per_page": pagination["per_page"],
+        "start_year": filters.get("start_year"),
+        "end_year": filters.get("end_year"),
+        "energy_system_type_list": energy_system_type_list,
+        "energy_system_type_names": energy_system_type_names,
+        "union_energy_system_list": union_energy_system_list,
+        "union_energy_system_names": union_energy_system_names,
+        "regional_energy_system_list": regional_energy_system_list,
+        "regional_energy_system_names": regional_energy_system_names,
+        "regional_energy_system_mapping": regional_energy_system_mapping,
+        "federal_district_list": federal_district_list,
+        "regional_district_list": regional_district_list,
+        "regional_district_names": regional_district_names,
+        "regional_district_dict": regional_district_dict,
+        "regional_district_mapping": regional_district_mapping,
+        "station_type_name": station_type_names,
+        "station_type_list": station_type_list,
+        "tes_type_names": tes_type_names,
+        "tes_type_list": tes_type_list,
+        "fuel_type_names": fuel_type_names,
+        "fuel_type_list": fuel_type_list,
+        "tes_machine_type_names": tes_machine_type_names,
+        "tes_machine_type_list": tes_machine_type_list,
+        "condition_type_filter": filters.get("condition_type_filter"),
+        "gen_company_filter": filters.get("gen_company_filter"),
+        "station_name_filter": filters.get("station_name_filter"),
+        "station_type_filter": filters.get("station_type_filter"),
+        "tes_type_filter": filters.get("tes_type_filter"),
+        "tes_machine_type_filter": filters.get("tes_machine_type_filter"),
+        "energy_system_type_filter": filters.get("energy_system_type_filter"),
+        "union_energy_system_filter": filters.get("union_energy_system_filter"),
+        "regional_energy_system_filter": filters.get("regional_energy_system_filter"),
+        "federal_district_filter": filters.get("federal_district_filter"),
+        "regional_district_filter": filters.get("regional_district_filter"),
+        "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
+        "year_features": year_features,
+        "energy_unit_names": energy_unit_names,
+
+        "energy_units_yearly_p_ust": energy_units_power['aggregated']['p_ust'],
+        "energy_units_yearly_p_ogr": energy_units_power['aggregated']['p_ogr'],
+        "energy_units_yearly_p_rasp": energy_units_power['aggregated']['p_rasp'],
+
+        "regional_districts_yearly_p_ust": regional_districts_power['aggregated']['p_ust'],
+        "regional_districts_yearly_p_ogr": regional_districts_power['aggregated']['p_ogr'],
+        "regional_districts_yearly_p_rasp": regional_districts_power['aggregated']['p_rasp'],
+
+        "regional_energy_systems_yearly_p_ust": regional_energy_systems_power['aggregated']['p_rasp'],
+        "regional_energy_systems_yearly_p_ogr": regional_energy_systems_power['aggregated']['p_ogr'],
+        "regional_energy_systems_yearly_p_rasp": regional_energy_systems_power['aggregated']['p_rasp'],
+
+        "union_energy_systems_yearly_p_ust": union_energy_systems_power["aggregated"]["p_ust"],
+        "union_energy_systems_yearly_p_ogr": union_energy_systems_power["aggregated"]["p_ogr"],
+        "union_energy_systems_yearly_p_rasp": union_energy_systems_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_yearly_p_ust": energy_system_types_power["aggregated"]["p_ust"],
+        "energy_system_types_yearly_p_ogr": energy_system_types_power["aggregated"]["p_ogr"],
+        "energy_system_types_yearly_p_rasp": energy_system_types_power["aggregated"]["p_rasp"],
+
+        "total_yearly_p_ust": total_power["aggregated"]["p_ust"],
+        "total_yearly_p_ogr": total_power["aggregated"]["p_ogr"],
+        "total_yearly_p_rasp": total_power["aggregated"]["p_rasp"],
         
-        # Для каждой машины на станции
-        for machine in station.machines:
-            if not machine.machine_powers:
-                continue  # Пропускаем машину, если нет данных по мощности
+        "energy_units_by_station_types_yearly_p_ust": energy_units_by_station_types_power["aggregated"]["p_ust"],
+        "energy_units_by_station_types_yearly_p_ogr": energy_units_by_station_types_power["aggregated"]["p_ogr"],
+        "energy_units_by_station_types_yearly_p_rasp": energy_units_by_station_types_power["aggregated"]["p_rasp"],
 
-            # Для каждой записи о мощности машины
-            for machine_power in machine.machine_powers:
-                try:
-                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
-                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
-                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
-                except (ValueError, TypeError) as e:
-                    p_ust = p_ogr = p_rasp = Decimal(0)
+        "energy_units_by_tes_types_yearly_p_ust": energy_units_by_tes_types_power["aggregated"]["p_ust"],
+        "energy_units_by_tes_types_yearly_p_ogr": energy_units_by_tes_types_power["aggregated"]["p_ogr"],
+        "energy_units_by_tes_types_yearly_p_rasp": energy_units_by_tes_types_power["aggregated"]["p_rasp"],
 
-                year = machine_power.year.number
+        "energy_units_by_tes_machine_types_yearly_p_ust": energy_units_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "energy_units_by_tes_machine_types_yearly_p_ogr": energy_units_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "energy_units_by_tes_machine_types_yearly_p_rasp": energy_units_by_tes_machine_types_power["aggregated"]["p_rasp"],
 
-                # Подсчеты по мощности для каждой станции
-                yearly_p_ust_station[year] += p_ust
-                yearly_p_ogr_station[year] += p_ogr
-                yearly_p_rasp_station[year] += p_rasp
-                
-                # Подсчеты по мощности для всех станций (по всем годам)
-                total_yearly_p_ust[year] += p_ust
-                total_yearly_p_ogr[year] += p_ogr
-                total_yearly_p_rasp[year] += p_rasp
+        "energy_units_by_tes_types_with_fuel_yearly_p_ust": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_units_by_tes_types_with_fuel_yearly_p_ogr": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_units_by_tes_types_with_fuel_yearly_p_rasp": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
 
-        # Записываем данные в общий словарь для станций
-        for year in yearly_p_ust_station:
-            stations_yearly_p_ust[station.id][year] = yearly_p_ust_station[year]
-            stations_yearly_p_ogr[station.id][year] = yearly_p_ogr_station[year]
-            stations_yearly_p_rasp[station.id][year] = yearly_p_rasp_station[year]
-
-    # Возвращаем данные по мощностям для всех станций и общие суммарные значения
-    return {
-        'stations': {
-            'p_ust': stations_yearly_p_ust,
-            'p_ogr': stations_yearly_p_ogr,
-            'p_rasp': stations_yearly_p_rasp,
-        },
-        'total': {
-            'p_ust': total_yearly_p_ust,
-            'p_ogr': total_yearly_p_ogr,
-            'p_rasp': total_yearly_p_rasp,
-        }
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_ust": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_ogr": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_rasp": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
     }
 
 
-def aggregate_power_by_regional_district(stations):
-    # Словари для хранения мощностей по субъектам
-    regional_district_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
-    regional_district_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
-    regional_district_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+def recalculate_station_power(station_id, year_number):
+    """Пересчёт мощности электростанции за определённый год на основе агрегатов."""
+    powers = (
+        db.session.query(
+            db.func.sum(MachinePower.p_ust),
+            db.func.sum(MachinePower.p_ogr),
+            db.func.sum(MachinePower.p_rasp)
+        )
+        .join(Machine)
+        .filter(Machine.id_station == station_id)
+        .filter(MachinePower.year_number == year_number)
+        .first()
+    )
 
-    # Для каждой станции
-    for station in stations:
-        regional_district_id = station.regional_district.id  # Получаем ID субъекта станции
-        
-        # Для каждой машины на станции
-        for machine in station.machines:
-            if not machine.machine_powers:
-                continue  # Пропускаем машину, если нет данных по мощности
+    if not powers:
+        return
 
-            # Для каждой записи о мощности машины
-            for machine_power in machine.machine_powers:
-                try:
-                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
-                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
-                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
-                except (ValueError, TypeError):
-                    p_ust = p_ogr = p_rasp = Decimal(0)
+    p_ust, p_ogr, p_rasp = powers
 
-                year = machine_power.year.number
+    station_power = StationPower.query.filter_by(
+        id_station=station_id,
+        year_number=year_number
+    ).first()
 
-                # Агрегируем мощности по субъектам и годам
-                regional_district_yearly_p_ust[regional_district_id][year] += p_ust
-                regional_district_yearly_p_ogr[regional_district_id][year] += p_ogr
-                regional_district_yearly_p_rasp[regional_district_id][year] += p_rasp
+    if not station_power:
+        station_power = StationPower(
+            id_station=station_id,
+            year_number=year_number
+        )
+        db.session.add(station_power)
 
-    # Возвращаем агрегированные данные по субъектам
-    return {
-        'regional_districts': {
-            'p_ust': regional_district_yearly_p_ust,
-            'p_ogr': regional_district_yearly_p_ogr,
-            'p_rasp': regional_district_yearly_p_rasp,
-        }
-    }
-
-
-def aggregate_power_by_regional_energy_system(stations):
-    # Словари для хранения мощностей по региональным энергосистемам
-    regional_energy_system_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
-    regional_energy_system_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
-    regional_energy_system_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
-
-    # Для каждой станции
-    for station in stations:
-        for regional_energy_system in station.regional_district.regional_energy_systems:
-            regional_energy_system_id = regional_energy_system.id  # ID региональной энергосистемы
-        
-        # Для каждой машины на станции
-        for machine in station.machines:
-            if not machine.machine_powers:
-                continue  # Пропускаем машину, если нет данных по мощности
-
-            # Для каждой записи о мощности машины
-            for machine_power in machine.machine_powers:
-                try:
-                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
-                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
-                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
-                except (ValueError, TypeError):
-                    p_ust = p_ogr = p_rasp = Decimal(0)
-
-                year = machine_power.year.number
-
-                # Агрегируем мощности по региональным энергосистемам и годам
-                regional_energy_system_yearly_p_ust[regional_energy_system_id][year] += p_ust
-                regional_energy_system_yearly_p_ogr[regional_energy_system_id][year] += p_ogr
-                regional_energy_system_yearly_p_rasp[regional_energy_system_id][year] += p_rasp
-
-    # Возвращаем агрегированные данные по региональным энергосистемам
-    return {
-        'regional_energy_systems': {
-            'p_ust': regional_energy_system_yearly_p_ust,
-            'p_ogr': regional_energy_system_yearly_p_ogr,
-            'p_rasp': regional_energy_system_yearly_p_rasp,
-        }
-    }
-
-
-def aggregate_total_power_values(stations):
-    # Словари для хранения мощностей
-    total_yearly_p_ust = defaultdict(Decimal)
-    total_yearly_p_ogr = defaultdict(Decimal)
-    total_yearly_p_rasp = defaultdict(Decimal)
-
-    # Для каждой станции
-    for station in stations:
-        # Для каждой машины на станции
-        for machine in station.machines:
-            if not machine.machine_powers:
-                continue  # Пропускаем машину, если нет данных по мощности
-
-            # Для каждой записи о мощности машины
-            for machine_power in machine.machine_powers:
-                try:
-                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
-                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
-                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
-                except (ValueError, TypeError) as e:
-                    p_ust = p_ogr = p_rasp = Decimal(0)
-
-                year = machine_power.year.number
-
-                # Подсчеты по мощности для всех станций (по всем годам)
-                total_yearly_p_ust[year] += p_ust
-                total_yearly_p_ogr[year] += p_ogr
-                total_yearly_p_rasp[year] += p_rasp
-
-    # Возвращаем данные по мощностям для всех станций и общие суммарные значения
-    return {
-        'total': {
-            'p_ust': total_yearly_p_ust,
-            'p_ogr': total_yearly_p_ogr,
-            'p_rasp': total_yearly_p_rasp,
-        }
-    }
+    station_power.p_ust = p_ust or 0
+    station_power.p_ogr = p_ogr or 0
+    station_power.p_rasp = p_rasp or 0
 
 
 import re
@@ -848,9 +937,11 @@ def import_station_list_from_excel(file, user):
             regional_district = RegionalDistrict.query.filter_by(name=regional_district_name).first()
 
             if not regional_district:
-                energy_area = EnergyArea.query.filter_by(name=regional_district_name).first()
-                if energy_area:
-                    regional_district = energy_area.regional_districts[0] if energy_area.regional_districts else None
+                energy_unit = EnergyUnit.query.filter_by(name=regional_district_name).first()
+                print("energy_unit=", energy_unit)
+                if energy_unit:
+                    regional_district = energy_unit.regional_district if energy_unit.regional_district else None
+                    print(f"[!] Регион '{regional_district}' не найден напрямую, получен из EnergyUnit ID={energy_unit.id}")
 
             station_name = clean_name(row['station_name'])
             station = Station.query.filter_by(name=station_name).first()
@@ -862,7 +953,7 @@ def import_station_list_from_excel(file, user):
                     name=station_name,
                     id_regional_district=regional_district.id if regional_district else None,
                     id_condition_type=condition_type.id if condition_type else None,
-                    id_energy_area=energy_area.id if energy_area else safe_lookup(EnergyArea, 'id', 100, cleaner=None),
+                    id_energy_unit=energy_unit.id if energy_unit else safe_lookup(EnergyUnit, 'id', 100, cleaner=None),
                 )
                 db.session.add(station)
                 db.session.commit()
@@ -873,6 +964,9 @@ def import_station_list_from_excel(file, user):
                 if station.id_regional_district != (regional_district.id if regional_district else None):
                     changes['id_regional_district'] = regional_district.id if regional_district else None
                 
+                if station.id_energy_unit != (energy_unit.id if energy_unit else None):
+                    changes['id_energy_unit'] = energy_unit.id if energy_unit else None
+
                 if changes:
                     for key, value in changes.items():
                         setattr(station, key, value)
@@ -978,11 +1072,6 @@ def import_station_list_from_excel(file, user):
                     changes.append(f"id_machine_type: {machine.id_machine_type} → {id_machine_type}")
                     machine.id_machine_type = id_machine_type
 
-                id_energy_area = safe_lookup(EnergyArea, 'id', 100, cleaner=None)
-                if machine.id_energy_area != id_energy_area:
-                    changes.append(f"id_energy_area: {machine.id_energy_area} → {id_energy_area}")
-                    machine.id_energy_area = id_energy_area
-
                 def get_value_safe(key):
                     val = row.get(key)
                     return val if not pd.isna(val) else None
@@ -1046,7 +1135,6 @@ def import_station_list_from_excel(file, user):
                     id_station_type=safe_lookup(StationType, 'name', row.get('station_type')),
                     id_tes_type=safe_lookup(TesType, 'name', row.get('tes_type')),
                     id_machine_type=safe_lookup(MachineType, 'id', 100, cleaner=None),
-                    id_energy_area=safe_lookup(EnergyArea, 'id', 100, cleaner=None),
                     id_tes_machine_type=safe_lookup(TesMachineType, 'name', row.get('tes_machine_type')),
                     date_commission_expected=convert_date(row.get('date_commission_expected')) if not convert_date(pd.isna(row.get('date_commission_expected'))) else None,
                     date_commission_fact=convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None,
@@ -1101,6 +1189,52 @@ def import_station_list_from_excel(file, user):
                             f"год {year}: p_ust {p_ust}")
 
                 print(f"Установленная мощность для машины {current_machine.machine_number}, год {year}: {p_ust}")
+
+                # Расчёт и обновление StationPower после обработки всех машин станции ===
+                for year in range(start_year, end_year + 1):
+                    total_values = db.session.query(
+                        db.func.sum(MachinePower.p_ust).label("total_p_ust"),
+                        db.func.sum(MachinePower.p_ogr).label("total_p_ogr"),
+                        db.func.sum(MachinePower.p_rasp).label("total_p_rasp")
+                    ).join(Machine).filter(
+                        Machine.id_station == current_station.id,
+                        MachinePower.year_number == year
+                    ).first()
+
+                    total_p_ust = total_values.total_p_ust or 0
+                    total_p_ogr = total_values.total_p_ogr or 0
+                    total_p_rasp = total_values.total_p_rasp or 0
+
+                    station_power = StationPower.query.filter_by(id_station=current_station.id, year_number=year).first()
+                    if station_power:
+                        updates = []
+                        if station_power.p_ust != total_p_ust:
+                            updates.append(f"p_ust {station_power.p_ust} → {total_p_ust}")
+                            station_power.p_ust = total_p_ust
+                        if station_power.p_ogr != total_p_ogr:
+                            updates.append(f"p_ogr {station_power.p_ogr} → {total_p_ogr}")
+                            station_power.p_ogr = total_p_ogr
+                        if station_power.p_rasp != total_p_rasp:
+                            updates.append(f"p_rasp {station_power.p_rasp} → {total_p_rasp}")
+                            station_power.p_rasp = total_p_rasp
+
+                        if updates:
+                            log_to_db(user, "Обновление мощности станции",
+                                    f"Станция: {current_station.name}, год {year}: " + ", ".join(updates))
+                    else:
+                        station_power = StationPower(
+                            id_station=current_station.id,
+                            year_number=year,
+                            p_ust=total_p_ust,
+                            p_ogr=total_p_ogr,
+                            p_rasp=total_p_rasp
+                        )
+                        db.session.add(station_power)
+                        log_to_db(user, "Создание мощности станции",
+                                f"Станция: {current_station.name}, год {year}: p_ust {total_p_ust}, "
+                                f"p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
+
+                    print(f"Станция {current_station.name}, год {year} — p_ust: {total_p_ust}, p_ogr: {total_p_ogr}, p_rasp: {total_p_rasp}")
 
                 # 🔧 Логика вывода и ввода:
                 if p_ust > 0:

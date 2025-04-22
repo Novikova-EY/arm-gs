@@ -1,0 +1,216 @@
+<!-- Фильтры -->
+<div class="container-fluid mt-4">
+    <div class="row g-3">
+        <!-- Первая строка фильтров -->
+        <div class="col-12">
+            <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex flex-nowrap align-items-center gap-2">
+                <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
+                {% for key, value in request.args.items() %}
+                    {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter"] %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Тип энергосистемы -->
+                <div class="filter-item" style="width: 15%;">
+                    <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                        <option value="">Тип энергосистемы</option>
+                        {% for energy_system_type in energy_system_type_list %}
+                            <option value="{{ energy_system_type.id }}" 
+                                {% if energy_system_type.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>
+                                {{ energy_system_type.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+        
+                <!-- ОЭС -->
+                <div class="filter-item" style="width: 15%;">
+                    <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                        <option value="">Объединенная энергосистема (ОЭС)</option>
+                        {% for union_energy_system in union_energy_system_list %}
+                            <option value="{{ union_energy_system.id }}" 
+                                {% if union_energy_system.id|string in union_energy_system_filter|map('string') %}selected{% endif %}>
+                                {{ union_energy_system.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Региональная ЭС -->
+                <div class="filter-item" style="width: 15%;">
+                    <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                        <option value="">Региональная энергосистема</option>
+                        {% for regional_energy_system in regional_energy_system_list %}
+                            <option value="{{ regional_energy_system.id }}" 
+                                {% if regional_energy_system.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>
+                                {{ regional_energy_system.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+        
+                <!-- Федеральный округ -->
+                <div class="filter-item" style="width: 15%;">
+                    <select id="federal_district" name="federal_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                        <option value="">Федеральный округ</option>
+                        {% for federal_district in federal_district_list %}
+                            <option value="{{ federal_district.id }}" 
+                                {% if federal_district.id|string in federal_district_filter|map('string') %}selected{% endif %}>
+                                {{ federal_district.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+        
+                <!-- Субъект РФ -->
+                <div class="filter-item" style="width: 15%;">
+                    <select id="regional_district" name="regional_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                        <option value="">Субъект РФ</option>
+                        {% for regional_district in regional_district_list %}
+                            <option value="{{ regional_district.id }}" 
+                                {% if regional_district.id|string in regional_district_filter|map('string') %}selected{% endif %}>
+                                {{ regional_district.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+        
+                <!-- Электростанция -->
+                <div class="filter-item" style="width: 15%;" onchange="this.form.submit()">
+                    {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
+                </div>
+        
+                <!-- Генерирующая компания -->
+                <div class="filter-item" style="width: 15%;" onchange="this.form.submit()">
+                    {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
+                </div>
+                    
+                <!-- Кнопки -->
+                <div class="filter-item">
+                    <button type="submit" class="btn btn-outline-primary w-100">Поиск</button>
+                </div>
+        
+                <div class="filter-item">
+                    <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Вторая строка фильтров -->
+        <div class="col-12">
+            <div class="d-flex align-items-center w-100">
+                <!-- Форма загрузки данных из Excel -->
+                <div class="p-3" style="width: 20%;">
+                    <form action="{{ url_for('app_bp.import_station_list_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                        {{ form.csrf_token }}
+                        <div class="me-2 w-100">
+                            <input type="file" name="file" id="file" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger">Импорт</button>
+                    </form>
+                </div>
+
+                <!-- Кнопка подгрузки данных по топливу -->
+                <div class="p-3" style="width: 20%;">
+                    <form action="{{ url_for('app_bp.import_fuel_tes_station_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                        {{ form.csrf_token }}
+                        <div class="me-2 w-100">
+                            <input type="file" name="file" id="file" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger">Подгрузка <br> топлива</button>
+                    </form>
+                </div>
+
+                <!-- Кнопка выгрузки данных в Excel -->
+                <div class="p-3" style="width: 14%;">
+                    <button id="exportExcel" class="btn btn-outline-success">Выгрузить в Excel <br> (СиПР ЭЭС. Приложение А)</button>
+                </div>                        
+                
+
+                <!-- Кнопка выбора годов -->
+                <div class="p-3" style="width: 20%;">
+                    <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                        <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
+                        {% for key, value in request.args.items() %}
+                            {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
+                        {% endfor %}
+                
+                        <!-- Поля выбора года -->
+                        <label for="start_year">Год начала:</label>
+                        <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                            {% for year in range(2021, 2043) %}
+                            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                
+                        <label for="end_year">Год конца:</label>
+                        <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                            {% for year in range(2022, 2043) %}
+                            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                
+                        <button type="submit" class="btn btn-outline-success">Применить</button>
+                    </form>
+                </div>
+                
+                <!-- Чекбокс "Отображать ограничения мощности" -->
+                <div class="p-3 text-center" style="width: 10%;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
+                        <label class="form-check-label" for="toggleP_Ogr">
+                            Отображать<br>ограничения мощности
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Чекбокс "Отображать располагаемую мощность" -->
+                <div class="p-3 text-center" style="width: 10%;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
+                        <label class="form-check-label" for="toggleP_Rasp">
+                            Отображать<br>располагаемую мощность
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Выпадающий список выбора количества знаков для округления -->
+                <div class="p-3" style="width: 7%;">
+                    <label for="rounding_digits">Округлить до:</label>
+                    <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
+                        <option value="0">Не округлять</option>
+                        <option value="1" selected>1 знак</option>
+                        <option value="2">2 знака</option>
+                        <option value="3">3 знака</option>
+                        <option value="-1">Целое число</option>
+                    </select>
+                </div>
+
+                <!-- Форма выбора количества электростанций на листе -->
+                <div class="p-3" style="width: 5%;">
+                    <label for="rounding_digits">Показать:</label>
+                    <form method="GET" action="{{ url_for('app_bp.station_list') }}">
+                        {% for key, value in request.args.items() %}
+                            {% if key != "per_page" %}  <!-- Исключаем дублирование `per_page` -->
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
+                        {% endfor %}
+                
+                        <select name="per_page" class="form-select" onchange="this.form.submit()">
+                            {% for count in [1, 5, 10, 50, 100] %}
+                                <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>
+                                    {{ count }} станц.
+                                </option>
+                            {% endfor %}
+                            <option value="all" {% if per_page == "all" %}selected{% endif %}>Все</option>
+                        </select>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

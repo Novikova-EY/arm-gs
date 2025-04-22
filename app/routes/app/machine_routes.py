@@ -8,11 +8,11 @@ from app.models.fuels_models import Fuel
 from app.models.years_models import Year, YearFeature
 from app.models.energy_systems_models import EnergyArea
 from app.models.gen_companies_models import GenCompany
-from app.services.station_services import log_to_db, get_machine_by_id, get_station_by_id, convert_to_iso_date
+from app.services.station_services import log_to_db, get_machine_by_id, get_station_by_id, convert_to_iso_date, recalculate_station_power
 from flask_login import login_required
 from app.routes.auth import role_required
 from app import db
-
+import traceback
 
 def log_to_db(username, action, details=None):
     """Записывает лог действия пользователя в базу данных."""
@@ -55,16 +55,16 @@ def machine_details(station_id, machine_id):
         year_features = {y.number: {"name": y.year_feature.name if y.year_feature else "Нет данных"} for y in years} if years else {}
 
         # Заполняем choices в основной форме
-        main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.all()]
-        main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.all()]
-        main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.all()]
-        main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.all()]
-        main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.all()]
-        main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()]
+        main_form.id_condition_type.choices = [(0, "не указано")] + [(c.id, c.name) for c in ConditionType.query.all()]
+        main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.all()]
+        main_form.id_energy_area.choices = [(0, "не указано")] + [(ea.id, ea.name) for ea in EnergyArea.query.all()]
+        main_form.id_station_type.choices = [(0, "не указано")] + [(st.id, st.name) for st in StationType.query.all()]
+        main_form.id_machine_type.choices = [(0, "не указано")] + [(mt.id, mt.name) for mt in MachineType.query.all()]
+        main_form.id_tes_machine_type.choices = [(0, "не указано")] + [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()]
 
-        tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.all()]
+        tes_type_choices = [(0, "не указано")] + [(tt.id, tt.name) for tt in TesType.query.all()]
 
-        fuel_choices = [(f.id, f.name) for f in Fuel.query.all()]
+        fuel_choices = [(0, "не указано")] + [(f.id, f.name) for f in Fuel.query.all()]
 
         # Заполняем choices для вложенных форм
         for entry in advanced_form.tes_types:
@@ -151,7 +151,7 @@ def machine_details(station_id, machine_id):
             main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.all()] or [(0, "не указано")]
             main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.all()] or [(0, "не указано")]
             main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.all()] or [(0, "не указано")]
-            main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()] or [(0, "не указано")]
+            main_form.id_tes_machine_type.choices = [(0, "не указано")] + [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()]
             
             tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.all()]
 
@@ -177,14 +177,15 @@ def machine_details(station_id, machine_id):
 
                     # Фиксируем изменения параметров агрегата
                     field_mappings = {
-                        "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
-                        "id_gen_company": lambda x: GenCompany.query.get(x).name if x else "не указано",
-                        "id_station_type": lambda x: StationType.query.get(x).name if x else "не указано",
-                        "id_machine_type": lambda x: MachineType.query.get(x).name if x else "не указано",
-                        "id_tes_machine_type": lambda x: TesType.query.get(x).name if x else "не указано",
+                        "id_condition_type": lambda x: ConditionType.query.get(x).name if x and ConditionType.query.get(x) else "не указано",
+                        "id_gen_company": lambda x: GenCompany.query.get(x).name if x and GenCompany.query.get(x) else "не указано",
+                        "id_station_type": lambda x: StationType.query.get(x).name if x and StationType.query.get(x) else "не указано",
+                        "id_machine_type": lambda x: MachineType.query.get(x).name if x and MachineType.query.get(x) else "не указано",
+                        "id_tes_machine_type": lambda x: TesType.query.get(x).name if x and TesType.query.get(x) else "не указано",
                         "machine_name": str,
                         "note": lambda x: x if x else "не указано"
                     }
+
 
                     for field, transform in field_mappings.items():
                         if f"main_{field}" in request.form:
@@ -243,9 +244,11 @@ def machine_details(station_id, machine_id):
                         field_name = f"adv_tes_types-{i}-tes_type"
 
                         if field_name in request.form:  # Проверяем, было ли поле в POST-запросе
-                            old_value = TesType.query.get(mt_obj.id_tes_type).name if mt_obj.id_tes_type else "не указано"
+                            old_tes_type = TesType.query.get(mt_obj.id_tes_type)
+                            old_value = old_tes_type.name if old_tes_type else "не указано"
                             new_value_id = advanced_form.tes_types[i].tes_type.data
-                            new_value = TesType.query.get(new_value_id).name if new_value_id else "не указано"
+                            new_tes_type = TesType.query.get(new_value_id)
+                            new_value = new_tes_type.name if new_tes_type else "не указано"
 
                             if old_value != new_value and new_value_id is not None:
                                 changes.append(f"{year_num} - Тип ТЭС: {old_value} -> {new_value}")
@@ -255,9 +258,11 @@ def machine_details(station_id, machine_id):
                         # MachineFuel
                         mf_obj = machine.machine_fuels[i]
                         if f"adv_fuels-{i}-fuel_type" in request.form:
-                            old_value = Fuel.query.get(mf_obj.id_fuel).name if mf_obj.id_fuel else "не указано"
+                            old_fuel = Fuel.query.get(mf_obj.id_fuel)
+                            old_value = old_fuel.name if old_fuel else "не указано"
                             new_value_id = advanced_form.fuels[i].fuel_type.data
-                            new_value = Fuel.query.get(new_value_id).name if new_value_id else "не указано"
+                            new_fuel = Fuel.query.get(new_value_id)
+                            new_value = new_fuel.name if new_fuel else "не указано"
 
                             if old_value != new_value and new_value_id is not None:
                                 changes.append(f"{year_num} - Топливо: {old_value} -> {new_value}")
@@ -280,6 +285,9 @@ def machine_details(station_id, machine_id):
                         mf_obj.id_fuel = advanced_form.fuels[i].fuel_type.data
 
                         i += 1
+                    
+                    for year_num in range(start_year, end_year + 1):
+                        recalculate_station_power(station.id, year_num)
 
                     db.session.commit()
                     if changes:
@@ -288,6 +296,7 @@ def machine_details(station_id, machine_id):
                     
                 except Exception as e:
                     db.session.rollback()
+                    traceback.print_exc()  # ← добавь эту строку
                     log_to_db(user, f"Ошибка обновления агрегата №{machine.machine_number} {machine.machine_name} электростанции {station.name} ({station.regional_district.name})", details=str(e))
                     print(f"Ошибка при сохранении: {str(e)}")
                     flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
