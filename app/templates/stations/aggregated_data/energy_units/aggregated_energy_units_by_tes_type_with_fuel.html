@@ -4,8 +4,9 @@
         .get(eu_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}) %}
 
     {% if has_fuels %}
-        <tr class="text-center total-power-row" style="vertical-align: middle;">
-            <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 6cm;">
+        <!-- Первая строка: Руст -->
+         <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
+            <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 9cm;">
                 {{ fuel_type_name }}
             </td>
             <td class="fw-bold">Руст</td>
@@ -16,7 +17,9 @@
                 </td>
             {% endfor %}
         </tr>
-        <tr class="text-center p-ogr-row">
+
+        <!-- Вторая строка: p_ogr -->
+        <tr class="table-success text-center p-ogr-row">
             <td class="fw-bold">Рогр</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
@@ -25,7 +28,9 @@
                 </td>
             {% endfor %}
         </tr>
-        <tr class="text-center p-rasp-row">
+
+        <!-- Третья строка: Ррасп -->
+        <tr class="table-success text-center p-rasp-row">
             <td class="fw-bold">Ррасп</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">

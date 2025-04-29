@@ -60,6 +60,13 @@ class StationFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
+    id_energy_unit = SelectField(
+        'Энергоузел электростанции',
+        coerce=int,
+        choices=[],        
+        validators=[Optional()]
+    )
+
     # Список видов топлива
     fuel_types = TextAreaField(
         'Виды топлива',

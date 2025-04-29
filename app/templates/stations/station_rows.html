@@ -1,0 +1,135 @@
+
+<tr>
+    <td class="text-center station-rowspan-td" colspan="3" style="vertical-align: middle; font-weight: bold;">
+        {{ station.regional_district.name }}
+    </td>
+    <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
+        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+            {{ station.name }}
+        </a>
+    </td>
+    <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+        {{ station.gen_companies if station.gen_companies else '—' }}
+    </td>
+    <td class="text-center" colspan="{{ 3 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+    </td>
+</tr>
+
+{% for machine in station.machines %}
+    <!-- Первая строка: p_ust -->
+    <tr class="text-center machine-row" style="vertical-align: middle;">
+        {% if machine.group_rowspan > 0 %}
+            <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">{{ machine.machine_group }}</td>
+        {% endif %}
+        <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
+        <td class="rowspan-td" rowspan="3">
+            <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                {{ machine.machine_name }}
+            </a></td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else '—'}}</td>
+        
+        <td class="rowspan-td" rowspan="3">
+            {% set mtt = machine_tes_types_map.get(machine.id) %}
+            {% if mtt and mtt.tes_type and mtt.tes_type.id != 100 %}
+                {{ mtt.tes_type.name }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+
+        <td class="rowspan-td" rowspan="3">
+            {% if machine.tes_machine_type and machine.tes_machine_type.id != 100 %}
+                {{ machine.tes_machine_type.name }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+
+        {% if machine.fuel_rowspan > 0 %}
+            <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}">{{ machine.fuel_so if machine.fuel_so else '—' }}</td>
+        {% endif %}
+        
+        <td class="text-center" style="font-weight: bold;">Руст</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="text-center power-column">
+                
+                {% set p_ust_value = machine.machine_powers
+                                    | selectattr('year.number', 'equalto', year)
+                                    | map(attribute='p_ust')
+                                    | first %}
+                {% if p_ust_value == 0%}
+                    &mdash;
+                {% else %}
+                    {% if p_ust_value == None %}
+
+                    {% else %}
+                        {{ p_ust_value }}
+                    {% endif %}
+                {% endif %}
+            </td>
+        {% endfor %}
+        
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="fuel-column rowspan-td" rowspan="3">
+                {% set fuel = machine.machine_fuels
+                            | selectattr('year.number', 'equalto', year)
+                            | map(attribute='fuel')
+                            | first %}
+                {% if fuel %}
+                    {% if fuel.fuel_type.id == 100 %}
+                        &mdash;
+                    {% else %}
+                        {{ fuel.fuel_type.name }}
+                    {% endif %}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+
+    <!-- Вторая строка: p_ogr -->
+    <tr class="text-center p-ogr-row">
+        <td class="text-center" style="font-weight: bold;">Рогр</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column">
+                {% set p_ogr_value = machine.machine_powers
+                                    | selectattr('year.number', 'equalto', year)
+                                    | map(attribute='p_ogr')
+                                    | first %}
+                {% if p_ogr_value == 0 %}
+                    &mdash;
+                {% else %}
+                    {% if p_ogr_value == None %}
+
+                    {% else %}
+                        {{ p_ogr_value }}
+                    {% endif %}
+                {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+
+    <!-- Третья строка: p_rasp -->
+    <tr class="text-center p-rasp-row">
+        <td class="text-center" style="font-weight: bold;">Ррасп</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column">
+                {% set p_rasp_value = machine.machine_powers
+                                    | selectattr('year.number', 'equalto', year)
+                                    | map(attribute='p_rasp')
+                                    | first %}
+                {% if p_rasp_value == 0 %}
+                    &mdash;
+                {% else %}
+                    {% if p_rasp_value == None %}
+
+                    {% else %}
+                        {{ p_rasp_value }}
+                    {% endif %}
+                {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+{% endfor %}

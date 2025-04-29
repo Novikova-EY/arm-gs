@@ -1,17 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField
 from wtforms.validators import DataRequired, Optional, NumberRange, Length
-
-from app.validators.validate_year_or_date import validate_year_or_date
-
-
-from flask_wtf import FlaskForm
-from wtforms import (
-    StringField, IntegerField, FieldList, FormField, 
-    SelectField, HiddenField
-)
-from wtforms.validators import DataRequired, Optional, NumberRange, Length
-
 from app.validators.validate_year_or_date import validate_year_or_date
 
 
@@ -139,6 +128,7 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
+
 class MachineFilterSmallForm(FlaskForm):
     csrf_token = HiddenField()
 
@@ -176,7 +166,6 @@ class MachineFilterSmallForm(FlaskForm):
         choices=[],  # заполняем динамически
         validators=[Optional()]
     )
-
 
 
 class MachinePowerForm(FlaskForm):

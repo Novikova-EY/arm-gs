@@ -216,19 +216,7 @@
                                     {% endif %}
                                 </div>
 
-                                <!-- Тип агрегата -->
-                                <div class="mb-3">
-                                    {{ form.id_machine_type.label(class="form-label") }}
-                                    {{ form.id_machine_type(class="form-select fs-5") }}
-                                    {% if form.id_machine_type.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.id_machine_type.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
+                                
                                 <!-- Тип агрегата ТЭС -->
                                 <div class="mb-3">
                                     {{ form.id_tes_machine_type.label(class="form-label") }}
@@ -236,6 +224,19 @@
                                     {% if form.id_tes_machine_type.errors %}
                                         <div class="text-danger">
                                             {% for error in form.id_tes_machine_type.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Тип агрегата -->
+                                <div class="mb-3">
+                                    {{ form.id_machine_type.label(class="form-label") }}
+                                    {{ form.id_machine_type(class="form-select fs-5") }}
+                                    {% if form.id_machine_type.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.id_machine_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -504,12 +505,7 @@
                             {% for t in advanced_form.tes_types %}
                                 {{ t.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
-                                    {% if t.tes_type.data %}
-                                        {{ t.tes_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
-                                    {% else %}
-                                        —
-                                        <input type="hidden" name="{{ t.tes_type.name }}" value="">
-                                    {% endif %}
+                                    {{ t.tes_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -542,12 +538,7 @@
                             {% for f in advanced_form.fuels %}
                                 {{ f.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
-                                    {% if f.fuel_type.data %}
                                     {{ f.fuel_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
-                                    {% else %}
-                                        <input type="hidden" name="{{ f.fuel_type.name }}" value="100">
-                                        {{ f.fuel_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
-                                    {% endif %}
                                 </td>
                             {% endfor %}
                         </tr>

@@ -1,0 +1,430 @@
+<script>
+    const isAllMode = "{{ request.args.get('per_page') }}" === "all";
+</script>
+
+<script>
+    $(document).ready(function() {
+        if (!$.fn.select2) {
+            alert("⚠️ Ошибка: библиотека Select2 не загружена!");
+            return;
+        }
+
+        function initializeSelect2(selector, placeholder) {
+            if ($(selector).length) {
+                $(selector).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false, // Оставляем открытым для множественного выбора
+                    minimumResultsForSearch: Infinity
+                });
+            } else {
+                console.error(`❌ Ошибка: Элемент ${selector} не найден!`);
+            }
+        }
+
+        initializeSelect2('#energy_system_type', 'Часть энергосистемы России');
+        initializeSelect2('#union_energy_system', 'ОЭС');
+        initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
+        initializeSelect2('#federal_district', 'Федеральный округ');
+        initializeSelect2('#regional_district', 'Субъектр РФ');
+
+        let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
+        let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');
+        let selectedFederalValues = JSON.parse('{{ federal_district_filter | tojson | safe }}');
+        let selectedRegionalDistrictValues = JSON.parse('{{ regional_district_filter | tojson | safe }}');
+
+        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson | safe }}');
+        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson | safe }}');
+
+        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
+        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
+
+        function updateRegionalEnergySystemOptions(selectedUnionIDs) {
+            let regionalOptions = '';
+            let allowedRegionalSystems = new Set();
+
+            selectedUnionIDs.forEach(unionID => {
+                (regionalEnergySystemsMapping[unionID] || []).forEach(resID => {
+                    allowedRegionalSystems.add(resID);
+                });
+            });
+
+            let previousSelected = $('#regional_energy_system').val() || [];
+            let newSelected = [];
+
+            allRegionalSystems.forEach(system => {
+                if (allowedRegionalSystems.has(system.id)) {
+                    let selectedAttr = previousSelected.includes(String(system.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${system.id}" ${selectedAttr}>${system.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(system.id));
+                }
+            });
+
+            $('#regional_energy_system').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_energy_system').trigger('change.select2');
+                }, 100);
+            }
+        }
+
+        function updateRegionalDistrictOptions(selectedFederalIDs) {
+            let regionalOptions = '';
+            let allowedRegionalDistricts = new Set();
+
+            selectedFederalIDs.forEach(federalID => {
+                (regionalDistrictsMapping[federalID] || []).forEach(rdID => {
+                    allowedRegionalDistricts.add(rdID);
+                });
+            });
+
+            let previousSelected = $('#regional_district').val() || [];
+            let newSelected = [];
+
+            allRegionalDistricts.forEach(district => {
+                if (allowedRegionalDistricts.has(district.id)) {
+                    let selectedAttr = previousSelected.includes(String(district.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${district.id}" ${selectedAttr}>${district.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(district.id));
+                }
+            });
+
+            $('#regional_district').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_district').trigger('change.select2');
+                }, 100);
+            }
+        }
+
+        function arraysEqual(a, b) {
+            return JSON.stringify(a.sort()) === JSON.stringify(b.sort());
+        }
+
+        $('#union_energy_system').on('change', function() {
+            let selectedUnionIDs = $(this).val() || [];
+            updateRegionalEnergySystemOptions(selectedUnionIDs);
+        });
+
+        $('#federal_district').on('change', function() {
+            let selectedFederalIDs = $(this).val() || [];
+            updateRegionalDistrictOptions(selectedFederalIDs);
+        });
+
+        $('#union_energy_system').on('select2:clear', function() {
+            $('#regional_energy_system').val([]).empty().append('<option value="">Выберите региональную энергосистему</option>').trigger('change.select2');
+        });
+
+        $('#federal_district').on('select2:clear', function() {
+            $('#regional_district').val([]).empty().append('<option value="">Выберите субъект РФ</option>').trigger('change.select2');
+        });
+
+        if (selectedUnionValues.length > 0) {
+            updateRegionalEnergySystemOptions(selectedUnionValues);
+            $('#union_energy_system').val(selectedUnionValues);
+        }
+
+        if (selectedFederalValues.length > 0) {
+            updateRegionalDistrictOptions(selectedFederalValues);
+            $('#federal_district').val(selectedFederalValues);
+        }
+
+    });
+</script>
+
+<!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
+<script>
+    $(document).ready(function() {
+        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
+        $('.rowspan-td').each(function() {
+            $(this).data('original-rowspan', $(this).attr('rowspan'));
+        });
+
+        // Сохраняем rowspan для ячеек с названием станции
+        $('.station-rowspan-td').each(function() {
+            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
+            let totalMachines = (originalRowspan - 1) / 3;
+            $(this).data('total-machines', totalMachines);
+        });
+
+        // Функция обновления строк
+        function updateRows() {
+            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
+            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
+
+            // Показываем/скрываем строки p_ogr-row
+            if (showPOgr) {
+                $('.p-ogr-row').show();
+            } else {
+                $('.p-ogr-row').hide();
+            }
+
+            // Показываем/скрываем строки p_rasp-row
+            if (showPRasp) {
+                $('.p-rasp-row').show();
+            } else {
+                $('.p-rasp-row').hide();
+            }
+
+            // Количество отображаемых строк на агрегат (1..3)
+            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+
+            // Обновляем rowspan для ячейки "Всего по станции"
+            $('.total-row-cell').attr('rowspan', aggregatorRows);
+
+            // Меняем rowspan для ячеек агрегатов
+            $('.rowspan-td').each(function() {
+                let original = parseInt($(this).data('original-rowspan'), 10);
+                $(this).attr('rowspan', aggregatorRows);
+            });
+
+            // Меняем rowspan для ячеек с названием станции
+            $('.station-rowspan-td').each(function() {
+                let totalMachines = parseInt($(this).data('total-machines'), 10);
+                let newRowSpan = totalMachines * aggregatorRows + 1;
+                $(this).attr('rowspan', newRowSpan);
+            });
+
+            // Обновляем корректное отображение суммарных мощностей
+            $('.power-column').each(function() {
+                let totalRow = $(this).closest('tr').find('.total-row-cell');
+                if (totalRow.length) {
+                    totalRow.attr('rowspan', aggregatorRows);
+                }
+            });
+
+        }
+
+        // Обновляем строки при загрузке страницы
+        updateRows();
+
+        // Обновляем строки при изменении чекбоксов
+        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
+            updateRows();
+        });
+    });
+</script>
+
+<!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
+<script>
+    document.getElementById('rounding_digits').addEventListener('change', function() {
+        const selectedRounding = this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', selectedRounding);
+        url.searchParams.set('page', 1); // Чтобы всегда начинать с первой страницы при новом округлении
+        window.location.href = url.toString();
+    });
+</script>
+
+    
+
+<!-- Скрипт длязамены точки на запятую -->
+<script>
+    $(document).ready(function() {
+        $('.power-column').each(function() {
+            let text = $(this).text().trim();
+    
+            // Пытаемся распарсить как число
+            let num = parseFloat(text.replace(',', '.'));
+            
+            if (!isNaN(num)) {
+                // Если это число — заменяем точку на запятую
+                let newText = text.replace('.', ',');
+                $(this).text(newText);
+            }
+        });
+    });
+</script>
+    
+
+<!-- Скрипт для поиска по фильтрам в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Найдём все чекбоксы в выпадающих фильтрах
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', updateFilters);
+        });
+
+        function updateFilters() {
+            let form = document.createElement("form");
+            form.method = "GET";
+            form.action = "{{ url_for('app_bp.station_list') }}";
+
+            // Список параметров, которые НЕ нужно добавлять
+            let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];
+
+            // Jinja2 передает параметры в JSON-объекте
+            let params = JSON.parse('{{ request.args.to_dict() | tojson | safe }}');
+
+            // Добавляем другие параметры запроса (кроме исключенных)
+            for (let key in params) {
+                if (!excludeKeys.includes(key)) {
+                    let input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = key;
+                    input.value = params[key];
+                    form.appendChild(input);
+                }
+            }
+
+            // Добавление выбранных значений в форму
+            document.querySelectorAll('.dropdown-menu input[type="checkbox"]:checked').forEach(checkbox => {
+                let input = document.createElement("input");
+                input.type = "hidden";
+                input.name = checkbox.name;
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+</script>
+
+<!-- Скрипт для сброса предыдущих значений при поиске по фильтрам в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', function() {
+                let params = new URLSearchParams(window.location.search);
+                let filterName = this.name;
+
+                // 🔹 Удаляем ВСЕ старые значения этого фильтра
+                params.delete(filterName);
+
+                // 🔹 Добавляем в URL только отмеченные чекбоксы
+                document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                    params.append(filterName, cb.value);
+                });
+
+                // 🔹 Перенаправляем на новый URL (без дубликатов)
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        });
+    });
+</script>
+
+<!-- Скрипт чтобы не сбрасывались фильтры при выгрузке в Excel -->
+<script>
+    document.getElementById("exportExcel").addEventListener("click", function(event) {
+        event.preventDefault();
+        let url = new URL("{{ url_for('app_bp.export_station_list') }}", window.location.origin);
+        let params = new URLSearchParams(window.location.search);
+        window.location.href = url + "?" + params.toString();
+    });
+</script>
+
+<!-- Скрипт подсвечивания изменяющихся значений -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll("tr").forEach(row => {
+            let powerCells = row.querySelectorAll(".power-column");
+            let fuelCells = row.querySelectorAll(".fuel-column");
+
+            let previousPowerCell = null;
+            let previousFuelCell = null;
+
+            powerCells.forEach((cell, index) => {
+                let currentValue = cell.textContent.trim();
+                let currentNumericValue = parseFloat(currentValue.replace(',', '.'));
+                let isCurrentDash = currentValue === "-" || currentValue === "—";
+
+                if (!Number.isFinite(currentNumericValue)) {
+                    currentNumericValue = null;
+                }
+
+                cell.setAttribute("data-prev-value", currentValue);
+
+                if (previousPowerCell) {
+                    let previousValue = previousPowerCell.getAttribute("data-prev-value");
+                    let previousNumericValue = parseFloat(previousValue.replace(',', '.'));
+                    let isPreviousDash = previousValue === "-" || previousValue === "—";
+
+                    if (!Number.isFinite(previousNumericValue)) {
+                        previousNumericValue = null;
+                    }
+
+                    if ((previousNumericValue === 0 || isPreviousDash) && currentNumericValue > 0) {
+                        previousPowerCell.classList.add("highlight-green");
+                        cell.classList.add("highlight-green");
+                    } else if (previousNumericValue > 0 && (currentNumericValue === 0 || isCurrentDash)) {
+                        previousPowerCell.classList.add("highlight-red");
+                        cell.classList.add("highlight-red");
+                    } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+                        previousPowerCell.classList.add("highlight-blue");
+                        cell.classList.add("highlight-blue");
+                    }
+                }
+                previousPowerCell = cell;
+            });
+
+            fuelCells.forEach((cell, index) => {
+                let currentValue = cell.textContent.trim();
+                let isCurrentDash = currentValue === "-" || currentValue === "—";
+                cell.setAttribute("data-prev-value", currentValue);
+
+                if (previousFuelCell) {
+                    let previousValue = previousFuelCell.getAttribute("data-prev-value");
+                    let isPreviousDash = previousValue === "-" || previousValue === "—";
+
+                    if (isPreviousDash && !isCurrentDash) {
+                        previousFuelCell.classList.add("highlight-green");
+                        cell.classList.add("highlight-green");
+                    } else if (!isPreviousDash && isCurrentDash) {
+                        previousFuelCell.classList.add("highlight-red");
+                        cell.classList.add("highlight-red");
+                    } else if (previousValue !== currentValue) {
+                        previousFuelCell.classList.add("highlight-blue");
+                        cell.classList.add("highlight-blue");
+                    }
+                }
+                previousFuelCell = cell;
+            });
+        });
+    });
+
+    // Добавляем стили для подсветки
+    const style = document.createElement("style");
+    style.innerHTML = `
+        .highlight-green {
+            background-color: lightgreen !important;
+        }
+        .highlight-red {
+            background-color: lightcoral !important;
+        }
+        .highlight-blue {
+            background-color: lightblue !important;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+
+
+<!-- Скрипт высоты ячеек групп и топлива по СО ЕЭС в зав-ти от отображения располагаемой мощности и ограничений мощности-->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        function updateFuelCellRowspans() {
+            let showPOgr  = document.getElementById("toggleP_Ogr").checked;
+            let showPRasp = document.getElementById("toggleP_Rasp").checked;
+            let rowMultiplier = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+
+            document.querySelectorAll(".fuel-cell").forEach(cell => {
+                let baseRowspan = parseInt(cell.getAttribute("data-base-rowspan"), 10) || 1;
+                cell.setAttribute("rowspan", baseRowspan * rowMultiplier);
+                cell.style.display = "table-cell";
+            });
+        }
+
+        document.getElementById("toggleP_Ogr").addEventListener("change", updateFuelCellRowspans);
+        document.getElementById("toggleP_Rasp").addEventListener("change", updateFuelCellRowspans);
+
+        document.querySelectorAll(".fuel-cell").forEach(cell => {
+            cell.setAttribute("data-base-rowspan", cell.getAttribute("rowspan") || "1");
+        });
+        updateFuelCellRowspans();
+    });
+</script>

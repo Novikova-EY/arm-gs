@@ -46,7 +46,7 @@
                                     </span>
                                 </p>
                                 <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '-' }}</p>
-                                <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_type if station.station_type else '—' }}</p>
+                                <p class="fs-5"><strong>Тип электростанции:</strong> {{ station_type if station_type else '—' }}</p>
                                 <p class="fs-5"><strong>Группа электростанций:</strong> 
                                     <span id="id_station_group_span">
                                         {{ form.id_station_group(class="form-select d-inline-block w-auto fs-5") }}
@@ -97,6 +97,12 @@
                                         {% if station.regional_district.regional_energy_systems %}
                                             {{ station.regional_district.regional_energy_systems[0].name }}
                                         {% else %} Нет данных {% endif %}
+                                    </span>
+                                </p>
+
+                                <p class="fs-5"><strong>Энергоузел:</strong> 
+                                    <span id="id_energy_unit_span">
+                                        {{ form.id_energy_unit(class="form-select d-inline-block w-auto fs-5") }}
                                     </span>
                                 </p>
                             
@@ -245,7 +251,6 @@
                                         </td>
                                         <td class="rowspan-td" rowspan="3">
                                             <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="width: 100%;">
-                                                <!-- Добавляем вариант "не указано" всегда в начале списка -->
                                                 <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
                                                 
                                                 {% for gc in form_machines.id_gen_company.choices %}
@@ -257,17 +262,23 @@
                                         </td>
                                         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
                                         <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
-                                        <td class="rowspan-td" rowspan="3">{{ machine.tes_type.name if machine.tes_type.name else "—"}}</td>
-                                        <td class="rowspan-td" rowspan="3">{{ machine.tes_machine_type.name if machine.tes_machine_type else "—"}}</td>
                                         <td class="rowspan-td" rowspan="3">
-                                            {% if machine.fuel_so %}
-                                                <input type="text" name="fuel_so_{{ machine.id }}" 
-                                                       value="{{ machine.fuel_so }}" 
-                                                       class="form-control text-center d-inline-block w-auto bg-transparent">
+                                            {{ machine_tes_types_map[machine.id].tes_type.name 
+                                                if machine.id in machine_tes_types_map and machine_tes_types_map[machine.id].tes_type 
+                                                else "—" }}
+                                        </td>
+                                        <td class="rowspan-td" rowspan="3">
+                                            {% if machine.tes_machine_type and machine.tes_machine_type.id != 100 %}
+                                                {{ machine.tes_machine_type.name }}
                                             {% else %}
-                                                —
-                                                <input type="hidden" name="fuel_so_{{ machine.id }}" value="">
+                                                &mdash;
                                             {% endif %}
+                                        </td>
+                                        <td class="rowspan-td" rowspan="3">
+                                            <input type="text" name="fuel_so_{{ machine.id }}" 
+                                                   value="{{ machine.fuel_so or '' }}" 
+                                                   placeholder="Введите топливо" 
+                                                   class="form-control text-center d-inline-block w-auto bg-transparent">
                                         </td>
 
                                         
@@ -279,7 +290,7 @@
                                                                 | selectattr('year.number', 'equalto', year)
                                                                 | map(attribute='p_ust')
                                                                 | first %}
-                                            {% if p_ust_value == 0 %}
+                                            {% if p_ust_value == 0 or p_ust_value == None %}
                                                 &mdash;
                                             {% else %}
                                                 {{ p_ust_value }}
@@ -317,7 +328,7 @@
                                                                 | selectattr('year.number', 'equalto', year)
                                                                 | map(attribute='p_ogr')
                                                                 | first %}
-                                            {% if p_ogr_value == 0 %}
+                                            {% if p_ogr_value == 0 or p_ogr_value == None %}
                                                 &mdash;
                                             {% else %}
                                                 {{ p_ogr_value }}
@@ -335,7 +346,7 @@
                                                                 | selectattr('year.number', 'equalto', year)
                                                                 | map(attribute='p_rasp')
                                                                 | first %}
-                                            {% if p_rasp_value == 0 %}
+                                            {% if p_rasp_value == 0 or p_rasp_value == None %}
                                                 &mdash;
                                             {% else %}
                                                 {{ p_rasp_value }}

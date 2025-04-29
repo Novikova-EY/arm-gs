@@ -1,47 +1,55 @@
 import re
-from datetime import datetime
+from datetime import datetime, date
 from wtforms.validators import ValidationError
 
 def validate_year_or_date(form, field):
     """
-    Разрешает ввод в следующих форматах:
-    - YYYY (год, 4 цифры) → 2025
-    - DD.MM.YYYY (обычный формат) → 14.10.2022
-    - YYYY-MM-DD (ISO 8601) → 2022-10-14 (НЕ вызывает ошибку)
-    
-    Год не может быть больше 2050.
+    Разрешает ввод:
+    - 'YYYY'
+    - 'DD.MM.YYYY'
+    - 'YYYY-MM-DD'
+    - или объект date/datetime (например, при process(obj=...))
     """
-    value = (field.data or '').strip()  # Убираем пробелы, обрабатываем None
+    value = field.data
 
     if not value:
-        return  # Пустое поле — пропускаем валидацию
+        return  # Пусто — пропускаем
 
-    # 1️⃣ Проверяем формат YYYY-MM-DD (ISO 8601) ✅
+    # ✅ Если пришёл объект date/datetime — просто проверим год
+    if isinstance(value, (date, datetime)):
+        if value.year > 2050:
+            raise ValidationError('Год в дате не может быть больше 2050.')
+        return
+
+    # ✅ Если пришла строка
+    value = value.strip()
+
+    # YYYY-MM-DD
     if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
         try:
-            date_obj = datetime.strptime(value, '%Y-%m-%d')
-            if date_obj.year > 2050:
+            dt = datetime.strptime(value, '%Y-%m-%d')
+            if dt.year > 2050:
                 raise ValidationError('Год в дате не может быть больше 2050.')
-            return  # Всё ОК
+            return
         except ValueError:
-            raise ValidationError(f'Некорректная дата {value}. Используйте YYYY или DD.MM.YYYY.')
+            raise ValidationError(f'Некорректная дата: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')
 
-    # 2️⃣ Проверяем, является ли это просто годом (YYYY) ✅
+    # YYYY
     if re.match(r'^\d{4}$', value):
         year = int(value)
         if year > 2050:
             raise ValidationError('Год не может быть больше 2050.')
-        return  # Всё ОК
+        return
 
-    # 3️⃣ Проверяем формат DD.MM.YYYY ✅
+    # DD.MM.YYYY
     if re.match(r'^\d{2}\.\d{2}\.\d{4}$', value):
         try:
-            date_obj = datetime.strptime(value, '%d.%m.%Y')
-            if date_obj.year > 2050:
+            dt = datetime.strptime(value, '%d.%m.%Y')
+            if dt.year > 2050:
                 raise ValidationError('Год в дате не может быть больше 2050.')
-            return  # Всё ОК
+            return
         except ValueError:
-            raise ValidationError(f'Некорректная дата {value}. Используйте YYYY или DD.MM.YYYY.')
+            raise ValidationError(f'Некорректная дата: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')
 
-    # 4️⃣ Если ничего не подошло → ошибка ❌
-    raise ValidationError(f'Некорректный формат даты: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')
+    # ❌ Всё остальное — ошибка
+    raise ValidationError(f'Некорректный формат: {value}. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.')

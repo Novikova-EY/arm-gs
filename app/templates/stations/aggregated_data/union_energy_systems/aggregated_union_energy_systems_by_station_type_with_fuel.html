@@ -1,0 +1,42 @@
+{# Разбивка по видам топлива для станций типа ТЭС #}
+{% for fuel_type_id, fuel_name in fuel_type_list.items() %}
+    {% set fuel_data = union_energy_systems_by_station_types_with_fuel_yearly_p_ust.
+        get(current_ues_id, {}).get(fuel_type_id) %}
+    {% if fuel_data and fuel_type_id != 100%}
+        <!-- Первая строка: Руст -->
+        <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+            <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 3cm;">
+                {{ fuel_name }}
+            </td>
+            <td class="fw-bold">Руст</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ union_energy_systems_by_station_types_with_fuel_yearly_p_ust.
+                        get(current_ues_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                </td>
+            {% endfor %}
+        </tr>
+
+        <!-- Вторая строка: Рогр -->
+        <tr class="table-primary text-center p-ogr-row">
+            <td class="fw-bold">Рогр</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ union_energy_systems_by_station_types_with_fuel_yearly_p_ogr.
+                        get(current_ues_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                </td>
+            {% endfor %}
+        </tr>
+
+        <!-- Третья строка: Ррасп -->
+        <tr class="table-primary text-center p-rasp-row">
+            <td class="fw-bold">Ррасп</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ union_energy_systems_by_station_types_with_fuel_yearly_p_rasp.
+                        get(current_ues_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endif %}
+{% endfor %}

@@ -1,0 +1,47 @@
+<!-- Итоговые значения по типам ТЭС энергоузла -->
+{% for tes_type_id, tes_name in tes_type_list.items() %}
+    {% if tes_type_id != 100 %}
+        {% set has_tes = union_energy_systems_by_tes_types_yearly_p_ust.get(current_ues_id, {}).get(tes_type_id) %}
+        {% if has_tes %}
+            <!-- Первая строка: p_ust -->
+            <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+                <td class="total-row-cell ind2cm" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 6cm;">
+                    {{ tes_name }}
+                </td>
+                <td class="fw-bold">Руст</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {{ union_energy_systems_by_tes_types_yearly_p_ust.get(current_ues_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                    </td>
+                {% endfor %}
+
+
+            </tr>
+
+            <!-- Вторая строка: p_ogr -->
+            <tr class="table-primary text-center p-ogr-row">
+                <td class="fw-bold">Рогр</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {{ union_energy_systems_by_tes_types_yearly_p_ogr.get(current_ues_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                    </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Третья строка: p_rasp -->
+            <tr class="table-primary text-center p-rasp-row">
+                <td class="fw-bold">Ррасп</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {{ union_energy_systems_by_tes_types_yearly_p_rasp.get(current_ues_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                    </td>
+                {% endfor %}
+            </tr>
+
+            {#–- {% include 'stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_by_tes_type_with_fuel.html' %} --#}
+
+            {% include 'stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_by_tes_machine_type.html' %}
+
+        {% endif %}
+    {% endif %}
+{% endfor %}

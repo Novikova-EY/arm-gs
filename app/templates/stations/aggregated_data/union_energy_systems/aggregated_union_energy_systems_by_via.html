@@ -1,0 +1,116 @@
+<!-- Итоговые значения по всем ВИЭ -->
+{% if (union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(5) or union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(6)) %}
+<!-- Первая строка: p_ust -->
+    <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+        <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold;">
+            ВИЭ
+        </td>
+        <td class="fw-bold">Руст</td>
+        {% for y in range(start_year, end_year + 1) %}
+            {% set ves = union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(5, {}).get(y) %}
+            {% set ses = union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(6, {}).get(y) %}
+            {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
+            <td class="power-column" style="font-weight: bold;">
+                {% if val %}
+                    {{ val }}
+                {% else %}
+                    —
+                {% endif %}
+                </td>
+            {% endfor %}
+    </tr>
+
+    <!-- Вторая строка: p_ogr -->
+    <tr class="table-primary text-center p-ogr-row">
+        <td class="fw-bold">Рогр</td>
+            {% for y in range(start_year, end_year + 1) %}
+            {% set v1 = union_energy_systems_by_station_types_yearly_p_ogr.get(current_ues_id, {}).get(5, {}).get(y) %}
+            {% set v2 = union_energy_systems_by_station_types_yearly_p_ogr.get(current_ues_id, {}).get(6, {}).get(y) %}
+            {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
+            <td class="power-column" style="font-weight: bold;">
+                {% if val %}
+                    {{ val }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+
+    <!-- Третья строка: p_rasp -->
+    <tr class="table-primary text-center p-rasp-row">
+        <td class="fw-bold">Ррасп</td>
+        {% for y in range(start_year, end_year + 1) %}
+            {% set v1 = union_energy_systems_by_station_types_yearly_p_rasp.get(current_ues_id, {}).get(5, {}).get(y) %}
+            {% set v2 = union_energy_systems_by_station_types_yearly_p_rasp.get(current_ues_id, {}).get(6, {}).get(y) %}
+            {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
+            <td class="power-column" style="font-weight: bold;">
+                {% if val %}
+                    {{ val }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+        {% endfor %}
+    </tr>
+
+
+    {#-- Отдельно по ВЭС и СЭС --#}
+    {% for station_type_id in [5, 6] %}
+        {% set has_data = union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(station_type_id) %}
+
+        {% if has_data %}
+            <!-- Первая строка: p_ust -->
+            <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+                <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 6cm;">
+                    {{ station_type_list.get(station_type_id, 'Неизвестный тип') }}
+                </td>
+                <td class="fw-bold">Руст</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    {% set val = union_energy_systems_by_station_types_yearly_p_ust.get(current_ues_id, {}).get(station_type_id, {}).get(y, 0) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {% if val %}
+                            {{ val }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Вторая строка: p_ogr -->
+            <tr class="table-primary text-center p-ogr-row">
+                <td class="fw-bold">Рогр</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    {% set val = union_energy_systems_by_station_types_yearly_p_ogr.get(current_ues_id, {}).get(station_type_id, {}).get(y, 0) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {% if val %}
+                            {{ val }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Третья строка: p_rasp -->
+            <tr class="table-primary text-center p-rasp-row">
+                <td class="fw-bold">Ррасп</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    {% set val = union_energy_systems_by_station_types_yearly_p_rasp.get(current_ues_id, {}).get(station_type_id, {}).get(y, 0) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {% if val %}
+                            {{ val }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endif %}
+    {% endfor %}
+
+{% endif %}
+
+ 
+

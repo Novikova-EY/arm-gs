@@ -54,13 +54,6 @@ class TesType(db.Model):
     # наименование типа ТЭС
     name = db.Column(db.String(80), unique=True, nullable=False)
 
-    # связь с таблицей "Агрегат электростанции"
-    machines = db.relationship(
-        'Machine', 
-        back_populates='tes_type',
-        cascade="all, delete-orphan"
-    )
-
     # связь с таблицей "связь типа ТЭС и года"
     machine_tes_types = db.relationship(
         'MachineTesType', 
@@ -352,18 +345,7 @@ class Machine(db.Model):
     type = db.relationship(
         'MachineType', 
         back_populates='machines')    
-    
-    # id типа ТЭС
-    id_tes_type = db.Column(
-        db.Integer, 
-        db.ForeignKey('tes_types.id', ondelete='RESTRICT'), 
-        nullable=True
-    )
-    tes_type = db.relationship(
-        'TesType', 
-        back_populates='machines'
-    )
-        
+            
     # id типа машины ТЭС
     id_tes_machine_type = db.Column(
         db.Integer, 

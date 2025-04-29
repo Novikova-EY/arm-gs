@@ -1,96 +1,194 @@
 from config import Config
 from app import db
-from app.models.logs_models import Log
-from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyUnit
-from app.models.territories_models import RegionalDistrict, FederalDistrict
-from app.models.stations_models import Station, StationType, Machine, MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, TesType, TesMachineType, StationGroup, Machine, StationPower
-from app.models import Year, Fuel, GenCompany, FuelType
-from sqlalchemy.orm import joinedload, contains_eager
-from sqlalchemy import func
-from decimal import Decimal
-from app.services.gen_company_services import clean_name
-from collections import defaultdict
 from app.services.logging_service import log_to_db
-from app.services.aggregation_services import (
+from decimal import Decimal
+from collections import defaultdict
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+from app.models import (
+    EnergyUnit, RegionalDistrict, Station, StationType, Machine, FuelType,
+    MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, 
+    TesType, TesMachineType,  Machine, StationPower, Fuel, GenCompany
+)
+from app.services.help_service import (
+        get_current_year,
+        get_station_types_list,
+        get_gen_companies,
+        get_gen_companies_list,
+        get_station_groups,
+        get_condition_type,
+        get_station_types,
+        get_machine_type,
+        get_tes_types,
+        get_tes_machine_types,
+        get_fuel_types,
+        get_energy_units,
+        get_energy_system_types,
+        get_union_energy_systems,
+        get_regional_energy_systems,
+        get_regional_districts,
+        get_federal_districts,
+        get_year_features,
+        maybe_round,
+        round_nested_power_dict,
+    )
+from app.services.filters_service import (
+        get_filtered_station_ids,
+        get_filtered_stations
+    )
+from app.services.groupped_service import (
+        group_stations_hierarchy,
+        group_machines_by_group_and_fuel
+    )
+from app.services.gen_company_services import (
+        clean_name
+)
+from app.services.aggregation_services_energy_units import (
         aggregate_power_by_energy_unit,
-        aggregate_power_by_regional_district,
-        aggregate_power_by_regional_energy_system,
-        aggregate_power_by_union_energy_system,
-        aggregate_power_by_energy_system_type,
-        aggregate_total_power_by_all_system_types,
         aggregate_energy_units_by_station_types,
+        aggregate_energy_units_by_station_types_with_fuel,
         aggregate_energy_units_by_tes_types,
-        aggregate_energy_units_by_tes_machine_types,
         aggregate_energy_units_by_tes_types_with_fuel,
+        aggregate_energy_units_by_tes_machine_types,
         aggregate_energy_units_by_tes_machine_types_with_fuel,
     )
-
+from app.services.aggregation_services_regional_districts import (
+        aggregate_power_by_regional_district,
+        aggregate_regional_districts_by_station_types,
+        aggregate_regional_districts_by_station_types_with_fuel,
+        aggregate_regional_districts_by_tes_types,
+        aggregate_regional_districts_by_tes_types_with_fuel,
+        aggregate_regional_districts_by_tes_machine_types,
+        aggregate_regional_districts_by_tes_machine_types_with_fuel,
+    )
+from app.services.aggregation_services_regional_energy_systems import (
+        aggregate_power_by_regional_energy_system,
+        aggregate_regional_energy_systems_by_station_types,
+        aggregate_regional_energy_systems_by_station_types_with_fuel,
+        aggregate_regional_energy_systems_by_tes_types,
+        aggregate_regional_energy_systems_by_tes_types_with_fuel,
+        aggregate_regional_energy_systems_by_tes_machine_types,
+        aggregate_regional_energy_systems_by_tes_machine_types_with_fuel,
+    )
+from app.services.aggregation_services_union_energy_systems import (
+        aggregate_power_by_union_energy_system,
+        aggregate_union_energy_systems_by_station_types,
+        aggregate_union_energy_systems_by_station_types_with_fuel,
+        aggregate_union_energy_systems_by_tes_types,
+        aggregate_union_energy_systems_by_tes_types_with_fuel,
+        aggregate_union_energy_systems_by_tes_machine_types,
+        aggregate_union_energy_systems_by_tes_machine_types_with_fuel,
+    )
+from app.services.aggregation_services_energy_system_types import (
+        aggregate_power_by_energy_system_type,
+        aggregate_energy_system_types_by_station_types,
+        aggregate_energy_system_types_by_station_types_with_fuel,
+        aggregate_energy_system_types_by_tes_types,
+        aggregate_energy_system_types_by_tes_types_with_fuel,
+        aggregate_energy_system_types_by_tes_machine_types,
+        aggregate_energy_system_types_by_tes_machine_types_with_fuel,
+    )
+from app.services.aggregation_services_total_energy_system_types import (
+        aggregate_power_by_total_energy_system_type,
+        aggregate_total_energy_system_types_by_station_types,
+        aggregate_total_energy_system_types_by_station_types_with_fuel,
+        aggregate_total_energy_system_types_by_tes_types,
+        aggregate_total_energy_system_types_by_tes_types_with_fuel,
+        aggregate_total_energy_system_types_by_tes_machine_types,
+        aggregate_total_energy_system_types_by_tes_machine_types_with_fuel,
+    )
 
 def get_stations_list(
-    page=None, 
+    page=None,
     per_page=None,
-    condition_type_filter=None, 
-    gen_company_filter=None, 
-    station_name_filter=None, 
-    station_type_filter=None, 
-    tes_type_filter=None, 
-    tes_machine_type_filter=None, 
-    energy_system_type_filter=None, 
-    union_energy_system_filter=None, 
-    regional_energy_system_filter=None, 
-    federal_district_filter=None, 
-    regional_district_filter=None, 
+    filters=None,
+    rounding_digits=None,
+    condition_type_filter=None,
+    gen_company_filter=None,
+    station_name_filter=None,
+    station_type_filter=None,
+    tes_type_filter=None,
+    tes_machine_type_filter=None,
+    energy_system_type_filter=None,
+    union_energy_system_filter=None,
+    regional_energy_system_filter=None,
+    federal_district_filter=None,
+    regional_district_filter=None,
     station_fuel_type_filter=None,
     sort_by=None,
     sort_dir=None,
 ):
-    """
-    Получает список СТАНЦИЙ с учётом фильтров и корректной пагинацией.
-    1) Фильтруем станции + машины (если нужно) -> subquery с уникальными ID станций
-    2) Считаем total_count по этому subquery
-    3) Выбираем объекты Station, у которых ID в subquery, применяя OFFSET/LIMIT
-    """
-   
-    # 1) Получаем subquery с уникальными Station.id, учитывая все фильтры
-    station_ids_subq = get_filtered_station_ids(
-        condition_type_filter,
-        gen_company_filter,
-        station_name_filter,
-        station_type_filter,
-        tes_type_filter,
-        tes_machine_type_filter,
-        energy_system_type_filter,
-        union_energy_system_filter,
-        regional_energy_system_filter,
-        federal_district_filter,
-        regional_district_filter,
-    )
-
-    # Считаем общее число станций (уникальных ID) 
-    total_count = db.session.query(func.count()).select_from(station_ids_subq).scalar()
-
-    # Расчёт общего числа страниц
-    if per_page is None:
-        total_pages = 1
-    else:
-        total_pages = max(1, (total_count + per_page - 1) // per_page)
-
-    station_query = db.session.query(Station).filter(
-        Station.id.in_(db.session.query(station_ids_subq.c.id))
-    )
-
-    if per_page is None:
-        stations = station_query.all()
-    else:
-        stations = (
-            station_query
-            .offset((page - 1) * per_page)
-            .limit(per_page)
-            .all()
+    if filters is not None:
+        station_query = (
+            db.session.query(Station)
+            .options(
+                joinedload(Station.regional_district)
+                    .joinedload(RegionalDistrict.regional_energy_systems),
+                joinedload(Station.energy_unit),
+                joinedload(Station.machines),
+            )
         )
 
-    grouped_data = group_stations_hierarchy(stations)
-    
+        station_query = station_query.filter(*filters)
+
+        total_count = station_query.count()
+
+        if per_page is None:
+            stations = station_query.all()
+            total_pages = 1
+        else:
+            stations = (
+                station_query
+                .offset((page - 1) * per_page)
+                .limit(per_page)
+                .all()
+            )
+            total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    else:
+        station_ids_subq = get_filtered_station_ids(
+            condition_type_filter,
+            gen_company_filter,
+            station_name_filter,
+            station_type_filter,
+            tes_type_filter,
+            tes_machine_type_filter,
+            energy_system_type_filter,
+            union_energy_system_filter,
+            regional_energy_system_filter,
+            federal_district_filter,
+            regional_district_filter,
+        )
+
+        total_count = db.session.query(func.count()).select_from(station_ids_subq).scalar()
+
+        station_query = (
+            db.session.query(Station)
+            .options(
+                joinedload(Station.regional_district)
+                    .joinedload(RegionalDistrict.regional_energy_systems),
+                joinedload(Station.energy_unit),
+                joinedload(Station.machines),
+            )
+            .filter(
+                Station.id.in_(db.session.query(station_ids_subq.c.id))
+            )
+        )
+
+        if per_page is None:
+            stations = station_query.all()
+            total_pages = 1
+        else:
+            stations = (
+                station_query
+                .offset((page - 1) * per_page)
+                .limit(per_page)
+                .all()
+            )
+            total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    grouped_data = group_stations_hierarchy(stations, rounding_digits)
+
     return {
         "total_count": total_count,
         "page": page,
@@ -99,320 +197,6 @@ def get_stations_list(
         "grouped_stations": grouped_data["grouped_stations"],
         "stations": grouped_data["stations"]
     }
-
-
-def get_filtered_station_ids(
-    condition_type_filter=None,
-    gen_company_filter=None,
-    station_name_filter=None,
-    station_type_filter=None,
-    tes_type_filter=None,
-    tes_machine_type_filter=None,
-    energy_system_type_filter=None,
-    union_energy_system_filter=None,
-    regional_energy_system_filter=None,
-    federal_district_filter=None,
-    regional_district_filter=None,
-):
-    """
-    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id).
-    Учитывает все фильтры, join на machines, если нужно, 
-    но при этом не загружает лишних полей.
-    """
-
-    # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
-    query = db.session.query(Station.id).join(Station.machines)
-
-    # 2) Применяем фильтры.
-    if station_type_filter:
-        query = query.filter(Machine.id_station_type.in_(station_type_filter))
-    if tes_type_filter:
-        query = query.filter(Machine.id_tes_type.in_(tes_type_filter))
-    if tes_machine_type_filter:
-        query = query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
-    # Фильтрация по названию генерирующей компании
-    if gen_company_filter:
-        gen_companies = GenCompany.query.filter(GenCompany.name.ilike(f"%{gen_company_filter}%")).all()
-        gen_company_ids = [company.id for company in gen_companies]
-        
-        query = query.join(Station.machines).filter(Machine.id_gen_company.in_(gen_company_ids))
-
-    # Фильтрация по названию электростанции
-    if station_name_filter:
-        query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
-    
-    # Фильтрация по типу энергосистемы
-    if energy_system_type_filter:
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(energy_system_type_filter)
-                        )
-                    )
-                )
-            )
-        )
-
-    # Фильтрация по объединённой энергосистеме
-    if union_energy_system_filter:
-        if not isinstance(union_energy_system_filter, list):
-            union_energy_system_filter = [union_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по региональной энергосистеме
-    if regional_energy_system_filter:
-        if not isinstance(regional_energy_system_filter, list):
-            regional_energy_system_filter = [regional_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по ФО
-    if federal_district_filter:
-        if not isinstance(federal_district_filter, list):
-            federal_district_filter = [federal_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.federal_district.has(
-                    FederalDistrict.id.in_(federal_district_filter)  # Используем .in_()
-                )
-            )
-        )
-
-    # Фильтрация по субъекту РФ
-    if regional_district_filter:
-        if not isinstance(regional_district_filter, list):
-            regional_district_filter = [regional_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.id.in_(regional_district_filter)  # Используем .in_()
-            )
-        )
-
-    # Фильтрация по состоянию электростанции
-    if condition_type_filter:
-        query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
-
-
-    # 3) Делаем distinct(Station.id), чтобы каждая станция была 1 раз
-    query = query.distinct(Station.id)
-
-    # 4) Возвращаем подзапрос 
-    return query.subquery()
-
-
-def group_machines_by_group_and_fuel(stations):
-    """Сначала группирует машины по fuel_so, затем по machine_group, рассчитывает rowspan независимо."""
-
-    for station in stations:
-        # Группировка машин по fuel_so (топливо сначала)
-        fuel_groups = defaultdict(list)
-        for machine in station.machines:
-            fuel_groups[machine.fuel_so].append(machine)
-
-        # Теперь внутри каждой группы fuel_so группируем по machine_group
-        fuel_sorted_machines = []  # Список с машинами в новом порядке
-        for fuel, fuel_machines in fuel_groups.items():
-            # Применяем rowspan для fuel_so
-            fuel_machines[0].fuel_rowspan = len(fuel_machines)
-            for machine in fuel_machines[1:]:
-                machine.fuel_rowspan = 0  # Остальные скрывают ячейку топлива
-
-            # Группировка внутри fuel_so по machine_group
-            group_groups = defaultdict(list)
-            for machine in fuel_machines:
-                group_groups[machine.machine_group].append(machine)
-
-            # Применяем rowspan для machine_group внутри fuel_so
-            for group, group_machines in group_groups.items():
-                group_machines[0].group_rowspan = len(group_machines)
-                for machine in group_machines[1:]:
-                    machine.group_rowspan = 0  # Остальные скрывают ячейку группы
-
-                # Добавляем в итоговый список
-                fuel_sorted_machines.extend(group_machines)
-
-        # Обновляем порядок машин в станции
-        station.machines = fuel_sorted_machines
-
-    return stations
-
-from collections import defaultdict
-
-def group_stations_hierarchy(stations):
-    grouped_data = defaultdict(  # energy_system_type
-        lambda: defaultdict(     # union_energy_system
-            lambda: defaultdict( # regional_energy_system
-                lambda: defaultdict(  # regional_district
-                    lambda: defaultdict(list)  # energy_unit
-                )
-            )
-        )
-    )
-
-    for station in stations:
-        rd = station.regional_district
-        if not rd or not rd.regional_energy_systems:
-            continue
-
-        energy_unit_id = station.energy_unit.id if station.energy_unit else None
-        regional_district_id = rd.id
-
-        for res in rd.regional_energy_systems:
-            res_id = res.id
-            ues_id = res.id_union_energy_system
-            est_id = res.union_energy_system.id_energy_system_type if res.union_energy_system else None
-
-            grouped_data[est_id][ues_id][res_id][regional_district_id][energy_unit_id].append(station)
-
-    # Сортировка станций внутри EnergyUnit
-    for energy_system_type in grouped_data.values():
-        for union_energy_system in energy_system_type.values():
-            for regional_energy_system in union_energy_system.values():
-                for regional_district in regional_energy_system.values():
-                    for energy_unit in regional_district.values():
-                        energy_unit.sort(key=lambda station: (station.machines[0].station_type.id if station.machines else 0, station.name))
-
-    # Формируем плоский список всех станций
-    all_stations = []
-    for energy_system_type in grouped_data.values():
-        for union_energy_system in energy_system_type.values():
-            for regional_energy_system in union_energy_system.values():
-                for regional_district in regional_energy_system.values():
-                    for energy_unit in regional_district.values():
-                        all_stations.extend(energy_unit)
-
-    return {
-        "grouped_stations": grouped_data,
-        "stations": all_stations
-    }
-
-
-def get_filtered_stations(
-    condition_type_filter=None,
-    gen_company_filter=None,
-    station_name_filter=None,
-    station_type_filter=None,
-    tes_type_filter=None,
-    tes_machine_type_filter=None,
-    energy_system_type_filter=None,
-    union_energy_system_filter=None,
-    regional_energy_system_filter=None,
-    federal_district_filter=None,
-    regional_district_filter=None,
-    sort_by="id",
-    sort_dir="asc"
-):
-    """Фильтрует станции по переданным параметрам"""
-    query = db.session.query(Station).distinct().join(Station.machines)
-
-    if station_type_filter:
-        query = query.filter(Machine.id_station_type.in_(station_type_filter))
-
-    if tes_type_filter:
-        query = query.filter(Machine.id_tes_type.in_(tes_type_filter))
-
-    if tes_machine_type_filter:
-        query = query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
-
-    query = query.options(contains_eager(Station.machines))
-
-    # Фильтрация по названию генерирующей компании
-    if gen_company_filter:
-        gen_companies = GenCompany.query.filter(GenCompany.name.ilike(f"%{gen_company_filter}%")).all()
-        gen_company_ids = [company.id for company in gen_companies]
-        
-        query = query.join(Station.machines).filter(Machine.id_gen_company.in_(gen_company_ids))
-
-    # Фильтрация по названию электростанции
-    if station_name_filter:
-        query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
-    
-    # Фильтрация по типу энергосистемы
-    if energy_system_type_filter:
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(energy_system_type_filter)
-                        )
-                    )
-                )
-            )
-        )
-
-    # Фильтрация по объединённой энергосистеме
-    if union_energy_system_filter:
-        if not isinstance(union_energy_system_filter, list):
-            union_energy_system_filter = [union_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по региональной энергосистеме
-    if regional_energy_system_filter:
-        if not isinstance(regional_energy_system_filter, list):
-            regional_energy_system_filter = [regional_energy_system_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
-                )
-            )
-        )
-
-    # Фильтрация по ФО
-    if federal_district_filter:
-        if not isinstance(federal_district_filter, list):
-            federal_district_filter = [federal_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.federal_district.has(
-                    FederalDistrict.id.in_(federal_district_filter)  # Используем .in_()
-                )
-            )
-        )
-
-    # Фильтрация по субъекту РФ
-    if regional_district_filter:
-        if not isinstance(regional_district_filter, list):
-            regional_district_filter = [regional_district_filter]
-
-        query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.id.in_(regional_district_filter)  # Используем .in_()
-            )
-        )
-
-    # Фильтрация по состоянию электростанции
-    if condition_type_filter:
-        query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
-
-    return query
 
 
 def get_station_by_id(station_id):
@@ -434,175 +218,6 @@ def get_machine_by_id(machine_id):
     )
     
     return machine
-
-
-def get_station_types_list(station):
-    if not hasattr(station, "machines") or not station.machines:
-        return None  # Убедимся, что у station есть атрибут "machines"
-
-    station_type = next((machine.station_type for machine in station.machines if hasattr(machine, "station_type") and machine.station_type), None)
-    
-    return station_type
-
-
-def get_gen_companies():
-    """Получает список генкомпаний'."""
-    return GenCompany.query.order_by(GenCompany.id).all()
-
-
-def get_gen_companies_list(station):
-    if not station or not station.machines:
-        return None
-
-    gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
-    return ", ".join(gen_companies) if gen_companies else None
-
-
-def get_station_groups():
-    """Получает список групп электростанций'."""
-    return StationGroup.query.all()
-
-
-def get_condition_type():
-    """Получает список типов состояний."""
-    return ConditionType.query.all()
-
-
-def get_station_types():
-    """Получает список типов электростанций'."""
-    return StationType.query.order_by(StationType.id).all()
-
-
-def get_machine_type():
-    """Получает список типов агрегатов электростанций'."""
-    return MachineType.query.all()
-
-
-def get_tes_types():
-    """Получает список типов ТЭС'."""
-    return TesType.query.order_by(TesType.id).all()
-
-
-def get_tes_machine_types():
-    """Получает список типов агрегатов ТЭС."""
-    return TesMachineType.query.order_by(TesMachineType.id).all()
-
-def get_fuel_types():
-    """Получает список типов топлива'."""
-    return FuelType.query.order_by(FuelType.id).all()
-
-def get_energy_units():
-    """Получает список энергоузлов''."""
-    return EnergyUnit.query.order_by(EnergyUnit.id).all()
-
-
-def get_energy_system_types():
-    """Получает список типов энергосистем."""
-    energy_system_type_list = EnergySystemType.query.order_by(EnergySystemType.id).all()
-
-    energy_system_type_names = {
-        energy_system_type.id: energy_system_type.name for energy_system_type in db.session.query(EnergySystemType).all()
-    }
-
-    return energy_system_type_list, energy_system_type_names
-
-
-def get_union_energy_systems():
-    """Получаем список ОЭС с привязанными региональными энергосистемами"""
-    
-    # Запрашиваем все ОЭС, загружая связанные региональные энергосистемы заранее (чтобы избежать дополнительных SQL-запросов)
-    union_energy_systems = UnionEnergySystem.query.options(
-        joinedload(UnionEnergySystem.regional_energy_systems)
-    ).order_by(UnionEnergySystem.id).all()
-
-    union_energy_system_names = {
-        union_energy_system.id: union_energy_system.name for union_energy_system in db.session.query(UnionEnergySystem).all()
-    }
-
-    # Создаем словарь, где ключ - ID ОЭС, а значение - список ID региональных энергосистем
-    regional_energy_system_mapping = {
-        ues.id: [res.id for res in ues.regional_energy_systems] if ues.regional_energy_systems else []
-        for ues in union_energy_systems
-    }
-
-    return union_energy_systems, union_energy_system_names, regional_energy_system_mapping
-
-
-def get_regional_energy_systems():
-    """Получает список региональных энергосистем с предварительной загрузкой ОЭС."""
-    
-    # Оптимизация запроса: загружаем ОЭС заранее (уменьшаем количество SQL-запросов)
-    regional_energy_systems = RegionalEnergySystem.query.options(
-        joinedload(RegionalEnergySystem.union_energy_system)
-    ).order_by(RegionalEnergySystem.id).all()
-    
-    regional_energy_system_names = {
-        regional_energy_system.id: regional_energy_system.name_full for regional_energy_system in db.session.query(RegionalEnergySystem).all()
-    }
-    
-    # Преобразуем данные в удобный формат
-    regional_energy_systems_list = [
-        {
-            "id": res.id,
-            "name": res.name,
-            "union_energy_system_id": res.id_union_energy_system if res.union_energy_system else None,
-            "union_energy_system_name": res.union_energy_system.name if res.union_energy_system else None,
-        }
-        for res in regional_energy_systems
-    ]
-
-    return regional_energy_systems_list, regional_energy_system_names
-
-
-def get_federal_districts():
-    """Получаем список ФО с привязанными субъектами РФ (региональными округами)."""
-
-    # Оптимизируем запрос: загружаем все ФО и сразу привязываем субъекты (уменьшаем SQL-запросы)
-    federal_districts = FederalDistrict.query.options(
-        joinedload(FederalDistrict.regional_districts)  # Предварительная загрузка субъектов РФ
-    ).order_by(FederalDistrict.id).all()
-
-    # Создаём список ФО и словарь соответствий "ФО → субъекты"
-    regional_district_mapping = {
-        fd.id: [rd.id for rd in fd.regional_districts] if fd.regional_districts else []
-        for fd in federal_districts
-    }
-
-    return federal_districts, regional_district_mapping
-
-
-def get_regional_districts():
-    """Получает список субъектов РФ с привязанными федеральными округами."""
-    
-    # Оптимизируем запрос: загружаем все субъекты с привязанными ФО, чтобы не делать дополнительные SQL-запросы
-    regional_districts = RegionalDistrict.query.options(
-        joinedload(RegionalDistrict.federal_district)  # Предварительная загрузка ФО
-    ).order_by(RegionalDistrict.id).all()
-    
-    regional_district_names = {
-        regional_district.id: regional_district.name for regional_district in db.session.query(RegionalDistrict).all()
-    }
-
-    # Создаём список субъектов РФ с дополнительной информацией о ФО
-    regional_districts_list = [
-        {
-            "id": rd.id,
-            "name": rd.name,
-            "federal_district_id": rd.id_federal_district if rd.federal_district else None,
-            "federal_district_name": rd.federal_district.name if rd.federal_district else None
-        }
-        for rd in regional_districts
-    ]
-
-    return regional_districts_list, regional_district_names
-
-
-def get_year_features():
-    """
-    Получает словарь с year.number как ключом и year.year_feature как значением.
-    :return: Словарь year_features
-    """
-    return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
 
 
 def extract_station_data_from_form(form):
@@ -656,15 +271,54 @@ def extract_filters_from_form(form):
     return extract_filters_from_args(form)
 
 
+def get_current_machine_tes_types_map():
+    current_year = get_current_year()
+
+    machine_tes_types = (
+        db.session.query(MachineTesType)
+        .options(joinedload(MachineTesType.tes_type))
+        .filter(MachineTesType.year_number == current_year)
+        .all()
+    )
+
+    return {mtt.id_machine: mtt for mtt in machine_tes_types}
+
+
+def get_station_types_str_by_station(station_id):
+    types = (
+        db.session.query(StationType.name)
+        .join(Machine, Machine.id_station_type == StationType.id)
+        .filter(Machine.id_station == station_id)
+        .filter(Machine.id_station_type != None)
+        .distinct()
+        .order_by(StationType.name)
+        .all()
+    )
+    return ", ".join(name for (name,) in types)
+
+
 def filter_machines(stations, tes_type_filter, tes_machine_type_filter):
     if not tes_type_filter and not tes_machine_type_filter:
         return stations
+
+    current_year = get_current_year()
+
+    # Получаем мапу id_машины -> tes_type_id (только для текущего года)
+    machine_tes_types = (
+        db.session.query(MachineTesType)
+        .filter(MachineTesType.year_number == current_year)
+        .all()
+    )
+    machine_tes_type_map = {
+        mtt.id_machine: mtt.id_tes_type
+        for mtt in machine_tes_types
+    }
 
     filtered_stations = []
     for station in stations:
         station.machines = [
             m for m in station.machines
-            if (not tes_type_filter or m.id_tes_type in tes_type_filter) and
+            if (not tes_type_filter or machine_tes_type_map.get(m.id) in tes_type_filter) and
                (not tes_machine_type_filter or m.id_tes_machine_type in tes_machine_type_filter)
         ]
         if station.machines:
@@ -673,7 +327,7 @@ def filter_machines(stations, tes_type_filter, tes_machine_type_filter):
     return filtered_stations
 
 
-def load_station_power_by_year(station, start_year=None, end_year=None):
+def load_station_power_by_year(station, start_year=None, end_year=None, rounding_digits=None):
     query = StationPower.query.filter_by(id_station=station.id)
 
     if start_year is not None:
@@ -685,15 +339,38 @@ def load_station_power_by_year(station, start_year=None, end_year=None):
 
     return {
         sp.year_number: {
-            "p_ust": sp.p_ust,
-            "p_ogr": sp.p_ogr,
-            "p_rasp": sp.p_rasp
+            "p_ust": maybe_round(sp.p_ust, rounding_digits),
+            "p_ogr": maybe_round(sp.p_ogr, rounding_digits),
+            "p_rasp": maybe_round(sp.p_rasp, rounding_digits)
         }
         for sp in result
     }
 
 
-def get_station_list_template_context(form, filters, pagination):
+def load_machines_power_by_year(machines, start_year=None, end_year=None, rounding_digits=1):
+    machine_ids = [machine.id for machine in machines]
+    query = MachinePower.query.filter(MachinePower.id_machine.in_(machine_ids))
+
+    if start_year is not None:
+        query = query.filter(MachinePower.year_number >= start_year)
+    if end_year is not None:
+        query = query.filter(MachinePower.year_number <= end_year)
+
+    machine_powers = query.all()
+
+    powers_by_machine = defaultdict(list)
+    for mp in machine_powers:
+        # СРАЗУ округляем загруженные мощности
+        mp.p_ust = maybe_round(mp.p_ust, rounding_digits)
+        mp.p_ogr = maybe_round(mp.p_ogr, rounding_digits)
+        mp.p_rasp = maybe_round(mp.p_rasp, rounding_digits)
+        powers_by_machine[mp.id_machine].append(mp)
+
+    for machine in machines:
+        machine.machine_powers = powers_by_machine.get(machine.id, [])
+
+
+def get_station_list_template_context(form, pagination, rounding_digits, filters):
     year_features = get_year_features()
     energy_system_type_list, energy_system_type_names = get_energy_system_types()
     union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
@@ -717,18 +394,55 @@ def get_station_list_template_context(form, filters, pagination):
     fuel_type_names = get_fuel_types()
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
-    energy_units_power = aggregate_power_by_energy_unit(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_units_by_station_types_power = aggregate_energy_units_by_station_types(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_units_by_tes_types_power = aggregate_energy_units_by_tes_types(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_units_by_tes_machine_types_power = aggregate_energy_units_by_tes_machine_types(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_units_by_tes_types_with_fuel_power = aggregate_energy_units_by_tes_types_with_fuel(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_units_by_tes_machine_types_with_fuel_power = aggregate_energy_units_by_tes_machine_types_with_fuel(db.session, filters.get("start_year"), filters.get("end_year"))
+    machine_tes_types_map = get_current_machine_tes_types_map()
 
-    regional_districts_power = aggregate_power_by_regional_district(db.session, filters.get("start_year"), filters.get("end_year"))
-    regional_energy_systems_power = aggregate_power_by_regional_energy_system(db.session, filters.get("start_year"), filters.get("end_year"))
-    union_energy_systems_power = aggregate_power_by_union_energy_system(db.session, filters.get("start_year"), filters.get("end_year"))
-    energy_system_types_power = aggregate_power_by_energy_system_type(db.session, filters.get("start_year"), filters.get("end_year"))
-    total_power = aggregate_total_power_by_all_system_types(db.session, filters.get("start_year"), filters.get("end_year"))
+    energy_units_power = aggregate_power_by_energy_unit(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_station_types_power = aggregate_energy_units_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_station_types_with_fuel_power = aggregate_energy_units_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_types_power = aggregate_energy_units_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_machine_types_power = aggregate_energy_units_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_types_with_fuel_power = aggregate_energy_units_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_units_by_tes_machine_types_with_fuel_power = aggregate_energy_units_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    regional_districts_power = aggregate_power_by_regional_district(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_station_types_power = aggregate_regional_districts_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_station_types_with_fuel_power = aggregate_regional_districts_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_tes_types_power = aggregate_regional_districts_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_tes_machine_types_power = aggregate_regional_districts_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_tes_types_with_fuel_power = aggregate_regional_districts_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_districts_by_tes_machine_types_with_fuel_power = aggregate_regional_districts_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    regional_energy_systems_power = aggregate_power_by_regional_energy_system(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_station_types_power = aggregate_regional_energy_systems_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_station_types_with_fuel_power = aggregate_regional_energy_systems_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_tes_types_power = aggregate_regional_energy_systems_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_tes_machine_types_power = aggregate_regional_energy_systems_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_tes_types_with_fuel_power = aggregate_regional_energy_systems_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    regional_energy_systems_by_tes_machine_types_with_fuel_power = aggregate_regional_energy_systems_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    union_energy_systems_power = aggregate_power_by_union_energy_system(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_station_types_power = aggregate_union_energy_systems_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_station_types_with_fuel_power = aggregate_union_energy_systems_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_tes_types_power = aggregate_union_energy_systems_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_tes_machine_types_power = aggregate_union_energy_systems_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_tes_types_with_fuel_power = aggregate_union_energy_systems_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    union_energy_systems_by_tes_machine_types_with_fuel_power = aggregate_union_energy_systems_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    energy_system_types_power = aggregate_power_by_energy_system_type(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_station_types_power = aggregate_energy_system_types_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_station_types_with_fuel_power = aggregate_energy_system_types_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_tes_types_power = aggregate_energy_system_types_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_tes_machine_types_power = aggregate_energy_system_types_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_tes_types_with_fuel_power = aggregate_energy_system_types_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    energy_system_types_by_tes_machine_types_with_fuel_power = aggregate_energy_system_types_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    total_energy_system_types_power = aggregate_power_by_total_energy_system_type(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_station_types_power = aggregate_total_energy_system_types_by_station_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_station_types_with_fuel_power = aggregate_total_energy_system_types_by_station_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_tes_types_power = aggregate_total_energy_system_types_by_tes_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_tes_machine_types_power = aggregate_total_energy_system_types_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_tes_types_with_fuel_power = aggregate_total_energy_system_types_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+    total_energy_system_types_by_tes_machine_types_with_fuel_power = aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
 
     return {
         "form": form,
@@ -757,8 +471,8 @@ def get_station_list_template_context(form, filters, pagination):
         "tes_type_list": tes_type_list,
         "fuel_type_names": fuel_type_names,
         "fuel_type_list": fuel_type_list,
-        "tes_machine_type_names": tes_machine_type_names,
         "tes_machine_type_list": tes_machine_type_list,
+        "tes_machine_type_names": tes_machine_type_names,
         "condition_type_filter": filters.get("condition_type_filter"),
         "gen_company_filter": filters.get("gen_company_filter"),
         "station_name_filter": filters.get("station_name_filter"),
@@ -772,88 +486,221 @@ def get_station_list_template_context(form, filters, pagination):
         "regional_district_filter": filters.get("regional_district_filter"),
         "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
         "year_features": year_features,
+        "machine_tes_types_map": machine_tes_types_map,
         "energy_unit_names": energy_unit_names,
 
         "energy_units_yearly_p_ust": energy_units_power['aggregated']['p_ust'],
         "energy_units_yearly_p_ogr": energy_units_power['aggregated']['p_ogr'],
         "energy_units_yearly_p_rasp": energy_units_power['aggregated']['p_rasp'],
 
-        "regional_districts_yearly_p_ust": regional_districts_power['aggregated']['p_ust'],
-        "regional_districts_yearly_p_ogr": regional_districts_power['aggregated']['p_ogr'],
-        "regional_districts_yearly_p_rasp": regional_districts_power['aggregated']['p_rasp'],
-
-        "regional_energy_systems_yearly_p_ust": regional_energy_systems_power['aggregated']['p_rasp'],
-        "regional_energy_systems_yearly_p_ogr": regional_energy_systems_power['aggregated']['p_ogr'],
-        "regional_energy_systems_yearly_p_rasp": regional_energy_systems_power['aggregated']['p_rasp'],
-
-        "union_energy_systems_yearly_p_ust": union_energy_systems_power["aggregated"]["p_ust"],
-        "union_energy_systems_yearly_p_ogr": union_energy_systems_power["aggregated"]["p_ogr"],
-        "union_energy_systems_yearly_p_rasp": union_energy_systems_power["aggregated"]["p_rasp"],
-
-        "energy_system_types_yearly_p_ust": energy_system_types_power["aggregated"]["p_ust"],
-        "energy_system_types_yearly_p_ogr": energy_system_types_power["aggregated"]["p_ogr"],
-        "energy_system_types_yearly_p_rasp": energy_system_types_power["aggregated"]["p_rasp"],
-
-        "total_yearly_p_ust": total_power["aggregated"]["p_ust"],
-        "total_yearly_p_ogr": total_power["aggregated"]["p_ogr"],
-        "total_yearly_p_rasp": total_power["aggregated"]["p_rasp"],
-        
         "energy_units_by_station_types_yearly_p_ust": energy_units_by_station_types_power["aggregated"]["p_ust"],
         "energy_units_by_station_types_yearly_p_ogr": energy_units_by_station_types_power["aggregated"]["p_ogr"],
         "energy_units_by_station_types_yearly_p_rasp": energy_units_by_station_types_power["aggregated"]["p_rasp"],
+
+        "energy_units_by_station_types_with_fuel_yearly_p_ust": energy_units_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_units_by_station_types_with_fuel_yearly_p_ogr": energy_units_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_units_by_station_types_with_fuel_yearly_p_rasp": energy_units_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
 
         "energy_units_by_tes_types_yearly_p_ust": energy_units_by_tes_types_power["aggregated"]["p_ust"],
         "energy_units_by_tes_types_yearly_p_ogr": energy_units_by_tes_types_power["aggregated"]["p_ogr"],
         "energy_units_by_tes_types_yearly_p_rasp": energy_units_by_tes_types_power["aggregated"]["p_rasp"],
 
-        "energy_units_by_tes_machine_types_yearly_p_ust": energy_units_by_tes_machine_types_power["aggregated"]["p_ust"],
-        "energy_units_by_tes_machine_types_yearly_p_ogr": energy_units_by_tes_machine_types_power["aggregated"]["p_ogr"],
-        "energy_units_by_tes_machine_types_yearly_p_rasp": energy_units_by_tes_machine_types_power["aggregated"]["p_rasp"],
-
         "energy_units_by_tes_types_with_fuel_yearly_p_ust": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
         "energy_units_by_tes_types_with_fuel_yearly_p_ogr": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
         "energy_units_by_tes_types_with_fuel_yearly_p_rasp": energy_units_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
 
+        "energy_units_by_tes_machine_types_yearly_p_ust": energy_units_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "energy_units_by_tes_machine_types_yearly_p_ogr": energy_units_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "energy_units_by_tes_machine_types_yearly_p_rasp": energy_units_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
         "energy_units_by_tes_machine_types_with_fuel_yearly_p_ust": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
         "energy_units_by_tes_machine_types_with_fuel_yearly_p_ogr": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
         "energy_units_by_tes_machine_types_with_fuel_yearly_p_rasp": energy_units_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_districts_yearly_p_ust": regional_districts_power['aggregated']['p_ust'],
+        "regional_districts_yearly_p_ogr": regional_districts_power['aggregated']['p_ogr'],
+        "regional_districts_yearly_p_rasp": regional_districts_power['aggregated']['p_rasp'],
+
+        "regional_districts_by_station_types_yearly_p_ust": regional_districts_by_station_types_power["aggregated"]["p_ust"],
+        "regional_districts_by_station_types_yearly_p_ogr": regional_districts_by_station_types_power["aggregated"]["p_ogr"],
+        "regional_districts_by_station_types_yearly_p_rasp": regional_districts_by_station_types_power["aggregated"]["p_rasp"],
+
+        "regional_districts_by_station_types_with_fuel_yearly_p_ust": regional_districts_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_districts_by_station_types_with_fuel_yearly_p_ogr": regional_districts_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_districts_by_station_types_with_fuel_yearly_p_rasp": regional_districts_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_districts_by_tes_types_yearly_p_ust": regional_districts_by_tes_types_power["aggregated"]["p_ust"],
+        "regional_districts_by_tes_types_yearly_p_ogr": regional_districts_by_tes_types_power["aggregated"]["p_ogr"],
+        "regional_districts_by_tes_types_yearly_p_rasp": regional_districts_by_tes_types_power["aggregated"]["p_rasp"],
+
+        "regional_districts_by_tes_types_with_fuel_yearly_p_ust": regional_districts_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_districts_by_tes_types_with_fuel_yearly_p_ogr": regional_districts_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_districts_by_tes_types_with_fuel_yearly_p_rasp": regional_districts_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_districts_by_tes_machine_types_yearly_p_ust": regional_districts_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "regional_districts_by_tes_machine_types_yearly_p_ogr": regional_districts_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "regional_districts_by_tes_machine_types_yearly_p_rasp": regional_districts_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
+        "regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust": regional_districts_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr": regional_districts_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp": regional_districts_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_yearly_p_ust": regional_energy_systems_power['aggregated']['p_rasp'],
+        "regional_energy_systems_yearly_p_ogr": regional_energy_systems_power['aggregated']['p_ogr'],
+        "regional_energy_systems_yearly_p_rasp": regional_energy_systems_power['aggregated']['p_rasp'],
+
+        "regional_energy_systems_by_station_types_yearly_p_ust": regional_energy_systems_by_station_types_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_station_types_yearly_p_ogr": regional_energy_systems_by_station_types_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_station_types_yearly_p_rasp": regional_energy_systems_by_station_types_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_by_station_types_with_fuel_yearly_p_ust": regional_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_station_types_with_fuel_yearly_p_ogr": regional_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_station_types_with_fuel_yearly_p_rasp": regional_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_by_tes_types_yearly_p_ust": regional_energy_systems_by_tes_types_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_tes_types_yearly_p_ogr": regional_energy_systems_by_tes_types_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_tes_types_yearly_p_rasp": regional_energy_systems_by_tes_types_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_by_tes_types_with_fuel_yearly_p_ust": regional_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_tes_types_with_fuel_yearly_p_ogr": regional_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_tes_types_with_fuel_yearly_p_rasp": regional_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_by_tes_machine_types_yearly_p_ust": regional_energy_systems_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_tes_machine_types_yearly_p_ogr": regional_energy_systems_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_tes_machine_types_yearly_p_rasp": regional_energy_systems_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
+        "regional_energy_systems_by_tes_machine_types_with_fuel_yearly_p_ust": regional_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "regional_energy_systems_by_tes_machine_types_with_fuel_yearly_p_ogr": regional_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "regional_energy_systems_by_tes_machine_types_with_fuel_yearly_p_rasp": regional_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+        
+        "union_energy_systems_yearly_p_ust": union_energy_systems_power["aggregated"]["p_ust"],
+        "union_energy_systems_yearly_p_ogr": union_energy_systems_power["aggregated"]["p_ogr"],
+        "union_energy_systems_yearly_p_rasp": union_energy_systems_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_station_types_yearly_p_ust": union_energy_systems_by_station_types_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_station_types_yearly_p_ogr": union_energy_systems_by_station_types_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_station_types_yearly_p_rasp": union_energy_systems_by_station_types_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_station_types_with_fuel_yearly_p_ust": union_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_station_types_with_fuel_yearly_p_ogr": union_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_station_types_with_fuel_yearly_p_rasp": union_energy_systems_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_tes_types_yearly_p_ust": union_energy_systems_by_tes_types_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_tes_types_yearly_p_ogr": union_energy_systems_by_tes_types_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_tes_types_yearly_p_rasp": union_energy_systems_by_tes_types_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_tes_types_with_fuel_yearly_p_ust": union_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_tes_types_with_fuel_yearly_p_ogr": union_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_tes_types_with_fuel_yearly_p_rasp": union_energy_systems_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_tes_machine_types_yearly_p_ust": union_energy_systems_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_tes_machine_types_yearly_p_ogr": union_energy_systems_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_tes_machine_types_yearly_p_rasp": union_energy_systems_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
+        "union_energy_systems_by_tes_machine_types_with_fuel_yearly_p_ust": union_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "union_energy_systems_by_tes_machine_types_with_fuel_yearly_p_ogr": union_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "union_energy_systems_by_tes_machine_types_with_fuel_yearly_p_rasp": union_energy_systems_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_yearly_p_ust": energy_system_types_power["aggregated"]["p_ust"],
+        "energy_system_types_yearly_p_ogr": energy_system_types_power["aggregated"]["p_ogr"],
+        "energy_system_types_yearly_p_rasp": energy_system_types_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_station_types_yearly_p_ust": energy_system_types_by_station_types_power["aggregated"]["p_ust"],
+        "energy_system_types_by_station_types_yearly_p_ogr": energy_system_types_by_station_types_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_station_types_yearly_p_rasp": energy_system_types_by_station_types_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_station_types_with_fuel_yearly_p_ust": energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_system_types_by_station_types_with_fuel_yearly_p_ogr": energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_station_types_with_fuel_yearly_p_rasp": energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_tes_types_yearly_p_ust": energy_system_types_by_tes_types_power["aggregated"]["p_ust"],
+        "energy_system_types_by_tes_types_yearly_p_ogr": energy_system_types_by_tes_types_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_tes_types_yearly_p_rasp": energy_system_types_by_tes_types_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_tes_types_with_fuel_yearly_p_ust": energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_system_types_by_tes_types_with_fuel_yearly_p_ogr": energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_tes_types_with_fuel_yearly_p_rasp": energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_tes_machine_types_yearly_p_ust": energy_system_types_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "energy_system_types_by_tes_machine_types_yearly_p_ogr": energy_system_types_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_tes_machine_types_yearly_p_rasp": energy_system_types_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
+        "energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_yearly_p_ust": total_energy_system_types_power["aggregated"]["p_ust"],
+        "total_energy_system_types_yearly_p_ogr": total_energy_system_types_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_yearly_p_rasp": total_energy_system_types_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_station_types_yearly_p_ust": total_energy_system_types_by_station_types_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_station_types_yearly_p_ogr": total_energy_system_types_by_station_types_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_station_types_yearly_p_rasp": total_energy_system_types_by_station_types_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ust": total_energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ogr": total_energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_rasp": total_energy_system_types_by_station_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_tes_types_yearly_p_ust": total_energy_system_types_by_tes_types_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_tes_types_yearly_p_ogr": total_energy_system_types_by_tes_types_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_tes_types_yearly_p_rasp": total_energy_system_types_by_tes_types_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust": total_energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ogr": total_energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_rasp": total_energy_system_types_by_tes_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_tes_machine_types_yearly_p_ust": total_energy_system_types_by_tes_machine_types_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_tes_machine_types_yearly_p_ogr": total_energy_system_types_by_tes_machine_types_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_tes_machine_types_yearly_p_rasp": total_energy_system_types_by_tes_machine_types_power["aggregated"]["p_rasp"],
+
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
+
+        
     }
 
 
-def recalculate_station_power(station_id, year_number):
-    """Пересчёт мощности электростанции за определённый год на основе агрегатов."""
-    powers = (
-        db.session.query(
-            db.func.sum(MachinePower.p_ust),
-            db.func.sum(MachinePower.p_ogr),
-            db.func.sum(MachinePower.p_rasp)
-        )
-        .join(Machine)
-        .filter(Machine.id_station == station_id)
-        .filter(MachinePower.year_number == year_number)
-        .first()
-    )
+def recalculate_station_power(station, start_year, end_year):
+    # Готовим агрегаторы по годам
+    power_by_year = {
+        year: {"p_ust": 0.0, "p_ogr": 0.0, "p_rasp": 0.0}
+        for year in range(start_year, end_year + 1)
+    }
 
-    if not powers:
-        return
+    for machine in station.machines:
+        for mp in machine.machine_powers:
+            year = mp.year.number
+            if start_year <= year <= end_year:
+                power_by_year[year]["p_ust"] += mp.p_ust or 0
+                power_by_year[year]["p_ogr"] += mp.p_ogr or 0
+                power_by_year[year]["p_rasp"] += mp.p_rasp or 0
 
-    p_ust, p_ogr, p_rasp = powers
+    # Загружаем или создаём StationPower по годам
+    existing_spowers = {
+        sp.year_number: sp
+        for sp in StationPower.query.filter_by(id_station=station.id)
+        .filter(StationPower.year_number.in_(range(start_year, end_year + 1)))
+        .all()
+    }
 
-    station_power = StationPower.query.filter_by(
-        id_station=station_id,
-        year_number=year_number
-    ).first()
+    for year, values in power_by_year.items():
+        if year in existing_spowers:
+            sp = existing_spowers[year]
+            sp.p_ust = values["p_ust"]
+            sp.p_ogr = values["p_ogr"]
+            sp.p_rasp = values["p_rasp"]
+        else:
+            sp = StationPower(
+                id_station=station.id,
+                year_number=year,
+                p_ust=values["p_ust"],
+                p_ogr=values["p_ogr"],
+                p_rasp=values["p_rasp"],
+            )
+            db.session.add(sp)
 
-    if not station_power:
-        station_power = StationPower(
-            id_station=station_id,
-            year_number=year_number
-        )
-        db.session.add(station_power)
-
-    station_power.p_ust = p_ust or 0
-    station_power.p_ogr = p_ogr or 0
-    station_power.p_rasp = p_rasp or 0
+    db.session.commit()
 
 
 import re
@@ -1478,31 +1325,37 @@ def import_fuel_tes_station_from_excel(file, user):
     return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
 
 
-from datetime import datetime
-import re
-
 def convert_to_iso_date(value):
     """
     Преобразует введённую строку в нужный формат:
-      - Если введён год (YYYY), возвращает его без изменений.
-      - Если введена дата (DD.MM.YYYY), преобразует в YYYY-MM-DD.
-      - Если значение пустое, возвращает None.
+      - YYYY → возвращается как есть
+      - DD.MM.YYYY → преобразуется в YYYY-MM-DD
+      - YYYY-MM-DD → возвращается как есть (если корректно)
+      - None/пусто → None
     """
     if not value or not value.strip():
         return None
-    
+
     value = value.strip()
 
-    # Если введён только год (YYYY), оставляем его без изменений
+    # Если только год (YYYY)
     if re.match(r'^\d{4}$', value):
         return value
 
-    # Если введена полная дата в формате DD.MM.YYYY
+    # Если уже ISO-формат YYYY-MM-DD
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+        try:
+            datetime.strptime(value, '%Y-%m-%d')  # просто проверка
+            return value
+        except ValueError:
+            raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
+
+    # Если формат DD.MM.YYYY
     try:
         date_obj = datetime.strptime(value, '%d.%m.%Y')
         return date_obj.strftime('%Y-%m-%d')
     except ValueError:
-        raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
+        raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
 
 import traceback
 from io import BytesIO

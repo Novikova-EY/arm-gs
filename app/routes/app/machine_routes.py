@@ -3,10 +3,10 @@ from flask import render_template, request, session, redirect, url_for, flash
 from . import app_bp
 from app.models.logs_models import Log
 from app.forms.machine_forms import MachineFilterForm, EditMachineForm
-from app.models.stations_models import ConditionType, StationType, TesType, MachineType, TesMachineType, MachineTesType, Machine, MachinePower, MachineFuel
+from app.models.stations_models import ConditionType, StationType, TesType, MachineType, TesMachineType, MachineTesType, Machine, MachinePower, MachineFuel, StationPower
 from app.models.fuels_models import Fuel
 from app.models.years_models import Year, YearFeature
-from app.models.energy_systems_models import EnergyArea
+from app.models.energy_systems_models import EnergyArea, EnergyUnit
 from app.models.gen_companies_models import GenCompany
 from app.services.station_services import log_to_db, get_machine_by_id, get_station_by_id, convert_to_iso_date, recalculate_station_power
 from flask_login import login_required
@@ -55,25 +55,30 @@ def machine_details(station_id, machine_id):
         year_features = {y.number: {"name": y.year_feature.name if y.year_feature else "Нет данных"} for y in years} if years else {}
 
         # Заполняем choices в основной форме
-        main_form.id_condition_type.choices = [(0, "не указано")] + [(c.id, c.name) for c in ConditionType.query.all()]
-        main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.all()]
-        main_form.id_energy_area.choices = [(0, "не указано")] + [(ea.id, ea.name) for ea in EnergyArea.query.all()]
-        main_form.id_station_type.choices = [(0, "не указано")] + [(st.id, st.name) for st in StationType.query.all()]
-        main_form.id_machine_type.choices = [(0, "не указано")] + [(mt.id, mt.name) for mt in MachineType.query.all()]
-        main_form.id_tes_machine_type.choices = [(0, "не указано")] + [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()]
-
-        tes_type_choices = [(0, "не указано")] + [(tt.id, tt.name) for tt in TesType.query.all()]
-
-        fuel_choices = [(0, "не указано")] + [(f.id, f.name) for f in Fuel.query.all()]
-
-        # Заполняем choices для вложенных форм
+        main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
+        main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
+        main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
+        main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
+        main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
+        main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
+        
+        # --- Типы ТЭС ---
+        tes_types = TesType.query.order_by(TesType.id).all()
+        tes_type_choices = [(tt.id, tt.name) for tt in tes_types]
         for entry in advanced_form.tes_types:
             entry.tes_type.choices = tes_type_choices
+            if entry.tes_type.data is None:
+                entry.tes_type.data = 100
 
+        # --- Виды топлива ---
+        fuels = Fuel.query.order_by(Fuel.id).all()
+        fuel_choices = [(f.id, f.name) for f in fuels]
         for entry in advanced_form.fuels:
             entry.fuel_type.choices = fuel_choices
+            if entry.fuel_type.data is None:
+                entry.fuel_type.data = 100
 
-        ## Cначала** добавляем поля во вложенные FieldList (powers, tes_types, fuels)
+        ## Добавляем поля во вложенные FieldList (powers, tes_types, fuels)
         for year_num in range(start_year, end_year + 1):
             # Убедимся, что в словарях есть объекты для каждого года
             if year_num not in machine_powers:
@@ -98,16 +103,26 @@ def machine_details(station_id, machine_id):
 
             # --- MachinePower ---
             mp = machine_powers.get(year_num)
+
             if not mp:
-                mp = MachinePower(id_machine=machine.id, p_ust=0, p_ogr=0, p_rasp=0, year=y_obj)
+                mp = MachinePower(
+                    id_machine=machine.id,
+                    year=y_obj,
+                    p_ust=0,
+                    p_ogr=0,
+                    p_rasp=0
+                )
                 db.session.add(mp)
+                machine_powers[year_num] = mp  # не забудь добавить в словарь
 
             power_entry = advanced_form.powers.append_entry()
+
             if request.method == "GET":
                 power_entry.year.data = year_num
                 power_entry.p_ust.data = mp.p_ust
                 power_entry.p_ogr.data = mp.p_ogr
                 power_entry.p_rasp.data = mp.p_rasp
+
 
             # --- MachineTesType ---
             mt = machine_tes_types.get(year_num)
@@ -117,9 +132,11 @@ def machine_details(station_id, machine_id):
 
             tes_entry = advanced_form.tes_types.append_entry()
             tes_entry.tes_type.choices = tes_type_choices
+
             if request.method == "GET":
                 tes_entry.year.data = year_num
-                tes_entry.tes_type.data = mt.id_tes_type if mt.id_tes_type is not None else None
+                tes_entry.tes_type.data = mt.id_tes_type if mt.id_tes_type is not None else 100
+
 
             # --- MachineFuel ---
             mf = machine_fuels.get(year_num)
@@ -146,17 +163,17 @@ def machine_details(station_id, machine_id):
             year_features = {y.number: {"name": y.year_feature.name if y.year_feature else "Нет данных"} for y in years} if years else {}
 
             # Заполняем choices в основной форме
-            main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.all()] or [(0, "не указано")]
-            main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.all()] or [(0, "не указано")]
-            main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.all()] or [(0, "не указано")]
-            main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.all()] or [(0, "не указано")]
-            main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.all()] or [(0, "не указано")]
-            main_form.id_tes_machine_type.choices = [(0, "не указано")] + [(tmt.id, tmt.name) for tmt in TesMachineType.query.all()]
+            main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
+            main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
+            main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
+            main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
+            main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
+            main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
             
-            tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.all()]
+            tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.order_by(TesType.id).all()]
 
-            fuel_choices = [(f.id, f.name) for f in Fuel.query.all()]
-
+            fuel_choices = [(f.id, f.name) for f in Fuel.query.order_by(Fuel.id).all()]
+            
             # Заполняем choices для вложенных форм
             for entry in advanced_form.tes_types:
                 entry.tes_type.choices = tes_type_choices
@@ -164,12 +181,10 @@ def machine_details(station_id, machine_id):
             for entry in advanced_form.fuels:
                 entry.fuel_type.choices = fuel_choices
 
-
             if not main_form.validate():
                 print("Ошибки в main_form:", main_form.errors)
             if not advanced_form.validate():
                 print("Ошибки в advanced_form:", advanced_form.errors)
-
 
             if main_form.validate() and advanced_form.validate():
                 try:
@@ -181,7 +196,7 @@ def machine_details(station_id, machine_id):
                         "id_gen_company": lambda x: GenCompany.query.get(x).name if x and GenCompany.query.get(x) else "не указано",
                         "id_station_type": lambda x: StationType.query.get(x).name if x and StationType.query.get(x) else "не указано",
                         "id_machine_type": lambda x: MachineType.query.get(x).name if x and MachineType.query.get(x) else "не указано",
-                        "id_tes_machine_type": lambda x: TesType.query.get(x).name if x and TesType.query.get(x) else "не указано",
+                        "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x and TesMachineType.query.get(x) else "не указано",
                         "machine_name": str,
                         "note": lambda x: x if x else "не указано"
                     }
@@ -286,8 +301,8 @@ def machine_details(station_id, machine_id):
 
                         i += 1
                     
-                    for year_num in range(start_year, end_year + 1):
-                        recalculate_station_power(station.id, year_num)
+                    recalculate_station_power(station, start_year, end_year)
+
 
                     db.session.commit()
                     if changes:
@@ -306,6 +321,9 @@ def machine_details(station_id, machine_id):
             #    в том числе динамические поля для каждого года
             main_form.process(obj=machine)
 
+            if main_form.id_tes_machine_type.data is None:
+                main_form.id_tes_machine_type.data = 100
+
             i = 0
             for year_num in range(start_year, end_year + 1):
                 mp_obj  = machine_powers[year_num]
@@ -321,12 +339,13 @@ def machine_details(station_id, machine_id):
                 # MachineTesType
                 advanced_form.tes_types[i].year.data = year_num
                 advanced_form.tes_types[i].tes_type.choices = tes_type_choices
-                advanced_form.tes_types[i].tes_type.data    = mtt_obj.id_tes_type
+                advanced_form.tes_types[i].tes_type.data = mtt_obj.id_tes_type if mtt_obj.id_tes_type is not None else 100
+
 
                 # MachineFuel
                 advanced_form.fuels[i].year.data = year_num
                 advanced_form.fuels[i].fuel_type.choices = fuel_choices
-                advanced_form.fuels[i].fuel_type.data    = mf_obj.id_fuel
+                advanced_form.fuels[i].fuel_type.data = mf_obj.id_fuel if mf_obj.id_fuel is not None else 100
 
                 i += 1
 

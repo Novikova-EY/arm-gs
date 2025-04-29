@@ -123,11 +123,10 @@
                 </div>
 
                 <!-- Кнопка выгрузки данных в Excel -->
-                <div class="p-3" style="width: 14%;">
+                <div class="p-3" style="width: 10%;">
                     <button id="exportExcel" class="btn btn-outline-success">Выгрузить в Excel <br> (СиПР ЭЭС. Приложение А)</button>
                 </div>                        
                 
-
                 <!-- Кнопка выбора годов -->
                 <div class="p-3" style="width: 20%;">
                     <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
@@ -158,59 +157,71 @@
                 </div>
                 
                 <!-- Чекбокс "Отображать ограничения мощности" -->
-                <div class="p-3 text-center" style="width: 10%;">
+                <div class="p-3 text-center" style="width: 6%;">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
                         <label class="form-check-label" for="toggleP_Ogr">
-                            Отображать<br>ограничения мощности
+                            Отображать<br>ограничения <br> мощности
                         </label>
                     </div>
                 </div>
                 
                 <!-- Чекбокс "Отображать располагаемую мощность" -->
-                <div class="p-3 text-center" style="width: 10%;">
+                <div class="p-3 text-center" style="width: 6%;">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
                         <label class="form-check-label" for="toggleP_Rasp">
-                            Отображать<br>располагаемую мощность
+                            Отображать<br>располагаемую <br> мощность
                         </label>
                     </div>
                 </div>
 
                 <!-- Выпадающий список выбора количества знаков для округления -->
-                <div class="p-3" style="width: 7%;">
+                <div class="p-3" style="width: 6%;">
                     <label for="rounding_digits">Округлить до:</label>
                     <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
-                        <option value="0">Не округлять</option>
-                        <option value="1" selected>1 знак</option>
-                        <option value="2">2 знака</option>
-                        <option value="3">3 знака</option>
-                        <option value="-1">Целое число</option>
+                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
                     </select>
                 </div>
+                
+                <!-- Переключатель "Показать итоговые значения" -->
+                <div class="form-check form-switch mt-2 me-3" style="width: 6%;">
+                    <input class="form-check-input" type="checkbox" id="per_page_switch" name="per_page"
+                           {% if request.args.get('per_page') == 'all' %}checked{% endif %}>
+                    <label class="text-center form-check-label" for="per_page_switch">
+                        Отображать <br> итоговые <br> значения
+                    </label>
+                </div>
 
-                <!-- Форма выбора количества электростанций на листе -->
-                <div class="p-3" style="width: 5%;">
-                    <label for="rounding_digits">Показать:</label>
-                    <form method="GET" action="{{ url_for('app_bp.station_list') }}">
+                <!-- Форма выбора количества станций -->
+                <div class="p-3" style="width: 6%;">
+                    <form method="GET" action="{{ url_for('app_bp.station_list') }}" id="perPageForm">
                         {% for key, value in request.args.items() %}
-                            {% if key != "per_page" %}  <!-- Исключаем дублирование `per_page` -->
+                            {% if key != "per_page" %}
                                 <input type="hidden" name="{{ key }}" value="{{ value }}">
                             {% endif %}
                         {% endfor %}
-                
-                        <select name="per_page" class="form-select" onchange="this.form.submit()">
-                            {% for count in [1, 5, 10, 50, 100] %}
-                                <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>
-                                    {{ count }} станц.
-                                </option>
-                            {% endfor %}
-                            <option value="all" {% if per_page == "all" %}selected{% endif %}>Все</option>
-                        </select>
+
+                        <input type="hidden" name="per_page" id="per_page_hidden">
+
+                        <div id="per_page_select_wrapper">
+                            <label for="per_page_select">Показать:</label>
+                            <select id="per_page_select" class="form-select" style="min-width: 100px;">
+                                {% for count in [5, 10, 50, 100] %}
+                                    <option value="{{ count }}" {% if per_page|int == count %}selected{% endif %}>
+                                        {{ count }} станц.
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </form>
                 </div>
 
             </div>
         </div>
     </div>
-</div>
+</div> 

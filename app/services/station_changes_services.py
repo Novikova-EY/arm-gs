@@ -1313,31 +1313,41 @@ def import_fuel_tes_station_from_excel(file, user):
     return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
 
 
-from datetime import datetime
 import re
+from datetime import datetime
 
 def convert_to_iso_date(value):
     """
     Преобразует введённую строку в нужный формат:
-      - Если введён год (YYYY), возвращает его без изменений.
-      - Если введена дата (DD.MM.YYYY), преобразует в YYYY-MM-DD.
-      - Если значение пустое, возвращает None.
+      - YYYY → возвращается как есть
+      - DD.MM.YYYY → преобразуется в YYYY-MM-DD
+      - YYYY-MM-DD → возвращается как есть (если корректно)
+      - None/пусто → None
     """
     if not value or not value.strip():
-        return None  # Если пусто, возвращаем None
-    
+        return None
+
     value = value.strip()
 
-    # Если введён только год (YYYY), оставляем его без изменений
+    # Если только год (YYYY)
     if re.match(r'^\d{4}$', value):
-        return value  # Например, "2025" останется "2025"
+        return value
 
-    # Если введена полная дата в формате DD.MM.YYYY
+    # Если уже ISO-формат YYYY-MM-DD
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+        try:
+            datetime.strptime(value, '%Y-%m-%d')  # просто проверка
+            return value
+        except ValueError:
+            raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
+
+    # Если формат DD.MM.YYYY
     try:
         date_obj = datetime.strptime(value, '%d.%m.%Y')
-        return date_obj.strftime('%Y-%m-%d')  # Преобразуем в ISO-формат
+        return date_obj.strftime('%Y-%m-%d')
     except ValueError:
-        raise ValueError("Некорректный формат даты. Используйте YYYY или DD.MM.YYYY.")
+        raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
+
 
 
 from io import BytesIO
