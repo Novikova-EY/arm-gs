@@ -16,6 +16,8 @@
                         .get(current_ues_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
                 </td>
             {% endfor %}
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            </td>
         </tr>
 
         <!-- Вторая строка: p_ogr -->
@@ -27,6 +29,8 @@
                         .get(current_ues_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
                 </td>
             {% endfor %}
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            </td>
         </tr>
 
         <!-- Третья строка: Ррасп -->
@@ -38,6 +42,8 @@
                         .get(current_ues_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
                 </td>
             {% endfor %}
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            </td>
         </tr>
     {% endif %}
 {% endfor %}

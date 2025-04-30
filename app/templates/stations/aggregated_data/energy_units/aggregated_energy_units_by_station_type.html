@@ -15,8 +15,8 @@
                             {{ energy_units_by_station_types_yearly_p_ust.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
                         </td>
                     {% endfor %}
-
-
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    </td>
                 </tr>
 
                 <!-- Вторая строка: p_ogr -->
@@ -27,6 +27,8 @@
                             {{ energy_units_by_station_types_yearly_p_ogr.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
                         </td>
                     {% endfor %}
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    </td>
                 </tr>
 
                 <!-- Третья строка: p_rasp -->
@@ -37,6 +39,8 @@
                             {{ energy_units_by_station_types_yearly_p_rasp.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
                         </td>
                     {% endfor %}
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    </td>
                 </tr>
             {% endif %}
 

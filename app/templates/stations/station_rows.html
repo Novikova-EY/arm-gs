@@ -13,6 +13,9 @@
     </td>
     <td class="text-center" colspan="{{ 3 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
     </td>
+    <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+        {{ station.note if station.note }}
+    </td>
 </tr>
 
 {% for machine in station.machines %}
@@ -69,7 +72,7 @@
                 {% endif %}
             </td>
         {% endfor %}
-        
+
         {% for year in range(start_year, end_year + 1) %}
             <td class="fuel-column rowspan-td" rowspan="3">
                 {% set fuel = machine.machine_fuels
@@ -87,6 +90,10 @@
                 {% endif %}
             </td>
         {% endfor %}
+
+        <td class="rowspan-td" rowspan="3">
+            {{ machine.note if machine.note }}
+        </td>
     </tr>
 
     <!-- Вторая строка: p_ogr -->

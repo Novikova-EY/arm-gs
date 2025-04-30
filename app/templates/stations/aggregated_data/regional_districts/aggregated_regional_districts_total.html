@@ -12,6 +12,8 @@
                 {{ val if val else '—' }}
             </td>
         {% endfor %}
+        <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+        </td>
     </tr>
 
     <!-- Вторая строка: p_ogr -->
@@ -23,6 +25,8 @@
                 {{ val if val else '—' }}
             </td>
         {% endfor %}
+        <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+        </td>
     </tr>
 
     <!-- Третья строка: p_rasp -->
@@ -34,6 +38,8 @@
                 {{ val if val else '—' }}
             </td>
         {% endfor %}
+        <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+        </td>
     </tr>
 
     {% include 'stations/aggregated_data/regional_districts/aggregated_regional_districts_by_station_type.html' %}

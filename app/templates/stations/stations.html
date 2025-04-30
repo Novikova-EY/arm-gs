@@ -46,6 +46,7 @@
                     <th colspan="8">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
+                    <th rowspan="2" style="width: 200px;">Примечание</th>
                 </tr>
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 50px;">гр.</th>
@@ -119,8 +120,8 @@
                     <th style="width: 50px; text-align: center;">
                         Тип <br> мощ-ти
                     </th>
-                    <!-- Столбцы для годов с start_year по end_year + 1 -->
 
+                    <!-- Столбцы для годов с start_year по end_year + 1 -->
                     {% for year in range(start_year, end_year + 1) %}
                     <th style="width: 50px; text-align: center;">
                         {{ year }}
@@ -133,7 +134,6 @@
                     {% endfor %}
 
                     <!-- Столбцы для годов с start_year по end_year + 1 -->
-
                     {% for year in range(start_year, end_year + 1) %}
                     <th style="width: 50px; text-align: center;">
                         {{ year }}
