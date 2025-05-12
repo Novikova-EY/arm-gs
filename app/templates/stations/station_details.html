@@ -212,18 +212,22 @@
                     <table class="table table-hover table-striped table-bordered table-responsive">
                         <thead class="table-success">
                             <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                                <th rowspan="2">гр.</th>
-                                <th rowspan="2">cт.№</th>
-                                <th rowspan="2">Тип агрегата</th>
-                                <th rowspan="2">Собственник</th>
-                                <th rowspan="2">Год ввода</th>
-                                <th rowspan="2">Тип энергоблока</th>
-                                <th rowspan="2">Тип ТЭС</th>
-                                <th rowspan="2">Тип агрегата ТЭС</th>
-                                <th rowspan="2">Топливо <br> (по СО ЕЭС)</th>
-                                <td rowspan="2" class="fw-bold">Тип <br> мощ-ти</td>
+                                <th rowspan="2" style="width: 50px;">гр.</th>
+                                <th rowspan="2" style="width: 80px;">cт.№</th>
+                                <th rowspan="2" style="width: 150px;">Тип агрегата</th>
+                                <th rowspan="2" style="width: 150px;">Собственник</th>
+                                <th rowspan="2" style="width: 80px;">Год ввода</th>
+                                <th rowspan="2" style="width: 80px;">Год вывода</th>
+                                <th rowspan="2" style="width: 80px;">Модерни-<br>зация</th>
+                                <th rowspan="2" style="width: 80px;">Тип энергоблока</th>
+                                <th rowspan="2" style="width: 80px;">Тип ТЭС</th>
+                                <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
+                                <th rowspan="2" style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
+                                <td rowspan="2" class="fw-bold" style="width: 50px;">Тип <br> мощ-ти</td>
                                 <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
                                 <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
+                                <th rowspan="2">Примечание</th>
+                                <th rowspan="2">Удалить</th>
                             </tr>
                             <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                                 <!-- Столбцы для годов с start_year по end_year + 1 -->
@@ -260,13 +264,11 @@
                                                 {% endfor %}
                                             </select>
                                         </td>
-                                        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
+                                        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
+                                        <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
+                                        <td class="rowspan-td" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
                                         <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
-                                        <td class="rowspan-td" rowspan="3">
-                                            {{ machine_tes_types_map[machine.id].tes_type.name 
-                                                if machine.id in machine_tes_types_map and machine_tes_types_map[machine.id].tes_type 
-                                                else "—" }}
-                                        </td>
+                                        <td class="rowspan-td" rowspan="3">{{ machine.tes_types or '—' }}</td>
                                         <td class="rowspan-td" rowspan="3">
                                             {% if machine.tes_machine_type and machine.tes_machine_type.id != 100 %}
                                                 {{ machine.tes_machine_type.name }}
@@ -315,7 +317,16 @@
                                             {% endif %}
                                         </td>
                                     {% endfor %}
-                                    
+
+                                    <td class="rowspan-td" rowspan="3">
+                                        <input type="text" name="note_{{ machine.id }}" 
+                                               value="{{ machine.note or '' }}" 
+                                               class="form-control text-center d-inline-block w-auto bg-transparent">
+                                    </td>
+
+                                    <td class="rowspan-td" rowspan="3">
+                                        <input type="checkbox" name="machines_delete[]" value="{{ machine.id }}" class="form-check-input">
+                                    </td>
 
                                     </tr>
                         
@@ -360,7 +371,7 @@
                             <!-- Строки с суммарной мощностью по годам -->
                             <!-- Первая строка: p_ust -->
                             <tr class="text-center total-power-row" style="vertical-align: middle;">
-                                <td class="total-row-cell" rowspan="3" colspan="9" style="font-weight: bold;">
+                                <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
                                     Всего по станции:
                                 </td>
                                 <td class="text-center" style="font-weight: bold;">Руст</td>

@@ -29,17 +29,12 @@
             <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                 {{ machine.machine_name }}
             </a></td>
-        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
         <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else '—'}}</td>
         
-        <td class="rowspan-td" rowspan="3">
-            {% set mtt = machine_tes_types_map.get(machine.id) %}
-            {% if mtt and mtt.tes_type and mtt.tes_type.id != 100 %}
-                {{ mtt.tes_type.name }}
-            {% else %}
-                &mdash;
-            {% endif %}
-        </td>
+        <td class="rowspan-td" rowspan="3">{{ machine.tes_types or '—' }}</td>
 
         <td class="rowspan-td" rowspan="3">
             {% if machine.tes_machine_type and machine.tes_machine_type.id != 100 %}
@@ -56,19 +51,11 @@
         <td class="text-center" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="text-center power-column">
-                
-                {% set p_ust_value = machine.machine_powers
-                                    | selectattr('year.number', 'equalto', year)
-                                    | map(attribute='p_ust')
-                                    | first %}
-                {% if p_ust_value == 0%}
+                {% set p_ust_value = machine.powers_by_year.get(year, {}).get("p_ust") %}
+                {% if p_ust_value is none or p_ust_value == 0 %}
                     &mdash;
                 {% else %}
-                    {% if p_ust_value == None %}
-
-                    {% else %}
-                        {{ p_ust_value }}
-                    {% endif %}
+                    {{ p_ust_value }}
                 {% endif %}
             </td>
         {% endfor %}
@@ -101,10 +88,7 @@
         <td class="text-center" style="font-weight: bold;">Рогр</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column">
-                {% set p_ogr_value = machine.machine_powers
-                                    | selectattr('year.number', 'equalto', year)
-                                    | map(attribute='p_ogr')
-                                    | first %}
+                {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
                 {% if p_ogr_value == 0 %}
                     &mdash;
                 {% else %}
@@ -123,10 +107,7 @@
         <td class="text-center" style="font-weight: bold;">Ррасп</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column">
-                {% set p_rasp_value = machine.machine_powers
-                                    | selectattr('year.number', 'equalto', year)
-                                    | map(attribute='p_rasp')
-                                    | first %}
+                {% set p_rasp_value = machine.powers_by_year.get(year, {}).get("p_rasp") %}
                 {% if p_rasp_value == 0 %}
                     &mdash;
                 {% else %}

@@ -2,7 +2,7 @@
 {% if (regional_districts_by_station_types_yearly_p_ust.get(current_res_id, {}).get(5) or regional_districts_by_station_types_yearly_p_ust.get(current_res_id, {}).get(6)) %}
 <!-- Первая строка: p_ust -->
     <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold;">
+        <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold;">
             ВИЭ
         </td>
         <td class="fw-bold">Руст</td>
@@ -68,7 +68,7 @@
         {% if has_data %}
             <!-- Первая строка: p_ust -->
             <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-                <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold; padding-left: 6cm;">
+                <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold; padding-left: 6cm;">
                     {{ station_type_list.get(station_type_id, 'Неизвестный тип') }}
                 </td>
                 <td class="fw-bold">Руст</td>

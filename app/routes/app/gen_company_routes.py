@@ -3,13 +3,13 @@ from flask import (
 )
 from . import app_bp
 from app.forms.gen_company_forms import GenCompanyFilterForm, AddGenCompanyForm
-from app.services.gen_company_services import (
+from app.services.reference_services.gen_company_services import (
     get_gen_company_list, update_gen_company, add_gen_company, delete_gen_company_list,
     import_gen_company_from_excel, export_gen_company_to_excel, log_to_db, get_total_gen_company_records
 )
 from app import db
 from app.models.logs_models import Log
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/gen_company", methods=["GET", "POST"])

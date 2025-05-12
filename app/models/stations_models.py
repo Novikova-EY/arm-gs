@@ -1,4 +1,6 @@
 from app import db
+from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy import Numeric
 
 # Модель для типов состояний оборудования или электростанций
 class ConditionType(db.Model):
@@ -156,7 +158,7 @@ class Station(db.Model):
     boilers = db.relationship('Boiler', back_populates='boiler_station')
     
     # примечание
-    note = db.Column(db.String(80), unique=False, nullable=True)
+    note = db.Column(db.String(1000), unique=False, nullable=True)
 
     @property
     def regional_energy_system(self):
@@ -202,6 +204,10 @@ class Station(db.Model):
             return next(iter(types))
         return "Разные типы"
 
+    __table_args__ = (
+        UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
+    )
+    
 
 # Модель мощностей агрегатов электростанции
 class StationPower(db.Model):
@@ -229,13 +235,14 @@ class StationPower(db.Model):
         back_populates='station_powers')
 
     # Установленная мощность электростанции
-    p_ust = db.Column(db.Float)
+    p_ust = db.Column(Numeric(25, 15))
 
     # Ограничения установленной мощности электростанции
-    p_ogr = db.Column(db.Float)    
+    p_ogr = db.Column(Numeric(25, 15))
     
     # Располагаемая мощность электростанции
-    p_rasp = db.Column(db.Float)
+    p_rasp = db.Column(Numeric(25, 15))
+
 
 # Модель для типов агрегатов
 class MachineType(db.Model):
@@ -379,10 +386,7 @@ class Machine(db.Model):
     )  
 
     # год ввода в эксплуатацию
-    date_exploitation = db.Column(db.String(10), nullable=True)
-    
-    # ожидаемый год ввода в работу
-    date_commission_expected = db.Column(db.String(10), nullable=True)
+    date_exploitation = db.Column(db.Integer, nullable=True)
 
     # фактическая дата ввода в работу
     date_commission_fact = db.Column(db.String(10), nullable=True)
@@ -397,13 +401,13 @@ class Machine(db.Model):
     date_detatchment_fact = db.Column(db.String(10), nullable=True)
 
     # ожидаемый год вывода из эксплуатации
-    date_decompressing_expected = db.Column(db.String(10), nullable=True)
+    date_decompressing_expected = db.Column(db.Integer, nullable=True)
 
     # фактическая дата вывода из эксплуатации
     date_decompressing_fact = db.Column(db.String(10), nullable=True)
 
     # ожидаемый год модернизации
-    date_modernization_expected = db.Column(db.String(10), nullable=True)
+    date_modernization_expected = db.Column(db.Integer, nullable=True)
 
     # фактическая дата перемаркировки
     date_relabing_fact = db.Column(db.String(10), nullable=True)
@@ -414,6 +418,14 @@ class Machine(db.Model):
     # примечание
     note = db.Column(db.String(512), unique=False, nullable=True)
 
+    @property
+    def tes_types(self):
+        tes_type_names = {
+            mtt.tes_type.name
+            for mtt in self.machine_tes_types
+            if mtt.tes_type and mtt.tes_type.name
+        }
+        return ", ".join(sorted(tes_type_names)) if tes_type_names else None
 
 # Модель для котла электростанции
 class Boiler(db.Model):
@@ -461,13 +473,13 @@ class MachinePower(db.Model):
         back_populates='machine_powers')
 
     # Установленная мощность агрегата
-    p_ust = db.Column(db.Float)
+    p_ust = db.Column(Numeric(25, 15))
 
     # Ограничения установленной мощности агрегата
-    p_ogr = db.Column(db.Float)    
+    p_ogr = db.Column(Numeric(25, 15))   
     
     # Располагаемая мощность агрегата
-    p_rasp = db.Column(db.Float)
+    p_rasp = db.Column(Numeric(25, 15))
 
 
 # Модель для топлива агрегатов электростанции

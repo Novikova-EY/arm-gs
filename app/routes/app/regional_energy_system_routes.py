@@ -4,13 +4,13 @@ from flask import (
 from . import app_bp
 from app.models.energy_systems_models import RegionalEnergySystem
 from app.forms.regional_energy_system_forms import RegionalEnergySystemFilterForm, AddRegionalEnergySystemForm
-from app.services.regional_energy_system_services import (
+from app.services.reference_services.regional_energy_system_services import (
     get_regional_energy_system_list, get_union_energy_system, update_regional_energy_system, add_regional_energy_system, delete_regional_energy_system_list, get_regional_districts,
     import_regional_energy_system_from_excel, export_regional_energy_system_to_excel, log_to_db, get_total_with_filter
 )
 from app import db
 from app.models.logs_models import Log
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/regional_energy_system", methods=["GET", "POST"])

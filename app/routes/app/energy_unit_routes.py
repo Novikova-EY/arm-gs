@@ -6,11 +6,11 @@ from . import app_bp
 from app.models.logs_models import Log
 from app.models.energy_systems_models import RegionalEnergySystem
 from app.forms.energy_unit_forms import EnergyUnitFilterForm, AddEnergyUnitForm
-from app.services.energy_unit_services import (
+from app.services.reference_services.energy_unit_services import (
     get_energy_unit_list, get_regional_energy_system, get_union_energy_system, update_energy_unit, add_energy_unit, delete_energy_unit_list, get_regional_districts,
     export_energy_unit_to_excel, log_to_db, get_total_with_filter
 )
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 

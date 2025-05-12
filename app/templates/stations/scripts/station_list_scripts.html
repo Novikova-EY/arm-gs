@@ -27,7 +27,7 @@
         initializeSelect2('#union_energy_system', 'ОЭС');
         initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
         initializeSelect2('#federal_district', 'Федеральный округ');
-        initializeSelect2('#regional_district', 'Субъектр РФ');
+        initializeSelect2('#regional_district', 'Субъект РФ');
 
         let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
         let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');

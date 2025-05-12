@@ -108,9 +108,13 @@
 </head>
 
 <body class="container-fluid mt-2">
-    <div class="d-flex justify-content-end m-3">
+    <div class="d-flex justify-content-end align-items-center m-3">
         {% if current_user.is_authenticated %}
-            <span class="me-4 fs-4 fw-bold"></span>
+            <span class="me-4 fs-4 fw-bold">
+                {{ current_user.username }}
+            </span>
+            <!-- Страница с логами -->
+            <a href="{{ url_for('logs.view_logs') }}" class="btn btn-outline-secondary fs-6 m-3">Запись логов</a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-6 m-3">Выйти</a>
         {% else %}
             <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-6 m-3">Войти</a>
@@ -118,20 +122,18 @@
         {% endif %}
     </div>
     
-    
-    
     <!-- Сообщения об ошибках -->
     {% with messages = get_flashed_messages(with_categories=True) %}
-    {% if messages %}
-    <div class="alert-container position-fixed top-0 start-50 translate-middle-x mt-4 w-50" style="z-index: 1050;">
-        {% for category, message in messages %}
-        <div class="alert alert- alert-dismissible fade show fs-6 fw-bold text-center shadow-lg" role="alert">
-            
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
+        {% if messages %}
+            <div class="alert-container position-fixed top-0 start-50 translate-middle-x mt-4 w-50" style="z-index: 1050;">
+                {% for category, message in messages %}
+                    <div class="alert alert- alert-dismissible fade show fs-6 fw-bold text-center shadow-lg" role="alert">
+                        
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
     {% endwith %}
 
         

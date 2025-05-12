@@ -3,13 +3,13 @@ from flask import (
 )
 from . import app_bp
 from app.forms.fuel_forms import OesFilterForm, AddOesForm
-from app.services.fuel_services import (
+from app.services.reference_services.fuel_services import (
     get_fuel_list, get_fuel_types, update_fuel, add_fuel, delete_fuel_list,
     import_fuel_from_excel, export_fuel_to_excel, log_to_db, get_total_fuel_records
 )
 from app import db
 from app.models.logs_models import Log
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/fuel", methods=["GET", "POST"])

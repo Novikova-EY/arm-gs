@@ -82,10 +82,6 @@ class MachineFilterForm(FlaskForm):
         'Год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
-    date_commission_expected = StringField(
-        'Ожидаемый год ввода в работу',
-        validators=[Optional(), Length(max=80), validate_year_or_date]
-    )
     date_commission_fact = StringField(
         'Фактическая дата ввода в работу',
         validators=[Optional(), Length(max=80), validate_year_or_date]

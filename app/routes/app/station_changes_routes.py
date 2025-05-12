@@ -8,7 +8,7 @@ from app.models.logs_models import Log
 from app.forms.station_forms import StationFilterForm
 from app.forms.machine_forms import MachineFilterSmallForm
 from app.models import Station, Machine, RegionalDistrict, StationGroup, RegionalEnergySystem, ConditionType, GenCompany
-from app.services.station_services import (
+from app.services.station_services.station_services import (
     get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
     get_federal_districts, get_regional_energy_systems, get_station_type, get_tes_types, get_tes_machine_types,
     log_to_db, import_station_list_from_excel, export_station_list_to_excel, get_year_features, 
@@ -18,7 +18,7 @@ from app.services.station_services import (
 from flask_login import login_required
 from app.routes.auth import role_required
 from sqlalchemy import func
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from flask import session
 
 @app_bp.route("/station_changes", methods=["GET", "POST"])

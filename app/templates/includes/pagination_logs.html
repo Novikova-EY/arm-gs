@@ -3,14 +3,28 @@
     <ul class="pagination justify-content-center">
         <!-- Первая страница -->
         <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('logs.view_logs', page=1, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}" aria-label="Первая">
+            <a class="page-link" href="{{ 
+            url_for('logs.view_logs', 
+            page=1, 
+            username_filter=username_filter, 
+            action_filter=action_filter, 
+            sort_by=sort_by, 
+            sort_dir=sort_dir,
+            per_page=per_page) }}" aria-label="Первая">
                 <span aria-hidden="true">&laquo;&laquo;</span>
             </a>
         </li>
 
         <!-- Предыдущая страница -->
         <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.prev_num, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}" aria-label="Предыдущая">
+            <a class="page-link" href="{{ 
+            url_for('logs.view_logs', 
+            page=logs.prev_num, 
+            username_filter=username_filter, 
+            action_filter=action_filter, 
+            sort_by=sort_by, 
+            sort_dir=sort_dir,
+            per_page=per_page) }}" aria-label="Предыдущая">
                 <span aria-hidden="true">&laquo;</span>
             </a>
         </li>
@@ -18,7 +32,14 @@
         <!-- Номера страниц с разрывами -->
         {% if logs.page > 3 %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('logs.view_logs', page=1, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}">1</a>
+                <a class="page-link" href="{{ 
+                url_for('logs.view_logs', 
+                page=1, 
+                username_filter=username_filter, 
+                action_filter=action_filter, 
+                sort_by=sort_by, 
+                sort_dir=sort_dir,
+                per_page=per_page) }}">1</a>
             </li>
             {% if logs.page > 4 %}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -28,7 +49,14 @@
         {% for num in range(logs.page - 2, logs.page + 3) %}
             {% if num > 0 and num <= logs.pages %}
                 <li class="page-item {% if num == logs.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('logs.view_logs', page=num, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}">{{ num }}</a>
+                    <a class="page-link" href="{{ 
+                    url_for('logs.view_logs', 
+                    page=num, 
+                    username_filter=username_filter, 
+                    action_filter=action_filter, 
+                    sort_by=sort_by, 
+                    sort_dir=sort_dir,
+                    per_page=per_page) }}">{{ num }}</a>
                 </li>
             {% endif %}
         {% endfor %}
@@ -38,20 +66,41 @@
                 <li class="page-item disabled"><span class="page-link">...</span></li>
             {% endif %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.pages, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}">{{ logs.pages }}</a>
+                <a class="page-link" href="{{ 
+                url_for('logs.view_logs', 
+                page=logs.pages, 
+                username_filter=username_filter, 
+                action_filter=action_filter, 
+                sort_by=sort_by, 
+                sort_dir=sort_dir,
+                per_page=per_page) }}">{{ logs.pages }}</a>
             </li>
         {% endif %}
 
         <!-- Следующая страница -->
         <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.next_num, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}" aria-label="Следующая">
+            <a class="page-link" href="{{ 
+            url_for('logs.view_logs', 
+            page=logs.next_num, 
+            username_filter=username_filter, 
+            action_filter=action_filter, 
+            sort_by=sort_by, 
+            sort_dir=sort_dir,
+            per_page=per_page) }}" aria-label="Следующая">
                 <span aria-hidden="true">&raquo;</span>
             </a>
         </li>
 
         <!-- Последняя страница -->
         <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for('logs.view_logs', page=logs.pages, username_filter=username_filter, action_filter=action_filter, sort_by=sort_by, sort_dir=sort_dir) }}" aria-label="Последняя">
+            <a class="page-link" href="{{ 
+            url_for('logs.view_logs', 
+            page=logs.pages, 
+            username_filter=username_filter, 
+            action_filter=action_filter, 
+            sort_by=sort_by, 
+            sort_dir=sort_dir,
+            per_page=per_page) }}" aria-label="Последняя">
                 <span aria-hidden="true">&raquo;&raquo;</span>
             </a>
         </li>

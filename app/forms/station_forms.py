@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SelectField, TextAreaField, SubmitField, HiddenField
+from wtforms import StringField, SelectField, TextAreaField, HiddenField, SelectMultipleField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 
 class StationFilterForm(FlaskForm):

@@ -3,7 +3,7 @@
 {% if request.args.get('per_page') == 'all' and eu_id != 100 %}
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="8" style="font-weight: bold;">
+        <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold;">
             {{ energy_unit_names[eu_id] }}, всего
         </td>
         <td class="text-center" style="font-weight: bold;">Руст</td>

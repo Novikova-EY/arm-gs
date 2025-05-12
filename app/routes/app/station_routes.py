@@ -1,33 +1,65 @@
+from . import app_bp
 from config import Config
 from decimal import Decimal
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
 )
 from collections import defaultdict
-from . import app_bp
-from app.forms.station_forms import StationFilterForm
-from app.forms.machine_forms import MachineFilterSmallForm
-from app.models import RegionalDistrict, StationGroup, RegionalEnergySystem, ConditionType, GenCompany, StationPower, MachineTesType, EnergyUnit
-from app.services.station_services import (
-    get_stations_list, get_union_energy_systems, get_regional_districts, get_energy_system_types, get_regional_districts,
-    get_federal_districts, get_regional_energy_systems, log_to_db, import_station_list_from_excel, export_station_list_to_excel, 
-    get_station_by_id, get_condition_type, get_station_groups, get_gen_companies, get_year_features, get_station_types_str_by_station,
-    import_fuel_tes_station_from_excel, group_machines_by_group_and_fuel, get_energy_units, get_current_year,
-    extract_station_data_from_form, extract_filters_from_form, extract_filters_from_args, filter_machines,
-    load_station_power_by_year, get_station_list_template_context, group_stations_hierarchy, recalculate_station_power,
-    get_current_machine_tes_types_map, load_machines_power_by_year
-)
-
-from app.services.help_service import (
-        maybe_round,
-    )
-
-from app.services.logging_service import log_to_db
-
+from app.services.logging_services.logging_service import log_to_db
 from flask_login import login_required
 from app.routes.auth import role_required
-from sqlalchemy import func
 from flask import session
+from app.forms.station_forms import StationFilterForm
+from app.forms.machine_forms import MachineFilterSmallForm
+from app.models import (
+    RegionalDistrict, 
+    StationGroup, 
+    RegionalEnergySystem, 
+    ConditionType, 
+    GenCompany, 
+    StationPower, 
+    MachineTesType, 
+    EnergyUnit,
+    Machine
+)
+from app.services.logging_services.logging_service import log_to_db
+from app.services.station_services.help_service import (
+    get_union_energy_systems, 
+    get_regional_districts, 
+    get_energy_system_types, 
+    get_regional_districts,
+    get_federal_districts, 
+    get_regional_energy_systems, 
+    get_current_year,
+    get_condition_type,
+    get_station_groups,
+    get_gen_companies,
+    get_station_groups,
+    maybe_round
+)
+from app.services.station_services.station_services import (
+    get_stations_list,
+    get_station_by_id, 
+    extract_filters_from_form, 
+    extract_filters_from_args, 
+    assign_machine_powers_by_year, 
+    get_station_list_template_context, 
+    recalculate_station_power,
+    get_current_machine_tes_types_map, 
+    recalculate_station_powers_by_filtered_machines
+)
+from app.services.station_services.filters_service import (
+    filter_machines,
+)
+from app.services.station_services.groupped_service import (
+    group_stations_hierarchy, 
+    group_machines_by_group_and_fuel, 
+)
+from app.services.station_services.station_export_import_services import (
+    import_station_list_from_excel, 
+    export_station_list_to_excel, 
+    import_fuel_tes_station_from_excel, 
+)
 
 @app_bp.route("/station_list", methods=["GET", "POST"])
 @login_required
@@ -44,11 +76,15 @@ def station_list():
     # --- Получаем фильтры ---
     filters = extract_filters_from_args(request.args)
     page = filters.pop("page", 1)
-    per_page = filters.pop("per_page", 10)
     start_year = filters.pop("start_year", Config.START_YEAR)
     end_year = filters.pop("end_year", Config.END_YEAR)
     rounding_digits_raw = request.args.get('rounding_digits', '1')
-
+    per_page_raw = filters.pop("per_page", 10)
+    try:
+        per_page = int(per_page_raw)
+    except (TypeError, ValueError):
+        per_page = 10
+        
     try:
         rounding_digits = int(rounding_digits_raw)
     except (ValueError, TypeError):
@@ -58,20 +94,35 @@ def station_list():
     if rounding_digits == 0:
         rounding_digits = None
 
-    # --- Загружаем станции ---
-    pagination = get_stations_list(
-        page=page, 
-        per_page=per_page, 
-        rounding_digits=rounding_digits, 
+    # Загружаем все станции без пагинации
+    all_data = get_stations_list(
+        page=1,
+        per_page=None,  # загружаем всё
+        rounding_digits=rounding_digits,
         **filters
     )
 
-    # --- Фильтрация агрегатов ---
-    pagination["stations"] = filter_machines(
-        pagination["stations"],
+    # Фильтрация агрегатов до пагинации
+    filtered_stations = filter_machines(
+        all_data["stations"],
         filters.get("tes_type_filter", []),
-        filters.get("tes_machine_type_filter", [])
+        filters.get("tes_machine_type_filter", []),
+        filters.get("date_exploitation_filter", []),
+        filters.get("date_decompressing_expected_filter", []),
+        filters.get("date_modernization_expected_filter", []),
     )
+
+    # Теперь — ручная пагинация
+    total_count = len(filtered_stations)
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    pagination = {
+        "stations": filtered_stations[(page - 1) * per_page : page * per_page],
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "page": page,
+        "per_page": per_page,
+    }
 
     # --- Подготовка агрегатов ---
     for station in pagination["stations"]:
@@ -82,20 +133,10 @@ def station_list():
     for station in pagination["stations"]:
         all_machines.extend(station.machines)
 
-    load_machines_power_by_year(all_machines, start_year, end_year, rounding_digits)
+    recalculate_station_powers_by_filtered_machines(pagination["stations"], start_year, end_year, rounding_digits)
 
     for machine in all_machines:
-        machine.powers_by_year = {}
-        for mp in machine.machine_powers:
-            machine.powers_by_year.setdefault(mp.year_number, {})
-            machine.powers_by_year[mp.year_number]["p_ust"] = Decimal(str(mp.p_ust)) if mp.p_ust is not None else None
-            machine.powers_by_year[mp.year_number]["p_ogr"] = Decimal(str(mp.p_ogr)) if mp.p_ogr is not None else None
-            machine.powers_by_year[mp.year_number]["p_rasp"] = Decimal(str(mp.p_rasp)) if mp.p_rasp is not None else None
-
-
-    # --- Загружаем мощности станций ---
-    for station in pagination["stations"]:
-        station.powers_by_year = load_station_power_by_year(station, start_year, end_year, rounding_digits)
+        assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
 
     # --- Группируем станции ---
     grouped_result = group_stations_hierarchy(pagination["stations"], rounding_digits)
@@ -156,6 +197,7 @@ def station_details(station_id):
     # Получение параметров запроса с дефолтными значениями
     start_year = request.args.get("start_year", 2021, type=int)
     end_year = request.args.get("end_year", 2031, type=int)
+    machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
 
     # Получаем данные по станции
     condition_types = get_condition_type()
@@ -182,8 +224,6 @@ def station_details(station_id):
     # Получаем типы ТЭС для текущего года из MachineTesType
     machine_tes_types_map = get_current_machine_tes_types_map()
 
-    station_type = get_station_types_str_by_station(station_id)
-
     # Загружаем списки данных из сервисов
     regional_districts_list, regional_district_names = get_regional_districts()
     federal_districts, regional_district_mapping = get_federal_districts()
@@ -209,6 +249,31 @@ def station_details(station_id):
             print("Ошибки в form:", form.errors)
 
         changes = []
+
+        if machine_ids_to_delete:
+            machines_to_delete = Machine.query.filter(Machine.id.in_(machine_ids_to_delete)).all()
+            
+            for machine in machines_to_delete:
+                # Удаление мощностей
+                for mp in machine.machine_powers:
+                    db.session.delete(mp)
+                
+                # Удаление топлива
+                for mf in machine.machine_fuels:
+                    db.session.delete(mf)
+
+                # Удаление типов ТЭС
+                for mtt in machine.machine_tes_types:
+                    db.session.delete(mtt)
+
+                changes.append(f"Агрегат {machine.machine_number} и связанные данные удалены")
+                db.session.delete(machine)
+
+            db.session.commit()
+
+            if changes:
+                log_to_db(user, f"Агрегаты удалены на станции {station.name}", details="; ".join(changes))
+                flash("Выбранные агрегаты и связанные данные были удалены!", "success")
 
         if form.validate_on_submit():
             try:
@@ -244,8 +309,10 @@ def station_details(station_id):
                         flash("Выбранная группа не существует!", "warning")
 
                 # Проверяем примечание
-                new_note = form.note.data.strip() if form.note.data.strip() else None
-                if station.note != new_note:
+                old_note = station.note.strip() if station.note and station.note.strip() else None
+                new_note = form.note.data.strip() if form.note.data and form.note.data.strip() else None
+
+                if old_note != new_note:
                     changes.append(f"Примечание: {station.note} → {new_note}")
                     station.note = new_note
 
@@ -335,13 +402,19 @@ def station_details(station_id):
             for machine in station.machines:
                 fuel_so_key = f"fuel_so_{machine.id}"
                 gen_company_key = f"id_gen_company_{machine.id}"
+                new_note_key = f"note_{machine.id}"
 
                 new_fuel_so = request.form.get(fuel_so_key, "").strip()
                 new_gen_company_id = request.form.get(gen_company_key, type=int)
+                new_note = request.form.get(new_note_key, "").strip()
 
                 if machine.fuel_so != new_fuel_so:
                     changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
                     machine.fuel_so = new_fuel_so
+
+                if machine.note != new_note:
+                    changes.append(f"Агрегат {machine.machine_number}: Примечание {machine.note} → {new_note}")
+                    machine.note = new_note
 
                 # Обновляем собственника агрегата
                 if new_gen_company_id:
@@ -371,7 +444,6 @@ def station_details(station_id):
         station=station,
         start_year=start_year,
         end_year=end_year, 
-        station_type=station_type,
         energy_unit_names=energy_unit_names,
         current_year=current_year,
         machine_tes_types_map=machine_tes_types_map,

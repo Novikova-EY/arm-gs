@@ -3,7 +3,7 @@ from flask import (
 )
 from . import app_bp
 from app.forms.union_energy_system_forms import UnionEnergySystemFilterForm, AddUnionEnergySystemForm
-from app.services.union_energy_system_services import (
+from app.services.reference_services.union_energy_system_services import (
     get_union_energy_system_list, get_energy_system_types, update_union_energy_system, add_union_energy_system, delete_union_energy_system_list,
     import_union_energy_system_from_excel, export_union_energy_system_to_excel, log_to_db, get_total_union_energy_system_records
 )
@@ -11,7 +11,7 @@ from app.services.union_energy_system_services import (
 
 from app import db
 from app.models.logs_models import Log
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/union_energy_system", methods=["GET", "POST"])

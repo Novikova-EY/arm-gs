@@ -3,13 +3,13 @@ from flask import (
 )
 from . import app_bp
 from app.forms.federal_district_forms import FederalDistrictFilter, AddFederalDistrict
-from app.services.federal_district_services import (
+from app.services.reference_services.federal_district_services import (
     get_federal_district_list, update_federal_district, add_federal_district, delete_federal_district_list,
     import_federal_district_from_excel, export_federal_district_to_excel, log_to_db, get_total_federal_district_records
 )
 from app import db
 from app.models.logs_models import Log
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/federal_district", methods=["GET", "POST"])

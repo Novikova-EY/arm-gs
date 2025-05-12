@@ -281,19 +281,6 @@
                                     {% endif %}
                                 </div>
 
-                                <!-- Ожидаемый год ввода в работу -->
-                                <div class="mb-3">
-                                    {{ form.date_commission_expected.label(class="form-label") }}
-                                    {{ form.date_commission_expected(class="form-control fs-5") }}
-                                    {% if form.date_commission_expected.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.date_commission_expected.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-
                                 <!-- Фактическая дата ввода в работу -->
                                 <div class="mb-3">
                                     {{ form.date_commission_fact.label(class="form-label") }}

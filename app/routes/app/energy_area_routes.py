@@ -6,11 +6,11 @@ from . import app_bp
 from app.models.logs_models import Log
 from app.models.energy_systems_models import RegionalEnergySystem
 from app.forms.energy_area_forms import EnergyAreaFilterForm, AddEnergyAreaForm
-from app.services.energy_area_services import (
+from app.services.reference_services.energy_area_services import (
     get_energy_area_list, get_regional_energy_system, get_union_energy_system, update_energy_area, add_energy_area, delete_energy_area_list, get_regional_districts,
     export_energy_area_to_excel, log_to_db, get_total_with_filter
 )
-from app.services.logging_service import log_to_db
+from app.services.logging_services.logging_service import log_to_db
 from collections import Counter
 
 @app_bp.route("/energy_areas", methods=["GET", "POST"])

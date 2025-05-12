@@ -1,18 +1,26 @@
 from config import Config
-from flask import render_template, request, session, redirect, url_for, flash
 from . import app_bp
 from app.models.logs_models import Log
+from flask import render_template, request, session, flash
+from flask_login import login_required
+from app.routes.auth import role_required
+from app import db
+import traceback
 from app.forms.machine_forms import MachineFilterForm, EditMachineForm
 from app.models.stations_models import ConditionType, StationType, TesType, MachineType, TesMachineType, MachineTesType, Machine, MachinePower, MachineFuel, StationPower
 from app.models.fuels_models import Fuel
 from app.models.years_models import Year, YearFeature
 from app.models.energy_systems_models import EnergyArea, EnergyUnit
 from app.models.gen_companies_models import GenCompany
-from app.services.station_services import log_to_db, get_machine_by_id, get_station_by_id, convert_to_iso_date, recalculate_station_power
-from flask_login import login_required
-from app.routes.auth import role_required
-from app import db
-import traceback
+from app.services.logging_services.logging_service import log_to_db
+from app.services.station_services.station_services import (
+    get_machine_by_id,
+    get_station_by_id, 
+    recalculate_station_power,
+)
+from app.services.station_services.station_export_import_services import (
+    convert_to_iso_date,
+)
 
 def log_to_db(username, action, details=None):
     """Записывает лог действия пользователя в базу данных."""
@@ -218,7 +226,7 @@ def machine_details(station_id, machine_id):
 
                     # Фиксируем изменения дат
                     date_fields = [
-                        "date_exploitation", "date_commission_expected", "date_commission_fact",
+                        "date_exploitation", "date_commission_fact",
                         "date_joining_expected", "date_joining_fact", "date_detatchment_fact",
                         "date_decompressing_expected", "date_decompressing_fact",
                         "date_modernization_expected", "date_relabing_fact", "date_update_fact"

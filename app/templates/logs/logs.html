@@ -42,17 +42,28 @@
                 <thead class="table-primary">
                     <tr>
                         <th class="p-3" style="width: 10%;">
-                            <a href="{{ url_for('logs.view_logs', sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc', per_page=request.args.get('per_page', 10)) }}">
+                            <a href="{{ 
+                            url_for('logs.view_logs', 
+                            sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc', 
+                            per_page=request.args.get('per_page', 10)) }}">
                                 Время
                             </a>
                         </th>
                         <th class="p-3" style="width: 10%;">
-                            <a href="{{ url_for('logs.view_logs', sort_by='username', sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc', per_page=request.args.get('per_page', 10)) }}">
+                            <a href="{{ 
+                            url_for('logs.view_logs', 
+                            sort_by='username', 
+                            sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc', 
+                            per_page=request.args.get('per_page', 10)) }}">
                                 Пользователь
                             </a>
                         </th>
                         <th class="p-3" style="width: 30%;">
-                            <a href="{{ url_for('logs.view_logs', sort_by='action', sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc', per_page=request.args.get('per_page', 10)) }}">
+                            <a href="{{ 
+                            url_for('logs.view_logs', 
+                            sort_by='action', 
+                            sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc', 
+                            per_page=request.args.get('per_page', 10)) }}">
                                 Действие
                             </a>
                         </th>
@@ -62,7 +73,7 @@
                 <tbody>
                     {% for log in logs.items %}
                         <tr>
-                            <td class="p-3">{{ log.timestamp }}</td>
+                            <td class="p-3">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] }}</td>
                             <td class="p-3">{{ log.username }}</td>
                             <td class="p-3">{{ log.action }}</td>
                             <td class="p-3">{{ log.details }}</td>
