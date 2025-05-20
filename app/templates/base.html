@@ -124,17 +124,18 @@
     
     <!-- Сообщения об ошибках -->
     {% with messages = get_flashed_messages(with_categories=True) %}
-        {% if messages %}
-            <div class="alert-container position-fixed top-0 start-50 translate-middle-x mt-4 w-50" style="z-index: 1050;">
-                {% for category, message in messages %}
-                    <div class="alert alert- alert-dismissible fade show fs-6 fw-bold text-center shadow-lg" role="alert">
-                        
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
+    {% if messages %}
+        <div class="position-fixed top-0 start-50 translate-middle-x mt-5 z-3" style="max-width: 700px; width: 90%;">
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
             </div>
-        {% endif %}
+        {% endfor %}
+        </div>
+    {% endif %}
     {% endwith %}
+
 
         
     {% block content %}

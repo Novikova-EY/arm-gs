@@ -58,13 +58,23 @@ def create_app():
     with app.app_context():
         db.create_all()  # Создаем все таблицы, если они ещё не созданы
 
+    from app.services.station_services.help_service import format_decimal_for_display
+    @app.template_filter('format_decimal')
+    def format_decimal_filter(value):
+        from flask import request
+        digits = request.args.get("rounding_digits", default=None, type=int)
+        return format_decimal_for_display(value, digits=digits)
+
+
     # Регистрация маршрутов
     from app.routes.auth import auth_bp
-    from app.routes.app import app_bp
+    from app.routes.references import reference_bp
+    from app.routes.stations import station_bp
     from app.routes import start_bp
     from app.routes.log import logs_bp
     app.register_blueprint(start_bp, url_prefix='/')  # Префикс для маршрутов приложения
-    app.register_blueprint(app_bp, url_prefix='/app')  # Префикс для общих маршрутов
+    app.register_blueprint(reference_bp, url_prefix='/references')  # Префикс для общих маршрутов
+    app.register_blueprint(station_bp, url_prefix='/stations')  # Префикс для общих маршрутов
     app.register_blueprint(auth_bp, url_prefix='/auth')  # Префикс для авторизации
     app.register_blueprint(logs_bp, url_prefix='/log')  # Префикс для просмотра логов
 
@@ -76,3 +86,7 @@ def create_app():
 def load_user(user_id):
     from app.models.auth_models import User  # Импортируем модель внутри функции, чтобы избежать циклического импорта
     return User.query.get(int(user_id))
+
+
+
+

@@ -15,7 +15,7 @@
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
             Вернуться на страницу "Электростанция"
         </a>
     </div>
@@ -33,12 +33,12 @@
             <div class="row g-3">
                 <div class="col-12">
                     <div class="d-flex justify-content-end align-items-center w-100">
-                        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3" style="width: 53%;">
+                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3" style="width: 53%;">
                             <strong>{{ station.name }}</strong>
                         </a>
 
                         <div class="p-3" style="width: 20%;">
-                            <form method="GET" action="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
+                            <form method="GET" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
                                 <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
                                 {% for key, value in request.args.items() %}
                                     {% if key != "per_page" and key != "start_year" and key != "end_year" %}
@@ -103,7 +103,7 @@
         </div>
 
         <!-- Карточка с основной информацией -->
-        <form method="POST" action="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
+        <form method="POST" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
             {{ form.csrf_token }}
             {{ advanced_form.csrf_token }}
             
@@ -539,13 +539,13 @@
                 <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
             
                 <!-- Кнопка "Сбросить" -->
-                <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
                    class="btn btn-outline-danger m-2 fs-5">
                     Сбросить
                 </a>
 
                 <!-- Кнопка "Назад" -->
-                <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" 
+                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" 
                 class="btn btn-outline-secondary m-2 fs-5">
                     Назад
                 </a>

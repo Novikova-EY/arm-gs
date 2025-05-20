@@ -7,14 +7,14 @@
 <div class="container mt-2">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary fs-6">
+        <a href="{{ url_for('reference_bp.reference') }}" class="btn btn-secondary fs-6">
             Вернуться на страницу "Справочники"
         </a>
     </div>
 
     <h1 class="text-center mb-4">Список объединенных энергосистем</h1>
 
-    <form method="GET" action="{{ url_for('app_bp.union_energy_system_list') }}" class="mb-3">
+    <form method="GET" action="{{ url_for('reference_bp.union_energy_system_list') }}" class="mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
             <!-- Блок с полем для поиска -->
             <div class="d-flex align-items-start w-100">
@@ -26,7 +26,7 @@
                 <!-- Кнопки "Поиск" и "Сбросить поиск" -->
                 <div class="d-flex">
                     <button type="submit" class="btn btn-outline-primary me-2" style="width: 120px;">Поиск</button>
-                    <a href="{{ url_for('app_bp.union_energy_system_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Сбросить</a>
+                    <a href="{{ url_for('reference_bp.union_energy_system_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Сбросить</a>
                 </div>                
             </div>
 
@@ -43,7 +43,7 @@
     </form>
 
     <!-- Таблица данных -->
-    <form method="POST" action="{{ url_for('app_bp.union_energy_system_list') }}">
+    <form method="POST" action="{{ url_for('reference_bp.union_energy_system_list') }}">
         {{ form.csrf_token }}
         {{ form.page(value=pagination.page) }} <!-- Скрытое поле для текущей страницы -->
 
@@ -58,7 +58,7 @@
         <div class="d-flex justify-content-between mt-3 mb-3">
             <button type="submit" class="btn btn-success">Сохранить изменения</button>
 
-            <a href="{{ url_for('app_bp.add_union_energy_system_routes', 
+            <a href="{{ url_for('reference_bp.add_union_energy_system_routes', 
             sort_by=request.args.get('sort_by', 'id'),
             sort_dir=request.args.get('sort_dir', 'asc'),
             union_energy_system_filter=request.args.get('union_energy_system_filter', ''),
@@ -75,7 +75,7 @@
                     <tr class="align-middle text-center">
                         <!-- Шапка таблицы. Столбец "№" -->
                         <th>
-                            <a href="{{ url_for(    'app_bp.union_energy_system_list', 
+                            <a href="{{ url_for(    'reference_bp.union_energy_system_list', 
                                                     page=pagination.page, 
                                                     per_page=per_page, 
                                                     union_energy_system_filter=union_energy_system_filter, 
@@ -95,7 +95,7 @@
 
                         <!-- Шапка таблицы. Столбец "Наименование ОЭС" -->
                         <th>
-                            <a href="{{ url_for(    'app_bp.union_energy_system_list', 
+                            <a href="{{ url_for(    'reference_bp.union_energy_system_list', 
                                                     page=pagination.page, 
                                                     per_page=per_page, 
                                                     union_energy_system_filter=union_energy_system_filter,
@@ -115,7 +115,7 @@
 
                         <!-- Шапка таблицы. Столбец "Полное наименование ОЭС" -->
                         <th>
-                            <a href="{{ url_for(    'app_bp.union_energy_system_list', 
+                            <a href="{{ url_for(    'reference_bp.union_energy_system_list', 
                                                     page=pagination.page, 
                                                     per_page=per_page, 
                                                     union_energy_system_filter=union_energy_system_filter, 
@@ -138,7 +138,7 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
                                     <a href="{{ 
-                                    url_for('app_bp.union_energy_system_list', 
+                                    url_for('reference_bp.union_energy_system_list', 
                                     page=pagination.page, 
                                     union_energy_system_filter=union_energy_system_filter, 
                                     energy_system_type_filter=energy_system_type_filter,  
@@ -165,7 +165,7 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="resFilterDropdown">
                                         <li>
-                                            <a href="{{ url_for('app_bp.union_energy_system_list', 
+                                            <a href="{{ url_for('reference_bp.union_energy_system_list', 
                                                 page=pagination.page,
                                                 union_energy_system_filter=union_energy_system_filter, 
                                                 energy_system_type_filter='',
@@ -178,7 +178,7 @@
                                         {% for id_energy_system_type, energy_system_type_name in energy_system_types %}
                                             {% if energy_system_type_name != 'Не указан' %}
                                                 <li>
-                                                    <a href="{{ url_for('app_bp.union_energy_system_list', 
+                                                    <a href="{{ url_for('reference_bp.union_energy_system_list', 
                                                         page=pagination.page, 
                                                         union_energy_system_filter=union_energy_system_filter, 
                                                         energy_system_type_filter=id_energy_system_type,  
@@ -261,7 +261,7 @@
         <ul class="pagination justify-content-center">
             {% if pagination.has_prev %}
             <li class="page-item">
-                <a class="page-link" href="{{   url_for('app_bp.union_energy_system_list', 
+                <a class="page-link" href="{{   url_for('reference_bp.union_energy_system_list', 
                                                 page=pagination.prev_num, 
                                                 union_energy_system_filter=union_energy_system_filter, 
                                                 energy_system_type_filter=energy_system_type_filter,
@@ -281,7 +281,7 @@
                 <li class="page-item active"><a class="page-link">{{ page }}</a></li>
                 {% else %}
                 <li class="page-item">
-                    <a class="page-link" href="{{   url_for('app_bp.union_energy_system_list', 
+                    <a class="page-link" href="{{   url_for('reference_bp.union_energy_system_list', 
                                                     page=page, 
                                                     union_energy_system_filter=union_energy_system_filter, 
                                                     energy_system_type_filter=energy_system_type_filter,
@@ -299,7 +299,7 @@
 
             {% if pagination.has_next %}
             <li class="page-item">
-                <a class="page-link" href="{{   url_for('app_bp.union_energy_system_list', 
+                <a class="page-link" href="{{   url_for('reference_bp.union_energy_system_list', 
                                                 page=pagination.next_num, 
                                                 union_energy_system_filter=union_energy_system_filter,
                                                 energy_system_type_filter=energy_system_type_filter, 
@@ -319,7 +319,7 @@
     <div class="row mt-5">
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
 <!--         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.import_union_energy_system_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ url_for('reference_bp.import_union_energy_system_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
                 {{ form.csrf_token }}
                 <button type="submit" class="btn btn-danger w-100">Импорт</button>
                 <div class="mb-3">
@@ -330,7 +330,7 @@
  -->
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.export_union_energy_system_to_excel_routes') }}" method="GET">
+            <form action="{{ url_for('reference_bp.export_union_energy_system_to_excel_routes') }}" method="GET">
                 {{ form.csrf_token }}
                 <input type="hidden" name="union_energy_system_filter" value="{{ union_energy_system_filter }}">
                 <input type="hidden" name="energy_system_type_filter" value="{{ energy_system_type_filter }}">

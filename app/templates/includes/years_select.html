@@ -1,5 +1,5 @@
 <!-- Форма для выбора годов -->
-<form method="GET" action="{{ url_for('app_bp.stations_list') }}" class="d-flex justify-content-between align-items-center" id="yearForm">
+<form method="GET" action="{{ url_for('station_bp.stations_list') }}" class="d-flex justify-content-between align-items-center" id="yearForm">
     <!-- Год начала -->
     <label for="start_year" class="me-2">Год начала:</label>
     <select name="start_year" id="start_year" class="form-select me-2" style="width: 120px;" onchange="updateYearSelection()">
@@ -16,5 +16,5 @@
         {% endfor %}
     </select>
 
-    <a href="{{ url_for('app_bp.stations_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Применить</a>
+    <a href="{{ url_for('station_bp.stations_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Применить</a>
 </form>

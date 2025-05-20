@@ -1,5 +1,8 @@
 from app import db
 from sqlalchemy.orm import joinedload
+import logging
+from decimal import Decimal, InvalidOperation, localcontext, ROUND_HALF_UP
+from collections.abc import Mapping, Sequence
 from app.models import (
     UnionEnergySystem, RegionalEnergySystem, EnergySystemType, EnergyUnit,
     RegionalDistrict, FederalDistrict,Station, StationType, Machine, 
@@ -186,30 +189,27 @@ def get_year_features():
     return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
 
 
-from decimal import Decimal, ROUND_HALF_UP
-
 def maybe_round(value, round_digits=1):
     if value is None:
         return None
 
-    # Приводим сразу все float к Decimal(str(...))
     if isinstance(value, float):
         value = Decimal(str(value))
     elif isinstance(value, str):
         try:
             value = Decimal(value.replace(',', '.'))
         except Exception:
-            return value
+            return None
 
     if round_digits is None:
-        return str(value)
+        return value
 
     if round_digits == -1:
-        return str(int(value.to_integral_value(rounding=ROUND_HALF_UP)))
+        return value.normalize()
 
     quantize_str = '1.' + '0' * round_digits
-    rounded = value.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
-    return str(rounded)
+    return value.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
+
 
 def round_nested_power_dict(power_dict, round_digits=1):
     """Рекурсивное округление всех Decimal внутри вложенных словарей"""
@@ -220,4 +220,40 @@ def round_nested_power_dict(power_dict, round_digits=1):
         else:
             result[key] = maybe_round(inner, round_digits)
     return result
+
+from decimal import Decimal, ROUND_HALF_UP
+
+from decimal import Decimal, ROUND_HALF_UP, localcontext
+
+def format_decimal_for_display(value, digits=None):
+    if value is None:
+        return ""
+
+    # Преобразуем к Decimal
+    if isinstance(value, str):
+        try:
+            value = Decimal(value.replace(",", "."))
+        except Exception:
+            return value
+    elif isinstance(value, float):
+        value = Decimal(str(value))
+    elif not isinstance(value, Decimal):
+        value = Decimal(value)
+
+    # digits == 0 → не округлять, но выводить без экспоненты
+    if digits == 0:
+        # Форматируем без экспоненты и без округления
+        return format(value, 'f').rstrip('0').rstrip('.').replace('.', ',')
+
+    # digits > 0 → округляем до нужного числа знаков
+    if digits and digits > 0:
+        with localcontext() as ctx:
+            ctx.rounding = ROUND_HALF_UP
+            quant = Decimal('1.' + '0' * digits)
+            value = value.quantize(quant)
+        return str(value).replace('.', ',')
+
+    # digits is None → auto-normalize (может оставить экспоненту)
+    return str(value.normalize()).replace('.', ',')
+
 

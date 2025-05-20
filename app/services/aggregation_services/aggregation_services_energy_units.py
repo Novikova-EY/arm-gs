@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from app.services.station_services.help_service import (
         round_nested_power_dict,
+        maybe_round,
     )
 
 # Агрегация по энергоузлам - всего

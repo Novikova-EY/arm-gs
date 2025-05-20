@@ -32,12 +32,10 @@
     <input type="hidden" name="date_modernization_expected_filter" value="{{ request.args.getlist('date_modernization_expected_filter', '') }}">
     <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
     <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-    <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
+    <input type="hidden" id="per_page_hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
 
     <!-- Фильтры -->
     {% include 'stations/station_filters.html' %}
-
-    <p><strong>Найдено станций: {{ total_count }}</strong></p>
 
     <!-- Таблица с данными -->
     <div class="table-responsive">
@@ -46,7 +44,7 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="10">Электростанция</th>
+                    <th colspan="11">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                     <th rowspan="2" style="width: 200px;">Примечание</th>
@@ -182,6 +180,28 @@
                             </ul>
                         </div>
                     </th>
+                    
+                    <!-- Столбец фильтра по топливу -->
+                    <th style="width: 50px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Основное <br> топливо</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% for fuel_type in fuel_type_names %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="fuel_type_filter"
+                                                value="{{ fuel_type.id }}"
+                                                {% if fuel_type.id|string in _fuel_type_filter|map('string') %}checked{% endif %}>
+                                            {{ fuel_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
                     <th style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
                     <th style="width: 50px; text-align: center;">
                         Тип <br> мощ-ти
@@ -198,6 +218,7 @@
                         </div>
                     </th>
                     {% endfor %}
+
 
                     <!-- Столбцы для годов с start_year по end_year + 1 -->
                     {% for year in range(start_year, end_year + 1) %}
@@ -218,33 +239,33 @@
             <tbody>
                 {% for es_type_id, es_type_group in stations_grouped.items() %}
             
-                    {% if request.args.get('per_page') == 'all' %}
+                    {% if per_page is none %}
                         {% include 'stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}
                     {% endif %}
             
                     {% for ues_id, ues_group in es_type_group.items() %}
             
-                        {% if request.args.get('per_page') == 'all' %}
+                        {% if per_page is none %}
                             {% include 'stations/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
                         {% endif %}
             
                         {% for res_id, res_group in ues_group.items() %}
             
-                            {% if request.args.get('per_page') == 'all' %}
+                            {% if per_page is none %}
                                 {% include 'stations/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}
                             {% endif %}
             
                             {% for rd_id, rd_group in res_group.items() %}
             
                                 {% if rd_id != 100 %}
-                                    {% if request.args.get('per_page') == 'all' %}
+                                    {% if per_page is none %}
                                         {% include 'stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
             
                                         {% if eu_id != 100 %}
-                                            {% if request.args.get('per_page') == 'all' %}
+                                            {% if per_page is none %}
                                                 {% include 'stations/aggregated_data/energy_units/energy_unit_header.html' %}
                                             {% endif %}
                                         {% endif %}
@@ -255,7 +276,7 @@
                                         {% endfor %}
             
                                         {# Итог по энергоузлу #}
-                                        {% if request.args.get('per_page') == 'all' and eu_id != 100 %}
+                                        {% if per_page is none and eu_id != 100 %}
                                             {% set current_eu_id = eu_id %}
                                             {% include 'stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
                                         {% endif %}
@@ -263,7 +284,7 @@
                                     {% endfor %}
             
                                     {# Итог по субъекту РФ #}
-                                    {% if request.args.get('per_page') == 'all' %}
+                                    {% if per_page is none %}
                                         {% set current_rd_id = rd_id %}
                                         {% include 'stations/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
                                     {% endif %}
@@ -273,7 +294,7 @@
                             {% endfor %}
             
                             {# Итог по региональной энергосистеме #}
-                            {% if request.args.get('per_page') == 'all' %}
+                            {% if per_page is none %}
                                 {% set current_res_id = res_id %}
                                 {% include 'stations/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_total.html' %}
                             {% endif %}
@@ -281,7 +302,7 @@
                         {% endfor %}
             
                         {# Итог по объединённой энергосистеме #}
-                        {% if request.args.get('per_page') == 'all' %}
+                        {% if per_page is none %}
                             {% set current_ues_id = ues_id %}
                                 {% include 'stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
                         {% endif %}
@@ -289,7 +310,7 @@
                     {% endfor %}
             
                     {# Итог по типу энергосистемы #}
-                    {% if request.args.get('per_page') == 'all' %}
+                    {% if per_page is none %}
                         {% set current_es_type_id = es_type_id %}
                         {% include 'stations/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
@@ -297,7 +318,7 @@
                 {% endfor %}
             
                 {# Итог по России #}
-                {% if request.args.get('per_page') == 'all' %}
+                {% if per_page is none %}
                     {% include 'stations/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>
@@ -309,7 +330,9 @@
 
 <!-- Пагинация -->
 <div>
-    {% include 'includes/pagination_station.html' %}
+    {% if per_page is not none %}
+        {% include 'includes/pagination_station.html' %}
+    {% endif %}
 </div> 
 
 
@@ -322,8 +345,5 @@
 
 
 {% include 'stations/scripts/station_list_scripts.html' %}
-
-{% include 'stations/scripts/station_list_show_all_script.html' %}
-
 
 {% endblock %}

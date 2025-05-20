@@ -426,6 +426,13 @@ class Machine(db.Model):
             if mtt.tes_type and mtt.tes_type.name
         }
         return ", ".join(sorted(tes_type_names)) if tes_type_names else None
+    
+    @property
+    def primary_fuel_type(self):
+        for mf in sorted(self.machine_fuels, key=lambda mf: mf.year_number or 0):
+            if mf.fuel and mf.fuel.fuel_type:
+                return mf.fuel.fuel_type.name
+        return None
 
 # Модель для котла электростанции
 class Boiler(db.Model):

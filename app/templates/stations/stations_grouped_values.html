@@ -6,7 +6,7 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-secondary fs-6">Вернуться страницу "Справочники"</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-6">Вернуться страницу "Справочники"</a>
     </div>
 
     <h1 class="text-center mb-4">Сводные значения по электростанциям</h1>
@@ -24,7 +24,7 @@
         <div class="row g-3">
             <!-- Первая строка фильтров -->
             <div class="col-12 ">
-                <form method="GET" action="{{ url_for('app_bp.stations_grouped_values') }}" class="filter-container d-flex">
+                <form method="GET" action="{{ url_for('station_bp.stations_grouped_values') }}" class="filter-container d-flex">
                     <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
                     {% for key, value in request.args.items() %}
                         {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter"] %}
@@ -99,7 +99,7 @@
             
                     <!-- Кнопки -->
                     <div class="filter-item">
-                        <a href="{{ url_for('app_bp.stations_grouped_values') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                        <a href="{{ url_for('station_bp.stations_grouped_values') }}" class="btn btn-outline-danger w-100">Сбросить</a>
                     </div>
                 </form>
             </div>
@@ -113,7 +113,7 @@
 
                     
                     <div class="p-3" style="width: 20%;">
-                        <form method="GET" action="{{ url_for('app_bp.stations_grouped_values') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                        <form method="GET" action="{{ url_for('station_bp.stations_grouped_values') }}" class="d-flex align-items-center gap-2" id="yearForm">
                             <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
                             {% for key, value in request.args.items() %}
                                 {% if key != "start_year" and key != "end_year" %}

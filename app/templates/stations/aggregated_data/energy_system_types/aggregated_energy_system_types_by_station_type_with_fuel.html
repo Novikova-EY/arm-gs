@@ -12,10 +12,10 @@
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ union_energy_systems_by_station_types_with_fuel_yearly_p_ust.
-                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—') | format_decimal or '—' }}
                 </td>
             {% endfor %}
-            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
             </td>
         </tr>
 
@@ -25,10 +25,10 @@
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ union_energy_systems_by_station_types_with_fuel_yearly_p_ogr.
-                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—') | format_decimal or '—' }}
                 </td>
             {% endfor %}
-            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
             </td>
         </tr>
 
@@ -38,10 +38,10 @@
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ union_energy_systems_by_station_types_with_fuel_yearly_p_rasp.
-                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—') }}
+                        get(current_es_type_id, {}).get(fuel_type_id, {}).get(y, '—')  | format_decimal or '—'}}
                 </td>
             {% endfor %}
-            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+            <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
             </td>
         </tr>
     {% endif %}

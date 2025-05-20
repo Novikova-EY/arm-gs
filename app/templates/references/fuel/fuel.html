@@ -7,14 +7,14 @@
 <div class="container mt-2">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('app_bp.reference') }}" class="btn btn-secondary fs-6">
+        <a href="{{ url_for('reference_bp.reference') }}" class="btn btn-secondary fs-6">
             Вернуться на страницу "Справочники"
         </a>
     </div>
 
     <h1 class="text-center mb-4">Топливо</h1>
 
-    <form method="GET" action="{{ url_for('app_bp.fuel_list') }}" class="mb-3">
+    <form method="GET" action="{{ url_for('reference_bp.fuel_list') }}" class="mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
             <!-- Блок с полем для поиска -->
             <div class="d-flex align-items-start w-100">
@@ -26,7 +26,7 @@
                 <!-- Кнопки "Поиск" и "Сбросить поиск" -->
                 <div class="d-flex">
                     <button type="submit" class="btn btn-outline-primary me-2" style="width: 120px;">Поиск</button>
-                    <a href="{{ url_for('app_bp.fuel_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Сбросить</a>
+                    <a href="{{ url_for('reference_bp.fuel_list') }}" class="btn btn-outline-secondary" style="width: 120px;">Сбросить</a>
                 </div>                
             </div>
 
@@ -43,7 +43,7 @@
     </form>
 
     <!-- Таблица данных -->
-    <form method="POST" action="{{ url_for('app_bp.fuel_list') }}">
+    <form method="POST" action="{{ url_for('reference_bp.fuel_list') }}">
         {{ form.csrf_token }}
         {{ form.page(value=pagination.page) }} <!-- Скрытое поле для текущей страницы -->
 
@@ -58,7 +58,7 @@
         <div class="d-flex justify-content-between mt-3 mb-3">
             <button type="submit" class="btn btn-success">Сохранить изменения</button>
 
-            <a href="{{ url_for('app_bp.add_fuel_routes', 
+            <a href="{{ url_for('reference_bp.add_fuel_routes', 
             sort_by=request.args.get('sort_by', 'id'),
             sort_dir=request.args.get('sort_dir', 'asc'),
             fuel_filter=request.args.get('fuel_filter', ''),
@@ -75,7 +75,7 @@
                     <tr>
                         <!-- Шапка таблицы. Столбец "№" -->
                         <th class="text-center">
-                            <a href="{{ url_for('app_bp.fuel_list', 
+                            <a href="{{ url_for('reference_bp.fuel_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
@@ -95,7 +95,7 @@
 
                         <!-- Шапка таблицы. Столбец "Тип топлива" -->
                         <th class="text-center">
-                            <a href="{{ url_for('app_bp.fuel_list', 
+                            <a href="{{ url_for('reference_bp.fuel_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter, 
@@ -117,7 +117,7 @@
                         <th class="text-center">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
-                                    <a href="{{ url_for('app_bp.fuel_list', 
+                                    <a href="{{ url_for('reference_bp.fuel_list', 
                                                 page=pagination.page, 
                                                 fuel_filter=fuel_filter,
                                                 fuel_type_filter=fuel_type_filter,
@@ -146,7 +146,7 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fuel_typeFilterDropdown">
                                         <li>
-                                            <a href="{{ url_for('app_bp.fuel_list', 
+                                            <a href="{{ url_for('reference_bp.fuel_list', 
                                                         page=pagination.page, 
                                                         fuel_filter=fuel_filter,
                                                         fuel_type_filter='',
@@ -158,7 +158,7 @@
                                         </li>
                                         {% for fuel_type_id, fuel_type_name in fuel_types %}
                                             <li>
-                                                <a href="{{ url_for('app_bp.fuel_list', 
+                                                <a href="{{ url_for('reference_bp.fuel_list', 
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
                                                     fuel_type_filter=fuel_type_id,
@@ -224,7 +224,7 @@
         <ul class="pagination justify-content-center">
             {% if pagination.has_prev %}
             <li class="page-item">
-                <a class="page-link" href="{{   url_for('app_bp.fuel_list', 
+                <a class="page-link" href="{{   url_for('reference_bp.fuel_list', 
                                                 page=pagination.prev_num, 
                                                 fuel_filter=fuel_filter,
                                                 fuel_type_filter=fuel_type_filter,
@@ -244,7 +244,7 @@
                 <li class="page-item active"><a class="page-link">{{ page }}</a></li>
                 {% else %}
                 <li class="page-item">
-                    <a class="page-link" href="{{   url_for('app_bp.fuel_list', 
+                    <a class="page-link" href="{{   url_for('reference_bp.fuel_list', 
                                                     page=page, 
                                                     fuel_filter=fuel_filter, 
                                                     fuel_type_filter=fuel_type_filter,
@@ -262,7 +262,7 @@
 
             {% if pagination.has_next %}
             <li class="page-item">
-                <a class="page-link" href="{{   url_for('app_bp.fuel_list', 
+                <a class="page-link" href="{{   url_for('reference_bp.fuel_list', 
                                                 page=pagination.next_num, 
                                                 fuel_filter=fuel_filter, 
                                                 fuel_type_filter=fuel_type_filter,
@@ -282,7 +282,7 @@
     <div class="row mt-5">
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
 <!--         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.import_fuel_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ url_for('reference_bp.import_fuel_to_sql_routes') }}" method="POST" enctype="multipart/form-data">
                 {{ form.csrf_token }}
                 <button type="submit" class="btn btn-danger w-100">Импорт</button>
                 <div class="mb-3">
@@ -293,7 +293,7 @@
 
         <!-- Экспорт данных таблицы с фильтрами в Excel-->
         <div class="col-md-6">
-            <form action="{{ url_for('app_bp.export_fuel_to_excel_routes') }}" method="GET">
+            <form action="{{ url_for('reference_bp.export_fuel_to_excel_routes') }}" method="GET">
                 {{ form.csrf_token }}
                 <input type="hidden" name="fuel_filter" value="{{ fuel_filter }}">
                 <input type="hidden" name="fuel_type_filter" value="{{ fuel_type_filter }}">

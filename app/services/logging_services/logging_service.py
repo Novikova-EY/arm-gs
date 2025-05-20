@@ -1,18 +1,16 @@
 from app import db
 from app.models.logs_models import Log
+from datetime import datetime
 
 
 def log_to_db(username, action, details=None):
-    """
-    Записывает лог действия пользователя в базу данных.
+    max_action_len = 255
+    action = action[:max_action_len]
 
-    :param username: имя пользователя
-    :param action: краткое описание действия
-    :param details: дополнительные детали (опционально)
-    """
+    log = Log(timestamp=datetime.now(), username=username, action=action, details=details)
     try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
+        db.session.add(log)
         db.session.commit()
     except Exception as e:
-        print(f"Ошибка записи лога: {e}")
+        db.session.rollback()
+        print("Ошибка записи лога:", e)

@@ -37,7 +37,7 @@
         <div class="row g-3">
             <!-- Первая строка фильтров -->
             <div class="col-12">
-                <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex flex-nowrap align-items-center gap-2">
+                <form method="GET" action="{{ url_for('station_bp.station_list') }}" class="d-flex flex-nowrap align-items-center gap-2">
                     <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
                     {% for key, value in request.args.items() %}
                         {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter"] %}
@@ -126,7 +126,7 @@
                     </div>
             
                     <div class="filter-item flex-grow-1">
-                        <a href="{{ url_for('app_bp.station_list') }}" class="btn btn-outline-secondary w-100">Сбросить</a>
+                        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-outline-secondary w-100">Сбросить</a>
                     </div>
                 </form>
             </div>
@@ -136,7 +136,7 @@
                 <div class="d-flex align-items-center w-100">
                     <!-- Форма загрузки данных из Excel -->
                     <div class="p-3" style="width: 20%;">
-                        <form action="{{ url_for('app_bp.import_station_list_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                        <form action="{{ url_for('station_bp.import_station_list_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
                             {{ form.csrf_token }}
                             <div class="me-2 w-100">
                                 <input type="file" name="file" id="file" class="form-control">
@@ -147,7 +147,7 @@
 
                     <!-- Кнопка подгрузки данных по топливу -->
                     <div class="p-3" style="width: 20%;">
-                        <form action="{{ url_for('app_bp.import_fuel_tes_station_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
+                        <form action="{{ url_for('station_bp.import_fuel_tes_station_from_excel_routes') }}" method="POST" enctype="multipart/form-data" class="d-flex align-items-center w-100">
                             {{ form.csrf_token }}
                             <div class="me-2 w-100">
                                 <input type="file" name="file" id="file" class="form-control">
@@ -164,7 +164,7 @@
 
                     <!-- Кнопка выгрузки данных по регионам -->
                     <div class="p-3" tyle="width: 5%;">
-                        <a href="{{ url_for('app_bp.stations_grouped_values') }}" 
+                        <a href="{{ url_for('station_bp.stations_grouped_values') }}" 
                            class="btn btn-outline-warning text-dark">
                             Итоговые значения <br> по регионам
                         </a>
@@ -172,7 +172,7 @@
                     
                     <!-- Кнопка выбора годов -->
                     <div class="p-3" style="width: 20%;">
-                        <form method="GET" action="{{ url_for('app_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                        <form method="GET" action="{{ url_for('station_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
                             <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
                             {% for key, value in request.args.items() %}
                                 {% if key != "per_page" and key != "start_year" and key != "end_year" %}
@@ -233,7 +233,7 @@
 
                     <!-- Форма выбора количества электростанций на листе -->
                     <div class="p-3" style="width: 5%;">
-                        <form method="GET" action="{{ url_for('app_bp.station_list') }}">
+                        <form method="GET" action="{{ url_for('station_bp.station_list') }}">
                             {% for key, value in request.args.items() %}
                                 {% if key != "per_page" %}  <!-- Исключаем дублирование `per_page` -->
                                     <input type="hidden" name="{{ key }}" value="{{ value }}">
@@ -398,7 +398,7 @@
                                             {{ station.regional_district.name }}
                                         </td>
                                         <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
-                                            <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                            <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
                                                 {{ station.name }}
                                             </a>
                                         </td>
@@ -415,7 +415,7 @@
                                             {% endif %}
                                             <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
                                             <td class="rowspan-td" rowspan="3">
-                                                <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                                                     {{ machine.machine_name }}
                                                 </a></td>
                                             <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation }}</td>
@@ -860,7 +860,7 @@
         function updateFilters() {
             let form = document.createElement("form");
             form.method = "GET";
-            form.action = "{{ url_for('app_bp.station_list') }}";
+            form.action = "{{ url_for('station_bp.station_list') }}";
 
             // Список параметров, которые НЕ нужно добавлять
             let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];
@@ -921,7 +921,7 @@
 <script>
     document.getElementById("exportExcel").addEventListener("click", function(event) {
         event.preventDefault();
-        let url = new URL("{{ url_for('app_bp.export_station_list') }}", window.location.origin);
+        let url = new URL("{{ url_for('station_bp.export_station_list') }}", window.location.origin);
         let params = new URLSearchParams(window.location.search);
         window.location.href = url + "?" + params.toString();
     });

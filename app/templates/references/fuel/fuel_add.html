@@ -8,7 +8,7 @@
       <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип топлива</h2>
 
       <!-- Форма ввода данных -->
-      <form action="{{ url_for('app_bp.add_fuel_routes') }}" method="POST">
+      <form action="{{ url_for('reference_bp.add_fuel_routes') }}" method="POST">
         {{ form.hidden_tag() }}
         
         <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
@@ -47,7 +47,7 @@
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Добавить</button>
 
-            <a href="{{ url_for('app_bp.fuel_list', 
+            <a href="{{ url_for('reference_bp.fuel_list', 
                         sort_by=request.args.get('sort_by', 'id'),
                         sort_dir=request.args.get('sort_dir', 'asc'),
                         fuel_filter=request.args.get('fuel_filter', ''),

@@ -11,10 +11,10 @@
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_system_types_by_tes_types_yearly_p_ust.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                        {{ energy_system_types_by_tes_types_yearly_p_ust.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
-                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                 </td>
             </tr>
 
@@ -23,10 +23,10 @@
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_system_types_by_tes_types_yearly_p_ogr.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                        {{ energy_system_types_by_tes_types_yearly_p_ogr.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
-                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                 </td>
             </tr>
 
@@ -35,10 +35,10 @@
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_system_types_by_tes_types_yearly_p_rasp.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') }}
+                        {{ energy_system_types_by_tes_types_yearly_p_rasp.get(current_es_type_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
-                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                 </td>
             </tr>
 

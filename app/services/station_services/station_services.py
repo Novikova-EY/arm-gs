@@ -6,7 +6,7 @@ from collections import defaultdict
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from app.models import (
-    RegionalDistrict, Station, StationType, Machine, 
+    RegionalDistrict, Station, StationType, Machine, FuelType,
     MachinePower, MachineTesType, Machine, StationPower
 )
 from app.services.station_services.help_service import (
@@ -22,15 +22,17 @@ from app.services.station_services.help_service import (
         get_regional_districts,
         get_federal_districts,
         get_year_features,
-        maybe_round,
+        maybe_round
     )
 from app.services.station_services.filters_service import (
         get_filtered_station_ids,
+        filter_machines,
         extract_filters_from_args,
         extract_filters_from_form,
     )
 from app.services.station_services.groupped_service import (
         group_stations_hierarchy,
+        group_machines_by_group_and_fuel,
     )
 from app.services.aggregation_services.aggregation_services_energy_units import (
         aggregate_power_by_energy_unit,
@@ -87,6 +89,7 @@ from app.services.aggregation_services.aggregation_services_total_energy_system_
         aggregate_total_energy_system_types_by_tes_machine_types_with_fuel,
     )
 
+
 def get_stations_list(
     page=None,
     per_page=None,
@@ -98,6 +101,7 @@ def get_stations_list(
     station_type_filter=None,
     tes_type_filter=None,
     tes_machine_type_filter=None,
+    fuel_type_filter=None,
     energy_system_type_filter=None,
     union_energy_system_filter=None,
     regional_energy_system_filter=None,
@@ -189,6 +193,80 @@ def get_stations_list(
         "total_pages": total_pages,
         "grouped_stations": grouped_data["grouped_stations"],
         "stations": grouped_data["stations"]
+    }
+
+
+def get_station_list_data(
+    filters,
+    per_page=None,
+    page=1,
+    rounding_digits=None,
+    start_year=None,
+    end_year=None,
+    show_p_ogr=False,
+    show_p_rasp=False,
+):
+    filters = filters.copy()
+    page = filters.pop("page", 1)
+    filters.pop("start_year", None)
+    filters.pop("end_year", None)
+
+    # --- Получение всех станций (до фильтрации агрегатов) ---
+    all_data = get_stations_list(
+        page=1,
+        per_page=None,
+        rounding_digits=rounding_digits,
+        **filters
+    )
+
+    # --- Фильтрация агрегатов ---
+    filtered_stations = filter_machines(
+        all_data["stations"],
+        filters.get("tes_type_filter", []),
+        filters.get("tes_machine_type_filter", []),
+        filters.get("fuel_type_filter", []),
+        filters.get("date_exploitation_filter", []),
+        filters.get("date_decompressing_expected_filter", []),
+        filters.get("date_modernization_expected_filter", []),
+    )
+
+    # --- Пагинация ---
+    total_count = len(filtered_stations)
+    if per_page is None:
+        paginated_stations = filtered_stations
+        total_pages = 1
+    else:
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+        paginated_stations = filtered_stations[(page - 1) * per_page : page * per_page]
+
+    # --- Подгруппа агрегатов ---
+    for station in paginated_stations:
+        station.machines = group_machines_by_group_and_fuel([station])[0].machines
+
+    all_machines = []
+    for station in paginated_stations:
+        all_machines.extend(station.machines)
+
+    recalculate_station_powers_by_filtered_machines(paginated_stations, start_year, end_year, rounding_digits)
+
+    for machine in all_machines:
+        assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
+
+    # --- Группировка по иерархии ---
+    grouped_result = group_stations_hierarchy(paginated_stations, rounding_digits, include_names=True)
+
+    stations_by_energy_unit = defaultdict(list)
+    for station in paginated_stations:
+        stations_by_energy_unit[station.id_energy_unit].append(station)
+
+    return {
+        "stations": paginated_stations,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "page": page,
+        "per_page": per_page,
+        "stations_by_energy_unit": stations_by_energy_unit,
+        **grouped_result,
     }
 
 
@@ -307,6 +385,12 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
         machine.powers_by_year[mp.year_number]["p_ogr"] = maybe_round(mp.p_ogr, rounding_digits)
         machine.powers_by_year[mp.year_number]["p_rasp"] = maybe_round(mp.p_rasp, rounding_digits)
 
+        machine.fuel_type_by_year = {
+            mf.year_number: mf.fuel.fuel_type.name
+            for mf in machine.machine_fuels
+            if mf.fuel and mf.fuel.fuel_type
+        }
+
         
 def load_machines_power_by_year(machines, start_year=None, end_year=None, rounding_digits=1):
     machine_ids = [machine.id for machine in machines]
@@ -321,7 +405,6 @@ def load_machines_power_by_year(machines, start_year=None, end_year=None, roundi
 
     powers_by_machine = defaultdict(list)
     for mp in machine_powers:
-        # СРАЗУ округляем загруженные мощности
         mp.p_ust = maybe_round(mp.p_ust, rounding_digits)
         mp.p_ogr = maybe_round(mp.p_ogr, rounding_digits)
         mp.p_rasp = maybe_round(mp.p_rasp, rounding_digits)
@@ -617,8 +700,6 @@ def get_station_list_template_context(form, pagination, rounding_digits, filters
         "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ust"],
         "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_ogr"],
         "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": total_energy_system_types_by_tes_machine_types_with_fuel_power["aggregated"]["p_rasp"],
-
-        
     }
 
 

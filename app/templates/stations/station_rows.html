@@ -1,19 +1,19 @@
 
 <tr>
-    <td class="text-center station-rowspan-td" colspan="3" style="vertical-align: middle; font-weight: bold;">
+    <td class="text-center station-rowspan-td" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.regional_district.name }}
     </td>
-    <td class="text-center" colspan="2" style="vertical-align: middle; font-weight: bold;">
-        <a href="{{ url_for('app_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+    <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
             {{ station.name }}
         </a>
     </td>
-    <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+    <td class="text-center" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.gen_companies if station.gen_companies else '—' }}
     </td>
     <td class="text-center" colspan="{{ 3 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
     </td>
-    <td class="text-center" colspan="3" style="vertical-align: middle; font-weight: bold;">
+    <td class="text-center" style="vertical-align: middle; font-weight: bold;">
         {{ station.note if station.note }}
     </td>
 </tr>
@@ -26,7 +26,7 @@
         {% endif %}
         <td class="rowspan-td" rowspan="3">{{ machine.machine_number }}</td>
         <td class="rowspan-td" rowspan="3">
-            <a href="{{ url_for('app_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                 {{ machine.machine_name }}
             </a></td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
@@ -44,6 +44,10 @@
             {% endif %}
         </td>
 
+        <td class="rowspan-td" rowspan="3" style="font-weight: bold;">
+            {{ machine.primary_fuel_type or "—" }}
+        </td>
+
         {% if machine.fuel_rowspan > 0 %}
             <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}">{{ machine.fuel_so if machine.fuel_so else '—' }}</td>
         {% endif %}
@@ -55,10 +59,11 @@
                 {% if p_ust_value is none or p_ust_value == 0 %}
                     &mdash;
                 {% else %}
-                    {{ p_ust_value }}
+                    {{ p_ust_value | format_decimal }}
                 {% endif %}
             </td>
         {% endfor %}
+
 
         {% for year in range(start_year, end_year + 1) %}
             <td class="fuel-column rowspan-td" rowspan="3">
@@ -95,7 +100,7 @@
                     {% if p_ogr_value == None %}
 
                     {% else %}
-                        {{ p_ogr_value }}
+                        {{ p_ogr_value | format_decimal }}
                     {% endif %}
                 {% endif %}
             </td>
@@ -114,7 +119,7 @@
                     {% if p_rasp_value == None %}
 
                     {% else %}
-                        {{ p_rasp_value }}
+                        {{ p_rasp_value | format_decimal }}
                     {% endif %}
                 {% endif %}
             </td>

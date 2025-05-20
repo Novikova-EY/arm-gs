@@ -15,7 +15,6 @@ from app.services.station_services.station_services import (
 def extract_filters_from_args(args):
     return {
         "page": args.get("page", 1, type=int),
-        "per_page": None if args.get("per_page") == "all" else args.get("per_page", 10, type=int),
         "start_year": args.get("start_year", Config.START_YEAR, type=int),
         "end_year": args.get("end_year", Config.END_YEAR, type=int),
         "condition_type_filter": args.get("condition_type_filter", ""),
@@ -27,9 +26,9 @@ def extract_filters_from_args(args):
         "gen_company_filter": args.get("gen_company_filter", "").strip(),
         "station_name_filter": args.get("station_name_filter", "").strip(),
         "station_type_filter": args.getlist("station_type_filter", type=int),
+        "fuel_type_filter": args.getlist("fuel_type_filter", type=int),
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
         "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
-        "station_fuel_type_filter": args.get("station_fuel_type_filter", ""),
         "date_exploitation_filter": args.getlist("date_exploitation_filter", type=int),
         "date_decompressing_expected_filter": args.getlist("date_decompressing_expected_filter", type=int),
         "date_modernization_expected_filter": args.getlist("date_modernization_expected_filter", type=int),
@@ -56,11 +55,6 @@ def get_filtered_station_ids(
     regional_district_filter=None,
     date_exploitation_filter=None,
 ):
-    """
-    Возвращает subquery с ОДНИМ столбцом: distinct(Station.id).
-    Учитывает все фильтры, join на machines, если нужно, 
-    но при этом не загружает лишних полей.
-    """
 
     # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
     query = db.session.query(Station.id).join(Station.machines)
@@ -78,8 +72,7 @@ def get_filtered_station_ids(
                 MachineTesType.id_tes_type.in_(tes_type_filter)
             )
         )
-    if tes_machine_type_filter:
-        query = query.filter(Machine.id_tes_machine_type.in_(tes_machine_type_filter))
+
     # Фильтрация по названию генерирующей компании
     if gen_company_filter:
         gen_companies = GenCompany.query.filter(GenCompany.name.ilike(f"%{gen_company_filter}%")).all()
@@ -166,7 +159,65 @@ def get_filtered_station_ids(
     return query.subquery()
 
 
-def get_filtered_stations(
+def filter_machines(
+    stations,
+    tes_type_filter,
+    tes_machine_type_filter,
+    fuel_type_filter,
+    date_exploitation_filter,
+    date_decompressing_expected_filter,
+    date_modernization_expected_filter,
+):
+    if not any([
+        tes_type_filter, tes_machine_type_filter,
+        date_exploitation_filter, date_decompressing_expected_filter,
+        date_modernization_expected_filter, fuel_type_filter
+    ]):
+        return stations
+
+    current_year = get_current_year()
+
+    # Получаем соответствие machine.id → tes_type_id
+    machine_tes_types = (
+        db.session.query(MachineTesType)
+        .filter(MachineTesType.year_number == current_year)
+        .all()
+    )
+    machine_tes_type_map = {
+        mtt.id_machine: mtt.id_tes_type
+        for mtt in machine_tes_types
+    }
+
+    # Приводим фильтры по годам к множествам int для удобства
+    exploitation_years = set(map(int, date_exploitation_filter)) if date_exploitation_filter else set()
+    decompressing_years = set(map(int, date_decompressing_expected_filter)) if date_decompressing_expected_filter else set()
+    modernization_years = set(map(int, date_modernization_expected_filter)) if date_modernization_expected_filter else set()
+
+    filtered_stations = []
+    for station in stations:
+        station.machines = [
+            m for m in station.machines
+            if (not tes_type_filter or machine_tes_type_map.get(m.id) in tes_type_filter)
+            and (not tes_machine_type_filter or m.id_tes_machine_type in tes_machine_type_filter)
+            and (not exploitation_years or (m.date_exploitation in exploitation_years))
+            and (not decompressing_years or (m.date_decompressing_expected in decompressing_years))
+            and (not modernization_years or (m.date_modernization_expected in modernization_years))
+            and (
+                not fuel_type_filter
+                or any(
+                    mf.fuel and mf.fuel.fuel_type and mf.fuel.fuel_type.id in fuel_type_filter
+                    for mf in m.machine_fuels
+                )
+            )
+        ] 
+
+        if station.machines:
+            filtered_stations.append(station)
+        
+    return filtered_stations
+
+
+def get_filtered_stations_old(
     condition_type_filter=None,
     gen_company_filter=None,
     station_name_filter=None,
@@ -275,51 +326,4 @@ def get_filtered_stations(
         query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
 
     return query
-
-
-def filter_machines(
-    stations,
-    tes_type_filter,
-    tes_machine_type_filter,
-    date_exploitation_filter,
-    date_decompressing_expected_filter,
-    date_modernization_expected_filter,
-):
-    if not tes_type_filter and not tes_machine_type_filter and not date_exploitation_filter and not date_decompressing_expected_filter and not date_modernization_expected_filter:
-        return stations
-
-    current_year = get_current_year()
-
-    # Получаем соответствие machine.id → tes_type_id
-    machine_tes_types = (
-        db.session.query(MachineTesType)
-        .filter(MachineTesType.year_number == current_year)
-        .all()
-    )
-    machine_tes_type_map = {
-        mtt.id_machine: mtt.id_tes_type
-        for mtt in machine_tes_types
-    }
-
-    # Приводим фильтры по годам к множествам int для удобства
-    exploitation_years = set(map(int, date_exploitation_filter)) if date_exploitation_filter else set()
-    decompressing_years = set(map(int, date_decompressing_expected_filter)) if date_decompressing_expected_filter else set()
-    modernization_years = set(map(int, date_modernization_expected_filter)) if date_modernization_expected_filter else set()
-
-    filtered_stations = []
-    for station in stations:
-        station.machines = [
-            m for m in station.machines
-            if (not tes_type_filter or machine_tes_type_map.get(m.id) in tes_type_filter)
-            and (not tes_machine_type_filter or m.id_tes_machine_type in tes_machine_type_filter)
-            and (not exploitation_years or (m.date_exploitation in exploitation_years))
-            and (not decompressing_years or (m.date_decompressing_expected in decompressing_years))
-            and (not modernization_years or (m.date_modernization_expected in modernization_years))
-        ]    
-
-        if station.machines:
-            filtered_stations.append(station)
-        
-    return filtered_stations
-
 

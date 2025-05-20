@@ -318,13 +318,13 @@ def group_stations_hierarchy(stations):
         for union_energy_system in energy_system_type.values():
             for regional_energy_system in union_energy_system.values():
                 for regional_district in regional_energy_system.values():
-                    all_stations.extend(regional_district)  # Добавляем станции
+                    all_stations.extend(regional_district)
     
 
 
     return {
         "grouped_stations": grouped_data,
-        "stations": all_stations  # Теперь это список!
+        "stations": all_stations
     }
 
 

@@ -12,10 +12,10 @@
                     <td class="fw-bold">Руст</td>
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
-                            {{ energy_units_by_station_types_yearly_p_ust.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
+                            {{ energy_units_by_station_types_yearly_p_ust.get(eu_id, {}).get(station_type_id, {}).get(y, '—') | format_decimal or '—' }}
                         </td>
                     {% endfor %}
-                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                     </td>
                 </tr>
 
@@ -24,10 +24,10 @@
                     <td class="fw-bold">Рогр</td>
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
-                            {{ energy_units_by_station_types_yearly_p_ogr.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
+                            {{ energy_units_by_station_types_yearly_p_ogr.get(eu_id, {}).get(station_type_id, {}).get(y, '—') | format_decimal or '—' }}
                         </td>
                     {% endfor %}
-                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                     </td>
                 </tr>
 
@@ -36,10 +36,10 @@
                     <td class="fw-bold">Ррасп</td>
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
-                            {{ energy_units_by_station_types_yearly_p_rasp.get(eu_id, {}).get(station_type_id, {}).get(y, '—') }}
+                            {{ energy_units_by_station_types_yearly_p_rasp.get(eu_id, {}).get(station_type_id, {}).get(y, '—') | format_decimal or '—' }}
                         </td>
                     {% endfor %}
-                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }} style="vertical-align: middle; font-weight: bold;">
+                    <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                     </td>
                 </tr>
             {% endif %}
