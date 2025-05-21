@@ -60,10 +60,11 @@ def station_list():
     show_p_rasp = request.args.get("show_p_rasp") == "1"
 
     try:
-        rounding_digits = int(request.args.get('rounding_digits', '1'))
-        if rounding_digits == 0:
-            rounding_digits = None
+        rounding_digits = int(request.args.get('rounding_digits'))
     except (ValueError, TypeError):
+        rounding_digits = 1
+
+    if rounding_digits is None or rounding_digits < 0:
         rounding_digits = 1
 
     data = get_station_list_data(
@@ -188,7 +189,7 @@ def station_list_old():
         assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
 
     # --- Группируем станции ---
-    grouped_result = group_stations_hierarchy(pagination["stations"], rounding_digits)
+    grouped_result = group_stations_hierarchy(paginated_stations, include_names=True)
 
     pagination.update({
         "grouped_stations": grouped_result["grouped_stations"],

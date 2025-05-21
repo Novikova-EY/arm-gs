@@ -1,10 +1,6 @@
 from collections import defaultdict
 from decimal import Decimal
 
-from app.services.station_services.help_service import (
-        round_nested_power_dict,
-    )
-
 # Агрегация по типам энергосистемам - всего
 def aggregate_power_by_energy_system_type(pagination, rounding_digits, start_year, end_year):
     aggregated_data = pagination["aggregated_by_energy_system_type"]
@@ -34,9 +30,9 @@ def aggregate_power_by_energy_system_type(pagination, rounding_digits, start_yea
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -81,9 +77,9 @@ def aggregate_energy_system_types_by_station_types(pagination, rounding_digits, 
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -131,9 +127,9 @@ def aggregate_energy_system_types_by_station_types_with_fuel(pagination, roundin
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -166,9 +162,9 @@ def aggregate_energy_system_types_by_tes_types(pagination, rounding_digits, star
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -221,9 +217,9 @@ def aggregate_energy_system_types_by_tes_types_with_fuel(pagination, rounding_di
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -277,9 +273,9 @@ def aggregate_energy_system_types_by_tes_machine_types(pagination, rounding_digi
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 
@@ -341,9 +337,9 @@ def aggregate_energy_system_types_by_tes_machine_types_with_fuel(pagination, rou
 
     return {
         'aggregated': {
-            'p_ust': round_nested_power_dict(p_ust, rounding_digits),
-            'p_ogr': round_nested_power_dict(p_ogr, rounding_digits),
-            'p_rasp': round_nested_power_dict(p_rasp, rounding_digits),
+            'p_ust': p_ust,
+            'p_ogr': p_ogr,
+            'p_rasp': p_rasp,
         }
     }
 

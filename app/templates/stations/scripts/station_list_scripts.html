@@ -254,18 +254,17 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-
-
+<!-- Скрипт для переключения между режимами "все станции" и "постранично" -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const switchEl = document.getElementById('per_page_switch');
+document.addEventListener("DOMContentLoaded", function () {
+    const select = document.getElementById("per_page_select");
+    const hiddenInput = document.getElementById("per_page_hidden");
+    const form = document.getElementById("perPageForm");
 
-    if (switchEl) {
-        switchEl.addEventListener('change', function () {
-            const url = new URL(window.location.href);
-            url.searchParams.set('per_page', switchEl.checked ? 'all' : '10');
-            url.searchParams.set('page', 1);  // сбросить на первую страницу
-            window.location.href = url.toString();
+    if (select && hiddenInput && form) {
+        select.addEventListener("change", function () {
+            hiddenInput.value = select.value;
+            form.submit();
         });
     }
 });

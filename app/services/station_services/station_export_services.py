@@ -26,7 +26,6 @@ from app.services.station_services.help_service import (
         get_regional_districts,
         get_federal_districts,
         get_year_features,
-        maybe_round,
     )
 from app.services.aggregation_services.aggregation_services_energy_units import (
         aggregate_power_by_energy_unit,

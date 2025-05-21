@@ -22,7 +22,6 @@ from app.services.station_services.help_service import (
         get_regional_districts,
         get_federal_districts,
         get_year_features,
-        maybe_round
     )
 from app.services.station_services.filters_service import (
         get_filtered_station_ids,
@@ -253,7 +252,7 @@ def get_station_list_data(
         assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
 
     # --- Группировка по иерархии ---
-    grouped_result = group_stations_hierarchy(paginated_stations, rounding_digits, include_names=True)
+    grouped_result = group_stations_hierarchy(paginated_stations, include_names=True)
 
     stations_by_energy_unit = defaultdict(list)
     for station in paginated_stations:
@@ -344,9 +343,9 @@ def load_station_power_by_year(station, start_year=None, end_year=None, rounding
                     p_rasp += Decimal(mp.p_rasp or 0)
 
         result[year] = {
-            "p_ust": maybe_round(p_ust, rounding_digits) if p_ust else None,
-            "p_ogr": maybe_round(p_ogr, rounding_digits) if p_ogr else None,
-            "p_rasp": maybe_round(p_rasp, rounding_digits) if p_rasp else None
+            "p_ust": p_ust if p_ust else None,
+            "p_ogr": p_ogr if p_ogr else None,
+            "p_rasp": p_rasp if p_rasp else None
         }
 
     return result
@@ -370,7 +369,7 @@ def recalculate_station_powers_by_filtered_machines(stations, start_year, end_ye
         # Округляем
         for year_data in powers_by_year.values():
             for k in year_data:
-                year_data[k] = maybe_round(year_data[k], rounding_digits)
+                year_data[k] = year_data[k]
 
         station.powers_by_year = powers_by_year
 
@@ -381,9 +380,9 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
         if not (start_year <= mp.year_number <= end_year):
             continue
         machine.powers_by_year.setdefault(mp.year_number, {})
-        machine.powers_by_year[mp.year_number]["p_ust"] = maybe_round(mp.p_ust, rounding_digits)
-        machine.powers_by_year[mp.year_number]["p_ogr"] = maybe_round(mp.p_ogr, rounding_digits)
-        machine.powers_by_year[mp.year_number]["p_rasp"] = maybe_round(mp.p_rasp, rounding_digits)
+        machine.powers_by_year[mp.year_number]["p_ust"] = mp.p_ust
+        machine.powers_by_year[mp.year_number]["p_ogr"] = mp.p_ogr
+        machine.powers_by_year[mp.year_number]["p_rasp"] = mp.p_rasp
 
         machine.fuel_type_by_year = {
             mf.year_number: mf.fuel.fuel_type.name
@@ -405,9 +404,9 @@ def load_machines_power_by_year(machines, start_year=None, end_year=None, roundi
 
     powers_by_machine = defaultdict(list)
     for mp in machine_powers:
-        mp.p_ust = maybe_round(mp.p_ust, rounding_digits)
-        mp.p_ogr = maybe_round(mp.p_ogr, rounding_digits)
-        mp.p_rasp = maybe_round(mp.p_rasp, rounding_digits)
+        mp.p_ust = mp.p_ust
+        mp.p_ogr = mp.p_ogr
+        mp.p_rasp = mp.p_rasp
         powers_by_machine[mp.id_machine].append(mp)
 
     for machine in machines:

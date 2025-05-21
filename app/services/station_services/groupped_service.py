@@ -1,13 +1,7 @@
 from decimal import Decimal
 from collections import defaultdict
 
-from app.services.station_services.help_service import (
-        maybe_round, 
-        round_nested_power_dict,
-    )
-
-
-def group_stations_hierarchy(stations, rounding_digits, include_names=False):
+def group_stations_hierarchy(stations, include_names=False):
     grouped_data = defaultdict(
         lambda: defaultdict(
             lambda: defaultdict(
@@ -69,56 +63,38 @@ def group_stations_hierarchy(stations, rounding_digits, include_names=False):
 
             if hasattr(station, "powers_by_year") and station.powers_by_year:
                 for year, values in station.powers_by_year.items():
-                    if values is None:
+                    if not values:
                         continue
 
-                    p_ust_value = values.get("p_ust")
-                    p_ogr_value = values.get("p_ogr")
-                    p_rasp_value = values.get("p_rasp")
+                    for key, target_dicts in [
+                        ("p_ust", [p_ust_by_energy_unit, p_ust_by_regional_district, p_ust_by_regional_energy_system, p_ust_by_union_energy_system, p_ust_by_energy_system_type, p_ust_total]),
+                        ("p_ogr", [p_ogr_by_energy_unit, p_ogr_by_regional_district, p_ogr_by_regional_energy_system, p_ogr_by_union_energy_system, p_ogr_by_energy_system_type, p_ogr_total]),
+                        ("p_rasp", [p_rasp_by_energy_unit, p_rasp_by_regional_district, p_rasp_by_regional_energy_system, p_rasp_by_union_energy_system, p_rasp_by_energy_system_type, p_rasp_total])
+                    ]:
+                        raw_val = values.get(key)
+                        if raw_val is None:
+                            continue
+                        try:
+                            val = raw_val if isinstance(raw_val, Decimal) else Decimal(str(raw_val).replace(",", "."))
+                        except Exception:
+                            continue
 
-                    if p_ust_value is not None:
-                        value = p_ust_value if isinstance(p_ust_value, Decimal) else maybe_round(p_ust_value, rounding_digits)
-                        if value is not None:
-                            p_ust_by_energy_unit[energy_unit_id][year] += value
-                            p_ust_by_regional_district[regional_district_id][year] += value
-                            p_ust_by_regional_energy_system[res_id][year] += value
-                            p_ust_by_union_energy_system[ues_id][year] += value
-                            p_ust_by_energy_system_type[est_id][year] += value
-                            p_ust_total[year] += value
-
-                    if p_ogr_value is not None:
-                        value = p_ogr_value if isinstance(p_ogr_value, Decimal) else maybe_round(p_ogr_value, rounding_digits)
-                        if value is not None:
-                            p_ogr_by_energy_unit[energy_unit_id][year] += value
-                            p_ogr_by_regional_district[regional_district_id][year] += value
-                            p_ogr_by_regional_energy_system[res_id][year] += value
-                            p_ogr_by_union_energy_system[ues_id][year] += value
-                            p_ogr_by_energy_system_type[est_id][year] += value
-                            p_ogr_total[year] += value
-
-                    if p_rasp_value is not None:
-                        value = p_rasp_value if isinstance(p_rasp_value, Decimal) else maybe_round(p_rasp_value, rounding_digits)
-                        if value is not None:
-                            p_rasp_by_energy_unit[energy_unit_id][year] += value
-                            p_rasp_by_regional_district[regional_district_id][year] += value
-                            p_rasp_by_regional_energy_system[res_id][year] += value
-                            p_rasp_by_union_energy_system[ues_id][year] += value
-                            p_rasp_by_energy_system_type[est_id][year] += value
-                            p_rasp_total[year] += value
+                        target_dicts[0][energy_unit_id][year] += val
+                        target_dicts[1][regional_district_id][year] += val
+                        target_dicts[2][res_id][year] += val
+                        target_dicts[3][ues_id][year] += val
+                        target_dicts[4][est_id][year] += val
+                        target_dicts[5][year] += val
 
             if include_names:
                 if est_id not in energy_system_type_name:
                     energy_system_type_name[est_id] = ues.energy_system_type.name if ues.energy_system_type else f"id={est_id}"
-
                 if ues_id not in union_energy_system_name:
                     union_energy_system_name[ues_id] = ues.name or f"id={ues_id}"
-
                 if res_id not in regional_energy_system_name:
                     regional_energy_system_name[res_id] = res.name or f"id={res_id}"
-
                 if regional_district_id not in regional_district_name:
                     regional_district_name[regional_district_id] = rd.name or f"id={regional_district_id}"
-
                 if energy_unit_id not in energy_unit_name:
                     energy_unit_name[energy_unit_id] = station.energy_unit.name if station.energy_unit else "не указано"
 
@@ -128,9 +104,7 @@ def group_stations_hierarchy(stations, rounding_digits, include_names=False):
                 for regional_district in regional_energy_system.values():
                     for energy_unit in regional_district.values():
                         energy_unit.sort(key=lambda station: (
-                            (
-                                next((m.station_type.id for m in station.machines if m.station_type), 0)
-                            ),
+                            next((m.station_type.id for m in station.machines if m.station_type), 0),
                             station.name
                         ))
 
@@ -145,36 +119,12 @@ def group_stations_hierarchy(stations, rounding_digits, include_names=False):
     result = {
         "grouped_stations": grouped_data,
         "stations": all_stations,
-        "aggregated_by_energy_unit": {
-            "p_ust": round_nested_power_dict(p_ust_by_energy_unit, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_by_energy_unit, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_by_energy_unit, rounding_digits),
-        },
-        "aggregated_by_regional_district": {
-            "p_ust": round_nested_power_dict(p_ust_by_regional_district, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_by_regional_district, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_by_regional_district, rounding_digits),
-        },
-        "aggregated_by_regional_energy_system": {
-            "p_ust": round_nested_power_dict(p_ust_by_regional_energy_system, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_by_regional_energy_system, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_by_regional_energy_system, rounding_digits),
-        },
-        "aggregated_by_union_energy_system": {
-            "p_ust": round_nested_power_dict(p_ust_by_union_energy_system, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_by_union_energy_system, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_by_union_energy_system, rounding_digits),
-        },
-        "aggregated_by_energy_system_type": {
-            "p_ust": round_nested_power_dict(p_ust_by_energy_system_type, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_by_energy_system_type, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_by_energy_system_type, rounding_digits),
-        },
-        "aggregated_total": {
-            "p_ust": round_nested_power_dict(p_ust_total, rounding_digits),
-            "p_ogr": round_nested_power_dict(p_ogr_total, rounding_digits),
-            "p_rasp": round_nested_power_dict(p_rasp_total, rounding_digits),
-        },
+        "aggregated_by_energy_unit": p_ust_by_energy_unit,
+        "aggregated_by_regional_district": p_ust_by_regional_district,
+        "aggregated_by_regional_energy_system": p_ust_by_regional_energy_system,
+        "aggregated_by_union_energy_system": p_ust_by_union_energy_system,
+        "aggregated_by_energy_system_type": p_ust_by_energy_system_type,
+        "aggregated_total": p_ust_total,
     }
 
     if include_names:
