@@ -13,37 +13,60 @@
 
 <!-- Скрипт подключения при раскрытии блока с фильтрами-->
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const collapse = document.getElementById("filtersCollapse");
-        if (!collapse) return;
+document.addEventListener("DOMContentLoaded", function () {
+    const collapseEl = document.getElementById("filtersCollapse");
+    const buttonEl = document.getElementById("filtersToggleBtn");
 
-        function loadFiltersScript() {
-            if (window.stationFiltersInitialized) return;
+    if (!collapseEl || !buttonEl) return;
 
-            const script = document.createElement("script");
-            script.src = "{{ url_for('static', filename='js/stations/station_filters_first_row.js') }}";
-            script.onload = () => {
-                if (typeof initializeStationFilters === "function") {
-                    initializeStationFilters();
-                }
-            };
-            document.head.appendChild(script);
-        }
+    const hasActiveFilters = JSON.parse(`{{ has_active_filters | tojson }}`);
 
-        const isInitiallyOpen = collapse.classList.contains("show");
+    function highlightButton() {
+        buttonEl.classList.remove("btn-outline-secondary");
+        buttonEl.classList.add("btn-primary", "text-white");
+    }
 
-        // только инициализируем collapse, но не вызываем вручную .show() — он уже "открыт"
-        if (isInitiallyOpen) {
-            bootstrap.Collapse.getOrCreateInstance(collapse);
-            loadFiltersScript();  // подключаем фильтры сразу
-        }
+    function resetButton() {
+        buttonEl.classList.remove("btn-primary", "text-white");
+        buttonEl.classList.add("btn-outline-secondary");
+    }
 
-        // при ручном открытии
-        collapse.addEventListener("show.bs.collapse", function () {
-            loadFiltersScript();
-        });
+    function loadFiltersScript() {
+        if (window.stationFiltersInitialized) return;
+        const script = document.createElement("script");
+        script.src = "{{ url_for('static', filename='js/stations/station_filters_first_row.js') }}";
+        script.onload = () => {
+            if (typeof initializeStationFilters === "function") {
+                initializeStationFilters();
+            }
+        };
+        document.head.appendChild(script);
+    }
+
+    const collapse = new bootstrap.Collapse(collapseEl, {
+        toggle: false  // <--- не раскрывать автоматически
     });
+
+    // 🔹 Если есть активные фильтры — открываем и подсвечиваем
+    if (hasActiveFilters) {
+        collapse.show();
+        highlightButton();
+        loadFiltersScript();
+    }
+
+    // 🔹 При ручном открытии — подсветка и подгрузка
+    collapseEl.addEventListener("show.bs.collapse", () => {
+        highlightButton();
+        loadFiltersScript();
+    });
+
+    // 🔹 При закрытии — убираем подсветку
+    collapseEl.addEventListener("hide.bs.collapse", () => {
+        resetButton();
+    });
+});
 </script>
+
 
 <!-- Скрипт при раскрытии блока импорта/экспорта -->
 <script>

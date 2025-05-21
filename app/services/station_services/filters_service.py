@@ -327,3 +327,14 @@ def get_filtered_stations_old(
 
     return query
 
+
+def has_any_filters(args):
+    return any([
+        args.getlist('energy_system_type_filter'),
+        args.getlist('union_energy_system_filter'),
+        args.getlist('regional_energy_system_filter'),
+        args.getlist('federal_district_filter'),
+        args.getlist('regional_district_filter'),
+        args.get('station_name_filter'),
+        args.get('gen_company_filter'),
+    ])

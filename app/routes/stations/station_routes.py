@@ -23,6 +23,7 @@ from app.services.station_services.station_services import (
 )
 from app.services.station_services.filters_service import (
     filter_machines,
+    has_any_filters,
 )
 from app.services.station_services.groupped_service import (
     group_stations_hierarchy, 
@@ -98,7 +99,9 @@ def station_list():
         "per_page": per_page,
     })
 
-    return render_template("stations/stations.html", **context)
+    has_active_filters = has_any_filters(request.args)
+
+    return render_template("stations/stations.html", has_active_filters=has_active_filters, **context)
 
 
 def station_list_old():

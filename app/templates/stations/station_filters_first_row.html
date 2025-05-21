@@ -1,7 +1,7 @@
 <!-- Первая строка фильтров -->
 <div class="col-12 mb-2">
 
-    <div class="collapse mt-2 {% if request.args|length > 1 %}show{% endif %}" id="filtersCollapse">
+    <div class="collapse mt-2" id="filtersCollapse">
 
         <form method="GET" action="{{ url_for('station_bp.station_list') }}" class="d-flex flex-nowrap align-items-center w-100 gap-1">
             <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
