@@ -175,7 +175,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         for fld in date_fields:
             raw_form_value = getattr(main_form, fld).data
-            print(f"[DEBUG] {fld}: raw form value = {raw_form_value!r}")
             if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
                 # Эти поля — числа (годы)
                 new_val = int(raw_form_value) if raw_form_value else None
@@ -263,10 +262,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year)
         recalculate_station_power(station, start_year, end_year)
         recalculate_machine_years_by_p_ust(machine, changes, year_features)
-
-        print("🔥 Тип значения date_decompressing_expected перед сохранением:",
-            type(machine.date_decompressing_expected),
-            machine.date_decompressing_expected)
 
         db.session.commit()
         if changes:
