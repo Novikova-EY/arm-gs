@@ -199,3 +199,18 @@ class StationFilterForm(FlaskForm):
         coerce=int,
         validators=[Optional(), NumberRange(min=5, max=200)]
     )
+
+
+class AddStationForm(FlaskForm):
+    # Основные поля
+    name = StringField(
+        'Наименование (основное)',
+        validators=[DataRequired(), Length(max=80)]
+    )
+
+    id_regional_district = SelectField(
+        'Субъект РФ',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )

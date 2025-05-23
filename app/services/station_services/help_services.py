@@ -1,6 +1,7 @@
 from app import db
 from sqlalchemy.orm import joinedload
-import logging
+import re
+from datetime import datetime
 from decimal import Decimal, InvalidOperation, localcontext, ROUND_HALF_UP
 from collections.abc import Mapping, Sequence
 from app.models import (
@@ -188,40 +189,98 @@ def get_year_features():
     """
     return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
 
+from jinja2 import Undefined
 
 def format_decimal_for_display(value, digits=None):
-    if value is None:
-        return ""
+    if value is None or isinstance(value, Undefined):
+        return "—"
 
     # Приводим к Decimal
-    if isinstance(value, str):
-        try:
+    try:
+        if isinstance(value, str):
             value = Decimal(value.replace(",", "."))
-        except Exception:
-            return value
-    elif isinstance(value, float):
-        value = Decimal(str(value))
-    elif not isinstance(value, Decimal):
-        value = Decimal(value)
+        elif isinstance(value, float):
+            value = Decimal(str(value))
+        elif not isinstance(value, Decimal):
+            value = Decimal(value)
+    except (InvalidOperation, ValueError, TypeError):
+        return ""
 
     # digits == -1 → округление до целого
     if digits == -1:
         value = value.to_integral_value(rounding=ROUND_HALF_UP)
         return str(value).replace('.', ',')
-    
+
     # digits is None → округляем до 1 знака по умолчанию
     if digits is None:
         digits = 1
 
-    # digits == 0 → не округлять вообще, но без экспоненты
+    # digits == 0 → без округления, без экспоненты
     if digits == 0:
-        # Преобразуем в строку с фиксированным представлением
         return format(value.normalize(), 'f').replace('.', ',')
 
-    # digits > 0 → округление с нужным количеством знаков
+    # digits > 0 → округление с нужной точностью
     with localcontext() as ctx:
         ctx.rounding = ROUND_HALF_UP
         quant = Decimal('1.' + '0' * digits)
         value = value.quantize(quant)
         return format(value, f'.{digits}f').replace('.', ',')
 
+
+def rounded_decimal(value, digits=15):
+    """
+    Безопасное округление значения с сохранением точности. 
+    Возвращает None, если value пустое или невалидное.
+    """
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value)).quantize(Decimal(f"1.{'0'*digits}"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError):
+        return None
+
+import re
+from datetime import datetime, date
+import pandas as pd
+
+def convert_to_date(value):
+    """
+    Универсально конвертирует значение в datetime.date:
+    - '2021' → date(2021, 1, 1)
+    - '01.01.2021' → date(2021, 1, 1)
+    - '2021-01-01' → date(2021, 1, 1)
+    - datetime, pd.Timestamp → date
+    - пусто или некорректно → None
+    """
+    if not value or pd.isna(value):
+        return None
+
+    if isinstance(value, date):
+        return value
+
+    if isinstance(value, datetime):
+        return value.date()
+
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime().date()
+
+    if isinstance(value, str):
+        value = value.strip()
+
+        # Только год
+        if re.fullmatch(r"\d{4}", value):
+            return date(int(value), 1, 1)
+
+        # dd.mm.yyyy
+        try:
+            return datetime.strptime(value, "%d.%m.%Y").date()
+        except ValueError:
+            pass
+
+        # yyyy-mm-dd
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    return None

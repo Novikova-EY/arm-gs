@@ -72,7 +72,8 @@ document.addEventListener("DOMContentLoaded", function () {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const collapse = document.getElementById("importExportCollapse");
-    if (!collapse) return;
+    const button = document.getElementById("importExportToggleBtn"); // Добавьте этот id к вашей кнопке
+    if (!collapse || !button) return;
 
     function loadImportExportScript() {
         if (window.importExportScriptLoaded) return;
@@ -82,13 +83,29 @@ document.addEventListener("DOMContentLoaded", function () {
         document.head.appendChild(script);
     }
 
+    function highlightButton() {
+        button.classList.remove("btn-outline-secondary");
+        button.classList.add("btn-primary", "text-white");
+    }
+
+    function resetButton() {
+        button.classList.remove("btn-primary", "text-white");
+        button.classList.add("btn-outline-secondary");
+    }
+
     if (collapse.classList.contains("show")) {
         bootstrap.Collapse.getOrCreateInstance(collapse);
+        highlightButton(); // ← Подсвечиваем при открытом по умолчанию
         loadImportExportScript();
     }
 
     collapse.addEventListener("show.bs.collapse", function () {
+        highlightButton(); // ← Подсвечиваем при открытии
         loadImportExportScript();
+    });
+
+    collapse.addEventListener("hide.bs.collapse", function () {
+        resetButton(); // ← Сбрасываем подсветку при закрытии
     });
 });
 </script>

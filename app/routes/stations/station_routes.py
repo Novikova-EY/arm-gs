@@ -8,9 +8,10 @@ from flask import (
     render_template, request, redirect, url_for, session, jsonify
 )
 from collections import defaultdict
-from app.forms.station_forms import StationFilterForm
+from app.forms.station_forms import StationFilterForm, AddStationForm
 from app.models import (
     RegionalDistrict, 
+    Station,
 )
 from app.services.station_services.station_services import (
     get_stations_list,
@@ -21,13 +22,74 @@ from app.services.station_services.station_services import (
     recalculate_station_powers_by_filtered_machines,
     get_station_list_data
 )
-from app.services.station_services.filters_service import (
+from app.services.station_services.filters_services import (
     filter_machines,
     has_any_filters,
 )
-from app.services.station_services.groupped_service import (
+from app.services.station_services.groupped_services import (
     group_stations_hierarchy, 
     group_machines_by_group_and_fuel, 
+)
+from . import station_bp
+from app import db
+from config import Config
+from decimal import Decimal
+from flask import (
+    render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
+)
+from collections import defaultdict
+from app.services.logging_services.logging_service import log_to_db
+from flask_login import login_required
+from app.routes.auth import role_required
+from flask import session
+from app.forms.station_forms import StationFilterForm
+from app.forms.machine_forms import MachineFilterSmallForm
+from app.models import (
+    RegionalDistrict, 
+    StationGroup, 
+    RegionalEnergySystem, 
+    ConditionType, 
+    GenCompany, 
+    StationPower, 
+    MachineTesType, 
+    EnergyUnit,
+    Machine
+)
+from app.services.logging_services.logging_service import log_to_db
+from app.services.station_services.help_services import (
+    get_union_energy_systems, 
+    get_regional_districts, 
+    get_energy_system_types, 
+    get_regional_districts,
+    get_federal_districts, 
+    get_regional_energy_systems, 
+    get_current_year,
+    get_condition_type,
+    get_station_groups,
+    get_gen_companies,
+    get_station_groups,
+)
+from app.services.station_services.station_services import (
+    get_stations_list,
+    get_station_by_id, 
+    extract_filters_from_form, 
+    extract_filters_from_args, 
+    assign_machine_powers_by_year, 
+    get_station_list_template_context, 
+    recalculate_station_power,
+    get_current_machine_tes_types_map, 
+    recalculate_station_powers_by_filtered_machines
+)
+from app.services.station_services.filters_services import (
+    filter_machines,
+)
+from app.services.station_services.groupped_services import (
+    group_stations_hierarchy, 
+    group_machines_by_group_and_fuel, 
+)
+from app.services.station_services.station_import_services import (
+    import_station_list_from_excel, 
+    import_fuel_tes_station_from_excel, 
 )
 
 @station_bp.route("/station_list", methods=["GET", "POST"])
@@ -104,134 +166,39 @@ def station_list():
     return render_template("stations/stations.html", has_active_filters=has_active_filters, **context)
 
 
-def station_list_old():
+@station_bp.route('/stations/add', methods=['GET', 'POST'])
+@login_required
+@role_required('super-admin')
+def add_station():
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница электростанций")
+    log_to_db(user, "Открыта форма создания новой электростанции")
 
-    form = StationFilterForm()
+    form = AddStationForm()
 
-    if request.method == "POST":
-        return redirect(url_for("station_bp.station_list", **extract_filters_from_form(request.form)))
+    # Получение справочников
+    regional_districts_list, _ = get_regional_districts()
+    form.id_regional_district.choices = [(d["id"], d["name"]) for d in regional_districts_list]
 
-    per_page_param = request.args.get("per_page", "10")
-    show_all = per_page_param.lower() == "all"
-
-    if show_all:
-        per_page = None
-    else:
+    if form.validate_on_submit():
         try:
-            per_page = int(per_page_param)
-        except ValueError:
-            per_page = 10
-    
-    # --- Получаем фильтры ---
-    filters = extract_filters_from_args(request.args)
-    page = filters.pop("page", 1)
-    start_year = filters.pop("start_year", Config.START_YEAR)
-    end_year = filters.pop("end_year", Config.END_YEAR)
-    rounding_digits_raw = request.args.get('rounding_digits', '1')
-    show_p_ogr = request.args.get("show_p_ogr") == "1"
-    show_p_rasp = request.args.get("show_p_rasp") == "1"
-        
-    try:
-        rounding_digits = int(rounding_digits_raw)
-    except (ValueError, TypeError):
-        rounding_digits = 1
+            new_station = Station(
+                name=form.name.data,
+                id_regional_district=form.id_regional_district.data
+            )
+            db.session.add(new_station)
+            db.session.commit()
 
-    # Специальная логика: если выбрано "Не округлять" (0), то оставляем None
-    if rounding_digits == 0:
-        rounding_digits = None
+            flash("Новая станция успешно создана!", "success")
+            log_to_db(user, f"Создана новая станция: {new_station.name}")
 
-    # Загружаем все станции без пагинации
-    all_data = get_stations_list(
-        page=1,
-        rounding_digits=rounding_digits,
-        **filters
-    )
+            return redirect(url_for("station_bp.station_details", station_id=new_station.id))
 
-    # Фильтрация агрегатов до пагинации
-    filtered_stations = filter_machines(
-        all_data["stations"],
-        filters.get("tes_type_filter", []),
-        filters.get("tes_machine_type_filter", []),
-        filters.get("date_exploitation_filter", []),
-        filters.get("date_decompressing_expected_filter", []),
-        filters.get("date_modernization_expected_filter", []),
-    )
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ошибка при создании станции: {str(e)}", "danger")
+            log_to_db(user, "Ошибка создания новой станции", details=str(e))
 
-    # Теперь — ручная пагинация
-    total_count = len(filtered_stations)
-    if show_all:
-        paginated_stations = filtered_stations
-        total_pages = 1
-    else:
-        total_pages = max(1, (total_count + per_page - 1) // per_page)
-        paginated_stations = filtered_stations[(page - 1) * per_page : page * per_page]
-
-
-    pagination = {
-        "stations": paginated_stations,
-        "total_count": total_count,
-        "total_pages": total_pages,
-        "page": page,
-        "per_page": per_page,
-    }
-
-    # --- Подготовка агрегатов ---
-    for station in pagination["stations"]:
-        station.machines = group_machines_by_group_and_fuel([station])[0].machines
-
-    # --- Загружаем мощности агрегатов ---
-    all_machines = []
-    for station in pagination["stations"]:
-        all_machines.extend(station.machines)
-
-    recalculate_station_powers_by_filtered_machines(pagination["stations"], start_year, end_year, rounding_digits)
-
-    for machine in all_machines:
-        assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
-
-    # --- Группируем станции ---
-    grouped_result = group_stations_hierarchy(paginated_stations, include_names=True)
-
-    pagination.update({
-        "grouped_stations": grouped_result["grouped_stations"],
-        "aggregated_by_energy_unit": grouped_result["aggregated_by_energy_unit"],
-        "aggregated_by_regional_district": grouped_result["aggregated_by_regional_district"],
-        "aggregated_by_regional_energy_system": grouped_result["aggregated_by_regional_energy_system"],
-        "aggregated_by_union_energy_system": grouped_result["aggregated_by_union_energy_system"],
-        "aggregated_by_energy_system_type": grouped_result["aggregated_by_energy_system_type"],
-        "aggregated_total": grouped_result["aggregated_total"],
-    })
-
-    # --- Проверка: если страница вышла за предел ---
-    if pagination["page"] > pagination["total_pages"]:
-        return redirect(url_for("station_bp.station_list", page=pagination["total_pages"], per_page=per_page))
-
-    # --- Формируем контекст для шаблона ---
-    context = get_station_list_template_context(
-        form,
-        pagination,
-        rounding_digits,
-        {**filters, "start_year": start_year, "end_year": end_year}
-    )
-
-    # --- Для удобного доступа к станциям по энергоузлам ---
-    stations_by_energy_unit = defaultdict(list)
-    for station in pagination["stations"]:
-        stations_by_energy_unit[station.id_energy_unit].append(station)
-
-    context.update({
-        "stations_by_energy_unit": stations_by_energy_unit,
-        "aggregated_by_energy_unit": grouped_result["aggregated_by_energy_unit"],
-        "aggregated_by_regional_energy_system": grouped_result["aggregated_by_regional_energy_system"],
-        "aggregated_by_union_energy_system": grouped_result["aggregated_by_union_energy_system"],
-        "aggregated_by_energy_system_type": grouped_result["aggregated_by_energy_system_type"],
-        "rounding_digits": rounding_digits,
-        "per_page": per_page,
-    })
-
-    return render_template("stations/stations.html", **context)
+    return render_template("stations/station_add.html", form=form)
 
 
 @station_bp.route("/get_energy_system_data/<int:regional_district_id>", methods=["GET"])

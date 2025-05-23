@@ -3,7 +3,7 @@ from app import db
 from config import Config
 from decimal import Decimal
 from flask import (
-    render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
+    render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify, abort
 )
 from collections import defaultdict
 from app.services.logging_services.logging_service import log_to_db
@@ -24,7 +24,7 @@ from app.models import (
     Machine
 )
 from app.services.logging_services.logging_service import log_to_db
-from app.services.station_services.help_service import (
+from app.services.station_services.help_services import (
     get_union_energy_systems, 
     get_regional_districts, 
     get_energy_system_types, 
@@ -48,10 +48,10 @@ from app.services.station_services.station_services import (
     get_current_machine_tes_types_map, 
     recalculate_station_powers_by_filtered_machines
 )
-from app.services.station_services.filters_service import (
+from app.services.station_services.filters_services import (
     filter_machines,
 )
-from app.services.station_services.groupped_service import (
+from app.services.station_services.groupped_services import (
     group_stations_hierarchy, 
     group_machines_by_group_and_fuel, 
 )
@@ -68,6 +68,8 @@ def station_details(station_id):
 
     user = session.get('username', 'Неизвестный пользователь')
     station = get_station_by_id(station_id)
+    if not station:
+        abort(404)
     regional_district_name = station.regional_district.name if station and station.regional_district else "не указано"
     log_to_db(user, f"Открыта страница электростанции {station.name} ({regional_district_name})")
 
@@ -75,8 +77,8 @@ def station_details(station_id):
     form_machines = MachineFilterSmallForm()
 
     # Получение параметров запроса с дефолтными значениями
-    start_year = request.args.get("start_year", 2021, type=int)
-    end_year = request.args.get("end_year", 2031, type=int)
+    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
+    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
     machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
 
     # Получаем данные по станции
@@ -119,9 +121,21 @@ def station_details(station_id):
     
     form.id_energy_unit.choices = [(eu.id, eu.name) for eu in EnergyUnit.query.order_by(EnergyUnit.id).all()]
     energy_unit_names = [(f.id, f.name) for f in EnergyUnit.query.order_by(EnergyUnit.id).all()]
+
+    try:
+        rounding_digits = int(request.args.get('rounding_digits'))
+    except (ValueError, TypeError):
+        rounding_digits = 1
+
+    if rounding_digits is None or rounding_digits < 0:
+        rounding_digits = 1
     
     if request.method == "GET":
         form.process(obj=station)
+        if form.id_condition_type.data is None:
+            form.id_condition_type.data = 100
+        if form.id_energy_unit.data is None:
+            form.id_energy_unit.data = 100
 
     if request.method == "POST":
 
@@ -134,20 +148,25 @@ def station_details(station_id):
             machines_to_delete = Machine.query.filter(Machine.id.in_(machine_ids_to_delete)).all()
             
             for machine in machines_to_delete:
-                # Удаление мощностей
-                for mp in machine.machine_powers:
-                    db.session.delete(mp)
+                try:
+                    # Удаление мощностей
+                    for mp in machine.machine_powers:
+                        db.session.delete(mp)
+                    
+                    # Удаление топлива
+                    for mf in machine.machine_fuels:
+                        db.session.delete(mf)
+
+                    # Удаление типов ТЭС
+                    for mtt in machine.machine_tes_types:
+                        db.session.delete(mtt)
+
+                    changes.append(f"Агрегат {machine.machine_number or '—'} и связанные данные удалены")
+                    db.session.delete(machine)
                 
-                # Удаление топлива
-                for mf in machine.machine_fuels:
-                    db.session.delete(mf)
-
-                # Удаление типов ТЭС
-                for mtt in machine.machine_tes_types:
-                    db.session.delete(mtt)
-
-                changes.append(f"Агрегат {machine.machine_number} и связанные данные удалены")
-                db.session.delete(machine)
+                except Exception as e:
+                    flash(f"Ошибка при удалении агрегата ID={machine.id}: {e}", "danger")
+                    log_to_db(user, f"Ошибка удаления агрегата ID={machine.id}", details=str(e))
 
             db.session.commit()
 
@@ -322,6 +341,7 @@ def station_details(station_id):
         form=form,
         form_machines=form_machines,
         station=station,
+        rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year, 
         energy_unit_names=energy_unit_names,

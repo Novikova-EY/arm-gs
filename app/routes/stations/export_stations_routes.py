@@ -13,7 +13,7 @@ from flask import (
 from app.services.station_services.station_services import (
     get_station_list_data
 )
-from app.services.station_services.filters_service import (
+from app.services.station_services.filters_services import (
     extract_filters_from_args
 )
 from app.services.station_services.station_export_services import (

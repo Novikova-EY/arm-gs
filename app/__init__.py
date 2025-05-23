@@ -58,7 +58,7 @@ def create_app():
     with app.app_context():
         db.create_all()  # Создаем все таблицы, если они ещё не созданы
 
-    from app.services.station_services.help_service import format_decimal_for_display
+    from app.services.station_services.help_services import format_decimal_for_display
     @app.template_filter('format_decimal')
     def format_decimal_filter(value):
         from flask import request

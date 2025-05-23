@@ -5,106 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My App{% endblock %}</title>
     
-    <!-- Подключаем Bootstrap CSS из папки static -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
 
-    <style>
-        html, body {
-            font-family: 'Roboto', Arial, sans-serif !important;
-        }
-        .alert-container {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1050; /* Делает сообщения поверх других элементов */
-            max-width: 500px; /* Увеличенная максимальная ширина контейнера */
-            width: 100%;
-        }
-        .alert {
-            width: 100%; /* Сообщения занимают всю ширину контейнера */
-        }
-        .filter-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .filter-item {
-            flex: 1 1 auto;
-            max-width: 100%; /* Убираем фиксированную ширину */
-        }
-
-        .select2-container {
-            width: 100%; /* Ширина будет зависеть от родительского контейнера */
-        }
-
-        .select2-dropdown {
-            width: auto; /* Автоматическая ширина выпадающего списка */
-        }
-
-        .select2-results {
-            max-width: none !important; /* Убираем ограничения по ширине */
-            min-width: 200px; /* Минимальная ширина, чтобы не было слишком узко */
-            white-space: nowrap; /* Запрещаем перенос строк */
-        }
-
-        /* Кнопка с прозрачным фоном и жирным шрифтом */
-        .filter-button {
-            background: transparent !important;
-            border: none;
-            font-weight: 500;
-            color: #000;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        /* Гарантируем, что выпадающий список выходит за границы */
-        .filter-dropdown-menu {
-            position: absolute !important;
-            z-index: 1050; /* Поверх таблицы */
-            max-height: 300px; /* Ограничиваем высоту */
-            overflow-y: auto;
-            width: 100%;
-            min-width: 200px;
-        }
-
-        /* Фикс для Bootstrap, чтобы меню не скрывалось */
-        .dropdown-menu.show {
-            display: block !important;
-        }
-
-        /* Фикс для контейнера таблицы, если он обрезает список */
-        .table-responsive {
-            overflow: visible !important;
-        }
-
-        /* Чекбоксы в выпадающем списке */
-        .dropdown-item input[type="checkbox"] {
-            margin-right: 8px;
-        }
-
-        thead {
-            display: table-header-group;
-        }
-        tfoot {
-            display: table-footer-group;
-        }
-
-        tr {
-            page-break-inside: avoid;
-        }
-
-        .first-column {
-            width: 50px !important;
-            min-width: 50px;
-            max-width: 50px;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-
-    </style>
 </head>
 
 <body class="container-fluid mt-2">
@@ -125,7 +28,7 @@
     <!-- Сообщения об ошибках -->
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
-        <div class="position-fixed top-0 start-50 translate-middle-x mt-5 z-3" style="max-width: 700px; width: 90%;">
+        <div class="position-fixed top-0 start-50 translate-middle-x mt-5 z-3" style="max-width: 1500px; width: 90%;">
         {% for category, message in messages %}
             <div class="alert alert-{{ category }} alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4" role="alert">
             {{ message }}
@@ -152,7 +55,7 @@
                 setTimeout(() => {
                     alert.classList.remove('show');
                     alert.classList.add('fade');
-                    setTimeout(() => alert.remove(), 150);
+                    setTimeout(() => alert.remove(), 200);
                 }, 5000);
             });
         });

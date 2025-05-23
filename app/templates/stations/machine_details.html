@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Страница "Агрегат электростанции"{% endblock %}
+{% block title %}№{{ machine.machine_number }} {{ machine.machine_name }} ({{ station.name }}){% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -10,7 +10,7 @@
     'station_type_filter', 'machine_type_filter', 'tes_type_filter', 'tes_machine_type_filter',
     'energy_system_type_filter', 'union_energy_system_filter', 'regional_energy_system_filter',
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter', 'station_id',
-    'per_page'
+    'per_page',
 ] %}
 
 <div class="container-fluid mt-4">
@@ -20,95 +20,25 @@
         </a>
     </div>
     
-        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
-        {% for param in filters %}
+    <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+    {% for param in filters %}
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
-        {% endfor %}
+    {% endfor %}
 
-        <div class="container-fluid mt-4">
-            <h2 class="mb-4">Информация об агрегате электростанции</h2>
-    
-        <!-- Фильтры -->
-        <div class="container-fluid mt-4">
-            <div class="row g-3">
-                <div class="col-12">
-                    <div class="d-flex justify-content-end align-items-center w-100">
-                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3" style="width: 53%;">
-                            <strong>{{ station.name }}</strong>
-                        </a>
+    <div class="container-fluid">
+        <h2 class="mb-4">Информация об агрегате электростанции</h2>
 
-                        <div class="p-3" style="width: 20%;">
-                            <form method="GET" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
-                                <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
-                                {% for key, value in request.args.items() %}
-                                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
-                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                    {% endif %}
-                                {% endfor %}
-                        
-                                <!-- Поля выбора года -->
-                                <label for="start_year">Год начала:</label>
-                                <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
-                                    {% for year in range(2021, 2043) %}
-                                    <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
-                                    {% endfor %}
-                                </select>
-                        
-                                <label for="end_year">Год конца:</label>
-                                <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
-                                    {% for year in range(2022, 2043) %}
-                                    <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
-                                    {% endfor %}
-                                </select>
-                        
-                                <button type="submit" class="btn btn-outline-success">Применить</button>
-                            </form>
-                        </div>
-                
-                        
-                        <!-- Чекбокс "Отображать ограничения мощности" -->
-                        <div class="p-3 text-center" style="width: 10%;">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="toggleP_Ogr" checked>
-                                <label class="form-check-label" for="toggleP_Ogr">
-                                    Отображать <br> ограничения мощности
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <!-- Чекбокс "Отображать располагаемую мощность" -->
-                        <div class="p-3 text-center" style="width: 10%;">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
-                                <label class="form-check-label" for="toggleP_Rasp">
-                                    Отображать <br> располагаемую мощность
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Выпадающий список выбора количества знаков для округления -->
-                        <div class="p-3" style="width: 7%;">
-                            <label for="rounding_digits">Округлить до:</label>
-                            <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
-                                <option value="0">Не округлять</option>
-                                <option value="1" selected>1 знак</option>
-                                <option value="2">2 знака</option>
-                                <option value="3">3 знака</option>
-                                <option value="-1">Целое число</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
+            <strong>{{ station.name }}</strong>
+        </a>
 
         <!-- Карточка с основной информацией -->
         <form method="POST" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
-            {{ form.csrf_token }}
+            {{ main_form.csrf_token }}
             {{ advanced_form.csrf_token }}
             
             <!-- Скрытое поле для ID агрегата -->
-            {{ form.id_machine }}
+            {{ main_form.id_machine }}
             <div class="container-fluid fs-5">
                 <div class="row">
                     <!-- Первый блок -->
@@ -118,11 +48,11 @@
 
                                 <!-- Номер/название группы агрегата -->
                                 <div class="mb-3">
-                                    {{ form.machine_group.label(class="form-label") }}
-                                    {{ form.machine_group(class="form-control fs-5") }}
-                                    {% if form.machine_group.errors %}
+                                    {{ main_form.machine_group.label(class="form-label") }}
+                                    {{ main_form.machine_group(class="form-control fs-5") }}
+                                    {% if main_form.machine_group.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.machine_group.errors %}
+                                            {% for error in main_form.machine_group.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -131,11 +61,11 @@
                                 
                                 <!-- Номер агрегата -->
                                 <div class="mb-3">
-                                    {{ form.machine_number.label(class="form-label") }}
-                                    {{ form.machine_number(class="form-control fw-bold fs-5") }}
-                                    {% if form.machine_number.errors %}
+                                    {{ main_form.machine_number.label(class="form-label") }}
+                                    {{ main_form.machine_number(class="form-control fw-bold fs-5") }}
+                                    {% if main_form.machine_number.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.machine_number.errors %}
+                                            {% for error in main_form.machine_number.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -144,11 +74,11 @@
 
                                 <!-- Название агрегата -->
                                 <div class="mb-3">
-                                    {{ form.machine_name.label(class="form-label") }}
-                                    {{ form.machine_name(class="form-control fw-bold fs-5") }}
-                                    {% if form.machine_name.errors %}
+                                    {{ main_form.machine_name.label(class="form-label") }}
+                                    {{ main_form.machine_name(class="form-control fw-bold fs-5") }}
+                                    {% if main_form.machine_name.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.machine_name.errors %}
+                                            {% for error in main_form.machine_name.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -157,11 +87,11 @@
                                 
                                 <!-- Состояние агрегата станции -->
                                 <div class="mb-3">
-                                    {{ form.id_condition_type.label(class="form-label") }}
-                                    {{ form.id_condition_type(class="form-select fs-5") }}
-                                    {% if form.id_condition_type.errors %}
+                                    {{ main_form.id_condition_type.label(class="form-label") }}
+                                    {{ main_form.id_condition_type(class="form-select fs-5") }}
+                                    {% if main_form.id_condition_type.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_condition_type.errors %}
+                                            {% for error in main_form.id_condition_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -170,11 +100,11 @@
 
                                 <!-- Организация-собственник агрегата станции -->
                                 <div class="mb-3">
-                                    {{ form.id_gen_company.label(class="form-label") }}
-                                    {{ form.id_gen_company(class="form-select fs-5") }}
-                                    {% if form.id_gen_company.errors %}
+                                    {{ main_form.id_gen_company.label(class="form-label") }}
+                                    {{ main_form.id_gen_company(class="form-select fs-5") }}
+                                    {% if main_form.id_gen_company.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_gen_company.errors %}
+                                            {% for error in main_form.id_gen_company.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -184,7 +114,6 @@
                             </div>
                         </div>
                     </div>
-                    
 
                     <!-- Второй блок -->
                     <div class="col-md-3">
@@ -192,11 +121,11 @@
                             <div class="card-body">
                                 <!-- Энергорайон агрегата станции -->
                                 <div class="mb-3">
-                                    {{ form.id_energy_area.label(class="form-label") }}
-                                    {{ form.id_energy_area(class="form-select fs-5") }}
-                                    {% if form.id_energy_area.errors %}
+                                    {{ main_form.id_energy_area.label(class="form-label") }}
+                                    {{ main_form.id_energy_area(class="form-select fs-5") }}
+                                    {% if main_form.id_energy_area.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_energy_area.errors %}
+                                            {% for error in main_form.id_energy_area.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -205,11 +134,11 @@
                                 
                                 <!-- Тип электростанции -->
                                 <div class="mb-3">
-                                    {{ form.id_station_type.label(class="form-label") }}
-                                    {{ form.id_station_type(class="form-select fs-5") }}
-                                    {% if form.id_station_type.errors %}
+                                    {{ main_form.id_station_type.label(class="form-label") }}
+                                    {{ main_form.id_station_type(class="form-select fs-5") }}
+                                    {% if main_form.id_station_type.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_station_type.errors %}
+                                            {% for error in main_form.id_station_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -219,11 +148,11 @@
                                 
                                 <!-- Тип агрегата ТЭС -->
                                 <div class="mb-3">
-                                    {{ form.id_tes_machine_type.label(class="form-label") }}
-                                    {{ form.id_tes_machine_type(class="form-select fs-5") }}
-                                    {% if form.id_tes_machine_type.errors %}
+                                    {{ main_form.id_tes_machine_type.label(class="form-label") }}
+                                    {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
+                                    {% if main_form.id_tes_machine_type.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_tes_machine_type.errors %}
+                                            {% for error in main_form.id_tes_machine_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -232,11 +161,11 @@
 
                                 <!-- Тип агрегата -->
                                 <div class="mb-3">
-                                    {{ form.id_machine_type.label(class="form-label") }}
-                                    {{ form.id_machine_type(class="form-select fs-5") }}
-                                    {% if form.id_machine_type.errors %}
+                                    {{ main_form.id_machine_type.label(class="form-label") }}
+                                    {{ main_form.id_machine_type(class="form-select fs-5") }}
+                                    {% if main_form.id_machine_type.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.id_machine_type.errors %}
+                                            {% for error in main_form.id_machine_type.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -245,11 +174,11 @@
 
                                 <!-- Примечание -->
                                 <div class="mb-3">
-                                    {{ form.note.label(class="form-label") }}
-                                    {{ form.note(class="form-control fs-5") }}
-                                    {% if form.note.errors %}
+                                    {{ main_form.note.label(class="form-label") }}
+                                    {{ main_form.note(class="form-control fs-5") }}
+                                    {% if main_form.note.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.note.errors %}
+                                            {% for error in main_form.note.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -270,11 +199,11 @@
                                 
                                 <!-- Год ввода в эксплуатацию -->
                                 <div class="mb-3">
-                                    {{ form.date_exploitation.label(class="form-label") }}
-                                    {{ form.date_exploitation(class="form-control fs-5") }}
-                                    {% if form.date_exploitation.errors %}
+                                    {{ main_form.date_exploitation.label(class="form-label") }}
+                                    {{ main_form.date_exploitation(class="form-control fs-5") }}
+                                    {% if main_form.date_exploitation.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_exploitation.errors %}
+                                            {% for error in main_form.date_exploitation.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -283,11 +212,11 @@
 
                                 <!-- Фактическая дата ввода в работу -->
                                 <div class="mb-3">
-                                    {{ form.date_commission_fact.label(class="form-label") }}
-                                    {{ form.date_commission_fact(class="form-control fs-5") }}
-                                    {% if form.date_commission_fact.errors %}
+                                    {{ main_form.date_commission_fact.label(class="form-label") }}
+                                    {{ main_form.date_commission_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_commission_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_commission_fact.errors %}
+                                            {% for error in main_form.date_commission_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -296,11 +225,11 @@
 
                                 <!-- Ожидаемая дата присоединения -->
                                 <div class="mb-3">
-                                    {{ form.date_joining_expected.label(class="form-label") }}
-                                    {{ form.date_joining_expected(class="form-control fs-5") }}
-                                    {% if form.date_joining_expected.errors %}
+                                    {{ main_form.date_joining_expected.label(class="form-label") }}
+                                    {{ main_form.date_joining_expected(class="form-control fs-5") }}
+                                    {% if main_form.date_joining_expected.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_joining_expected.errors %}
+                                            {% for error in main_form.date_joining_expected.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -309,11 +238,11 @@
 
                                 <!-- Фактическая дата присоединения -->
                                 <div class="mb-3">
-                                    {{ form.date_joining_fact.label(class="form-label") }}
-                                    {{ form.date_joining_fact(class="form-control fs-5") }}
-                                    {% if form.date_joining_fact.errors %}
+                                    {{ main_form.date_joining_fact.label(class="form-label") }}
+                                    {{ main_form.date_joining_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_joining_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_joining_fact.errors %}
+                                            {% for error in main_form.date_joining_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -322,11 +251,11 @@
 
                                 <!-- Фактическая дата отсоединения -->
                                 <div class="mb-3">
-                                    {{ form.date_detatchment_fact.label(class="form-label") }}
-                                    {{ form.date_detatchment_fact(class="form-control fs-5") }}
-                                    {% if form.date_detatchment_fact.errors %}
+                                    {{ main_form.date_detatchment_fact.label(class="form-label") }}
+                                    {{ main_form.date_detatchment_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_detatchment_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_detatchment_fact.errors %}
+                                            {% for error in main_form.date_detatchment_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -344,11 +273,11 @@
 
                                 <!-- Ожидаемый год вывода из эксплуатации -->
                                 <div class="mb-3">
-                                    {{ form.date_decompressing_expected.label(class="form-label") }}
-                                    {{ form.date_decompressing_expected(class="form-control fs-5") }}
-                                    {% if form.date_decompressing_expected.errors %}
+                                    {{ main_form.date_decompressing_expected.label(class="form-label") }}
+                                    {{ main_form.date_decompressing_expected(class="form-control fs-5") }}
+                                    {% if main_form.date_decompressing_expected.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_decompressing_expected.errors %}
+                                            {% for error in main_form.date_decompressing_expected.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -357,11 +286,11 @@
 
                                 <!-- Фактическая дата вывода из эксплуатации -->
                                 <div class="mb-3">
-                                    {{ form.date_decompressing_fact.label(class="form-label") }}
-                                    {{ form.date_decompressing_fact(class="form-control fs-5") }}
-                                    {% if form.date_decompressing_fact.errors %}
+                                    {{ main_form.date_decompressing_fact.label(class="form-label") }}
+                                    {{ main_form.date_decompressing_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_decompressing_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_decompressing_fact.errors %}
+                                            {% for error in main_form.date_decompressing_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -370,11 +299,11 @@
 
                                 <!-- Фактическая дата перемаркировки -->
                                 <div class="mb-3">
-                                    {{ form.date_relabing_fact.label(class="form-label") }}
-                                    {{ form.date_relabing_fact(class="form-control fs-5") }}
-                                    {% if form.date_relabing_fact.errors %}
+                                    {{ main_form.date_relabing_fact.label(class="form-label") }}
+                                    {{ main_form.date_relabing_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_relabing_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_relabing_fact.errors %}
+                                            {% for error in main_form.date_relabing_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -383,11 +312,11 @@
 
                                 <!-- Ожидаемый год модернизации -->
                                 <div class="mb-3">
-                                    {{ form.date_modernization_expected.label(class="form-label") }}
-                                    {{ form.date_modernization_expected(class="form-control fs-5") }}
-                                    {% if form.date_modernization_expected.errors %}
+                                    {{ main_form.date_modernization_expected.label(class="form-label") }}
+                                    {{ main_form.date_modernization_expected(class="form-control fs-5") }}
+                                    {% if main_form.date_modernization_expected.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_modernization_expected.errors %}
+                                            {% for error in main_form.date_modernization_expected.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -396,11 +325,11 @@
 
                                 <!-- Фактическая дата уточнения -->
                                 <div class="mb-3">
-                                    {{ form.date_update_fact.label(class="form-label") }}
-                                    {{ form.date_update_fact(class="form-control fs-5") }}
-                                    {% if form.date_update_fact.errors %}
+                                    {{ main_form.date_update_fact.label(class="form-label") }}
+                                    {{ main_form.date_update_fact(class="form-control fs-5") }}
+                                    {% if main_form.date_update_fact.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.date_update_fact.errors %}
+                                            {% for error in main_form.date_update_fact.errors %}
                                                 {{ error }}
                                             {% endfor %}
                                         </div>
@@ -411,13 +340,86 @@
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Фильтры -->
+            <div class="container-fluid">
+                <div class="col-12 mb-2">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                        <!-- Левая группа кнопок -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2" id="yearForm">
+                                {% for key, value in request.args.items() %}
+                                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                    {% endif %}
+                                {% endfor %}
+
+                                <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                                <select name="start_year" id="start_year" class="form-select">
+                                    {% for year in range(2021, 2043) %}
+                                        <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                                <select name="end_year" id="end_year" class="form-select">
+                                    {% for year in range(2022, 2043) %}
+                                        <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <button type="button" class="btn btn-outline-success" onclick="applyYearFilters()">Применить</button>
+                            </div>
+                        </div>
+
+                        <!-- Правая группа: чекбоксы и подсветка -->
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+
+                            <!-- Чекбокс Рогр -->
+                            <input type="checkbox" class="btn-check" id="toggleP_Ogr" autocomplete="off">
+                            <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center" style="min-width: 80px;">
+                                Рогр
+                            </label>
+
+                            <!-- Чекбокс Ррасп -->
+                            <input type="checkbox" class="btn-check" id="toggleP_Rasp" autocomplete="off" checked>
+                            <label for="toggleP_Rasp" class="btn btn-outline-primary px-3 text-center" style="min-width: 80px;">
+                                Ррасп
+                            </label>
+
+                            <!-- Подсветка -->
+                            <button id="highlightChangesBtn"
+                                    class="btn btn-outline-secondary text-dark"
+                                    type="button"
+                                    style="min-width: 250px;">
+                                ✨ Подсветить изменения
+                            </button>
+
+                            <!-- Округление -->
+                            <div class="d-flex align-items-center gap-1">
+                                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+                                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
             <!-- Таблица с агрегатами (Machines) -->
             <div class="table-responsive fs-5">
                 <table class="table table-hover table-striped table-bordered">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
-                          <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
+                        <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
                         </tr>
                         <tr class="text-center align-middle">
                             <th class="first-column" style="width: 50px;"></th>
@@ -429,41 +431,53 @@
                                     </div>
                                 </th>
                             {% endfor %}
-                      </thead>
-                      <tbody>
+                    </thead>
+                    <tbody>
                         <tr class="text-center align-middle total-power-row">
                             <!-- "p_ust" -->
                             <td class="first-column fw-bold" style="width: 50px;">Руст</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {{ p.p_ust(class="form-control text-center pftt-select fs-5") }}
+                                    <input type="text"
+                                        name="{{ p.p_ust.name }}"
+                                        value="{{ p.p_ust.data | format_decimal }}"
+                                        data-original-value="{{ p.p_ust.data | format_decimal }}"
+                                        class="form-control text-center fs-5">
                                 </td>
                             {% endfor %}
                         </tr>
-                          
+                        
                         <tr class="text-center align-middle p-ogr-row">
                             <!-- "p_ogr" -->
                             <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {{ p.p_ogr(class="form-control text-center pftt-select fs-5") }}
+                                    <input type="text"
+                                        name="{{ p.p_ogr.name }}"
+                                        value="{{ p.p_ogr.data | format_decimal }}"
+                                        data-original-value="{{ p.p_ogr.data | format_decimal }}"
+                                        class="form-control text-center fs-5">
                                 </td>
                             {% endfor %}
                         </tr>
-                      
+                    
                         <tr class="text-center align-middle p-rasp-row">
                             <!-- "p_rasp" -->
                             <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {{ p.p_rasp(class="form-control text-center pftt-select fs-5") }}
+                                    <input type="text"
+                                        name="{{ p.p_rasp.name }}"
+                                        value="{{ p.p_rasp.data | format_decimal }}"
+                                        data-original-value="{{ p.p_rasp.data | format_decimal }}"
+                                        class="form-control text-center fs-5">
                                 </td>
                             {% endfor %}
                         </tr>
-                      </tbody>
+                    </tbody>
                 </table>
             </div>
 
@@ -492,7 +506,11 @@
                             {% for t in advanced_form.tes_types %}
                                 {{ t.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
-                                    {{ t.tes_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
+                                    {{ t.tes_type(
+                                        class="form-select fuel-column text-center fs-5",
+                                        style="background-color: transparent;",
+                                        **{"data-original-value": t.tes_type.data}
+                                    ) }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -525,7 +543,11 @@
                             {% for f in advanced_form.fuels %}
                                 {{ f.year(type="hidden") }}
                                 <td class="align-middle fuel-column text-center">
-                                    {{ f.fuel_type(class="form-select text-center pftt-select fs-5", style="background-color: transparent;") }}
+                                    {{ f.fuel_type(
+                                        class="form-select fuel-column text-center fs-5",
+                                        style="background-color: transparent;",
+                                        **{"data-original-value": f.fuel_type.data}
+                                    ) }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -540,17 +562,19 @@
             
                 <!-- Кнопка "Сбросить" -->
                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
-                   class="btn btn-outline-danger m-2 fs-5">
+                class="btn btn-outline-danger m-2 fs-5">
                     Сбросить
                 </a>
 
                 <!-- Кнопка "Назад" -->
-                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" 
+                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}"
                 class="btn btn-outline-secondary m-2 fs-5">
-                    Назад
+                Назад
                 </a>
             </div>
-        </form>       
+        </form>     
+    </div>  
+</div>
 
 
 <!-- Подключаем jQuery -->
@@ -629,277 +653,185 @@
 </style>
 
 <script>
-    $(document).ready(function() {
-        // Инициализируем Select2
-        $('.pftt-select').select2({
-            width: '100%',
-            placeholder: "Выберите значение",
-            allowClear: true,
-            minimumResultsForSearch: 0
+document.addEventListener("DOMContentLoaded", function () {
+    const $ = window.jQuery;
+
+    // --- Select2 и ширина колонок ---
+    $('.pftt-select').select2({
+        width: '100%',
+        placeholder: "Выберите значение",
+        allowClear: true,
+        minimumResultsForSearch: 0
+    });
+
+    function equalizeColumnWidth() {
+        const yearColumns = $('.year-header');
+        if (yearColumns.length > 0) {
+            const width = 100 / yearColumns.length + "%";
+            yearColumns.css('width', width);
+        }
+    }
+
+    equalizeColumnWidth();
+    window.addEventListener('resize', equalizeColumnWidth);
+
+    // --- Установка годов из URL или localStorage ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const startYear = urlParams.get("start_year") || localStorage.getItem("start_year");
+    const endYear = urlParams.get("end_year") || localStorage.getItem("end_year");
+
+    if (startYear) document.getElementById("start_year").value = startYear;
+    if (endYear) document.getElementById("end_year").value = endYear;
+
+    // --- Состояние чекбоксов и округления из localStorage ---
+    const roundingFromURL = urlParams.get("rounding_digits");
+    const roundingSelect = document.getElementById("rounding_digits");
+
+    if (roundingSelect) {
+        if (roundingFromURL !== null) {
+            roundingSelect.value = roundingFromURL;
+        } else if (localStorage.getItem("rounding_digits")) {
+            roundingSelect.value = localStorage.getItem("rounding_digits");
+        }
+    }
+    document.getElementById("toggleP_Ogr").checked = localStorage.getItem("toggleP_Ogr") === "true";
+    document.getElementById("toggleP_Rasp").checked = localStorage.getItem("toggleP_Rasp") === "true";
+
+    // --- Функция сохранения настроек ---
+    function saveSettings() {
+        localStorage.setItem("start_year", document.getElementById("start_year").value);
+        localStorage.setItem("end_year", document.getElementById("end_year").value);
+        localStorage.setItem("rounding_digits", document.getElementById("rounding_digits").value);
+        localStorage.setItem("toggleP_Ogr", document.getElementById("toggleP_Ogr").checked);
+        localStorage.setItem("toggleP_Rasp", document.getElementById("toggleP_Rasp").checked);
+    }
+
+    document.getElementById("start_year").addEventListener("change", saveSettings);
+    document.getElementById("end_year").addEventListener("change", saveSettings);
+    document.getElementById("rounding_digits").addEventListener("change", function () {
+        saveSettings();
+        updateValues();
+    });
+    document.getElementById("toggleP_Ogr").addEventListener("change", function () {
+        saveSettings();
+        updateRows();
+    });
+    document.getElementById("toggleP_Rasp").addEventListener("change", function () {
+        saveSettings();
+        updateRows();
+    });
+
+    document.querySelector("form").addEventListener("submit", saveSettings);
+
+    // --- Применение фильтра годов ---
+    window.applyYearFilters = function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set("start_year", document.getElementById("start_year").value);
+        url.searchParams.set("end_year", document.getElementById("end_year").value);
+        url.searchParams.set("page", 1);
+        window.location.href = url.toString();
+    };
+
+
+    // --- Обновление строк агрегатов и rowspan ---
+    function updateRows() {
+        const showOgr = document.getElementById("toggleP_Ogr").checked;
+        const showRasp = document.getElementById("toggleP_Rasp").checked;
+
+        $(".p-ogr-row").toggle(showOgr);
+        $(".p-rasp-row").toggle(showRasp);
+
+        const rows = 1 + (showOgr ? 1 : 0) + (showRasp ? 1 : 0);
+
+        $(".total-row-cell").attr("rowspan", rows);
+        $(".rowspan-td").each(function () {
+            const orig = parseInt(this.dataset.originalRowspan, 10);
+            this.setAttribute("rowspan", rows);
         });
 
-        // Устанавливаем одинаковую ширину для всех столбцов с годами
-        function equalizeColumnWidth() {
-            let table = $('table');
-            let yearColumns = table.find('.year-header');
-            let columnCount = yearColumns.length;
+        $(".station-rowspan-td").each(function () {
+            const count = parseInt(this.dataset.totalMachines, 10);
+            this.setAttribute("rowspan", count * rows + 1);
+        });
+    }
 
-            if (columnCount > 0) {
-                let newWidth = 100 / columnCount + "%"; // Делим 100% на количество колонок
+    updateRows();
+});
+</script>
 
-                yearColumns.css('width', newWidth);
-            }
-        }
-
-        // Вызываем функцию при загрузке страницы
-        equalizeColumnWidth();
-
-        // Пересчитываем ширину при изменении размеров окна
-        $(window).resize(equalizeColumnWidth);
+<!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
+<script>
+    document.getElementById('rounding_digits').addEventListener('change', function() {
+        const selectedRounding = this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', selectedRounding);
+        url.searchParams.set('page', 1); // Чтобы всегда начинать с первой страницы при новом округлении
+        window.location.href = url.toString();
     });
 </script>
 
-<!-- Скрипт для сохранения всех настроек при нажатии на кнопку сохранить -->
 <script>
-    $(document).ready(function () {
-    // 1️⃣ Загружаем сохранённые настройки из localStorage
-    function loadSettings() {
-        if (localStorage.getItem("start_year")) {
-            $("#start_year").val(localStorage.getItem("start_year"));
-        }
-        if (localStorage.getItem("end_year")) {
-            $("#end_year").val(localStorage.getItem("end_year"));
-        }
-        if (localStorage.getItem("rounding_digits")) {
-            $("#rounding_digits").val(localStorage.getItem("rounding_digits"));
-        }
-        $("#toggleP_Ogr").prop("checked", localStorage.getItem("toggleP_Ogr") === "true");
-        $("#toggleP_Rasp").prop("checked", localStorage.getItem("toggleP_Rasp") === "true");
+document.addEventListener("DOMContentLoaded", function () {
+    const startYearSelect = document.getElementById("start_year");
+    const endYearSelect = document.getElementById("end_year");
+    const roundingDigitsSelect = document.getElementById("rounding_digits");
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const hasUrlParam = (name) => urlParams.has(name) && urlParams.get(name).trim() !== "";
+
+    // Только если параметра нет в URL, берём из localStorage
+    if (!hasUrlParam("start_year") && localStorage.getItem("start_year")) {
+        startYearSelect.value = localStorage.getItem("start_year");
     }
 
-    // 2️⃣ Функция сохранения текущих значений в localStorage
-    function saveSettings() {
-        localStorage.setItem("start_year", $("#start_year").val());
-        localStorage.setItem("end_year", $("#end_year").val());
-        localStorage.setItem("rounding_digits", $("#rounding_digits").val());
-        localStorage.setItem("toggleP_Ogr", $("#toggleP_Ogr").prop("checked"));
-        localStorage.setItem("toggleP_Rasp", $("#toggleP_Rasp").prop("checked"));
+    if (!hasUrlParam("end_year") && localStorage.getItem("end_year")) {
+        endYearSelect.value = localStorage.getItem("end_year");
     }
 
-    // 3️⃣ При изменении параметров — сразу сохраняем
-    $("#start_year, #end_year, #rounding_digits, #toggleP_Ogr, #toggleP_Rasp").on("change", function () {
-        saveSettings();
-    });
-
-    // 4️⃣ При нажатии "Сохранить" сохраняем параметры в localStorage
-    $("form").on("submit", function () {
-        saveSettings();
-    });
-
-    // 5️⃣ Загружаем настройки при загрузке страницы
-    loadSettings();
-
-    // 6️⃣ Логика округления значений
-    $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
-        let inputField = $(this).find("input");
-        if (inputField.length) {
-            let originalValue = inputField.val().trim();
-            inputField.attr("data-original-value", originalValue);
-        }
-    });
-
-    function roundValue(value, digits) {
-        if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
-            return value;
-        }
-
-        let num = parseFloat(value.replace(",", "."));
-        if (isNaN(num)) {
-            return value;
-        }
-
-        switch (digits) {
-            case "-1":
-                return Math.round(num);
-            case "0":
-                return value;
-            default:
-                return num.toFixed(parseInt(digits, 10)).replace(".", ",");
-        }
+    if (!hasUrlParam("rounding_digits") && localStorage.getItem("rounding_digits")) {
+        roundingDigitsSelect.value = localStorage.getItem("rounding_digits");
     }
 
-    function updateValues() {
-        const roundingDigits = $("#rounding_digits").val();
-        $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
-            let inputField = $(this).find("input");
-            if (inputField.length) {
-                let original = inputField.attr("data-original-value");
-                let newValue = roundValue(original, roundingDigits);
-                inputField.val(newValue);
-            }
+    // При изменении — сохраняем в localStorage
+    [startYearSelect, endYearSelect, roundingDigitsSelect].forEach((el) => {
+        el.addEventListener("change", () => {
+            localStorage.setItem(el.id, el.value);
         });
+    });
+
+    // Прокидываем скрытые поля в POST
+    const paramsToPreserve = ["start_year", "end_year", "rounding_digits"];
+
+    function addHiddenField(form, name, value) {
+        if (!form.querySelector(`input[name="${name}"]`)) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        }
     }
 
-    $("#rounding_digits").on("change", function () {
-        updateValues();
+    const forms = document.querySelectorAll("form[method='POST']");
+    forms.forEach((form) => {
+        form.addEventListener("submit", () => {
+            paramsToPreserve.forEach((param) => {
+                const el = document.getElementById(param);
+                if (el && el.value) {
+                    addHiddenField(form, param, el.value);
+                }
+            });
+        });
     });
-
-    $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
-        $(this).attr("data-original-value", $(this).val());
-    });
-
-    updateValues();
 });
 
+
+
 </script>
 
-<!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
-<script>
-    $(document).ready(function() {
-        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
-        $('.rowspan-td').each(function() {
-            $(this).data('original-rowspan', $(this).attr('rowspan'));
-        });
 
-        // Сохраняем rowspan для ячеек с названием станции
-        $('.station-rowspan-td').each(function() {
-            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
-            let totalMachines = (originalRowspan - 1) / 3;
-            $(this).data('total-machines', totalMachines);
-        });
-
-        // Функция обновления строк
-        function updateRows() {
-            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
-            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
-
-            // Показываем/скрываем строки p_ogr-row
-            if (showPOgr) {
-                $('.p-ogr-row').show();
-            } else {
-                $('.p-ogr-row').hide();
-            }
-
-            // Показываем/скрываем строки p_rasp-row
-            if (showPRasp) {
-                $('.p-rasp-row').show();
-            } else {
-                $('.p-rasp-row').hide();
-            }
-
-            // Количество отображаемых строк на агрегат (1..3)
-            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
-
-            // Обновляем rowspan для ячейки "Всего по станции"
-            $('.total-row-cell').attr('rowspan', aggregatorRows);
-
-            // Меняем rowspan для ячеек агрегатов
-            $('.rowspan-td').each(function() {
-                let original = parseInt($(this).data('original-rowspan'), 10);
-                $(this).attr('rowspan', aggregatorRows);
-            });
-
-            // Меняем rowspan для ячеек с названием станции
-            $('.station-rowspan-td').each(function() {
-                let totalMachines = parseInt($(this).data('total-machines'), 10);
-                let newRowSpan = totalMachines * aggregatorRows + 1;
-                $(this).attr('rowspan', newRowSpan);
-            });
-
-            // Обновляем корректное отображение суммарных мощностей
-            $('.power-column').each(function() {
-                let totalRow = $(this).closest('tr').find('.total-row-cell');
-                if (totalRow.length) {
-                    totalRow.attr('rowspan', aggregatorRows);
-                }
-            });
-
-        }
-
-        // Обновляем строки при загрузке страницы
-        updateRows();
-
-        // Обновляем строки при изменении чекбоксов
-        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
-            updateRows();
-        });
-    });
-</script>
-
-<!-- Скрипт для определения количества знаков после запятой -->
-<script>
-    $(document).ready(function () {
-        // Сохраняем исходные значения всех input полей
-        $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
-            let inputField = $(this).find("input");
-    
-            if (inputField.length) {
-                let originalValue = inputField.val().trim();
-                inputField.attr("data-original-value", originalValue); // Сохраняем в data-атрибут
-            }
-        });
-    
-        // Функция для округления одного значения
-        function roundValue(value, digits) {
-            if (!value || value === "—" || value === "-" || value.includes("&mdash;")) {
-                return value;
-            }
-    
-            let num = parseFloat(value.replace(",", "."));
-            if (isNaN(num)) {
-                return value; // Если не число, не трогаем
-            }
-    
-            switch (digits) {
-                case "-1": // Округление до целого
-                    return Math.round(num);
-                case "0": // Без округления (но заменяем точку на запятую)
-                    return num.toString().replace(".", ",");  
-                default:
-                    return num.toFixed(parseInt(digits, 10)).replace(".", ","); // Округляем
-            }
-        }
-    
-        // Функция обновления значений в input полях
-        function updateValues() {
-            const roundingDigits = $("#rounding_digits").val();
-    
-            $(".power-column, .p-ogr-row, .p-rasp-row").each(function () {
-                let inputField = $(this).find("input");
-    
-                if (inputField.length) {
-                    let original = inputField.attr("data-original-value"); // Берём исходное значение
-                    let newValue = roundValue(original, roundingDigits);
-                    inputField.val(newValue); // Обновляем input
-                }
-            });
-        }
-    
-        // Обновляем значения при изменении режима округления
-        $("#rounding_digits").on("change", function () {
-            updateValues();
-        });
-    
-        // Обновление значений при редактировании, чтобы сохранялись исходные
-        $(".power-column input, .p-ogr-row input, .p-rasp-row input").on("input", function () {
-            $(this).attr("data-original-value", $(this).val()); // Обновляем оригинальное значение
-        });
-    
-        // Перед отправкой формы заменяем запятые на точки
-        $("form").on("submit", function () {
-            $(".power-column input, .p-ogr-row input, .p-rasp-row input").each(function () {
-                let inputField = $(this);
-                let value = inputField.val();
-                if (value.includes(",")) {
-                    inputField.val(value.replace(",", ".")); // Меняем запятую на точку перед отправкой
-                }
-            });
-        });
-    
-        // 7️⃣ Инициализация округления при загрузке страницы
-        updateValues();
-    });
-</script>
+<script src="{{ url_for('static', filename='js/stations/highlight_changes.js') }}"></script>
 
 {% endif %}
 {% endblock %}

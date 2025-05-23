@@ -1,41 +1,70 @@
 from config import Config
 from . import station_bp
-from app.models.logs_models import Log
-from flask import render_template, request, session, flash
+from app import db
+from flask import render_template, request, session, flash, redirect, url_for
 from flask_login import login_required
 from app.routes.auth import role_required
-from app import db
-import traceback
-from app.forms.machine_forms import MachineFilterForm, EditMachineForm
-from app.models.stations_models import ConditionType, StationType, TesType, MachineType, TesMachineType, MachineTesType, Machine, MachinePower, MachineFuel, StationPower
-from app.models.fuels_models import Fuel
-from app.models.years_models import Year, YearFeature
-from app.models.energy_systems_models import EnergyArea, EnergyUnit
-from app.models.gen_companies_models import GenCompany
 from app.services.logging_services.logging_service import log_to_db
+import traceback
+from app.forms.machine_forms import (
+    MachineFilterForm, 
+    EditMachineForm
+)
+from app.models import *
+from app.services.machine_services.machine_services import (
+    handle_machine_get,
+    handle_machine_post, 
+)
 from app.services.station_services.station_services import (
     get_machine_by_id,
     get_station_by_id, 
     recalculate_station_power,
 )
-from app.services.station_services.station_import_services import (
-    convert_to_iso_date,
+from app.services.station_services.help_services import (
+    convert_to_date,
+    rounded_decimal
 )
-
-def log_to_db(username, action, details=None):
-    """Записывает лог действия пользователя в базу данных."""
-    try:
-        log_entry = Log(username=username, action=action, details=details)
-        db.session.add(log_entry)
-        db.session.commit()
-    except Exception as e:
-        print(f"Ошибка записи лога: {e}")
 
 
 @station_bp.route("/machine_details/<int:station_id>/<int:machine_id>", methods=["GET", "POST"])
 @login_required
 @role_required('super-admin')
 def machine_details(station_id, machine_id):
+    user = session.get('username', 'Неизвестный пользователь')
+
+    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
+    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+    rounding_digits = request.args.get("rounding_digits", 1, type=int)
+
+    if request.method == "POST":
+        return handle_machine_post(
+            station_id=station_id,
+            machine_id=machine_id,
+            form_data=request.form,
+            user=user,
+            start_year=start_year,
+            end_year=end_year,
+            rounding_digits=rounding_digits,
+        )
+    else:
+        result = handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits)
+        return render_template(
+            "stations/machine_details.html",
+            main_form=result['main_form'],
+            advanced_form=result['advanced_form'],
+            station=result['station'],
+            machine=result['machine'],
+            start_year=start_year,
+            end_year=end_year,
+            rounding_digits=rounding_digits,
+            year_features=result['year_features']
+        )
+
+
+@station_bp.route("/machine_details/<int:station_id>/<int:machine_id>", methods=["GET", "POST"])
+@login_required
+@role_required('super-admin')
+def machine_details_old(station_id, machine_id):
     """Маршрут для отображения и редактирования агрегата электростанции с логированием."""
     # Получаем данные
     machine = get_machine_by_id(machine_id)
@@ -64,7 +93,7 @@ def machine_details(station_id, machine_id):
 
         # Заполняем choices в основной форме
         main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
-        main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
+        main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
         main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
         main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
         main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
@@ -85,6 +114,9 @@ def machine_details(station_id, machine_id):
             entry.fuel_type.choices = fuel_choices
             if entry.fuel_type.data is None:
                 entry.fuel_type.data = 100
+        
+        if main_form.id_gen_company.data is None:
+            main_form.id_gen_company.data = 0
 
         ## Добавляем поля во вложенные FieldList (powers, tes_types, fuels)
         for year_num in range(start_year, end_year + 1):
@@ -172,7 +204,7 @@ def machine_details(station_id, machine_id):
 
             # Заполняем choices в основной форме
             main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
-            main_form.id_gen_company.choices = [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
+            main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
             main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
             main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
             main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
@@ -235,7 +267,7 @@ def machine_details(station_id, machine_id):
                     for field in date_fields:
                         if f"main_{field}" in request.form:
                             old_value = getattr(machine, field)
-                            new_value = convert_to_iso_date(getattr(main_form, field).data)
+                            new_value = convert_to_date(getattr(main_form, field).data)
 
                             if old_value != new_value and new_value is not None:
                                 changes.append(f"{field}: {old_value} -> {new_value}")
@@ -245,19 +277,19 @@ def machine_details(station_id, machine_id):
                     for i, year_num in enumerate(range(start_year, end_year + 1)):
                         # MachinePower
                         mp_obj = machine.machine_powers[i]
-                        
+
                         for attr in ["p_ust", "p_ogr", "p_rasp"]:
                             field_name = f"adv_powers-{i}-{attr}"
-                            
-                            if field_name in request.form:  # Проверяем, действительно ли значение было отправлено в POST-запросе
+
+                            if field_name in request.form:  # Значение пришло в POST
                                 old_value = getattr(mp_obj, attr)
                                 new_value = getattr(advanced_form.powers[i], attr).data
-                                
-                                if new_value is None:  # Если новое значение не задано, оставляем старое
+
+                                if new_value is None:
                                     new_value = old_value
-                                
-                                # Сравниваем с округлением, чтобы избежать ложных изменений (60.0001 vs 60.0)
-                                if old_value is not None and round(float(old_value), 4) != round(float(new_value), 4):
+
+                                # Безопасное сравнение Decimal с точностью
+                                if old_value is not None and rounded_decimal(old_value, 15) != rounded_decimal(new_value, 15):
                                     changes.append(f"{year_num} - {attr}: {old_value} -> {new_value}")
                                     setattr(mp_obj, attr, new_value)
 
@@ -319,7 +351,7 @@ def machine_details(station_id, machine_id):
                     
                 except Exception as e:
                     db.session.rollback()
-                    traceback.print_exc()  # ← добавь эту строку
+                    traceback.print_exc()
                     log_to_db(user, f"Ошибка обновления агрегата №{machine.machine_number} {machine.machine_name} электростанции {station.name} ({station.regional_district.name})", details=str(e))
                     print(f"Ошибка при сохранении: {str(e)}")
                     flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
@@ -329,8 +361,20 @@ def machine_details(station_id, machine_id):
             #    в том числе динамические поля для каждого года
             main_form.process(obj=machine)
 
+            if main_form.id_condition_type.data is None:
+                main_form.id_condition_type.data = 100
+
+            if main_form.id_gen_company.data is None:
+                main_form.id_gen_company.data = 0
+
+            if main_form.id_station_type.data is None:
+                main_form.id_station_type.data = 100
+
             if main_form.id_tes_machine_type.data is None:
                 main_form.id_tes_machine_type.data = 100
+
+            if main_form.id_machine_type.data is None:
+                main_form.id_machine_type.data = 100
 
             i = 0
             for year_num in range(start_year, end_year + 1):
@@ -379,3 +423,38 @@ def machine_details(station_id, machine_id):
                                station=station, 
                                machine=machine,
                                year_features=year_features), 500
+    
+
+@station_bp.route('/machines/add/<int:station_id>', methods=['GET'])
+@login_required
+@role_required('super-admin')
+def add_machine(station_id):
+    user = session.get('username', 'Неизвестный пользователь')
+
+    # Проверяем существование станции
+    station = db.session.query(Station).filter_by(id=station_id).first()
+    if not station:
+        flash("Станция не найдена.", "danger")
+        return redirect(url_for("station_bp.station_list"))
+
+    try:
+        # Создаём новый агрегат с привязкой к станции
+        new_machine = Machine(
+            id_station=station_id,
+            machine_number=f"",
+            machine_name=f"",
+            machine_group=f""
+        )
+        db.session.add(new_machine)
+        db.session.commit()
+
+        log_to_db(user, f"Добавлен новый агрегат к станции {station.name} (ID {station.id})")
+
+        # Перенаправляем на страницу редактирования нового агрегата
+        return redirect(url_for('station_bp.machine_details', station_id=station_id, machine_id=new_machine.id))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Ошибка при добавлении агрегата: {str(e)}", "danger")
+        log_to_db(user, "Ошибка добавления агрегата", details=str(e))
+        return redirect(url_for("station_bp.station_details", station_id=station_id))

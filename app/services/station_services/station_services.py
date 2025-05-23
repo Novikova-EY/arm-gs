@@ -9,7 +9,7 @@ from app.models import (
     RegionalDistrict, Station, StationType, Machine, FuelType,
     MachinePower, MachineTesType, Machine, StationPower
 )
-from app.services.station_services.help_service import (
+from app.services.station_services.help_services import (
         get_current_year,
         get_station_types,
         get_tes_types,
@@ -23,13 +23,13 @@ from app.services.station_services.help_service import (
         get_federal_districts,
         get_year_features,
     )
-from app.services.station_services.filters_service import (
+from app.services.station_services.filters_services import (
         get_filtered_station_ids,
         filter_machines,
         extract_filters_from_args,
         extract_filters_from_form,
     )
-from app.services.station_services.groupped_service import (
+from app.services.station_services.groupped_services import (
         group_stations_hierarchy,
         group_machines_by_group_and_fuel,
     )
@@ -270,14 +270,12 @@ def get_station_list_data(
 
 
 def get_station_by_id(station_id):
-    station = (
+    return (
         db.session.query(Station)
+        .options(joinedload(Station.machines))
         .filter_by(id=station_id)
-        .join(Station.machines)
         .first()
     )
-    
-    return station
 
 
 def get_machine_by_id(machine_id):
@@ -702,9 +700,10 @@ def get_station_list_template_context(form, pagination, rounding_digits, filters
     }
 
 
+
 def recalculate_station_power(station, start_year, end_year):
     power_by_year = {
-        year: {"p_ust": 0.0, "p_ogr": 0.0, "p_rasp": 0.0}
+        year: {"p_ust": Decimal("0"), "p_ogr": Decimal("0"), "p_rasp": Decimal("0")}
         for year in range(start_year, end_year + 1)
     }
 
@@ -712,10 +711,10 @@ def recalculate_station_power(station, start_year, end_year):
         for mp in machine.machine_powers:
             year = mp.year.number
             if start_year <= year <= end_year:
-                power_by_year[year]["p_ust"] += float(mp.p_ust or 0)
-                power_by_year[year]["p_ogr"] += float(mp.p_ogr or 0)
-                power_by_year[year]["p_rasp"] += float(mp.p_rasp or 0)
-                
+                power_by_year[year]["p_ust"] += Decimal(str(mp.p_ust or "0"))
+                power_by_year[year]["p_ogr"] += Decimal(str(mp.p_ogr or "0"))
+                power_by_year[year]["p_rasp"] += Decimal(str(mp.p_rasp or "0"))
+
     # Загружаем или создаём StationPower по годам
     existing_spowers = {
         sp.year_number: sp

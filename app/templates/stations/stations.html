@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Страница "Электростанции"{% endblock %}
+{% block title %}Электростанции{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -9,7 +9,23 @@
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
     </div>
 
-    <h1 class="text-center mb-4">Таблица электростанций</h1>
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Левая группа кнопок -->
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Электростанции Российской Федерации</h1>
+            </div>
+
+            <!-- Правая группа: чекбоксы и подсветка -->
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <!-- Кнопка добавления электростанции -->
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+            </div>
+        </div>
+    </div>
+
 
     <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
     <input type="hidden" name="start_year" value="{{ request.args.get('start_year', '') }}">

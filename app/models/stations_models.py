@@ -99,7 +99,7 @@ class Station(db.Model):
         back_populates='stations')   
 
     # наименование диспетчерское (основное)
-    name = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(255), nullable=False)
     
     # наименование от СО ЕЭС (оперативная информация)
     name_so = db.Column(db.String(80), unique=True, nullable=True)
@@ -123,7 +123,7 @@ class Station(db.Model):
     id_energy_unit = db.Column(
         db.Integer,
         db.ForeignKey('energy_units.id', ondelete='RESTRICT'),
-        nullable=False
+        nullable=True
     )
     energy_unit = db.relationship(
         'EnergyUnit', 
@@ -196,13 +196,17 @@ class Station(db.Model):
         if not self.machines:
             return None
 
-        types = {machine.station_type.name for machine in self.machines if machine.station_type}
-        
+        types = {
+            machine.station_type.name
+            for machine in self.machines
+            if machine.station_type and machine.station_type.id != 100
+        }
+
         if not types:
-            return None
+            return "не указано"
         if len(types) == 1:
             return next(iter(types))
-        return "Разные типы"
+        return sorted(types)
 
     __table_args__ = (
         UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
@@ -330,7 +334,7 @@ class Machine(db.Model):
     machine_name = db.Column(db.String(255), nullable=False)
 
     # номер/название группы агрегата
-    machine_group = db.Column(db.String(255), nullable=False)
+    machine_group = db.Column(db.String(255), nullable=True)
 
     # название агрегата
     fuel_so = db.Column(db.String(255), nullable=True)
@@ -423,16 +427,18 @@ class Machine(db.Model):
         tes_type_names = {
             mtt.tes_type.name
             for mtt in self.machine_tes_types
-            if mtt.tes_type and mtt.tes_type.name
+            if mtt.tes_type and mtt.tes_type.name and mtt.tes_type.name.lower() != "не указано"
         }
         return ", ".join(sorted(tes_type_names)) if tes_type_names else None
     
     @property
     def primary_fuel_type(self):
-        for mf in sorted(self.machine_fuels, key=lambda mf: mf.year_number or 0):
-            if mf.fuel and mf.fuel.fuel_type:
-                return mf.fuel.fuel_type.name
-        return None
+        fuel_names = {
+            mf.fuel.fuel_type.name
+            for mf in self.machine_fuels
+            if mf.fuel and mf.fuel.fuel_type and mf.fuel.fuel_type.name.lower() != "не указано"
+        }
+        return ", ".join(sorted(fuel_names)) if fuel_names else None
 
 # Модель для котла электростанции
 class Boiler(db.Model):

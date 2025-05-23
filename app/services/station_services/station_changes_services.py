@@ -9,10 +9,12 @@ from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import func
 from decimal import Decimal
 from app.services.reference_services.gen_company_services import clean_name
+from app.services.station_services.help_services import convert_to_date
 from collections import defaultdict
 from app.services.logging_services.logging_service import log_to_db
 from app.models import Machine, MachinePower, db
 from sqlalchemy import and_, func
+import pandas as pd
 
 def get_machines_with_power_changes(station_id=None):
     """
@@ -809,39 +811,7 @@ def aggregate_total_power_values(stations):
     }
 
 
-import re
-import pandas as pd
-from app import db
-from datetime import datetime
 
-
-# Функция для конверстиции даты в формат 'гггг-мм-дд'
-def convert_date(date_value):
-    """
-    Преобразует дату в формат 'гггг-мм-дд'.
-    Поддерживает строки в формате 'дд.мм.гггг', pandas.Timestamp и datetime.
-    Если дата некорректна, возвращает None.
-    
-    :param date_value: Строка, Timestamp или datetime
-    :return: Строка в формате 'гггг-мм-дд' или None
-    """
-    if pd.isna(date_value) or not date_value:
-        return None
-
-    # Если это pandas.Timestamp или datetime — преобразуем сразу
-    if isinstance(date_value, (pd.Timestamp, datetime)):
-        return date_value.strftime("%Y-%m-%d")
-
-    # Если это строка — пытаемся распарсить
-    if isinstance(date_value, str):
-        try:
-            date_obj = datetime.strptime(date_value, "%d.%m.%Y")
-            return date_obj.strftime("%Y-%m-%d")
-        except ValueError:
-            return None
-
-    # Если неизвестный тип данных
-    return None
     
 
 # Функция для проверки значений на NaN и замены на None
@@ -986,41 +956,41 @@ def import_station_list_from_excel(file, user):
                     changes.append(f"date_exploitation: {machine.date_exploitation} → {row.get('date_exploitation') if not pd.isna(row.get('date_exploitation')) else None}")
                     machine.id_gen_company = gen_company.id if gen_company else None
 
-                if machine.date_commission_fact != (convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None):
-                    changes.append(f"date_commission_fact: {machine.date_commission_fact} → {convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None}")
-                    machine.date_commission_fact = convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None
+                if machine.date_commission_fact != (convert_to_date(row.get('date_commission_fact')) if not convert_to_date(pd.isna(row.get('date_commission_fact'))) else None):
+                    changes.append(f"date_commission_fact: {machine.date_commission_fact} → {convert_to_date(row.get('date_commission_fact')) if not convert_to_date(pd.isna(row.get('date_commission_fact'))) else None}")
+                    machine.date_commission_fact = convert_to_date(row.get('date_commission_fact')) if not convert_to_date(pd.isna(row.get('date_commission_fact'))) else None
 
-                if machine.date_joining_expected != (convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None):
-                    changes.append(f"date_joining_expected: {machine.date_joining_expected} → {convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None}")
-                    machine.date_joining_expected = convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None
+                if machine.date_joining_expected != (convert_to_date(row.get('date_joining_expected')) if not convert_to_date(pd.isna(row.get('date_joining_expected'))) else None):
+                    changes.append(f"date_joining_expected: {machine.date_joining_expected} → {convert_to_date(row.get('date_joining_expected')) if not convert_to_date(pd.isna(row.get('date_joining_expected'))) else None}")
+                    machine.date_joining_expected = convert_to_date(row.get('date_joining_expected')) if not convert_to_date(pd.isna(row.get('date_joining_expected'))) else None
 
-                if machine.date_joining_fact != (convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None):
-                    changes.append(f"date_joining_fact: {machine.date_joining_fact} → {convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None}")
-                    machine.date_joining_fact = convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None
+                if machine.date_joining_fact != (convert_to_date(row.get('date_joining_fact')) if not convert_to_date(pd.isna(row.get('date_joining_fact'))) else None):
+                    changes.append(f"date_joining_fact: {machine.date_joining_fact} → {convert_to_date(row.get('date_joining_fact')) if not convert_to_date(pd.isna(row.get('date_joining_fact'))) else None}")
+                    machine.date_joining_fact = convert_to_date(row.get('date_joining_fact')) if not convert_to_date(pd.isna(row.get('date_joining_fact'))) else None
 
-                if machine.date_detatchment_fact != (convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None):
-                    changes.append(f"date_detatchment_fact: {machine.date_detatchment_fact} → {convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None}")
-                    machine.date_detatchment_fact = convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None
+                if machine.date_detatchment_fact != (convert_to_date(row.get('date_detatchment_fact')) if not convert_to_date(pd.isna(row.get('date_detatchment_fact'))) else None):
+                    changes.append(f"date_detatchment_fact: {machine.date_detatchment_fact} → {convert_to_date(row.get('date_detatchment_fact')) if not convert_to_date(pd.isna(row.get('date_detatchment_fact'))) else None}")
+                    machine.date_detatchment_fact = convert_to_date(row.get('date_detatchment_fact')) if not convert_to_date(pd.isna(row.get('date_detatchment_fact'))) else None
 
-                if machine.date_decompressing_expected != (convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None):
-                    changes.append(f"date_decompressing_expected: {machine.date_decompressing_expected} → {convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None}")
-                    machine.date_decompressing_expected = convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None
+                if machine.date_decompressing_expected != (convert_to_date(row.get('date_decompressing_expected')) if not convert_to_date(pd.isna(row.get('date_decompressing_expected'))) else None):
+                    changes.append(f"date_decompressing_expected: {machine.date_decompressing_expected} → {convert_to_date(row.get('date_decompressing_expected')) if not convert_to_date(pd.isna(row.get('date_decompressing_expected'))) else None}")
+                    machine.date_decompressing_expected = convert_to_date(row.get('date_decompressing_expected')) if not convert_to_date(pd.isna(row.get('date_decompressing_expected'))) else None
 
-                if machine.date_decompressing_fact != (convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None):
-                    changes.append(f"date_decompressing_fact: {machine.date_decompressing_fact} → {convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None}")
-                    machine.date_decompressing_fact = convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None
+                if machine.date_decompressing_fact != (convert_to_date(row.get('date_decompressing_fact')) if not convert_to_date(pd.isna(row.get('date_decompressing_fact'))) else None):
+                    changes.append(f"date_decompressing_fact: {machine.date_decompressing_fact} → {convert_to_date(row.get('date_decompressing_fact')) if not convert_to_date(pd.isna(row.get('date_decompressing_fact'))) else None}")
+                    machine.date_decompressing_fact = convert_to_date(row.get('date_decompressing_fact')) if not convert_to_date(pd.isna(row.get('date_decompressing_fact'))) else None
 
-                if machine.date_modernization_expected != (convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None):
-                    changes.append(f"date_modernization_expected: {machine.date_modernization_expected} → {convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None}")
-                    machine.date_modernization_expected = convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None
+                if machine.date_modernization_expected != (convert_to_date(row.get('date_modernization_expected')) if not convert_to_date(pd.isna(row.get('date_modernization_expected'))) else None):
+                    changes.append(f"date_modernization_expected: {machine.date_modernization_expected} → {convert_to_date(row.get('date_modernization_expected')) if not convert_to_date(pd.isna(row.get('date_modernization_expected'))) else None}")
+                    machine.date_modernization_expected = convert_to_date(row.get('date_modernization_expected')) if not convert_to_date(pd.isna(row.get('date_modernization_expected'))) else None
 
-                if machine.date_relabing_fact != (convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None):
-                    changes.append(f"date_relabing_fact: {machine.date_relabing_fact} → {convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None}")
-                    machine.date_relabing_fact = convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None
+                if machine.date_relabing_fact != (convert_to_date(row.get('date_relabing_fact')) if not convert_to_date(pd.isna(row.get('date_relabing_fact'))) else None):
+                    changes.append(f"date_relabing_fact: {machine.date_relabing_fact} → {convert_to_date(row.get('date_relabing_fact')) if not convert_to_date(pd.isna(row.get('date_relabing_fact'))) else None}")
+                    machine.date_relabing_fact = convert_to_date(row.get('date_relabing_fact')) if not convert_to_date(pd.isna(row.get('date_relabing_fact'))) else None
 
-                if machine.date_update_fact != (convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None):
-                    changes.append(f"date_update_fact: {machine.date_update_fact} → {convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None}")
-                    machine.date_update_fact = convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None
+                if machine.date_update_fact != (convert_to_date(row.get('date_update_fact')) if not convert_to_date(pd.isna(row.get('date_update_fact'))) else None):
+                    changes.append(f"date_update_fact: {machine.date_update_fact} → {convert_to_date(row.get('date_update_fact')) if not convert_to_date(pd.isna(row.get('date_update_fact'))) else None}")
+                    machine.date_update_fact = convert_to_date(row.get('date_update_fact')) if not convert_to_date(pd.isna(row.get('date_update_fact'))) else None
 
                 if machine.note != (clean_name(row['note']) if not pd.isna(row['note']) else None):
                     changes.append(f"note: {machine.note} → {clean_name(row['note']) if not pd.isna(row['note']) else None}")
@@ -1047,15 +1017,15 @@ def import_station_list_from_excel(file, user):
                     id_machine_type=MachineType.query.filter_by(id=100).first().id,
                     id_energy_area=EnergyArea.query.filter_by(id=100).first().id,
                     id_tes_machine_type=TesMachineType.query.filter_by(name=clean_name(row['tes_machine_type'])).first().id if not pd.isna(row['tes_machine_type']) else None,
-                    date_commission_fact=convert_date(row.get('date_commission_fact')) if not convert_date(pd.isna(row.get('date_commission_fact'))) else None,
-                    date_joining_expected=convert_date(row.get('date_joining_expected')) if not convert_date(pd.isna(row.get('date_joining_expected'))) else None,
-                    date_joining_fact=convert_date(row.get('date_joining_fact')) if not convert_date(pd.isna(row.get('date_joining_fact'))) else None,
-                    date_detatchment_fact=convert_date(row.get('date_detatchment_fact')) if not convert_date(pd.isna(row.get('date_detatchment_fact'))) else None,
-                    date_decompressing_expected=convert_date(row.get('date_decompressing_expected')) if not convert_date(pd.isna(row.get('date_decompressing_expected'))) else None,
-                    date_decompressing_fact=convert_date(row.get('date_decompressing_fact')) if not convert_date(pd.isna(row.get('date_decompressing_fact'))) else None,
-                    date_modernization_expected=convert_date(row.get('date_modernization_expected')) if not convert_date(pd.isna(row.get('date_modernization_expected'))) else None,
-                    date_relabing_fact=convert_date(row.get('date_relabing_fact')) if not convert_date(pd.isna(row.get('date_relabing_fact'))) else None,
-                    date_update_fact=convert_date(row.get('date_update_fact')) if not convert_date(pd.isna(row.get('date_update_fact'))) else None
+                    date_commission_fact=convert_to_date(row.get('date_commission_fact')) if not convert_to_date(pd.isna(row.get('date_commission_fact'))) else None,
+                    date_joining_expected=convert_to_date(row.get('date_joining_expected')) if not convert_to_date(pd.isna(row.get('date_joining_expected'))) else None,
+                    date_joining_fact=convert_to_date(row.get('date_joining_fact')) if not convert_to_date(pd.isna(row.get('date_joining_fact'))) else None,
+                    date_detatchment_fact=convert_to_date(row.get('date_detatchment_fact')) if not convert_to_date(pd.isna(row.get('date_detatchment_fact'))) else None,
+                    date_decompressing_expected=convert_to_date(row.get('date_decompressing_expected')) if not convert_to_date(pd.isna(row.get('date_decompressing_expected'))) else None,
+                    date_decompressing_fact=convert_to_date(row.get('date_decompressing_fact')) if not convert_to_date(pd.isna(row.get('date_decompressing_fact'))) else None,
+                    date_modernization_expected=convert_to_date(row.get('date_modernization_expected')) if not convert_to_date(pd.isna(row.get('date_modernization_expected'))) else None,
+                    date_relabing_fact=convert_to_date(row.get('date_relabing_fact')) if not convert_to_date(pd.isna(row.get('date_relabing_fact'))) else None,
+                    date_update_fact=convert_to_date(row.get('date_update_fact')) if not convert_to_date(pd.isna(row.get('date_update_fact'))) else None
                 )
                 db.session.add(machine)
                 db.session.commit()
@@ -1066,13 +1036,15 @@ def import_station_list_from_excel(file, user):
             last_machine = current_machine
 
             # Вносим установленную мощность, тип ТЭС и топливо     
+            from decimal import Decimal, InvalidOperation
+
             for year in range(start_year, end_year + 1):
                 # Вносим данные о мощности
                 p_ust = clean_name(row.get(f'p_{year}'))
                 p_ust = None if p_ust in ['', ' ', 'nan', 'NaN'] or pd.isna(p_ust) else p_ust
                 try:
-                    p_ust = float(p_ust) if p_ust is not None else None
-                except ValueError:
+                    p_ust = Decimal(str(p_ust)) if p_ust is not None else None
+                except (InvalidOperation, ValueError):
                     p_ust = None
 
                 if p_ust is None or current_machine.id_condition_type == ConditionType.query.filter_by(name="планируемый").first().id:
@@ -1182,12 +1154,14 @@ def import_station_list_from_excel(file, user):
                 print("если поля regional_district и station_name, machine_name и gen_company не заполнены, но шагом ранее был создан агрегат, то добавляем ему располагаему мощность")
                 current_machine = last_machine  # Используем последнюю машину
 
+                from decimal import Decimal, InvalidOperation
+
                 for year in range(start_year, end_year + 1):
                     p_rasp = clean_name(row.get(f'p_{year}'))
                     p_rasp = None if p_rasp in ['', ' ', 'nan', 'NaN'] or pd.isna(p_rasp) else p_rasp
                     try:
-                        p_rasp = float(p_rasp) if p_rasp is not None else None
-                    except ValueError:
+                        p_rasp = Decimal(str(p_rasp)) if p_rasp is not None else None
+                    except (InvalidOperation, ValueError):
                         p_rasp = None
 
                     if p_rasp is None or current_machine.id_condition_type == ConditionType.query.filter_by(name="планируемый").first().id:
@@ -1306,43 +1280,6 @@ def import_fuel_tes_station_from_excel(file, user):
             print("Имя и генкомпания отсутствуют, пропускаем строку.")
 
     return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
-
-
-import re
-from datetime import datetime
-
-def convert_to_iso_date(value):
-    """
-    Преобразует введённую строку в нужный формат:
-      - YYYY → возвращается как есть
-      - DD.MM.YYYY → преобразуется в YYYY-MM-DD
-      - YYYY-MM-DD → возвращается как есть (если корректно)
-      - None/пусто → None
-    """
-    if not value or not value.strip():
-        return None
-
-    value = value.strip()
-
-    # Если только год (YYYY)
-    if re.match(r'^\d{4}$', value):
-        return value
-
-    # Если уже ISO-формат YYYY-MM-DD
-    if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
-        try:
-            datetime.strptime(value, '%Y-%m-%d')  # просто проверка
-            return value
-        except ValueError:
-            raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
-
-    # Если формат DD.MM.YYYY
-    try:
-        date_obj = datetime.strptime(value, '%d.%m.%Y')
-        return date_obj.strftime('%Y-%m-%d')
-    except ValueError:
-        raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
-
 
 
 from io import BytesIO

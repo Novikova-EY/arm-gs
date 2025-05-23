@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", function () {
     const button = document.getElementById("highlightChangesBtn");
     if (!button) {
@@ -9,10 +8,17 @@ document.addEventListener("DOMContentLoaded", function () {
     let isHighlighted = false;
 
     button.addEventListener("click", function () {
+        // СБРОС ПОДСВЕТКИ
         if (isHighlighted) {
             document.querySelectorAll(".highlight-green, .highlight-red, .highlight-blue").forEach(cell => {
                 cell.classList.remove("highlight-green", "highlight-red", "highlight-blue");
             });
+
+            // Сброс у input
+            document.querySelectorAll(".power-column input").forEach(input => {
+                input.classList.remove("highlight-blue", "highlight-green", "highlight-red");
+            });
+
             button.textContent = "✨ Подсветить изменения";
             isHighlighted = false;
             return;
@@ -21,8 +27,8 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("✨ Подсветка изменений активирована");
 
         document.querySelectorAll("tr").forEach(row => {
-            let powerCells = row.querySelectorAll(".power-column");
-            let fuelCells = row.querySelectorAll(".fuel-column");
+            const powerCells = row.querySelectorAll(".power-column");
+            const fuelCells = row.querySelectorAll(".fuel-column");
 
             let previousPowerCell = null;
             let previousFuelCell = null;
@@ -81,14 +87,36 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Добавим стили, если ещё не добавлены
+        // ПОДСВЕТКА INPUT-ПОЛЕЙ (РУСТ/РОГР/РРАСП)
+        document.querySelectorAll(".power-column input").forEach(input => {
+            const origRaw = (input.getAttribute("data-original-value") || "").replace(",", ".").trim();
+            const currRaw = (input.value || "").replace(",", ".").trim();
+
+            const isDash = val => val === "-" || val === "—" || val === "";
+
+            const origVal = parseFloat(origRaw);
+            const currVal = parseFloat(currRaw);
+
+            const origIsZero = isDash(origRaw) || isNaN(origVal) || origVal === 0;
+            const currIsZero = isDash(currRaw) || isNaN(currVal) || currVal === 0;
+
+            if (origIsZero && currVal > 0) {
+                input.classList.add("highlight-green");
+            } else if (!origIsZero && currIsZero) {
+                input.classList.add("highlight-red");
+            } else if (!isNaN(origVal) && !isNaN(currVal) && origVal !== currVal) {
+                input.classList.add("highlight-blue");
+            }
+        });
+
+        // Добавляем стили, если ещё не добавлены
         if (!document.getElementById("highlightStyle")) {
             const style = document.createElement("style");
             style.id = "highlightStyle";
             style.innerHTML = `
                 .highlight-green { background-color: lightgreen !important; }
-                .highlight-red { background-color: lightcoral !important; }
-                .highlight-blue { background-color: lightblue !important; }
+                .highlight-red   { background-color: lightcoral !important; }
+                .highlight-blue  { background-color: lightblue !important; }
             `;
             document.head.appendChild(style);
         }

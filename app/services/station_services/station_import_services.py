@@ -14,36 +14,8 @@ from app.models import (
 from app.services.reference_services.gen_company_services import (
         clean_name
 )
+from app.services.station_services.help_services import convert_to_date
 
-
-# Функция для конвертации даты в формат 'гггг-мм-дд'
-def convert_date(date_value):
-    """
-    Преобразует дату в формат 'гггг-мм-дд'.
-    Поддерживает строки в формате 'дд.мм.гггг', pandas.Timestamp и datetime.
-    Если дата некорректна, возвращает None.
-    
-    :param date_value: Строка, Timestamp или datetime
-    :return: Строка в формате 'гггг-мм-дд' или None
-    """
-    if pd.isna(date_value) or not date_value:
-        return None
-
-    # Если это pandas.Timestamp или datetime — преобразуем сразу
-    if isinstance(date_value, (pd.Timestamp, datetime)):
-        return date_value.strftime("%Y-%m-%d")
-
-    # Если это строка — пытаемся распарсить
-    if isinstance(date_value, str):
-        try:
-            date_obj = datetime.strptime(date_value, "%d.%m.%Y")
-            return date_obj.strftime("%Y-%m-%d")
-        except ValueError:
-            return None
-
-    # Если неизвестный тип данных
-    return None
-    
 
 # Функция для проверки значений дат на NaN и замены на None
 def safe_date(value):
@@ -71,11 +43,6 @@ def safe_lookup(model, field, value, cleaner=clean_name):
     except Exception as e:
         print(f"❌ Ошибка при поиске {model.__name__}.{field}='{value}':", e)
         return None
-
-
-# Функция для сравнения float-значений с учётом погрешности
-def floats_equal(a, b, tol=1e-9):
-    return a == b or (a is not None and b is not None and math.isclose(a, b, rel_tol=tol, abs_tol=tol))
 
 
 def to_decimal(val, digits=9):
@@ -227,7 +194,7 @@ def handle_machine(row, current_station, user):
             'date_relabing_fact', 'date_update_fact'
         ]
         for field in date_fields:
-            update_if_changed(machine, field, convert_date(row.get(field)), changes)
+            update_if_changed(machine, field, convert_to_date(row.get(field)), changes)
 
         if not pd.isna(row.get('note')):
             note_val = clean_name(row['note'])
@@ -897,13 +864,15 @@ def import_station_list_from_excel_old(file, user):
             last_non_zero_year = None
             was_zero = False
 
+            from decimal import Decimal, InvalidOperation
+
             for year in range(start_year, end_year + 1):
                 # Вносим данные о мощности
                 p_ust = clean_name(row.get(f'p_{year}'))
                 p_ust = None if p_ust in ['', ' ', 'nan', 'NaN'] or pd.isna(p_ust) else p_ust
                 try:
-                    p_ust = float(p_ust) if p_ust is not None else None
-                except ValueError:
+                    p_ust = Decimal(str(p_ust)) if p_ust is not None else None
+                except (InvalidOperation, ValueError):
                     p_ust = None
 
                 # Приводим к 0, если планируемый
@@ -1058,32 +1027,47 @@ def import_station_list_from_excel_old(file, user):
                 print("если поля regional_district и station_name, machine_name и gen_company не заполнены, но шагом ранее был создан агрегат, то добавляем ему располагаему мощность")
                 current_machine = last_machine  # Используем последнюю машину
 
+                from decimal import Decimal, InvalidOperation
+
                 for year in range(start_year, end_year + 1):
                     p_rasp = clean_name(row.get(f'p_{year}'))
                     p_rasp = None if p_rasp in ['', ' ', 'nan', 'NaN'] or pd.isna(p_rasp) else p_rasp
                     try:
-                        p_rasp = float(p_rasp) if p_rasp is not None else None
-                    except ValueError:
+                        p_rasp = Decimal(str(p_rasp)) if p_rasp is not None else None
+                    except (InvalidOperation, ValueError):
                         p_rasp = None
-
-                    if p_rasp is None or current_machine.id_condition_type == ConditionType.query.filter_by(name="планируемый").first().id:
-                        p_rasp = 0
 
                     print(f"Располагаемая мощность для машины {current_machine.machine_number}, год {year}: {p_rasp}")
                     
-                    def floats_equal(a, b, eps=1e-6):
+                    from decimal import Decimal, InvalidOperation
+
+                    def decimals_equal(a, b, digits=6):
+                        """
+                        Сравнивает два Decimal с точностью до указанного количества знаков после запятой.
+                        """
                         if a is None and b is None:
                             return True
                         if a is None or b is None:
                             return False
-                        return abs(a - b) < eps
+
+                        try:
+                            a_dec = Decimal(str(a))
+                            b_dec = Decimal(str(b))
+                        except (InvalidOperation, ValueError):
+                            return False
+
+                        scale = Decimal(f"1e-{digits}")
+                        return abs(a_dec - b_dec) < scale
 
                     machine_power = MachinePower.query.filter_by(year_number=year, id_machine=current_machine.id).first()
                     if machine_power:
-                        if not floats_equal(machine_power.p_rasp, p_rasp):
+                        if not decimals_equal(machine_power.p_rasp, p_rasp, digits=6):
                             old_val = machine_power.p_rasp
                             machine_power.p_rasp = p_rasp if p_rasp is not None else old_val
-                            machine_power.p_ogr = machine_power.p_ust - machine_power.p_rasp
+
+                            if machine_power.p_ust is not None and machine_power.p_rasp is not None:
+                                machine_power.p_ogr = machine_power.p_ust - machine_power.p_rasp
+
                             db.session.add(machine_power)
                             log_to_db(
                                 user, 
@@ -1195,36 +1179,4 @@ def import_fuel_tes_station_from_excel(file, user):
 
     return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
 
-
-def convert_to_iso_date(value):
-    """
-    Преобразует введённую строку в нужный формат:
-      - YYYY → возвращается как есть
-      - DD.MM.YYYY → преобразуется в YYYY-MM-DD
-      - YYYY-MM-DD → возвращается как есть (если корректно)
-      - None/пусто → None
-    """
-    if not value or not value.strip():
-        return None
-
-    value = value.strip()
-
-    # Если только год (YYYY)
-    if re.match(r'^\d{4}$', value):
-        return value
-
-    # Если уже ISO-формат YYYY-MM-DD
-    if re.match(r'^\d{4}-\d{2}-\d{2}$', value):
-        try:
-            datetime.strptime(value, '%Y-%m-%d')  # просто проверка
-            return value
-        except ValueError:
-            raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
-
-    # Если формат DD.MM.YYYY
-    try:
-        date_obj = datetime.strptime(value, '%d.%m.%Y')
-        return date_obj.strftime('%Y-%m-%d')
-    except ValueError:
-        raise ValueError("Некорректный формат даты. Используйте YYYY, DD.MM.YYYY или YYYY-MM-DD.")
 
