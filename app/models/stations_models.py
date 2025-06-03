@@ -165,7 +165,7 @@ class Station(db.Model):
         if self.regional_district and self.regional_district.regional_energy_systems:
             return ", ".join(res.name for res in self.regional_district.regional_energy_systems)
         return None
-    
+
     @property
     def union_energy_system(self):
         if self.regional_district and self.regional_district.regional_energy_systems:
@@ -421,6 +421,22 @@ class Machine(db.Model):
     
     # примечание
     note = db.Column(db.String(512), unique=False, nullable=True)
+
+    @property
+    def group_rowspan(self):
+        return getattr(self, "_group_rowspan", None)
+
+    @group_rowspan.setter
+    def group_rowspan(self, value):
+        self._group_rowspan = value
+
+    @property
+    def fuel_rowspan(self):
+        return getattr(self, "_fuel_rowspan", None)
+
+    @fuel_rowspan.setter
+    def fuel_rowspan(self, value):
+        self._fuel_rowspan = value
 
     @property
     def tes_types(self):

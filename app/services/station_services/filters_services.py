@@ -1,11 +1,12 @@
 from config import Config
 from app import db
+from sqlalchemy import or_, extract
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import contains_eager
 from app.models import (
     Station, Machine, MachineTesType, GenCompany,
     RegionalDistrict, RegionalEnergySystem, UnionEnergySystem,
-    EnergySystemType, FederalDistrict
+    EnergySystemType, FederalDistrict, MachinePower
 )
 from app.services.station_services.station_services import (
     get_current_year
@@ -324,6 +325,96 @@ def get_filtered_stations_old(
     # Фильтрация по состоянию электростанции
     if condition_type_filter:
         query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
+
+    return query
+
+def get_stations_all(
+    energy_system_type_filter=None,
+    union_energy_system_filter=None,
+    regional_energy_system_filter=None,
+    federal_district_filter=None,
+    regional_district_filter=None,
+    start_year=None,
+    end_year=None,
+):
+    """
+    Фильтрует станции по переданным параметрам и по диапазону лет (если заданы).
+    Если заданы start_year и end_year, фильтруются только агрегаты с мощностью в указанный период.
+    Также отбрасываются агрегаты с планируемым выводом до START_YEAR_SIPR.
+    """
+    query = db.session.query(Station).distinct().join(Station.machines)
+
+    query = query.options(contains_eager(Station.machines))
+
+    # Фильтрация по типу энергосистемы
+    if energy_system_type_filter:
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(energy_system_type_filter)
+                        )
+                    )
+                )
+            )
+        )
+
+    # Фильтрация по объединённой энергосистеме
+    if union_energy_system_filter:
+        if not isinstance(union_energy_system_filter, list):
+            union_energy_system_filter = [union_energy_system_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                )
+            )
+        )
+
+    # Фильтрация по региональной энергосистеме
+    if regional_energy_system_filter:
+        if not isinstance(regional_energy_system_filter, list):
+            regional_energy_system_filter = [regional_energy_system_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
+                )
+            )
+        )
+
+    # Фильтрация по федеральному округу
+    if federal_district_filter:
+        if not isinstance(federal_district_filter, list):
+            federal_district_filter = [federal_district_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.federal_district.has(
+                    FederalDistrict.id.in_(federal_district_filter)
+                )
+            )
+        )
+
+    # Фильтрация по субъекту РФ
+    if regional_district_filter:
+        if not isinstance(regional_district_filter, list):
+            regional_district_filter = [regional_district_filter]
+
+        query = query.filter(
+            Station.regional_district.has(
+                RegionalDistrict.id.in_(regional_district_filter)
+            )
+        )
+
+    # Фильтрация по годам, если заданы
+    if start_year is not None and end_year is not None:
+        query = query.join(Machine.machine_powers).filter(
+            MachinePower.year_number.between(Config.START_YEAR_SIPR, Config.END_YEAR_SIPR)
+        ).distinct()
 
     return query
 

@@ -549,7 +549,7 @@ def update_machine_commission_status(machine, start_year, end_year, user):
 
         # 🔻 Плановый вывод
         if curr and not next_ and not machine.date_decompressing_expected:
-            machine.date_decompressing_expected = year + 1
+            machine.date_decompressing_expected = year
             db.session.add(machine)
             log_to_db(
                 user,

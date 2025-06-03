@@ -140,51 +140,61 @@ def group_stations_hierarchy(stations, include_names=False):
 
 
 def group_machines_by_group_and_fuel(stations):
+    """
+    Устанавливает:
+    - group_rowspan: количество агрегатов с одинаковым machine_group
+    - fuel_rowspan: количество агрегатов с одинаковым fuel_so
+    Эти значения независимы.
+    """
+    if not stations:
+        return stations
+
+    is_single = not isinstance(stations, list)
+    stations = [stations] if is_single else stations
+
     for station in stations:
-        # ⚠️ Предполагаем, что фильтрация агрегатов по видимости уже выполнена.
-        # Если ещё нет — сделай это тут:
+        if not hasattr(station, 'machines'):
+            continue
+
+        # Фильтруем видимые агрегаты
         station.machines = [m for m in station.machines if getattr(m, "visible", True)]
 
-        # Сортировка по номеру агрегата и дате ввода
+        # Сортировка: по группе, топливу и номеру
         station.machines.sort(
             key=lambda m: (
-                int(m.machine_number) if m.machine_number and str(m.machine_number).isdigit() else float('inf'),
-                m.date_exploitation or float('inf')
+                (m.machine_group or "").lower(),
+                (m.fuel_so or "").lower(),
+                int(m.machine_number) if m.machine_number and str(m.machine_number).isdigit() else float('inf')
             )
         )
 
-        # Группировка по fuel_so
-        fuel_groups = defaultdict(list)
-        for machine in station.machines:
-            fuel_groups[machine.fuel_so].append(machine)
+        # --- Проставляем group_rowspan ---
+        group_dict = defaultdict(list)
+        for m in station.machines:
+            group_key = (m.machine_group or "").strip()
+            group_dict[group_key].append(m)
 
-        fuel_sorted_machines = []
-        for fuel, fuel_machines in fuel_groups.items():
-            if not fuel_machines:
-                continue
+        for machines_in_group in group_dict.values():
+            machines_in_group[0].group_rowspan = len(machines_in_group)
+            for m in machines_in_group[1:]:
+                m.group_rowspan = 0
 
-            # rowspan по fuel
-            fuel_machines[0].fuel_rowspan = len(fuel_machines)
-            for machine in fuel_machines[1:]:
-                machine.fuel_rowspan = 0
+        # --- Проставляем fuel_rowspan ---
+        fuel_dict = defaultdict(list)
+        for m in station.machines:
+            fuel_key = (m.fuel_so or "").strip()
+            fuel_dict[fuel_key].append(m)
 
-            # Внутри fuel группируем по machine_group
-            group_groups = defaultdict(list)
-            for machine in fuel_machines:
-                group_groups[machine.machine_group].append(machine)
+        for machines_in_fuel in fuel_dict.values():
+            machines_in_fuel[0].fuel_rowspan = len(machines_in_fuel)
+            for m in machines_in_fuel[1:]:
+                m.fuel_rowspan = 0
 
-            for group, group_machines in group_groups.items():
-                if not group_machines:
-                    continue
-                group_machines[0].group_rowspan = len(group_machines)
-                for machine in group_machines[1:]:
-                    machine.group_rowspan = 0
+    return stations[0] if is_single else stations
 
-                fuel_sorted_machines.extend(group_machines)
 
-        station.machines = fuel_sorted_machines
 
-    return stations
+
 
 
 

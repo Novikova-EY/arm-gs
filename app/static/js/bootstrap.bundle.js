@@ -676,7 +676,7 @@
     _queueCallback(callback, element, isAnimated = true) {
       executeAfterTransition(callback, element, isAnimated);
     }
-    _getConfig(config) {
+    _getconvert_to_date(config) {
       config = this._mergeConfigObj(config, this._element);
       config = this._configAfterMerge(config);
       this._typeCheckConfig(config);

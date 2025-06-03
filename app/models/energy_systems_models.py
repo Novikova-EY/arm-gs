@@ -163,6 +163,10 @@ class RegionalEnergySystem(db.Model):
         cascade='all, delete-orphan'
     )
 
+    @property
+    def regional_district_count(self):
+        return len(self.regional_districts)
+
 
 # Модель для объединенной энергосистемы (ОЭС)
 class UnionEnergySystem(db.Model):

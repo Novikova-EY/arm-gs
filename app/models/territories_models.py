@@ -77,3 +77,8 @@ class RegionalDistrict(db.Model):
         back_populates='regional_district',
         cascade='all, delete-orphan'
     )
+
+    @property
+    def regional_energy_system(self):
+        return self.regional_energy_systems[0] if self.regional_energy_systems else None
+    

@@ -470,16 +470,18 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     last_nz_index = max(i for i, (_, p) in enumerate(years_by_ust) if p > 0)
     new_decomp_year = years_by_ust[last_nz_index][0]
 
-    if machine.date_exploitation != new_expl_year:
-        changes.append(f"Год ввода: {machine.date_exploitation} → {new_expl_year}")
-        flash(f"🧠 Год ввода автоматически определён: {new_expl_year}", "info")
+    # --- Год ввода: не задаём, если уже есть ---
+    if machine.date_exploitation is None:
         machine.date_exploitation = new_expl_year
+        changes.append(f"Год ввода: — → {new_expl_year}")
+        flash(f"🧠 Год ввода автоматически определён: {new_expl_year}", "info")
 
+    # --- Год вывода ---
     if new_decomp_year < Config.END_YEAR:
-        if machine.date_decompressing_expected != new_decomp_year + 1:
-            changes.append(f"Год вывода: {machine.date_decompressing_expected} → {new_decomp_year + 1}")
-            flash(f"🧠 Год вывода автоматически определён: {new_decomp_year + 1}", "info")
-            machine.date_decompressing_expected = new_decomp_year + 1
+        if machine.date_decompressing_expected != new_decomp_year:
+            changes.append(f"Год вывода: {machine.date_decompressing_expected} → {new_decomp_year}")
+            flash(f"🧠 Год вывода автоматически определён: {new_decomp_year}", "info")
+            machine.date_decompressing_expected = new_decomp_year
     else:
         if machine.date_decompressing_expected is not None:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")

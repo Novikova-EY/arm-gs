@@ -1,17 +1,20 @@
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
+from config import Config
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 import traceback
 from app.services.logging_services.logging_service import log_to_db
 
-from app.services.station_services.station_services import get_station_list_data
+from app.services.station_services.station_services import (
+    get_station_list_data
+)
 from app.services.station_services.groupped_services import (
         group_machines_by_group_and_fuel
 )
 from app.services.station_services.filters_services import (
-        get_filtered_stations_old
+        get_stations_all
 )
 from app.services.station_services.help_services import (
         get_current_year,
@@ -606,9 +609,38 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
     log_to_db(user, "Начата выгрузка таблицы электростанций из базы данных")
     log_to_db(user, "Параметры экспорта", f"Фильтры: {filters}")
 
-    query = get_filtered_stations_old(**filters)
+    query = get_stations_all(**filters)
     station_list = query.all()
-    station_list = group_machines_by_group_and_fuel(station_list)
+
+    from collections import defaultdict
+
+
+    for station in station_list:
+        # Фильтрация агрегатов по дате вывода
+        station.machines = [
+            m for m in station.machines
+            if m.date_decompressing_expected is None
+            or (m.date_decompressing_expected >= Config.START_YEAR_SIPR)
+        ]
+
+        total_machines = len(station.machines)
+
+        # Обнуляем значения
+        for m in station.machines:
+            m.group_rowspan = 0
+            m.fuel_rowspan = 0
+
+        # Группировка по machine_group
+        group_map = defaultdict(list)
+        for m in station.machines:
+            if m.machine_group:
+                group_map[m.machine_group].append(m)
+
+        for group_machines in group_map.values():
+            count = len(group_machines)
+            if count > 1:
+                for i, m in enumerate(group_machines):
+                    m.group_rowspan = count if i == 0 else 0
 
     total_stations = len(station_list)
     log_to_db(user, "Найдено станций в БД", f"{total_stations} записей")
@@ -617,7 +649,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
         log_to_db(user, "Экспорт остановлен", "Нет данных для экспорта.")
         return None
 
-    all_years = list(range(2024, 2032))
+    all_years = list(range(Config.START_YEAR_SIPR - 2, Config.END_YEAR_SIPR + 1))
     output_files = []
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
@@ -625,12 +657,13 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
     regional_districts = {"Без субъекта": []}
     regional_systems = {}
     for station in station_list:
-        district_name = station.regional_district.name if station.regional_district else "Без субъекта"
+        district_name = station.regional_district.name_full if station.regional_district else "Без субъекта"
         if district_name not in regional_districts:
             regional_districts[district_name] = []
         regional_districts[district_name].append(station)
 
-        regional_system_name = station.regional_energy_system if station.regional_energy_system else "Неизвестно"
+        regional_system = station.regional_district.regional_energy_system
+        regional_system_name = regional_system.name_full if regional_system else "Неизвестно"
         if regional_system_name not in regional_systems:
             regional_systems[regional_system_name] = set()
         regional_systems[regional_system_name].add(district_name)
@@ -646,16 +679,16 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
             # Добавляем строку с названием региональной энергосистемы
             first_station = stations[0]
-            regional_system_name = first_station.regional_energy_system if first_station.regional_energy_system else "Неизвестно"
+            regional_system_name = (
+                first_station.regional_district.regional_energy_system.name_full.replace("Электроэнергетическая система", "Энергосистема")
+                if first_station.regional_district and first_station.regional_district.regional_energy_system
+                else "Неизвестно"
+            )
 
-            # Получаем список субъектов для данной энергосистемы
-            subject_list = sorted(regional_systems.get(regional_system_name, set()))
-
-            # Определяем, что писать в region_label
-            if len(subject_list) > 1:
-                region_label = f"{regional_system_name}, в том числе {district_name}"
+            if first_station.regional_district.regional_energy_system.regional_district_count > 1:
+                region_label = f"{regional_system_name}, территория {district_name}"
             else:
-                region_label = regional_system_name  # Если субъект один, пишем его напрямую
+                region_label = regional_system_name
 
             data.append({
                 "Электростанция": region_label,
@@ -665,10 +698,20 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 "Вид топлива": "",
                 **{year: "" for year in all_years},
                 "Примечание": "",
+                "_group_rowspan": "",
+                "_fuel_rowspan": "",
+                "_total_machines": "",
+                "Есть группы": "",
             })
 
+            # Определяем наличие групп по агрегатам станции
+
             for station in stations:
+                has_groups = any(m.machine_group for m in station.machines)
+                has_groups_text = "Да" if has_groups else "Нет"
+                
                 processed_stations += 1
+                
                 power_data = {
                     sp.year_number: {
                         "p_ust": sp.p_ust,
@@ -688,6 +731,10 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                     "Вид топлива": "",
                     **{year: "" for year in all_years},
                     "Примечание": "",
+                    "_group_rowspan": "",
+                    "_fuel_rowspan": "",
+                    "_total_machines": "",
+                    "Есть группы": "",
                 })
 
                 def extract_year(date_input):
@@ -704,14 +751,8 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                         except Exception:
                             return None
 
-                def format_full_date(date_str):
-                    """Преобразует строку вида '2023-06-16' в '16.06.2023'"""
-                    try:
-                        dt = datetime.strptime(date_str, "%Y-%m-%d")
-                        return dt.strftime("%d.%m.%Y")
-                    except Exception:
-                        return date_str
-    
+                group_machines_by_group_and_fuel(station)
+
                 # Добавляем строки с установленной мощностью по машинам электростанции
                 for machine in station.machines:
                     machine_power_data = {}
@@ -729,10 +770,6 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                         year = extract_year(machine.date_modernization_expected)
                         if year:
                             note_parts.append(f"Модернизация в {year} г.")
-
-                    if machine.date_relabing_fact:
-                        full_date = format_full_date(machine.date_relabing_fact)
-                        note_parts.append(f"Перемаркировка {full_date}")
 
                     full_note = ". ".join(note_parts)
                     if machine.note:
@@ -754,7 +791,14 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                             for year in all_years
                         },
                         "Примечание": full_note or "",
+                            
+                        # Скрытые поля для Excel
+                        "_group_rowspan": machine.group_rowspan or 0,
+                        "_fuel_rowspan": machine.fuel_rowspan or 0,
+                        "_total_machines": len(station.machines),
+                        "Есть группы": has_groups_text,
                     }
+
                     data.append(row)
 
                 # Добавляем строку "Установленная мощность, всего" по станции
@@ -766,18 +810,28 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                     "Вид топлива": "–",
                     **{year: f"{power_data.get(year, {}).get('p_ust', 0):.1f}".replace('.', ',') for year in all_years},
                     "Примечание": "",
+                    "_group_rowspan": "",
+                    "_fuel_rowspan": "",
+                    "_total_machines": "",
+                    "Есть группы": "",
                 }
                 data.append(total_row)
-
+            
             df = pd.DataFrame(data)
             df = df.fillna("")
+
+            # Отдельная копия — без служебных колонок — для экспорта
+            df_export = df.drop(
+                columns=["_group_rowspan", "_fuel_rowspan", "_total_machines", "Есть группы"],
+                errors="ignore"
+            )
 
             # Создание Excel-файла
             output = BytesIO()
             sheet_name = f"Приложение А"
             file_name = f"Приложение_А_{district_name}_{timestamp}.xlsx".replace(" ", "_")
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                df.to_excel(writer, index=False, header=False, startrow=6, sheet_name=sheet_name)
+                df_export.to_excel(writer, index=False, header=False, startrow=6, sheet_name=sheet_name)
                 workbook = writer.book
                 worksheet = writer.sheets['Приложение А']
 
@@ -805,6 +859,16 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                     'text_wrap': True,               # Перенос слов (разрыв строк)
                     'border': 1                      # Границы ячейки
                 })
+                
+                text_format_group = workbook.add_format({
+                    'font_name': 'Times New Roman',  # Устанавливаем шрифт
+                    'font_size': 10,                 # Размер шрифта 10pt
+                    'align': 'left',                 # Выравнивание текста по левому краю
+                    'valign': 'vcenter',             # Вертикальное выравнивание по центру
+                    'text_wrap': True,              # Перенос текста
+                    'border': 1,                    # Граница
+                    'indent': 2                     # Отступ слева
+                })
 
                 text_center_format = workbook.add_format({
                     'font_name': 'Times New Roman',  # Устанавливаем шрифт
@@ -816,10 +880,23 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 })
 
                 # Заголовки
-                worksheet.merge_range("A1:N1", "ПРИЛОЖЕНИЕ А", title_format)
-                worksheet.merge_range("A2:N2", "Перечень электростанций, действующих и планируемых к сооружению, расширению, модернизации и выводу из эксплуатации", title_format)
-                worksheet.merge_range("A3:N3", "", title_format)
-                worksheet.merge_range("A4:N4", "Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до 2030 года", subtitle_format)
+                worksheet.merge_range(
+                    "A1:N1", 
+                    "ПРИЛОЖЕНИЕ А", 
+                    title_format)
+                worksheet.merge_range(
+                    "A2:N2", 
+                    "Перечень электростанций, действующих и планируемых к сооружению, расширению, модернизации и выводу из эксплуатации", 
+                    title_format)
+                worksheet.merge_range(
+                    "A3:N3", 
+                    "",
+                    title_format)
+                worksheet.merge_range(
+                    "A4:N4",
+                    f"Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до {Config.END_YEAR_SIPR} года",
+                    subtitle_format
+                )
                 worksheet.set_row(3, 42)
 
                 # Шапка таблицы
@@ -838,7 +915,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 worksheet.merge_range(4, num_cols, 4, num_cols + len(all_years) - 1, "Установленная мощность (МВт)", text_center_format)
 
                 # Заменяем первый год на "По состоянию на 01.01.<год>"
-                first_year = all_years[0]  # Берем первый год из списка
+                first_year = all_years[0] + 1  # Берем первый год из списка
                 year_headers = ["По состоянию на 01.01.{}".format(first_year)] + [str(year) for year in all_years[1:]]
 
                 # Вторая строка - годы
@@ -874,18 +951,18 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 p_ust_col_idxs = {year: df.columns.get_loc(year) for year in all_years}
                 note_column_col_idx = df.columns.get_loc(note_column_name)
 
-                # Применяем ширину (217 пикселей ≈ 30 Excel ширина) и формат только к этому столбцу
+                # Применяем ширину и формат к столбцам
                 worksheet.set_column(station_col_idx, station_col_idx, 30.29, text_format)
                 worksheet.set_column(gen_company_col_idx, gen_company_col_idx, 17, text_center_format)
                 worksheet.set_column(machine_number_col_idx, machine_number_col_idx, 12, text_center_format)
                 worksheet.set_column(machine_name_col_idx, machine_name_col_idx, 20.86, text_center_format)
                 worksheet.set_column(fuel_type_col_idx, fuel_type_col_idx, 11.29, text_center_format)
                 
-                worksheet.set_column(note_column_col_idx, note_column_col_idx, 28.71, text_format)
+                worksheet.set_column(note_column_col_idx, note_column_col_idx, 28.71, text_center_format)
 
                 # Определяем диапазон объединения (все столбцы)
                 start_col = 0
-                end_col = len(df.columns) - 1  # Последний столбец
+                end_col = len(df.columns) - 5  # Последний столбец
 
                 # Найти индекс строки, где находится региональная энергосистема (первое её появление в data)
                 regional_row_idx = next(
@@ -894,8 +971,13 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 )
 
                 # Объединяем ячейки в Excel
-                worksheet.merge_range(regional_row_idx + 6, start_col, regional_row_idx + 6, end_col,  # +6 из-за заголовков
-                                    region_label, text_format)
+                worksheet.merge_range(
+                    regional_row_idx + 6, 
+                    start_col, 
+                    regional_row_idx + 6, 
+                    end_col,  # +6 из-за заголовков
+                    region_label, 
+                    text_format)
 
                 # Определяем последнюю заполненную строку
                 last_row = len(df) + 6  # +5 из-за заголовков
@@ -903,6 +985,37 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 # Определяем последний используемый столбец
                 last_col = len(df.columns)
 
+                start_excel_row = 6  # Потому что DataFrame начинается с строки 6 в Excel
+                for i, row in df.iterrows():
+                    excel_row = i + start_excel_row
+                    
+                    group_rowspan = int(row["_group_rowspan"] or 0)
+                    total_machines = int(row["_total_machines"] or 0)
+                    has_groups = row.get("Есть группы", "") == "Да"
+
+                    if has_groups and 1 <= group_rowspan <= total_machines:
+                        worksheet.merge_range(
+                            excel_row,
+                            station_col_idx,
+                            excel_row + group_rowspan - 1,
+                            station_col_idx,
+                            row["Электростанция"],
+                            text_format_group
+                        )
+
+                    # Объединение "Вид топлива"
+                    fuel_rowspan = int(row["_fuel_rowspan"] or 0)
+
+                    if fuel_rowspan > 1:
+                        worksheet.merge_range(
+                            excel_row,
+                            fuel_type_col_idx,
+                            excel_row + fuel_rowspan - 1,
+                            fuel_type_col_idx,
+                            row["Вид топлива"],
+                            text_center_format
+                        )
+                        
                 # Создаем пустой стиль (без границ, выравнивания и других атрибутов)
                 empty_format = workbook.add_format()
 
@@ -914,6 +1027,10 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 for col_num in range(last_col + 1, 50):  # 50 - запасное число столбцов
                     worksheet.set_column(col_num, col_num, None, empty_format)
 
+            df = df.drop(
+                columns=["_group_rowspan", "_fuel_rowspan", "_total_machines", "Есть группы"],
+                errors="ignore"
+            )
             output.seek(0)
             output_files.append((file_name, output))
     
