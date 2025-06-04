@@ -206,7 +206,7 @@ def get_station_list_data(
     show_p_rasp=False,
 ):
     filters = filters.copy()
-    page = filters.pop("page", 1)
+    filters.pop("page", 1)
     filters.pop("start_year", None)
     filters.pop("end_year", None)
 

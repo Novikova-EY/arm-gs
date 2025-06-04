@@ -147,17 +147,19 @@
 
                                 
                                 <!-- Тип агрегата ТЭС -->
-                                <div class="mb-3">
-                                    {{ main_form.id_tes_machine_type.label(class="form-label") }}
-                                    {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
-                                    {% if main_form.id_tes_machine_type.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_tes_machine_type.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
+                                {% if main_form.id_tes_machine_type.data == 4 %}
+                                    <div class="mb-3">
+                                        {{ main_form.id_tes_machine_type.label(class="form-label") }}
+                                        {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
+                                        {% if main_form.id_tes_machine_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_tes_machine_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
 
                                 <!-- Тип агрегата -->
                                 <div class="mb-3">
@@ -196,7 +198,6 @@
                         <div class="card mb-4">
                             <div class="card-body">
 
-                                
                                 <!-- Год ввода в эксплуатацию -->
                                 <div class="mb-3">
                                     {{ main_form.date_exploitation.label(class="form-label") }}
@@ -412,7 +413,8 @@
                     </div>
                 </div>
             </div>
-        </div>
+
+            
 
             <!-- Таблица с агрегатами (Machines) -->
             <div class="table-responsive fs-5">
@@ -481,80 +483,83 @@
                 </table>
             </div>
 
-            <!-- Таблица "Типы ТЭС" -->
-            <div class="table-responsive fs-5">
-                <table class="table table-hover table-striped table-bordered">
-                    <thead class="table-success">
-                        <tr class="text-center fw-bold align-middle">
-                            <th colspan="{{ end_year - start_year + 2 }}">Тип ТЭС</th>
-                        </tr>
-                        <tr class="text-center align-middle">
-                            <th class="first-column"></th>
-                            {% for t in advanced_form.tes_types %}
-                                <th class="year-header">
-                                    {{ t.year.data }}
-                                    <div class="year-text">
-                                        {{ year_features[t.year.data].name }}
-                                    </div>
-                                </th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="text-center align-middle">
-                            <td class="first-column fw-bold" style="width: 50px;">Тип ТЭС</td>
-                            {% for t in advanced_form.tes_types %}
-                                {{ t.year(type="hidden") }}
-                                <td class="align-middle fuel-column text-center">
-                                    {{ t.tes_type(
-                                        class="form-select fuel-column text-center fs-5",
-                                        style="background-color: transparent;",
-                                        **{"data-original-value": t.tes_type.data}
-                                    ) }}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Таблица "Типы топлива" -->
-            <div class="table-responsive fs-5">
-                <table class="table table-hover table-striped table-bordered">
-                    <thead class="table-success">
-                        <tr class="text-center fw-bold align-middle">
-                            <th colspan="{{ end_year - start_year + 2 }}">Топливо</th>
-                        </tr>
-                        <tr class="text-center align-middle">
-                            <th class="first-column">Год</th>
-                            {% for f in advanced_form.fuels %}
-                                <th class="year-header">
-                                    {{ f.year.data }}
-                                    <div class="year-text">
-                                        {{ year_features[f.year.data].name }}
-                                    </div>
-                                </th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="text-center align-middle">
-                            <td class="first-column fw-bold" style="width: 50px;">Тип топлива</td>
-                            {% for f in advanced_form.fuels %}
-                                {{ f.year(type="hidden") }}
-                                <td class="align-middle fuel-column text-center">
-                                    {{ f.fuel_type(
-                                        class="form-select fuel-column text-center fs-5",
-                                        style="background-color: transparent;",
-                                        **{"data-original-value": f.fuel_type.data}
-                                    ) }}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
+            {% if main_form.id_station_type.data == 4 %}
+
+                <!-- Таблица "Типы ТЭС" -->
+                <div class="table-responsive fs-5">
+                    <table class="table table-hover table-striped table-bordered">
+                        <thead class="table-success">
+                            <tr class="text-center fw-bold align-middle">
+                                <th colspan="{{ end_year - start_year + 2 }}">Тип ТЭС</th>
+                            </tr>
+                            <tr class="text-center align-middle">
+                                <th class="first-column"></th>
+                                {% for t in advanced_form.tes_types %}
+                                    <th class="year-header">
+                                        {{ t.year.data }}
+                                        <div class="year-text">
+                                            {{ year_features[t.year.data].name }}
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-center align-middle">
+                                <td class="first-column fw-bold" style="width: 50px;">Тип ТЭС</td>
+                                {% for t in advanced_form.tes_types %}
+                                    {{ t.year(type="hidden") }}
+                                    <td class="align-middle fuel-column text-center">
+                                        {{ t.tes_type(
+                                            class="form-select fuel-column text-center fs-5",
+                                            style="background-color: transparent;",
+                                            **{"data-original-value": t.tes_type.data}
+                                        ) }}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Таблица "Типы топлива" -->
+                <div class="table-responsive fs-5">
+                    <table class="table table-hover table-striped table-bordered">
+                        <thead class="table-success">
+                            <tr class="text-center fw-bold align-middle">
+                                <th colspan="{{ end_year - start_year + 2 }}">Топливо</th>
+                            </tr>
+                            <tr class="text-center align-middle">
+                                <th class="first-column">Год</th>
+                                {% for f in advanced_form.fuels %}
+                                    <th class="year-header">
+                                        {{ f.year.data }}
+                                        <div class="year-text">
+                                            {{ year_features[f.year.data].name }}
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-center align-middle">
+                                <td class="first-column fw-bold" style="width: 50px;">Тип топлива</td>
+                                {% for f in advanced_form.fuels %}
+                                    {{ f.year(type="hidden") }}
+                                    <td class="align-middle fuel-column text-center">
+                                        {{ f.fuel_type(
+                                            class="form-select fuel-column text-center fs-5",
+                                            style="background-color: transparent;",
+                                            **{"data-original-value": f.fuel_type.data}
+                                        ) }}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+
             <!-- Контейнер для кнопок -->
             <div class="d-flex justify-content-end mt-3 gap-3">
                 <!-- Кнопка "Сохранить" -->

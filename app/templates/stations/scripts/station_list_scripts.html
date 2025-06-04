@@ -67,7 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-
 <!-- Скрипт при раскрытии блока импорта/экспорта -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -297,15 +296,32 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Скрипт для переключения между режимами "все станции" и "постранично" -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const select = document.getElementById("per_page_select");
-    const hiddenInput = document.getElementById("per_page_hidden");
-    const form = document.getElementById("perPageForm");
+    const checkbox = document.getElementById("per_page_switch");
+    const selectBlock = document.getElementById("per_page_select_block"); // оборачивающий div или сам select
 
-    if (select && hiddenInput && form) {
-        select.addEventListener("change", function () {
-            hiddenInput.value = select.value;
-            form.submit();
-        });
+    function updateVisibility() {
+        const params = new URLSearchParams(window.location.search);
+        if (checkbox.checked) {
+            params.set("per_page", "all");
+            if (selectBlock) selectBlock.classList.add("d-none");
+        } else {
+            params.set("per_page", "10"); // или значение по умолчанию
+            if (selectBlock) selectBlock.classList.remove("d-none");
+        }
+        window.location.href = window.location.pathname + "?" + params.toString();
+    }
+
+    if (checkbox) {
+        checkbox.addEventListener("change", updateVisibility);
+
+        // При загрузке страницы сразу скрываем/показываем, если нужно
+        if (selectBlock) {
+            if (checkbox.checked) {
+                selectBlock.classList.add("d-none");
+            } else {
+                selectBlock.classList.remove("d-none");
+            }
+        }
     }
 });
 </script>

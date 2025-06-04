@@ -45,7 +45,7 @@
                                 </span>
                             </p>
                             <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '—' }}</p>
-                            <p class="fs-5"><strong>Тип электростанции:</strong> {{ station_type if station_type else '—' }}</p>
+                            <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_types if station.station_types else '—' }}</p>
                             <p class="fs-5"><strong>Группа электростанций:</strong> 
                                 <span id="id_station_group_span">
                                     {{ form.id_station_group(class="form-select d-inline-block w-auto fs-5") }}

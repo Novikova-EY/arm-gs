@@ -4,7 +4,7 @@ import traceback
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm.attributes import flag_modified
-from flask import request, render_template, request, flash, redirect, url_for
+from flask import flash,request, render_template, request, flash, redirect, url_for
 from app.services.logging_services.logging_service import log_to_db
 from app.models import *
 from app.forms.machine_forms import MachineFilterForm, EditMachineForm
@@ -303,7 +303,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         )
 
 
-
 def _fill_main_form_choices(form):
     form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
     form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
@@ -451,8 +450,6 @@ def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end
         prev_tes_type = mt.id_tes_type
         prev_fuel_type = mf.id_fuel
 
-
-from flask import flash
 
 def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     years_by_ust = sorted(

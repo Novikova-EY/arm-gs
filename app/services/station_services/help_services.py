@@ -284,3 +284,16 @@ def convert_to_date(value):
             pass
 
     return None
+
+
+def format_date_for_string_field(value):
+    """
+    Преобразует значение в строку даты формата 'DD.MM.YYYY', если это datetime/date.
+    Если значение уже строка — возвращает очищенную строку.
+    Если значение пустое или некорректное — возвращает None.
+    """
+    if pd.isna(value) or value in ("", None):
+        return None
+    if isinstance(value, (datetime, date)):
+        return value.strftime("%d.%m.%Y")
+    return str(value).strip()
