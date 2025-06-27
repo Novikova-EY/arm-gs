@@ -37,6 +37,9 @@ class RegionalDistrict(db.Model):
     # id субъекта РФ
     id = db.Column(db.Integer, primary_key=True)
 
+    # номер региона РФ
+    region_number = db.Column(db.String(3), unique=True, nullable=True)
+
     # наименование субъекта РФ (например, "Чукотский АО")
     name = db.Column(db.String(80), unique=True, nullable=False)
 

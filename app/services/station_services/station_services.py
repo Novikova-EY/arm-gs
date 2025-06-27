@@ -4,9 +4,9 @@ from decimal import Decimal
 from app.services.logging_services.logging_service import log_to_db
 from collections import defaultdict
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload, joinedload
 from app.models import (
-    RegionalDistrict, Station, StationType, Machine, FuelType,
+    RegionalDistrict, Station, StationType, Machine, FuelType, MachineFuel, Fuel, 
     MachinePower, MachineTesType, Machine, StationPower
 )
 from app.services.station_services.help_services import (
@@ -120,7 +120,16 @@ def get_stations_list(
                 joinedload(Station.regional_district)
                     .joinedload(RegionalDistrict.regional_energy_systems),
                 joinedload(Station.energy_unit),
-                joinedload(Station.machines),
+
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_powers),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_fuels)
+                    .selectinload(MachineFuel.fuel)
+                    .selectinload(Fuel.fuel_type),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_tes_types)
+                    .selectinload(MachineTesType.tes_type)
             )
         )
 
@@ -164,7 +173,16 @@ def get_stations_list(
                 joinedload(Station.regional_district)
                     .joinedload(RegionalDistrict.regional_energy_systems),
                 joinedload(Station.energy_unit),
-                joinedload(Station.machines),
+
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_powers),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_fuels)
+                    .selectinload(MachineFuel.fuel)
+                    .selectinload(Fuel.fuel_type),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_tes_types)
+                    .selectinload(MachineTesType.tes_type)
             )
             .filter(
                 Station.id.in_(db.session.query(station_ids_subq.c.id))
@@ -205,6 +223,9 @@ def get_station_list_data(
     show_p_ogr=False,
     show_p_rasp=False,
 ):
+    import time
+    start_time = time.time()
+
     filters = filters.copy()
     filters.pop("page", 1)
     filters.pop("start_year", None)
@@ -257,6 +278,8 @@ def get_station_list_data(
     stations_by_energy_unit = defaultdict(list)
     for station in paginated_stations:
         stations_by_energy_unit[station.id_energy_unit].append(station)
+
+    print(f"[⏱] get_station_list_data заняла: {time.time() - start_time:.2f} сек")
 
     return {
         "stations": paginated_stations,
@@ -412,6 +435,9 @@ def load_machines_power_by_year(machines, start_year=None, end_year=None, roundi
 
 
 def get_station_list_template_context(form, pagination, rounding_digits, filters):
+    import time
+    start_time = time.time()
+
     year_features = get_year_features()
     energy_system_type_list, energy_system_type_names = get_energy_system_types()
     union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
@@ -484,6 +510,8 @@ def get_station_list_template_context(form, pagination, rounding_digits, filters
     total_energy_system_types_by_tes_machine_types_power = aggregate_total_energy_system_types_by_tes_machine_types(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
     total_energy_system_types_by_tes_types_with_fuel_power = aggregate_total_energy_system_types_by_tes_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
     total_energy_system_types_by_tes_machine_types_with_fuel_power = aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(pagination, rounding_digits, filters.get("start_year"), filters.get("end_year"))
+
+    print(f"[⏱] get_station_list_data заняла: {time.time() - start_time:.2f} сек")
 
     return {
         "form": form,

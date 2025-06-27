@@ -351,6 +351,11 @@
     {% endif %}
 </div> 
 
+<script id="initial-state-json" type="application/json">
+    {
+        "hasActiveFilters": {{ has_active_filters | tojson }}
+    }
+</script>
 
 <!-- Подключаем jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -359,23 +364,8 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
-<!-- 🔹 Инициализация глобального состояния -->
-<script id="initial-state-json" type="application/json">
-{{ {
-    "isAllMode": request.args.get('per_page') == "all",
-    "hasActiveFilters": has_active_filters,
-    "params": request.args.to_dict(),
-    "filters": {
-        "unionEnergySystem": union_energy_system_filter,
-        "federalDistrict": federal_district_filter,
-        "resMapping": regional_energy_system_mapping,
-        "resList": regional_energy_system_list,
-        "rdMapping": regional_district_mapping,
-        "rdList": regional_district_list
-    }
-} | tojson }}
-</script>
+<script src="{{ url_for('static', filename='js/stations/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/stations/highlight_changes.js') }}"></script>
 
-<script src="{{ url_for('static', filename='js/stations/main_stations.js') }}"></script>
 
 {% endblock %}

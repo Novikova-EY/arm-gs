@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}АРМ Генерация{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
+    </div>
+
+<div class="container">
+    <div class="container-fluid">
+        <div class="row g-4 justify-content-center">
+            <!-- Первая строка -->
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-primary fs-4 w-100 py-4">Электростанции РФ</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Разделительная линия -->
+            <hr class="my-5 border border-secondary opacity-50">
+
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('rational_structure_bp.ti_table') }}" class="btn btn-primary fs-4 w-100 py-4">Рациональная структура</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">...</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

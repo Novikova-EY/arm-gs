@@ -27,6 +27,24 @@ class ConditionType(db.Model):
         back_populates='condition_type',
         primaryjoin="ConditionType.id == Machine.id_condition_type"
     )
+
+# Модель для типов групп оборудования
+class EquipmentGroup(db.Model):
+    # название таблицы в базе данных
+    __tablename__ = 'equipment_groups'
+
+    # id типа тип группы оборудования
+    id = db.Column(db.Integer, primary_key=True)
+
+    # наименование группы оборудования
+    name = db.Column(db.String(80), unique=True, nullable=False)
+
+    # связь с таблицей "Агрегаты электростанции"
+    machines = db.relationship(
+        'Machine', 
+        back_populates='equipment_group',
+        primaryjoin="EquipmentGroup.id == Machine.id_equipment_group"
+    )
     
 # Модель для типов электростанций
 class StationType(db.Model):
@@ -292,6 +310,18 @@ class Machine(db.Model):
     # id агрегата
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     
+    # id агрегата от Техинспекции
+    id_ti = db.Column(db.Integer, nullable=True)
+
+    # id группы оборудования
+    id_equipment_group = db.Column(
+        db.Integer, 
+        db.ForeignKey('equipment_groups.id', ondelete='RESTRICT'), 
+        nullable=True)
+    equipment_group = db.relationship(
+        'EquipmentGroup', 
+        back_populates='machines')
+
     # id состояние агрегата
     id_condition_type = db.Column(
         db.Integer, 
@@ -421,6 +451,12 @@ class Machine(db.Model):
     
     # примечание
     note = db.Column(db.String(512), unique=False, nullable=True)
+
+    year_modern = db.Column(db.String(10), nullable=True)
+    year_demontaz = db.Column(db.String(10), nullable=True)
+    resurs_coal = db.Column(db.String(10), nullable=True)
+    resurs_gas = db.Column(db.String(10), nullable=True)
+
 
     @property
     def group_rowspan(self):

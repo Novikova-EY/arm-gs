@@ -56,7 +56,7 @@ def create_app():
 
     # Создание таблиц, если они не существуют
     with app.app_context():
-        db.create_all()  # Создаем все таблицы, если они ещё не созданы
+        db.create_all()
 
     from app.services.station_services.help_services import format_decimal_for_display
     @app.template_filter('format_decimal')
@@ -69,14 +69,18 @@ def create_app():
     # Регистрация маршрутов
     from app.routes.auth import auth_bp
     from app.routes.references import reference_bp
-    from app.routes.stations import station_bp
+    from app.routes.arm_generation import arm_generation_bp
+    from app.routes.arm_generation.stations import station_bp
+    from app.routes.arm_generation.rational_structure import rational_structure_bp
     from app.routes import start_bp
     from app.routes.log import logs_bp
-    app.register_blueprint(start_bp, url_prefix='/')  # Префикс для маршрутов приложения
-    app.register_blueprint(reference_bp, url_prefix='/references')  # Префикс для общих маршрутов
-    app.register_blueprint(station_bp, url_prefix='/stations')  # Префикс для общих маршрутов
-    app.register_blueprint(auth_bp, url_prefix='/auth')  # Префикс для авторизации
-    app.register_blueprint(logs_bp, url_prefix='/log')  # Префикс для просмотра логов
+    app.register_blueprint(start_bp, url_prefix='/')
+    app.register_blueprint(reference_bp, url_prefix='/references')
+    app.register_blueprint(arm_generation_bp, url_prefix='/arm_generation')
+    app.register_blueprint(station_bp, url_prefix='/stations')
+    app.register_blueprint(rational_structure_bp, url_prefix='/rational_structure')
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(logs_bp, url_prefix='/log')
 
     return app
 
