@@ -254,7 +254,7 @@
                                         {% for year in range(start_year, end_year + 1) %}
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_ust.get(eu_id, {}).get(year, 0) %}
-                                                {{ val if val else '—' }}
+                                                {{ val | format_decimal or '—' }}
                                             </td>
                                         {% endfor %}
                                     </tr>
@@ -263,7 +263,7 @@
                                         {% for year in range(start_year, end_year + 1) %}
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_ogr.get(eu_id, {}).get(year, 0) %}
-                                                {{ val if val else '—' }}
+                                                {{ val | format_decimal or '—' }}
                                             </td>
                                         {% endfor %}
                                     </tr>
@@ -272,7 +272,7 @@
                                         {% for year in range(start_year, end_year + 1) %}
                                             <td class="power-column" style="font-weight: bold;">
                                                 {% set val = energy_units_yearly_p_rasp.get(eu_id, {}).get(year, 0) %}
-                                                {{ val if val else '—' }}
+                                                {{ val | format_decimal or '—' }}
                                             </td>
                                         {% endfor %}
                                     </tr>
@@ -288,7 +288,7 @@
                                     {% for year in range(start_year, end_year + 1) %}
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_ust.get(rd_id, {}).get(year, 0) %}
-                                            {{ val if val else '—' }}
+                                            {{ val | format_decimal or '—' }}
                                         </td>
                                     {% endfor %}
                                 </tr>
@@ -297,7 +297,7 @@
                                     {% for year in range(start_year, end_year + 1) %}
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_ogr.get(rd_id, {}).get(year, 0) %}
-                                            {{ val if val else '—' }}
+                                            {{ val | format_decimal or '—' }}
                                         </td>
                                     {% endfor %}
                                 </tr>
@@ -306,7 +306,7 @@
                                     {% for year in range(start_year, end_year + 1) %}
                                         <td class="power-column" style="font-weight: bold;">
                                             {% set val = regional_districts_yearly_p_rasp.get(rd_id, {}).get(year, 0) %}
-                                            {{ val if val else '—' }}
+                                            {{ val | format_decimal or '—' }}
                                         </td>
                                     {% endfor %}
                                 </tr>
@@ -365,7 +365,7 @@
                             {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_ust.get(ues_id|int, {}).get(year, 0) %}
-                                    {{ val if val else '—' }}
+                                    {{ val | format_decimal or '—' }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -374,7 +374,7 @@
                             {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_ogr.get(ues_id|int, {}).get(year, 0) %}
-                                    {{ val if val else '—' }}
+                                    {{ val | format_decimal or '—' }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -383,7 +383,7 @@
                             {% for year in range(start_year, end_year + 1) %}
                                 <td class="power-column" style="font-weight: bold;">
                                     {% set val = union_energy_systems_yearly_p_rasp.get(ues_id|int, {}).get(year, 0) %}
-                                    {{ val if val else '—' }}
+                                    {{ val | format_decimal or '—' }}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -399,7 +399,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_ust.get(es_type_id|int, {}).get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>
@@ -408,7 +408,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_ogr.get(es_type_id|int, {}).get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>
@@ -417,7 +417,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = energy_system_types_yearly_p_rasp.get(es_type_id|int, {}).get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>
@@ -434,7 +434,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_ust.get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>
@@ -443,7 +443,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_ogr.get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>
@@ -452,7 +452,7 @@
                         {% for year in range(start_year, end_year + 1) %}
                             <td class="power-column" style="font-weight: bold;">
                                 {% set val = total_yearly_p_rasp.get(year, 0) %}
-                                {{ val if val else '—' }}
+                                {{ val | format_decimal or '—' }}
                             </td>
                         {% endfor %}
                     </tr>

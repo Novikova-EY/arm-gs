@@ -3,19 +3,24 @@
     {% for tm_id, tm_name in tes_machine_type_list.items() %}
         {% if tm_id != 100 %}
             {% set has_tm = energy_units_by_tes_machine_types_yearly_p_ust
-                            .get(eu_id, {}).get(tes_type_id, {}).get(tm_id) %}
+                            .get(eu_id, {})
+                            .get(tes_type_id, {})
+                            .get(tm_id) %}
+
             {% if has_tm %}
                 <!-- Первая строка: p_ust -->
                 <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
-                    <td class="total-row-cell ind4cm" rowspan="3" colspan="10" style="font-weight: bold; padding-left: 12cm;">
+                    <td class="total-row-cell ind4cm" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 12cm;">
                         {{ tm_name }}
                     </td>
                     <td class="fw-bold">Руст</td>
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {{ energy_units_by_tes_machine_types_yearly_p_ust
-                                .get(eu_id, {}).get(tes_type_id, {})
-                                .get(tm_id, {}).get(y, "—") }}
+                                .get(eu_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {})
+                                .get(y, "—") | format_decimal or '—'}}
                             </td>
                     {% endfor %}
                     <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -28,8 +33,10 @@
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {{ energy_units_by_tes_machine_types_yearly_p_ogr
-                                .get(eu_id, {}).get(tes_type_id, {})
-                                .get(tm_id, {}).get(y, "—") }}
+                                .get(eu_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {})
+                                .get(y, "—") | format_decimal or '—'}}
                             </td>
                     {% endfor %}
                     <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -42,8 +49,10 @@
                     {% for y in range(start_year, end_year + 1) %}
                         <td class="power-column" style="font-weight: bold;">
                             {{ energy_units_by_tes_machine_types_yearly_p_rasp
-                                .get(eu_id, {}).get(tes_type_id, {})
-                                .get(tm_id, {}).get(y, "—") }}
+                                .get(eu_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {})
+                                .get(y, "—") | format_decimal or '—'}}
                             </td>
                     {% endfor %}
                     <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">

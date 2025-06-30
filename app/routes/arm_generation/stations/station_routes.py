@@ -23,12 +23,7 @@ from app.services.station_services.station_services import (
     get_station_list_data
 )
 from app.services.station_services.filters_services import (
-    filter_machines,
     has_any_filters,
-)
-from app.services.station_services.groupped_services import (
-    group_stations_hierarchy, 
-    group_machines_by_group_and_fuel, 
 )
 from . import station_bp
 from app import db
@@ -80,14 +75,10 @@ from app.services.station_services.station_services import (
     get_current_machine_tes_types_map, 
     recalculate_station_powers_by_filtered_machines
 )
-from app.services.station_services.filters_services import (
-    filter_machines,
-)
 from app.services.station_services.import_station_services import (
     import_station_list_from_excel, 
     import_fuel_tes_station_from_excel, 
 )
-
 
 
 @station_bp.route("/station_list", methods=["GET", "POST"])
@@ -95,7 +86,8 @@ from app.services.station_services.import_station_services import (
 @role_required('super-admin')
 def station_list():
     import time
-    start = time.time()
+
+    start_data = time.time()
 
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница электростанций")
@@ -109,7 +101,7 @@ def station_list():
     show_all = per_page_param.lower() == "all"
 
     if show_all:
-        per_page = None
+        per_page = "all"
     else:
         try:
             per_page = int(per_page_param)
@@ -141,16 +133,19 @@ def station_list():
         show_p_ogr=show_p_ogr,
         show_p_rasp=show_p_rasp,
     )
+    print(f"⏱ get_station_list_data заняла: {time.time() - start_data:.2f} сек")
 
     if data["page"] > data["total_pages"]:
         return redirect(url_for("station_bp.station_list", page=data["total_pages"], per_page=per_page))
 
+    start_context = time.time()
     context = get_station_list_template_context(
         form,
         data,
         rounding_digits,
         {**filters, "start_year": start_year, "end_year": end_year}
     )
+    print(f"⏱ get_station_list_template_context заняла: {time.time() - start_context:.2f} сек")
 
     context.update({
         "stations_by_energy_unit": data["stations_by_energy_unit"],
@@ -164,7 +159,8 @@ def station_list():
 
     has_active_filters = has_any_filters(request.args)
     
-    print(f"⏱⏱ station_list загрузка заняла: {time.time() - start:.2f} сек")
+    overall = time.time() - start_data
+    print(f"⏱⏱ station_list загрузка заняла: {overall:.2f} сек")
 
     return render_template("stations/stations.html", has_active_filters=has_active_filters, **context)
 

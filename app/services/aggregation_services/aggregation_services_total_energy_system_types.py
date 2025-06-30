@@ -14,7 +14,7 @@ def round_nested_power_dict(data, rounding_digits):
     else:
         return data
 
-def aggregate_power_by_total_energy_system_type(pagination, rounding_digits, start_year, end_year):
+def aggregate_power_by_total_energy_system_types(pagination, rounding_digits, start_year, end_year):
     stations = pagination["stations"]
 
     p_ust = defaultdict(Decimal)

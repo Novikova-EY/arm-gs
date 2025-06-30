@@ -1,5 +1,5 @@
 from app import db
-from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy.schema import UniqueConstraint, Index
 from sqlalchemy import Numeric
 
 # Модель для типов состояний оборудования или электростанций
@@ -228,6 +228,8 @@ class Station(db.Model):
 
     __table_args__ = (
         UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
+        Index('ix_station_id_regional_district', 'id_regional_district'),
+        Index('ix_station_name', 'name'),
     )
     
 
@@ -492,6 +494,16 @@ class Machine(db.Model):
         }
         return ", ".join(sorted(fuel_names)) if fuel_names else None
 
+    __table_args__ = (
+        Index('ix_machine_id_station', 'id_station'),
+        Index('ix_machine_id_condition_type', 'id_condition_type'),
+        Index('ix_machine_id_tes_machine_type', 'id_tes_machine_type'),
+        Index('ix_machine_id_station_type', 'id_station_type'),
+        Index('ix_machine_date_exploitation', 'date_exploitation'),
+        Index('ix_machine_date_decompressing_expected', 'date_decompressing_expected'),
+        Index('ix_machine_date_modernization_expected', 'date_modernization_expected'),
+    )
+
 # Модель для котла электростанции
 class Boiler(db.Model):
     # название таблицы в базе данных
@@ -581,6 +593,11 @@ class MachineFuel(db.Model):
         'Fuel', 
         back_populates='machine_fuels')
     
+    __table_args__ = (
+        Index('ix_machine_fuel_id_machine', 'id_machine'),
+        Index('ix_machine_fuel_id_fuel', 'id_fuel'),
+        Index('ix_machine_fuel_id_year_number', 'year_number'),
+    )
 
 # Модель для типов ТЭС агрегатов электростанции
 class MachineTesType(db.Model):
@@ -615,3 +632,9 @@ class MachineTesType(db.Model):
     tes_type = db.relationship(
         'TesType', 
         back_populates='machine_tes_types') 
+
+    __table_args__ = (
+        Index('ix_machine_tes_type_id_machine', 'id_machine'),
+        Index('ix_machine_tes_type_id_tes_type', 'id_tes_type'),
+        Index('ix_machine_tes_type_year_number', 'year_number'),
+    )

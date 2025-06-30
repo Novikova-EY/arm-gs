@@ -2,7 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 # Агрегация по энергоузлам - всего
-def aggregate_power_by_energy_unit(pagination, rounding_digits, start_year, end_year):
+def aggregate_power_by_energy_units(pagination, rounding_digits, start_year, end_year):
     aggregated_data = pagination["aggregated_by_energy_unit"]
 
     p_ust_source = aggregated_data.get("p_ust", {})

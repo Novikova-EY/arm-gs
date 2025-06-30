@@ -1,19 +1,24 @@
 <!-- Разбивка по типам ТЭС и видам топлива -->
 {% for fuel_type_id, fuel_type_name in fuel_type_list.items() %}
     {% set has_fuels = regional_energy_systems_by_tes_types_with_fuel_yearly_p_ust
-        .get(current_res_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}) %}
+                        .get(current_res_id, {})
+                        .get(tes_type_id, {})
+                        .get(fuel_type_id, {}) %}
 
     {% if has_fuels %}
         <!-- Первая строка: Руст -->
          <tr class="table-info text-center total-power-row" style="vertical-align: middle;">
-            <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold; padding-left: 9cm;">
+            <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 9cm;">
                 {{ fuel_type_name }}
             </td>
             <td class="fw-bold">Руст</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ regional_energy_systems_by_tes_types_with_fuel_yearly_p_ust
-                        .get(current_res_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
+                        .get(current_res_id, {})
+                        .get(tes_type_id, {})
+                        .get(fuel_type_id, {})
+                        .get(y, "—") | format_decimal or '—'}}
                 </td>
             {% endfor %}
             <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -26,7 +31,10 @@
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ regional_energy_systems_by_tes_types_with_fuel_yearly_p_ogr
-                        .get(current_res_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
+                        .get(current_res_id, {})
+                        .get(tes_type_id, {})
+                        .get(fuel_type_id, {})
+                        .get(y, "—") | format_decimal or '—'}}
                 </td>
             {% endfor %}
             <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -39,7 +47,10 @@
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
                     {{ regional_energy_systems_by_tes_types_with_fuel_yearly_p_rasp
-                        .get(current_res_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, "—") }}
+                        .get(current_res_id, {})
+                        .get(tes_type_id, {})
+                        .get(fuel_type_id, {})
+                        .get(y, "—") | format_decimal or '—'}}
                 </td>
             {% endfor %}
             <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">

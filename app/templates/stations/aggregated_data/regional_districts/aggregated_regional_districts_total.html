@@ -2,14 +2,15 @@
 {% if regional_districts_yearly_p_ust.get(current_rd_id, {}) %}
     <!-- Первая строка: p_ust -->
     <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold;">
+        <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
             {{ regional_district_names[current_rd_id] }}, всего
         </td>
         <td class="text-center" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
-                {% set val = regional_districts_yearly_p_ust.get(current_rd_id, {}).get(year, 0) %}
-                {{ val if val else '—' }}
+                {{ regional_districts_yearly_p_ust
+                    .get(current_rd_id, {})
+                    .get(year, 0) | format_decimal or '—'  }}
             </td>
         {% endfor %}
         <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -21,8 +22,9 @@
         <td class="text-center" style="font-weight: bold;">Рогр</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
-                {% set val = regional_districts_yearly_p_ogr.get(current_rd_id, {}).get(year, 0) %}
-                {{ val if val else '—' }}
+                {{ regional_districts_yearly_p_ogr
+                    .get(current_rd_id, {})
+                    .get(year, 0) | format_decimal or '—'  }}
             </td>
         {% endfor %}
         <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -34,8 +36,9 @@
         <td class="text-center" style="font-weight: bold;">Ррасп</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
-                {% set val = regional_districts_yearly_p_rasp.get(current_rd_id, {}).get(year, 0) %}
-                {{ val if val else '—' }}
+                {{ regional_districts_yearly_p_rasp
+                    .get(current_rd_id, {})
+                    .get(year, 0) | format_decimal or '—'  }}
             </td>
         {% endfor %}
         <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">

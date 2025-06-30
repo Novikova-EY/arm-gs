@@ -687,7 +687,7 @@ def aggregate_station_power_values(stations):
     }
 
 
-def aggregate_power_by_regional_district(stations):
+def aggregate_power_by_regional_districts(stations):
     # Словари для хранения мощностей по субъектам
     regional_district_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
     regional_district_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))

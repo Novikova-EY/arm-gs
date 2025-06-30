@@ -2,7 +2,7 @@ from collections import defaultdict
 from decimal import Decimal
 
 # Агрегация по субъектам РФ - всего
-def aggregate_power_by_regional_district(pagination, rounding_digits, start_year, end_year):
+def aggregate_power_by_regional_districts(pagination, rounding_digits, start_year, end_year):
     aggregated_data = pagination["aggregated_by_regional_district"]
 
     p_ust_source = aggregated_data.get("p_ust", {})

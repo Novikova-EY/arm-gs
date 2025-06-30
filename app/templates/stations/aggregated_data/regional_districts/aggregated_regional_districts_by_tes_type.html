@@ -1,17 +1,23 @@
 <!-- Итоговые значения по типам ТЭС энергоузла -->
 {% for tes_type_id, tes_name in tes_type_list.items() %}
     {% if tes_type_id != 100 %}
-        {% set has_tes = regional_districts_by_tes_types_yearly_p_ust.get(current_rd_id, {}).get(tes_type_id) %}
+        {% set has_tes = regional_districts_by_tes_types_yearly_p_ust
+                        .get(current_rd_id, {})
+                        .get(tes_type_id) %}
+                        
         {% if has_tes %}
             <!-- Первая строка: p_ust -->
             <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-                <td class="total-row-cell ind2cm" rowspan="3" colspan="10" style="font-weight: bold; padding-left: 6cm;">
+                <td class="total-row-cell ind2cm" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 6cm;">
                     {{ tes_name }}
                 </td>
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ regional_districts_by_tes_types_yearly_p_ust.get(current_rd_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
+                        {{ regional_districts_by_tes_types_yearly_p_ust
+                            .get(current_rd_id, {})
+                            .get(tes_type_id, {})
+                            .get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
                 <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -23,7 +29,10 @@
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ regional_districts_by_tes_types_yearly_p_ogr.get(current_rd_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
+                        {{ regional_districts_by_tes_types_yearly_p_ogr
+                            .get(current_rd_id, {})
+                            .get(tes_type_id, {})
+                            .get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
                 <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -35,7 +44,10 @@
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ regional_districts_by_tes_types_yearly_p_rasp.get(current_rd_id, {}).get(tes_type_id, {}).get(y, '—') | format_decimal or '—' }}
+                        {{ regional_districts_by_tes_types_yearly_p_rasp
+                            .get(current_rd_id, {})
+                            .get(tes_type_id, {})
+                            .get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
                 <td class="text-center" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">

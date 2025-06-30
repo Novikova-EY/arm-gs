@@ -11,8 +11,10 @@ from app.services.station_services.station_services import (
     get_station_list_data
 )
 from app.services.station_services.groupped_services import (
-        group_machines_by_group_and_fuel
-)
+        get_station_hierarchy_aggregates,
+        build_hierarchy_structure,
+        fetch_machines_with_rowspans,
+    )
 from app.services.station_services.filters_services import (
         get_stations_all
 )
@@ -31,7 +33,7 @@ from app.services.station_services.help_services import (
         get_year_features,
     )
 from app.services.aggregation_services.aggregation_services_energy_units import (
-        aggregate_power_by_energy_unit,
+        aggregate_power_by_energy_units,
         aggregate_energy_units_by_station_types,
         aggregate_energy_units_by_station_types_with_fuel,
         aggregate_energy_units_by_tes_types,
@@ -40,35 +42,35 @@ from app.services.aggregation_services.aggregation_services_energy_units import 
         aggregate_energy_units_by_tes_machine_types_with_fuel,
     )
 from app.services.aggregation_services.aggregation_services_regional_districts import (
-        aggregate_power_by_regional_district,
+        aggregate_power_by_regional_districts,
         aggregate_regional_districts_by_station_types,
         aggregate_regional_districts_by_tes_types,
         aggregate_regional_districts_by_tes_machine_types,
         aggregate_regional_districts_by_tes_machine_types_with_fuel,
     )
 from app.services.aggregation_services.aggregation_services_regional_energy_systems import (
-        aggregate_power_by_regional_energy_system,
+        aggregate_power_by_regional_energy_systems,
         aggregate_regional_energy_systems_by_station_types,
         aggregate_regional_energy_systems_by_tes_types,
         aggregate_regional_energy_systems_by_tes_machine_types,
         aggregate_regional_energy_systems_by_tes_machine_types_with_fuel,
     )
 from app.services.aggregation_services.aggregation_services_union_energy_systems import (
-        aggregate_power_by_union_energy_system,
+        aggregate_power_by_union_energy_systems,
         aggregate_union_energy_systems_by_station_types,
         aggregate_union_energy_systems_by_tes_types,
         aggregate_union_energy_systems_by_tes_machine_types,
         aggregate_union_energy_systems_by_tes_machine_types_with_fuel,
     )
 from app.services.aggregation_services.aggregation_services_energy_system_types import (
-        aggregate_power_by_energy_system_type,
+        aggregate_power_by_energy_system_types,
         aggregate_energy_system_types_by_station_types,
         aggregate_energy_system_types_by_tes_types,
         aggregate_energy_system_types_by_tes_machine_types,
         aggregate_energy_system_types_by_tes_machine_types_with_fuel,
     )
 from app.services.aggregation_services.aggregation_services_total_energy_system_types import (
-        aggregate_power_by_total_energy_system_type,
+        aggregate_power_by_total_energy_system_types,
         aggregate_total_energy_system_types_by_station_types,
         aggregate_total_energy_system_types_by_tes_types,
         aggregate_total_energy_system_types_by_tes_machine_types,
@@ -85,37 +87,37 @@ def round_value(val, digits):
         return val
 
 def attach_all_aggregates(data, rounding_digits, start_year, end_year):
-    data["aggregate_power_by_energy_unit"] = aggregate_power_by_energy_unit(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregate_power_by_energy_units"] = aggregate_power_by_energy_units(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_units_by_station_types"] = aggregate_energy_units_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_units_by_tes_types"] = aggregate_energy_units_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_units_by_tes_machine_types"] = aggregate_energy_units_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_units_by_tes_machine_types_with_fuel"] = aggregate_energy_units_by_tes_machine_types_with_fuel(data, rounding_digits, start_year, end_year)["aggregated"]
     
-    data["aggregate_power_by_regional_district"] = aggregate_power_by_regional_district(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregate_power_by_regional_districts"] = aggregate_power_by_regional_districts(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_districts_by_station_types"] = aggregate_regional_districts_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_districts_by_tes_types"] = aggregate_regional_districts_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_districts_by_tes_machine_types"] = aggregate_regional_districts_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_districts_by_tes_machine_types_with_fuel"] = aggregate_regional_districts_by_tes_machine_types_with_fuel(data, rounding_digits, start_year, end_year)["aggregated"]
 
-    data["aggregated_by_regional_energy_system"] = aggregate_power_by_regional_energy_system(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregated_by_regional_energy_systems"] = aggregate_power_by_regional_energy_systems(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_energy_systems_by_station_types"] = aggregate_regional_energy_systems_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_energy_systems_by_tes_types"] = aggregate_regional_energy_systems_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_energy_systems_by_tes_machine_types"] = aggregate_regional_energy_systems_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_regional_energy_systems_by_tes_machine_types_with_fuel"] = aggregate_regional_energy_systems_by_tes_machine_types_with_fuel(data, rounding_digits, start_year, end_year)["aggregated"]
 
-    data["aggregated_by_union_energy_system"] = aggregate_power_by_union_energy_system(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregated_by_union_energy_systems"] = aggregate_power_by_union_energy_systems(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_union_energy_systems_by_station_types"] = aggregate_union_energy_systems_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_union_energy_systems_by_tes_types"] = aggregate_union_energy_systems_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_union_energy_systems_by_tes_machine_types"] = aggregate_union_energy_systems_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_union_energy_systems_by_tes_machine_types_with_fuel"] = aggregate_union_energy_systems_by_tes_machine_types_with_fuel(data, rounding_digits, start_year, end_year)["aggregated"]
    
-    data["aggregated_by_energy_system_type"] = aggregate_power_by_energy_system_type(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregated_by_energy_system_types"] = aggregate_power_by_energy_system_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_system_types_by_station_types"] = aggregate_energy_system_types_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_system_types_by_tes_types"] = aggregate_energy_system_types_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_system_types_by_tes_machine_types"] = aggregate_energy_system_types_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_energy_system_types_by_tes_machine_types_with_fuel"] = aggregate_energy_system_types_by_tes_machine_types_with_fuel(data, rounding_digits, start_year, end_year)["aggregated"]
     
-    data["aggregated_by_total"] = aggregate_power_by_total_energy_system_type(data, rounding_digits, start_year, end_year)["aggregated"]
+    data["aggregated_by_total"] = aggregate_power_by_total_energy_system_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_total_energy_system_types_by_station_types"] = aggregate_total_energy_system_types_by_station_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_total_energy_system_types_by_tes_types"] = aggregate_total_energy_system_types_by_tes_types(data, rounding_digits, start_year, end_year)["aggregated"]
     data["aggregate_total_energy_system_types_by_tes_machine_types"] = aggregate_total_energy_system_types_by_tes_machine_types(data, rounding_digits, start_year, end_year)["aggregated"]
@@ -670,6 +672,9 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
     processed_stations = 0
     
+    aggregated_rows = get_station_hierarchy_aggregates(Config.START_YEAR_SIPR, Config.END_YEAR_SIPR)
+    build_hierarchy_structure(aggregated_rows, station_list, include_names=False)
+
     for district_name, stations in regional_districts.items():
         log_to_db(user, f"Выгрузка данных по форме Приложения А к СиПР ЭЭС: {district_name} (Энергосистема: {regional_system_name}) | Найдено станций: {len(stations)}")
         if not stations:
@@ -751,7 +756,6 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                         except Exception:
                             return None
 
-                group_machines_by_group_and_fuel(station)
 
                 # Добавляем строки с установленной мощностью по машинам электростанции
                 for machine in station.machines:

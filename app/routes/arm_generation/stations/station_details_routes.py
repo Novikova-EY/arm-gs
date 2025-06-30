@@ -48,13 +48,6 @@ from app.services.station_services.station_services import (
     get_current_machine_tes_types_map, 
     recalculate_station_powers_by_filtered_machines
 )
-from app.services.station_services.filters_services import (
-    filter_machines,
-)
-from app.services.station_services.groupped_services import (
-    group_stations_hierarchy, 
-    group_machines_by_group_and_fuel, 
-)
 from app.services.station_services.import_station_services import (
     import_station_list_from_excel, 
     import_fuel_tes_station_from_excel, 
