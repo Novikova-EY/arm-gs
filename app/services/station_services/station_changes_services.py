@@ -687,45 +687,7 @@ def aggregate_station_power_values(stations):
     }
 
 
-def aggregate_power_by_regional_districts(stations):
-    # Словари для хранения мощностей по субъектам
-    regional_district_yearly_p_ust = defaultdict(lambda: defaultdict(Decimal))
-    regional_district_yearly_p_ogr = defaultdict(lambda: defaultdict(Decimal))
-    regional_district_yearly_p_rasp = defaultdict(lambda: defaultdict(Decimal))
 
-    # Для каждой станции
-    for station in stations:
-        regional_district_id = station.regional_district.id  # Получаем ID субъекта станции
-        
-        # Для каждой машины на станции
-        for machine in station.machines:
-            if not machine.machine_powers:
-                continue  # Пропускаем машину, если нет данных по мощности
-
-            # Для каждой записи о мощности машины
-            for machine_power in machine.machine_powers:
-                try:
-                    p_ust = Decimal(str(machine_power.p_ust)) if machine_power.p_ust is not None else Decimal(0)
-                    p_ogr = Decimal(str(machine_power.p_ogr)) if machine_power.p_ogr is not None else Decimal(0)
-                    p_rasp = Decimal(str(machine_power.p_rasp)) if machine_power.p_rasp is not None else Decimal(0)
-                except (ValueError, TypeError):
-                    p_ust = p_ogr = p_rasp = Decimal(0)
-
-                year = machine_power.year.number
-
-                # Агрегируем мощности по субъектам и годам
-                regional_district_yearly_p_ust[regional_district_id][year] += p_ust
-                regional_district_yearly_p_ogr[regional_district_id][year] += p_ogr
-                regional_district_yearly_p_rasp[regional_district_id][year] += p_rasp
-
-    # Возвращаем агрегированные данные по субъектам
-    return {
-        'regional_districts': {
-            'p_ust': regional_district_yearly_p_ust,
-            'p_ogr': regional_district_yearly_p_ogr,
-            'p_rasp': regional_district_yearly_p_rasp,
-        }
-    }
 
 
 def aggregate_power_by_regional_energy_system(stations):

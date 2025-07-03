@@ -4,6 +4,7 @@ from app.models.energy_systems_models import UnionEnergySystem, RegionalEnergySy
 from app.models.territories_models import RegionalDistrict
 from sqlalchemy.orm import joinedload
 from app.services.logging_services.logging_service import log_to_db
+from app.services.station_services.help_services import get_energy_units
 
 def get_energy_area_list(page, per_page, energy_area_filter=None, regional_district_filter=None, regional_energy_system_filter=None, union_energy_system_filter=None, sort_by="id", sort_dir="asc"):
     query = EnergyArea.query.options(
@@ -130,6 +131,7 @@ def update_energy_area(data, user):
                 
                 try:
                     db.session.commit()
+                    get_energy_units.cache_clear()
                     log_to_db(user, "Успешное обновление", f"Обновлен энергорайон ID: {energy_area_id}")
                 except Exception as e:
                     db.session.rollback()
@@ -145,8 +147,7 @@ def update_energy_area(data, user):
 
             try:
                 db.session.commit()
-                
-
+                get_energy_units.cache_clear()
                 log_to_db(user, "Успешное добавление", f"Добавлен новый энергорайон: {name}")
             except Exception as e:
                 db.session.rollback()
@@ -184,6 +185,7 @@ def add_energy_area(data, user):
                 
                 try:
                     db.session.commit()
+                    get_energy_units.cache_clear()
                     log_to_db(user, "Успешное обновление", f"Обновлен энергорайон ID: {energy_area_id}")
                 except Exception as e:
                     db.session.rollback()
@@ -194,13 +196,11 @@ def add_energy_area(data, user):
                 raise ValueError(f"Запись энергорайона с ID {energy_area_id} не найдена.")
         else:
             new_energy_area = EnergyArea(name=name, id_regional_district=regional_district_id)
-                       
             db.session.add(new_energy_area)
 
             try:
                 db.session.commit()
-                
-
+                get_energy_units.cache_clear()
                 log_to_db(user, "Успешное добавление", f"Добавлен новый энергорайон: {name}")
             except Exception as e:
                 db.session.rollback()
@@ -226,6 +226,7 @@ def delete_energy_area_list(ids, user):
                 continue
 
         db.session.commit()
+        get_energy_units.cache_clear()
         log_to_db(user, "Удаление энергорайона(ов) завершено", f"Успешно удалено записей: {successful_deletes}")
     except Exception as e:
         db.session.rollback()

@@ -40,7 +40,10 @@ def get_station_hierarchy_aggregates(start_year, end_year):
     )
 
 
-def build_hierarchy_structure(aggregated_rows, stations: list[Station], include_names=False):
+def build_hierarchy_structure(stations: list[Station], include_names=False):
+    from collections import defaultdict
+
+    # Многоуровневая вложенность
     grouped_data = defaultdict(
         lambda: defaultdict(
             lambda: defaultdict(
@@ -51,72 +54,15 @@ def build_hierarchy_structure(aggregated_rows, stations: list[Station], include_
         )
     )
 
-    p_ust_by_energy_unit = defaultdict(lambda: defaultdict(Decimal))
-    p_ogr_by_energy_unit = defaultdict(lambda: defaultdict(Decimal))
-    p_rasp_by_energy_unit = defaultdict(lambda: defaultdict(Decimal))
-
-    p_ust_by_regional_district = defaultdict(lambda: defaultdict(Decimal))
-    p_ogr_by_regional_district = defaultdict(lambda: defaultdict(Decimal))
-    p_rasp_by_regional_district = defaultdict(lambda: defaultdict(Decimal))
-
-    p_ust_by_regional_energy_system = defaultdict(lambda: defaultdict(Decimal))
-    p_ogr_by_regional_energy_system = defaultdict(lambda: defaultdict(Decimal))
-    p_rasp_by_regional_energy_system = defaultdict(lambda: defaultdict(Decimal))
-
-    p_ust_by_union_energy_system = defaultdict(lambda: defaultdict(Decimal))
-    p_ogr_by_union_energy_system = defaultdict(lambda: defaultdict(Decimal))
-    p_rasp_by_union_energy_system = defaultdict(lambda: defaultdict(Decimal))
-
-    p_ust_by_energy_system_type = defaultdict(lambda: defaultdict(Decimal))
-    p_ogr_by_energy_system_type = defaultdict(lambda: defaultdict(Decimal))
-    p_rasp_by_energy_system_type = defaultdict(lambda: defaultdict(Decimal))
-
-    p_ust_total = defaultdict(Decimal)
-    p_ogr_total = defaultdict(Decimal)
-    p_rasp_total = defaultdict(Decimal)
-
-    # Названия
+    # Для имен
     est_names = {}
     ues_names = {}
     res_names = {}
     rd_names = {}
     eu_names = {}
 
-    # 📦 Структура агрегатов по уровням
-    for row in aggregated_rows:
-        est_id = row.energy_system_type_id
-        ues_id = row.union_energy_system_id
-        res_id = row.regional_energy_system_id
-        rd_id = row.regional_district_id
-        eu_id = row.energy_unit_id
-        year = row.year
-
-        val = Decimal(row.p_ust or 0)
-        p_ust_by_energy_unit[eu_id][year] += val
-        p_ust_by_regional_district[rd_id][year] += val
-        p_ust_by_regional_energy_system[res_id][year] += val
-        p_ust_by_union_energy_system[ues_id][year] += val
-        p_ust_by_energy_system_type[est_id][year] += val
-        p_ust_total[year] += val
-
-        val = Decimal(row.p_ogr or 0)
-        p_ogr_by_energy_unit[eu_id][year] += val
-        p_ogr_by_regional_district[rd_id][year] += val
-        p_ogr_by_regional_energy_system[res_id][year] += val
-        p_ogr_by_union_energy_system[ues_id][year] += val
-        p_ogr_by_energy_system_type[est_id][year] += val
-        p_ogr_total[year] += val
-
-        val = Decimal(row.p_rasp or 0)
-        p_rasp_by_energy_unit[eu_id][year] += val
-        p_rasp_by_regional_district[rd_id][year] += val
-        p_rasp_by_regional_energy_system[res_id][year] += val
-        p_rasp_by_union_energy_system[ues_id][year] += val
-        p_rasp_by_energy_system_type[est_id][year] += val
-        p_rasp_total[year] += val
-
-    # 📦 Группировка станций
     for station in stations:
+        # Проверка наличия регионального округа и региональной энергосистемы
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
@@ -129,8 +75,16 @@ def build_hierarchy_structure(aggregated_rows, stations: list[Station], include_
             ues_id = ues.id
             res_id = res.id
             rd_id = station.id_regional_district
-            eu_id = station.id_energy_unit or 100
 
+            # Важно: проверяем наличие энергоузла
+            if station.id_energy_unit is not None:
+                eu_id = station.id_energy_unit
+                eu_name = station.energy_unit.name if station.energy_unit else 100
+            else:
+                eu_id = 100
+                eu_name = "без энергоузла"
+
+            # Добавляем станцию в иерархию
             grouped_data[est_id][ues_id][res_id][rd_id][eu_id].append(station)
 
             if include_names:
@@ -138,64 +92,27 @@ def build_hierarchy_structure(aggregated_rows, stations: list[Station], include_
                 ues_names[ues_id] = ues.name
                 res_names[res_id] = res.name
                 rd_names[rd_id] = station.regional_district.name
-                if station.energy_unit:
-                    eu_names[eu_id] = station.energy_unit.name
-                else:
-                    eu_names[eu_id] = "не указано"
+                eu_names[eu_id] = eu_name
 
-    # 📦 Итог
-    return {
+    result = {
         "grouped_stations": grouped_data,
-        "aggregated_by_energy_unit": {
-            "p_ust": p_ust_by_energy_unit,
-            "p_ogr": p_ogr_by_energy_unit,
-            "p_rasp": p_rasp_by_energy_unit,
-        },
-        "aggregated_by_regional_district": {
-            "p_ust": p_ust_by_regional_district,
-            "p_ogr": p_ogr_by_regional_district,
-            "p_rasp": p_rasp_by_regional_district,
-        },
-        "aggregated_by_regional_energy_system": {
-            "p_ust": p_ust_by_regional_energy_system,
-            "p_ogr": p_ogr_by_regional_energy_system,
-            "p_rasp": p_rasp_by_regional_energy_system,
-        },
-        "aggregated_by_union_energy_system": {
-            "p_ust": p_ust_by_union_energy_system,
-            "p_ogr": p_ogr_by_union_energy_system,
-            "p_rasp": p_rasp_by_union_energy_system,
-        },
-        "aggregated_by_energy_system_type": {
-            "p_ust": p_ust_by_energy_system_type,
-            "p_ogr": p_ogr_by_energy_system_type,
-            "p_rasp": p_rasp_by_energy_system_type,
-        },
-        "aggregated_total": {
-            "p_ust": p_ust_total,
-            "p_ogr": p_ogr_total,
-            "p_rasp": p_rasp_total,
-        },
-        **(
-            {
-                "energy_system_type_name": est_names,
-                "union_energy_system_name": ues_names,
-                "regional_energy_system_name": res_names,
-                "regional_district_name": rd_names,
-                "energy_unit_name": eu_names,
-            } if include_names else {}
-        )
+        "stations": stations,
     }
 
+    if include_names:
+        result.update({
+            "energy_system_type_name": est_names,
+            "union_energy_system_name": ues_names,
+            "regional_energy_system_name": res_names,
+            "regional_district_name": rd_names,
+            "energy_unit_name": eu_names,
+        })
+
+    return result
 
 
 
 def fetch_machines_with_rowspans(station_ids: list[int]):
-    """
-    Возвращает агрегаты с правильным group_rowspan и fuel_rowspan, как раньше.
-    Сортировка и проставление rowspans вручную.
-    """
-    # Загружаем агрегаты
     machines = Machine.query.options(
         joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
@@ -203,14 +120,11 @@ def fetch_machines_with_rowspans(station_ids: list[int]):
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
 
-    # Привязываем к станциям
     station_machine_map = defaultdict(list)
     for m in machines:
         station_machine_map[m.id_station].append(m)
 
-    # Для каждой станции сортируем и проставляем rowspan
     for machine_list in station_machine_map.values():
-        # сортировка
         machine_list.sort(key=lambda m: (
             (m.machine_group or "").lower(),
             (m.fuel_so or "").lower(),
@@ -237,9 +151,15 @@ def fetch_machines_with_rowspans(station_ids: list[int]):
             for m in group[1:]:
                 m.fuel_rowspan = 0
 
-    # Объединяем все машины в один список
     all_machines = []
     for lst in station_machine_map.values():
         all_machines.extend(lst)
+
+    # 🛡 Устанавливаем значения по умолчанию, если агрегат оказался вне всех групп
+    for m in all_machines:
+        if m.group_rowspan is None:
+            m.group_rowspan = 1
+        if m.fuel_rowspan is None:
+            m.fuel_rowspan = 1
 
     return all_machines

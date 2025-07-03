@@ -1,6 +1,5 @@
 
 <!-- Итоговые значения по энергоузлу -->
-{% if request.args.get('per_page') == 'all' and eu_id != 100 %}
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
         <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold;">
@@ -52,5 +51,3 @@
     {% include 'stations/aggregated_data/energy_units/aggregated_energy_units_check_by_station_type.html' %}
     {% include 'stations/aggregated_data/energy_units/aggregated_energy_units_check_by_tes_type.html' %}
     {% include 'stations/aggregated_data/energy_units/aggregated_energy_units_check_by_fuel.html' %}  -#}
-
-{% endif %}

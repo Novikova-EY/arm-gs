@@ -132,31 +132,22 @@ def station_list():
         end_year=end_year,
         show_p_ogr=show_p_ogr,
         show_p_rasp=show_p_rasp,
+        show_all=show_all,
     )
     print(f"⏱ get_station_list_data заняла: {time.time() - start_data:.2f} сек")
 
     if data["page"] > data["total_pages"]:
         return redirect(url_for("station_bp.station_list", page=data["total_pages"], per_page=per_page))
 
-    start_context = time.time()
     context = get_station_list_template_context(
         form,
         data,
         rounding_digits,
-        {**filters, "start_year": start_year, "end_year": end_year}
+        start_year,
+        end_year,
+        {**filters, "start_year": start_year, "end_year": end_year},
+        show_all=show_all,
     )
-    print(f"⏱ get_station_list_template_context заняла: {time.time() - start_context:.2f} сек")
-
-    context.update({
-        "stations_by_energy_unit": data["stations_by_energy_unit"],
-        "aggregated_by_energy_unit": data["aggregated_by_energy_unit"],
-        "aggregated_by_regional_energy_system": data["aggregated_by_regional_energy_system"],
-        "aggregated_by_union_energy_system": data["aggregated_by_union_energy_system"],
-        "aggregated_by_energy_system_type": data["aggregated_by_energy_system_type"],
-        "rounding_digits": rounding_digits,
-        "per_page": per_page,
-    })
-
     has_active_filters = has_any_filters(request.args)
     
     overall = time.time() - start_data

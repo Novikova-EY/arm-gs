@@ -9,8 +9,9 @@ from app.models import (
     RegionalDistrict, FederalDistrict,Station, StationType, Machine, 
     MachinePower, MachineFuel, MachineTesType, ConditionType, MachineType, 
     TesType, TesMachineType, StationGroup, Machine, StationPower,
-    Year, Fuel, GenCompany, FuelType
+    Year, Fuel, GenCompany, FuelType, YearFeature
 )
+from functools import lru_cache
 
     
 def get_current_year():
@@ -19,6 +20,7 @@ def get_current_year():
     return current_year
     
 
+@lru_cache(maxsize=1)
 def get_station_types_list(station):
     if not hasattr(station, "machines") or not station.machines:
         return None
@@ -41,6 +43,7 @@ def get_gen_companies_list(station):
     return ", ".join(gen_companies) if gen_companies else None
 
 
+@lru_cache(maxsize=1)
 def get_station_groups():
     """Получает список групп электростанций'."""
     return StationGroup.query.all()
@@ -51,36 +54,43 @@ def get_condition_type():
     return ConditionType.query.all()
 
 
+@lru_cache(maxsize=1)
 def get_station_types():
     """Получает список типов электростанций'."""
     return StationType.query.order_by(StationType.id).all()
 
 
+@lru_cache(maxsize=1)
 def get_machine_type():
     """Получает список типов агрегатов электростанций'."""
     return MachineType.query.all()
 
 
+@lru_cache(maxsize=1)
 def get_tes_types():
     """Получает список типов ТЭС'."""
     return TesType.query.order_by(TesType.id).all()
 
 
+@lru_cache(maxsize=1)
 def get_tes_machine_types():
     """Получает список типов агрегатов ТЭС."""
     return TesMachineType.query.order_by(TesMachineType.id).all()
 
 
+@lru_cache(maxsize=1)
 def get_fuel_types():
     """Получает список типов топлива'."""
     return FuelType.query.order_by(FuelType.id).all()
 
 
+@lru_cache(maxsize=1)
 def get_energy_units():
     """Получает список энергоузлов''."""
     return EnergyUnit.query.order_by(EnergyUnit.id).all()
 
 
+@lru_cache(maxsize=1)
 def get_energy_system_types():
     """Получает список типов энергосистем."""
     energy_system_type_list = EnergySystemType.query.order_by(EnergySystemType.id).all()
@@ -92,6 +102,7 @@ def get_energy_system_types():
     return energy_system_type_list, energy_system_type_names
 
 
+@lru_cache(maxsize=1)
 def get_union_energy_systems():
     """Получаем список ОЭС с привязанными региональными энергосистемами"""
     
@@ -113,6 +124,7 @@ def get_union_energy_systems():
     return union_energy_systems, union_energy_system_names, regional_energy_system_mapping
 
 
+@lru_cache(maxsize=1)
 def get_regional_energy_systems():
     """Получает список региональных энергосистем с предварительной загрузкой ОЭС."""
     
@@ -139,6 +151,7 @@ def get_regional_energy_systems():
     return regional_energy_systems_list, regional_energy_system_names
 
 
+@lru_cache(maxsize=1)
 def get_federal_districts():
     """Получаем список ФО с привязанными субъектами РФ (региональными округами)."""
 
@@ -156,6 +169,7 @@ def get_federal_districts():
     return federal_districts, regional_district_mapping
 
 
+@lru_cache(maxsize=1)
 def get_regional_districts():
     """Получает список субъектов РФ с привязанными федеральными округами."""
     
@@ -182,12 +196,17 @@ def get_regional_districts():
     return regional_districts_list, regional_district_names
 
 
+@lru_cache(maxsize=1)
 def get_year_features():
     """
-    Получает словарь с year.number как ключом и year.year_feature как значением.
-    :return: Словарь year_features
+    Возвращает словарь {year_number: year_feature_name}, используя прямой SQL-запрос.
     """
-    return {year.number: year.year_feature for year in Year.query.options(db.joinedload(Year.year_feature)).all()}
+    rows = (
+        db.session.query(Year.number, YearFeature.name)
+        .join(YearFeature, Year.id_year_feature == YearFeature.id)
+        .all()
+    )
+    return {number: name for number, name in rows}
 
 from jinja2 import Undefined
 
