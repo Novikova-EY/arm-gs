@@ -294,7 +294,7 @@
                                         {% endif %}
             
                                         {# Итог по энергоузлу #}
-                                        {% if per_page is none and eu_id != 100 %}
+                                        {% if per_page == 'all' and eu_id != 100 %}
                                             {% set current_eu_id = eu_id %}
                                             {% include 'stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
                                         {% endif %}
@@ -336,7 +336,7 @@
                 {% endfor %}
             
                 {# Итог по России #}
-                {% if per_page is none %}
+                {% if per_page == 'all' %}
                     {% include 'stations/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>

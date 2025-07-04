@@ -31,11 +31,9 @@ from app.services.station_services.groupped_services import (
     build_hierarchy_structure,
     fetch_machines_with_rowspans,
     )
-from app.services.aggregation_services.aggregation_services_common import (
-    aggregate_level_with_total,
-    get_all_aggregations
+from app.services.aggregation_services.aggregation_rows import (
+    get_full_aggregation_rows
     )
-
 from app.services.aggregation_services.aggregation_services_energy_units import (
     aggregate_power_by_energy_units,
     aggregate_energy_units_by_station_types,
@@ -333,6 +331,8 @@ def get_station_list_data(
     stations = station_data["stations"]
     station_ids = [s.id for s in stations]
 
+    rows = get_full_aggregation_rows(start_year, end_year, station_ids)
+
     result = {
         "stations": stations,
         "stations_grouped": hierarchy_data.get("grouped_stations", {}),
@@ -343,341 +343,53 @@ def get_station_list_data(
     }
 
     if show_all:
-        result["aggregate_power_by_energy_units"] = (
-            aggregate_power_by_energy_units(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_energy_units_by_station_types"] = (
-            aggregate_energy_units_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_energy_units"] = aggregate_power_by_energy_units(rows)
+        result["aggregate_energy_units_by_station_types"] = aggregate_energy_units_by_station_types(rows)
+        result["aggregated_energy_units_by_station_type_with_fuel"] = aggregate_energy_units_by_station_types_with_fuel(rows)
+        result["aggregate_energy_units_by_tes_types"] = aggregate_regional_districts_by_tes_types(rows)
+        result["aggregate_energy_units_by_tes_types_with_fuel"] = aggregate_energy_units_by_tes_types_with_fuel(rows)
+        result["aggregate_energy_units_by_tes_machine_types"] = aggregate_energy_units_by_tes_machine_types(rows)
+        result["aggregate_energy_units_by_tes_machine_types_with_fuel"] = aggregate_energy_units_by_tes_machine_types_with_fuel(rows)
 
-        result["aggregated_energy_units_by_station_type_with_fuel"] = (
-            aggregate_energy_units_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_regional_districts"] = aggregate_power_by_regional_districts(rows)
+        result["aggregate_regional_districts_by_station_types"] = aggregate_regional_districts_by_station_types(rows)
+        result["aggregate_regional_districts_by_station_types_with_fuel"] = aggregate_regional_districts_by_station_types_with_fuel(rows)
+        result["aggregate_regional_districts_by_tes_types"] = aggregate_regional_districts_by_tes_types(rows)
+        result["aggregate_regional_districts_by_tes_types_with_fuel"] = aggregate_regional_districts_by_tes_types_with_fuel(rows)
+        result["aggregate_regional_districts_by_tes_machine_types"] = aggregate_regional_districts_by_tes_machine_types(rows)
+        result["aggregate_regional_districts_by_tes_machine_types_with_fuel"] = aggregate_regional_districts_by_tes_machine_types_with_fuel(rows)
 
-        result["aggregate_energy_units_by_tes_types"] = (
-            aggregate_regional_districts_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_regional_energy_systems"] = aggregate_power_by_regional_energy_systems(rows)
+        result["aggregate_regional_energy_systems_by_station_types"] = aggregate_regional_energy_systems_by_station_types(rows)
+        result["aggregate_regional_energy_systems_by_station_types_with_fuel"] = aggregate_regional_energy_systems_by_station_types_with_fuel(rows)
+        result["aggregate_regional_energy_systems_by_tes_types"] = aggregate_regional_energy_systems_by_tes_types(rows)
+        result["aggregate_regional_energy_systems_by_tes_types_with_fuel"] = aggregate_regional_energy_systems_by_tes_types_with_fuel(rows)
+        result["aggregate_regional_energy_systems_by_tes_machine_types"] = aggregate_regional_energy_systems_by_tes_machine_types(rows)
+        result["aggregate_regional_energy_systems_by_tes_machine_types_with_fuel"] = aggregate_regional_energy_systems_by_tes_machine_types_with_fuel(rows)
 
-        result["aggregate_energy_units_by_tes_types_with_fuel"] = (
-            aggregate_energy_units_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_union_energy_systems"] = aggregate_power_by_union_energy_systems(rows)
+        result["aggregate_union_energy_systems_by_station_types"] = aggregate_union_energy_systems_by_station_types(rows)
+        result["aggregate_union_energy_systems_by_station_types_with_fuel"] = aggregate_union_energy_systems_by_station_types_with_fuel(rows)
+        result["aggregate_union_energy_systems_by_tes_types"] = aggregate_union_energy_systems_by_tes_types(rows)
+        result["aggregate_union_energy_systems_by_tes_types_with_fuel"] = aggregate_union_energy_systems_by_tes_types_with_fuel(rows)
+        result["aggregate_union_energy_systems_by_tes_machine_types"] = aggregate_union_energy_systems_by_tes_machine_types(rows)
+        result["aggregate_union_energy_systems_by_tes_machine_types_with_fuel"] = aggregate_union_energy_systems_by_tes_machine_types_with_fuel(rows)
 
-        result["aggregate_energy_units_by_tes_machine_types"] = (
-            aggregate_energy_units_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_energy_system_types"] = aggregate_power_by_energy_system_types(rows)
+        result["aggregate_energy_system_types_by_station_types"] = aggregate_energy_system_types_by_station_types(rows)
+        result["aggregate_energy_system_types_by_station_types_with_fuel"] = aggregate_energy_system_types_by_station_types_with_fuel(rows)
+        result["aggregate_energy_system_types_by_tes_types"] = aggregate_energy_system_types_by_tes_types(rows)
+        result["aggregate_energy_system_types_by_tes_types_with_fuel"] = aggregate_energy_system_types_by_tes_types_with_fuel(rows)
+        result["aggregate_energy_system_types_by_tes_machine_types"] = aggregate_energy_system_types_by_tes_machine_types(rows)
+        result["aggregate_energy_system_types_by_tes_machine_types_with_fuel"] = aggregate_energy_system_types_by_tes_machine_types_with_fuel(rows)
 
-        result["aggregate_energy_units_by_tes_machine_types_with_fuel"] = (
-            aggregate_energy_units_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-    
-        result["aggregate_power_by_regional_districts"] = (
-            aggregate_power_by_regional_districts(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_regional_districts_by_station_types"] = (
-            aggregate_regional_districts_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_districts_by_station_types_with_fuel"] = (
-            aggregate_regional_districts_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_districts_by_tes_types"] = (
-            aggregate_regional_districts_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_districts_by_tes_types_with_fuel"] = (
-            aggregate_regional_districts_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_districts_by_tes_machine_types"] = (
-            aggregate_regional_districts_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_districts_by_tes_machine_types_with_fuel"] = (
-            aggregate_regional_districts_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_power_by_regional_energy_systems"] = (
-            aggregate_power_by_regional_energy_systems(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_regional_energy_systems_by_station_types"] = (
-            aggregate_regional_energy_systems_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_energy_systems_by_station_types_with_fuel"] = (
-            aggregate_regional_energy_systems_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_energy_systems_by_tes_types"] = (
-            aggregate_regional_energy_systems_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_energy_systems_by_tes_types_with_fuel"] = (
-            aggregate_regional_energy_systems_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_energy_systems_by_tes_machine_types"] = (
-            aggregate_regional_energy_systems_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_regional_energy_systems_by_tes_machine_types_with_fuel"] = (
-            aggregate_regional_energy_systems_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_power_by_union_energy_systems"] = (
-            aggregate_power_by_union_energy_systems(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_union_energy_systems_by_station_types"] = (
-            aggregate_union_energy_systems_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_union_energy_systems_by_station_types_with_fuel"] = (
-            aggregate_union_energy_systems_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_union_energy_systems_by_tes_types"] = (
-            aggregate_union_energy_systems_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_union_energy_systems_by_tes_types_with_fuel"] = (
-            aggregate_union_energy_systems_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_union_energy_systems_by_tes_machine_types"] = (
-            aggregate_union_energy_systems_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_union_energy_systems_by_tes_machine_types_with_fuel"] = (
-            aggregate_union_energy_systems_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_power_by_energy_system_types"] = (
-            aggregate_power_by_energy_system_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_energy_system_types_by_station_types"] = (
-            aggregate_energy_system_types_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_energy_system_types_by_station_types_with_fuel"] = (
-            aggregate_energy_system_types_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_energy_system_types_by_tes_types"] = (
-            aggregate_energy_system_types_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_energy_system_types_by_tes_types_with_fuel"] = (
-            aggregate_energy_system_types_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_energy_system_types_by_tes_machine_types"] = (
-            aggregate_energy_system_types_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_energy_system_types_by_tes_machine_types_with_fuel"] = (
-            aggregate_energy_system_types_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_power_by_total_energy_system_types"] = (
-            aggregate_power_by_total_energy_system_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-                
-        result["aggregate_total_energy_system_types_by_station_types"] = (
-            aggregate_total_energy_system_types_by_station_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_total_energy_system_types_by_station_types_with_fuel"] = (
-            aggregate_total_energy_system_types_by_station_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_total_energy_system_types_by_tes_types"] = (
-            aggregate_total_energy_system_types_by_tes_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_total_energy_system_types_by_tes_types_with_fuel"] = (
-            aggregate_total_energy_system_types_by_tes_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_total_energy_system_types_by_tes_machine_types"] = (
-            aggregate_total_energy_system_types_by_tes_machine_types(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
-
-        result["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"] = (
-            aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(
-                start_year=start_year,
-                end_year=end_year,
-                station_ids=station_ids,
-            )
-        )
+        result["aggregate_power_by_total_energy_system_types"] = aggregate_power_by_total_energy_system_types(rows)
+        result["aggregate_total_energy_system_types_by_station_types"] = aggregate_total_energy_system_types_by_station_types(rows)
+        result["aggregate_total_energy_system_types_by_station_types_with_fuel"] = aggregate_total_energy_system_types_by_station_types_with_fuel(rows)
+        result["aggregate_total_energy_system_types_by_tes_types"] = aggregate_total_energy_system_types_by_tes_types(rows)
+        result["aggregate_total_energy_system_types_by_tes_types_with_fuel"] = aggregate_total_energy_system_types_by_tes_types_with_fuel(rows)
+        result["aggregate_total_energy_system_types_by_tes_machine_types"] = aggregate_total_energy_system_types_by_tes_machine_types(rows)
+        result["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"] = aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(rows)
 
     return result
 
