@@ -12,6 +12,7 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter', 'station_id',
     'per_page',
 ] %}
+{% set allowed_roles = ['generation', 'admin'] %}
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-end mb-3">
@@ -36,6 +37,7 @@
         <form method="POST" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
             {{ main_form.csrf_token }}
             {{ advanced_form.csrf_token }}
+            {{ pgu_machines_form.csrf_token }}
             
             <!-- Скрытое поле для ID агрегата -->
             {{ main_form.id_machine }}
@@ -48,8 +50,12 @@
 
                                 <!-- Номер/название группы агрегата -->
                                 <div class="mb-3">
-                                    {{ main_form.machine_group.label(class="form-label") }}
-                                    {{ main_form.machine_group(class="form-control fs-5") }}
+                                    <strong>Номер/название группы агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.machine_group(class="form-control fs-5") }}
+                                    {% else %}
+                                        {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
+                                    {% endif %}
                                     {% if main_form.machine_group.errors %}
                                         <div class="text-danger">
                                             {% for error in main_form.machine_group.errors %}
@@ -61,53 +67,69 @@
                                 
                                 <!-- Номер агрегата -->
                                 <div class="mb-3">
-                                    {{ main_form.machine_number.label(class="form-label") }}
-                                    {{ main_form.machine_number(class="form-control fw-bold fs-5") }}
-                                    {% if main_form.machine_number.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.machine_number.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Номер агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.machine_number(class="form-control fw-bold fs-5") }}
+                                        {% if main_form.machine_number.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.machine_number.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Название агрегата -->
                                 <div class="mb-3">
-                                    {{ main_form.machine_name.label(class="form-label") }}
-                                    {{ main_form.machine_name(class="form-control fw-bold fs-5") }}
-                                    {% if main_form.machine_name.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.machine_name.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Название агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.machine_name(class="form-control fw-bold fs-5") }}
+                                        {% if main_form.machine_name.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.machine_name.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.machine_name.data if main_form.machine_name.data else '—' }}
                                     {% endif %}
                                 </div>
                                 
                                 <!-- Состояние агрегата станции -->
                                 <div class="mb-3">
-                                    {{ main_form.id_condition_type.label(class="form-label") }}
-                                    {{ main_form.id_condition_type(class="form-select fs-5") }}
-                                    {% if main_form.id_condition_type.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_condition_type.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Состояние агрегата станции:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.id_condition_type(class="form-select fs-5") }}
+                                        {% if main_form.id_condition_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_condition_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ machine.condition_type.name if machine.condition_type else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Организация-собственник агрегата станции -->
                                 <div class="mb-3">
-                                    {{ main_form.id_gen_company.label(class="form-label") }}
-                                    {{ main_form.id_gen_company(class="form-select fs-5") }}
-                                    {% if main_form.id_gen_company.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_gen_company.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Организация-собственник:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.id_gen_company(class="form-select fs-5") }}
+                                        {% if main_form.id_gen_company.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_gen_company.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
                                     {% endif %}
                                 </div>
 
@@ -121,27 +143,35 @@
                             <div class="card-body">
                                 <!-- Энергорайон агрегата станции -->
                                 <div class="mb-3">
-                                    {{ main_form.id_energy_area.label(class="form-label") }}
-                                    {{ main_form.id_energy_area(class="form-select fs-5") }}
-                                    {% if main_form.id_energy_area.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_energy_area.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Энергорайон агрегата станции:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.id_energy_area(class="form-select fs-5") }}
+                                        {% if main_form.id_energy_area.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_energy_area.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
                                     {% endif %}
                                 </div>
                                 
                                 <!-- Тип электростанции -->
                                 <div class="mb-3">
-                                    {{ main_form.id_station_type.label(class="form-label") }}
-                                    {{ main_form.id_station_type(class="form-select fs-5") }}
-                                    {% if main_form.id_station_type.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_station_type.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Тип электростанции:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.id_station_type(class="form-select fs-5") }}
+                                        {% if main_form.id_station_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_station_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
                                     {% endif %}
                                 </div>
 
@@ -149,46 +179,55 @@
                                 <!-- Тип агрегата ТЭС -->
                                 {% if main_form.id_tes_machine_type.data == 4 %}
                                     <div class="mb-3">
-                                        {{ main_form.id_tes_machine_type.label(class="form-label") }}
-                                        {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
-                                        {% if main_form.id_tes_machine_type.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_tes_machine_type.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                        <strong>Тип агрегата ТЭС:</strong>
+                                        {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                            {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
+                                            {% if main_form.id_tes_machine_type.errors %}
+                                                <div class="text-danger">
+                                                    {% for error in main_form.id_tes_machine_type.errors %}
+                                                        {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            {{ machine.tes_machine_type.name if machine.tes_machine_type else '—' }}
                                         {% endif %}
                                     </div>
                                 {% endif %}
 
                                 <!-- Тип агрегата -->
                                 <div class="mb-3">
-                                    {{ main_form.id_machine_type.label(class="form-label") }}
-                                    {{ main_form.id_machine_type(class="form-select fs-5") }}
-                                    {% if main_form.id_machine_type.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.id_machine_type.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Тип агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.id_machine_type(class="form-select fs-5") }}
+                                        {% if main_form.id_machine_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.id_machine_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ machine.machine_type.name if machine.machine_type else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Примечание -->
                                 <div class="mb-3">
-                                    {{ main_form.note.label(class="form-label") }}
-                                    {{ main_form.note(class="form-control fs-5") }}
-                                    {% if main_form.note.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.note.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Примечание:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.note(class="form-control fs-5") }}
+                                        {% if main_form.note.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.note.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.note.data if main_form.note.data else '—' }}
                                     {% endif %}
                                 </div>
-
-                                
-
                             </div>
                         </div>
                     </div>
@@ -200,66 +239,86 @@
 
                                 <!-- Год ввода в эксплуатацию -->
                                 <div class="mb-3">
-                                    {{ main_form.date_exploitation.label(class="form-label") }}
-                                    {{ main_form.date_exploitation(class="form-control fs-5") }}
-                                    {% if main_form.date_exploitation.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_exploitation.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Год ввода в эксплуатацию:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_exploitation(class="form-control fs-5") }}
+                                        {% if main_form.date_exploitation.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_exploitation.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата ввода в работу -->
                                 <div class="mb-3">
-                                    {{ main_form.date_commission_fact.label(class="form-label") }}
-                                    {{ main_form.date_commission_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_commission_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_commission_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата ввода в работу:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_commission_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_commission_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_commission_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Ожидаемая дата присоединения -->
                                 <div class="mb-3">
-                                    {{ main_form.date_joining_expected.label(class="form-label") }}
-                                    {{ main_form.date_joining_expected(class="form-control fs-5") }}
-                                    {% if main_form.date_joining_expected.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_joining_expected.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Ожидаемая дата присоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_joining_expected(class="form-control fs-5") }}
+                                        {% if main_form.date_joining_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_joining_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата присоединения -->
                                 <div class="mb-3">
-                                    {{ main_form.date_joining_fact.label(class="form-label") }}
-                                    {{ main_form.date_joining_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_joining_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_joining_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата присоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_joining_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_joining_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_joining_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата отсоединения -->
                                 <div class="mb-3">
-                                    {{ main_form.date_detatchment_fact.label(class="form-label") }}
-                                    {{ main_form.date_detatchment_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_detatchment_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_detatchment_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата отсоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_detatchment_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_detatchment_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_detatchment_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
                                     {% endif %}
                                 </div>
 
@@ -274,66 +333,86 @@
 
                                 <!-- Ожидаемый год вывода из эксплуатации -->
                                 <div class="mb-3">
-                                    {{ main_form.date_decompressing_expected.label(class="form-label") }}
-                                    {{ main_form.date_decompressing_expected(class="form-control fs-5") }}
-                                    {% if main_form.date_decompressing_expected.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_decompressing_expected.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Ожидаемый год вывода из эксплуатации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_decompressing_expected(class="form-control fs-5") }}
+                                        {% if main_form.date_decompressing_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_decompressing_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата вывода из эксплуатации -->
                                 <div class="mb-3">
-                                    {{ main_form.date_decompressing_fact.label(class="form-label") }}
-                                    {{ main_form.date_decompressing_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_decompressing_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_decompressing_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата вывода из эксплуатации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_decompressing_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_decompressing_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_decompressing_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата перемаркировки -->
                                 <div class="mb-3">
-                                    {{ main_form.date_relabing_fact.label(class="form-label") }}
-                                    {{ main_form.date_relabing_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_relabing_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_relabing_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата перемаркировки:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_relabing_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_relabing_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_relabing_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Ожидаемый год модернизации -->
                                 <div class="mb-3">
-                                    {{ main_form.date_modernization_expected.label(class="form-label") }}
-                                    {{ main_form.date_modernization_expected(class="form-control fs-5") }}
-                                    {% if main_form.date_modernization_expected.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_modernization_expected.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Ожидаемый год модернизации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_modernization_expected(class="form-control fs-5") }}
+                                        {% if main_form.date_modernization_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_modernization_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
                                     {% endif %}
                                 </div>
 
                                 <!-- Фактическая дата уточнения -->
                                 <div class="mb-3">
-                                    {{ main_form.date_update_fact.label(class="form-label") }}
-                                    {{ main_form.date_update_fact(class="form-control fs-5") }}
-                                    {% if main_form.date_update_fact.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.date_update_fact.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
+                                    <strong>Фактическая дата уточнения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ main_form.date_update_fact(class="form-control fs-5") }}
+                                        {% if main_form.date_update_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in main_form.date_update_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -414,24 +493,95 @@
                 </div>
             </div>
 
-            
+            {{ pgu_machines_form.hidden_tag() }}
+            {% if machine.id_tes_machine_type == 2 %}
+                <!-- Таблица с агрегатами ПГУ (PGUMachines) -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0"></h3>
+                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                        <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
+                            ➕ Добавить агрегат ПГУ
+                        </a>
+                    {% endif %}
+
+                </div>
+                <div class="table-responsive fs-5">
+                    <table class="table table-hover table-striped table-bordered table-responsive">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th colspan="{{ end_year - start_year + 4 }}" >Установленная мощность агрегатов, входящих в состав ПГУ</th>
+                            </tr>
+                            <tr class="text-center align-middle">
+                                <th rowspan="2" style="width: 80px;">ст.№</th>
+                                <th rowspan="2" style="width: 200px;">Название агрегата</th>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ year }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {% if year_features[year] is defined %}
+                                            {{ year_features[year] }}
+                                        {% endif %}
+                                    </div>
+                                </th>
+                                {% endfor %}
+                                <th rowspan="2" style="width: 100px;">Удалить</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for pgu_machine in pgu_machines %}
+                                <tr class="text-center align-middle">
+                                    <td>{{ pgu_machine.machine_number or '—' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=pgu_machine.id, **request.args) }}" class="text-decoration-none">
+                                            {{ pgu_machine.machine_name }}
+                                        </a>
+                                    </td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="text-center power-column" style="width: 50px;">
+                                            {% set p_ust_value = pgu_machine.pgu_machine_powers
+                                                                | selectattr('year.number', 'equalto', year)
+                                                                | map(attribute='p_ust')
+                                                                | first %}
+                                            {% if p_ust_value %}
+                                                {{ p_ust_value | format_decimal }}
+                                            {% else %}
+                                                &mdash;
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                    <td>
+                                        <input type="checkbox" name="pgu_machines_delete[]" value="{{ pgu_machine.id }}" class="form-check-input">
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="{{ 4 + (end_year - start_year + 1) }}" class="text-center text-muted">Нет агрегатов ПГУ</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
 
             <!-- Таблица с агрегатами (Machines) -->
             <div class="table-responsive fs-5">
                 <table class="table table-hover table-striped table-bordered">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
-                        <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
+                            <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
                         </tr>
                         <tr class="text-center align-middle">
                             <th class="first-column" style="width: 50px;"></th>
-                            {% for p in advanced_form.powers %}
-                                <th style="width: 50px; text-align: center;">
-                                    {{ p.year.data }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                                        {{ year_features[p.year.data].name }}
-                                    </div>
-                                </th>
+                            {% for year in range(start_year, end_year + 1) %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    {% if year_features[year] is defined %}
+                                        {{ year_features[year] }}
+                                    {% endif %}
+                                </div>
+                            </th>
                             {% endfor %}
                     </thead>
                     <tbody>
@@ -441,11 +591,15 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    <input type="text"
-                                        name="{{ p.p_ust.name }}"
-                                        value="{{ p.p_ust.data | format_decimal }}"
-                                        data-original-value="{{ p.p_ust.data | format_decimal }}"
-                                        class="form-control text-center fs-5">
+                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                        <input type="text"
+                                            name="{{ p.p_ust.name }}"
+                                            value="{{ p.p_ust.data | format_decimal }}"
+                                            data-original-value="{{ p.p_ust.data | format_decimal }}"
+                                            class="form-control text-center fs-5">
+                                    {% else %}
+                                        <span>{{ p.p_ust.data | format_decimal if p.p_ust.data else '—' }}</span>
+                                    {% endif %}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -456,11 +610,15 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
+                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
                                         value="{{ p.p_ogr.data | format_decimal }}"
                                         data-original-value="{{ p.p_ogr.data | format_decimal }}"
                                         class="form-control text-center fs-5">
+                                    {% else %}
+                                        <span>{{ p.p_ogr.data | format_decimal if p.p_ogr.data else '—' }}</span>
+                                    {% endif %}
                                 </td>
                             {% endfor %}
                         </tr>
@@ -471,20 +629,24 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
+                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
                                         value="{{ p.p_rasp.data | format_decimal }}"
                                         data-original-value="{{ p.p_rasp.data | format_decimal }}"
                                         class="form-control text-center fs-5">
+                                    {% else %}
+                                        <span>{{ p.p_rasp.data | format_decimal if p.p_rasp.data else '—' }}</span>
+                                    {% endif %}
                                 </td>
                             {% endfor %}
                         </tr>
                     </tbody>
                 </table>
             </div>
+            
 
             {% if main_form.id_station_type.data == 4 %}
-
                 <!-- Таблица "Типы ТЭС" -->
                 <div class="table-responsive fs-5">
                     <table class="table table-hover table-striped table-bordered">
@@ -494,13 +656,15 @@
                             </tr>
                             <tr class="text-center align-middle">
                                 <th class="first-column"></th>
-                                {% for t in advanced_form.tes_types %}
-                                    <th class="year-header">
-                                        {{ t.year.data }}
-                                        <div class="year-text">
-                                            {{ year_features[t.year.data].name }}
-                                        </div>
-                                    </th>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ year }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {% if year_features[year] is defined %}
+                                            {{ year_features[year] }}
+                                        {% endif %}
+                                    </div>
+                                </th>
                                 {% endfor %}
                             </tr>
                         </thead>
@@ -510,11 +674,16 @@
                                 {% for t in advanced_form.tes_types %}
                                     {{ t.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                                        {{ t.tes_type(
-                                            class="form-select fuel-column text-center fs-5",
-                                            style="background-color: transparent;",
-                                            **{"data-original-value": t.tes_type.data}
-                                        ) }}
+                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                            {{ t.tes_type(
+                                                class="form-select fuel-column text-center fs-5",
+                                                style="background-color: transparent;",
+                                                **{"data-original-value": t.tes_type.data}
+                                            ) }}
+                                        {% else %}
+                                            {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
+                                            <span>{{ selected_tes_type or '—' }}</span>
+                                        {% endif %}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -531,13 +700,15 @@
                             </tr>
                             <tr class="text-center align-middle">
                                 <th class="first-column">Год</th>
-                                {% for f in advanced_form.fuels %}
-                                    <th class="year-header">
-                                        {{ f.year.data }}
-                                        <div class="year-text">
-                                            {{ year_features[f.year.data].name }}
-                                        </div>
-                                    </th>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <th style="width: 50px; text-align: center;">
+                                    {{ year }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                        {% if year_features[year] is defined %}
+                                            {{ year_features[year] }}
+                                        {% endif %}
+                                    </div>
+                                </th>
                                 {% endfor %}
                             </tr>
                         </thead>
@@ -547,11 +718,16 @@
                                 {% for f in advanced_form.fuels %}
                                     {{ f.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                                        {{ f.fuel_type(
-                                            class="form-select fuel-column text-center fs-5",
-                                            style="background-color: transparent;",
-                                            **{"data-original-value": f.fuel_type.data}
-                                        ) }}
+                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                            {{ f.fuel_type(
+                                                class="form-select fuel-column text-center fs-5",
+                                                style="background-color: transparent;",
+                                                **{"data-original-value": f.fuel_type.data}
+                                            ) }}
+                                        {% else %}
+                                            {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
+                                            <span>{{ selected_fuel_type or '—' }}</span>
+                                        {% endif %}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -563,18 +739,19 @@
             <!-- Контейнер для кнопок -->
             <div class="d-flex justify-content-end mt-3 gap-3">
                 <!-- Кнопка "Сохранить" -->
-                <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
-            
+                 {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                    <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
+                
                 <!-- Кнопка "Сбросить" -->
                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
                 class="btn btn-outline-danger m-2 fs-5">
                     Сбросить
                 </a>
+                {% endif %}
 
                 <!-- Кнопка "Назад" -->
-                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}"
-                class="btn btn-outline-secondary m-2 fs-5">
-                Назад
+                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}"class="btn btn-outline-secondary m-2 fs-5">
+                    Назад
                 </a>
             </div>
         </form>     
@@ -830,9 +1007,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
-
-
-
 </script>
 
 

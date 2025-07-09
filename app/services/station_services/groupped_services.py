@@ -5,7 +5,8 @@ from collections import defaultdict
 from sqlalchemy.orm import joinedload
 from app.models import (
     UnionEnergySystem, RegionalEnergySystem, EnergySystemType, 
-    RegionalDistrict, Station, Machine, MachinePower, MachineTesType,
+    RegionalDistrict, Station, Machine, MachinePower, MachineTesType, 
+    PGUMachine, PGUMachinePower
 )
 
 def get_station_hierarchy_aggregates(start_year, end_year):
@@ -41,8 +42,6 @@ def get_station_hierarchy_aggregates(start_year, end_year):
 
 
 def build_hierarchy_structure(stations: list[Station], include_names=False):
-    from collections import defaultdict
-
     # Многоуровневая вложенность
     grouped_data = defaultdict(
         lambda: defaultdict(
@@ -111,8 +110,9 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
     return result
 
 
+def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_p_rasp=False):
+    from app.models import PGUMachine, PGUMachinePower
 
-def fetch_machines_with_rowspans(station_ids: list[int]):
     machines = Machine.query.options(
         joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
@@ -120,46 +120,94 @@ def fetch_machines_with_rowspans(station_ids: list[int]):
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
 
+    machine_ids = [m.id for m in machines]
+    pgu_machines = PGUMachine.query.filter(PGUMachine.id_parent_machine.in_(machine_ids)).all()
+
+    pgu_machine_ids = [p.id for p in pgu_machines]
+    pgu_powers = PGUMachinePower.query.filter(PGUMachinePower.id_pgu_machine.in_(pgu_machine_ids)).all()
+
+    pgu_powers_map = defaultdict(dict)
+    for power in pgu_powers:
+        pgu_powers_map[power.id_pgu_machine][power.year_number] = power.p_ust or 0
+
+    pgu_map = defaultdict(list)
+    for pgu in pgu_machines:
+        pgu.powers_by_year = pgu_powers_map.get(pgu.id, {})
+        pgu_map[pgu.id_parent_machine].append(pgu)
+
     station_machine_map = defaultdict(list)
+    station_totals = {}
+
     for m in machines:
+        m.pgu_machines = pgu_map.get(m.id, [])
         station_machine_map[m.id_station].append(m)
 
-    for machine_list in station_machine_map.values():
+    for station_id, machine_list in station_machine_map.items():
         machine_list.sort(key=lambda m: (
-            (m.machine_group or "").lower(),
-            (m.fuel_so or "").lower(),
+            (m.machine_group or '').lower(),
+            (m.fuel_so or '').lower(),
             int(m.machine_number) if m.machine_number and str(m.machine_number).isdigit() else float('inf')
         ))
 
-        # group_rowspan
         group_dict = defaultdict(list)
         for m in machine_list:
-            group_key = (m.machine_group or "").strip()
+            group_key = (m.machine_group or '').strip()
             group_dict[group_key].append(m)
+
         for group in group_dict.values():
-            group[0].group_rowspan = len(group)
+            group_rowspan = 0
+            for m in group:
+                num_pgu = len(m.pgu_machines)
+                base_rows = 1 + num_pgu
+                if show_p_ogr:
+                    base_rows += 1
+                if show_p_rasp:
+                    base_rows += 1
+                m.total_rows = base_rows
+                group_rowspan += base_rows
+
+            group[0].group_rowspan = group_rowspan
             for m in group[1:]:
                 m.group_rowspan = 0
 
-        # fuel_rowspan
         fuel_dict = defaultdict(list)
         for m in machine_list:
-            fuel_key = (m.fuel_so or "").strip()
+            fuel_key = (m.fuel_so or '').strip()
             fuel_dict[fuel_key].append(m)
+
         for group in fuel_dict.values():
-            group[0].fuel_rowspan = len(group)
+            fuel_rowspan = sum(m.total_rows for m in group)
+            group[0].fuel_rowspan = fuel_rowspan
             for m in group[1:]:
                 m.fuel_rowspan = 0
+
+        # station total rows = sum total_rows of all machines + header row (1)
+        station_total_rows = sum(m.total_rows for m in machine_list) + 1
+        station_machine_count = len(machine_list)
+        station_total_pgu_count = sum(len(m.pgu_machines) for m in machine_list)
+
+        # Calculate summary row height: 1 (Руст) + optional p_ogr + optional p_rasp
+        station_summary_rows = 1
+        if show_p_ogr:
+            station_summary_rows += 1
+        if show_p_rasp:
+            station_summary_rows += 1
+
+        station_totals[station_id] = {
+            'total_rows': station_total_rows,
+            'machine_count': station_machine_count,
+            'total_pgu_count': station_total_pgu_count,
+            'summary_rows': station_summary_rows
+        }
 
     all_machines = []
     for lst in station_machine_map.values():
         all_machines.extend(lst)
 
-    # 🛡 Устанавливаем значения по умолчанию, если агрегат оказался вне всех групп
     for m in all_machines:
-        if m.group_rowspan is None:
+        if not hasattr(m, 'group_rowspan') or m.group_rowspan is None:
             m.group_rowspan = 1
-        if m.fuel_rowspan is None:
+        if not hasattr(m, 'fuel_rowspan') or m.fuel_rowspan is None:
             m.fuel_rowspan = 1
 
-    return all_machines
+    return all_machines, station_totals

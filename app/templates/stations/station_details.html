@@ -12,6 +12,7 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
     'sort_by', 'sort_dir', 'per_page', 'start_year', 'end_year'
 ] %}
+{% set allowed_roles = ['generation', 'admin'] %}
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-end mb-3">
@@ -36,36 +37,52 @@
                     <div class="card mb-4 w-50">
                         <div class="card-body">
                             <p class="fs-5"><strong>Название:</strong> 
-                                <input type="text" name="name" class="fs-5 form-control d-inline-block w-auto"
-                                value="{{ form.name.data or '' }}">
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <input type="text" name="name" class="fs-5 form-control d-inline-block w-auto" value="{{ form.name.data or '' }}">
+                                {% else %}
+                                    <span>{{ form.name.data or '' }}</span>
+                                {% endif %}
                             </p>
                             <p class="fs-5"><strong>Состояние:</strong> 
-                                <span id="id_condition_type_span" >
-                                    {{ form.id_condition_type(class="form-select d-inline-block w-auto fs-5") }}
+                                <span id="id_condition_type_span">
+                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                        {{ form.id_condition_type(class="form-select d-inline-block w-auto fs-5") }}
+                                    {% else %}
+                                        {{ form.id_condition_type.data.label if form.id_condition_type.data else '—' }}
+                                    {% endif %}
                                 </span>
                             </p>
                             <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '—' }}</p>
                             <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_types if station.station_types else '—' }}</p>
                             <p class="fs-5"><strong>Группа электростанций:</strong> 
-                                <span id="id_station_group_span">
-                                    {{ form.id_station_group(class="form-select d-inline-block w-auto fs-5") }}
-                                </span>
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <span id="id_station_group_span">
+                                        {{ form.id_station_group(class="form-select d-inline-block w-auto fs-5") }}
+                                    </span>
+                                {% else %}
+                                    <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '—' }}</span>
+                                {% endif %}
                             </p>
 
                             <p class="fs-5"><strong>Примечание:</strong> 
-                                <span id="note">
-                                    {{ form.note(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
-                                </span>
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <span id="note">
+                                        {{ form.note(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
+                                    </span>
+                                {% else %}
+                                    <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
+                                {% endif %}
                             </p>
 
                             <!-- Кнопка "Сохранить" -->
-                            <button type="submit" class="btn btn-outline-primary">Сохранить изменения</button>
-                        
+                            {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                <button type="submit" class="btn btn-outline-primary">Сохранить</button>
+                                
                             <!-- Кнопка "Сбросить" -->
-                            <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" 
-                            class="btn btn-outline-secondary">
+                            <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-secondary">
                                 Сбросить
                             </a>
+                            {% endif %}
                         </div>
                     </div>
             
@@ -99,10 +116,14 @@
                                 </span>
                             </p>
 
-                            <p class="fs-5"><strong>Энергоузел:</strong> 
-                                <span id="id_energy_unit_span">
-                                    {{ form.id_energy_unit(class="form-select d-inline-block w-auto fs-5") }}
-                                </span>
+                            <p class="fs-5"><strong>Энергоузел:</strong>
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <span id="id_energy_unit_span">
+                                        {{ form.id_energy_unit(class="form-select d-inline-block w-auto fs-5") }}
+                                    </span>
+                                {% else %}
+                                    <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '—' }}</span>
+                                {% endif %}
                             </p>
                         
                             <p class="fs-5"><strong>Федеральный округ:</strong> 
@@ -112,15 +133,23 @@
                             </p>
 
                             <p class="fs-5"><strong>Субъект РФ:</strong> 
-                                <span id="id_regional_district_span">
-                                    {{ form.id_regional_district(class="form-select d-inline-block w-auto fs-5") }}
-                                </span>
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <span id="id_regional_district_span">
+                                        {{ form.id_regional_district(class="form-select d-inline-block w-auto fs-5", id="id_regional_district") }}
+                                    </span>
+                                {% else %}
+                                    <span>{{ form.id_regional_district.data.label if form.id_regional_district.data.label else '—' }}</span>
+                                {% endif %}
                             </p>
                         
                             <p class="fs-5"><strong>Местоположение:</strong> 
-                                <span id="location_span">
-                                    {{ form.location(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
-                                </span>
+                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                    <span id="location_span">
+                                        {{ form.location(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
+                                    </span>
+                                {% else %}
+                                    <span>{{ form.location.data.label if form.location.data.label else '—' }}</span>
+                                {% endif %}
                             </p>
 
 
@@ -133,9 +162,11 @@
         <!-- Таблица с агрегатами (Machines) -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">Агрегаты станции</h3>
-            <a href="{{ url_for('station_bp.add_machine', station_id=station.id, **request.args) }}" class="btn btn-outline-success text-dark">
-                ➕ Добавить агрегат
-            </a>
+            {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить агрегат
+                </a>
+            {% endif %}
         </div>
         
         <!-- Фильтры -->
@@ -258,15 +289,16 @@
                                         </a>
                                     </td>
                                     <td class="rowspan-td" rowspan="3">
-                                        <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="width: 100%;">
-                                            <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
-                                            
-                                            {% for gc in form_machines.id_gen_company.choices %}
-                                                <option value="{{ gc[0] }}" {% if machine.gen_company and machine.gen_company.id == gc[0] %}selected{% endif %}>
-                                                    {{ gc[1] }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
+                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                            <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="width: 100%;">
+                                                <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
+                                                {% for gc in form_machines.id_gen_company.choices %}
+                                                    <option value="{{ gc[0] }}" {% if machine.gen_company and machine.gen_company.id == gc[0] %}selected{% endif %}>{{ gc[1] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% else %}
+                                            {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
+                                        {% endif %}
                                     </td>
                                     <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
                                     <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
@@ -281,10 +313,14 @@
                                         {% endif %}
                                     </td>
                                     <td class="rowspan-td" rowspan="3">
-                                        <input type="text" name="fuel_so_{{ machine.id }}" 
-                                                value="{{ machine.fuel_so or '' }}" 
-                                                placeholder="Введите топливо" 
-                                                class="form-control text-center d-inline-block w-auto bg-transparent">
+                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                            <input type="text" name="fuel_so_{{ machine.id }}" 
+                                            value="{{ machine.fuel_so or '' }}" 
+                                            placeholder="Введите топливо" 
+                                            class="form-control text-center d-inline-block w-auto bg-transparent">
+                                        {% else %}
+                                            <span>{{ machine.fuel_so if machine.fuel_so else '—' }}</span>
+                                        {% endif %}
                                     </td>
 
                                     
@@ -430,17 +466,15 @@
             
             <!-- Кнопки сохранения -->
             <div class="d-flex justify-content-end mt-3">
-                <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
-                <a href="{{ url_for('station_bp.station_details', station_id=station.id) }}" 
-                class="btn btn-outline-danger m-2 fs-5">
-                    Сбросить
-                </a>
+                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                    <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
+                    <a href="{{ url_for('station_bp.station_details', station_id=station.id) }}" class="btn btn-outline-danger m-2 fs-5">Сбросить</a>
+                {% endif %}
 
-            <!-- Кнопка "Назад" -->
-            <a href="{{ url_for('station_bp.station_list', **request.args) }}" 
-            class="btn btn-outline-secondary m-2 fs-5">
-                Назад
-            </a>
+                <!-- Кнопка "Назад" -->
+                <a href="{{ url_for('station_bp.station_list', **request.args) }}"class="btn btn-outline-secondary m-2 fs-5">
+                    Назад
+                </a>
             </div>
         </div>
     </body>
@@ -546,7 +580,7 @@
             // Проверка, выбран ли субъект РФ
             if (!district_id) return;
     
-            fetch(`/app/get_energy_system_data/${district_id}`)
+            fetch(`/stations/get_energy_system_data/${district_id}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log("Данные с сервера:", data); // Отладка

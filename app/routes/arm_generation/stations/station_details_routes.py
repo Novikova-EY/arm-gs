@@ -8,7 +8,7 @@ from flask import (
 from collections import defaultdict
 from app.services.logging_services.logging_service import log_to_db
 from flask_login import login_required
-from app.routes.auth import role_required
+from app.routes.auth import roles_required
 from flask import session
 from app.forms.station_forms import StationFilterForm
 from app.forms.machine_forms import MachineFilterSmallForm
@@ -55,11 +55,11 @@ from app.services.station_services.import_station_services import (
 
 @station_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
 @login_required
-@role_required('super-admin')
 def station_details(station_id):
     """Маршрут для отображения сведений об электростанции с логированием изменений."""
 
     user = session.get('username', 'Неизвестный пользователь')
+    
     station = get_station_by_id(station_id)
     if not station:
         abort(404)

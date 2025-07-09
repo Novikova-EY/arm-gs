@@ -15,36 +15,42 @@
             </button>
 
             <button id="importExportToggleBtn"
-                    class="btn btn-outline-secondary text-dark" 
+                    class="btn btn-outline-secondary text-dark"
                     type="button"
-                    data-bs-toggle="collapse" 
+                    data-bs-toggle="collapse"
                     data-bs-target="#importExportCollapse"
-                    aria-expanded="false" 
+                    aria-expanded="false"
                     aria-controls="importExportCollapse">
                 📁 Импорт / Экспорт
             </button>
         </div>
 
-        <!-- Правая группа: чекбоксы и подсветка -->
-        <div class="d-flex align-items-center gap-2 ms-auto">
+        <!-- Правая группа ВНУТРИ формы -->
+        <form method="get" action="{{ url_for('station_bp.station_list') }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+
+            <!-- Скрытые фильтры -->
+            {% for key, value in request.args.items() %}
+                {% if key not in ['show_p_ogr', 'show_p_rasp'] %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+
+            <input type="hidden" id="per_page_hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
 
             <!-- Чекбокс Рогр -->
-            <input type="checkbox" class="btn-check" id="toggleP_Ogr" autocomplete="off">
-            <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center" style="min-width: 80px;">
+            <input type="checkbox" class="btn-check" id="toggleP_Ogr" name="show_p_ogr" value="1" {% if show_p_ogr %}checked{% endif %}>
+            <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center {% if show_p_ogr %}active{% endif %}" style="min-width: 80px;">
                 Рогр
             </label>
 
             <!-- Чекбокс Ррасп -->
-            <input type="checkbox" class="btn-check" id="toggleP_Rasp" autocomplete="off" checked>
-            <label for="toggleP_Rasp" class="btn btn-outline-primary px-3 text-center" style="min-width: 80px;">
+            <input type="checkbox" class="btn-check" id="toggleP_Rasp" name="show_p_rasp" value="1" {% if show_p_rasp %}checked{% endif %}>
+            <label for="toggleP_Rasp" class="btn btn-outline-primary px-3 text-center {% if show_p_rasp %}active{% endif %}" style="min-width: 80px;">
                 Ррасп
             </label>
 
             <!-- Подсветка -->
-            <button id="highlightChangesBtn"
-                    class="btn btn-outline-secondary text-dark"
-                    type="button"
-                    style="min-width: 250px;">
+            <button id="highlightChangesBtn" class="btn btn-outline-secondary text-dark" type="button" style="min-width: 250px;">
                 ✨ Подсветить изменения
             </button>
 
@@ -59,10 +65,10 @@
                     <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
                 </select>
             </div>
-        </div>
-
+        </form>
     </div>
 </div>
+
 
 
 <!-- Блок фильтров -->

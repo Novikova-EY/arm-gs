@@ -80,46 +80,35 @@ document.addEventListener("DOMContentLoaded", () => {
     function setupMachinePowerRows() {
         const togglePOgr = document.getElementById("toggleP_Ogr");
         const togglePRasp = document.getElementById("toggleP_Rasp");
+        const form = document.getElementById('stationFilterForm');
 
         function update() {
             const showPOgr = togglePOgr?.checked || false;
             const showPRasp = togglePRasp?.checked || false;
-            const rowsPerMachine = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
 
-            document.querySelectorAll(".p-ogr-row").forEach(r => r.style.display = showPOgr ? "" : "none");
-            document.querySelectorAll(".p-rasp-row").forEach(r => r.style.display = showPRasp ? "" : "none");
-            document.querySelectorAll(".rowspan-td").forEach(td => td.setAttribute("rowspan", rowsPerMachine));
-
-            document.querySelectorAll(".station-rowspan-td").forEach(td => {
-                const total = parseInt(td.dataset.totalMachines || "1", 10);
-                td.setAttribute("rowspan", total * rowsPerMachine + 1);
+            // Показ/скрытие всех строк Рогр (и станций, и машин)
+            document.querySelectorAll(".p-ogr-row").forEach(row => {
+                row.style.display = showPOgr ? "" : "none";
             });
 
-            document.querySelectorAll(".fuel-cell").forEach(cell => {
-                const base = parseInt(cell.dataset.baseRowspan || "1", 10);
-                cell.setAttribute("rowspan", base * rowsPerMachine);
-                cell.style.display = "table-cell";
+            // Показ/скрытие всех строк Ррасп
+            document.querySelectorAll(".p-rasp-row").forEach(row => {
+                row.style.display = showPRasp ? "" : "none";
             });
-
-            document.querySelectorAll(".total-row-cell").forEach(td => td.setAttribute("rowspan", rowsPerMachine));
         }
 
-        // Сохраняем исходные значения rowspan
-        document.querySelectorAll(".rowspan-td").forEach(td => td.dataset.originalRowspan = td.getAttribute("rowspan"));
-        document.querySelectorAll(".station-rowspan-td").forEach(td => {
-            const val = parseInt(td.getAttribute("rowspan"), 10);
-            td.dataset.totalMachines = (val - 1) / 3;
+        // При изменении — автосабмит формы
+        togglePOgr?.addEventListener('change', () => {
+            form.submit();
         });
-        document.querySelectorAll(".fuel-cell").forEach(td => td.dataset.baseRowspan = td.getAttribute("rowspan") || "1");
 
-        // Подключаем событие
-        [togglePOgr, togglePRasp].forEach(t => t?.addEventListener("change", update));
+        togglePRasp?.addEventListener('change', () => {
+            form.submit();
+        });
 
-        // Инициализируем
-        if ('requestIdleCallback' in window) requestIdleCallback(update);
-        else setTimeout(update, 0);
+        // Вызываем обновление видимости строк при загрузке (чтобы они скрывались даже без перезагрузки)
+        update();
 
-        // Глобально экспортируем
         window.updateRows = update;
     }
 

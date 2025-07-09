@@ -1,9 +1,6 @@
 from app import db
-import re
 import pandas as pd
-from datetime import datetime
-import math
-from flask import flash
+from sqlalchemy import func
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from app.services.logging_services.logging_service import log_to_db
 from app.models import (
@@ -14,7 +11,6 @@ from app.models import (
 from app.services.reference_services.gen_company_services import (
         clean_name
 )
-from app.services.station_services.help_services import convert_to_date
 
 
 # Функция для проверки значений дат на NaN и замены на None
@@ -459,8 +455,8 @@ def assign_machine_fuel(machine, row, start_year, end_year, user):
             print(f"Создание топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {fuel.name}")
 
 
-# Вспомогательная функция: автоматическое удаление/добавление топлива
-def cleanup_machine_fuel(machine, row, start_year, end_year, user):
+# Вспомогательная функция: автоматическое удаление/добавление топлива и типа ТЭС
+def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
     fuel_type_mapping = {
         "газ": 1,
         "уголь": 2,
@@ -473,6 +469,7 @@ def cleanup_machine_fuel(machine, row, start_year, end_year, user):
     for year in range(start_year, end_year + 1):
         p_val = row.get(f'p_{year}')
         fuel_val = row.get(f'fuel_{year}')
+        tes_type_val = row.get(f'tes_type_{year}')
 
         try:
             p_ust = float(p_val) if not pd.isna(p_val) else 0
@@ -483,27 +480,43 @@ def cleanup_machine_fuel(machine, row, start_year, end_year, user):
         machine_power = MachinePower.query.filter_by(year_number=year, id_machine=machine.id).first()
         p_ust = machine_power.p_ust if machine_power else 0
 
+        # Получаем текущее топливо и тип ТЭС агрегата
         machine_fuel = MachineFuel.query.filter_by(year_number=year, id_machine=machine.id).first()
+        machine_tes_type = MachineTesType.query.filter_by(year_number=year, id_machine=machine.id).first()
 
+        # ======================== Если установленная мощность = 0 ========================
         if p_ust == 0:
-            # Установленная мощность 0 — удаляем топливо, если есть
+            # Удаляем топливо
             if machine_fuel:
                 db.session.delete(machine_fuel)
                 log_to_db(
                     user,
-                    f"Удаление топлива электростанции {machine.machine_station.name} ({district_name})",
+                    f"Удаление топлива электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: удалено топливо (p_ust = 0)"
                 )
-                print(f"Удаление топлива электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number}, год {year}: удалено топливо (p_ust = 0)")
+                print(f"Удалено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}")
+
+            # Сбрасываем тип ТЭС на id=100 (не указано)
+            if machine_tes_type and machine_tes_type.id_tes_type != 100:
+                old_tes_type_name = machine_tes_type.tes_type.name if machine_tes_type.tes_type else 'не указано'
+                machine_tes_type.id_tes_type = 100
+                log_to_db(
+                    user,
+                    f"Сброс типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Агрегат: {machine.machine_number}, год {year}: тип ТЭС {old_tes_type_name} → не указано"
+                )
+                print(f"Сброс типа ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}, был: {old_tes_type_name}")
             continue
 
-        # Если p_ust > 0, обрабатываем топливо
+        # ======================== Если установленная мощность > 0 ========================
+
+        # Обработка топлива
         fuel_name = clean_name(fuel_val)
         fuel_type_id = fuel_type_mapping.get(fuel_name)
         fuel = Fuel.query.filter_by(id_fuel_type=fuel_type_id).first() if fuel_type_id else None
 
-        if p_ust > 0:
-            if not machine_fuel and fuel:
+        if fuel:
+            if not machine_fuel:
                 machine_fuel = MachineFuel(
                     year_number=year,
                     id_machine=machine.id,
@@ -512,20 +525,47 @@ def cleanup_machine_fuel(machine, row, start_year, end_year, user):
                 db.session.add(machine_fuel)
                 log_to_db(
                     user,
-                    f"Добавление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                    f"Добавление топлива электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: добавлено топливо {fuel.name}"
                 )
-                print(f"Добавление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number}, год {year}: добавлено топливо {fuel.name}")
-
-            elif machine_fuel and fuel and machine_fuel.id_fuel != fuel.id:
+                print(f"Добавлено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {fuel.name}")
+            elif machine_fuel.id_fuel != fuel.id:
                 old_fuel_name = machine_fuel.fuel.name if machine_fuel.fuel else 'не указано'
                 machine_fuel.id_fuel = fuel.id
                 log_to_db(
                     user,
-                    f"Обновление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                    f"Обновление топлива электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: топливо {old_fuel_name} → {fuel.name}"
                 )
-                print(f"Обновление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number}, год {year}: топливо {old_fuel_name} → {fuel.name}")
+                print(f"Обновлено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {old_fuel_name} → {fuel.name}")
+
+        # Обработка типа ТЭС
+        tes_type_name = clean_name(tes_type_val)
+        tes_type = TesType.query.filter(func.lower(TesType.name) == tes_type_name.lower()).first() if tes_type_name else None
+
+        if tes_type:
+            if not machine_tes_type:
+                machine_tes_type = MachineTesType(
+                    year_number=year,
+                    id_machine=machine.id,
+                    id_tes_type=tes_type.id
+                )
+                db.session.add(machine_tes_type)
+                log_to_db(
+                    user,
+                    f"Добавление типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Агрегат: {machine.machine_number}, год {year}: добавлен тип ТЭС {tes_type.name}"
+                )
+                print(f"Добавлен тип ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {tes_type.name}")
+            elif machine_tes_type.id_tes_type != tes_type.id:
+                old_tes_type_name = machine_tes_type.tes_type.name if machine_tes_type.tes_type else 'не указано'
+                machine_tes_type.id_tes_type = tes_type.id
+                log_to_db(
+                    user,
+                    f"Обновление типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Агрегат: {machine.machine_number}, год {year}: тип ТЭС {old_tes_type_name} → {tes_type.name}"
+                )
+                print(f"Обновлен тип ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {old_tes_type_name} → {tes_type.name}")
 
 
 # Вспомогательная функция: автоматическое добавление годов ввода/вывода в/из эксплуатации
@@ -623,7 +663,7 @@ def import_station_list_from_excel(file, user):
             current_machine = handle_machine(row, current_station, user)
             assign_machine_types(current_machine, row, start_year, end_year, user)
             assign_machine_power_p_ust(current_machine, row, start_year, end_year, user)
-            cleanup_machine_fuel(current_machine, row, start_year, end_year, user)
+            cleanup_machine_fuel_and_tes_type(current_machine, row, start_year, end_year, user)
         
         elif not pd.isna(row.get('station_type')) and not pd.isna(row.get('gen_company')):
             assign_machine_power_p_rasp(current_machine, row, start_year, end_year, user)
@@ -644,7 +684,6 @@ def import_station_list_from_excel(file, user):
     db.session.commit()
     print(f"✅Данные успешно загружены пользователем {user}")
     return {"message": f"Данные успешно загружены пользователем {user}"}
-
 
 
 # Функция для импорта топлива по СО ЕЭС для станций в базу данных

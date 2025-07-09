@@ -3,7 +3,7 @@ from config import Config
 from app import db
 from app.services.logging_services.logging_service import log_to_db
 from flask_login import login_required
-from app.routes.auth import role_required
+from app.routes.auth import roles_required
 from flask import (
     render_template, request, redirect, url_for, session, jsonify
 )
@@ -32,25 +32,8 @@ from decimal import Decimal
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify
 )
-from collections import defaultdict
-from app.services.logging_services.logging_service import log_to_db
-from flask_login import login_required
-from app.routes.auth import role_required
 from flask import session
-from app.forms.station_forms import StationFilterForm
 from app.forms.machine_forms import MachineFilterSmallForm
-from app.models import (
-    RegionalDistrict, 
-    StationGroup, 
-    RegionalEnergySystem, 
-    ConditionType, 
-    GenCompany, 
-    StationPower, 
-    MachineTesType, 
-    EnergyUnit,
-    Machine
-)
-from app.services.logging_services.logging_service import log_to_db
 from app.services.station_services.help_services import (
     get_union_energy_systems, 
     get_regional_districts, 
@@ -83,7 +66,6 @@ from app.services.station_services.import_station_services import (
 
 @station_bp.route("/station_list", methods=["GET", "POST"])
 @login_required
-@role_required('super-admin')
 def station_list():
     import time
 
@@ -113,7 +95,7 @@ def station_list():
     start_year = filters.pop("start_year", Config.START_YEAR)
     end_year = filters.pop("end_year", Config.END_YEAR)
     show_p_ogr = request.args.get("show_p_ogr") == "1"
-    show_p_rasp = request.args.get("show_p_rasp") == "1"
+    show_p_rasp = request.args.get("show_p_rasp", "1") == "1"
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -143,11 +125,10 @@ def station_list():
         form,
         data,
         rounding_digits,
-        start_year,
-        end_year,
         {**filters, "start_year": start_year, "end_year": end_year},
         show_all=show_all,
     )
+
     has_active_filters = has_any_filters(request.args)
     
     overall = time.time() - start_data
@@ -158,7 +139,6 @@ def station_list():
 
 @station_bp.route('/stations/add', methods=['GET', 'POST'])
 @login_required
-@role_required('super-admin')
 def add_station():
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта форма создания новой электростанции")

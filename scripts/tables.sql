@@ -9,7 +9,7 @@ CREATE TABLE roles (
 );
 
 INSERT INTO roles (name) VALUES
-('super-admin'),
+('admin'),
 ('Администратор ГО'),
 ('Администратор ЭЭ'),
 ('Администратор ЭМ/ЭК'),

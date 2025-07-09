@@ -4,6 +4,7 @@ from decimal import Decimal
 from app.services.logging_services.logging_service import log_to_db
 from collections import defaultdict
 from sqlalchemy import and_, func, select
+from collections import defaultdict
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.sql import exists
 from app.models import *
@@ -305,7 +306,7 @@ def get_station_list_data(
 
     # ✅ Получаем агрегаты с рассчитанными rowspan
     station_ids = [s.id for s in stations]
-    machines = fetch_machines_with_rowspans(station_ids)
+    machines, station_totals = fetch_machines_with_rowspans(station_ids, show_p_ogr=show_p_ogr, show_p_rasp=show_p_rasp)
 
     # 🔗 Привязываем машины обратно к станциям
     station_machines_map = defaultdict(list)
@@ -338,6 +339,9 @@ def get_station_list_data(
         "stations_grouped": hierarchy_data.get("grouped_stations", {}),
         "total_count": total_count,
         "total_pages": total_pages,
+        "station_totals":station_totals,
+        "show_p_ogr":show_p_ogr,
+        "show_p_rasp":show_p_rasp,
         "page": page,
         "per_page": per_page,
     }
@@ -392,6 +396,110 @@ def get_station_list_data(
         result["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"] = aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(rows)
 
     return result
+
+
+def get_station_list_template_context(form, data, rounding_digits, filters, show_all=False):
+    import time
+    start_time = time.time()
+
+    year_features = get_year_features()
+    energy_system_type_list, energy_system_type_names = get_energy_system_types()
+    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
+    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
+    federal_district_list, regional_district_mapping = get_federal_districts()
+    regional_district_list, regional_district_names = get_regional_districts()
+    regional_district_dict = {int(r["id"]): r for r in regional_district_list}
+    
+    energy_units = get_energy_units()
+    energy_unit_names = {eu.id: eu.name for eu in energy_units}
+    
+    station_type_names = get_station_types()
+    station_type_list = {st.id: st.name for st in station_type_names}
+
+    tes_type_names = get_tes_types()
+    tes_type_list = {tt.id: tt.name for tt in tes_type_names}
+
+    tes_machine_type_names = get_tes_machine_types()
+    tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
+
+    fuel_type_names = get_fuel_types()
+    fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
+
+    machine_tes_types_map = get_current_machine_tes_types_map()
+
+    context = {
+            "form": form,
+            "stations_grouped": data["stations_grouped"],
+            "total_count": data["total_count"],
+            "total_pages": data["total_pages"],
+            "current_page": data["page"],
+            "per_page": str(data["per_page"]).lower(),
+            "start_year": filters.get("start_year"),
+            "end_year": filters.get("end_year"),
+            "station_totals": data["station_totals"],
+            "show_p_ogr":data["show_p_ogr"],
+            "show_p_rasp":data["show_p_rasp"],
+            "rounding_digits": rounding_digits,
+            "energy_system_type_list": energy_system_type_list,
+            "energy_system_type_names": energy_system_type_names,
+            "union_energy_system_list": union_energy_system_list,
+            "union_energy_system_names": union_energy_system_names,
+            "regional_energy_system_list": regional_energy_system_list,
+            "regional_energy_system_names": regional_energy_system_names,
+            "regional_energy_system_mapping": regional_energy_system_mapping,
+            "federal_district_list": federal_district_list,
+            "regional_district_list": regional_district_list,
+            "regional_district_names": regional_district_names,
+            "regional_district_dict": regional_district_dict,
+            "regional_district_mapping": regional_district_mapping,
+            "station_type_name": station_type_names,
+            "station_type_list": station_type_list,
+            "tes_type_names": tes_type_names,
+            "tes_type_list": tes_type_list,
+            "fuel_type_names": fuel_type_names,
+            "fuel_type_list": fuel_type_list,
+            "tes_machine_type_list": tes_machine_type_list,
+            "tes_machine_type_names": tes_machine_type_names,
+            "condition_type_filter": filters.get("condition_type_filter"),
+            "gen_company_filter": filters.get("gen_company_filter"),
+            "station_name_filter": filters.get("station_name_filter"),
+            "station_type_filter": filters.get("station_type_filter"),
+            "tes_type_filter": filters.get("tes_type_filter"),
+            "tes_machine_type_filter": filters.get("tes_machine_type_filter"),
+            "energy_system_type_filter": filters.get("energy_system_type_filter"),
+            "union_energy_system_filter": filters.get("union_energy_system_filter"),
+            "regional_energy_system_filter": filters.get("regional_energy_system_filter"),
+            "federal_district_filter": filters.get("federal_district_filter"),
+            "regional_district_filter": filters.get("regional_district_filter"),
+            "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
+            "year_features": year_features,
+            "machine_tes_types_map": machine_tes_types_map,
+            "energy_unit_names": energy_unit_names,
+    }
+    
+    if not show_all:
+        print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
+        return context
+    else:
+        # 📦 Генерация агрегатов по уровням
+        energy_unit_aggregates = build_energy_unit_aggregates(data)
+        regional_district_aggregates = build_regional_district_aggregates(data)
+        regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
+        union_energy_system_aggregates = build_union_energy_system_aggregates(data)
+        energy_system_type_aggregates = build_energy_system_type_aggregates(data)
+        total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
+
+        # ⏬ Включаем агрегаты по уровням в context
+        context.update(energy_unit_aggregates)
+        context.update(regional_district_aggregates)
+        context.update(regional_energy_system_aggregates)
+        context.update(union_energy_system_aggregates)
+        context.update(energy_system_type_aggregates)
+        context.update(total_energy_system_type_aggregates)
+
+        print(f"[⏱] get_station_list_template_context с show_all заняла: {time.time() - start_time:.2f} сек")
+        return context
+
 
 def get_station_by_id(station_id):
     return (
@@ -512,105 +620,6 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
             if mf.fuel and mf.fuel.fuel_type
         }
 
-        
-def get_station_list_template_context(form, data, rounding_digits, start_year, end_year, filters, show_all=False):
-    import time
-    start_time = time.time()
-
-    year_features = get_year_features()
-    energy_system_type_list, energy_system_type_names = get_energy_system_types()
-    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
-    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
-    federal_district_list, regional_district_mapping = get_federal_districts()
-    regional_district_list, regional_district_names = get_regional_districts()
-    regional_district_dict = {int(r["id"]): r for r in regional_district_list}
-    
-    energy_units = get_energy_units()
-    energy_unit_names = {eu.id: eu.name for eu in energy_units}
-    
-    station_type_names = get_station_types()
-    station_type_list = {st.id: st.name for st in station_type_names}
-
-    tes_type_names = get_tes_types()
-    tes_type_list = {tt.id: tt.name for tt in tes_type_names}
-
-    tes_machine_type_names = get_tes_machine_types()
-    tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
-
-    fuel_type_names = get_fuel_types()
-    fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
-
-    machine_tes_types_map = get_current_machine_tes_types_map()
-
-    context = {
-            "form": form,
-            "stations_grouped": data["stations_grouped"],
-            "total_count": data["total_count"],
-            "total_pages": data["total_pages"],
-            "current_page": data["page"],
-            "per_page": str(data["per_page"]).lower(),
-            "start_year": filters.get("start_year"),
-            "end_year": filters.get("end_year"),
-            "energy_system_type_list": energy_system_type_list,
-            "energy_system_type_names": energy_system_type_names,
-            "union_energy_system_list": union_energy_system_list,
-            "union_energy_system_names": union_energy_system_names,
-            "regional_energy_system_list": regional_energy_system_list,
-            "regional_energy_system_names": regional_energy_system_names,
-            "regional_energy_system_mapping": regional_energy_system_mapping,
-            "federal_district_list": federal_district_list,
-            "regional_district_list": regional_district_list,
-            "regional_district_names": regional_district_names,
-            "regional_district_dict": regional_district_dict,
-            "regional_district_mapping": regional_district_mapping,
-            "station_type_name": station_type_names,
-            "station_type_list": station_type_list,
-            "tes_type_names": tes_type_names,
-            "tes_type_list": tes_type_list,
-            "fuel_type_names": fuel_type_names,
-            "fuel_type_list": fuel_type_list,
-            "tes_machine_type_list": tes_machine_type_list,
-            "tes_machine_type_names": tes_machine_type_names,
-            "condition_type_filter": filters.get("condition_type_filter"),
-            "gen_company_filter": filters.get("gen_company_filter"),
-            "station_name_filter": filters.get("station_name_filter"),
-            "station_type_filter": filters.get("station_type_filter"),
-            "tes_type_filter": filters.get("tes_type_filter"),
-            "tes_machine_type_filter": filters.get("tes_machine_type_filter"),
-            "energy_system_type_filter": filters.get("energy_system_type_filter"),
-            "union_energy_system_filter": filters.get("union_energy_system_filter"),
-            "regional_energy_system_filter": filters.get("regional_energy_system_filter"),
-            "federal_district_filter": filters.get("federal_district_filter"),
-            "regional_district_filter": filters.get("regional_district_filter"),
-            "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
-            "year_features": year_features,
-            "machine_tes_types_map": machine_tes_types_map,
-            "energy_unit_names": energy_unit_names,
-    }
-    
-    if not show_all:
-        print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
-        return context
-    else:
-        # 📦 Генерация агрегатов по уровням
-        energy_unit_aggregates = build_energy_unit_aggregates(data)
-        regional_district_aggregates = build_regional_district_aggregates(data)
-        regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
-        union_energy_system_aggregates = build_union_energy_system_aggregates(data)
-        energy_system_type_aggregates = build_energy_system_type_aggregates(data)
-        total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
-
-        # ⏬ Включаем агрегаты по уровням в context
-        context.update(energy_unit_aggregates)
-        context.update(regional_district_aggregates)
-        context.update(regional_energy_system_aggregates)
-        context.update(union_energy_system_aggregates)
-        context.update(energy_system_type_aggregates)
-        context.update(total_energy_system_type_aggregates)
-
-        print(f"[⏱] get_station_list_template_context с show_all заняла: {time.time() - start_time:.2f} сек")
-        return context
-
 
 def recalculate_station_power(station, start_year, end_year):
     power_by_year = {
@@ -692,6 +701,7 @@ def build_energy_unit_aggregates(data):
         "energy_units_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_energy_units_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"],
     }
 
+
 def build_regional_district_aggregates(data):
 
     return {
@@ -730,7 +740,6 @@ def build_regional_district_aggregates(data):
         "regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr": data["aggregate_regional_districts_by_tes_machine_types_with_fuel"]["aggregated"]["p_ogr"],
         "regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_regional_districts_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"],
     }
-
 
 
 def build_regional_energy_system_aggregates(data):
@@ -773,7 +782,6 @@ def build_regional_energy_system_aggregates(data):
     }
 
 
-
 def build_union_energy_system_aggregates(data):
 
     return {
@@ -814,7 +822,6 @@ def build_union_energy_system_aggregates(data):
     }
 
 
-
 def build_energy_system_type_aggregates(data):
 
     return {
@@ -853,7 +860,6 @@ def build_energy_system_type_aggregates(data):
         "energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": data["aggregate_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ogr"],
         "energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"],
     }
-
 
 
 def build_total_energy_system_type_aggregates(data):

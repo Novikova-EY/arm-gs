@@ -1,17 +1,27 @@
+from functools import wraps
 from flask import abort
 from flask_login import current_user
-from functools import wraps
+from flask import has_request_context
 
-def role_required(role_name):
+def roles_required(allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not current_user.role:
+            # Если нет активного запроса — считаем, что доступа нет
+            if not has_request_context():
+                abort(403)
+
+            # Если current_user не определён или не авторизован
+            if not current_user or not current_user.is_authenticated:
+                abort(403)
+
+            if not current_user.roles:
                 return "Роль пользователя не назначена"
-            if not current_user.is_authenticated or current_user.role.name != role_name:
-                abort(403)  # Доступ запрещен
+
+            user_role_names = [role.name for role in current_user.roles]
+            if not any(role in user_role_names for role in allowed_roles):
+                abort(403)
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
-
-

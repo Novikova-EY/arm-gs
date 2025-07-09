@@ -28,6 +28,12 @@ class ConditionType(db.Model):
         primaryjoin="ConditionType.id == Machine.id_condition_type"
     )
 
+    pgu_machines = db.relationship(
+        'PGUMachine',
+        back_populates='condition_type',
+        primaryjoin="ConditionType.id == PGUMachine.id_condition_type"
+    )
+
 # Модель для типов групп оборудования
 class EquipmentGroup(db.Model):
     # название таблицы в базе данных
@@ -44,6 +50,12 @@ class EquipmentGroup(db.Model):
         'Machine', 
         back_populates='equipment_group',
         primaryjoin="EquipmentGroup.id == Machine.id_equipment_group"
+    )
+
+    pgu_machines = db.relationship(
+        'PGUMachine',
+        back_populates='equipment_group_pgu',
+        primaryjoin="EquipmentGroup.id == PGUMachine.id_equipment_group_pgu"
     )
     
 # Модель для типов электростанций
@@ -267,6 +279,10 @@ class StationPower(db.Model):
     # Располагаемая мощность электростанции
     p_rasp = db.Column(Numeric(25, 15))
 
+    __table_args__ = (
+        Index('ix_station_power_id_station', 'id_station'),
+        Index('ix_station_power_year_number', 'year_number'),  # ← Добавлен
+    )
 
 # Модель для типов агрегатов
 class MachineType(db.Model):
@@ -300,6 +316,21 @@ class TesMachineType(db.Model):
     machines = db.relationship(
         'Machine', 
         back_populates='tes_machine_type',
+        cascade="all, delete-orphan"
+    )
+
+
+# Модель для типов агрегатов ПГУ
+class PGUTesMachineType(db.Model):
+    __tablename__ = 'pgu_tes_machine_types'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+
+    # Связь с PGUMachine (у каждой PGU может быть подтип — ГТ или ПТ)
+    pgu_machines = db.relationship(
+        'PGUMachine',
+        back_populates='pgu_tes_machine_type',
         cascade="all, delete-orphan"
     )
 
@@ -454,9 +485,16 @@ class Machine(db.Model):
     # примечание
     note = db.Column(db.String(512), unique=False, nullable=True)
 
+    # ожидаемый год модернизации по ТИ
     year_modern = db.Column(db.String(10), nullable=True)
+
+    # ожидаемый год вывода из эксплуатации по ТИ
     year_demontaz = db.Column(db.String(10), nullable=True)
+
+    # отметка о превышении двух ресурсов угольных машин по ТИ
     resurs_coal = db.Column(db.String(10), nullable=True)
+
+    # отметка о превышении двух ресурсов газовых машин по ТИ
     resurs_gas = db.Column(db.String(10), nullable=True)
 
 
@@ -503,6 +541,129 @@ class Machine(db.Model):
         Index('ix_machine_date_decompressing_expected', 'date_decompressing_expected'),
         Index('ix_machine_date_modernization_expected', 'date_modernization_expected'),
     )
+
+
+# Модель для агрегата электростанции
+class PGUMachine(db.Model):
+    # название таблицы в базе данных
+    __tablename__ = 'pgu_machines'
+    
+    # id агрегата
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    
+    # id агрегата от Техинспекции
+    id_ti = db.Column(db.Integer, nullable=True)
+
+    # id группы оборудования
+    id_equipment_group_pgu = db.Column(
+        db.Integer, 
+        db.ForeignKey('equipment_groups.id', ondelete='RESTRICT'), 
+        nullable=True)
+    equipment_group_pgu = db.relationship(
+        'EquipmentGroup', 
+        back_populates='pgu_machines')
+
+    # id состояние агрегата
+    id_condition_type = db.Column(
+        db.Integer, 
+        db.ForeignKey('condition_types.id', ondelete='RESTRICT'), 
+        nullable=True)
+    condition_type = db.relationship(
+        'ConditionType',
+        back_populates='pgu_machines'
+    )
+
+    # ID основной машины ПГУ
+    id_parent_machine = db.Column(
+        db.Integer,
+        db.ForeignKey('machines.id', ondelete='CASCADE'),
+        nullable=False
+    )
+    parent_machine = db.relationship(
+        'Machine',
+        backref=db.backref('pgu_submachines', cascade='all, delete-orphan')
+    )
+
+    # номер агрегата
+    machine_number = db.Column(db.String(80), nullable=True)
+
+    # название агрегата
+    machine_name = db.Column(db.String(255), nullable=False)
+         
+    # связь с таблицей типа агрегата  ТЭС
+    id_tes_machine_type = db.Column(
+        db.Integer, 
+        db.ForeignKey('tes_machine_types.id', ondelete='RESTRICT'),
+        nullable=True
+    )
+    tes_machine_type = db.relationship(
+        'TesMachineType',
+        backref='pgu_machines'
+    )
+
+    # ID типа агрегата ПГУ (ГТ или ПТ)
+    id_pgu_tes_machine_type = db.Column(
+        db.Integer, 
+        db.ForeignKey('pgu_tes_machine_types.id'), 
+        nullable=True)
+    pgu_tes_machine_type = db.relationship(
+        'PGUTesMachineType', 
+        back_populates='pgu_machines')
+
+    # связь с таблицей мощностей агрегатов электростанции
+    pgu_machine_powers = db.relationship(
+        'PGUMachinePower',
+        back_populates='pgu_machine',
+        cascade="all, delete-orphan"
+    )
+
+    # год ввода в эксплуатацию
+    date_exploitation = db.Column(db.Integer, nullable=True)
+
+    # фактическая дата ввода в работу
+    date_commission_fact = db.Column(db.String(10), nullable=True)
+
+    # ожидаемая дата присоединения
+    date_joining_expected = db.Column(db.String(10), nullable=True)
+
+    # фактическая дата присоединения
+    date_joining_fact = db.Column(db.String(10), nullable=True)
+
+    # фактическая дата отсоединения
+    date_detatchment_fact = db.Column(db.String(10), nullable=True)
+
+    # ожидаемый год вывода из эксплуатации
+    date_decompressing_expected = db.Column(db.Integer, nullable=True)
+
+    # фактическая дата вывода из эксплуатации
+    date_decompressing_fact = db.Column(db.String(10), nullable=True)
+
+    # ожидаемый год модернизации
+    date_modernization_expected = db.Column(db.Integer, nullable=True)
+
+    # фактическая дата перемаркировки
+    date_relabing_fact = db.Column(db.String(10), nullable=True)
+
+    # фактическая дата уточнения
+    date_update_fact = db.Column(db.String(10), nullable=True)
+    
+    # примечание
+    note = db.Column(db.String(512), unique=False, nullable=True)
+
+    # ожидаемый год модернизации по ТИ
+    year_modern = db.Column(db.String(10), nullable=True)
+
+    # ожидаемый год вывода из эксплуатации по ТИ
+    year_demontaz = db.Column(db.String(10), nullable=True)
+
+    # отметка о превышении двух ресурсов газовых машин по ТИ
+    resurs_gas = db.Column(db.String(10), nullable=True)
+
+    __table_args__ = (
+        Index('ix_pgu_machine_id_parent_machine', 'id_parent_machine'),
+        Index('ix_pgu_machine_id_tes_machine_type', 'id_tes_machine_type'),
+    )
+
 
 # Модель для котла электростанции
 class Boiler(db.Model):
@@ -558,6 +719,11 @@ class MachinePower(db.Model):
     # Располагаемая мощность агрегата
     p_rasp = db.Column(Numeric(25, 15))
 
+    __table_args__ = (
+        Index('ix_machine_power_id_machine', 'id_machine'),
+        Index('ix_machine_power_year_number', 'year_number'),  # ← Добавлен
+    )
+
 
 # Модель для топлива агрегатов электростанции
 class MachineFuel(db.Model):
@@ -599,6 +765,7 @@ class MachineFuel(db.Model):
         Index('ix_machine_fuel_id_year_number', 'year_number'),
     )
 
+
 # Модель для типов ТЭС агрегатов электростанции
 class MachineTesType(db.Model):
     __tablename__ = 'machine_tes_types'
@@ -637,4 +804,41 @@ class MachineTesType(db.Model):
         Index('ix_machine_tes_type_id_machine', 'id_machine'),
         Index('ix_machine_tes_type_id_tes_type', 'id_tes_type'),
         Index('ix_machine_tes_type_year_number', 'year_number'),
+    )
+
+
+# Модель мощностей агрегатов, входящих в состав ПГУ электростанции
+class PGUMachinePower(db.Model):
+    __tablename__ = 'pgu_machine_powers'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Год
+    year_number = db.Column(
+        db.Integer, 
+        db.ForeignKey('years.number', ondelete='RESTRICT'),
+        nullable=True
+    )
+    year = db.relationship(
+        'Year',
+        backref='pgu_machine_powers'
+    )
+
+    # ID ПГУ-компонента
+    id_pgu_machine = db.Column(
+        db.Integer,
+        db.ForeignKey('pgu_machines.id', ondelete='CASCADE'),
+        nullable=True
+    )
+    pgu_machine = db.relationship(
+        'PGUMachine',
+        back_populates='pgu_machine_powers'
+    )
+
+    # Установленная мощность (по году)
+    p_ust = db.Column(Numeric(25, 15), nullable=True)
+
+    __table_args__ = (
+        Index('ix_pgu_machine_power_id_pgu_machine', 'id_pgu_machine'),
+        Index('ix_pgu_machine_power_year_number', 'year_number'),
     )

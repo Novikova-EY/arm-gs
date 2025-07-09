@@ -5,7 +5,7 @@ from flask import (
 )
 from app.services.logging_services.logging_service import log_to_db
 from flask_login import login_required
-from app.routes.auth import role_required
+from app.routes.auth import roles_required
 from flask import session
 from app.services.station_services.import_station_services import (
     import_station_list_from_excel, 

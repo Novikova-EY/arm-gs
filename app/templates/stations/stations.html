@@ -26,30 +26,6 @@
         </div>
     </div>
 
-
-    <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
-    <input type="hidden" name="start_year" value="{{ request.args.get('start_year', '') }}">
-    <input type="hidden" name="end_year" value="{{ request.args.get('end_year', '') }}">
-    <input type="hidden" name="condition_type_filter" value="{{ request.args.get('condition_type_filter', '') }}">
-    <input type="hidden" name="gen_company_filter" value="{{ request.args.get('gen_company_filter', '') }}">
-    <input type="hidden" name="station_name_filter" value="{{ request.args.get('station_name_filter', '') }}">
-    <input type="hidden" name="station_type_filter" value="{{ request.args.getlist('station_type_filter', '') }}">
-    <input type="hidden" name="machine_type_filter" value="{{ request.args.getlist('machine_type_filter', '') }}">
-    <input type="hidden" name="tes_type_filter" value="{{ request.args.getlist('tes_type_filter', '') }}">
-    <input type="hidden" name="tes_machine_type_filter" value="{{ request.args.getlist('tes_machine_type_filter', '') }}">
-    <input type="hidden" name="energy_system_type_filter" value="{{ request.args.getlist('energy_system_type_filter', '') }}">
-    <input type="hidden" name="union_energy_system_filter" value="{{ request.args.getlist('union_energy_system_filter', '') }}">
-    <input type="hidden" name="regional_energy_system_filter" value="{{ request.args.getlist('regional_energy_system_filter', '') }}">
-    <input type="hidden" name="federal_district_filter" value="{{ request.args.getlist('federal_district_filter', '') }}">
-    <input type="hidden" name="regional_district_filter" value="{{ request.args.getlist('regional_district_filter', '') }}">
-    <input type="hidden" name="station_fuel_type_filter" value="{{ request.args.get('station_fuel_type_filter', '') }}">
-    <input type="hidden" name="date_exploitation_filter" value="{{ request.args.getlist('date_exploitation_filter', '') }}">
-    <input type="hidden" name="date_decompressing_expected_filter" value="{{ request.args.getlist('date_decompressing_expected_filter', '') }}">
-    <input type="hidden" name="date_modernization_expected_filter" value="{{ request.args.getlist('date_modernization_expected_filter', '') }}">
-    <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
-    <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-    <input type="hidden" id="per_page_hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-
     <!-- Фильтры -->
     {% include 'stations/station_filters.html' %}
 

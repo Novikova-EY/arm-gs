@@ -3,17 +3,23 @@ from . import station_bp
 from app import db
 from flask import render_template, request, session, flash, redirect, url_for
 from flask_login import login_required
-from app.routes.auth import role_required
+from app.routes.auth import roles_required
 from app.services.logging_services.logging_service import log_to_db
 import traceback
 from app.forms.machine_forms import (
     MachineFilterForm, 
-    EditMachineForm
+    EditMachineForm,
+    PGUMachineFilterForm,
+    PGUMachinePowerForm
 )
 from app.models import *
 from app.services.machine_services.machine_services import (
     handle_machine_get,
     handle_machine_post, 
+    handle_pgu_machine_get,
+    handle_pgu_machine_post, 
+    _fill_pgu_machines_form_choices,
+    to_decimal
 )
 from app.services.station_services.station_services import (
     get_machine_by_id,
@@ -24,11 +30,13 @@ from app.services.station_services.help_services import (
     convert_to_date,
     rounded_decimal
 )
+from app.services.station_services.help_services import (
+    get_year_features,
+)
 
 
 @station_bp.route("/machine_details/<int:station_id>/<int:machine_id>", methods=["GET", "POST"])
 @login_required
-@role_required('super-admin')
 def machine_details(station_id, machine_id):
     user = session.get('username', 'Неизвестный пользователь')
 
@@ -52,6 +60,8 @@ def machine_details(station_id, machine_id):
             "stations/machine_details.html",
             main_form=result['main_form'],
             advanced_form=result['advanced_form'],
+            pgu_machines_form=result['pgu_machines_form'],
+            pgu_machines=result['pgu_machines'],
             station=result['station'],
             machine=result['machine'],
             start_year=start_year,
@@ -60,401 +70,41 @@ def machine_details(station_id, machine_id):
             year_features=result['year_features']
         )
 
-
-@station_bp.route("/machine_details/<int:station_id>/<int:machine_id>", methods=["GET", "POST"])
+@station_bp.route("/pgu_machine_details/<int:station_id>/<int:machine_id>/<int:pgu_machine_id>", methods=["GET", "POST"])
 @login_required
-@role_required('super-admin')
-def machine_details_old(station_id, machine_id):
-    """Маршрут для отображения и редактирования агрегата электростанции с логированием."""
-    # Получаем данные
-    machine = get_machine_by_id(machine_id)
-    station = get_station_by_id(station_id)
-    
-    user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, f"Открыта страница агрегата электростанции {station.name} ({station.regional_district.name})")
-
-    try:
-
-        # Инициализация форм
-        main_form = MachineFilterForm(prefix="main_", obj=machine)
-        advanced_form = EditMachineForm(prefix="adv_")
-
-       # Собираем словари имеющихся записей
-        machine_powers = {mp.year.number: mp for mp in machine.machine_powers}
-        machine_fuels = {mf.year.number: mf for mf in machine.machine_fuels}
-        machine_tes_types = {mt.year.number: mt for mt in machine.machine_tes_types}
-        
-        # Получаем нужные года
-        start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-        end_year = request.args.get("end_year", Config.END_YEAR, type=int)
-        years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
-        year_dict = {y.number: y for y in years}
-        year_features = {y.number: {"name": y.year_feature.name if y.year_feature else "Нет данных"} for y in years} if years else {}
-
-        # Заполняем choices в основной форме
-        main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
-        main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
-        main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
-        main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
-        main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
-        main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
-        
-        # --- Типы ТЭС ---
-        tes_types = TesType.query.order_by(TesType.id).all()
-        tes_type_choices = [(tt.id, tt.name) for tt in tes_types]
-        for entry in advanced_form.tes_types:
-            entry.tes_type.choices = tes_type_choices
-            if entry.tes_type.data is None:
-                entry.tes_type.data = 100
-
-        # --- Виды топлива ---
-        fuels = Fuel.query.order_by(Fuel.id).all()
-        fuel_choices = [(f.id, f.name) for f in fuels]
-        for entry in advanced_form.fuels:
-            entry.fuel_type.choices = fuel_choices
-            if entry.fuel_type.data is None:
-                entry.fuel_type.data = 100
-        
-        if main_form.id_gen_company.data is None:
-            main_form.id_gen_company.data = 0
-
-        ## Добавляем поля во вложенные FieldList (powers, tes_types, fuels)
-        for year_num in range(start_year, end_year + 1):
-            # Убедимся, что в словарях есть объекты для каждого года
-            if year_num not in machine_powers:
-                mp = MachinePower(id_machine=machine.id, year=year_dict.get(year_num))
-                db.session.add(mp)
-                machine_powers[year_num] = mp
-
-            if year_num not in machine_tes_types:
-                mtt = MachineTesType(id_machine=machine.id, year=year_dict.get(year_num))
-                db.session.add(mtt)
-                machine_tes_types[year_num] = mtt
-
-            if year_num not in machine_fuels:
-                mf = MachineFuel(id_machine=machine.id, year=year_dict.get(year_num))
-                db.session.add(mf)
-                machine_fuels[year_num] = mf
-
-
-        # === Формируем поля (append_entry) и задаем им choices/data (для GET) ===
-        for year_num in range(start_year, end_year + 1):
-            y_obj = year_dict.get(year_num)
-
-            # --- MachinePower ---
-            mp = machine_powers.get(year_num)
-
-            if not mp:
-                mp = MachinePower(
-                    id_machine=machine.id,
-                    year=y_obj,
-                    p_ust=0,
-                    p_ogr=0,
-                    p_rasp=0
-                )
-                db.session.add(mp)
-                machine_powers[year_num] = mp  # не забудь добавить в словарь
-
-            power_entry = advanced_form.powers.append_entry()
-
-            if request.method == "GET":
-                power_entry.year.data = year_num
-                power_entry.p_ust.data = mp.p_ust
-                power_entry.p_ogr.data = mp.p_ogr
-                power_entry.p_rasp.data = mp.p_rasp
-
-
-            # --- MachineTesType ---
-            mt = machine_tes_types.get(year_num)
-            if not mt:
-                mt = MachineTesType(id_machine=machine.id, id_tes_type=None, year=y_obj)
-                db.session.add(mt)
-
-            tes_entry = advanced_form.tes_types.append_entry()
-            tes_entry.tes_type.choices = tes_type_choices
-
-            if request.method == "GET":
-                tes_entry.year.data = year_num
-                tes_entry.tes_type.data = mt.id_tes_type if mt.id_tes_type is not None else 100
-
-
-            # --- MachineFuel ---
-            mf = machine_fuels.get(year_num)
-            if not mf:
-                mf = MachineFuel(id_machine=machine.id, id_fuel=None, year=y_obj)
-                db.session.add(mf)
-
-            fuel_entry = advanced_form.fuels.append_entry()
-            fuel_entry.fuel_type.choices = fuel_choices
-            if request.method == "GET":
-                fuel_entry.year.data = year_num
-                fuel_entry.fuel_type.data = mf.id_fuel if mf.id_fuel else 0
-
-        # === Если POST, то обработка данных и сохранение ===
-        if request.method == "POST":
-            main_form.process(request.form)
-            advanced_form.process(request.form)
-
-            # Получаем нужные года
-            start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-            end_year = request.args.get("end_year", Config.END_YEAR, type=int)
-            years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
-            year_dict = {y.number: y for y in years}
-            year_features = {y.number: {"name": y.year_feature.name if y.year_feature else "Нет данных"} for y in years} if years else {}
-
-            # Заполняем choices в основной форме
-            main_form.id_condition_type.choices = [(c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()]
-            main_form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
-            main_form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
-            main_form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
-            main_form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
-            main_form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
-            
-            tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.order_by(TesType.id).all()]
-
-            fuel_choices = [(f.id, f.name) for f in Fuel.query.order_by(Fuel.id).all()]
-            
-            # Заполняем choices для вложенных форм
-            for entry in advanced_form.tes_types:
-                entry.tes_type.choices = tes_type_choices
-
-            for entry in advanced_form.fuels:
-                entry.fuel_type.choices = fuel_choices
-
-            if not main_form.validate():
-                print("Ошибки в main_form:", main_form.errors)
-            if not advanced_form.validate():
-                print("Ошибки в advanced_form:", advanced_form.errors)
-
-            if main_form.validate() and advanced_form.validate():
-                try:
-                    changes = []
-
-                    # Фиксируем изменения параметров агрегата
-                    field_mappings = {
-                        "id_condition_type": lambda x: ConditionType.query.get(x).name if x and ConditionType.query.get(x) else "не указано",
-                        "id_gen_company": lambda x: GenCompany.query.get(x).name if x and GenCompany.query.get(x) else "не указано",
-                        "id_station_type": lambda x: StationType.query.get(x).name if x and StationType.query.get(x) else "не указано",
-                        "id_machine_type": lambda x: MachineType.query.get(x).name if x and MachineType.query.get(x) else "не указано",
-                        "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x and TesMachineType.query.get(x) else "не указано",
-                        "machine_name": str,
-                        "note": lambda x: x if x else "не указано"
-                    }
-
-
-                    for field, transform in field_mappings.items():
-                        if f"main_{field}" in request.form:
-                            old_value = getattr(machine, field)
-                            new_value = getattr(main_form, field).data
-
-                            if old_value != new_value and new_value is not None:
-                                old_value_transformed = transform(old_value)
-                                new_value_transformed = transform(new_value)
-
-                                # Исключаем пустые изменения
-                                if old_value_transformed != new_value_transformed:
-                                    changes.append(f"{field}: {old_value_transformed} -> {new_value_transformed}")
-                                    setattr(machine, field, new_value)
-
-                    # Фиксируем изменения дат
-                    date_fields = [
-                        "date_exploitation", "date_commission_fact",
-                        "date_joining_expected", "date_joining_fact", "date_detatchment_fact",
-                        "date_decompressing_expected", "date_decompressing_fact",
-                        "date_modernization_expected", "date_relabing_fact", "date_update_fact"
-                    ]
-
-                    for field in date_fields:
-                        if f"main_{field}" in request.form:
-                            old_value = getattr(machine, field)
-                            new_value = convert_to_date(getattr(main_form, field).data)
-
-                            if old_value != new_value and new_value is not None:
-                                changes.append(f"{field}: {old_value} -> {new_value}")
-                                setattr(machine, field, new_value)
-
-                    # Фиксируем изменения вложенных данных (мощности, топлива, типы ТЭС)
-                    for i, year_num in enumerate(range(start_year, end_year + 1)):
-                        # MachinePower
-                        mp_obj = machine.machine_powers[i]
-
-                        for attr in ["p_ust", "p_ogr", "p_rasp"]:
-                            field_name = f"adv_powers-{i}-{attr}"
-
-                            if field_name in request.form:  # Значение пришло в POST
-                                old_value = getattr(mp_obj, attr)
-                                new_value = getattr(advanced_form.powers[i], attr).data
-
-                                if new_value is None:
-                                    new_value = old_value
-
-                                # Безопасное сравнение Decimal с точностью
-                                if old_value is not None and rounded_decimal(old_value, 15) != rounded_decimal(new_value, 15):
-                                    changes.append(f"{year_num} - {attr}: {old_value} -> {new_value}")
-                                    setattr(mp_obj, attr, new_value)
-
-
-                        # MachineTesType
-                        mt_obj = machine.machine_tes_types[i]
-                        field_name = f"adv_tes_types-{i}-tes_type"
-
-                        if field_name in request.form:  # Проверяем, было ли поле в POST-запросе
-                            old_tes_type = TesType.query.get(mt_obj.id_tes_type)
-                            old_value = old_tes_type.name if old_tes_type else "не указано"
-                            new_value_id = advanced_form.tes_types[i].tes_type.data
-                            new_tes_type = TesType.query.get(new_value_id)
-                            new_value = new_tes_type.name if new_tes_type else "не указано"
-
-                            if old_value != new_value and new_value_id is not None:
-                                changes.append(f"{year_num} - Тип ТЭС: {old_value} -> {new_value}")
-                                mt_obj.id_tes_type = new_value_id
-
-
-                        # MachineFuel
-                        mf_obj = machine.machine_fuels[i]
-                        if f"adv_fuels-{i}-fuel_type" in request.form:
-                            old_fuel = Fuel.query.get(mf_obj.id_fuel)
-                            old_value = old_fuel.name if old_fuel else "не указано"
-                            new_value_id = advanced_form.fuels[i].fuel_type.data
-                            new_fuel = Fuel.query.get(new_value_id)
-                            new_value = new_fuel.name if new_fuel else "не указано"
-
-                            if old_value != new_value and new_value_id is not None:
-                                changes.append(f"{year_num} - Топливо: {old_value} -> {new_value}")
-                                mf_obj.id_fuel = new_value_id
-
-                    i = 0
-                    for year_num in range(start_year, end_year + 1):
-                        # MachinePower
-                        mp_obj = machine_powers[year_num]
-                        mp_obj.p_ust  = advanced_form.powers[i].p_ust.data
-                        mp_obj.p_ogr  = advanced_form.powers[i].p_ogr.data
-                        mp_obj.p_rasp = advanced_form.powers[i].p_rasp.data
-
-                        # MachineTesType
-                        mtt_obj = machine_tes_types[year_num]
-                        mtt_obj.id_tes_type = advanced_form.tes_types[i].tes_type.data
-
-                        # MachineFuel
-                        mf_obj = machine_fuels[year_num]
-                        mf_obj.id_fuel = advanced_form.fuels[i].fuel_type.data
-
-                        i += 1
-                    
-                    recalculate_station_power(station, start_year, end_year)
-
-
-                    db.session.commit()
-                    if changes:
-                        log_to_db(user, f"Изменения в электростанции {station.name} ({station.regional_district.name}) в агрегате №{machine.machine_number} {machine.machine_name}", details="; ".join(changes))
-                    flash("Данные агрегата успешно обновлены!", "success")
-                    
-                except Exception as e:
-                    db.session.rollback()
-                    traceback.print_exc()
-                    log_to_db(user, f"Ошибка обновления агрегата №{machine.machine_number} {machine.machine_name} электростанции {station.name} ({station.regional_district.name})", details=str(e))
-                    print(f"Ошибка при сохранении: {str(e)}")
-                    flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
-
-        else:
-            # 9. Если это GET-запрос: заполняем поля форм (obj=machine) или вручную
-            #    в том числе динамические поля для каждого года
-            main_form.process(obj=machine)
-
-            if main_form.id_condition_type.data is None:
-                main_form.id_condition_type.data = 100
-
-            if main_form.id_gen_company.data is None:
-                main_form.id_gen_company.data = 0
-
-            if main_form.id_station_type.data is None:
-                main_form.id_station_type.data = 100
-
-            if main_form.id_tes_machine_type.data is None:
-                main_form.id_tes_machine_type.data = 100
-
-            if main_form.id_machine_type.data is None:
-                main_form.id_machine_type.data = 100
-
-            i = 0
-            for year_num in range(start_year, end_year + 1):
-                mp_obj  = machine_powers[year_num]
-                mtt_obj = machine_tes_types[year_num]
-                mf_obj  = machine_fuels[year_num]
-
-                # MachinePower
-                advanced_form.powers[i].year.data   = year_num
-                advanced_form.powers[i].p_ust.data  = mp_obj.p_ust
-                advanced_form.powers[i].p_ogr.data  = mp_obj.p_ogr
-                advanced_form.powers[i].p_rasp.data = mp_obj.p_rasp
-
-                # MachineTesType
-                advanced_form.tes_types[i].year.data = year_num
-                advanced_form.tes_types[i].tes_type.choices = tes_type_choices
-                advanced_form.tes_types[i].tes_type.data = mtt_obj.id_tes_type if mtt_obj.id_tes_type is not None else 100
-
-
-                # MachineFuel
-                advanced_form.fuels[i].year.data = year_num
-                advanced_form.fuels[i].fuel_type.choices = fuel_choices
-                advanced_form.fuels[i].fuel_type.data = mf_obj.id_fuel if mf_obj.id_fuel is not None else 100
-
-                i += 1
-
-                db.session.commit()
-
-        return render_template("stations/machine_details.html", 
-                               start_year=start_year, 
-                               end_year=end_year, 
-                               form=main_form, 
-                               advanced_form=advanced_form, 
-                               station=station, 
-                               machine=machine,
-                               year_features=year_features)
-
-    except Exception as e:
-        flash(f"Неожиданная ошибка: {e}", "danger")
-        log_to_db(user, f"Ошибка загрузки агрегата №{machine.machine_number} {machine.machine_name} электростанции {station.name} ({station.regional_district.name})", details=str(e))
-        return render_template("stations/machine_details.html", 
-                               start_year=start_year, 
-                               end_year=end_year, 
-                               form=main_form, 
-                               advanced_form=advanced_form, 
-                               station=station, 
-                               machine=machine,
-                               year_features=year_features), 500
-    
-
-@station_bp.route('/machines/add/<int:station_id>', methods=['GET'])
-@login_required
-@role_required('super-admin')
-def add_machine(station_id):
+def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     user = session.get('username', 'Неизвестный пользователь')
 
-    # Проверяем существование станции
-    station = db.session.query(Station).filter_by(id=station_id).first()
-    if not station:
-        flash("Станция не найдена.", "danger")
-        return redirect(url_for("station_bp.station_list"))
+    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
+    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
 
-    try:
-        # Создаём новый агрегат с привязкой к станции
-        new_machine = Machine(
-            id_station=station_id,
-            machine_number=f"",
-            machine_name=f"",
-            machine_group=f""
+    if request.method == "POST":
+        return handle_pgu_machine_post(
+            station_id=station_id,
+            machine_id=machine_id,
+            pgu_machine_id=pgu_machine_id,
+            form_data=request.form,
+            user=user,
+            start_year=start_year,
+            end_year=end_year
         )
-        db.session.add(new_machine)
-        db.session.commit()
 
-        log_to_db(user, f"Добавлен новый агрегат к станции {station.name} (ID {station.id})")
+    else:
+        result = handle_pgu_machine_get(
+            station_id=station_id,
+            machine_id=machine_id,
+            pgu_machine_id=pgu_machine_id,
+            start_year=start_year,
+            end_year=end_year
+        )
 
-        # Перенаправляем на страницу редактирования нового агрегата
-        return redirect(url_for('station_bp.machine_details', station_id=station_id, machine_id=new_machine.id))
-    
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Ошибка при добавлении агрегата: {str(e)}", "danger")
-        log_to_db(user, "Ошибка добавления агрегата", details=str(e))
-        return redirect(url_for("station_bp.station_details", station_id=station_id))
+        return render_template(
+            "stations/pgu_machine_details.html",
+            station=result['station'],
+            parent_machine=result['parent_machine'],
+            pgu_form=result['pgu_form'],
+            start_year=result['start_year'],
+            end_year=result['end_year'],
+            pgu_machine_id=result['pgu_machine_id'],
+            year_features=result['year_features']
+        )

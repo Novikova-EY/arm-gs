@@ -107,8 +107,11 @@ def export_station_full_routes():
         show_p_rasp=show_p_rasp,
     )
 
+    rows = data["rows"]
+
     excel_file = generate_excel_export_with_all_totals(
         data=data,
+        rows=rows,
         start_year=start_year,
         end_year=end_year,
         rounding_digits=rounding_digits,
@@ -126,7 +129,7 @@ def export_station_full_routes():
         download_name=filename
     )
 
-    from io import BytesIO
+from io import BytesIO
 import pandas as pd
 from app.services.logging_services.logging_service import log_to_db
 from app.services.station_services.station_changes_services import (

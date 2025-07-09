@@ -1,7 +1,7 @@
 from flask import render_template
 from . import reference_bp
 from flask_login import login_required
-from app.routes.auth import role_required
+from app.routes.auth import roles_required
 
 @reference_bp.errorhandler(403)
 def forbidden(error):
@@ -9,6 +9,6 @@ def forbidden(error):
 
 @reference_bp.route("/")
 @login_required
-@role_required('super-admin')
+@roles_required(['admin', 'generation'])
 def reference():
     return render_template("references/reference.html")

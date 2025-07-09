@@ -1,0 +1,701 @@
+<!-- Новый шаблон для добавления агрегата ПГУ -->
+
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if pgu_machine %}
+        Агрегат {{ pgu_machine.pgu_tes_machine_type.name if pgu_machine.pgu_tes_machine_type else '—' }}: {{ parent_machine.machine_name }}
+    {% else %}
+        Добавление агрегата ПГУ: {{ parent_machine.machine_name }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set allowed_roles = ['generation', 'admin'] %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('station_bp.machine_details', station_id=parent_machine.machine_station.id, machine_id=parent_machine.id, **request.args) }}" class="btn btn-secondary fs-5">
+            Вернуться на страницу "Агрегат"
+        </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=parent_machine.id, pgu_machine_id=pgu_machine_id, **request.args) }}">
+        {{ pgu_form.hidden_tag() }}
+
+            <!-- Скрытое поле для ID агрегата -->
+            {{ pgu_form.id_machine }}
+            <div class="container-fluid fs-5">
+                <div class="row">
+                    <!-- Первый блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+
+                                <!-- Номер агрегата -->
+                                <div class="mb-3">
+                                    <strong>Номер агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.machine_number(class="form-control fw-bold fs-5") }}
+                                        {% if pgu_form.machine_number.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.machine_number.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.machine_number.data if pgu_form.machine_number.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Название агрегата -->
+                                <div class="mb-3">
+                                    <strong>Название агрегата:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.machine_name(class="form-control fw-bold fs-5") }}
+                                        {% if pgu_form.machine_name.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.machine_name.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.machine_name.data if pgu_form.machine_name.data else '—' }}
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Состояние агрегата станции -->
+                                <div class="mb-3">
+                                    <strong>Состояние агрегата станции:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.id_condition_type(class="form-select fs-5") }}
+                                        {% if pgu_form.id_condition_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.id_condition_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ parent_machine.condition_type.name if parent_machine.condition_type else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Тип агрегата ПГУ -->
+                                <div class="mb-3">
+                                    <strong>Тип агрегата ПГУ:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.id_pgu_tes_machine_type(class="form-select fs-5") }}
+                                        {% if pgu_form.id_pgu_tes_machine_type.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.id_pgu_tes_machine_type.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {# Попробуем сначала взять выбранное значение из формы (если есть), иначе — из parent_machine #}
+                                        {% set selected_pgu_type = pgu_form.id_pgu_tes_machine_type.choices 
+                                                                    | selectattr('0', 'equalto', pgu_form.id_pgu_tes_machine_type.data) 
+                                                                    | map(attribute='1') 
+                                                                    | first %}
+                                        {{ selected_pgu_type or (parent_machine.pgu_tes_machine_type.name if parent_machine.pgu_tes_machine_type else '—') }}
+                                    {% endif %}
+                                </div>
+
+
+                                <!-- Примечание -->
+                                <div class="mb-3">
+                                    <strong>Примечание:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.note(class="form-control fs-5") }}
+                                        {% if pgu_form.note.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.note.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.note.data if pgu_form.note.data else '—' }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Третий блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+
+                                <!-- Год ввода в эксплуатацию -->
+                                <div class="mb-3">
+                                    <strong>Год ввода в эксплуатацию:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_exploitation(class="form-control fs-5") }}
+                                        {% if pgu_form.date_exploitation.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_exploitation.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_exploitation.data if pgu_form.date_exploitation.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата ввода в работу -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата ввода в работу:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_commission_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_commission_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_commission_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_commission_fact.data if pgu_form.date_commission_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Ожидаемая дата присоединения -->
+                                <div class="mb-3">
+                                    <strong>Ожидаемая дата присоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_joining_expected(class="form-control fs-5") }}
+                                        {% if pgu_form.date_joining_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_joining_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_joining_expected.data if pgu_form.date_joining_expected.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата присоединения -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата присоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_joining_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_joining_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_joining_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_joining_fact.data if pgu_form.date_joining_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата отсоединения -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата отсоединения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_detatchment_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_detatchment_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_detatchment_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_detatchment_fact.data if pgu_form.date_detatchment_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Четвертый блок -->
+                    <div class="col-md-3">
+                        <div class="card mb-4">
+                            <div class="card-body">
+
+                                <!-- Ожидаемый год вывода из эксплуатации -->
+                                <div class="mb-3">
+                                    <strong>Ожидаемый год вывода из эксплуатации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_decompressing_expected(class="form-control fs-5") }}
+                                        {% if pgu_form.date_decompressing_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_decompressing_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_decompressing_expected.data if pgu_form.date_decompressing_expected.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата вывода из эксплуатации -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата вывода из эксплуатации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_decompressing_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_decompressing_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_decompressing_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_decompressing_fact.data if pgu_form.date_decompressing_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата перемаркировки -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата перемаркировки:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_relabing_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_relabing_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_relabing_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_relabing_fact.data if pgu_form.date_relabing_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Ожидаемый год модернизации -->
+                                <div class="mb-3">
+                                    <strong>Ожидаемый год модернизации:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_modernization_expected(class="form-control fs-5") }}
+                                        {% if pgu_form.date_modernization_expected.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_modernization_expected.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_modernization_expected.data if pgu_form.date_modernization_expected.data else '—' }}
+                                    {% endif %}
+                                </div>
+
+                                <!-- Фактическая дата уточнения -->
+                                <div class="mb-3">
+                                    <strong>Фактическая дата уточнения:</strong>
+                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                                        {{ pgu_form.date_update_fact(class="form-control fs-5") }}
+                                        {% if pgu_form.date_update_fact.errors %}
+                                            <div class="text-danger">
+                                                {% for error in pgu_form.date_update_fact.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '—' }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+            <!-- Фильтры -->
+            <div class="container-fluid">
+                <div class="col-12 mb-2">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                        <!-- Левая группа кнопок -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2" id="yearForm">
+                                {% for key, value in request.args.items() %}
+                                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                    {% endif %}
+                                {% endfor %}
+
+                                <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                                <select name="start_year" id="start_year" class="form-select">
+                                    {% for year in range(2021, 2043) %}
+                                        <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                                <select name="end_year" id="end_year" class="form-select">
+                                    {% for year in range(2022, 2043) %}
+                                        <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+
+                                <button type="button" class="btn btn-outline-success" onclick="applyYearFilters()">Применить</button>
+                            </div>
+                        </div>
+
+                        <!-- Правая группа: чекбоксы и подсветка -->
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            <!-- Подсветка -->
+                            <button id="highlightChangesBtn"
+                                    class="btn btn-outline-secondary text-dark"
+                                    type="button"
+                                    style="min-width: 250px;">
+                                ✨ Подсветить изменения
+                            </button>
+
+                            <!-- Округление -->
+                            <div class="d-flex align-items-center gap-1">
+                                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+                                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            {{ pgu_form.hidden_tag() }}
+            <div class="table-responsive fs-5">
+                <table class="table table-hover table-striped table-bordered table-responsive">
+                    <thead class="table-success">
+                        <tr class="text-center align-middle">
+                            <th rowspan="2" class="fw-bold text-center">Тип <br> мощ-ти</th>
+                            <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
+                        </tr>
+                        <tr class="text-center align-middle">
+                            {% for year in range(start_year, end_year + 1) %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    {% if year_features[year] is defined %}
+                                        {{ year_features[year] }}
+                                    {% endif %}
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr class="text-center align-middle">
+                            <td class="fw-bold text-center">Руст</td>
+
+                            {% for power in pgu_form.powers %}
+                                {{ power.year(type="hidden") }}
+                                <td>
+                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                                        {{ power.p_ust(class="form-control text-center fs-5") }}
+                                    {% else %}
+                                        <span>{{ power.p_ust.data | format_decimal if power.p_ust.data else '—' }}</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+            <!-- Контейнер для кнопок -->
+            <div class="d-flex justify-content-end mt-3 gap-3">
+                <!-- Кнопка "Сохранить" -->
+                 {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                    <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
+                {% endif %}
+
+                <!-- Кнопка "Назад" -->
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=parent_machine.id, **request.args) }}" class="btn btn-outline-secondary m-2 fs-5">
+                    Назад
+                </a>
+
+            </div>
+
+</div>
+
+
+<!-- Подключаем jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Подключаем Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+<!-- CSS для адаптивной высоты строк -->
+<style>
+    /* Фиксированная ширина колонок с равномерным распределением */
+    table {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    /* Выравниваем все столбцы */
+    .year-header,
+    .fuel-column,
+    .first-column {
+        width: 300px !important;
+        text-align: center;
+        vertical-align: middle;
+        word-wrap: break-word;
+        white-space: normal;
+        padding: 12px 8px;
+    }
+
+    /* Применяем одинаковую ширину ко всем годам */
+    .year-header {
+        width: auto;
+    }
+
+    /* Обеспечиваем, чтобы Select2 занимал всю ширину ячейки */
+    .pftt-select {
+        width: 100% !important;
+    }
+
+    /* Стиль Select2 для центрирования и переноса текста */
+    .select2-container--default .select2-selection--single {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        height: 100%;
+        background: transparent !important;
+        border: none !important;
+        color: inherit;
+        padding: 5px; /* Добавляем немного отступов */
+    }
+
+    /* Добавляем перенос текста в ячейках таблицы */
+    td, th {
+        word-wrap: break-word !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        max-width: 150px; /* Устанавливаем ограничение ширины */
+    }
+
+    /* Дополнительный стиль для Select2, чтобы текст переносился */
+    .select2-container .select2-selection__rendered {
+        display: block !important;
+        text-align: center;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        max-width: 100%; /* Запрещаем выходить за границы */
+    }
+
+    /* Исправление высоты выпадающего списка */
+    .select2-container .select2-selection {
+        min-height: 40px !important; /* Достаточная высота для отображения нескольких строк */
+    }
+
+
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const $ = window.jQuery;
+
+    console.log("✅ jQuery загружен!", $.fn.jquery);
+
+    // --- Select2 ---
+    $('.pftt-select').select2({
+        width: '100%',
+        placeholder: "Выберите значение",
+        allowClear: true,
+        minimumResultsForSearch: 0
+    });
+
+    function equalizeColumnWidth() {
+        const yearColumns = $('.year-header');
+        if (yearColumns.length > 0) {
+            const width = 100 / yearColumns.length + "%";
+            yearColumns.css('width', width);
+        }
+    }
+
+    equalizeColumnWidth();
+    window.addEventListener('resize', equalizeColumnWidth);
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const startYearSelect = document.getElementById("start_year");
+    const endYearSelect = document.getElementById("end_year");
+    const roundingDigitsSelect = document.getElementById("rounding_digits");
+
+    const hasUrlParam = (name) => urlParams.has(name) && urlParams.get(name).trim() !== "";
+
+    if (!hasUrlParam("start_year") && localStorage.getItem("start_year")) {
+        startYearSelect.value = localStorage.getItem("start_year");
+    }
+
+    if (!hasUrlParam("end_year") && localStorage.getItem("end_year")) {
+        endYearSelect.value = localStorage.getItem("end_year");
+    }
+
+    if (!hasUrlParam("rounding_digits") && localStorage.getItem("rounding_digits")) {
+        roundingDigitsSelect.value = localStorage.getItem("rounding_digits");
+    }
+
+    // Сохраняем настройки при изменении
+    [startYearSelect, endYearSelect, roundingDigitsSelect].forEach((el) => {
+        el.addEventListener("change", () => {
+            localStorage.setItem(el.id, el.value);
+        });
+    });
+
+    // --- Сохраняем скрытые параметры в POST ---
+    const paramsToPreserve = ["start_year", "end_year", "rounding_digits"];
+
+    function addHiddenField(form, name, value) {
+        if (!form.querySelector(`input[name="${name}"]`)) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        }
+    }
+
+    const forms = document.querySelectorAll("form[method='POST']");
+    forms.forEach((form) => {
+        form.addEventListener("submit", () => {
+            paramsToPreserve.forEach((param) => {
+                const el = document.getElementById(param);
+                if (el && el.value) {
+                    addHiddenField(form, param, el.value);
+                }
+            });
+        });
+    });
+
+    // --- Применить годы ---
+    window.applyYearFilters = function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set("start_year", startYearSelect.value);
+        url.searchParams.set("end_year", endYearSelect.value);
+        url.searchParams.set("page", 1);
+        window.location.href = url.toString();
+    };
+
+    // --- Округление ---
+    roundingDigitsSelect.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', this.value);
+        url.searchParams.set('page', 1);
+        window.location.href = url.toString();
+    });
+
+    // --- Безопасная работа с чекбоксами ---
+    const togglePOgr = document.getElementById("toggleP_Ogr");
+    const togglePRasp = document.getElementById("toggleP_Rasp");
+
+    if (togglePOgr) {
+        togglePOgr.checked = localStorage.getItem("toggleP_Ogr") === "true";
+        togglePOgr.addEventListener("change", () => {
+            localStorage.setItem("toggleP_Ogr", togglePOgr.checked);
+            if (typeof updateRows === "function") updateRows();
+        });
+    }
+
+    if (togglePRasp) {
+        togglePRasp.checked = localStorage.getItem("toggleP_Rasp") === "true";
+        togglePRasp.addEventListener("change", () => {
+            localStorage.setItem("toggleP_Rasp", togglePRasp.checked);
+            if (typeof updateRows === "function") updateRows();
+        });
+    }
+
+});
+</script>
+
+
+<!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
+<script>
+    document.getElementById('rounding_digits').addEventListener('change', function() {
+        const selectedRounding = this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', selectedRounding);
+        url.searchParams.set('page', 1); // Чтобы всегда начинать с первой страницы при новом округлении
+        window.location.href = url.toString();
+    });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const startYearSelect = document.getElementById("start_year");
+    const endYearSelect = document.getElementById("end_year");
+    const roundingDigitsSelect = document.getElementById("rounding_digits");
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const hasUrlParam = (name) => urlParams.has(name) && urlParams.get(name).trim() !== "";
+
+    // Только если параметра нет в URL, берём из localStorage
+    if (!hasUrlParam("start_year") && localStorage.getItem("start_year")) {
+        startYearSelect.value = localStorage.getItem("start_year");
+    }
+
+    if (!hasUrlParam("end_year") && localStorage.getItem("end_year")) {
+        endYearSelect.value = localStorage.getItem("end_year");
+    }
+
+    if (!hasUrlParam("rounding_digits") && localStorage.getItem("rounding_digits")) {
+        roundingDigitsSelect.value = localStorage.getItem("rounding_digits");
+    }
+
+    // При изменении — сохраняем в localStorage
+    [startYearSelect, endYearSelect, roundingDigitsSelect].forEach((el) => {
+        el.addEventListener("change", () => {
+            localStorage.setItem(el.id, el.value);
+        });
+    });
+
+    // Прокидываем скрытые поля в POST
+    const paramsToPreserve = ["start_year", "end_year", "rounding_digits"];
+
+    function addHiddenField(form, name, value) {
+        if (!form.querySelector(`input[name="${name}"]`)) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        }
+    }
+
+    const forms = document.querySelectorAll("form[method='POST']");
+    forms.forEach((form) => {
+        form.addEventListener("submit", () => {
+            paramsToPreserve.forEach((param) => {
+                const el = document.getElementById(param);
+                if (el && el.value) {
+                    addHiddenField(form, param, el.value);
+                }
+            });
+        });
+    });
+});
+</script>
+
+
+<script src="{{ url_for('static', filename='js/stations/highlight_changes.js') }}"></script>
+
+{% endif %}
+{% endblock %}
