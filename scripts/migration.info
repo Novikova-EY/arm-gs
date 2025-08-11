@@ -1,6 +1,8 @@
 1. Удалить все таблицы из базы данных:
-DROP DATABASE `arm-gs`;
-CREATE DATABASE `arm-gs`;
+DROP DATABASE `arm_gs`;
+CREATE DATABASE `arm_gs`;
+
+pip install -r requirements.txt
 
 2. Удалить папку migrations/:
 rm -rf migrations/

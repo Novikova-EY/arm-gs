@@ -1,6 +1,6 @@
-CREATE SCHEMA `arm-gs` ;
+CREATE SCHEMA `arm_gs` ;
 
-USE `arm-gs`;
+USE `arm_gs`;
 
 -- Создание таблицы ролей (roles)
 CREATE TABLE roles (
@@ -209,7 +209,7 @@ INSERT INTO res_region (id, id_res, id_region) VALUES
 (109, 99, 89);
 
 
-INSERT INTO `arm-gs`.machine_powers (id_machine, year_number, p_ust, p_rasp, id_fuel)
+INSERT INTO `arm_gs`.machine_powers (id_machine, year_number, p_ust, p_rasp, id_fuel)
 VALUES
 (1, 2021, 30.0, 30.0, 7),
 (1, 2022, 30.0, 30.0, 7),
@@ -250,14 +250,14 @@ VALUES
 (4, 2030, 30.0, 30.0, 1);
 
 
-INSERT INTO `arm-gs`.machines (id_condition_type, id_gen_company, id_station, machine_number, machine_name, id_fuel, id_machine_type, id_tes_type, id_tes_machine_type, date_exploitation, id_station_type)
+INSERT INTO `arm_gs`.machines (id_condition_type, id_gen_company, id_station, machine_number, machine_name, id_fuel, id_machine_type, id_tes_type, id_tes_machine_type, date_exploitation, id_station_type)
 VALUES
 (1, 482, 1, 3, "ПТ-30-90/10", 1, 1, 1, 2, 1964, 4),
 (1, 482, 1, 5, "ПТ-59-90/13", 1, 1, 1, 2, 1964, 4),
 (1, 482, 1, 6, "ПТ-60-90/13", 1, 1, 1, 2, 1967, 4),
 (1, 482, 1, 7, "ПТ-30/40-9.8/1.3", 1, 1, 1, 2, 2024, 4);
 
-INSERT INTO `arm-gs`.stations (id_condition_type, name, id_regional_district)
+INSERT INTO `arm_gs`.stations (id_condition_type, name, id_regional_district)
 VALUES
 (1, "Северодвинская ТЭЦ-1", 3);
 

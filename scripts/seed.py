@@ -4,19 +4,23 @@ import os
 # Добавить корневую директорию проекта в sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import db, create_app
-from app.models.territories_models import FederalDistrict, RegionalDistrict
-from app.models.energy_systems_models import (
-    EnergySystemType,
-    UnionEnergySystem,
-    RegionalEnergySystem,
-    EnergyArea,
-    regional_district_regional_energy_system,
-)
-from app.models.auth_models import Role
-from app.models.fuels_models import FuelType, Fuel
-from app.models.stations_models import ConditionType, StationType, TesType, TesMachineType, MachineType
-from app.models.years_models import Year, YearFeature
+from app.extensions import db, create_app
+from app.refdata.models.territories_models import FederalDistrict, RegionalDistrict
+from app.logs.models.logs_models import *
+from app.refdata.models.energy_systems_models import *
+from app.refdata.models.territories_models import *
+from app.refdata.models.fuels_models import *
+from app.refdata.models.years_models import *
+from app.refdata.models.gen_companies_models import *
+from app.refdata.models.stations_refdata_models import *
+from app.generation.models.stations_models import *
+from app.generation.models.machines_models import *
+from app.generation.models.pgu_machines_models import *
+from app.generation.models.boilers_models import *
+from app.auth.models.auth_models import Role
+from app.refdata.models.fuels_models import FuelType, Fuel
+from app.generation.models.stations_models import ConditionType, StationType, TesType, TesMachineType, MachineType
+from app.refdata.models.years_models import Year, YearFeature
 from sqlalchemy.exc import IntegrityError
 
 # Создаём контекст приложения

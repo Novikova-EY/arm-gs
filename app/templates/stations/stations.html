@@ -152,13 +152,14 @@
                         </div>
                     </th>
 
-                    <!-- Тип агрегата ТЭС -->
+                    <!-- Тип агрегата ТЭС и ПГУ -->
                     <th style="width: 80px; text-align: center;">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Тип <br>агрегата <br>ТЭС</strong>
                             </button>
                             <ul class="dropdown-menu w-100">
+                                <!-- Типы агрегатов ТЭС -->
                                 {% for tes_machine_type in tes_machine_type_names %}
                                     <li>
                                         <label class="dropdown-item">
@@ -169,6 +170,22 @@
                                         </label>
                                     </li>
                                 {% endfor %}
+                                    
+                                {% if 1 == 0 %}
+                                    <li><hr class="dropdown-divider"></li>
+
+                                    <!-- Типы агрегатов ПГУ -->
+                                    {% for pgu_tes_machine_type in pgu_tes_machine_type_names %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="pgu_tes_machine_type_filter"
+                                                    value="{{ pgu_tes_machine_type.id }}"
+                                                    {% if pgu_tes_machine_type.id|string in pgu_tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                {{ pgu_tes_machine_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                {% endif %}
                             </ul>
                         </div>
                     </th>
