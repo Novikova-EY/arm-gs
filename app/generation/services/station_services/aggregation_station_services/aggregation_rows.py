@@ -1,15 +1,19 @@
 from sqlalchemy import func, and_
 from app.extensions import db
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.fuels.fuel_type_model import FuelType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
 
 def get_full_aggregation_rows(start_year, end_year, station_ids):
     rows = (

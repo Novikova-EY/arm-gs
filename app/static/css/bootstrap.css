@@ -187,7 +187,7 @@
   box-sizing: border-box;
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-prefdata) {
   :root {
     scroll-behavior: smooth;
   }
@@ -2033,7 +2033,7 @@ progress {
   border-color: var(--bs-table-border-color);
 }
 
-.table-dark {
+.table-success {
   --bs-table-color: #fff;
   --bs-table-bg: #212529;
   --bs-table-border-color: #4d5154;

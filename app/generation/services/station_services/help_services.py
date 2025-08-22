@@ -3,19 +3,24 @@ from sqlalchemy.orm import joinedload
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, localcontext, ROUND_HALF_UP
-from collections.abc import Mapping, Sequence
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.years_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
 from functools import lru_cache
+from app.generation.models.station.station_group_model import StationGroup
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.fuels.fuel_type_model import FuelType
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
+from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.years.year_model import Year
+from app.refdata.models.years.year_feature_model import YearFeature
 
     
 def get_current_year():

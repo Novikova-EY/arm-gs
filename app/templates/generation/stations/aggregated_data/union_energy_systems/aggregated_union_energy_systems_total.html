@@ -1,0 +1,50 @@
+<!-- Итоговые значения по субъекту РФ -->
+{% if union_energy_systems_yearly_p_ust.get(current_ues_id, {}) %}
+    <!-- Первая строка: p_ust -->
+    <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+        <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+            {{ union_energy_system_names[current_ues_id] }}, всего
+        </td>
+        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column" style="font-weight: bold;">
+                {{ union_energy_systems_yearly_p_ust
+                    .get(current_ues_id, {})
+                    .get(year, 0) | format_decimal or '—' }}
+            </td>
+        {% endfor %}
+        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+        </td>
+    </tr>
+
+    <!-- Вторая строка: p_ogr -->
+    <tr class="table-primary text-center p-ogr-row">
+        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column" style="font-weight: bold;">
+                {{ union_energy_systems_yearly_p_ogr
+                    .get(current_ues_id, {})
+                    .get(year, 0) | format_decimal or '—' }}
+            </td>
+        {% endfor %}
+        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+        </td>
+    </tr>
+
+    <!-- Третья строка: p_rasp -->
+    <tr class="table-primary text-center p-rasp-row">
+        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+        {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column" style="font-weight: bold;">
+                {{ union_energy_systems_yearly_p_rasp
+                    .get(current_ues_id, {})
+                    .get(year, 0) | format_decimal or '—' }}
+            </td>
+        {% endfor %}
+        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+        </td>
+    </tr>
+
+    {% include 'stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_by_station_type.html' %}
+
+{% endif %}

@@ -1,4 +1,5 @@
 
+
 from app.extensions import db
 from decimal import Decimal
 from app.logs.services.logging_service import log_to_db
@@ -7,17 +8,19 @@ from sqlalchemy import and_, func, select, or_, literal
 from collections import defaultdict
 from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.sql import exists
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.years_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_power_model import StationPower
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.generation.services.station_services.help_services import (
     get_current_year,
     get_station_types,

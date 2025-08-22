@@ -3,19 +3,25 @@ import pandas as pd
 from sqlalchemy import func
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from app.logs.services.logging_service import log_to_db
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
-from app.refdata.services.gen_company_services import (
-        clean_name
+from app.refdata.services.common_services.help_services import (
+    _replace_quotes_sequentially,
+    _clean_name,
 )
+from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_power_model import StationPower
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
 
 # Функция для проверки значений дат на NaN и замены на None
@@ -43,7 +49,7 @@ def safe_date(value):
 
 
 # Функция для проверки полей на NaN и замены на None
-def safe_lookup(model, field, value, cleaner=clean_name):
+def safe_lookup(model, field, value, cleaner=_clean_name):
     """Безопасный поиск объекта по справочнику. Возвращает .id или None."""
     try:
         if pd.isna(value):
@@ -86,10 +92,10 @@ def update_if_changed(obj, field, new_value, changes, display_name=None):
 
 # Вспомогательная функция: создание или обновление станции
 def handle_station(row, user):
-    station_name = clean_name(row['station_name'])
+    station_name = _clean_name(row['station_name'])
 
     raw_district = row.get('regional_district')
-    regional_district_name = clean_name(raw_district) if not pd.isna(raw_district) else None
+    regional_district_name = _clean_name(raw_district) if not pd.isna(raw_district) else None
 
     # Найти региональный округ
     regional_district = RegionalDistrict.query.filter_by(name=regional_district_name).first()
@@ -99,13 +105,13 @@ def handle_station(row, user):
             regional_district = energy_unit.regional_district
 
     # Энергоузел по умолчанию (или найденный)
-    energy_unit = EnergyUnit.query.filter_by(id=100).first() or safe_lookup(EnergyUnit, 'id', 100, cleaner=None)
+    energy_unit = EnergyUnit.query.filter_by(id=0).first() or safe_lookup(EnergyUnit, 'id', 0, cleaner=None)
     condition_type = ConditionType.query.filter_by(name="действующий").first()
 
     group_id = row.get("id_group")
     group_id = int(group_id) if not pd.isna(group_id) and str(group_id).isdigit() else None
 
-    note = clean_name(row.get('note')) if not pd.isna(row.get('note')) else None
+    note = _clean_name(row.get('note')) if not pd.isna(row.get('note')) else None
 
     station = Station.query.filter_by(
         name=station_name,
@@ -145,7 +151,7 @@ def handle_station(row, user):
 
 # Вспомогательная функция: создание или обновление агрегата
 def handle_machine(row, current_station, user):
-    machine_name = clean_name(row['machine_name'])
+    machine_name = _clean_name(row['machine_name'])
 
     machine_group = row.get('machine_group')
     if pd.isna(machine_group) or machine_group in [None, 'nan', 'NaN', '']:
@@ -156,7 +162,7 @@ def handle_machine(row, current_station, user):
         else:
             machine_group = str(machine_group).strip()
 
-    machine_number = clean_name(row.get('machine_number'))
+    machine_number = _clean_name(row.get('machine_number'))
     if pd.isna(machine_number) or machine_number in [None, 'nan', 'NaN', '']:
         machine_number = ""
     else:
@@ -165,7 +171,7 @@ def handle_machine(row, current_station, user):
         else:
             machine_number = str(machine_number).strip()
 
-    gen_company = GenCompany.query.filter_by(name=clean_name(row['gen_company'])).first()
+    gen_company = GenCompany.query.filter_by(name=_clean_name(row['gen_company'])).first()
 
     condition_type = ConditionType.query.filter_by(name="действующий").first()
 
@@ -196,7 +202,7 @@ def handle_machine(row, current_station, user):
         update_if_changed(machine, 'id_gen_company', gen_company.id if gen_company else None, changes)
         update_if_changed(machine, 'id_station_type', safe_lookup(StationType, 'name', row.get('station_type')), changes)
         update_if_changed(machine, 'id_tes_machine_type', safe_lookup(TesMachineType, 'name', row.get('tes_machine_type')), changes)
-        update_if_changed(machine, 'id_machine_type', safe_lookup(MachineType, 'id', 100, cleaner=None), changes)
+        update_if_changed(machine, 'id_machine_type', safe_lookup(MachineType, 'id', 0, cleaner=None), changes)
 
         # Исключаем автоматические поля
         date_fields = [
@@ -210,7 +216,7 @@ def handle_machine(row, current_station, user):
             update_if_changed(machine, field, safe_date(row.get(field)), changes)
 
         if not pd.isna(row.get('note')):
-            note_val = clean_name(row['note'])
+            note_val = _clean_name(row['note'])
             update_if_changed(machine, 'note', note_val, changes)
 
         if changes:
@@ -226,9 +232,9 @@ def handle_machine(row, current_station, user):
             machine_number=machine_number,
             machine_name=machine_name,
             machine_group=machine_group,
-            note=clean_name(row['note']) if not pd.isna(row.get('note')) else None,
+            note=_clean_name(row['note']) if not pd.isna(row.get('note')) else None,
             id_station_type=safe_lookup(StationType, 'name', row.get('station_type')),
-            id_machine_type=safe_lookup(MachineType, 'id', 100, cleaner=None),
+            id_machine_type=safe_lookup(MachineType, 'id', 0, cleaner=None),
             id_tes_machine_type=safe_lookup(TesMachineType, 'name', row.get('tes_machine_type')),
             date_exploitation=date_exploitation,
             date_commission_fact=safe_date(row.get('date_commission_fact')),
@@ -432,7 +438,7 @@ def assign_machine_fuel(machine, row, start_year, end_year, user):
     }
 
     for year in range(start_year, end_year + 1):
-        fuel_name = clean_name(row.get(f'fuel_{year}'))
+        fuel_name = _clean_name(row.get(f'fuel_{year}'))
         fuel_type_id = fuel_type_mapping.get(fuel_name)
         fuel = Fuel.query.filter_by(id_fuel_type=fuel_type_id).first() if fuel_type_id else None
 
@@ -502,9 +508,9 @@ def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
                 print(f"Удалено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}")
 
             # Сбрасываем тип ТЭС на id=100 (не указано)
-            if machine_tes_type and machine_tes_type.id_tes_type != 100:
+            if machine_tes_type and machine_tes_type.id_tes_type != 0:
                 old_tes_type_name = machine_tes_type.tes_type.name if machine_tes_type.tes_type else 'не указано'
-                machine_tes_type.id_tes_type = 100
+                machine_tes_type.id_tes_type = 0
                 log_to_db(
                     user,
                     f"Сброс типа ТЭС электростанции {station.name} ({district_name})",
@@ -516,7 +522,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
         # ======================== Если установленная мощность > 0 ========================
 
         # Обработка топлива
-        fuel_name = clean_name(fuel_val)
+        fuel_name = _clean_name(fuel_val)
         fuel_type_id = fuel_type_mapping.get(fuel_name)
         fuel = Fuel.query.filter_by(id_fuel_type=fuel_type_id).first() if fuel_type_id else None
 
@@ -545,7 +551,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
                 print(f"Обновлено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {old_fuel_name} → {fuel.name}")
 
         # Обработка типа ТЭС
-        tes_type_name = clean_name(tes_type_val)
+        tes_type_name = _clean_name(tes_type_val)
         tes_type = TesType.query.filter(func.lower(TesType.name) == tes_type_name.lower()).first() if tes_type_name else None
 
         if tes_type:
@@ -682,7 +688,7 @@ def import_station_list_from_excel(file, user):
     # После всех строк: расчёт агрегированных мощностей по каждой станции
     station_ids = df['station_name'].dropna().unique()
     for name in station_ids:
-        station = Station.query.filter_by(name=clean_name(name)).first()
+        station = Station.query.filter_by(name=_clean_name(name)).first()
         if station:
             update_station_power(station, start_year, end_year, user)
 
@@ -718,8 +724,8 @@ def import_fuel_tes_station_from_excel(file, user):
                     print("Пропускаем строку, так как есть имя, но нет генкомпании.")
                     continue
 
-                station_name = clean_name(row['name'])
-                gen_company_name = clean_name(row['gen_company'])
+                station_name = _clean_name(row['name'])
+                gen_company_name = _clean_name(row['gen_company'])
 
                 if pd.isna(gen_company_name):
                     print("Ошибка: значение генкомпании NaN")
@@ -732,7 +738,7 @@ def import_fuel_tes_station_from_excel(file, user):
                     print(f"⚠️ Генкомпания с именем '{gen_company_name}' не найдена.")
                     continue
 
-                fuel_name = clean_name(row['fuel']) if not pd.isna(row['fuel']) else None
+                fuel_name = _clean_name(row['fuel']) if not pd.isna(row['fuel']) else None
                 if pd.isna(fuel_name) or fuel_name is None:
                     print("⚠️ Топливо не указано, пропускаем строку.")
                     continue

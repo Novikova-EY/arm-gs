@@ -4,18 +4,15 @@ from collections import defaultdict
 from sqlalchemy import or_, extract, and_, func
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import contains_eager, joinedload
-from app.logs.models import logs_models
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.years_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.generation.services.station_services.station_services import (
     get_current_year
 )

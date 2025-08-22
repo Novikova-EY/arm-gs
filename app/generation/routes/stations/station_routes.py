@@ -12,8 +12,8 @@ from app.generation.forms.station_forms import(
     StationFilterForm, 
     AddStationForm
 )
-from app.refdata.models.territories_models import RegionalDistrict
-from app.generation.models.stations_models import Station
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.generation.models.station.station_model import Station
 from app.generation.services.station_services.station_services import (
     get_stations_list,
     assign_machine_powers_by_year, 

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Перечень изменений мощности{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Перечень изменений установленной мощности агрегатов (2025–2030)</h2>
+
+  <form method="POST" class="mb-4">
+    {{ form.hidden_tag() }}
+    <!-- Блок фильтров -->
+    {% include 'stations/station_filters_first_row.html' %}
+
+    <div class="mt-3">
+      {{ form.submit(class="btn btn-primary") }}
+      <a href="{{ url_for('station_changes_bp.report_sipr_pril_2_export', **request.args) }}" class="btn btn-success ms-2">
+        Выгрузить в Excel
+      </a>
+    </div>
+  </form>
+
+<table class="table table-bordered table-sm align-middle text-center fs-5">
+    <thead>
+        <tr class="table-light">
+            <th>Субъект РФ</th>
+            <th>Генерирующая компания</th>
+            <th>Электростанция</th>
+            <th>Вид мероприятия</th>
+            <th>Тип электростанции</th>
+            <th>Станционный номер</th>
+            <th>Тип оборудования</th>
+            <th>Вид топлива</th>
+            {% for year in range(start_year, end_year + 1) %}
+                <th>{{ year }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for est_id, ues_dict in grouped.items() %}
+            {% for ues_id, res_dict in ues_dict.items() %}
+                {% for res_id, region_dict in res_dict.items() %}
+                    {% for region_id, block in region_dict.items() %}
+                        {# 1. Строки по машинам #}
+                        {% for row in block.rows %}
+                            <tr>
+                                <td>{{ row.region_name }}</td>
+                                <td>{{ row.gen_company_name or "—" }}</td>
+                                <td>{{ row.station_name }}</td>
+                                <td>{{ row.event_type_name }}</td>
+                                <td>{{ row.station_type_name }}</td>
+                                <td>{{ row.machine_number }}</td>
+                                <td>{{ row.machine_type_name or "—" }}</td>
+                                <td>{{ row.fuel_type_name or "—" }}</td>
+                                {% for year in range(start_year, end_year + 1) %}
+                                    <td>{{ row.p_ust_by_year.get(year, "") | round(1) }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+
+                        {# 2. Строка с итого по региону #}
+                        {% for event_type, event_block in block.totals.items() %}
+                            {% for year in range(start_year, end_year + 1) %}
+                                <tr class="table-warning fw-bold">
+                                    <td colspan="3">{{ block.rows[0].region_name }} — Итого</td>
+                                    <td>{{ event_type }}</td>
+                                    <td colspan="4"> </td>
+                                    {% for y in range(start_year, end_year + 1) %}
+                                        <td>
+                                            {{ event_block.get(y, {}).get("total", "") | round(1) if y == year else "" }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+
+</div>
+{% endblock %}

@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}My App{% endblock %}</title>
+    <title>{% block title %}АРМ ГС{% endblock %}</title>
     
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
 
 </head>
 
@@ -17,17 +17,16 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end align-items-center m-3">
+    <div class="d-flex justify-content-end align-items-center gap-2 gap-md-3">
         {% if current_user.is_authenticated %}
             <span class="me-4 fs-4 fw-bold">
-                {{ current_user.username }}
+            {{ current_user.username }}
             </span>
-            <!-- Страница с логами -->
-            <a href="{{ url_for('logs.view_logs') }}" class="btn btn-outline-secondary fs-6 m-3">Запись логов</a>
-            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-6 m-3">Выйти</a>
+            <a href="{{ url_for('logs.view_logs') }}" class="btn btn-outline-secondary fs-5">Запись логов</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-5">Выйти</a>
         {% else %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-6 m-3">Войти</a>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary fs-6 m-3">Регистрация</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary fs-5">Войти</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary fs-5">Регистрация</a>
         {% endif %}
     </div>
     
@@ -50,8 +49,11 @@
     {% block content %}
     {% endblock %}
 
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <!-- Подключаем Bootstrap JS -->
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         // Автоматическое закрытие сообщений через 5 секунд
@@ -76,40 +78,51 @@
     
     <!-- Прелоадер -->
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const preloader = document.getElementById("preloader");
+        (function () {
+        const preloader = document.getElementById('preloader');
+        if (!preloader) return;
 
-            // При переходе по ссылкам
-            document.body.addEventListener("click", function (e) {
-                const target = e.target.closest("a");
+        function show() { preloader.style.display = 'flex'; }
+        function hide() { preloader.style.display = 'none'; }
 
-                if (
-                    target &&
-                    target.tagName === "A" &&
-                    !target.hasAttribute("target") &&
-                    !target.hasAttribute("data-no-preloader")
-                ) {
-                    e.preventDefault(); // отменяем стандартный переход
-                    preloader.style.display = "flex";
+        // Скрыть при обычной загрузке
+        window.addEventListener('load', hide);
 
-                    setTimeout(() => {
-                        window.location.href = target.href;
-                    }, 50); // ждём 1 кадр, чтобы успел показаться прелоадер
-                }
-            });
+        // Возврат/вперёд из истории: страница из bfcache
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) hide();
+        });
 
-            // При отправке формы
-            document.querySelectorAll("form").forEach(form => {
-                form.addEventListener("submit", function () {
-                    preloader.style.display = "flex";
-                });
-            });
+        // Перед уходом со страницы (НЕ ломает bfcache)
+        window.addEventListener('pagehide', function (e) {
+            if (!e.persisted) show(); // только при реальном уходе
+        });
 
-            // Скрытие после загрузки
-            window.addEventListener("load", function () {
-                preloader.style.display = "none";
+        // Клик по ссылкам — без preventDefault!
+        document.body.addEventListener('click', function (e) {
+            const a = e.target.closest('a');
+            if (!a) return;
+
+            // игнорируем модификаторы/внешние/якорные/загрузочные ссылки и те, где отключили прелоадер
+            const modified = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1;
+            const href = a.getAttribute('href') || '';
+            const external = a.target === '_blank' || a.hasAttribute('download') || href.startsWith('mailto:') || href.startsWith('tel:');
+            const anchor = href.startsWith('#') || href.startsWith('javascript:');
+            const disabled = a.hasAttribute('data-no-preloader');
+
+            if (modified || external || anchor || disabled) return;
+
+            // показываем прелоадер на следующий кадр, не блокируя навигацию
+            requestAnimationFrame(show);
+        }, { capture: true }); // чтобы сработать до перехода
+
+        // Отправка форм
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+            requestAnimationFrame(show);
             });
         });
+        })();
     </script>
 
 </body>

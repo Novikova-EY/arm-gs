@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}Генерирующие компании{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container mt-2">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Страница "Справочники"</a>
+    </div>
+
+    <h1 class="text-center mb-4">Список федеральных округов</h1>
+
+    <form method="GET"
+        action="{{ url_for('refdata_bp.gen_company_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <!-- ЛЕВАЯ СТОРОНА: поиск + кнопки -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.gen_company_filter(class="form-control") }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('refdata_bp.gen_company_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
+            <div class="col-12 col-lg-4 text-lg-end">
+                <!-- Экспорт данных таблицы с фильтрами в Excel-->
+                <a class="btn btn-warning fw-bold"
+                href="{{ url_for('refdata_bp.export_gen_company',
+                                    gen_company_filter=gen_company_filter,
+                                    sort_by=sort_by, sort_dir=sort_dir) }}"
+                target="_blank" rel="noopener">
+                Экспорт в Excel
+                </a>
+
+                <select name="per_page"
+                        class="form-select d-inline-block w-auto"
+                        onchange="this.form.page.value=1; this.form.submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+        </div>
+
+        {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="gen_company_filter"  value="{{ gen_company_filter  or '' }}">
+        <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+        <input type="hidden" name="page"                value="{{ pagination.page if pagination else 1 }}">
+    </form>
+
+    <!-- Таблица данных -->
+     {% if current_user.has_admin %}
+        <form method="POST" action="{{ url_for('refdata_bp.gen_company_list') }}">
+            {{ form.csrf_token }}
+            {{ form.page(value=pagination.page) }}
+
+            <input type="hidden" name="gen_company_filter" value="{{ request.args.get('gen_company_filter', '') }}">
+
+            <input type="hidden" name="sort_by"     value="{{ request.args.get('sort_by', 'id') }}">
+            <input type="hidden" name="sort_dir"    value="{{ request.args.get('sort_dir', 'asc') }}">
+            <input type="hidden" name="per_page"    value="{{ request.args.get('per_page', 10) }}">
+            <input type="hidden" name="page"        value="{{ request.args.get('page', 1) }}">
+
+            <!-- Кнопки сохранения изменений и добавления новой записи -->
+            <div class="d-flex justify-content-between mt-3 mb-3">
+                <button type="submit" class="btn btn-success">Сохранить изменения</button>
+
+                <a href="{{ url_for('refdata_bp.add_gen_company', 
+                    sort_by=request.args.get('sort_by', 'id'),
+                    sort_dir=request.args.get('sort_dir', 'asc'),
+                    gen_company_filter=request.args.get('gen_company_filter', ''),
+                    per_page=request.args.get('per_page', 10),
+                    page=request.args.get('page', 1)) }}" class="btn btn-primary">
+                    Добавить новую запись
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered table-responsive">
+                    <thead class="table-success">
+                        <tr>
+                            <!-- Шапка таблицы. Столбец "№" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.gen_company_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            gen_company_filter=gen_company_filter, 
+                                            sort_by='number', 
+                                            sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                    №
+                                    {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Генерирующая копмания" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.gen_company_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                gen_company_filter=gen_company_filter, 
+                                                sort_by='name', 
+                                                sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                    Наименование генерирующей компании
+                                    {% if sort_by == 'name' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Удалить" -->
+                            <th class="text-center align-middle">Удалить</th>
+                        </tr>
+                    </thead>
+
+                    <!-- Данные таблицы-->
+                    <tbody>
+                        {% for item in gen_company_list %}
+                        <tr>
+                            <!-- Строки таблицы. Столбец "№" -->
+                            <td class="text-center align-middle">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                <input type="hidden" name="gen_company_ids[]" value="{{ item.id }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Генерирующая копмания" -->
+                            <td>
+                                <input type="text" name="gen_company_names[]" class="form-control" value="{{ item.name }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
+                            <td class="text-center align-middle">
+                                <input type="checkbox" name="gen_company_delete[]" value="{{ item.id }}" class="form-check-input">
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+
+    <!-- Таблица с данными для чтения -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered table-responsive">
+                <thead class="table-success">
+                    <tr>
+                        <!-- Шапка таблицы. Столбец "№" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.gen_company_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        gen_company_filter=gen_company_filter, 
+                                        sort_by='number', 
+                                        sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Генерирующая копмания" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.gen_company_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            gen_company_filter=gen_company_filter, 
+                                            sort_by='name', 
+                                            sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                Наименование генерирующей компании
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Удалить" -->
+                        <th class="text-center align-middle">Удалить</th>
+                    </tr>
+                </thead>
+
+                <!-- Данные таблицы-->
+                <tbody>
+                    {% for item in gen_company_list %}
+                    <tr>
+                        <!-- Строки таблицы. Столбец "№" -->
+                        <td class="text-center align-middle">
+                            {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                        </td>
+
+                        <!-- Строки таблицы. Столбец "Генерирующая копмания" -->
+                        <td> {{ item.name }} </td>
+
+                        <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
+                        <td> {{ item.id }} </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <!-- Пагинация -->
+    <div>
+        {% include 'refdata/gen_company/gen_company_pagination.html' %}
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

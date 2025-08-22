@@ -1,0 +1,369 @@
+{% extends 'base.html' %}
+
+{% block title %}Изменения мощности генерирующего оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Левая группа кнопок -->
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Изменения мощности генерирующего оборудования электростанций Российской Федерации</h1>
+            </div>
+
+            <!-- Правая группа: чекбоксы и подсветка -->
+            <div class="d-flex align-items-center gap-2 ms-auto">
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'station_changes/station_changes_filters.html' %}
+
+    <!-- Таблица с данными -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered table-responsive">
+
+            <!-- Шапка таблицы с данными -->
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th colspan="14">Электростанция</th>
+                    <th colspan="{{ end_year - start_year + 1 }}">Установленная ощность</th>
+                    <th rowspan="2" style="width: 200px;">Основание</th>
+                </tr>
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th>Субъект РФ</th>
+                    <th>Генерирующая компания</th>
+                    <th>Наименование</th>
+                    <th style="width: 80px;">cт. №</th>
+                    <th style="width: 200px;">Тип агрегата</th>
+
+                    <!-- Год ввода в эксплуатацию -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Ввод в <br>экспл.</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                {% for year in range(1950, 2050) %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="date_exploitation_filter"
+                                                value="{{ year }}"
+                                                {% if year|string in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
+                                            {{ year }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+                    <!-- Год вывода из эксплуатацию -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Вывод из <br>экспл.</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                {% for year in range(1950, 2050) %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="date_decompressing_expected_filter"
+                                                value="{{ year }}"
+                                                {% if year|string in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
+                                            {{ year }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+                    <!-- Год модернизации -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Модерн.</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                {% for year in range(1950, 2050) %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="date_modernization_expected_filter"
+                                                value="{{ year }}"
+                                                {% if year|string in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
+                                            {{ year }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+                    
+                    <!-- Тип электростанции -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Тип <br>электро-<br>станции</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% for station_type in station_type_name %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="station_type_filter"
+                                                value="{{ station_type.id }}"
+                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                                            >
+                                            {{ station_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+                    <!-- Тип ТЭС -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Тип <br>ТЭС</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% for tes_type in tes_type_names %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="tes_type_filter"
+                                                value="{{ tes_type.id }}"
+                                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                                            {{ tes_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+                    <!-- Тип агрегата ТЭС и ПГУ -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Тип <br>агрегата <br>ТЭС</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                <!-- Типы агрегатов ТЭС -->
+                                {% for tes_machine_type in tes_machine_type_names %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="tes_machine_type_filter"
+                                                value="{{ tes_machine_type.id }}"
+                                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                            {{ tes_machine_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                                    
+                                {% if 1 == 0 %}
+                                    <li><hr class="dropdown-divider"></li>
+
+                                    <!-- Типы агрегатов ПГУ -->
+                                    {% for pgu_tes_machine_type in pgu_tes_machine_type_names %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="pgu_tes_machine_type_filter"
+                                                    value="{{ pgu_tes_machine_type.id }}"
+                                                    {% if pgu_tes_machine_type.id|string in pgu_tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                {{ pgu_tes_machine_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </th>
+                    
+                    <!-- Столбец фильтра по топливу -->
+                    <th style="width: 50px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Основное <br> топливо</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% for fuel_type in fuel_type_names %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="fuel_type_filter"
+                                                value="{{ fuel_type.id }}"
+                                                {% if fuel_type.id|string in _fuel_type_filter|map('string') %}checked{% endif %}>
+                                            {{ fuel_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+                    <th style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
+                    
+                    <!-- Столбец фильтра по мероприятию -->
+                    <th style="width: 100px; text-align: center;">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                <strong>Мероприятие</strong>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                {% set event_options = ["Ввод в эксплуатацию", "Вывод из эксплуатации", "До модернизации", "После модернизации", "Изменение мощности"] %}
+                                {% for event_option in event_options %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="event_type_filter"
+                                                value="{{ event_option }}"
+                                                {% if event_option in request.args.getlist('event_type_filter') %}checked{% endif %}>
+                                            {{ event_option }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </th>
+
+
+                    <!-- Столбцы для годов с start_year по end_year + 1 -->
+                    {% for year in range(start_year, end_year + 1) %}
+                    <th style="width: 50px; text-align: center;">
+                        {{ year }}
+                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                            {% if year_features[year] is defined %}
+                                {{ year_features[year] }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+
+                </tr>
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+
+                {% for es_type_id, es_type_group in stations_grouped.items() %}
+                {% for event_type, event_label in event_types %}
+                    {% if per_page == 'all' %}
+                        {% include 'station_changes/aggregated_data/energy_system_types/energy_system_type_header.html' %}
+                    {% endif %}
+            
+                    {% for ues_id, ues_group in es_type_group.items() %}
+            
+                        {% if per_page == 'all' %}
+                            {% include 'station_changes/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
+                        {% endif %}
+            
+                        {% for res_id, res_group in ues_group.items() %}
+            
+                            {% if per_page == 'all' %}
+                                <!-- {% include 'station_changes/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}-->
+                            {% endif %}
+            
+                            {% for rd_id, rd_group in res_group.items() %}
+            
+                                {% if rd_id != 0 %}
+                                    {% if per_page == 'all' %}
+                                            {% include 'station_changes/aggregated_data/regional_districts/regional_district_header.html' %}
+                                    {% endif %}
+            
+                                    {% for eu_id, eu_group in rd_group.items() %}
+            
+                                        {% if eu_id != 0 %}
+                                            {% if per_page == 'all' %}
+                                                {% include 'station_changes/aggregated_data/energy_units/energy_unit_header.html' %}
+                                            {% endif %}
+                                        {% endif %}
+
+                                            {% for station in eu_group %}
+                                                {% include 'station_changes/station_changes_rows.html' %}
+                                            {% endfor %}
+            
+                                        {# Итог по энергоузлу #}
+                                        {% if per_page == 'all' and eu_id != 0 %}
+                                            {% set current_eu_id = eu_id %}
+                                            {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                        {% endif %}
+            
+                                    {% endfor %}
+            
+                                    {# Итог по субъекту РФ #}
+                                    {% if per_page == 'all' %}
+                                        {% set current_rd_id = rd_id %}
+                                        {% include 'station_changes/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
+                                    {% endif %}
+            
+                                {% endif %}
+            
+                            {% endfor %}
+            
+                            {# Итог по региональной энергосистеме #}
+                            {% if per_page == 'all' %}
+                                {% set current_res_id = res_id %}
+                                {# {% include 'station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_total.html' #}
+                            {% endif %}
+            
+                        {% endfor %}
+            
+                        {# Итог по объединённой энергосистеме #}
+                        {% if per_page == 'all' %}
+                            {% set current_ues_id = ues_id %}
+                                {% include 'station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
+                        {% endif %}
+            
+                    {% endfor %}
+            
+                    {# Итог по типу энергосистемы #}
+                    {% if per_page == 'all' %}
+                        {% set current_es_type_id = es_type_id %}
+                        {% include 'station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
+                    {% endif %}
+                {% endfor %}
+                {% endfor %}
+            
+                {# Итог по России #}
+                {% if per_page == 'all' %}
+                    {% include 'station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
+                {% endif %}
+            </tbody>
+            
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Пагинация -->
+<div>
+    {% if per_page is not none %}
+        {% include 'includes/pagination_station_changes.html' %}
+    {% endif %}
+</div> 
+
+<script id="initial-state-json" type="application/json">
+    {
+        "hasActiveFilters": {{ has_active_filters | tojson }}
+    }
+</script>
+
+<!-- Подключаем jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Подключаем Select2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+<script src="{{ url_for('static', filename='js/station_changes/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/station_changes/highlight_changes.js') }}"></script>
+
+
+{% endblock %}

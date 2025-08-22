@@ -6,17 +6,23 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm.attributes import flag_modified
 from flask import flash,request, render_template, request, flash, redirect, url_for
 from app.logs.services.logging_service import log_to_db
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.years_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.refdata.models.energy_systems.energy_area_model import EnergyArea
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
+from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.years.year_model import Year
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
 from app.generation.services.station_services.help_services import (
     convert_to_date
@@ -66,15 +72,15 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     pgu_machines = pgu_machines_query.order_by(PGUMachine.machine_name).all()
 
     if main_form.id_condition_type.data is None:
-        main_form.id_condition_type.data = 100
+        main_form.id_condition_type.data = 0
     if main_form.id_gen_company.data is None:
         main_form.id_gen_company.data = 0
     if main_form.id_station_type.data is None:
-        main_form.id_station_type.data = 100
+        main_form.id_station_type.data = 0
     if main_form.id_machine_type.data is None:
-        main_form.id_machine_type.data = 100
+        main_form.id_machine_type.data = 0
     if main_form.id_tes_machine_type.data is None:
-        main_form.id_tes_machine_type.data = 100
+        main_form.id_tes_machine_type.data = 0
 
     tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.order_by(TesType.id).all()]
     fuel_choices = [(f.id, f.name) for f in Fuel.query.order_by(Fuel.id).all()]
@@ -111,12 +117,12 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         tes_entry = advanced_form.tes_types.append_entry()
         tes_entry.year.data = year_num
         tes_entry.tes_type.choices = tes_type_choices
-        tes_entry.tes_type.data = mt.id_tes_type if mt.id_tes_type is not None else 100
+        tes_entry.tes_type.data = mt.id_tes_type if mt.id_tes_type is not None else 0
 
         fuel_entry = advanced_form.fuels.append_entry()
         fuel_entry.year.data = year_num
         fuel_entry.fuel_type.choices = fuel_choices
-        fuel_entry.fuel_type.data = mf.id_fuel if mf.id_fuel is not None else 100
+        fuel_entry.fuel_type.data = mf.id_fuel if mf.id_fuel is not None else 0
 
     db.session.commit()
 
@@ -480,7 +486,7 @@ def _fill_main_form_choices(form):
         (c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()
     ]
     if form.id_condition_type.data is None:
-        form.id_condition_type.data = 100
+        form.id_condition_type.data = 0
 
 
 def _fill_advanced_form_choices(form):
@@ -493,12 +499,12 @@ def _fill_advanced_form_choices(form):
     for entry in form.tes_types:
         entry.tes_type.choices = tes_choices
         if entry.tes_type.data is None:
-            entry.tes_type.data = 100 
+            entry.tes_type.data = 0 
 
     for entry in form.fuels:
         entry.fuel_type.choices = fuel_choices
         if entry.fuel_type.data is None:
-            entry.fuel_type.data = 100
+            entry.fuel_type.data = 0
 
 
 def _fill_pgu_machines_form_choices(form, machine_id):
@@ -510,13 +516,13 @@ def _fill_pgu_machines_form_choices(form, machine_id):
         (c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()
     ]
     if form.id_condition_type.data is None:
-        form.id_condition_type.data = 100
+        form.id_condition_type.data = 0
 
     form.id_pgu_tes_machine_type.choices = [
         (t.id, t.name) for t in PGUTesMachineType.query.order_by(PGUTesMachineType.id).all()
     ]
     if form.id_pgu_tes_machine_type.data is None:
-        form.id_pgu_tes_machine_type.data = 100
+        form.id_pgu_tes_machine_type.data = 0
 
 
 def is_empty(val):
@@ -579,8 +585,8 @@ def autofill_powers_if_possible_decimal(p_ust, p_ogr, p_rasp, year_num=None):
 def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year):
     """
     Автоматически заполняет тип ТЭС и топливо по принципу цепной передачи:
-    - если p_ust > 0 и текущий тип == 100, а предыдущий ≠100 → копируем
-    - если все мощности == 0 → тип ТЭС и топливо = 100
+    - если p_ust > 0 и текущий тип == 0, а предыдущий ≠0 → копируем
+    - если все мощности == 0 → тип ТЭС и топливо = 0
     """
     from flask import flash
 
@@ -607,23 +613,23 @@ def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end
         p_rasp = mp.p_rasp or Decimal(0)
 
         if is_empty(p_ust) and is_empty(p_ogr) and is_empty(p_rasp):
-            if mt.id_tes_type != 100:
+            if mt.id_tes_type != 0:
                 changes.append(f"{year_num} - Тип ТЭС: {mt.id_tes_type} → 'не указано'")
-                mt.id_tes_type = 100
+                mt.id_tes_type = 0
                 flash(f"🧠 {year_num} год: Тип ТЭС установлен: 'не указано' (все мощности = 0)", "info")
 
-            if mf.id_fuel != 100:
+            if mf.id_fuel != 0:
                 changes.append(f"{year_num} - Топливо: {mf.id_fuel} → 'не указано'")
-                mf.id_fuel = 100
+                mf.id_fuel = 0
                 flash(f"🧠 {year_num} год: Топливо установлено: 'не указано' (все мощности = 0)", "info")
         else:
-            if mt.id_tes_type in (None, 100) and prev_tes_type not in (None, 100):
+            if mt.id_tes_type in (None, 0) and prev_tes_type not in (None, 0):
                 changes.append(f"{year_num} - Тип ТЭС: {mt.id_tes_type} → {prev_tes_type}")
                 mt.id_tes_type = prev_tes_type
                 tes_name = tes_names.get(prev_tes_type, f"[{prev_tes_type}]")
                 flash(f"🧠 {year_num} год: Тип ТЭС скопирован из предыдущего года ({tes_name})", "info")
 
-            if mf.id_fuel in (None, 100) and prev_fuel_type not in (None, 100):
+            if mf.id_fuel in (None, 0) and prev_fuel_type not in (None, 0):
                 changes.append(f"{year_num} - Топливо: {mf.id_fuel} → {prev_fuel_type}")
                 mf.id_fuel = prev_fuel_type
                 fuel_name = fuel_names.get(prev_fuel_type, f"[{prev_fuel_type}]")

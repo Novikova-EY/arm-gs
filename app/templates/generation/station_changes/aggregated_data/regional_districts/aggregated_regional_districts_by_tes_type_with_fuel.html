@@ -1,0 +1,27 @@
+{# Разбивка по видам топлива и событиям для станций типа ТЭС #}
+{% for fuel_type_id, fuel_name in fuel_type_list.items() %}
+    {% if fuel_type_id == 100 %}
+        {% continue %}
+    {% endif %}
+
+    {% set fuel_data = regional_districts_by_station_types_with_fuel_yearly_p_ust
+        .get(current_rd_id, {})
+        .get(current_event_type, {})
+        .get(fuel_type_id, {}) %}
+
+    {% if fuel_data %}
+        <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+            <td class="total-row-cell ind3cm" style="font-weight: bold; padding-left: 3cm;">
+                {{ fuel_name }}
+            </td>
+            <td colspan="4"></td>
+            <td class="text-center align-middle">{{ event_type_labels.get(current_event_type, current_event_type) }}</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ fuel_data.get(y, '—') | format_decimal or '—' }}
+                </td>
+            {% endfor %}
+            <td></td>
+        </tr>
+    {% endif %}
+{% endfor %}

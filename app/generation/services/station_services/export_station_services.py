@@ -261,7 +261,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             "Тип мощности": "Руст",
             "Тип станции": machine.station_type.name if machine.station_type else "—",
             "Тип ТЭС": machine.tes_types or "—",
-            "Тип агрегата ТЭС": machine.tes_machine_type.name if machine.tes_machine_type and machine.tes_machine_type.id != 100 else "—",
+            "Тип агрегата ТЭС": machine.tes_machine_type.name if machine.tes_machine_type and machine.tes_machine_type.id != 0 else "—",
             "Примечание": machine.note or "",
         }
         for year in range(start_year, end_year + 1):
@@ -541,7 +541,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
                     for eu_id, eu_group in rd_group.items():
                         eu_name = data["energy_unit_name"].get(eu_id, f"id={eu_id}")
-                        if eu_id != 100:
+                        if eu_id != 0:
                             row_eu = {
                                 "Электростанция": eu_name,
                                 " ": "",
@@ -574,7 +574,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 first_machine = False
                             if hasattr(station, "powers_by_year"):
                                 add_station_total_row(station)
-                        if eu_id != 100:
+                        if eu_id != 0:
                             add_named_total_row(eu_id, "energy_unit", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
                     add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
                 add_named_total_row(res_id, "regional_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)

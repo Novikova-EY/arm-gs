@@ -1,0 +1,836 @@
+{% extends 'base.html' %}
+
+{% block title %}Субъекты РФ{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Страница "Справочники"</a>
+    </div>
+
+    <h1 class="text-center mb-4">Список субъектов РФ</h1>
+
+    <form method="GET"
+        action="{{ url_for('refdata_bp.regional_district_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <!-- ЛЕВАЯ СТОРОНА: поиск + кнопки -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.regional_district_filter(class="form-control") }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('refdata_bp.regional_district_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
+            <div class="col-12 col-lg-4 text-lg-end">
+                <!-- Экспорт данных таблицы с фильтрами в Excel-->
+                <a class="btn btn-warning fw-bold"
+                href="{{ url_for('refdata_bp.export_regional_district',
+                                    regional_district_filter=regional_district_filter,
+                                    federal_district_filter=federal_district_filter,
+                                    energy_zone_filter=energy_zone_filter or '',
+                                    synchronous_area_filter=synchronous_area_filter or '',
+                                    sort_by=sort_by, sort_dir=sort_dir) }}"
+                target="_blank" rel="noopener">
+                Экспорт в Excel
+                </a>
+
+                <select name="per_page"
+                        class="form-select d-inline-block w-auto"
+                        onchange="this.form.page.value=1; this.form.submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+        </div>
+
+        {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="federal_district_filter"     value="{{ federal_district_filter  or '' }}">
+        <input type="hidden" name="energy_zone_filter"          value="{{ energy_zone_filter       or '' }}">
+        <input type="hidden" name="synchronous_area_filter"     value="{{ synchronous_area_filter  or '' }}">
+        <input type="hidden" name="sort_by"                     value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                    value="{{ sort_dir }}">
+        <input type="hidden" name="page"                        value="{{ pagination.page if pagination else 1 }}">
+    </form>
+
+    <!-- Таблица данных -->
+    {% if current_user.has_admin %}
+        <form method="POST" action="{{ url_for('refdata_bp.regional_district_list') }}">
+            {{ form.csrf_token }}
+            {{ form.page(value=pagination.page) }}
+
+            <input type="hidden" name="regional_district_filter"  value="{{ regional_district_filter or '' }}">
+            <input type="hidden" name="federal_district_filter"   value="{{ federal_district_filter  or '' }}">
+            <input type="hidden" name="energy_zone_filter"        value="{{ energy_zone_filter       or '' }}">
+            <input type="hidden" name="synchronous_area_filter"   value="{{ synchronous_area_filter  or '' }}">
+
+            <input type="hidden" name="sort_by"                   value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir"                  value="{{ sort_dir }}">
+            <input type="hidden" name="per_page"                  value="{{ per_page }}">
+            <input type="hidden" name="page"                      value="{{ pagination.page }}">
+
+            <!-- Кнопки сохранения изменений и добавления новой записи -->
+            <div class="d-flex justify-content-between mt-3 mb-3">
+                <!-- Кнопка сохранения изменений -->
+                <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+
+                <!-- Кнопка добавления новой записи -->
+                <a href="{{ url_for('refdata_bp.add_regional_district', 
+                    sort_by=request.args.get('sort_by', 'id'),
+                    sort_dir=request.args.get('sort_dir', 'asc'),
+                    regional_district_filter=request.args.get('regional_district_filter', ''),
+                    federal_district_filter=request.args.get('federal_district_filter', ''),
+                    energy_zone_filter=request.args.get('energy_zone_filter', ''),
+                    synchronous_area_filter=request.args.get('synchronous_area_filter', ''),
+                    per_page=request.args.get('per_page', 10),
+                    page=request.args.get('page', 1)) }}" class="btn btn-primary fw-bold">
+                    Добавить новую запись
+                </a>
+            </div>
+        
+            <!-- Таблица с данными для редактирования-->
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+
+                    <!-- Шапка таблицы с данными -->
+                    <thead>
+                        <tr class="table-success" style="word-wrap: break-word;">
+                        
+                            <!-- Шапка таблицы. Столбец "№" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.regional_district_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    regional_district_filter=regional_district_filter,
+                                                    federal_district_filter=federal_district_filter,
+                                                    energy_zone_filter=energy_zone_filter,
+                                                    synchronous_area_filter=synchronous_area_filter,
+                                                    sort_by='number',
+                                                    sort_dir='asc' if sort_by != 'region_id' or sort_dir == 'desc' else 'desc') }}"
+                                    class="link-dark">
+                                    №
+                                    {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "№ п/п" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.regional_district_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    regional_district_filter=regional_district_filter,
+                                                    federal_district_filter=federal_district_filter,
+                                                    energy_zone_filter=energy_zone_filter,
+                                                    synchronous_area_filter=synchronous_area_filter,
+                                                    sort_by='region_id',
+                                                    sort_dir='asc' if sort_by != 'region_id' or sort_dir == 'desc' else 'desc') }}"
+                                    class="link-dark">
+                                    № п/п
+                                    {% if sort_by == 'region_id' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Субъект РФ" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ 
+                                    url_for('refdata_bp.regional_district_list', 
+                                    page=pagination.page, 
+                                    per_page=per_page, 
+                                    regional_district_filter=regional_district_filter, 
+                                    federal_district_filter=federal_district_filter, 
+                                    energy_zone_filter=energy_zone_filter, 
+                                    synchronous_area_filter=synchronous_area_filter, 
+                                    sort_by='name', 
+                                    sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="link-dark">
+                                    Наименование <br> субъекта РФ
+                                    {% if sort_by == 'name' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Субъект РФ (полное нименование)" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ 
+                                    url_for('refdata_bp.regional_district_list', 
+                                    page=pagination.page, 
+                                    per_page=per_page, 
+                                    regional_district_filter=regional_district_filter, 
+                                    federal_district_filter=federal_district_filter, 
+                                    energy_zone_filter=energy_zone_filter, 
+                                    synchronous_area_filter=synchronous_area_filter, 
+                                    sort_by='name_full', 
+                                    sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" class="link-dark">
+                                    Полное наименование <br> субъекта РФ
+                                    {% if sort_by == 'name_full' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "ФО" -->
+                            <th class="align-middle text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ 
+                                        url_for('refdata_bp.regional_district_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page,
+                                        regional_district_filter=regional_district_filter,
+                                        federal_district_filter=federal_district_filter,  
+                                        energy_zone_filter=energy_zone_filter, 
+                                        synchronous_area_filter=synchronous_area_filter, 
+                                        sort_by='federal_district', 
+                                        sort_dir='asc' if sort_by != 'federal_district' or sort_dir == 'desc' else 'desc') }}" class="link-dark">
+                                        Наименование <br> ФО
+                                        {% if sort_by == 'federal_district' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                        </a>
+                                    </span>
+                                    <!-- Кнопка выпадающего списка фильтра -->
+                                    <div class="dropdown">
+                                        <button 
+                                            class="btn btn-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            id="fdFilterDropdown" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fdFilterDropdown">
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                    page=pagination.page,
+                                                    regional_district_filter=regional_district_filter, 
+                                                    energy_zone_filter=energy_zone_filter, 
+                                                    synchronous_area_filter=synchronous_area_filter, 
+                                                    federal_district_filter='',
+                                                    per_page=per_page,
+                                                    sort_by=sort_by,
+                                                    sort_dir=sort_dir) }}" class="dropdown-item">
+                                                    Все ФО
+                                                </a>
+                                            </li>
+                                            {% for id_federal_district, federal_district_name in federal_district_list %}
+                                                {% if federal_district_name != 'Не указан' %}
+                                                    <li>
+                                                        <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                            page=pagination.page, 
+                                                            regional_district_filter=regional_district_filter,
+                                                            federal_district_filter=id_federal_district,
+                                                            energy_zone_filter=energy_zone_filter, 
+                                                            synchronous_area_filter=synchronous_area_filter, 
+                                                            per_page=per_page,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" class="dropdown-item">
+                                                            {{ federal_district_name }}
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Энергозона"" -->
+                            <th class="align-middle text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ 
+                                        url_for('refdata_bp.regional_district_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page,
+                                        regional_district_filter=regional_district_filter,
+                                        federal_district_filter=federal_district_filter,  
+                                        energy_zone_filter=energy_zone_filter, 
+                                        synchronous_area_filter=synchronous_area_filter, 
+                                        sort_by='energy_zone', 
+                                        sort_dir='asc' if sort_by != 'energy_zone' or sort_dir == 'desc' else 'desc') }}" class="link-dark">
+                                        Наименование <br> энергозоны
+                                        {% if sort_by == 'energy_zone' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                        </a>
+                                    </span>
+                                    <!-- Кнопка выпадающего списка фильтра -->
+                                    <div class="dropdown">
+                                        <button 
+                                            class="btn btn-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            id="ezFilterDropdown" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="ezFilterDropdown">
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                    page=pagination.page,
+                                                    regional_district_filter=regional_district_filter, 
+                                                    federal_district_filter=federal_district_filter,
+                                                    energy_zone_filter='',
+                                                    synchronous_area_filter=synchronous_area_filter,
+                                                    per_page=per_page,
+                                                    sort_by=sort_by,
+                                                    sort_dir=sort_dir) }}" class="dropdown-item">
+                                                    Все энергозоны
+                                                </a>
+                                            </li>
+                                            {% for id_energy_zone, energy_zone_number, energy_zone_name in energy_zone_list %}
+                                                    <li>
+                                                        <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                            page=pagination.page, 
+                                                            regional_district_filter=regional_district_filter,
+                                                            federal_district_filter=federal_district_filter,
+                                                            energy_zone_filter=id_energy_zone,
+                                                            synchronous_area_filter=synchronous_area_filter,
+                                                            per_page=per_page,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" class="dropdown-item">
+                                                            {{ energy_zone_name }}
+                                                        </a>
+                                                    </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Синхронная зона" -->
+                            <th class="align-middle text-center">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ 
+                                        url_for('refdata_bp.regional_district_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page,
+                                        regional_district_filter=regional_district_filter,
+                                        federal_district_filter=federal_district_filter,  
+                                        energy_zone_filter=energy_zone_filter, 
+                                        synchronous_area_filter=synchronous_area_filter, 
+                                        sort_by='synchronous_area', 
+                                        sort_dir='asc' if sort_by != 'synchronous_area' or sort_dir == 'desc' else 'desc') }}" class="link-dark">
+                                        Наименование <br> синхронной зоны
+                                        {% if sort_by == 'synchronous_area' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                        </a>
+                                    </span>
+                                    <!-- Кнопка выпадающего списка фильтра -->
+                                    <div class="dropdown">
+                                        <button 
+                                            class="btn btn-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            id="szFilterDropdown" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="szFilterDropdown">
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                    page=pagination.page,
+                                                    regional_district_filter=regional_district_filter, 
+                                                    federal_district_filter=federal_district_filter,
+                                                    energy_zone_filter=energy_zone_filter,
+                                                    synchronous_area_filter='',
+                                                    per_page=per_page,
+                                                    sort_by=sort_by,
+                                                    sort_dir=sort_dir) }}" class="dropdown-item">
+                                                    Все синхронные зоны
+                                                </a>
+                                            </li>
+                                            {% for id_synchronous_area, synchronous_area_name in synchronous_area_list %}
+                                                    <li>
+                                                        <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                            page=pagination.page, 
+                                                            regional_district_filter=regional_district_filter,
+                                                            federal_district_filter=federal_district_filter,
+                                                            energy_zone_filter=energy_zone_filter,
+                                                            synchronous_area_filter=id_synchronous_area,
+                                                            per_page=per_page,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" class="dropdown-item">
+                                                            {{ synchronous_area_name }}
+                                                        </a>
+                                                    </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Удалить" -->
+                            <th class="align-middle text-center">Удалить</th>
+                        </tr>
+                    </thead>
+
+                    <!-- Данные таблицы-->
+                    <tbody>
+                        {% for item in regional_districts_list %}
+                        <tr class="text-center align-middle">
+                            <!-- Строки таблицы. Столбец "№" -->
+                            <td class="text-center align-middle">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                <input type="hidden" name="federal_district_ids[]" value="{{ item.id }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "№ п/п" -->
+                            <td class="align-middle text-center">
+                                <input type="number"
+                                        class="form-control text-center mx-auto"
+                                        style="width: 60px; display: inline-block;"
+                                        name="region_ids[]"
+                                        value="{{ item.region_id or '' }}"
+                                        min="0" step="1" placeholder="">
+                                <input type="hidden" name="regional_district_ids[]" value="{{ item.id }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Субъект РФ" -->
+                            <td>
+                                <input type="text" name="regional_district_names[]" class="form-control" value="{{ item.name }}">
+                            </td>
+                            
+                            <!-- Строки таблицы. Столбец "Субъект РФ (полное наименование)" -->
+                            <td>
+                                <input type="text" name="regional_district_full_names[]" class="form-control" value="{{ item.name_full }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "ФО" -->
+                            <td>
+                                <select name="federal_districts[]" class="form-select">
+                                    {% for federal_district_item in federal_district_list %}
+                                    <option value="{{ federal_district_item.0 }}" 
+                                        {% if federal_district_item.0 == item.id_federal_district %}selected{% endif %}>
+                                        {{ federal_district_item.1 }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>   
+                            
+                            <!-- Строки таблицы. Столбец "Энергозона" -->
+                            <td>
+                                <select name="energy_zones[]" class="form-select">
+                                    {% for id, number, title in energy_zone_list %}
+                                    <option value="{{ id }}"{% if id == item.id_energy_zone %} selected{% endif %}>{{ number }} ({{ title }})</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Синхронная зона" -->
+                            <td>
+                                <select name="synchronous_areas[]" class="form-select">
+                                    {% for id, title in synchronous_area_list %}
+                                    <option value="{{ id }}"{% if id == item.id_synchronous_area %} selected{% endif %}>{{ title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
+                            <td class="text-center align-middle">
+                                <input type="checkbox" name="regional_district_delete[]" value="{{ item.id }}" class="form-check-input">
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+        <!-- Таблица с данными для чтения -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+
+                <!-- Шапка таблицы с данными -->
+                <thead class="table-success">
+                    <tr>
+                        <!-- Шапка таблицы. Столбец "№" -->
+                        <th class="text-center align-middle" style="min-width: 50px;">
+                        <a href="{{ url_for('refdata_bp.regional_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            regional_district_filter=regional_district_filter,
+                                            federal_district_filter=federal_district_filter,
+                                            energy_zone_filter=energy_zone_filter,
+                                            synchronous_area_filter=synchronous_area_filter,
+                                            sort_by='number',
+                                            sort_dir='asc' if sort_by != 'region_id' or sort_dir == 'desc' else 'desc') }}"
+                            class="link-dark">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "№ п/п" -->
+                        <th class="align-middle text-center" style="min-width: 50px;">
+                        <a href="{{ url_for('refdata_bp.regional_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            regional_district_filter=regional_district_filter,
+                                            federal_district_filter=federal_district_filter,
+                                            energy_zone_filter=energy_zone_filter,
+                                            synchronous_area_filter=synchronous_area_filter,
+                                            sort_by='region_id',
+                                            sort_dir='asc' if sort_by != 'region_id' or sort_dir == 'desc' else 'desc') }}"
+                            class="link-dark">
+                            № п/п
+                            {% if sort_by == 'region_id' %}
+                            {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Субъект РФ" -->
+                        <th class="align-middle text-center">
+                            <a href="{{ 
+                                url_for('refdata_bp.regional_district_list', 
+                                page=pagination.page, 
+                                per_page=per_page, 
+                                regional_district_filter=regional_district_filter, 
+                                federal_district_filter=federal_district_filter, 
+                                energy_zone_filter=energy_zone_filter, 
+                                synchronous_area_filter=synchronous_area_filter, 
+                                sort_by='name', 
+                                sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                Наименование <br> субъекта РФ
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Субъект РФ (полное нименование)" -->
+                        <th class="align-middle text-center">
+                            <a href="{{ 
+                                url_for('refdata_bp.regional_district_list', 
+                                page=pagination.page, 
+                                per_page=per_page, 
+                                regional_district_filter=regional_district_filter, 
+                                federal_district_filter=federal_district_filter, 
+                                energy_zone_filter=energy_zone_filter, 
+                                synchronous_area_filter=synchronous_area_filter, 
+                                sort_by='name_full', 
+                                sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                Полное наименование <br> субъекта РФ
+                                {% if sort_by == 'name_full' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "ФО" -->
+                        <th class="align-middle text-center">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ 
+                                    url_for('refdata_bp.regional_district_list', 
+                                    page=pagination.page, 
+                                    per_page=per_page,
+                                    regional_district_filter=regional_district_filter,
+                                    federal_district_filter=federal_district_filter,  
+                                    energy_zone_filter=energy_zone_filter, 
+                                    synchronous_area_filter=synchronous_area_filter, 
+                                    sort_by='federal_district', 
+                                    sort_dir='asc' if sort_by != 'federal_district' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                    Наименование <br> ФО
+                                    {% if sort_by == 'federal_district' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="fdFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fdFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                page=pagination.page,
+                                                regional_district_filter=regional_district_filter, 
+                                                energy_zone_filter=energy_zone_filter, 
+                                                synchronous_area_filter=synchronous_area_filter, 
+                                                federal_district_filter='',
+                                                per_page=per_page,
+                                                sort_by=sort_by,
+                                                sort_dir=sort_dir) }}" class="dropdown-item">
+                                                Все ФО
+                                            </a>
+                                        </li>
+                                        {% for id_federal_district, federal_district_name in federal_district_list %}
+                                            {% if federal_district_name != 'Не указан' %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                        page=pagination.page, 
+                                                        regional_district_filter=regional_district_filter,
+                                                        federal_district_filter=id_federal_district,
+                                                        energy_zone_filter=energy_zone_filter, 
+                                                        synchronous_area_filter=synchronous_area_filter, 
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                        {{ federal_district_name }}
+                                                    </a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Энергозона"" -->
+                        <th class="align-middle text-center">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ 
+                                    url_for('refdata_bp.regional_district_list', 
+                                    page=pagination.page, 
+                                    per_page=per_page,
+                                    regional_district_filter=regional_district_filter,
+                                    federal_district_filter=federal_district_filter,  
+                                    energy_zone_filter=energy_zone_filter, 
+                                    synchronous_area_filter=synchronous_area_filter, 
+                                    sort_by='energy_zone', 
+                                    sort_dir='asc' if sort_by != 'energy_zone' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                    Наименование <br> энергозоны
+                                    {% if sort_by == 'energy_zone' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="ezFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="ezFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                page=pagination.page,
+                                                regional_district_filter=regional_district_filter, 
+                                                federal_district_filter=federal_district_filter,
+                                                energy_zone_filter='',
+                                                synchronous_area_filter=synchronous_area_filter,
+                                                per_page=per_page,
+                                                sort_by=sort_by,
+                                                sort_dir=sort_dir) }}" class="dropdown-item">
+                                                Все энергозоны
+                                            </a>
+                                        </li>
+                                        {% for id_energy_zone, energy_zone_number, energy_zone_name in energy_zone_list %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                        page=pagination.page, 
+                                                        regional_district_filter=regional_district_filter,
+                                                        federal_district_filter=federal_district_filter,
+                                                        energy_zone_filter=id_energy_zone,
+                                                        synchronous_area_filter=synchronous_area_filter,
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                        {{ energy_zone_name }}
+                                                    </a>
+                                                </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Синхронная зона" -->
+                        <th class="align-middle text-center">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ 
+                                    url_for('refdata_bp.regional_district_list', 
+                                    page=pagination.page, 
+                                    per_page=per_page,
+                                    regional_district_filter=regional_district_filter,
+                                    federal_district_filter=federal_district_filter,  
+                                    energy_zone_filter=energy_zone_filter, 
+                                    synchronous_area_filter=synchronous_area_filter, 
+                                    sort_by='synchronous_area', 
+                                    sort_dir='asc' if sort_by != 'synchronous_area' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                    Наименование <br> синхронной зоны
+                                    {% if sort_by == 'synchronous_area' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="szFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="szFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                page=pagination.page,
+                                                regional_district_filter=regional_district_filter, 
+                                                federal_district_filter=federal_district_filter,
+                                                energy_zone_filter=energy_zone_filter,
+                                                synchronous_area_filter='',
+                                                per_page=per_page,
+                                                sort_by=sort_by,
+                                                sort_dir=sort_dir) }}" class="dropdown-item">
+                                                Все синхронные зоны
+                                            </a>
+                                        </li>
+                                        {% for id_synchronous_area, synchronous_area_name in synchronous_area_list %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                                        page=pagination.page, 
+                                                        regional_district_filter=regional_district_filter,
+                                                        federal_district_filter=federal_district_filter,
+                                                        energy_zone_filter=energy_zone_filter,
+                                                        synchronous_area_filter=id_synchronous_area,
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                        {{ synchronous_area_name }}
+                                                    </a>
+                                                </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+
+                <!-- Данные таблицы-->
+                <tbody>
+                    {% for item in regional_districts_list %}
+                    <tr class="align-middle">
+                        <!-- Строки таблицы. Столбец "№" -->
+                        <td class="text-center">
+                            {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                        </td>
+
+                        <!-- Строки таблицы. Столбец "№ п/п" -->
+                        <td class="text-center">{{ item.region_id }}</td>
+
+                        <!-- Строки таблицы. Столбец "Наименование субъекта РФ" -->
+                        <td>{{ item.name }}</td>
+
+                        <!-- Строки таблицы. Столбец "Полное наименование субъекта РФ" -->
+                        <td>{{ item.name_full }}</td>
+
+                        <!-- Строки таблицы. Столбец "Наименование федерального округа" -->
+                        <td>{{ item.federal_district.name if item.federal_district else '—' }}</td>
+
+                        <!-- Строки таблицы. Столбец "Наименование энергозоны" -->
+                        <td>{{ item.energy_zone.number if item.energy_zone else '—' }} ({{ item.energy_zone.name if item.energy_zone else '—' }})</td>
+
+                        <!-- Строки таблицы. Столбец "Наименование синхронной зоны" -->
+                        <td>{{ item.synchronous_area.name if item.synchronous_area else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <!-- Пагинация -->
+    <div>
+        {% include 'refdata/territories/regional_district/regional_district_pagination.html' %}
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

@@ -3,8 +3,10 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from app.extensions import db
-from app.logs.models.logs_models import Log
-from app.auth.models.auth_models import User, Role, user_roles as user_roles_table
+from app.logs.models.log_model import Log
+from app.auth.models.user_model import User
+from app.auth.models.role_model import Role
+from app.auth.models.user_role_model import user_roles
 
 # Функция логирования действий
 
@@ -46,7 +48,7 @@ def login():
         log_to_db('Система', f'Ошибка во время входа: {e}')
         flash('Произошла ошибка. Попробуйте снова.', 'danger')
 
-    return render_template('login.html')
+    return render_template('auth/login.html')
 
 # Регистрация нового пользователя
 # Рекомендуется: лог писать отдельной транзакцией
@@ -66,7 +68,7 @@ def register():
     log_to_db_safe('Система', 'Попытка регистрации нового пользователя')
 
     if request.method != 'POST':
-        return render_template('register.html')
+        return render_template('auth/register.html')
 
     username = (request.form.get('username') or '').strip()
     email    = (request.form.get('email') or '').strip()
@@ -104,7 +106,7 @@ def register():
         # привязываем роль (любой из вариантов):
         # Вариант 1: через M2M-таблицу напрямую
         db.session.execute(
-            user_roles_table.insert().values(user_id=user.id, role_id=guest_role.id)
+            user_roles.insert().values(user_id=user.id, role_id=guest_role.id)
         )
         # Вариант 2 (проще): ORM
         # user.roles.append(guest_role)
@@ -124,7 +126,7 @@ def register():
         log_to_db_safe('Система', f'Неизвестная ошибка при регистрации: {e}')
         flash('Произошла непредвиденная ошибка при регистрации. Попробуйте позже.', 'danger')
 
-    return render_template('register.html')
+    return render_template('auth/register.html')
 
 # Выход из учетной записи пользователя
 

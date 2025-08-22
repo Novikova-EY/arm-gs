@@ -8,21 +8,21 @@ from flask import (
 from collections import defaultdict
 from app.logs.services.logging_service import log_to_db
 from flask_login import login_required
-from app.auth.routes import roles_required
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
-from app.logs.services.logging_service import log_to_db
+from app.logs.services.logging_service import (
+    log_to_db,
+)
+from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_group_model import StationGroup
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.station.station_power_model import StationPower
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.generation.services.station_services.help_services import (
     get_union_energy_systems, 
     get_regional_districts, 
@@ -123,9 +123,9 @@ def station_details(station_id):
     if request.method == "GET":
         form.process(obj=station)
         if form.id_condition_type.data is None:
-            form.id_condition_type.data = 100
+            form.id_condition_type.data = 0
         if form.id_energy_unit.data is None:
-            form.id_energy_unit.data = 100
+            form.id_energy_unit.data = 0
 
     if request.method == "POST":
 

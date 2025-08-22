@@ -1,0 +1,28 @@
+{#‑‑ Разбивка по типам агрегатов ТЭС с учетом событий ‑‑#}
+{% for tm_id, tm_name in tes_machine_type_list.items() %}
+    {% if tm_id != 0 %}
+        {% set tes_machine_data_all = regional_districts_by_tes_machine_types_yearly_p_ust
+                                        .get(current_rd_id, {})
+                                        .get(tes_type_id, {})
+                                        .get(tm_id, {}) %}
+        {% set yearly_data = tes_machine_data_all.get(event_type) if tes_machine_data_all else None %}
+
+        {% if yearly_data %}
+            <tr class="table-secondary text-center" style="vertical-align: middle;">
+                <td class="total-row-cell ind4cm" style="font-weight: bold; padding-left: 2cm;">
+                    {{ tm_name }}
+                </td>
+                <td colspan="4"></td>
+                <td></td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column">
+                        {{ yearly_data[y] | format_decimal if y in yearly_data else '—' }}
+                    </td>
+                {% endfor %}
+                <td></td>
+            </tr>
+
+            {% include 'station_changes/aggregated_data/regional_districts/aggregated_regional_districts_by_tes_machine_type_with_fuel.html' %}
+        {% endif %}
+    {% endif %}
+{% endfor %}

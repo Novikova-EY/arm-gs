@@ -6,7 +6,7 @@
 <div class="container-fluid mt-4">
     <!-- Кнопка возврата на главную страницу -->
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('reference_bp.reference') }}" class="btn btn-secondary">
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary">
             Вернуться на страницу "Справочники"
         </a>
     </div>
@@ -85,7 +85,7 @@
 
         <!-- Пагинация -->
         <div>
-            {% include 'includes/pagination_logs.html' %}
+            {% include 'logs/includes/pagination_logs.html' %}
         </div>
     </div>
 </div>

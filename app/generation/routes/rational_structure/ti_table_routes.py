@@ -1,25 +1,21 @@
 from . import rational_structure_bp
+from app.extensions import db
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
 from flask import render_template
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
 from sqlalchemy.orm import joinedload
-from app.refdata.services.gen_company_services import (
-        clean_name
+from app.refdata.services.common_services.help_services import (
+    _clean_name,
 )
 
 @rational_structure_bp.route("/ti_table")
 def ti_table():
     machines = Machine.query.options(
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
-        joinedload(Machine.station_type),  # ← вот он, правильный
+        joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
         joinedload(Machine.equipment_group),
         joinedload(Machine.machine_powers),
@@ -86,15 +82,15 @@ def upload_and_update_machines():
         for index, row in df.iterrows():
             print(f"[DEBUG] Обрабатывается строка {index}: {row.to_dict()}")
             try:
-                station_name = clean_name(row.get("station_name"))
-                gen_company_name = clean_name(row.get("gen_company"))
-                machine_number = clean_name(row.get("machine_number"))
-                machine_name = clean_name(row.get("machine_name"))
-                group_name = clean_name(row.get("equipment_group"))
-                year_modern = clean_name(row.get("year_modern"))
-                year_demontaz = clean_name(row.get("year_demontaz"))
-                resurs_coal = clean_name(row.get("resurs_coal"))
-                resurs_gas = clean_name(row.get("resurs_gas"))
+                station_name = _clean_name(row.get("station_name"))
+                gen_company_name = _clean_name(row.get("gen_company"))
+                machine_number = _clean_name(row.get("machine_number"))
+                machine_name = _clean_name(row.get("machine_name"))
+                group_name = _clean_name(row.get("equipment_group"))
+                year_modern = _clean_name(row.get("year_modern"))
+                year_demontaz = _clean_name(row.get("year_demontaz"))
+                resurs_coal = _clean_name(row.get("resurs_coal"))
+                resurs_gas = _clean_name(row.get("resurs_gas"))
                 date = str(row.get("date")).strip()
                 p_ust = float(row.get("p_ust") or 0)
                 id_ti = row.get("id_ti")
@@ -103,7 +99,7 @@ def upload_and_update_machines():
                 candidate_stations = Station.query.all()
                 station = None
                 for s in candidate_stations:
-                    if station_name.lower() in clean_name(s.name).lower():
+                    if station_name.lower() in _clean_name(s.name).lower():
                         station = s
                         break
 
@@ -117,9 +113,9 @@ def upload_and_update_machines():
                 matched_machine = None
 
                 for m in station.machines:
-                    db_machine_number = clean_name(m.machine_number) if m.machine_number else None
-                    db_machine_name = clean_name(m.machine_name) if m.machine_name else None
-                    db_gen_company = clean_name(m.gen_company.name) if m.gen_company else None
+                    db_machine_number = _clean_name(m.machine_number) if m.machine_number else None
+                    db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
+                    db_gen_company = _clean_name(m.gen_company.name) if m.gen_company else None
 
                     # 1. По номеру и ген. компании
                     if db_machine_number == machine_number and db_gen_company == gen_company_name:
@@ -128,8 +124,8 @@ def upload_and_update_machines():
 
                 if not matched_machine:
                     for m in station.machines:
-                        db_machine_number = clean_name(m.machine_number) if m.machine_number else None
-                        db_machine_name = clean_name(m.machine_name) if m.machine_name else None
+                        db_machine_number = _clean_name(m.machine_number) if m.machine_number else None
+                        db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
 
                         if (
                             db_machine_number == machine_number and
@@ -141,14 +137,14 @@ def upload_and_update_machines():
 
                 if not matched_machine:
                     for m in station.machines:
-                        db_machine_name = clean_name(m.machine_name) if m.machine_name else None
-                        db_gen_company = clean_name(m.gen_company.name) if m.gen_company else None
+                        db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
+                        db_gen_company = _clean_name(m.gen_company.name) if m.gen_company else None
 
                         if (
                             db_machine_name and machine_name and
                             machine_name.upper() in db_machine_name.upper() and
                             db_gen_company == gen_company_name and
-                            station_name.lower() in clean_name(station.name).lower()
+                            station_name.lower() in _clean_name(station.name).lower()
                         ):
                             matched_machine = m
                             break
@@ -166,9 +162,9 @@ def upload_and_update_machines():
                     skipped += 1
                     continue
 
-                # Обработка id_ti — если не задан, ставим 100
+                # Обработка id_ti — если не задан, ставим 0
                 if not id_ti or int(id_ti) == 0:
-                    id_ti = 100
+                    id_ti = 0
                     
                 matched_machine.id_equipment_group = eq_group.id
                 matched_machine.id_ti = id_ti

@@ -1,0 +1,96 @@
+# -*- coding: utf-8 -*-
+"""
+RegionalDistrict model (Субъект РФ).
+"""
+from sqlalchemy.sql import func
+from app.extensions import db
+from config import SCHEMA_REFDATA
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+
+class RegionalDistrict(db.Model):
+    __tablename__ = 'regional_districts'
+    __table_args__ = {"schema": SCHEMA_REFDATA}
+
+    # Идентификатор субъекта РФ
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Номер региона РФ (может быть пустым)
+    region_number = db.Column(db.String(3), nullable=True, index=True)
+
+    # Номер порядковый (может быть пустым)
+    region_id = db.Column(db.String(3), nullable=True, index=True)
+
+    # Наименование (уникально) и полное наименование (может быть пустым/уникальным)
+    name = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    name_full = db.Column(db.String(80), unique=True, nullable=True)
+
+    # FK -> Федеральный округ
+    id_federal_district = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.federal_districts.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True
+    )
+    federal_district = db.relationship('FederalDistrict', back_populates='regional_districts')
+
+    # M2M: Региональные энергосистемы
+    regional_energy_systems = db.relationship(
+        "RegionalEnergySystem",
+        secondary=regional_district_regional_energy_system,
+        back_populates="regional_districts"
+    )
+
+    # One-to-many: Станции
+    stations = db.relationship('Station', back_populates='regional_district')
+
+    # One-to-many: Энергорайоны (каскад был сохранён)
+    energy_areas = db.relationship(
+        'EnergyArea',
+        back_populates='regional_district',
+        cascade='all, delete-orphan'
+    )
+
+    # One-to-many: Энергоузлы (каскад был сохранён)
+    energy_units = db.relationship(
+        'EnergyUnit',
+        back_populates='regional_district',
+        cascade='all, delete-orphan'
+    )
+
+    # FK -> Энергозона (EnergyZone), ondelete SET NULL
+    id_energy_zone = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.energy_zones.id', ondelete='SET NULL', onupdate='CASCADE'),
+        nullable=True,
+        index=True
+    )
+    energy_zone = db.relationship(
+        'EnergyZone',
+        back_populates='regional_districts',
+        foreign_keys=[id_energy_zone]
+    )
+
+    # FK -> Синхронная зона (SynchronousArea), ondelete SET NULL
+    id_synchronous_area = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),
+        nullable=True,
+        index=True
+    )
+    synchronous_area = db.relationship(
+        'SynchronousArea',
+        back_populates='regional_districts',
+        foreign_keys=[id_synchronous_area]
+    )
+
+    # Таймстемпы базы (UTC)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    @property
+    def regional_energy_system(self):
+        """Совместимость: вернуть первую РЭС, если необходимо одиночное значение."""
+        return self.regional_energy_systems[0] if self.regional_energy_systems else None
+
+    def __repr__(self) -> str:
+        return f"<RegionalDistrict id={self.id} name={self.name!r}>"

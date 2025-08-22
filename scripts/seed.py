@@ -1,26 +1,57 @@
 import sys
 import os
 
+from app.auth.models.role_model import Role
+from app.auth.models.user_model import User
+from app.auth.models.user_role_model import user_roles
+
+from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_group_model import StationGroup
+from app.generation.models.station.station_power_model import StationPower
+
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+
+from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+
+from app.logs.models.log_model import Log
+
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.energy_systems.energy_area_model import EnergyArea
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
+from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.fuels.fuel_type_model import FuelType
+from app.refdata.models.fuels.fuel_category_model import FuelCategory
+
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
+from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
+
+from app.refdata.models.years.year_model import Year
+from app.refdata.models.years.year_feature_model import YearFeature
+
 # Добавить корневую директорию проекта в sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.extensions import db, create_app
-from app.refdata.models.territories_models import FederalDistrict, RegionalDistrict
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.years_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
-from app.auth.models.auth_models import Role
-from app.refdata.models.fuels_models import FuelType, Fuel
-from app.generation.models.stations_models import ConditionType, StationType, TesType, TesMachineType, MachineType
-from app.refdata.models.years_models import Year, YearFeature
 from sqlalchemy.exc import IntegrityError
 
 # Создаём контекст приложения

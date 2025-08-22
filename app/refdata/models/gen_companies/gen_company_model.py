@@ -1,0 +1,23 @@
+# -*- coding: utf-8 -*-
+"""
+GenCompany model (Генерирующая компания).
+"""
+from sqlalchemy.sql import func
+from app.extensions import db
+from config import SCHEMA_REFDATA
+
+class GenCompany(db.Model):
+    __tablename__ = 'gen_companies'
+    __table_args__ = {"schema": SCHEMA_REFDATA}
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(80), unique=True, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # связь с таблицей "Агрегаты станции"
+    machines = db.relationship('Machine', back_populates='gen_company')
+
+    def __repr__(self) -> str:
+        return f"<GenCompany id={self.id} name={self.name!r}>"

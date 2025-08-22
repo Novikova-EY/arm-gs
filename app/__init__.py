@@ -1,14 +1,24 @@
 import os
-from config import SECRET_KEY
-from flask import Flask
+from app.generation.models.boiler import boiler_model
+from app.generation.models.machine import machine_tes_type_model
+from app.refdata.models.refdata_for_stations.machine import equipment_group_model, machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
+from app.refdata.models.refdata_for_stations.station import station_type_model
+from config import SECRET_KEY, DEBUG
+from flask import Flask, redirect, request, url_for, flash
 from sqlalchemy import event
 from sqlalchemy.engine import URL
 from app.extensions import db, migrate, login_manager
+from config import Config
+import logging
 
 def create_app():
     app = Flask(__name__)
+    app.config.from_object(Config) 
     app.secret_key = SECRET_KEY
-    
+    app.debug = app.config.get("DEBUG", False)
+    app.config['SQLALCHEMY_ECHO'] = False
+    app.logger.setLevel(logging.DEBUG)
+
     db_uri = URL.create(
         "postgresql+psycopg2",
         username=os.getenv("DB_USER"),
@@ -28,6 +38,7 @@ def create_app():
     login_manager.login_message = "Пожалуйста, войдите, чтобы получить доступ к этой странице."
     login_manager.login_message_category = "warning"
 
+
     # Слушатель для установки search_path — РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
     def _set_search_path(dbapi_connection, _):
         search_path = app.config.get("DB_SEARCH_PATH", "public")
@@ -38,18 +49,72 @@ def create_app():
         event.listen(db.engine, "connect", _set_search_path)
 
         # Импорт моделей (после db.init_app)
-        from app.logs.models import logs_models
-        from app.refdata.models import energy_systems_models
-        from app.refdata.models import territories_models
-        from app.refdata.models import fuels_models
-        from app.refdata.models import gen_companies_models
-        from app.refdata.models import stations_refdata_models
-        from app.refdata.models import territories_models
-        from app.refdata.models import years_models
-        from app.generation.models import stations_models
-        from app.generation.models import machines_models
-        from app.generation.models import pgu_machines_models
-        from app.generation.models import boilers_models
+        from app.auth.models import (
+            user_model,
+            role_model,
+            user_role_model,
+        )
+        from app.logs.models import (
+            log_model,
+        )
+        from app.refdata.models.energy_systems import (
+            regional_energy_system_model, 
+            regional_district_regional_energy_system_model, 
+            union_energy_system_model, 
+            energy_system_type_model, 
+            energy_unit_model, 
+            energy_zone_model, 
+            energy_area_model,
+            )
+        from app.refdata.models.territories import (
+            regional_district_model,
+            federal_district_model,
+            )
+        from app.refdata.models.fuels import (
+            fuel_model, 
+            fuel_type_model, 
+            fuel_category_model,
+            )
+        from app.refdata.models.gen_companies import (
+            gen_company_model,
+        )
+        from app.refdata.models.refdata_for_stations import (
+            condition_type_model,
+        )
+        from app.refdata.models.refdata_for_stations.station import (
+            station_type_model,
+        )
+        from app.refdata.models.refdata_for_stations.machine import (
+            equipment_group_model,
+            machine_type_model,
+            pgu_tes_machine_type_model,
+            tes_type_model,
+            tes_machine_type_model,
+        )
+        from app.refdata.models.refdata_for_stations import (
+            condition_type_model,
+        )
+        from app.refdata.models.years import (
+            year_model,
+            year_feature_model,
+        )
+        from app.generation.models.station import (
+            station_model,
+            station_group_model,
+            station_power_model,
+        )
+        from app.generation.models.machine import (
+            machine_fuel_model,
+            machine_model,
+            machine_power_model,
+        )
+        from app.generation.models.pgu_machine import (
+            pgu_machine_model,
+            pgu_machine_power_model,
+        )
+        from app.generation.models.boiler import (
+            boiler_model,
+        )
 
         # Проброс мапперов
         db.configure_mappers()
@@ -65,7 +130,8 @@ def create_app():
 
     # Регистрация блюпринтов
     from app.auth.routes import auth_bp
-    from app.refdata.routes import reference_bp
+    from app.auth.routes import users_bp
+    from app.refdata.routes import refdata_bp
     from app.generation.routes.stations import station_bp
     from app.generation.routes.generation_routes import generation_bp
     from app.generation.routes.rational_structure import rational_structure_bp
@@ -74,7 +140,8 @@ def create_app():
     from app.logs.routes import logs_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
-    app.register_blueprint(reference_bp, url_prefix="/references")
+    app.register_blueprint(users_bp, url_prefix="/users")
+    app.register_blueprint(refdata_bp, url_prefix="/refdata")
     app.register_blueprint(generation_bp, url_prefix="/generation")
     app.register_blueprint(station_bp, url_prefix="/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
@@ -85,9 +152,9 @@ def create_app():
     # Загрузка пользователя для Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
-        from app.auth.models.auth_models import User
+        from app.auth.models.user_model import User
         return User.query.get(int(user_id))
-    
+
     return app
 
 

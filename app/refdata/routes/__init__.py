@@ -1,14 +1,18 @@
 from flask import Blueprint
 
-reference_bp = Blueprint('reference_bp', __name__)
+refdata_bp = Blueprint('refdata_bp', __name__)
 
-from .reference_routes import *
-from .federal_district_routes import *
-from .regional_district_routes import *
-from .union_energy_system_routes import *
-from .regional_energy_system_routes import *
-from .energy_area_routes import *
-from .energy_unit_routes import *
-from .gen_company_routes import *
-from .fuel_routes import *
+from .refdata_routes import *
+from .territories.federal_district_routes import *
+from .territories.regional_district_routes import *
+from .energy_systems.union_energy_system_routes import *
+from .energy_systems.regional_energy_system_routes import *
+from .energy_systems.energy_area_routes import *
+from .energy_systems.energy_zone_routes import *
+from .energy_systems.energy_system_type_routes import *
+from .energy_systems.synchronous_area_routes import *
+from .energy_systems.energy_unit_routes import *
+from .gen_companies.gen_company_routes import *
+from .fuels.fuel_routes import *
+from .fuels.fuel_type_routes import *
 

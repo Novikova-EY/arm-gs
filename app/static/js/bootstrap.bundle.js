@@ -50,7 +50,7 @@
       const instanceMap = elementMap.get(element);
       instanceMap.delete(key);
 
-      // free up element references if there are no instances left for an element
+      // free up element refdata if there are no instances left for an element
       if (instanceMap.size === 0) {
         elementMap.delete(element);
       }
@@ -1695,7 +1695,7 @@
   var clippingParents = 'clippingParents';
   var viewport = 'viewport';
   var popper = 'popper';
-  var reference = 'reference';
+  var refdata = 'refdata';
   var variationPlacements = /*#__PURE__*/basePlacements.reduce(function (acc, placement) {
     return acc.concat([placement + "-" + start, placement + "-" + end]);
   }, []);
@@ -1794,7 +1794,7 @@
       arrow: {
         position: 'absolute'
       },
-      reference: {}
+      refdata: {}
     };
     Object.assign(state.elements.popper.style, initialStyles.popper);
     state.styles = initialStyles;
@@ -2099,8 +2099,8 @@
     var arrowRect = getLayoutRect(arrowElement);
     var minProp = axis === 'y' ? top : left;
     var maxProp = axis === 'y' ? bottom : right;
-    var endDiff = state.rects.reference[len] + state.rects.reference[axis] - popperOffsets[axis] - state.rects.popper[len];
-    var startDiff = popperOffsets[axis] - state.rects.reference[axis];
+    var endDiff = state.rects.refdata[len] + state.rects.refdata[axis] - popperOffsets[axis] - state.rects.popper[len];
+    var startDiff = popperOffsets[axis] - state.rects.refdata[axis];
     var arrowOffsetParent = getOffsetParent(arrowElement);
     var clientSize = arrowOffsetParent ? axis === 'y' ? arrowOffsetParent.clientHeight || 0 : arrowOffsetParent.clientWidth || 0 : 0;
     var centerToReference = endDiff / 2 - startDiff / 2; // Make sure the arrow doesn't overflow the popper if the center point is
@@ -2330,7 +2330,7 @@
         _options$resize = options.resize,
         resize = _options$resize === void 0 ? true : _options$resize;
     var window = getWindow(state.elements.popper);
-    var scrollParents = [].concat(state.scrollParents.reference, state.scrollParents.popper);
+    var scrollParents = [].concat(state.scrollParents.refdata, state.scrollParents.popper);
 
     if (scroll) {
       scrollParents.forEach(function (scrollParent) {
@@ -2488,7 +2488,7 @@
   given a DOM element, return the list of all scroll parents, up the list of ancesors
   until we get to the top window object. This list is what we attach scroll listeners
   to, because if any of these parent elements scroll, we'll need to re-calculate the
-  reference element's position.
+  refdata element's position.
   */
 
   function listScrollParents(element, list) {
@@ -2573,48 +2573,48 @@
   }
 
   function computeOffsets(_ref) {
-    var reference = _ref.reference,
+    var refdata = _ref.refdata,
         element = _ref.element,
         placement = _ref.placement;
     var basePlacement = placement ? getBasePlacement(placement) : null;
     var variation = placement ? getVariation(placement) : null;
-    var commonX = reference.x + reference.width / 2 - element.width / 2;
-    var commonY = reference.y + reference.height / 2 - element.height / 2;
+    var commonX = refdata.x + refdata.width / 2 - element.width / 2;
+    var commonY = refdata.y + refdata.height / 2 - element.height / 2;
     var offsets;
 
     switch (basePlacement) {
       case top:
         offsets = {
           x: commonX,
-          y: reference.y - element.height
+          y: refdata.y - element.height
         };
         break;
 
       case bottom:
         offsets = {
           x: commonX,
-          y: reference.y + reference.height
+          y: refdata.y + refdata.height
         };
         break;
 
       case right:
         offsets = {
-          x: reference.x + reference.width,
+          x: refdata.x + refdata.width,
           y: commonY
         };
         break;
 
       case left:
         offsets = {
-          x: reference.x - element.width,
+          x: refdata.x - element.width,
           y: commonY
         };
         break;
 
       default:
         offsets = {
-          x: reference.x,
-          y: reference.y
+          x: refdata.x,
+          y: refdata.y
         };
     }
 
@@ -2625,11 +2625,11 @@
 
       switch (variation) {
         case start:
-          offsets[mainAxis] = offsets[mainAxis] - (reference[len] / 2 - element[len] / 2);
+          offsets[mainAxis] = offsets[mainAxis] - (refdata[len] / 2 - element[len] / 2);
           break;
 
         case end:
-          offsets[mainAxis] = offsets[mainAxis] + (reference[len] / 2 - element[len] / 2);
+          offsets[mainAxis] = offsets[mainAxis] + (refdata[len] / 2 - element[len] / 2);
           break;
       }
     }
@@ -2658,19 +2658,19 @@
         _options$padding = _options.padding,
         padding = _options$padding === void 0 ? 0 : _options$padding;
     var paddingObject = mergePaddingObject(typeof padding !== 'number' ? padding : expandToHashMap(padding, basePlacements));
-    var altContext = elementContext === popper ? reference : popper;
+    var altContext = elementContext === popper ? refdata : popper;
     var popperRect = state.rects.popper;
     var element = state.elements[altBoundary ? altContext : elementContext];
     var clippingClientRect = getClippingRect(isElement(element) ? element : element.contextElement || getDocumentElement(state.elements.popper), boundary, rootBoundary, strategy);
-    var referenceClientRect = getBoundingClientRect(state.elements.reference);
+    var refdataClientRect = getBoundingClientRect(state.elements.refdata);
     var popperOffsets = computeOffsets({
-      reference: referenceClientRect,
+      refdata: refdataClientRect,
       element: popperRect,
       strategy: 'absolute',
       placement: placement
     });
     var popperClientRect = rectToClientRect(Object.assign({}, popperRect, popperOffsets));
-    var elementClientRect = elementContext === popper ? popperClientRect : referenceClientRect; // positive = overflowing the clipping rect
+    var elementClientRect = elementContext === popper ? popperClientRect : refdataClientRect; // positive = overflowing the clipping rect
     // 0 or negative = within the clipping rect
 
     var overflowOffsets = {
@@ -2777,7 +2777,7 @@
         allowedAutoPlacements: allowedAutoPlacements
       }) : placement);
     }, []);
-    var referenceRect = state.rects.reference;
+    var refdataRect = state.rects.refdata;
     var popperRect = state.rects.popper;
     var checksMap = new Map();
     var makeFallbackChecks = true;
@@ -2800,7 +2800,7 @@
       });
       var mainVariationSide = isVertical ? isStartVariation ? right : left : isStartVariation ? bottom : top;
 
-      if (referenceRect[len] > popperRect[len]) {
+      if (refdataRect[len] > popperRect[len]) {
         mainVariationSide = getOppositePlacement(mainVariationSide);
       }
 
@@ -2898,27 +2898,27 @@
   function hide(_ref) {
     var state = _ref.state,
         name = _ref.name;
-    var referenceRect = state.rects.reference;
+    var refdataRect = state.rects.refdata;
     var popperRect = state.rects.popper;
     var preventedOffsets = state.modifiersData.preventOverflow;
-    var referenceOverflow = detectOverflow(state, {
-      elementContext: 'reference'
+    var refdataOverflow = detectOverflow(state, {
+      elementContext: 'refdata'
     });
     var popperAltOverflow = detectOverflow(state, {
       altBoundary: true
     });
-    var referenceClippingOffsets = getSideOffsets(referenceOverflow, referenceRect);
+    var refdataClippingOffsets = getSideOffsets(refdataOverflow, refdataRect);
     var popperEscapeOffsets = getSideOffsets(popperAltOverflow, popperRect, preventedOffsets);
-    var isReferenceHidden = isAnySideFullyClipped(referenceClippingOffsets);
+    var isReferenceHidden = isAnySideFullyClipped(refdataClippingOffsets);
     var hasPopperEscaped = isAnySideFullyClipped(popperEscapeOffsets);
     state.modifiersData[name] = {
-      referenceClippingOffsets: referenceClippingOffsets,
+      refdataClippingOffsets: refdataClippingOffsets,
       popperEscapeOffsets: popperEscapeOffsets,
       isReferenceHidden: isReferenceHidden,
       hasPopperEscaped: hasPopperEscaped
     };
     state.attributes.popper = Object.assign({}, state.attributes.popper, {
-      'data-popper-reference-hidden': isReferenceHidden,
+      'data-popper-refdata-hidden': isReferenceHidden,
       'data-popper-escaped': hasPopperEscaped
     });
   } // eslint-disable-next-line import/no-unused-modules
@@ -2988,11 +2988,11 @@
     var state = _ref.state,
         name = _ref.name;
     // Offsets are the actual position the popper needs to have to be
-    // properly positioned near its reference element
+    // properly positioned near its refdata element
     // This is the most basic placement, and will be adjusted by
     // the modifiers in the next step
     state.modifiersData[name] = computeOffsets({
-      reference: state.rects.reference,
+      refdata: state.rects.refdata,
       element: state.rects.popper,
       strategy: 'absolute',
       placement: state.placement
@@ -3040,7 +3040,7 @@
     var mainAxis = getMainAxisFromPlacement(basePlacement);
     var altAxis = getAltAxis(mainAxis);
     var popperOffsets = state.modifiersData.popperOffsets;
-    var referenceRect = state.rects.reference;
+    var refdataRect = state.rects.refdata;
     var popperRect = state.rects.popper;
     var tetherOffsetValue = typeof tetherOffset === 'function' ? tetherOffset(Object.assign({}, state.rects, {
       placement: state.placement
@@ -3072,9 +3072,9 @@
       var min$1 = offset + overflow[mainSide];
       var max$1 = offset - overflow[altSide];
       var additive = tether ? -popperRect[len] / 2 : 0;
-      var minLen = variation === start ? referenceRect[len] : popperRect[len];
-      var maxLen = variation === start ? -popperRect[len] : -referenceRect[len]; // We need to include the arrow in the calculation so the arrow doesn't go
-      // outside the reference bounds
+      var minLen = variation === start ? refdataRect[len] : popperRect[len];
+      var maxLen = variation === start ? -popperRect[len] : -refdataRect[len]; // We need to include the arrow in the calculation so the arrow doesn't go
+      // outside the refdata bounds
 
       var arrowElement = state.elements.arrow;
       var arrowRect = tether && arrowElement ? getLayoutRect(arrowElement) : {
@@ -3083,15 +3083,15 @@
       };
       var arrowPaddingObject = state.modifiersData['arrow#persistent'] ? state.modifiersData['arrow#persistent'].padding : getFreshSideObject();
       var arrowPaddingMin = arrowPaddingObject[mainSide];
-      var arrowPaddingMax = arrowPaddingObject[altSide]; // If the reference length is smaller than the arrow length, we don't want
-      // to include its full size in the calculation. If the reference is small
+      var arrowPaddingMax = arrowPaddingObject[altSide]; // If the refdata length is smaller than the arrow length, we don't want
+      // to include its full size in the calculation. If the refdata is small
       // and near the edge of a boundary, the popper can overflow even if the
-      // reference is not overflowing as well (e.g. virtual elements with no
+      // refdata is not overflowing as well (e.g. virtual elements with no
       // width or height)
 
-      var arrowLen = within(0, referenceRect[len], arrowRect[len]);
-      var minOffset = isBasePlacement ? referenceRect[len] / 2 - additive - arrowLen - arrowPaddingMin - normalizedTetherOffsetValue.mainAxis : minLen - arrowLen - arrowPaddingMin - normalizedTetherOffsetValue.mainAxis;
-      var maxOffset = isBasePlacement ? -referenceRect[len] / 2 + additive + arrowLen + arrowPaddingMax + normalizedTetherOffsetValue.mainAxis : maxLen + arrowLen + arrowPaddingMax + normalizedTetherOffsetValue.mainAxis;
+      var arrowLen = within(0, refdataRect[len], arrowRect[len]);
+      var minOffset = isBasePlacement ? refdataRect[len] / 2 - additive - arrowLen - arrowPaddingMin - normalizedTetherOffsetValue.mainAxis : minLen - arrowLen - arrowPaddingMin - normalizedTetherOffsetValue.mainAxis;
+      var maxOffset = isBasePlacement ? -refdataRect[len] / 2 + additive + arrowLen + arrowPaddingMax + normalizedTetherOffsetValue.mainAxis : maxLen + arrowLen + arrowPaddingMax + normalizedTetherOffsetValue.mainAxis;
       var arrowOffsetParent = state.elements.arrow && getOffsetParent(state.elements.arrow);
       var clientOffset = arrowOffsetParent ? mainAxis === 'y' ? arrowOffsetParent.clientTop || 0 : arrowOffsetParent.clientLeft || 0 : 0;
       var offsetModifierValue = (_offsetModifierState$ = offsetModifierState == null ? void 0 : offsetModifierState[mainAxis]) != null ? _offsetModifierState$ : 0;
@@ -3121,9 +3121,9 @@
 
       var _offsetModifierValue = (_offsetModifierState$2 = offsetModifierState == null ? void 0 : offsetModifierState[altAxis]) != null ? _offsetModifierState$2 : 0;
 
-      var _tetherMin = isOriginSide ? _min : _offset - referenceRect[_len] - popperRect[_len] - _offsetModifierValue + normalizedTetherOffsetValue.altAxis;
+      var _tetherMin = isOriginSide ? _min : _offset - refdataRect[_len] - popperRect[_len] - _offsetModifierValue + normalizedTetherOffsetValue.altAxis;
 
-      var _tetherMax = isOriginSide ? _offset + referenceRect[_len] + popperRect[_len] - _offsetModifierValue - normalizedTetherOffsetValue.altAxis : _max;
+      var _tetherMax = isOriginSide ? _offset + refdataRect[_len] + popperRect[_len] - _offsetModifierValue - normalizedTetherOffsetValue.altAxis : _max;
 
       var _preventedOffset = tether && isOriginSide ? withinMaxClamp(_tetherMin, _offset, _tetherMax) : within(tether ? _tetherMin : _min, _offset, tether ? _tetherMax : _max);
 
@@ -3308,7 +3308,7 @@
         defaultModifiers = _generatorOptions$def === void 0 ? [] : _generatorOptions$def,
         _generatorOptions$def2 = _generatorOptions.defaultOptions,
         defaultOptions = _generatorOptions$def2 === void 0 ? DEFAULT_OPTIONS : _generatorOptions$def2;
-    return function createPopper(reference, popper, options) {
+    return function createPopper(refdata, popper, options) {
       if (options === void 0) {
         options = defaultOptions;
       }
@@ -3319,7 +3319,7 @@
         options: Object.assign({}, DEFAULT_OPTIONS, defaultOptions),
         modifiersData: {},
         elements: {
-          reference: reference,
+          refdata: refdata,
           popper: popper
         },
         attributes: {},
@@ -3334,7 +3334,7 @@
           cleanupModifierEffects();
           state.options = Object.assign({}, defaultOptions, state.options, options);
           state.scrollParents = {
-            reference: isElement(reference) ? listScrollParents(reference) : reference.contextElement ? listScrollParents(reference.contextElement) : [],
+            refdata: isElement(refdata) ? listScrollParents(refdata) : refdata.contextElement ? listScrollParents(refdata.contextElement) : [],
             popper: listScrollParents(popper)
           }; // Orders the modifiers based on their dependencies and `phase`
           // properties
@@ -3358,17 +3358,17 @@
           }
 
           var _state$elements = state.elements,
-              reference = _state$elements.reference,
-              popper = _state$elements.popper; // Don't proceed if `reference` or `popper` are not valid elements
+              refdata = _state$elements.refdata,
+              popper = _state$elements.popper; // Don't proceed if `refdata` or `popper` are not valid elements
           // anymore
 
-          if (!areValidElements(reference, popper)) {
+          if (!areValidElements(refdata, popper)) {
             return;
-          } // Store the reference and popper rects to be read by modifiers
+          } // Store the refdata and popper rects to be read by modifiers
 
 
           state.rects = {
-            reference: getCompositeRect(reference, getOffsetParent(popper), state.options.strategy === 'fixed'),
+            refdata: getCompositeRect(refdata, getOffsetParent(popper), state.options.strategy === 'fixed'),
             popper: getLayoutRect(popper)
           }; // Modifiers have the ability to reset the current update cycle. The
           // most common use case for this is the `flip` modifier changing the
@@ -3423,7 +3423,7 @@
         }
       };
 
-      if (!areValidElements(reference, popper)) {
+      if (!areValidElements(refdata, popper)) {
         return instance;
       }
 
@@ -3514,7 +3514,7 @@
     popperOffsets: popperOffsets$1,
     preventOverflow: preventOverflow$1,
     read,
-    reference,
+    refdata,
     right,
     start,
     top,
@@ -3578,7 +3578,7 @@
     display: 'dynamic',
     offset: [0, 2],
     popperConfig: null,
-    reference: 'toggle'
+    refdata: 'toggle'
   };
   const DefaultType$9 = {
     autoClose: '(boolean|string)',
@@ -3586,7 +3586,7 @@
     display: 'string',
     offset: '(array|string|function)',
     popperConfig: '(null|object|function)',
-    reference: '(string|element|object)'
+    refdata: '(string|element|object)'
   };
 
   /**
@@ -3693,9 +3693,9 @@
     }
     _getConfig(config) {
       config = super._getConfig(config);
-      if (typeof config.reference === 'object' && !isElement$1(config.reference) && typeof config.reference.getBoundingClientRect !== 'function') {
+      if (typeof config.refdata === 'object' && !isElement$1(config.refdata) && typeof config.refdata.getBoundingClientRect !== 'function') {
         // Popper virtual elements require a getBoundingClientRect method
-        throw new TypeError(`${NAME$a.toUpperCase()}: Option "reference" provided type "object" without a required "getBoundingClientRect" method.`);
+        throw new TypeError(`${NAME$a.toUpperCase()}: Option "refdata" provided type "object" without a required "getBoundingClientRect" method.`);
       }
       return config;
     }
@@ -3703,16 +3703,16 @@
       if (typeof Popper === 'undefined') {
         throw new TypeError('Bootstrap\'s dropdowns require Popper (https://popper.js.org)');
       }
-      let referenceElement = this._element;
-      if (this._config.reference === 'parent') {
-        referenceElement = this._parent;
-      } else if (isElement$1(this._config.reference)) {
-        referenceElement = getElement(this._config.reference);
-      } else if (typeof this._config.reference === 'object') {
-        referenceElement = this._config.reference;
+      let refdataElement = this._element;
+      if (this._config.refdata === 'parent') {
+        refdataElement = this._parent;
+      } else if (isElement$1(this._config.refdata)) {
+        refdataElement = getElement(this._config.refdata);
+      } else if (typeof this._config.refdata === 'object') {
+        refdataElement = this._config.refdata;
       }
       const popperConfig = this._getPopperConfig();
-      this._popper = createPopper(referenceElement, this._menu, popperConfig);
+      this._popper = createPopper(refdataElement, this._menu, popperConfig);
     }
     _isShown() {
       return this._menu.classList.contains(CLASS_NAME_SHOW$6);

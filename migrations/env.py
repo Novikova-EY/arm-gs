@@ -1,111 +1,133 @@
+# -*- coding: utf-8 -*-
 import logging
 from logging.config import fileConfig
+from importlib import import_module
 
 from flask import current_app
-
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Alembic config + логирование
 config = context.config
-
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 fileConfig(config.config_file_name)
-logger = logging.getLogger('alembic.env')
+logger = logging.getLogger("alembic.env")
 
-
+# ---- Достаём engine из Flask-Migrate / Flask-SQLAlchemy ----
 def get_engine():
     try:
-        # this works with Flask-SQLAlchemy<3 and Alchemical
-        return current_app.extensions['migrate'].db.get_engine()
+        # Flask-SQLAlchemy < 3
+        return current_app.extensions["migrate"].db.get_engine()
     except (TypeError, AttributeError):
-        # this works with Flask-SQLAlchemy>=3
-        return current_app.extensions['migrate'].db.engine
-
+        # Flask-SQLAlchemy >= 3
+        return current_app.extensions["migrate"].db.engine
 
 def get_engine_url():
     try:
-        return get_engine().url.render_as_string(hide_password=False).replace(
-            '%', '%%')
+        return get_engine().url.render_as_string(hide_password=False).replace("%", "%%")
     except AttributeError:
-        return str(get_engine().url).replace('%', '%%')
+        return str(get_engine().url).replace("%", "%%")
 
+# Alembic будет брать URL из текущего приложения
+config.set_main_option("sqlalchemy.url", get_engine_url())
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+# Flask-Migrate даёт нам объект db
+target_db = current_app.extensions["migrate"].db
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# ---- Импортируем модели, чтобы заполнить metadata всеми таблицами ----
+# ВАЖНО: перечисли здесь все модули, где объявлены модели во всех схемах.
+# (try/except — чтобы не падать, если чего-то нет в окружении на момент запуска)
+def import_all_models():
+    modules = [
+        # auth
+        "app.auth.models.role_model",
+        "app.auth.models.user_model",
+        "app.auth.models.user_role_model",
+        "app.auth.models.log_model",
+        # generation
+        "app.generation.models.station_group_model",
+        "app.generation.models.station_model",
+        "app.generation.models.station_power_model",
+        "app.generation.models.boiler_model",
+        "app.generation.models.machine_model",
+        "app.generation.models.machine_power_model",
+        "app.generation.models.machine_fuel_model",
+        "app.generation.models.machine_tes_type_model",
+        "app.generation.models.pgu_machine_model",
+        "app.generation.models.pgu_machine_power_model",
+        # refdata
+        "app.refdata.models.condition_type_model",
+        "app.refdata.models.equipment_group_model",
+        "app.refdata.models.machine_type_model",
+        "app.refdata.models.pgu_tes_machine_type_model",
+        "app.refdata.models.station_type_model",
+        "app.refdata.models.tes_machine_type_model",
+        "app.refdata.models.tes_type_model",
+        "app.refdata.models.fuel_category_model",
+        "app.refdata.models.fuel_type_model",
+        "app.refdata.models.fuel_model",
+        "app.refdata.models.gen_company_model",
+        "app.refdata.models.energy_zone_model",
+        "app.refdata.models.synchronous_area_model",
+        "app.refdata.models.union_energy_system_model",
+        "app.refdata.models.regional_energy_system_model",
+        "app.refdata.models.regional_district_model",
+        "app.refdata.models.energy_area_model",
+        "app.refdata.models.energy_unit_model",
+        "app.refdata.models.year_feature_model",
+        "app.refdata.models.year_model",
+        "app.refdata.models.regional_district_regional_energy_system_model",
+        # если есть ещё модели — добавь сюда
+    ]
+    for m in modules:
+        try:
+            import_module(m)
+        except Exception as e:
+            logger.debug("Skip import %s: %s", m, e)
 
+import_all_models()
 
-def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
+# ---- Собираем target_metadata ----
+# Обычно у Flask-SQLAlchemy единая metadata (db.metadata) — её достаточно.
+# Alembic умеет принимать список MetaData, но в типовой схеме нужен один объект.
+target_metadata = target_db.metadata
 
+# ---- Общие настройки автогенерации ----
+def process_revision_directives(context, revision, directives):
+    """Не генерировать пустые миграции."""
+    if getattr(config.cmd_opts, "autogenerate", False):
+        script = directives[0]
+        if script.upgrade_ops.is_empty():
+            directives[:] = []
+            logger.info("No changes in schema detected.")
 
+# ---- Offline ----
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        include_schemas=True,           # ключ: учитываем все схемы, не только public
+        compare_type=True,
+        compare_server_default=True,
     )
-
     with context.begin_transaction():
         context.run_migrations()
 
-
+# ---- Online ----
 def run_migrations_online():
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-
-    # this callback is used to prevent an auto-migration from being generated
-    # when there are no changes to the schema
-    # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
-    def process_revision_directives(context, revision, directives):
-        if getattr(config.cmd_opts, 'autogenerate', False):
-            script = directives[0]
-            if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info('No changes in schema detected.')
-
-    conf_args = current_app.extensions['migrate'].configure_args
-    if conf_args.get("process_revision_directives") is None:
-        conf_args["process_revision_directives"] = process_revision_directives
-
     connectable = get_engine()
-
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=get_metadata(),
-            **conf_args
+            target_metadata=target_metadata,
+            include_schemas=True,        # ключ: учитываем все схемы
+            compare_type=True,           # сравниваем типы колонок
+            compare_server_default=True, # сравниваем server_default (func.now() и т.п.)
+            process_revision_directives=process_revision_directives,
+            # version_table_schema="public",  # можно явно хранить alembic_version в public
         )
-
         with context.begin_transaction():
             context.run_migrations()
-
 
 if context.is_offline_mode():
     run_migrations_offline()

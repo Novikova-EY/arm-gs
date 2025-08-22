@@ -2,8 +2,6 @@
 DROP DATABASE `arm_gs`;
 CREATE DATABASE `arm_gs`;
 
-pip install -r requirements.txt
-
 2. Удалить папку migrations/:
 rm -rf migrations/
 

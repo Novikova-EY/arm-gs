@@ -3,16 +3,17 @@ from decimal import Decimal
 from sqlalchemy import func
 from collections import defaultdict
 from sqlalchemy.orm import joinedload
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
 
 def get_station_hierarchy_aggregates(start_year, end_year):
     return (
@@ -83,9 +84,9 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
             # Важно: проверяем наличие энергоузла
             if station.id_energy_unit is not None:
                 eu_id = station.id_energy_unit
-                eu_name = station.energy_unit.name if station.energy_unit else 100
+                eu_name = station.energy_unit.name if station.energy_unit else 0
             else:
-                eu_id = 100
+                eu_id = 0
                 eu_name = "без энергоузла"
 
             # Добавляем станцию в иерархию

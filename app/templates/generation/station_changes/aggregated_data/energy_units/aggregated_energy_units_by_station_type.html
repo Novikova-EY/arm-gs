@@ -1,0 +1,39 @@
+<!-- Итоговые значения по типам электростанций энергоузла -->
+{% if request.args.get('per_page') == 'all' and eu_id != 0 %}
+    {% for station_type_id, st_name in station_type_list.items() %}
+        {% if station_type_id != 5 or station_type_id != 6 %}
+            {% set has_st = energy_units_by_station_types_yearly_p_ust
+                .get(eu_id, {})
+                .get(station_type_id) %}
+                
+            {% if has_st %}
+                <!-- Первая строка: p_ust -->
+                <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
+                    <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+                        {{ st_name }}
+                    </td>
+                    <td class="fw-bold">Руст</td>
+                    {% for y in range(start_year, end_year + 1) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ energy_units_by_station_types_yearly_p_ust
+                                .get(eu_id, {})
+                                .get(station_type_id, {})
+                                .get(y, '—') | format_decimal or '—' }}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                    </td>
+                </tr>
+            {% endif %}
+
+        {% endif %}
+
+        {% if station_type_id == 4 or station_type_id == 7 or station_type_id == 8 %}
+            
+            {#–- {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_by_station_type_with_fuel.html' %} --#}
+
+            {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_by_tes_type.html' %}
+
+        {% endif %}
+    {% endfor %}
+{% endif %}

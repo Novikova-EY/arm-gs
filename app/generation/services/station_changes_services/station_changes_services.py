@@ -1,20 +1,18 @@
 from config import Config
-from collections import defaultdict
-from decimal import Decimal
-from types import SimpleNamespace
 from app.extensions import db
 from sqlalchemy import and_, func, select, or_
 from sqlalchemy.orm import selectinload, joinedload
-from app.logs.models.logs_models import *
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
+from app.generation.models.station.station_model import Station
+from app.generation.models.machine.machine_model import Machine
+from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.fuels.fuel_model import Fuel
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.generation.services.station_services.help_services import get_year_range
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_rows import (
     get_full_aggregation_rows
@@ -669,7 +667,7 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
                 eu_id = station.id_energy_unit
                 eu_name = station.energy_unit.name if station.energy_unit else f"id={eu_id}"
             else:
-                eu_id = 100
+                eu_id = 0
                 eu_name = "без энергоузла"
 
             # Добавляем станцию в иерархию

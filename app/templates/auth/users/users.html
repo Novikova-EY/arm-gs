@@ -1,0 +1,246 @@
+{# app/templates/auth/users/users.html #}
+{% extends 'base.html' %}
+
+{% block title %}Пользователи и роли{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+  <!-- Навигация -->
+  <div class="d-flex justify-content-end mb-3">
+    <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5">
+      Вернуться на страницу "Справочники"
+    </a>
+  </div>
+
+  <h1 class="text-center mb-4">Список пользователей</h1>
+
+  {# ---- Форма фильтра/поиска и выбора пер_page (GET) ---- #}
+  <form method="GET" action="{{ url_for('users_bp.list_users') }}" class="mb-3">
+    <div class="d-flex justify-content-between align-items-start w-100">
+
+      <div class="d-flex align-items-start w-100">
+        <div class="me-2 w-75">
+          <input
+            type="text"
+            name="q"
+            value="{{ request.args.get('q', '') }}"
+            class="form-control"
+            placeholder="Поиск по логину или email">
+        </div>
+
+        <div class="d-flex">
+          <button type="submit" class="btn btn-outline-primary me-2" style="width:120px;">Поиск</button>
+          <a href="{{ url_for('users_bp.list_users') }}" class="btn btn-outline-secondary" style="width:120px;">Сбросить</a>
+        </div>
+      </div>
+
+      <div class="col-md-auto">
+        <select name="per_page" class="form-select" onchange="this.form.submit()">
+          {% set per_page = request.args.get('per_page', '10')|int %}
+            <option value="5" {% if per_page == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+      </div>
+
+    </div>
+  </form>
+
+  {# ---- Основная форма сохранения (POST) ---- #}
+  <form method="POST" action="{{ url_for('users_bp.list_users') }}">
+    {{ form.hidden_tag() }}
+
+    {# Сохраняем параметры для PRG-стиля #}
+    <input type="hidden" name="q" value="{{ request.args.get('q','') }}">
+    <input type="hidden" name="per_page" value="{{ request.args.get('per_page', '10') }}">
+    <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
+    <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
+    <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+
+    <div class="d-flex justify-content-between mt-3 mb-3">
+      <button type="submit" class="btn btn-success">Сохранить изменения</button>
+
+      <a
+        href="{{ url_for('users_bp.add_user',
+                         q=request.args.get('q',''),
+                         per_page=request.args.get('per_page',10),
+                         sort_by=request.args.get('sort_by','id'),
+                         sort_dir=request.args.get('sort_dir','asc'),
+                         page=request.args.get('page',1)) }}"
+        class="btn btn-primary">
+        Создать нового пользователя
+      </a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover table-striped table-bordered">
+        <thead class="table-success">
+          {% set sort_by = request.args.get('sort_by','id') %}
+          {% set sort_dir = request.args.get('sort_dir','asc') %}
+          {% set q = request.args.get('q','') %}
+          <tr>
+            <!-- № -->
+            <th class="text-center align-middle" style="width:50px;">
+              <a href="{{ url_for('users_bp.list_users',
+                                  page=pagination.page,
+                                  per_page=per_page,
+                                  q=q,
+                                  sort_by='number',
+                                  sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}"
+                 >
+                №
+                {% if sort_by == 'number' %}
+                  {{ '▲' if sort_dir == 'asc' else '▼' }}
+                {% endif %}
+              </a>
+            </th>
+
+            <!-- Логин -->
+            <th class="text-center align-middle" style="width:300px;">
+              <a href="{{ url_for('users_bp.list_users',
+                                  page=pagination.page,
+                                  per_page=per_page,
+                                  q=q,
+                                  sort_by='username',
+                                  sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc') }}"
+                 >
+                Логин
+                {% if sort_by == 'username' %}
+                  {{ '▲' if sort_dir == 'asc' else '▼' }}
+                {% endif %}
+              </a>
+            </th>
+
+            <!-- Email -->
+            <th class="text-center align-middle" style="width:250px;">
+              <a href="{{ url_for('users_bp.list_users',
+                                  page=pagination.page,
+                                  per_page=per_page,
+                                  q=q,
+                                  sort_by='email',
+                                  sort_dir='asc' if sort_by != 'email' or sort_dir == 'desc' else 'desc') }}"
+                 >
+                Email
+                {% if sort_by == 'email' %}
+                  {{ '▲' if sort_dir == 'asc' else '▼' }}
+                {% endif %}
+              </a>
+            </th>
+
+            <!-- Роли (без сортировки, просто заголовки) -->
+            {% for role in roles %}
+              <th class="text-center align-middle" style="width:70px;">{{ role.name_full }}</th>
+            {% endfor %}
+
+            <!-- Удалить -->
+            <th class="text-center align-middle" style="width:70px;">Удалить</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for u in users %}
+            {% set assigned = u.roles|map(attribute='id')|list %}
+            <tr>
+              <td class="text-center align-middle">
+                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                <input type="hidden" name="user_ids[]" value="{{ u.id }}">
+              </td>
+
+              <td>
+                <input type="text" name="usernames[]" class="form-control" value="{{ u.username }}" required>
+              </td>
+
+              <td>
+                <input type="email" name="emails[]" class="form-control" value="{{ u.email }}" required>
+                <input type="hidden" name="assign_present[{{ u.id }}]" value="1">
+              </td>
+
+              {% for role in roles %}
+                <td class="text-center align-middle">
+                <input
+                  type="checkbox"
+                  name="assign[{{ u.id }}][{{ role.id }}]"
+                  class="form-check-input"
+                  {% if role.id in assigned %}checked="checked"{% endif %}>
+                </td>
+              {% endfor %}
+
+              <td class="text-center align-middle">
+                <input type="checkbox" name="users_delete[]" value="{{ u.id }}" class="form-check-input">
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="{{ 4 + roles|length }}" class="text-center align-middle">Нет данных для отображения</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+
+  {# ---- Пагинация ---- #}
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+      {% if pagination.has_prev %}
+        <li class="page-item">
+          <a class="page-link"
+             href="{{ url_for('users_bp.list_users',
+                               page=pagination.prev_num,
+                               q=q,
+                               per_page=per_page,
+                               sort_by=sort_by,
+                               sort_dir=sort_dir) }}">
+            &laquo; Назад
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><a class="page-link">&laquo; Назад</a></li>
+      {% endif %}
+
+      {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=1, right_current=1) %}
+        {% if page_num %}
+          {% if page_num == pagination.page %}
+            <li class="page-item active"><a class="page-link">{{ page_num }}</a></li>
+          {% else %}
+            <li class="page-item">
+              <a class="page-link"
+                 href="{{ url_for('users_bp.list_users',
+                                   page=page_num,
+                                   q=q,
+                                   per_page=per_page,
+                                   sort_by=sort_by,
+                                   sort_dir=sort_dir) }}">
+                {{ page_num }}
+              </a>
+            </li>
+          {% endif %}
+        {% else %}
+          <li class="page-item disabled"><a class="page-link">…</a></li>
+        {% endif %}
+      {% endfor %}
+
+      {% if pagination.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+             href="{{ url_for('users_bp.list_users',
+                               page=pagination.next_num,
+                               q=q,
+                               per_page=per_page,
+                               sort_by=sort_by,
+                               sort_dir=sort_dir) }}">
+            Вперёд &raquo;
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><a class="page-link">Вперёд &raquo;</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+</div>
+{% endif %}
+{% endblock %}

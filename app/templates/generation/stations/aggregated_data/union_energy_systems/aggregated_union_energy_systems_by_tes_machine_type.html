@@ -1,0 +1,64 @@
+{% if station_type_id == 4 %}
+    {#‑‑ Разбивка по типам агрегатов ТЭС ‑‑#}
+    {% for tm_id, tm_name in tes_machine_type_list.items() %}
+        {% if tm_id != 0 %}
+            {% set has_tm = union_energy_systems_by_tes_machine_types_yearly_p_ust
+                            .get(current_ues_id, {})
+                            .get(tes_type_id, {})
+                            .get(tm_id) %}
+
+            {% if has_tm %}
+                <!-- Первая строка: p_ust -->
+                <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
+                    <td class="total-row-cell ind4cm" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 12cm;">
+                        {{ tm_name }}
+                    </td>
+                    <td class="fw-bold">Руст</td>
+                    {% for y in range(start_year, end_year + 1) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ union_energy_systems_by_tes_machine_types_yearly_p_ust
+                                .get(current_ues_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {}).get(y, "—") | format_decimal or '—'}}
+                            </td>
+                    {% endfor %}
+                    <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                    </td>
+                </tr>
+
+                <!-- Вторая строка: p_ogr -->
+                <tr class="table-primary text-center p-ogr-row">
+                    <td class="fw-bold">Рогр</td>
+                    {% for y in range(start_year, end_year + 1) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ union_energy_systems_by_tes_machine_types_yearly_p_ogr
+                                .get(current_ues_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {}).get(y, "—") | format_decimal or '—'}}
+                            </td>
+                    {% endfor %}
+                    <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                    </td>
+                </tr>
+
+                <!-- Третья строка: p_rasp -->
+                <tr class="table-primary text-center p-rasp-row">
+                    <td class="fw-bold">Ррасп</td>
+                    {% for y in range(start_year, end_year + 1) %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ union_energy_systems_by_tes_machine_types_yearly_p_rasp
+                                .get(current_ues_id, {})
+                                .get(tes_type_id, {})
+                                .get(tm_id, {}).get(y, "—") | format_decimal or '—'}}
+                            </td>
+                    {% endfor %}
+                    <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                    </td>
+                </tr>
+
+                {% include 'stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_by_tes_machine_type_with_fuel.html' %}
+
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}

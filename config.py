@@ -32,7 +32,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', '').split(','))
-    DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1']
+    DEBUG=os.getenv("DEBUG", "False").lower() == "true"
     START_YEAR_SIPR = 2026
     START_YEAR = 2024
     END_YEAR = 2031

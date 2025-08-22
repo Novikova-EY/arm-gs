@@ -4,25 +4,6 @@ from app.extensions import db
 from flask import render_template, request, session, flash, redirect, url_for
 from flask_login import login_required
 from app.auth.routes import roles_required
-from app.logs.services.logging_service import log_to_db
-import traceback
-from app.generation.forms.machine_forms import (
-    MachineFilterForm, 
-    EditMachineForm,
-    PGUMachineFilterForm,
-    PGUMachinePowerForm
-)
-from app.refdata.models.energy_systems_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.fuels_models import *
-from app.refdata.models.gen_companies_models import *
-from app.refdata.models.stations_refdata_models import *
-from app.refdata.models.territories_models import *
-from app.refdata.models.years_models import *
-from app.generation.models.stations_models import *
-from app.generation.models.machines_models import *
-from app.generation.models.pgu_machines_models import *
-from app.generation.models.boilers_models import *
 from app.generation.services.machine_services.machine_services import (
     handle_machine_get,
     handle_machine_post, 

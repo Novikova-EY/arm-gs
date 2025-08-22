@@ -1,0 +1,742 @@
+{% extends 'base.html' %}
+
+{% block title %}Электростанции{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Вернуться страницу "Справочники"</a>
+    </div>
+
+    <h1 class="text-center mb-4">Сводные значения по электростанциям</h1>
+
+    <input type="hidden" name="start_year" value="{{ request.args.get('start_year', '') }}">
+    <input type="hidden" name="end_year" value="{{ request.args.get('end_year', '') }}">
+    <input type="hidden" name="energy_system_type_filter" value="{{ request.args.get('energy_system_type_filter', '') }}">
+    <input type="hidden" name="union_energy_system_filter" value="{{ request.args.get('union_energy_system_filter', '') }}">
+    <input type="hidden" name="regional_energy_system_filter" value="{{ request.args.get('regional_energy_system_filter', '') }}">
+    <input type="hidden" name="federal_district_filter" value="{{ request.args.get('federal_district_filter', '') }}">
+    <input type="hidden" name="regional_district_filter" value="{{ request.args.get('regional_district_filter', '') }}">
+    
+    <!-- Фильтры -->
+    <div class="container-fluid mt-4">
+        <div class="row g-3">
+            <!-- Первая строка фильтров -->
+            <div class="col-12 ">
+                <form method="GET" action="{{ url_for('station_bp.stations_grouped_values') }}" class="filter-container d-flex">
+                    <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
+                    {% for key, value in request.args.items() %}
+                        {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter"] %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Тип энергосистемы -->
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                            <option value="">Тип энергосистемы</option>
+                            {% for energy_system_type in energy_system_type_list %}
+                                <option value="{{ energy_system_type.id }}" 
+                                    {% if energy_system_type.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>
+                                    {{ energy_system_type.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+            
+                    <!-- ОЭС -->
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                            <option value="">Объединенная энергосистема (ОЭС)</option>
+                            {% for union_energy_system in union_energy_system_list %}
+                                <option value="{{ union_energy_system.id }}" 
+                                    {% if union_energy_system.id|string in union_energy_system_filter|map('string') %}selected{% endif %}>
+                                    {{ union_energy_system.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Региональная ЭС -->
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                            <option value="">Региональная энергосистема</option>
+                            {% for regional_energy_system in regional_energy_system_list %}
+                                <option value="{{ regional_energy_system.id }}" 
+                                    {% if regional_energy_system.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>
+                                    {{ regional_energy_system.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+            
+                    <!-- Федеральный округ -->
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="federal_district" name="federal_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                            <option value="">Федеральный округ</option>
+                            {% for federal_district in federal_district_list %}
+                                <option value="{{ federal_district.id }}" 
+                                    {% if federal_district.id|string in federal_district_filter|map('string') %}selected{% endif %}>
+                                    {{ federal_district.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+            
+                    <!-- Субъект РФ -->
+                    <div class="filter-item" style="width: 15%;">
+                        <select id="regional_district" name="regional_district_filter" class="form-select select2" onchange="this.form.submit()" multiple>
+                            <option value="">Субъект РФ</option>
+                            {% for regional_district in regional_district_list %}
+                                <option value="{{ regional_district.id }}" 
+                                    {% if regional_district.id|string in regional_district_filter|map('string') %}selected{% endif %}>
+                                    {{ regional_district.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+            
+                    <!-- Кнопки -->
+                    <div class="filter-item">
+                        <a href="{{ url_for('station_bp.stations_grouped_values') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Вторая строка фильтров -->
+            <div class="col-12">
+                <div class="d-flex align-items-center w-100">                
+                    <!-- Пустой блок -->
+                    <div class="p-3" style="width: 55%;">
+                    </div>
+
+                    
+                    <div class="p-3" style="width: 20%;">
+                        <form method="GET" action="{{ url_for('station_bp.stations_grouped_values') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                            <!-- Скрытые поля для сохранения параметров (будут обновляться через JS) -->
+                            {% for key, value in request.args.items() %}
+                                {% if key != "start_year" and key != "end_year" %}
+                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                {% endif %}
+                            {% endfor %}
+                    
+                            <!-- Поля выбора года -->
+                            <label for="start_year">Год начала:</label>
+                            <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                                {% for year in range(2021, 2043) %}
+                                <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                    
+                            <label for="end_year">Год конца:</label>
+                            <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                                {% for year in range(2022, 2043) %}
+                                <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                    
+                            <button type="submit" class="btn btn-outline-success">Применить</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Чекбокс "Отображать ограничения мощности" -->
+                    <div class="p-3 text-center" style="width: 10%;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="toggleP_Ogr">
+                            <label class="form-check-label" for="toggleP_Ogr">
+                                Отображать ограничения мощности
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Чекбокс "Отображать располагаемую мощность" -->
+                    <div class="p-3 text-center" style="width: 10%;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="toggleP_Rasp" checked>
+                            <label class="form-check-label" for="toggleP_Rasp">
+                                Отображать располагаемую мощность
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Выпадающий список выбора количества знаков для округления -->
+                    <div class="p-3" style="width: 7%;">
+                        <label for="rounding_digits">Округлить до:</label>
+                        <select id="rounding_digits" name="rounding_digits" class="form-select" style="max-width: 150px;">
+                            <option value="0">Не округлять</option>
+                            <option value="1" selected>1 знак</option>
+                            <option value="2">2 знака</option>
+                            <option value="3">3 знака</option>
+                            <option value="-1">Целое число</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица с данными -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered table-responsive">
+
+            <!-- Шапка таблицы с данными -->
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th></th>
+                    <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
+                </tr>
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th ></th>
+
+                    <th style="text-align: center;">
+                        Тип <br> мощ-ти
+                    </th>
+                    <!-- Столбцы для годов с start_year по end_year + 1 -->
+
+                    {% for year in range(start_year, end_year + 1) %}
+                    <th style="text-align: center;">
+                        {{ year }}
+                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                            {% if year_features[year] is defined %}
+                                {{ year_features[year].name }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+                {% set previous_level_es_type = {} %}
+                {% set previous_level_ues = {} %}
+                {% set previous_level_res = {} %}
+                {% set previous_level_rd = {} %}
+
+                <!-- Строка: часть энергосистемы России -->
+                {% for es_type_id, es_type_group in stations_grouped.items() %}
+                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan = "{{ 3 + end_year - start_year }} "> {{ energy_system_type_names[es_type_id] }}</td>
+                    </tr>
+
+                    <!-- Строка: ОЭС -->
+                    {% for ues_id, ues_group in es_type_group.items() %}
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan = "{{ 3 + end_year - start_year }} "> {{ union_energy_system_names[ues_id] }}</td>
+                        </tr>
+                        
+                        <!-- Строка: региональная энергосистема -->
+                        {% for res_id, res_group in ues_group.items() %}
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan = "{{ 3 + end_year - start_year }} "> {{ regional_energy_system_names[res_id] }}</td>
+                            </tr>
+                            
+                            <!-- Строка: субъект РФ -->
+                            {% for rd_id, rd_group in res_group.items() %}
+                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan = "{{ 3 + end_year - start_year }} "> {{ regional_district_names[rd_id] }}</td>
+                                </tr>
+
+                                <!-- Строки: энергоузлы -->
+                                {% for eu_id, eu_group in rd_group.items() %}
+                                {% if eu_id != 0 %}
+                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ 3 + end_year - start_year }}">{{ energy_unit_names[eu_id] }}</td>
+                                    </tr>
+
+                                    <!-- Итоговые значения по энергоузлу -->
+                                    <tr class="table-success text-center">
+                                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                            {{ energy_unit_names[eu_id] }}, всего
+                                        </td>
+                                        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_ust.get(eu_id, {}).get(year, 0) %}
+                                                {{ val | format_decimal or '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr class="table-success text-center p-ogr-row">
+                                        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_ogr.get(eu_id, {}).get(year, 0) %}
+                                                {{ val | format_decimal or '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    <tr class="table-success text-center p-rasp-row">
+                                        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                            <td class="power-column" style="font-weight: bold;">
+                                                {% set val = energy_units_yearly_p_rasp.get(eu_id, {}).get(year, 0) %}
+                                                {{ val | format_decimal or '—' }}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endif %}
+                                {% endfor %} <!-- Конец списка энергоузлов -->
+                           
+                                <!-- ✅ Итоговые значения по субъекту -->
+                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                        {{ regional_district_names[rd_id] }}, всего
+                                    </td>
+                                    <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_ust.get(rd_id, {}).get(year, 0) %}
+                                            {{ val | format_decimal or '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr class="table-secondary text-center p-ogr-row">
+                                    <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_ogr.get(rd_id, {}).get(year, 0) %}
+                                            {{ val | format_decimal or '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr class="table-secondary text-center p-rasp-row">
+                                    <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                                    {% for year in range(start_year, end_year + 1) %}
+                                        <td class="power-column" style="font-weight: bold;">
+                                            {% set val = regional_districts_yearly_p_rasp.get(rd_id, {}).get(year, 0) %}
+                                            {{ val | format_decimal or '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %} <!-- Конец списка субъектов -->
+                            
+                            <!-- ✅ Итоговые значения по региональной энергосистеме -->
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                    {{ regional_energy_system_names[res_id] }}, всего
+                                </td>
+                                <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                                {% for year in range(start_year, end_year + 1) %}
+                                    <td class="power-column" style="font-weight: bold;">
+                                        {% set p_ust_value = regional_energy_systems_yearly_p_ust.get(res_id, {}).get(year, 0) | default(0) %}
+                                        {% if p_ust_value == 0 %}
+                                            &mdash;
+                                        {% else %}
+                                            {{ p_ust_value }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            <tr class="table-info text-center p-ogr-row">
+                                <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set p_ogr_value = regional_energy_systems_yearly_p_ogr.get(res_id, {}).get(year, 0) %}
+                                    {% if p_ogr_value == 0 %}
+                                        &mdash;
+                                    {% else %}
+                                        {{ p_ogr_value }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            <tr class="table-info text-center p-rasp-row">
+                                <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                                {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set p_rasp_value = regional_energy_systems_yearly_p_rasp.get(res_id, {}).get(year, 0) %}
+                                    {% if p_rasp_value == 0 %}
+                                        &mdash;
+                                    {% else %}
+                                        {{ p_rasp_value }}
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        {% endfor %} <!-- Конец списка РЭС -->
+                        
+                        <!-- ✅ Итоги по ОЭС -->
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                                {{ union_energy_system_names[ues_id] }}, всего
+                            </td>
+                            <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                            {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_ust.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val | format_decimal or '—' }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="table-primary text-center p-ogr-row">
+                            <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                            {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_ogr.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val | format_decimal or '—' }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="table-primary text-center p-rasp-row">
+                            <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                            {% for year in range(start_year, end_year + 1) %}
+                                <td class="power-column" style="font-weight: bold;">
+                                    {% set val = union_energy_systems_yearly_p_rasp.get(ues_id|int, {}).get(year, 0) %}
+                                    {{ val | format_decimal or '—' }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+
+                    {% endfor %} <!-- Конец списка ОЭС -->
+                    
+                    <!-- ✅ Итоги по типу энергосистемы -->
+                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                            {{ energy_system_type_names[es_type_id] }}, всего
+                        </td>
+                        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_ust.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-light text-center p-ogr-row">
+                        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_ogr.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-light text-center p-rasp-row">
+                        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = energy_system_types_yearly_p_rasp.get(es_type_id|int, {}).get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+
+                {% endfor %} <!-- Конец списка типов энергосистем -->
+
+                <!-- ✅ Итоговые значения по России -->
+                 {% if not filters %}
+                    <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                            Россия, всего
+                        </td>
+                        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_ust.get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-secondary text-center p-ogr-row">
+                        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_ogr.get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    <tr class="table-secondary text-center p-rasp-row">
+                        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+                        {% for year in range(start_year, end_year + 1) %}
+                            <td class="power-column" style="font-weight: bold;">
+                                {% set val = total_yearly_p_rasp.get(year, 0) %}
+                                {{ val | format_decimal or '—' }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Подключаем jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Подключаем Select2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        console.log("✅ jQuery загружен! Версия:", $.fn.jquery);
+        console.log("✅ Select2 загружен! Версия:", $.fn.select2 ? $.fn.select2.defaults.version : "❌ Select2 НЕ НАЙДЕН!");
+
+        if (!$.fn.select2) {
+            alert("⚠️ Ошибка: библиотека Select2 не загружена!");
+            return;
+        }
+
+        function initializeSelect2(selector, placeholder) {
+            if ($(selector).length) {
+                $(selector).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false, // Оставляем открытым для множественного выбора
+                    minimumResultsForSearch: Infinity
+                });
+            } else {
+                console.error(`❌ Ошибка: Элемент ${selector} не найден!`);
+            }
+        }
+
+        initializeSelect2('#energy_system_type', 'Часть энергосистемы России');
+        initializeSelect2('#union_energy_system', 'ОЭС');
+        initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
+        initializeSelect2('#federal_district', 'Федеральный округ');
+        initializeSelect2('#regional_district', 'Субъект РФ');
+
+        let selectedUnionValues = JSON.parse('{{ union_energy_system_filter | tojson | safe }}');
+        let selectedRegionalValues = JSON.parse('{{ regional_energy_system_filter | tojson | safe }}');
+        let selectedFederalValues = JSON.parse('{{ federal_district_filter | tojson | safe }}');
+        let selectedRegionalDistrictValues = JSON.parse('{{ regional_district_filter | tojson | safe }}');
+
+        let regionalEnergySystemsMapping = JSON.parse('{{ regional_energy_system_mapping | tojson | safe }}');
+        let allRegionalSystems = JSON.parse('{{ regional_energy_system_list | tojson | safe }}');
+
+        let regionalDistrictsMapping = JSON.parse('{{ regional_district_mapping | tojson | safe }}');
+        let allRegionalDistricts = JSON.parse('{{ regional_district_list | tojson | safe }}');
+
+        function updateRegionalEnergySystemOptions(selectedUnionIDs) {
+            console.log("🔹 Выбраны ОЭС:", selectedUnionIDs);
+
+            let regionalOptions = '';
+            let allowedRegionalSystems = new Set();
+
+            selectedUnionIDs.forEach(unionID => {
+                (regionalEnergySystemsMapping[unionID] || []).forEach(resID => {
+                    allowedRegionalSystems.add(resID);
+                });
+            });
+
+            let previousSelected = $('#regional_energy_system').val() || [];
+            let newSelected = [];
+
+            allRegionalSystems.forEach(system => {
+                if (allowedRegionalSystems.has(system.id)) {
+                    let selectedAttr = previousSelected.includes(String(system.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${system.id}" ${selectedAttr}>${system.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(system.id));
+                }
+            });
+
+            $('#regional_energy_system').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_energy_system').trigger('change.select2');
+                }, 100);
+            }
+        }
+
+        function updateRegionalDistrictOptions(selectedFederalIDs) {
+            console.log("🔹 Выбраны ФО:", selectedFederalIDs);
+
+            let regionalOptions = '';
+            let allowedRegionalDistricts = new Set();
+
+            selectedFederalIDs.forEach(federalID => {
+                (regionalDistrictsMapping[federalID] || []).forEach(rdID => {
+                    allowedRegionalDistricts.add(rdID);
+                });
+            });
+
+            let previousSelected = $('#regional_district').val() || [];
+            let newSelected = [];
+
+            allRegionalDistricts.forEach(district => {
+                if (allowedRegionalDistricts.has(district.id)) {
+                    let selectedAttr = previousSelected.includes(String(district.id)) ? "selected" : "";
+                    regionalOptions += `<option value="${district.id}" ${selectedAttr}>${district.name}</option>`;
+                    if (selectedAttr) newSelected.push(String(district.id));
+                }
+            });
+
+            $('#regional_district').html(regionalOptions).val(newSelected);
+
+            if (!arraysEqual(previousSelected, newSelected)) {
+                setTimeout(() => {
+                    $('#regional_district').trigger('change.select2');
+                }, 100);
+            }
+        }
+
+        function arraysEqual(a, b) {
+            return JSON.stringify(a.sort()) === JSON.stringify(b.sort());
+        }
+
+        $('#union_energy_system').on('change', function() {
+            let selectedUnionIDs = $(this).val() || [];
+            updateRegionalEnergySystemOptions(selectedUnionIDs);
+        });
+
+        $('#federal_district').on('change', function() {
+            let selectedFederalIDs = $(this).val() || [];
+            updateRegionalDistrictOptions(selectedFederalIDs);
+        });
+
+        $('#union_energy_system').on('select2:clear', function() {
+            console.log("🗑 ОЭС очищен, сбрасываем РЭС");
+            $('#regional_energy_system').val([]).empty().append('<option value="">Выберите региональную энергосистему</option>').trigger('change.select2');
+        });
+
+        $('#federal_district').on('select2:clear', function() {
+            console.log("🗑 ФО очищен, сбрасываем субъекты РФ");
+            $('#regional_district').val([]).empty().append('<option value="">Выберите субъект РФ</option>').trigger('change.select2');
+        });
+
+        if (selectedUnionValues.length > 0) {
+            updateRegionalEnergySystemOptions(selectedUnionValues);
+            $('#union_energy_system').val(selectedUnionValues);
+        }
+
+        if (selectedFederalValues.length > 0) {
+            updateRegionalDistrictOptions(selectedFederalValues);
+            $('#federal_district').val(selectedFederalValues);
+        }
+
+    });
+</script>
+
+<!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
+<script>
+    $(document).ready(function() {
+        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
+        $('.rowspan-td').each(function() {
+            $(this).data('original-rowspan', $(this).attr('rowspan'));
+        });
+
+        // Сохраняем rowspan для ячеек с названием станции
+        $('.station-rowspan-td').each(function() {
+            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
+            let totalMachines = (originalRowspan - 1) / 3;
+            $(this).data('total-machines', totalMachines);
+        });
+
+        // Функция обновления строк
+        function updateRows() {
+            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
+            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
+
+            // Показываем/скрываем строки p_ogr-row
+            if (showPOgr) {
+                $('.p-ogr-row').show();
+            } else {
+                $('.p-ogr-row').hide();
+            }
+
+            // Показываем/скрываем строки p_rasp-row
+            if (showPRasp) {
+                $('.p-rasp-row').show();
+            } else {
+                $('.p-rasp-row').hide();
+            }
+
+            // Количество отображаемых строк на агрегат (1..3)
+            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+
+            // Обновляем rowspan для ячейки "Всего по станции"
+            $('.total-row-cell').attr('rowspan', aggregatorRows);
+
+            // Меняем rowspan для ячеек агрегатов
+            $('.rowspan-td').each(function() {
+                let original = parseInt($(this).data('original-rowspan'), 10);
+                $(this).attr('rowspan', aggregatorRows);
+            });
+
+            // Меняем rowspan для ячеек с названием станции
+            $('.station-rowspan-td').each(function() {
+                let totalMachines = parseInt($(this).data('total-machines'), 10);
+                let newRowSpan = totalMachines * aggregatorRows + 1;
+                $(this).attr('rowspan', newRowSpan);
+            });
+
+            // Обновляем корректное отображение суммарных мощностей
+            $('.power-column').each(function() {
+                let totalRow = $(this).closest('tr').find('.total-row-cell');
+                if (totalRow.length) {
+                    totalRow.attr('rowspan', aggregatorRows);
+                }
+            });
+
+        }
+
+        // Обновляем строки при загрузке страницы
+        updateRows();
+
+        // Обновляем строки при изменении чекбоксов
+        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
+            updateRows();
+        });
+    });
+</script>
+
+<!-- Скрипт для определения количества знаков после запятой -->
+<script>
+    $(document).ready(function() {
+        // 1. Сохраняем исходный текст (или значение) из каждой ячейки в data-атрибут
+        $('.power-column').each(function() {
+            const originalText = $(this).text().trim();
+            $(this).attr('data-original-value', originalText);
+        });
+
+        // Функция для округления одного значения
+        function roundValue(value, digits) {
+            // Если ячейка пустая, прочерк или не является числом, возвращаем как есть
+            if (!value || value === '—' || value === '-' || value.includes('&mdash;')) {
+                return value;
+            }
+
+            // Пытаемся привести к числу
+            let num = parseFloat(value.replace(',', '.')); 
+            if (isNaN(num)) {
+                return value;
+            }
+
+            switch (digits) {
+                case '-1': // Округление до целого
+                    return Math.round(num);
+                case '0': // Без округления, оставляем как есть
+                    return value;
+                default:
+                    const d = parseInt(digits, 10);
+                    return num.toFixed(d).replace('.', ','); // Используем запятую вместо точки
+            }
+        }
+
+        // Функция обновления всех ячеек в таблице
+        function updateValues() {
+            const roundingDigits = $('#rounding_digits').val();
+
+            $('.power-column').each(function() {
+                const original = $(this).attr('data-original-value'); // Берём сохранённое значение
+                const newText = roundValue(original, roundingDigits);
+                $(this).text(newText);
+            });
+        }
+
+        // При изменении режима округления пересчитываем
+        $('#rounding_digits').on('change', function() {
+            updateValues();
+        });
+
+        // Инициализация округления при загрузке страницы
+        updateValues();
+    });
+
+</script>
+{% endif %}
+{% endblock %}
