@@ -1,98 +1,157 @@
-from app import db
-from flask import (render_template, request, redirect, url_for, flash, session, current_app, send_file)
+"""Маршруты справочника «Энергоузлы»."""
+
+from flask import render_template, request, redirect, url_for, flash, send_file, session, current_app
 from collections import Counter
+from datetime import datetime
+
+from flask_login import login_required
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
 
 # Формы
-from app.refdata.forms.energy_systems.energy_unit_forms import EnergyUnitFilterForm, AddEnergyUnitForm
+from app.refdata.forms.energy_systems.energy_unit_forms import (
+    EnergyUnitFilterForm, 
+    AddEnergyUnitForm,
+)
 
 # Сервисы
-from app.logs.services.logging_service import log_to_db
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_list_full, 
+    get_regional_energy_system_name,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_list_full, 
+)
+from app.common.services.get_services.territories.regional_district_get_services import (
+    get_regional_district_list_full,
+    get_regional_district_name,
+)
 from app.refdata.services.energy_systems.energy_unit_services import (
+    energy_unit_query, 
     get_energy_unit_list, 
-    get_union_energy_system, 
-    get_regional_energy_system, 
-    get_regional_districts,
-    get_total_with_filter,
     update_energy_unit_service, 
     add_energy_unit_service, 
     delete_energy_unit_service, 
-    export_energy_unit_to_excel_service, 
+    export_energy_unit_service, 
 )
+
+# Логирование
+from app.logs.services.logging_service import log_to_db
 
 
 @refdata_bp.route("/energy_units", methods=["GET", "POST"])
+@login_required
 def energy_unit_list():
+    """Маршрут для отображения списка энергоузлов."""
+    
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница энергоузла")
 
+    # Создание формы
     form = EnergyUnitFilterForm()
 
     # Получение параметров запроса
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-    energy_unit_filter = request.args.get("energy_unit_filter", "").strip()
-    regional_district_filter = request.args.get("regional_district_filter", "").strip()
-    regional_energy_system_filter = request.args.get("regional_energy_system_filter", "").strip()
-    union_energy_system_filter = request.args.get("union_energy_system_filter", "").strip()
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    page                            = request.args.get("page", 1, type=int)
+    per_page                        = request.args.get("per_page", 10, type=int)
+    sort_by                         = request.args.get("sort_by", "id")
+    sort_dir                        = request.args.get("sort_dir", "asc")
+    energy_unit_filter              = request.args.get("energy_unit_filter", "").strip()
+    regional_district_filter        = request.args.get("regional_district_filter", "").strip()
+    regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
+    union_energy_system_filter      = request.args.get("union_energy_system_filter", "").strip()
 
     if request.method == "POST":
-        try:
-            # Обновление параметров из формы
-            page = request.form.get("page", 1, type=int)
-            per_page = request.form.get("per_page", 10, type=int)
-            energy_unit_filter = request.form.get("energy_unit_filter", "").strip()
-            regional_district_filter = request.form.get("regional_district_filter", "").strip()
-            regional_energy_system_filter = request.form.get("regional_energy_system_filter", "").strip()
-            union_energy_system_filter = request.form.get("union_energy_system_filter", "").strip()
-            sort_by = request.form.get("sort_by", "id")
-            sort_dir = request.form.get("sort_dir", "asc")
+        # Обновление параметров из формы
+        page                            = request.form.get("page", 1, type=int)
+        per_page                        = request.form.get("per_page", 10, type=int)
+        sort_by                         = request.form.get("sort_by", "id")
+        sort_dir                        = request.form.get("sort_dir", "asc")
+        energy_unit_filter              = request.form.get("energy_unit_filter", "").strip()
+        regional_district_filter        = request.form.get("regional_district_filter", "").strip()
+        regional_energy_system_filter   = request.form.get("regional_energy_system_filter", "").strip()
+        union_energy_system_filter      = request.form.get("union_energy_system_filter", "").strip()
 
-            # Получение данных из формы
-            energy_unit_ids = request.form.getlist("energy_unit_ids[]")
-            energy_unit_names = request.form.getlist("energy_unit_names[]")
-            regional_energy_system_ids = request.form.getlist("regional_energy_system_ids[]")
-            regional_district_ids = request.form.getlist("regional_district_ids[]")
-            energy_unit_delete = request.form.getlist("energy_unit_delete[]")
-            
-            # Удаление записей
-            if energy_unit_delete:
+        # Получение данных из формы
+        energy_unit_ids             = request.form.getlist("energy_unit_ids[]")
+        energy_unit_names           = request.form.getlist("energy_unit_names[]")
+        regional_energy_system_ids  = request.form.getlist("regional_energy_system_ids[]")
+        regional_district_ids       = request.form.getlist("regional_district_ids[]")
+        energy_unit_delete          = request.form.getlist("energy_unit_delete[]")
+        
+        # Удаление записей
+        if energy_unit_delete:
+            try:
                 delete_energy_unit_service(energy_unit_delete, user)
-                flash("Запись(и) энергоузла(ов) успешно удален(ы).", "success")
+                flash("Записи энергоузлов успешно удалены.", "success")
+            except Exception as e:
+                log_to_db(user, f"Ошибка удаления энергозон {e}")
+                flash("Ошибка удаления записей.", "danger")
+            return redirect(url_for("refdata_bp.union_energy_system_list", 
+                                    page=page, 
+                                    per_page=per_page, 
+                                    energy_unit_filter=energy_unit_filter,
+                                    regional_district_filter=regional_district_filter,
+                                    regional_district_filter=regional_district_filter,
+                                    union_energy_system_filter=union_energy_system_filter,
+                                    sort_by=sort_by, 
+                                    sort_dir=sort_dir))
 
-            # Формируем данные для обновления
+        # Обновление данных в базе
+        try:
+            if not (energy_unit_ids and energy_unit_names and regional_energy_system_ids and regional_district_ids):
+                log_to_db(user, "Нет данных для обновления.")
+                flash("Данные для обновления отсутствуют.", "info")
+                return redirect(url_for("refdata_bp.union_energy_system_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        energy_unit_filter=energy_unit_filter,
+                                        regional_district_filter=regional_district_filter,
+                                        regional_district_filter=regional_district_filter,
+                                        union_energy_system_filter=union_energy_system_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+            
+           # Формирование данных для обновления
             energy_unit_data = []
             for energy_unit_id, energy_unit_name, regional_district_id, regional_energy_system_id in zip(
                 energy_unit_ids, energy_unit_names, regional_district_ids, regional_energy_system_ids
             ):
-                energy_unit_data.append({
-                    "id": int(energy_unit_id) if energy_unit_id else None,
-                    "name": energy_unit_name.strip(),
-                    "regional_district_id": int(regional_district_id) if regional_district_id else None,
-                    "regional_energy_system_id": int(regional_energy_system_id) if regional_energy_system_id else None,
-                })
-
+                try:
+                    energy_unit_data.append({
+                        "energy_unit_id": int(energy_unit_id) if energy_unit_id else None,
+                        "name": energy_unit_name.strip(),
+                        "regional_district_id": int(regional_district_id) if regional_district_id else None,
+                        "regional_energy_system_id": int(regional_energy_system_id) if regional_energy_system_id else None,
+                    })
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки данных: id={energy_unit_id},"
+                            f"Наименование: {energy_unit_name}, "
+                            f"Субъект РФ: {get_regional_district_name(regional_district_id)}, "
+                            f"Региональная энергосистема: {get_regional_energy_system_name(regional_energy_system_id)}. "
+                            f"Ошибка: {str(e)}"
+                        )
+                    )
+        
             # Проверка на дублирующиеся IDs
             ids = [record["id"] for record in energy_unit_data if record["id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
+
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID энергоузлы: {duplicates}")
 
-            log_to_db(user, "Полученные данные для обновления энергоузлы", str(energy_unit_data))
-
             # Обновление данных в базе
+            log_to_db(user, "Полученные данные для обновления энергоузлов", str(energy_unit_data))
             update_energy_unit_service(energy_unit_data, user)
+            flash("Изменения энергоузлов успешно сохранены.", "success")
 
-            flash("Изменения энергоузла(ов) успешно сохранены.", "success")
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных энергоузла(ов): {e}")
-            flash("Ошибка сохранения данных энергоузла(ов).", "danger")
+            log_to_db(user, f"Ошибка сохранения данных энергоузлов: {e}")
+            flash("Ошибка сохранения данных энергоузлов.", "danger")
 
         return redirect(url_for("refdata_bp.energy_unit_list",
                                 page=page,
@@ -117,17 +176,17 @@ def energy_unit_list():
                                 sort_dir=sort_dir)
     
     # Подготовка данных для формы
-    regional_district_list = get_regional_districts()
-    form.regional_district.choices = [(o.id, o.name) for o in regional_district_list if o.id != 100]
+    regional_district_list = get_regional_district_list_full()
+    form.regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
 
-    regional_energy_system_list = get_regional_energy_system()
-    form.regional_energy_system.choices = [(o.id, o.name) for o in regional_energy_system_list if o.id != 100]
+    regional_energy_system_list = get_regional_energy_system_list_full()
+    form.regional_energy_system.choices = [(res.id, res.name) for res in regional_energy_system_list]
 
-    union_energy_system_list = get_union_energy_system()
-    form.union_energy_system.choices = [(o.id, o.name) for o in union_energy_system_list if o.id != 100]
+    union_energy_system_list = get_union_energy_system_list_full()
+    form.union_energy_system.choices = [(ues.id, ues.name) for ues in union_energy_system_list]
     
     return render_template(
-        "references/energy_unit/energy_unit.html",
+        "refdata/energy_systems/energy_unit/energy_unit.html",
         form=form,
         energy_unit_list=pagination.items,
         pagination=pagination,
@@ -145,6 +204,7 @@ def energy_unit_list():
 
 
 @refdata_bp.route("/add_energy_unit", methods=["GET", "POST"])
+@login_required
 def add_energy_unit_routes():
     """
     Маршрут для добавления нового энергоузла.
@@ -166,11 +226,11 @@ def add_energy_unit_routes():
     page = int(request.args.get("page", 1))
  
     # Подготовка данных для формы
-    regional_district_list = get_regional_districts()
-    form.regional_district.choices = [(o.id, o.name) for o in regional_district_list if o.id != 100]
+    regional_district_list = get_regional_district_list_full()
+    form.regional_district.choices = [(o.id, o.name) for o in regional_district_list]
     
-    regional_energy_system_list = get_regional_energy_system()
-    form.regional_energy_system.choices = [(o.id, o.name) for o in regional_energy_system_list if o.id != 100]
+    regional_energy_system_list = get_regional_energy_system_list_full()
+    form.regional_energy_system.choices = [(o.id, o.name) for o in regional_energy_system_list]
 
     # Обработка формы
     if request.method == "POST":
@@ -196,7 +256,11 @@ def add_energy_unit_routes():
             flash("Новая запись успешно добавлена.", "success")
             log_to_db(user, "Добавление нового энергоузла", f"Имя: {form.name.data}, Субъект РФ: {form.regional_district.data}, Региональная энергосистема: {form.regional_energy_system.data}")
 
-            total_records = get_total_with_filter(energy_unit_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter)
+            total_records = energy_unit_query(
+                                energy_unit_filter, 
+                                regional_district_filter, 
+                                regional_energy_system_filter, 
+                                union_energy_system_filter).count
             last_page = (total_records + per_page - 1) // per_page
 
             page = min(page, last_page)
@@ -236,10 +300,8 @@ def add_energy_unit_routes():
     )
 
 
-from flask import send_file
-from datetime import datetime
-
-@refdata_bp.route("/export_energy_unit_to_excel", methods=["GET"])
+@refdata_bp.route("/export_energy_unit", methods=["GET"])
+@login_required
 def export_energy_unit_to_excel_routes():
     """Маршрут для экспорта данных в Excel."""
     user = session.get('username', 'Неизвестный пользователь')
@@ -253,7 +315,7 @@ def export_energy_unit_to_excel_routes():
 
     try:
         # Получение данных для экспорта
-        excel_data = export_energy_unit_to_excel_service(user, energy_unit_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter, sort_by, sort_dir)
+        excel_data = export_energy_unit_service(user, energy_unit_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter, sort_by, sort_dir)
         log_to_db(user, "Экспорт завершён", f"Фильтр: {energy_unit_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
         
         # Проверка наличия данных

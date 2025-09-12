@@ -41,14 +41,9 @@ class RegionalEnergySystem(db.Model):
         back_populates='regional_energy_systems'
     )
 
-    # Children: EnergyUnit / EnergyArea
+    # Children: EnergyUnit
     energy_units = db.relationship(
         'EnergyUnit',
-        back_populates='regional_energy_system',
-        cascade='all, delete-orphan'
-    )
-    energy_areas = db.relationship(
-        'EnergyArea',
         back_populates='regional_energy_system',
         cascade='all, delete-orphan'
     )

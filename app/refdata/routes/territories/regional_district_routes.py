@@ -16,11 +16,17 @@ from app.refdata.forms.territories.regional_district_forms import (
 )
 
 # Сервисы
-from app.refdata.services.common_services.get_services import (
-    get_federal_district_list,
-    get_energy_zone_list,
-    get_synchronous_area_list,
+from app.common.services.get_services.territories.regional_district_get_services import (
     get_total_regional_district_records,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list,
+)
+from app.common.services.get_services.energy_systems.energy_zone_get_services import (
+    get_energy_zone_list,
+)
+from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+    get_synchronous_area_list,
 )
 from app.refdata.services.territories.regional_district_services import (
     get_regional_district_list,
@@ -74,9 +80,9 @@ def regional_district_list():
         regional_district_names = request.form.getlist("regional_district_names[]")
         regional_district_full_names = request.form.getlist("regional_district_full_names[]")
         regional_district_delete = request.form.getlist("regional_district_delete[]")
-        federal_districts = request.form.getlist("federal_districts[]")
-        energy_zones = request.form.getlist("energy_zones[]")
-        synchronous_areas = request.form.getlist("synchronous_areas[]")
+        federal_district_ids = request.form.getlist("federal_districts[]")
+        energy_zone_ids = request.form.getlist("energy_zones[]")
+        synchronous_area_ids = request.form.getlist("synchronous_areas[]")
 
         # Удаление записей
         if regional_district_delete:
@@ -113,29 +119,29 @@ def regional_district_list():
             
             # Формирование данных для обновления
             regional_district_data = []
-            for regional_district_id, regional_district_name, regional_district_full_name, id_federal_district, id_energy_zone, id_synchronous_area, region_id in zip(
-                regional_district_ids, regional_district_names, regional_district_full_names, federal_districts, energy_zones, synchronous_areas, region_ids
+            for regional_district_id, regional_district_name, regional_district_full_name, federal_district_id, energy_zone_id, synchronous_area_id, region_id in zip(
+                regional_district_ids, regional_district_names, regional_district_full_names, federal_district_ids, energy_zone_ids, synchronous_area_ids, region_ids
             ):
                 try:
                     regional_district_data.append({
-                        "id": int(regional_district_id) if regional_district_id else None,
+                        "regional_district_id": int(regional_district_id) if regional_district_id else None,
                         "region_id": int(region_id) if region_id else None,
                         "name": regional_district_name.strip(),
                         "name_full": regional_district_full_name.strip(),
-                        "id_federal_district": int(id_federal_district) if id_federal_district else None,
-                        "id_energy_zone": int(id_energy_zone) if id_energy_zone else None,
-                        "id_synchronous_area": int(id_synchronous_area) if id_synchronous_area else None,
+                        "federal_district_id": int(federal_district_id) if federal_district_id else None,
+                        "energy_zone_id": int(energy_zone_id) if energy_zone_id else None,
+                        "id_synchronous_area": int(synchronous_area_id) if synchronous_area_id else None,
                     })
                 except ValueError as e:
                     raise ValueError(
                         f"Ошибка обработки данных: "
-                        f"id={regional_district_id}, "
+                        f"regional_district_id={regional_district_id}, "
                         f"region_id={region_id}, "
                         f"name={regional_district_name}, "
                         f"name_full={regional_district_full_name}, "
-                        f"id_federal_district={id_federal_district}, "
-                        f"id_energy_zone={id_energy_zone}, "
-                        f"id_synchronous_area={id_synchronous_area}. "
+                        f"federal_district_id={federal_district_id}, "
+                        f"energy_zone_id={energy_zone_id}, "
+                        f"synchronous_area_id={synchronous_area_id}. "
                         f"Ошибка: {e}"
                     )
             
@@ -238,7 +244,6 @@ def add_regional_district():
         flash("Ошибка при загрузке списка федеральных округов.", "danger")
         return redirect(url_for("refdata_bp.regional_district_list"))
 
-
     # Обработка формы
     if request.method == "POST" and form.validate_on_submit():
         try:
@@ -252,11 +257,18 @@ def add_regional_district():
             add_regional_district_service(payload, user)
             flash("Новая запись успешно добавлена.", "success")
 
+            log_to_db(user, "Добавление нового субъекта РФ", 
+                      f"Имя: {form.name.data}, Полное имя: {form.name_full.data}, ФО: {form.federal_district.data}")
+
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_regional_district_records(regional_district_filter, federal_district_filter, energy_zone_filter, synchronous_area_filter)
+            total_records = get_total_regional_district_records(
+                                regional_district_filter, 
+                                federal_district_filter, 
+                                energy_zone_filter, 
+                                synchronous_area_filter)
             last_page = (total_records + per_page - 1) // per_page
             
-            # Пересчет последней страницы (без дубля логики сервиса)
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
@@ -274,7 +286,9 @@ def add_regional_district():
         except ValueError as e:
              # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
+            log_to_db(user, "Ошибка добавления нового субъекта РФ", str(e))
         except Exception as e:
+            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
             log_to_db(user, "Неизвестная ошибка добавления субъекта РФ", str(e))
@@ -345,14 +359,16 @@ def export_regional_district():
     try:
         # Получение данных для экспорта
         excel_data = export_regional_district_service(
-            user=user,
-            regional_district_filter=regional_district_filter,
-            federal_district_filter=federal_district_filter,
-            energy_zone_filter=energy_zone_filter,
-            synchronous_area_filter=synchronous_area_filter,
-            sort_by=sort_by,
-            sort_dir=sort_dir,
+                user=user,
+                regional_district_filter=regional_district_filter,
+                federal_district_filter=federal_district_filter,
+                energy_zone_filter=energy_zone_filter,
+                synchronous_area_filter=synchronous_area_filter,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
         )
+        log_to_db(user, "Экспорт завершён", f"Фильтр: {regional_district_filter, federal_district_filter, energy_zone_filter, synchronous_area_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
+
 
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:

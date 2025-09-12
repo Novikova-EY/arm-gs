@@ -75,7 +75,6 @@ def import_all_models():
         "app.refdata.models.year_feature_model",
         "app.refdata.models.year_model",
         "app.refdata.models.regional_district_regional_energy_system_model",
-        # если есть ещё модели — добавь сюда
     ]
     for m in modules:
         try:

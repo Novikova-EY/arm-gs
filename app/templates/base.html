@@ -20,7 +20,7 @@
     <div class="d-flex justify-content-end align-items-center gap-2 gap-md-3">
         {% if current_user.is_authenticated %}
             <span class="me-4 fs-4 fw-bold">
-            {{ current_user.username }}
+            {{ current_user.username }} ({{ current_user.email }})
             </span>
             <a href="{{ url_for('logs.view_logs') }}" class="btn btn-outline-secondary fs-5">Запись логов</a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger fs-5">Выйти</a>

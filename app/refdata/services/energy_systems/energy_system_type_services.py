@@ -1,214 +1,346 @@
-# -*- coding: utf-8 -*-
-"""
-Сервисный слой для справочника «Типы энергосистем».
-Содержит операции выборки, добавления, обновления, удаления и экспорта.
-Все операции логируются через log_to_db.
-"""
-from io import BytesIO
-from typing import List, Tuple, Optional
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import asc, desc
-import pandas as pd
+"""Сервисный модуль: Части энергосистемы России."""
 
 from app.extensions import db
-from app.logs.services.logging_service import log_to_db
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.exc import IntegrityError
+import pandas as pd
+from io import BytesIO 
+
+# Модели
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 
-def _apply_sort(query, sort_by: str, sort_dir: str):
-    """Применяет сортировку с whitelisting допустимых полей."""
-    sort_by = (sort_by or "id").lower()
+# Сервисы
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_name,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_name,
+)
+from app.common.services.help_services import (
+    _dash,
+    _to_int_or_none,
+)
+from app.common.services.tranzaction_services import (
+    _commit_with_retry,
+    _locked_get,
+    no_autoflush,
+)
+
+# Логирование
+from app.logs.services.logging_service import log_to_db
+
+
+def energy_system_type_query(
+    energy_system_type_filter=None,
+    sort_by="id",
+    sort_dir="asc",
+):
+    """ Базовый запрос для выборки частей энергосистемы России с фильтрацией и сортировкой. """
+
+    # Валидация сортировки
+    allowed_sort_by = {"id","name"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+
     sort_dir = (sort_dir or "asc").lower()
+    sort_dir = "desc" if sort_dir == "desc" else "asc"
 
-    allowed = {
-        "id": EnergySystemType.id,
-        "name": EnergySystemType.name,
-    }
-    column = allowed.get(sort_by, EnergySystemType.id)
-    order = asc if sort_dir != "desc" else desc
-    return query.order_by(order(column))
-
-def get_energy_system_types(
-    energy_system_type_filter: Optional[str],
-    sort_by: str,
-    sort_dir: str,
-    page: int,
-    per_page: int,
-) -> Tuple[List[EnergySystemType], int]:
-    """Возвращает список типов энергосистем и общее количество записей с учётом фильтра."""
+    # Базовый запрос
     query = EnergySystemType.query
+
+    # Фильтрация
     if energy_system_type_filter:
-        like = f"%{energy_system_type_filter.strip()}%"
-        query = query.filter(EnergySystemType.name.ilike(like))
+        query = query.filter(
+            or_(
+                EnergySystemType.name.ilike(f"%{energy_system_type_filter}%"),
+            )
+        )
 
-    total = query.count()
-    query = _apply_sort(query, sort_by, sort_dir)
-    items = query.offset((page - 1) * per_page).limit(per_page).all()
-    return items, total
+    # Сортировка
+    if sort_by in ["name"]:
+        sort_field = getattr(EnergySystemType, sort_by)
+        query = query.order_by(sort_field.desc() if sort_dir == "desc" else sort_field.asc())
 
-def get_total_energy_system_type_records(energy_system_type_filter: Optional[str]) -> int:
-    query = EnergySystemType.query
-    if energy_system_type_filter:
-        like = f"%{energy_system_type_filter.strip()}%"
-        query = query.filter(EnergySystemType.name.ilike(like))
-    return query.count()
+    else:
+        query = query.order_by(EnergySystemType.id.desc() if sort_dir == "desc" else EnergySystemType.id.asc())
 
-def add_energy_system_type_service(data: List[dict], user) -> int:
-    """Добавляет одну запись. Ожидается список с одним словарём: {'name': '...'}.
-    Возвращает id созданной записи.
-    """
-    if not isinstance(data, list) or not data:
-        raise ValueError("Ожидается непустой список записей для добавления.")
-    record = data[0]
-    name = (record.get("name") or "").strip()
-    if not name:
-        log_to_db(user, "Ошибка валидации", "Пустое наименование типа энергосистемы")
-        raise ValueError("Наименование обязательно.")
+    # Исключаем запись "Не указано" (id=0)
+    query = query.filter(EnergySystemType.id.isnot(None), EnergySystemType.id > 0)
 
-    exists = EnergySystemType.query.filter_by(name=name).first()
-    if exists:
-        log_to_db(user, "Ошибка дублирования", f"Тип энергосистемы с именем '{name}' уже существует (id={exists.id}).")
-        raise ValueError(f"Тип энергосистемы с именем '{name}' уже существует.")
+    return query
 
-    obj = EnergySystemType(name=name)
-    db.session.add(obj)
-    db.session.commit()
-    log_to_db(user, "Добавление типа энергосистемы", f"id={obj.id}, name={obj.name}")
-    return obj.id
 
-def update_energy_system_types(ids: List[int], names: List[str], user) -> int:
-    """Массовое обновление имён.
-    Возвращает количество обновлённых записей.
-    """
-    if not ids or not names or len(ids) != len(names):
-        raise ValueError("Списки ids и names должны быть одинаковой длины и не пустыми.")
+@no_autoflush
+def get_energy_system_type_list(
+    page, 
+    per_page, 
+    energy_system_type_filter=None, 
+    sort_by="id", 
+    sort_dir="asc"):
+    """ Получает список частей энергосистемы России с пагинацией, фильтрацией и сортировкой. """
+    
+    # Базовый запрос
+    query = energy_system_type_query(
+        energy_system_type_filter=energy_system_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
-    updated = 0
-    for _id, _name in zip(ids, names):
-        _name = (_name or "").strip()
-        if not _name:
-            log_to_db(user, "Ошибка валидации", f"id={_id}: пустое имя")
-            raise ValueError("Наименование обязательно.")
+    # Пагинация
+    return query.paginate(page=page, per_page=per_page, error_out=False)
 
-        # Проверка на дубликат имени у других записей
-        dup = EnergySystemType.query.filter(
-            EnergySystemType.name == _name,
-            EnergySystemType.id != _id
-        ).first()
-        if dup:
-            log_to_db(user, "Ошибка дублирования", f"id={_id}: имя '{_name}' уже занято (id={dup.id})")
-            raise ValueError(f"Имя '{_name}' уже существует.")
 
-        obj = EnergySystemType.query.get(_id)
-        if not obj:
-            log_to_db(user, "Не найдено", f"id={_id}")
-            continue
-        if obj.name != _name:
-            obj.name = _name
-            updated += 1
+@no_autoflush
+def update_energy_system_type_service(data, user):
+    """ Обновление данных по частям энергосистемы России. """
+        
+    if not isinstance(data, list):
+        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
 
-    if updated:
-        db.session.commit()
-    return updated
+    updated_ids = []
 
-def delete_energy_system_types(ids: List[int], user) -> Tuple[int, int]:
-    """Удаление по списку id.
-    Возвращает кортеж (успешно_удалено, не_удалено_из-за_ссылочной_целостности).
-    """
-    ok, failed = 0, 0
-    for _id in ids or []:
-        obj = EnergySystemType.query.get(_id)
-        if not obj:
-            continue
+    log_to_db(user, "Получены данные для обновления списка энергоузлов", 
+              f"{data}")
+
+    with db.session.no_autoflush:
+        for record in data:
+            energy_system_type_id = record.get("energy_system_type_id")
+            name = record.get("name")
+
+           # Проверки на валидность данных
+            if not name:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись: {record}")
+                raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
+            
+            obj = db.session.get(EnergySystemType, energy_system_type_id)
+            if not obj:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись с ID «{energy_system_type_id}» не найдена.")
+                raise ValueError(f"Запись с ID «{energy_system_type_id}» не найдена.")
+
+            # Проверка уникальности name только если меняется
+            if name != (obj.name or ""):
+                q = (EnergySystemType.query
+                     .filter(EnergySystemType.name == name,
+                             EnergySystemType.id != energy_system_type_id))
+                if q.first():
+                    log_to_db(user, "Ошибка валидации", 
+                              f"Запись с наименованием «{name}» уже существует.")
+                    raise ValueError(f"Запись с именем «{name}» уже существует.")
+            
+            changes = {}
+
+            if name != (obj.name or ""):
+                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                obj.name = name
+            
+            # Если есть реальные изменения — лог и добавление в список
+            if changes:
+                log_to_db(user, f"Обновлена запись части энергосистемы России: {name}", 
+                          f"Изменения = {changes}")
+                updated_ids.append(energy_system_type_id)
+
+        db.session.flush()
+
+    try:
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        if updated_ids:
+            log_to_db(user, "Сохранены изменения по частям энергосистемы России", 
+                      f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+        else:
+            log_to_db(user, "Изменений по частям энергосистемы России не обнаружено", "")
+            
+        return updated_ids
+
+    except IntegrityError as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка сохранения части энергосистемы России (уникальность/целостность)", str(e))
+        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(user, "Неизвестная ошибка при сохранении части энергосистемы России", str(e))
+        raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
+    
+
+@no_autoflush
+def add_energy_system_type_service(data, user):
+    """ Создание новой записи: часть энергосистемы России """
+        
+    if not isinstance(data, list):
+        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+
+    try:
+        with db.session.no_autoflush:
+            # Итерация по входным данным (валидация/применение)
+            for record in data:
+                energy_system_type_id = record.get("id")
+                name = record.get("name")
+                regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+
+                if not name or not regional_district_id:
+                    log_to_db(user, "Ошибка валидации", f"Запись: {record}")
+                    raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
+
+                # Проверяем уникальность name
+                dup = (EnergySystemType.query
+                        .filter(EnergySystemType.name == name)
+                        .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с именем «{name}» уже существует.")
+
+                # Создаем новую запись
+                obj = EnergySystemType(
+                    name=name,
+                )
+                db.session.add(obj)
+                db.session.flush()  # получить id без полного коммита
+
+                log_to_db(user, "Создана часть энергосистемы России",
+                    (
+                        f"Наименование: {name};"
+                    )
+                )
+
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        return None
+
+    except IntegrityError as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка сохранения части энергосистемы России (уникальность/целостность)", str(e))
+        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка сохранения части энергосистемы России", str(e))
+        raise ValueError(f"Ошибка при добавлении/обновлении записей: {e}")
+    
+
+@no_autoflush
+def delete_energy_system_type_service(ids, user):
+    """Удаляет записи частей энергосистемы России по переданным ID."""
+
+    if not isinstance(ids, (list, tuple)) or not ids:
+        raise ValueError("Не переданы ID для удаления.")
+    
+    log_to_db(user, "Удаление записей", 
+              f"Переданы ID для удаления: {ids}")
+
+    successful_deletes = 0
+    deleted_names = []
+    not_found = []
+    invalid = []
+
+    for est_id in ids:
         try:
+            energy_system_type_id = _to_int_or_none(est_id, keep_zero=False)
+        except (TypeError, ValueError):
+            invalid.append(est_id)
+            log_to_db(user, "Ошибка удаления части энергосистемы России", 
+                      f"Некорректный ID: {est_id}")
+            continue
+
+        obj = _locked_get(EnergySystemType, energy_system_type_id)
+        if obj:
             db.session.delete(obj)
-            db.session.commit()
-            ok += 1
-            log_to_db(user, "Удаление типа энергосистемы", f"id={_id}, name={obj.name}")
-        except IntegrityError:
-            db.session.rollback()
-            failed += 1
-            log_to_db(user, "Удаление невозможно (FK)", f"id={_id}, name={obj.name}")
-    return ok, failed
+            deleted_names.append(get_energy_system_type_name(energy_system_type_id))
+            successful_deletes += 1
+            log_to_db(user, "Удалена часть энергосистемы России", 
+                      f"{get_energy_system_type_name(energy_system_type_id)}")
+        else:
+            not_found.append(energy_system_type_id)
+            log_to_db(user, "Ошибка удаления части энергосистемы России", 
+                      f"Часть энергосистемы России с ID={energy_system_type_id} не найдена.")
 
-def export_energy_system_types(energy_system_type_filter: Optional[str], sort_by: str, sort_dir: str) -> BytesIO:
-    """Генерация Excel с учётом фильтров/сортировки."""
-    query = EnergySystemType.query
-    if energy_system_type_filter:
-        like = f"%{energy_system_type_filter.strip()}%"
-        query = query.filter(EnergySystemType.name.ilike(like))
+    try:
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
 
-    query = _apply_sort(query, sort_by, sort_dir)
-    rows = query.all()
+        parts = [f"Удалено: {successful_deletes}"]
+        if deleted_names:
+            parts.append(f"Наименование: {deleted_names}")
+        if not_found:
+            parts.append(f"Не найдены ID: {not_found}")
+        if invalid:
+            parts.append(f"Некорректные ID: {invalid}")
 
-    data = [ {"ID": r.id, "Наименование типа энергосистемы": r.name} for r in rows ]
-    df = pd.DataFrame(data, columns=["ID", "Наименование типа энергосистемы"])
+        log_to_db(user, "Результат удаления частей энергосистемы России", "; ".join(parts))
 
+        return {
+            "deleted": successful_deletes,
+            "deleted_names": deleted_names,
+            "not_found": not_found,
+            "invalid": invalid,
+        }
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка удаления частей энергосистемы России", str(e))
+        raise ValueError("Ошибка при удалении данных.")
+    
+
+def export_energy_system_type_service(
+        user, 
+        energy_system_type_filter=None, 
+        sort_by="id", 
+        sort_dir="asc"):
+    """ Экспортирует данные списка частей энергосистемы России в Excel. """
+
+    log_to_db(user, "Начата выгрузка таблицы частей энергосистемы России из базы данных")
+    log_to_db(user, "Параметры экспорта", 
+            (
+                f"Фильтр по столбцу: Наименование части энергосистемы России = {energy_system_type_filter},"
+                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+            ),
+    )
+    
+    # Базовый запрос
+    query = energy_system_type_query(
+        energy_system_type_filter=energy_system_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+
+    # Получение данных
+    items = query.all()
+    log_to_db(user, "Получение данных завершено", 
+              f"Найдено записей: {len(items)}")
+
+    # Подготовка данных для Excel
+    data = []
+    for idx, o in enumerate(items, start=1):
+        data.append({
+            "№": idx + 1,
+            "Наименование части энергосистемы России": _dash(o.name),
+        })
+
+    log_to_db(user, "Подготовка данных для экспорта таблицы частей энергосистемы России в Excel", 
+              f"Записей для экспорта: {len(data)}")
+
+    # Подготовка данных к записи в Excel
+    df = pd.DataFrame(data)
+    
+    # Создание Excel-файла
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="Типы энергосистем", index=False)
+    sheet_name = "Часть энергосистемы России"
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+
+        # Автоподбор ширины с аккуратным лимитом
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
+
+    # Возврат файла в ответе
     output.seek(0)
+    log_to_db(user, "Экспорт таблицы частей энергосистемы России в Excel завершён", 
+              f"Экспортировано записей: {len(data)}")
+
     return output
 
-
-
-# --- Адаптеры имен для совместимости с роутами ---
-try:
-    # Локальный импорт класса пагинации, чтобы вернуть именно тот объект, который ожидают роуты/шаблоны
-    from app.common.models.pagination import Pagination  # type: ignore
-except Exception:
-    Pagination = None  # на случай изоляции тестов
-
-def get_energy_system_type_list(page, per_page, energy_system_type_filter=None, sort_by="id", sort_dir="asc"):
-    """Обёртка: вернуть Pagination, как ожидает роут."""
-    items, total = get_energy_system_types(
-        energy_system_type_filter=energy_system_type_filter,
-        sort_by=sort_by, sort_dir=sort_dir,
-        page=page, per_page=per_page
-    )
-    if Pagination is not None:
-        pagination = Pagination(page=page, per_page=per_page, total=total)
-        # большинство реализаций Pagination позволяют класть items вручную
-        setattr(pagination, "items", items)
-        return pagination
-    # запасной путь: вернуть кортеж (items, total)
-    return type("SimplePagination", (), {"items": items, "page": page, "per_page": per_page, "total": total})()
-
-def update_energy_system_type_service(energy_system_type_data, user):
-    """Обёртка: преобразует список словарей в ids/names для массового обновления."""
-    ids, names = [], []
-    for rec in energy_system_type_data or []:
-        ids.append(rec.get("id"))
-        names.append((rec.get("name") or "").strip())
-    return update_energy_system_types(ids, names, user)
-
-def delete_energy_system_type_service(ids, user):
-    """Обёртка под delete_*_list сигнатуру."""
-    return delete_energy_system_types(ids, user)
-
-def export_energy_system_type_to_excel_service(user=None, energy_system_type_filter=None, sort_by="id", sort_dir="asc"):
-    """Обёртка экспорта; user не используется, оставлен для унификации сигнатуры с роутами."""
-    return export_energy_system_types(
-        energy_system_type_filter=energy_system_type_filter,
-        sort_by=sort_by, sort_dir=sort_dir
-    )
-
-# Совместимое имя с другими сервисами (если роут ожидает get_total_with_filter)
-def get_total_with_filter(filter_value=None):
-    return get_total_energy_system_type_records(filter_value)
-
-
-__all__ = [
-    "_apply_sort",
-    "get_energy_system_types",
-    "get_total_energy_system_type_records",
-    "add_energy_system_type",
-    "update_energy_system_types",
-    "delete_energy_system_types",
-    "export_energy_system_types",
-    # адаптеры для роутов
-    "get_energy_system_type_list",
-    "update_energy_system_type",
-    "delete_energy_system_type_list",
-    "export_energy_system_type_to_excel",
-    "get_total_with_filter",
-]

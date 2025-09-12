@@ -11,11 +11,11 @@ from io import BytesIO
 from app.refdata.models.fuels.fuel_type_model import FuelType
 
 # Сервисы
-from app.refdata.services.common_services.help_services import (
+from app.common.services.help_services import (
     _dash,
     _clean_name,
 )
-from app.refdata.services.common_services.tranzaction_services import (
+from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
@@ -24,23 +24,20 @@ from app.refdata.services.common_services.tranzaction_services import (
 # Логирование
 from app.logs.services.logging_service import log_to_db
 
-@no_autoflush
-def get_fuel_type_list(
-    page, 
-    per_page, 
-    fuel_type_filter=None, 
-    sort_by="id", 
-    sort_dir="asc"):
-    """Получает список видов топлива с пагинацией, фильтрацией и сортировкой."""
+
+def get_fuel_type_query(
+        fuel_type_filter=None, 
+        sort_by="id", 
+        sort_dir="asc"
+):
+    """ Базовый запрос для выборки видов топлива с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id","name"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
-    allowed_sort = {"id", "name"}
-    if sort_by not in allowed_sort:
-        sort_by = "id"
 
-    ftf = (fuel_type_filter or "").strip()
+    sort_dir = (sort_dir or "asc").lower()
+    sort_dir = "desc" if sort_dir == "desc" else "asc"
 
     # Базовый запрос
     query = (
@@ -49,18 +46,39 @@ def get_fuel_type_list(
     )
     
     # Фильтрация
-    if ftf:
-        like = f"%{ftf}%"
-        query = query.filter(FuelType.name.ilike(like))
+    if fuel_type_filter:
+        query = query.filter(FuelType.name.ilike(f"%{fuel_type_filter}%"))
 
     # Сортировка
     if sort_by == "name":
         sort_col = FuelType.name
         query = query.order_by(sort_col.name.desc() if sort_dir == "desc" else sort_col.name.asc())
 
-    else: # "id" (по умолчанию)
+    else: # сортировка по id
         sort_col = FuelType.id
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else FuelType.id.asc())
+
+    # Исключаем запись "Не указано" (id=0)
+    query = query.filter(FuelType.id.isnot(None), FuelType.id > 0)
+
+    return query
+
+
+@no_autoflush
+def get_fuel_type_list(
+    page, 
+    per_page, 
+    fuel_type_filter=None, 
+    sort_by="id", 
+    sort_dir="asc"):
+    """ Получает список видов топлива с пагинацией, фильтрацией и сортировкой. """
+    
+    # Базовый запрос
+    query = get_fuel_type_query(
+        fuel_type_filter=fuel_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
     # Пагинация
     return query.paginate(page=page, per_page=per_page, error_out=False)
@@ -75,20 +93,27 @@ def update_fuel_type_service(data, user):
 
     updated_ids = []
     
-    # Итерация по входным данным (валидация/применение)
+    log_to_db(user, "Получены данные для обновления списка видов топлива", 
+              f"{data}")
+    
+    # Проверки на валидность данных
     with db.session.no_autoflush:
         for record in data:
-            fuel_type_id = record.get("id")
+            fuel_type_id = record.get("fuel_type_id")
             name = (record.get("name") or "").strip()
 
             if not name:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись: {record}")
                 raise ValueError("Поле 'name' обязательно для заполнения.")
 
             obj = db.session.get(FuelType, fuel_type_id)
             if not obj:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись с ID «{fuel_type_id}» не найдена.")
                 raise ValueError(f"Запись с ID «{fuel_type_id}» не найдена.")
 
-            # Проверка уникальности name только если меняется
+            # Проверка уникальности name
             if name != (obj.name or ""):
                 q = (FuelType.query
                      .filter(FuelType.name == name,
@@ -133,101 +158,56 @@ def update_fuel_type_service(data, user):
 
 @no_autoflush
 def add_fuel_type_service(data, user):
-    """Создание/обновление видов топлива"""
+    """Создание новой записи: вид топлива"""
 
     if not isinstance(data, list):
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
-
-    log_to_db(user, "Получены данные для добавления/обновления видов топлива", f"Кол-во записей: {len(data)}")
-
-    created_ids = []
-    updated_count = 0
 
     try:
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
-                fuel_type_id = record.get("id")
-                name_to_clean = (record.get("name") or "").strip()
-                name = _clean_name(name_to_clean)
+                name = (record.get("name") or "").strip()
 
                 if not name:
-                    log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name'.")
+                    log_to_db(user, "Ошибка валидации", 
+                              f"Запись: {record}")
+                    raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
 
-                #----- ОБНОВЛЕНИЕ-----
-                if fuel_type_id:
-                    obj = _locked_get(FuelType, fuel_type_id)
-                    if not obj:
-                        log_to_db(user, "Ошибка обновления вида топлива", f"Запись с ID={fuel_type_id} не найдена")
-                        raise ValueError(f"Запись с ID {fuel_type_id} не найдена.")
+                # Проверяем уникальность name
+                dup = (FuelType.query
+                        .filter(FuelType.name == name)
+                        .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                
+                # Создаем новую запись
+                obj = FuelType(
+                    name=name,
+                )
+                db.session.add(obj)
+                db.session.flush()  # получить id без полного коммита
 
-                    # Уникальность name — только если меняется
-                    if (obj.name or "") != name:
-                        dup = (FuelType.query
-                               .filter(FuelType.name == name)
-                               .with_for_update().first())
-                        if dup:
-                            raise ValueError(f"Запись с именем «{name}» уже существует.")
-
-                    изменения = {}
-
-                    if (obj.name or "") != name:
-                        изменения["Наименование"] = f"{_dash(obj.name)} → {name}"
-                        obj.name = name
-
-                    if изменения:
-                        updated_count += 1
-                        log_to_db(user, "Обновлен вид топлива", f"Наименование = {name}. Изменения = {изменения}")
-
-                #----- СОЗДАНИЕ-----
-                else:
-                    # Уникальность name при создании
-                    dup = (FuelType.query
-                           .filter(FuelType.name == name)
-                           .with_for_update().first())
-                    if dup:
-                        raise ValueError(f"Запись с именем «{name}» уже существует.")
-
-                    obj = FuelType(
-                        name=name,
-                    )
-                    db.session.add(obj)
-                    db.session.flush()  # получить id без полного коммита
-                    created_ids.append(obj.id)
-
-                    log_to_db(
-                        user,
-                        "Создан вид топлива",
-                        f"Наименование: {name}"
-                    )
+                log_to_db(
+                    user,
+                    "Создан тип топлива",
+                    f"Наименование: {name}"
+                )
 
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
         _commit_with_retry()
 
-        # Итоговый лог
-        tail = []
-        if created_ids:
-            tail.append(f"создано: {len(created_ids)} (id: {created_ids})")
-        if updated_count:
-            tail.append(f"обновлено: {updated_count}")
-        log_to_db(user, "Сохранение видов топлива завершено", "; ".join(tail) or "Изменений нет")
-
-        if len(created_ids) == 1:
-            return created_ids[0]
-        if created_ids:
-            return created_ids
         return None
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения видов топлива (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        log_to_db(user, "Ошибка сохранения нового вида топлива. Возможно, нарушены уникальные ограничения или внешние ключи", str(e))
+        raise ValueError("Ошибка сохранения нового вида топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения видов топлива", str(e))
-        raise ValueError(f"Ошибка при добавлении/обновлении записей: {e}")
+        log_to_db(user, "Ошибка сохранения нового вида топлива", str(e))
+        raise ValueError(f"Ошибка сохранения нового вида топлива: {e}")
 
 
 @no_autoflush
@@ -237,7 +217,8 @@ def delete_fuel_type_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError("Не переданы ID для удаления.")
 
-    log_to_db(user, "Удаление видов топлива", f"Переданы ID для удаления: {ids}")
+    log_to_db(user, "Удаление видов топлива", 
+              f"Переданы ID для удаления: {ids}")
 
     successful_deletes = 0
     deleted_names = []
@@ -249,7 +230,8 @@ def delete_fuel_type_service(ids, user):
             fuel_type_id = int(ft_id)
         except (TypeError, ValueError):
             invalid.append(ft_id)
-            log_to_db(user, "Ошибка удаления видов топлива", f"Некорректный ID: {ft_id}")
+            log_to_db(user, "Ошибка удаления видов топлива", 
+                      f"Некорректный ID: {ft_id}")
             continue
 
         obj = _locked_get(FuelType, fuel_type_id)
@@ -261,7 +243,8 @@ def delete_fuel_type_service(ids, user):
             log_to_db(user, "Удален вид топлива", f"{name}")
         else:
             not_found.append(fuel_type_id)
-            log_to_db(user, "Ошибка удаления видов топлива", f"Вид топлива с ID={fuel_type_id} не найден.")
+            log_to_db(user, "Ошибка удаления видов топлива", 
+                      f"Вид топлива с ID={fuel_type_id} не найден.")
 
     try:
         # Сохранение изменений в базе данных
@@ -323,55 +306,33 @@ def export_fuel_type_service(
     sort_by="id",
     sort_dir="asc",
 ):
-    """ Экспортирует данные видов топлива в Excel и возвращает BytesIO. """
-
-    # Нормализация входов
-    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
-    sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name"}
-    if sort_by not in allowed_sort:
-        sort_by = "id"
-
-    ftf = (fuel_type_filter or "").strip()
+    """ Экспортирует данные видов топлива в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы видов топлива из базы данных")
-    log_to_db(
-        user,
-        "Параметры экспорта",
+    log_to_db(user, "Параметры экспорта",
         (
-            f"fuel_type_filter={ftf!r}, "
-            f"sort_by={sort_by}, sort_dir={sort_dir}"
+            f"Фильтр по столбцу: Наименование вида топлива = {fuel_type_filter},"
+            f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
         ),
     )
 
     # Базовый запрос
-    query = (
-        FuelType.query
-        .filter(FuelType.id.isnot(None), FuelType.id > 0)
+    query = get_fuel_type_query(
+        fuel_type_filter=fuel_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
-    
-    # Фильтрация
-    if ftf:
-        like = f"%{ftf}%"
-        query = query.filter(FuelType.name.ilike(like))
 
-    # Сортировка
-    if sort_by == "name":
-        sort_col = FuelType.name
-        query = query.order_by(sort_col.name.desc() if sort_dir == "desc" else sort_col.name.asc())
-
-    else: # "id" (по умолчанию)
-        sort_col = FuelType.id
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else FuelType.id.asc())
-
+    # Получение данных
     items = query.all()
+    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
 
     # Подготовка данных для Excel
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Наименование": o.name or "",
+            "Наименование": _dash(o.name),
         })
 
     log_to_db(user, "Подготовка данных для экспорта таблицы видов топлива в Excel",

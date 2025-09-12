@@ -8,29 +8,37 @@ import pandas as pd
 from io import BytesIO 
 
 # Модели
-from app.refdata.models.territories.regional_district_model import RegionalDistrict
-from app.refdata.models.territories.federal_district_model import FederalDistrict
-from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
 
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.territories.federal_district_model import FederalDistrict
+
 # Сервисы
-from app.logs.services.logging_service import log_to_db
-from app.refdata.services.common_services.help_services import (
+from app.common.services.get_services.energy_systems.energy_zone_get_services import (
+    get_energy_zone_name,
+)
+from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+    get_synchronous_area_name,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_name,
+)
+from app.common.services.help_services import (
     _dash,
     _to_int_or_none,
 )
-from app.refdata.services.common_services.tranzaction_services import (
+from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
 )
 
+# Логирование
+from app.logs.services.logging_service import log_to_db
 
-@no_autoflush
-def get_regional_district_list(
-    page,
-    per_page,
+
+def regional_district_query(
     regional_district_filter=None,
     federal_district_filter=None,
     energy_zone_filter=None,
@@ -38,7 +46,7 @@ def get_regional_district_list(
     sort_by="id",
     sort_dir="asc",
 ):
-    """Получает список субъектов РФ с пагинацией, фильтрацией и сортировкой."""
+    """ Базовый запрос для выборки субъектов РФ с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id","name","federal_district","energy_zone","synchronous_area","region_id"}
@@ -113,41 +121,89 @@ def get_regional_district_list(
         sort_col = RegionalDistrict.id
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
+    # Исключаем запись "Не указано" (id=0)
+    query = query.filter(RegionalDistrict.id.isnot(None), RegionalDistrict.id > 0)
+
+    return query
+
+
+@no_autoflush
+def get_regional_district_list(
+    page,
+    per_page,
+    regional_district_filter=None,
+    federal_district_filter=None,
+    energy_zone_filter=None,
+    synchronous_area_filter=None,
+    sort_by="id",
+    sort_dir="asc",
+):
+    """ Получает список субъектов РФ с пагинацией, фильтрацией и сортировкой. """
+
+    # Базовый запрос
+    query = regional_district_query(
+        regional_district_filter=regional_district_filter,
+        federal_district_filter=federal_district_filter,
+        energy_zone_filter=energy_zone_filter,
+        synchronous_area_filter=synchronous_area_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+
     # Пагинация
     return query.paginate(page=page, per_page=per_page, error_out=False)
 
 
 @no_autoflush
 def update_regional_district_service(data, user):
-    """Обновление данных по субъектам РФ."""
+    """ Обновление данных по субъектам РФ. """
 
     if not isinstance(data, list) or not data:
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
     
-    # Итерация по входным данным (валидация/применение)
+    log_to_db(user, "Получены данные для обновления списка субъектов РФ", 
+              f"{data}")
+    
     with db.session.no_autoflush:
         for record in data:
-            regional_district_id = record.get("id")
+            regional_district_id = _to_int_or_none(record.get("id"), keep_zero=False)
             region_id = _to_int_or_none(record.get("region_id"), keep_zero=False)
             name = (record.get("name") or "").strip()
             name_full = (record.get("name_full") or "").strip() or None
 
+            # Проверки на валидность данных
             if not name:
-                raise ValueError("Поле 'name' обязательно для заполнения.")
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись: {record}")
+                raise ValueError("Поле 'name' обязательно для заполнения. Данные: {record}")
 
             obj = db.session.get(RegionalDistrict, regional_district_id)
             if not obj:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись с ID «{regional_district_id}» не найдена.")
                 raise ValueError(f"Запись с ID «{regional_district_id}» не найдена.")
 
-            # Проверка уникальности name только если меняется
+            # Проверка уникальности name
             if name != (obj.name or ""):
                 q = (RegionalDistrict.query
                      .filter(RegionalDistrict.name == name,
                              RegionalDistrict.id != regional_district_id))
                 if q.first():
-                    raise ValueError(f"Запись с именем «{name}» уже существует.")
+                    log_to_db(user, "Ошибка валидации", 
+                              f"Запись с наименованием «{name}» уже существует.")
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                
+            # Проверка уникальности name_full
+            if name_full != (obj.name_full or ""):
+                q_full = (RegionalDistrict.query
+                     .filter(RegionalDistrict.name_full == name_full,
+                             RegionalDistrict.id != regional_district_id))
+                if q_full.first():
+                    log_to_db(user, "Ошибка валидации", 
+                              f"Запись с полным наименованием «{name_full}» уже существует.")
+                    raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
             changes = {}
 
@@ -163,40 +219,37 @@ def update_regional_district_service(data, user):
                 changes["Порядковый номер субъекта РФ"] = f"{_dash(obj.region_id)} → {_dash(region_id)}"
                 obj.region_id = region_id
 
-            # Опциональные FK (если ключ присутствует в record)
-            if "id_federal_district" in record:
-                new_fd_id = _to_int_or_none(record.get("id_federal_district"), keep_zero=False)
-                if new_fd_id != obj.id_federal_district:
-                    new_fd = db.session.get(FederalDistrict, new_fd_id) if new_fd_id is not None else None
-                    if new_fd_id is not None and not new_fd:
-                        raise ValueError(f"Федеральный округ с id={new_fd_id} не найден.")
-                    prev_fd = db.session.get(FederalDistrict, obj.id_federal_district) if obj.id_federal_district else None
-                    changes["Федеральный округ"] = f"{_dash(prev_fd.name if prev_fd else None)} → {_dash(new_fd.name if new_fd else None)}"
-                    obj.id_federal_district = new_fd_id
+            # Проверка наличия ФО
+            if "federal_district_id" in record:
+                new_val = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
+                if new_val != obj.id_federal_district:
+                    new_obj = db.session.get(FederalDistrict, new_val) if new_val is not None else None
+                    if new_val is not None and not new_obj:
+                        raise ValueError(f"Федеральный округ с id={new_val} не найден.")
+                    
+                    prev_obj = db.session.get(FederalDistrict, obj.id_federal_district) if obj.id_federal_district else None
+                    changes["Федеральный округ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    obj.id_federal_district = new_val
 
-            # Энергозона (если ключ присутствует во входе)
-            if "id_energy_zone" in record:
-                new_val = _to_int_or_none(record.get("id_energy_zone"), keep_zero=True)
+            # Проверка наличия энергозоны
+            if "energy_zone_id" in record:
+                new_val = _to_int_or_none(record.get("energy_zone_id"), keep_zero=True)
                 if new_val != obj.id_energy_zone:
-                    new_obj = None
-                    if new_val is not None:
-                        new_obj = db.session.get(EnergyZone, new_val)
-                        if not new_obj:
-                            raise ValueError(f"Энергозона с id={new_val} не найдена.")
+                    new_obj = db.session.get(EnergyZone, new_val) if new_val is not None else None
+                    if new_val is not None and not new_obj:
+                        raise ValueError(f"Энергозона с id={new_val} не найден.")
 
                     prev_obj = db.session.get(EnergyZone, obj.id_energy_zone) if obj.id_energy_zone else None
                     changes["Энергозона"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
                     obj.id_energy_zone = new_val
 
-            # Синхронная зона (если ключ присутствует во входе)
-            if "id_synchronous_area" in record:
-                new_val = _to_int_or_none(record.get("id_synchronous_area"), keep_zero=True)
+            # Проверка наличия синхронной зоны
+            if "synchronous_area_id" in record:
+                new_val = _to_int_or_none(record.get("synchronous_area_id"), keep_zero=True)
                 if new_val != obj.id_synchronous_area:
-                    new_obj = None
-                    if new_val is not None:
-                        new_obj = db.session.get(SynchronousArea, new_val)
-                        if not new_obj:
-                            raise ValueError(f"Синхронная зона с id={new_val} не найдена.")
+                    new_obj = db.session.get(SynchronousArea, new_val) if new_val is not None else None
+                    if new_val is not None and not new_obj:
+                        raise ValueError(f"Синхронная зона с id={new_val} не найден.")
 
                     prev_obj = db.session.get(SynchronousArea, obj.id_synchronous_area) if obj.id_synchronous_area else None
                     changes["Синхронная зона"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
@@ -204,7 +257,8 @@ def update_regional_district_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлен субъект РФ: {name}", f"Изменения = {changes}")
+                log_to_db(user, f"Обновлен субъект РФ: {name}", 
+                          f"Изменения = {changes}")
                 updated_ids.append(regional_district_id)
 
         db.session.flush()
@@ -215,7 +269,8 @@ def update_regional_district_service(data, user):
         _commit_with_retry()
 
         if updated_ids:
-            log_to_db(user, "Сохранены изменения по субъектам РФ", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+            log_to_db(user, "Сохранены изменения по субъектам РФ", 
+                      f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
         else:
             log_to_db(user, "Изменений по субъектам РФ не обнаружено", "")
             
@@ -233,121 +288,74 @@ def update_regional_district_service(data, user):
 
 @no_autoflush
 def add_regional_district_service(data, user):
-    """Создание/обновление субъектов РФ"""
+    """Создание новой записи: субъект РФ"""
 
     if not isinstance(data, list) or not data:
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
-
-    log_to_db(user, "Получены данные для добавления/обновления субъектов РФ", f"Кол-во записей: {len(data)}")
-
-    created_ids = []
-    updated_count = 0
 
     try:
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
-                regional_district_id = record.get("id")
                 name = (record.get("name") or "").strip()
                 name_full = (record.get("name_full") or "").strip()
-                id_federal_district = _to_int_or_none(record.get("id_federal_district"), keep_zero=False)
+                federal_district_id = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
 
-                if not name or not name_full or id_federal_district is None:
+                # Проверка на наличие необходимых данных
+                if not name or not name_full or federal_district_id is None:
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'id_federal_district'.")
+                    raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'federal_district_id'. Данные: {record}")
 
-                # Проверяем существование ФО
-                fd_obj = db.session.get(FederalDistrict, id_federal_district)
-                if not fd_obj:
-                    raise ValueError(f"Федеральный округ с id={id_federal_district} не найден.")
-                fd_name = fd_obj.name
+                # Проверяем существование федерального округа
+                obj = db.session.get(FederalDistrict, federal_district_id)
+                if not obj:
+                    raise ValueError(f"Федеральный округ с id={federal_district_id} не найден.")
 
-                #----- ОБНОВЛЕНИЕ-----
-                if regional_district_id:
-                    obj = _locked_get(RegionalDistrict, regional_district_id)
-                    if not obj:
-                        log_to_db(user, "Ошибка обновления субъекта РФ", f"Запись с ID={regional_district_id} не найдена")
-                        raise ValueError(f"Запись с ID {regional_district_id} не найдена.")
+                # Проверяем уникальность name
+                dup = (FederalDistrict.query
+                        .filter(FederalDistrict.name == name)
+                        .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                
+                # Проверяем уникальность name_full
+                dup_full = (FederalDistrict.query
+                        .filter(FederalDistrict.name_full == name_full)
+                        .with_for_update().first())
+                if dup_full:
+                    raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
-                    # Уникальность name — только если меняется
-                    if (obj.name or "") != name:
-                        dup = (RegionalDistrict.query
-                               .filter(RegionalDistrict.name == name,
-                                       RegionalDistrict.id != regional_district_id)
-                               .with_for_update().first())
-                        if dup:
-                            raise ValueError(f"Запись с именем «{name}» уже существует.")
+                # Создаем новую запись
+                obj = FederalDistrict(
+                    name=name,
+                    name_full=name_full or None,
+                    id_federal_district=federal_district_id,
+                )
+                db.session.add(obj)
+                db.session.flush()  # получить id без полного коммита
 
-                    изменения = {}
-
-                    if (obj.name or "") != name:
-                        изменения["Наименование"] = f"{_dash(obj.name)} → {name}"
-                        obj.name = name
-
-                    if (obj.name_full or "") != name_full:
-                        изменения["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
-                        obj.name_full = name_full or None
-
-                    if obj.id_federal_district != id_federal_district:
-                        prev_fd = db.session.get(FederalDistrict, obj.id_federal_district) if obj.id_federal_district else None
-                        prev_fd_name = prev_fd.name if prev_fd else "—"
-                        изменения["Федеральный округ"] = f"{prev_fd_name} → {fd_name}"
-                        obj.id_federal_district = id_federal_district
-
-                    if изменения:
-                        updated_count += 1
-                        log_to_db(user, "Обновлен субъект РФ", f"Наименование = {name}. Изменения = {изменения}")
-
-                #----- СОЗДАНИЕ-----
-                else:
-                    # Уникальность name при создании
-                    dup = (RegionalDistrict.query
-                           .filter(RegionalDistrict.name == name)
-                           .with_for_update().first())
-                    if dup:
-                        raise ValueError(f"Запись с именем «{name}» уже существует.")
-
-                    obj = RegionalDistrict(
-                        name=name,
-                        name_full=name_full or None,
-                        id_federal_district=id_federal_district,
-                    )
-                    db.session.add(obj)
-                    db.session.flush()  # получить id без полного коммита
-                    created_ids.append(obj.id)
-
-                    log_to_db(
-                        user,
-                        "Создан субъект РФ",
-                        f"Наименование: {name}; Полное наименование: {_dash(name_full)}; Федеральный округ: {fd_name}"
-                    )
+                log_to_db(
+                    user,
+                    "Создан субъект РФ",
+                    f"Наименование: {name};"
+                    f"Полное наименование: {_dash(name_full)};"
+                    f"Федеральный округ: {get_federal_district_name(federal_district_id)}"
+                )
 
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
         _commit_with_retry()
 
-        # Итоговый лог
-        tail = []
-        if created_ids:
-            tail.append(f"создано: {len(created_ids)} (id: {created_ids})")
-        if updated_count:
-            tail.append(f"обновлено: {updated_count}")
-        log_to_db(user, "Сохранение субъектов РФ завершено", "; ".join(tail) or "Изменений нет")
-
-        if len(created_ids) == 1:
-            return created_ids[0]
-        if created_ids:
-            return created_ids
         return None
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения субъектов РФ (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        log_to_db(user, "Ошибка сохранения нового субъекта РФ. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
+        raise ValueError("Ошибка сохранения нового субъекта РФ. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения субъектов РФ", str(e))
-        raise ValueError(f"Ошибка при добавлении/обновлении записей: {e}")
+        log_to_db(user, "Ошибка сохранения нового субъекта РФ", str(e))
+        raise ValueError(f"Ошибка при сохранения нового субъекта РФ: {e}")
 
 
 @no_autoflush
@@ -369,7 +377,8 @@ def delete_regional_district_service(ids, user):
             regional_district_id = int(rd_id)
         except (TypeError, ValueError):
             invalid.append(rd_id)
-            log_to_db(user, "Ошибка удаления субъекта РФ", f"Некорректный ID: {rd_id}")
+            log_to_db(user, "Ошибка удаления субъекта РФ", 
+                      f"Некорректный ID: {rd_id}")
             continue
 
         obj = _locked_get(RegionalDistrict, regional_district_id)
@@ -381,7 +390,8 @@ def delete_regional_district_service(ids, user):
             log_to_db(user, "Удален субъект РФ", f"{name}")
         else:
             not_found.append(regional_district_id)
-            log_to_db(user, "Ошибка удаления субъекта РФ", f"Субъект РФ с ID={regional_district_id} не найден.")
+            log_to_db(user, "Ошибка удаления субъекта РФ", 
+                      f"Субъект РФ с ID={regional_district_id} не найден.")
 
     try:
         # Сохранение изменений в базе данных
@@ -413,6 +423,7 @@ def delete_regional_district_service(ids, user):
 @no_autoflush
 def import_regional_district_service(file, user):
     """Импортирует данные субъектов РФ из Excel-файла в базу данных с проверкой уникальности."""
+
     try:
         # Чтение данных из файла Excel
         data = pd.read_excel(file)
@@ -538,104 +549,41 @@ def export_regional_district_service(
     sort_by="id",
     sort_dir="asc",
 ):
-    """ Экспортирует данные субъектов РФ в Excel и возвращает BytesIO. """
-
-    # Нормализация входов
-    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
-    sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name", "name_full", "federal_district", "energy_zone", "synchronous_area"}
-    if sort_by not in allowed_sort:
-        sort_by = "id"
-
-    federal_district_id = _to_int_or_none(federal_district_filter)
-    energy_zone_id = _to_int_or_none(energy_zone_filter)
-    synchronous_area_id = _to_int_or_none(synchronous_area_filter)
-    rd = (regional_district_filter or "").strip()
+    """ Экспортирует данные субъектов РФ в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы субъектов РФ из базы данных")
-    log_to_db(
-        user,
-        "Параметры экспорта",
-        (
-            f"regional_district_filter={rd!r}, "
-            f"federal_district_id={federal_district_id}, "
-            f"energy_zone_id={energy_zone_id}, "
-            f"synchronous_area_id={synchronous_area_id}, "
-            f"sort_by={sort_by}, sort_dir={sort_dir}"
-        ),
+    log_to_db(user, "Параметры экспорта",
+            (
+                f"Фильтр по столбцу: Наименование субъекта РФ = {regional_district_filter},"
+                f"Фильтр по столбцу: ФО = {get_federal_district_name(federal_district_filter)},"
+                f"Фильтр по столбцу: Энергозона = {get_energy_zone_name(energy_zone_filter)},"
+                f"Фильтр по столбцу: Синхронная зона = {get_synchronous_area_name(synchronous_area_filter)},"
+                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+            ),
     )
 
     # Базовый запрос
-    q = (
-        RegionalDistrict.query
-        .options(
-            selectinload(RegionalDistrict.federal_district),
-            selectinload(RegionalDistrict.energy_zone),
-            selectinload(RegionalDistrict.synchronous_area),
-        )
-        .filter(RegionalDistrict.id > 0)
+    query = regional_district_query(
+        regional_district_filter=regional_district_filter,
+        federal_district_filter=federal_district_filter,
+        energy_zone_filter=energy_zone_filter,
+        synchronous_area_filter=synchronous_area_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
 
-    # Фильтрация
-    if rd:
-        like = f"%{rd}%"
-        query = query.filter(or_(RegionalDistrict.name.ilike(like),
-                         RegionalDistrict.name_full.ilike(like)))
-
-    if federal_district_id is not None:
-        query = query.join(FederalDistrict).filter(FederalDistrict.id == federal_district_id)
-
-    if energy_zone_id is not None:
-        query = query.join(EnergyZone, isouter=True).filter(RegionalDistrict.id_energy_zone == energy_zone_id)
-
-    if synchronous_area_id is not None:
-        query = query.join(SynchronousArea, isouter=True).filter(RegionalDistrict.id_synchronous_area == synchronous_area_id)
-
-    # Сортировка
-    if sort_by == "name":
-        order_col = RegionalDistrict.name
-        query = query.order_by(order_col.desc() if sort_dir == "desc" else order_col.asc())
-
-    elif sort_by == "name_full":
-        order_col = RegionalDistrict.name_full
-        query = query.order_by(order_col.desc() if sort_dir == "desc" else order_col.asc())
-
-    elif sort_by == "region_id":
-        order_col = RegionalDistrict.region_id
-        query = query.order_by(order_col.desc() if sort_dir == "desc" else order_col.asc())
-
-    elif sort_by == "federal_district":
-        query = query.join(FederalDistrict) if "federal_districts" not in str(q.statement) else q
-        order_cols = [FederalDistrict.name.desc() if sort_dir == "desc" else FederalDistrict.name.asc(),
-                      RegionalDistrict.name.asc()]
-        query = query.order_by(*order_cols)
-
-    elif sort_by == "energy_zone":
-        query = query.join(EnergyZone, isouter=True)
-        order_cols = [EnergyZone.name.desc() if sort_dir == "desc" else EnergyZone.name.asc(),
-                      RegionalDistrict.name.asc()]
-        query = query.order_by(*order_cols)
-
-    elif sort_by == "synchronous_area":
-        query = query.join(SynchronousArea, isouter=True)
-        order_cols = [SynchronousArea.name.desc() if sort_dir == "desc" else SynchronousArea.name.asc(),
-                      RegionalDistrict.name.asc()]
-        query = query.order_by(*order_cols)
-
-    else:
-        order_col = RegionalDistrict.id
-        query = query.order_by(order_col.desc() if sort_dir == "desc" else order_col.asc())
-
+    # Получение данных
     items = query.all()
+    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
 
     # Подготовка данных для Excel
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Порядковый номер субъекта РФ": f"{o.name}: {o.region_id or ''}",
-            "Наименование субъекта РФ": o.name or "",
-            "Полное наименование субъекта РФ": o.name_full or "",
+            "Порядковый номер субъекта РФ": _dash(o.region_id),
+            "Наименование субъекта РФ": _dash(o.name),
+            "Полное наименование субъекта РФ": _dash(o.name_full),
             "Федеральный округ": getattr(o.federal_district, "name", "Не указан") or "Не указан",
             "Энергозона номер": (
                 getattr(getattr(o, "energy_zone", None), "number", None)
@@ -648,6 +596,7 @@ def export_regional_district_service(
     log_to_db(user, "Подготовка данных для экспорта таблицы субъектов РФ в Excel",
               f"Записей для экспорта: {len(data)}")
 
+    # Подготовка данных к записи в Excel
     df = pd.DataFrame(data)
 
     # Создание Excel и авто-ширина столбцов
@@ -662,6 +611,7 @@ def export_regional_district_service(
             max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
             ws.set_column(i, i, min(max_len + 2, 60))
 
+    # Возврат файла в ответе
     output.seek(0)
     log_to_db(user, "Экспорт таблицы субъектов РФ в Excel завершен", f"Экспортировано записей: {len(data)}")
     return output

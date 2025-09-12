@@ -1,19 +1,65 @@
+"""Сервисный модуль: Объединенные энергосистемы."""
+
 from app.extensions import db
-from app.logs.models.log_model import Log
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.exc import IntegrityError
+import pandas as pd
+from io import BytesIO 
+
+# Модели
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
-from sqlalchemy import text, or_
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
+
+# Сервисы
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_name,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_name,
+)
+from app.common.services.help_services import (
+    _dash,
+    _to_int_or_none,
+)
+from app.common.services.tranzaction_services import (
+    _commit_with_retry,
+    _locked_get,
+    no_autoflush,
+)
+
+# Логирование
 from app.logs.services.logging_service import log_to_db
 
 
-def get_union_energy_system_list(page, per_page, union_energy_system_filter=None, energy_system_type_filter=None, sort_by="id", sort_dir="asc"):
-    """Получает список ОЭС с пагинацией, фильтрацией и сортировкой."""
-    
-    query = UnionEnergySystem.query.options(joinedload(UnionEnergySystem.energy_system_type)).join(EnergySystemType)
+def union_energy_system_query(
+    union_energy_system_filter=None,
+    energy_system_type_filter=None,
+    sort_by="id",
+    sort_dir="asc",
+):
+    """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
 
-    # Фильтрация
+    # Валидация сортировки
+    allowed_sort_by = {"id","name", "energy_system_type"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+
+    sort_dir = (sort_dir or "asc").lower()
+    sort_dir = "desc" if sort_dir == "desc" else "asc"
+
+    # Безопасная конвертация ID-фильтров
+    energy_system_type_id = _to_int_or_none(energy_system_type_filter)
+
+    # Базовый запрос
+    query = (
+        UnionEnergySystem.query
+        .options(
+            joinedload(UnionEnergySystem.energy_system_type)
+        )
+        .join(EnergySystemType)
+    )
+
+    # Фильтрация по названию ОЭС
     if union_energy_system_filter:
         query = query.filter(
             or_(
@@ -22,218 +68,288 @@ def get_union_energy_system_list(page, per_page, union_energy_system_filter=None
             )
         )
 
+    # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
-        query = query.filter(EnergySystemType.id == energy_system_type_filter)
+        query = query.filter(EnergySystemType.id == energy_system_type_id)
 
     # Сортировка
     if sort_by in ["name", "name_full"]:
         sort_field = getattr(UnionEnergySystem, sort_by)
-        query = query.order_by(sort_field.desc() if sort_dir == "desc" else sort_field.asc())
+        query = query.order_by(
+            sort_field.desc() if sort_dir == "desc" else sort_field.asc()
+        )
+
     elif sort_by == "energy_system_type":
         query = query.order_by(
             EnergySystemType.name.desc() if sort_dir == "desc" else EnergySystemType.name.asc()
         )
-    else:
-        query = query.order_by(UnionEnergySystem.id.desc() if sort_dir == "desc" else UnionEnergySystem.id.asc())
 
+    else:  # сортировка по id
+        query = query.order_by(
+            UnionEnergySystem.id.desc() if sort_dir == "desc" else UnionEnergySystem.id.asc()
+        )
+
+    # Исключаем запись "Не указано" (id=0)
+    query = query.filter(UnionEnergySystem.id.isnot(None), UnionEnergySystem.id > 0)
+
+    return query
+
+
+@no_autoflush
+def get_union_energy_system_list(
+    page, 
+    per_page, 
+    union_energy_system_filter=None, 
+    energy_system_type_filter=None, 
+    sort_by="id", 
+    sort_dir="asc"):
+    """ Получает список ОЭС с пагинацией, фильтрацией и сортировкой. """
+    
+    # Базовый запрос
+    query = union_energy_system_query(
+        union_energy_system_filter=union_energy_system_filter,
+        energy_system_type_filter=energy_system_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
     # Пагинация
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    return pagination
-
-def get_energy_system_types():
-    """Получает список типов энергосистем."""
-    return EnergySystemType.query.all()
+    return query.paginate(page=page, per_page=per_page, error_out=False)
 
 
+@no_autoflush
 def update_union_energy_system_service(data, user):
-    """
-    Обновляет записи ОЭС в базе данных.
-    :param data: Список словарей с данными для обновления. Пример:
-                 [{"id": 1, "name": "ОЭС Центр", "name_full": "Объединенная энергосистема Центра", "id_energy_system_type": 2}, ...]
-    :param user: Имя пользователя, инициировавшего обновление.
-    :raises ValueError: Если обнаружены ошибки в данных или сохранении.
-    """
+    """Обновление данных по ОЭС."""
+
     if not isinstance(data, list):
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
 
-    log_to_db(user, "Получены данные для обновления", f"{data}")
+    updated_ids = []
 
-    for record in data:
-        id_union_energy_system = record.get("id")
-        name = record.get("name")
-        name_full = record.get("name_full")
-        id_energy_system_type = record.get("id_energy_system_type")
+    log_to_db(user, "Получены данные для обновления списка ОЭС", f"{data}")
 
-        # Проверки на валидность данных
-        if not name or not name_full or not id_energy_system_type:
-            raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'id_energy_system_type'.")
+    with db.session.no_autoflush:
+        for record in data:
+            union_energy_system_id = record.get("union_energy_system_id")
+            name = record.get("name")
+            name_full = record.get("name_full")
+            energy_system_type_id = _to_int_or_none(record.get("energy_system_type_id"), keep_zero=False)
 
-        if id_union_energy_system:
-            union_energy_system = UnionEnergySystem.query.get(id_union_energy_system)
+            # Проверки на валидность данных
+            if not name or not name_full or not energy_system_type_id:
+                log_to_db(user, "Ошибка валидации", f"Запись: {record}")
+                raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'energy_system_type_id'. Данные: {record}")
 
-            if not union_energy_system:
-                raise ValueError(f"Запись с ID '{id_union_energy_system}' не найдена.")
+            obj = db.session.get(UnionEnergySystem, union_energy_system_id)
+            if not obj:
+                raise ValueError(f"Запись с ID «{union_energy_system_id}» не найдена.")
             
-            duplicate = UnionEnergySystem.query.filter(
-                UnionEnergySystem.name == name, 
-                UnionEnergySystem.id != id_union_energy_system
-            ).first()
-            if duplicate:
-                raise ValueError(f"Запись с именем '{name}' уже существует.")
-            
-            union_energy_system.name = name
-            union_energy_system.name_full = name_full
-            union_energy_system.id_energy_system_type = id_energy_system_type
-        else:
-            duplicate = UnionEnergySystem.query.filter(UnionEnergySystem.name == name).first()
-            if duplicate:
-                raise ValueError(f"Запись с именем '{name}' уже существует.")
+            # Проверка уникальности name
+            if name != (obj.name or ""):
+                q = (UnionEnergySystem.query
+                     .filter(UnionEnergySystem.name == name,
+                             UnionEnergySystem.id != union_energy_system_id))
+                if q.first():
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                
+            # Проверка уникальности name_fll
+            if name_full != (obj.name_full or ""):
+                q_full = (UnionEnergySystem.query
+                     .filter(UnionEnergySystem.name_full == name_full,
+                             UnionEnergySystem.id != union_energy_system_id))
+                if q_full.first():
+                    raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
-            new_union_energy_system = UnionEnergySystem(
-                name=name, 
-                name_full=name_full, 
-                id_energy_system_type=id_energy_system_type
-            )
-            db.session.add(new_union_energy_system)
+            changes = {}
 
-    # Сохранение изменений в базе данных
+            if name != (obj.name or ""):
+                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                obj.name = name
+
+            if name_full != (obj.name_full or None):
+                changes["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
+                obj.name_full = name_full
+
+            # Проверка наличия части энергосистемы
+            if "energy_system_type_id" in record:
+                new_val = _to_int_or_none(record.get("energy_system_type_id"), keep_zero=False)
+                if new_val != obj.id_energy_system_type:
+                    new_obj = db.session.get(EnergySystemType, new_val) if new_val is not None else None
+                    if new_val is not None and not new_obj:
+                        raise ValueError(f"Часть энергосистемы России с id={new_val} не найдена.")
+                    
+                    prev_obj = db.session.get(EnergySystemType, obj.id_energy_system_type) if obj.id_energy_system_type else None
+                    changes["Часть энергосистемы России"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    obj.id_energy_system_type = new_val
+
+            # Если есть реальные изменения — лог и добавление в список
+            if changes:
+                log_to_db(user, f"Обновлена ОЭС: {name}", f"Изменения = {changes}")
+                updated_ids.append(union_energy_system_id)
+
+        db.session.flush()
+
     try:
-        db.session.commit()
-        log_to_db(user, "Обновление записей ОЭС", f"Обновлено записей: {len(data)}")
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        if updated_ids:
+            log_to_db(user, "Сохранены изменения по ОЭС", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+        else:
+            log_to_db(user, "Изменений по ОЭС не обнаружено", "")
+            
+        return updated_ids
+
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка обновления ОЭС", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, дублируются имена.")
+        log_to_db(user, "Ошибка сохранения ОЭС (уникальность/целостность)", str(e))
+        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка обновления ОЭС", str(e))
+        log_to_db(user, "Неизвестная ошибка при сохранении ОЭС", str(e))
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
+@no_autoflush
 def add_union_energy_system_service(data, user):
-    """
-    Добавляет или обновляет записи ОЭС в базе данных.
-    :param data: Список словарей с данными ОЭС. Пример:
-                 [{"id": 1, "name": "ОЭС Центр", "name_full": "Объединенная энергосистема Центра", "id_energy_system_type": 2}, ...]
-    :param user: Имя пользователя для логирования.
-    :raises ValueError: Если возникает ошибка валидации или сохранения.
-    """
+    """ Создание новой записи: ОЭС """
+
     if not isinstance(data, list):
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
 
     try:
-        for record in data:
-            id_union_energy_system = record.get("id")
-            name = record.get("name")
-            name_full = record.get("name_full")
-            id_energy_system_type = record.get("id_energy_system_type")
+        with db.session.no_autoflush:
+            # Итерация по входным данным (валидация/применение)
+            for record in data:
+                name = (record.get("name") or "").strip()
+                name_full = (record.get("name_full") or "").strip()
+                energy_system_type_id = _to_int_or_none(record.get("energy_system_type_id"), keep_zero=False)
 
-            # Проверка на наличие необходимых данных
-            if not name or not name_full or not id_energy_system_type:
-                log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'id_energy_system_type'.")
+                # Проверка на наличие необходимых данных
+                if not name or not name_full or not energy_system_type_id:
+                    log_to_db(user, "Ошибка валидации", 
+                              f"Запись: {record}")
+                    raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'energy_system_type_id'.")
 
-            if id_union_energy_system:
-                # Обновление существующей записи
-                union_energy_system = UnionEnergySystem.query.get(id_union_energy_system)
-                
-                if not union_energy_system:
-                    log_to_db(user, "Ошибка обновления", f"Запись с ID {id_union_energy_system} не найдена.")
-                    raise ValueError(f"Запись с ID {id_union_energy_system} не найдена.")
-            
-                # Проверка на дублирование имени
-                duplicate = UnionEnergySystem.query.filter(
-                    UnionEnergySystem.name == name, 
-                    UnionEnergySystem.id != id_union_energy_system
-                ).first()
-                if duplicate:
-                    log_to_db(user, "Ошибка дублирования", f"Имя: {name}, ID: {id_union_energy_system}")
-                    raise ValueError(f"Запись с именем '{name}' уже существует.")
-                
-                # Обновление полей записи
-                union_energy_system.name = name
-                union_energy_system.name_full = name_full
-                union_energy_system.id_energy_system_type = id_energy_system_type
-                
-            else:
-                # Добавление новой записи
-                duplicate = UnionEnergySystem.query.filter(UnionEnergySystem.name == name).first()
-                if duplicate:
-                    log_to_db(user, "Ошибка дублирования", f"Имя: {name}")
-                    raise ValueError(f"Запись с именем '{name}' уже существует.")
+                # Проверяем существование части энергосистемы России
+                est_obj = db.session.get(EnergySystemType, energy_system_type_id)
+                if not est_obj:
+                    raise ValueError(f"Часть энергосистемы России с id={energy_system_type_id} не найдена.")
 
-                new_union_energy_system = UnionEnergySystem(
-                    name=name, 
-                    name_full=name_full, 
-                    id_energy_system_type=id_energy_system_type
+                # Проверяем уникальность name при создании
+                dup = (UnionEnergySystem.query
+                        .filter(UnionEnergySystem.name == name)
+                        .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                
+                # Проверяем уникальность name_full при создании
+                dup_full = (UnionEnergySystem.query
+                        .filter(UnionEnergySystem.name_full == name_full)
+                        .with_for_update().first())
+                if dup_full:
+                    raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
+
+                # Создаем новую запись
+                obj = UnionEnergySystem(
+                    name=name,
+                    name_full=name_full or None,
+                    id_energy_system_type=energy_system_type_id,
                 )
-                db.session.add(new_union_energy_system)
+                db.session.add(obj)
+                db.session.flush()  # получить id без полного коммита
 
-        # Сохранение всех изменений в базе данных
-        db.session.commit()
-        log_to_db(user, "Успешное добавление/обновление", f"Обработано записей: {len(data)}")
+                log_to_db(user, "Создана ОЭС",
+                    (
+                        f"Наименование: {name}; "
+                        f"Полное наименование: {_dash(name_full)};"
+                        f"Часть энергосистемы России: {get_energy_system_type_name(energy_system_type_id)}"
+                    )
+                )
 
-    except Exception as e:
-        db.session.rollback()  # Откат транзакции в случае ошибки
-        log_to_db(user, "Ошибка сохранения", f"Ошибка: {str(e)}")
-        raise ValueError(f"Ошибка при добавлении/обновлении записей: {str(e)}")
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
 
-def get_total_union_energy_system_records(union_energy_system_filter, energy_system_type_filter):
-    """
-    Возвращает общее количество записей ОЭС, соответствующих фильтру.
-    :param union_energy_system_filter: Фильтр по имени ОЭС.
-    :return: Количество записей.
-    """
-    query = UnionEnergySystem.query.options(joinedload(UnionEnergySystem.energy_system_type)).join(EnergySystemType)
+        return None
 
-    # Фильтрация
-    if union_energy_system_filter:
-        query = query.filter(
-            or_(
-                UnionEnergySystem.name.ilike(f"%{union_energy_system_filter}%"),
-                UnionEnergySystem.name_full.ilike(f"%{union_energy_system_filter}%"),
-            )
-        )
-
-    if energy_system_type_filter:
-        query = query.filter(EnergySystemType.id == energy_system_type_filter)
-        
-    return query.count()
-
-def delete_union_energy_system_service(ids, user):
-    """Удаляет записи ОЭС по переданным ID."""
-    log_to_db(user, "Удаление записей", f"Переданы ID для удаления: {ids}")
-    
-    successful_deletes = 0  # Для подсчета успешных удалений
-
-    for union_energy_system_id in ids:
-        try:
-            union_energy_system_id = int(union_energy_system_id)  # Приведение к целому числу
-            union_energy_system = UnionEnergySystem.query.get(union_energy_system_id)
-            if union_energy_system:
-                db.session.delete(union_energy_system)
-                successful_deletes += 1
-                log_to_db(user, "Удаление записи", f"Удален ОЭС ID: {union_energy_system_id}")
-            else:
-                log_to_db(user, "Ошибка удаления", f"Запись с ID {union_energy_system_id} не найдена.")
-        except ValueError:
-            log_to_db(user, "Ошибка удаления", f"Некорректный ID: {union_energy_system_id}")
-
-    try:
-        db.session.commit()
-        log_to_db(user, "Удаление завершено", f"Успешно удалено записей: {successful_deletes}")
+    except IntegrityError as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка сохранения новой ОЭС Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
+        raise ValueError("Ошибка сохранения новой ОЭС. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления", str(e))
+        log_to_db(user, "Ошибка сохранения новой ОЭС", str(e))
+        raise ValueError(f"Ошибка сохранения новой ОЭС: {e}")
+
+
+@no_autoflush
+def delete_union_energy_system_service(ids, user):
+    """Удаляет записи ОЭС по переданным ID."""
+
+    if not isinstance(ids, (list, tuple)) or not ids:
+        raise ValueError("Не переданы ID для удаления.")
+
+    log_to_db(user, "Удаление списка ОЭС", 
+              f"Переданы ID для удаления: {ids}")
+
+    successful_deletes = 0
+    deleted_names = []
+    not_found = []
+    invalid = []
+
+    for ues_id in ids:
+        try:
+            union_energy_system_id = int(ues_id)
+        except (TypeError, ValueError):
+            invalid.append(ues_id)
+            log_to_db(user, "Ошибка удаления ОЭС", 
+                      f"Некорректный ID: {ues_id}")
+            continue
+
+        obj = _locked_get(UnionEnergySystem, union_energy_system_id)
+        if obj:
+            db.session.delete(obj)
+            deleted_names.append(get_union_energy_system_name(union_energy_system_id))
+            successful_deletes += 1
+            log_to_db(user, "Удалена ОЭС", 
+                      f"{get_union_energy_system_name(union_energy_system_id)}")
+        else:
+            not_found.append(union_energy_system_id)
+            log_to_db(user, "Ошибка удаления ОЭС", 
+                      f"ОЭС с ID={union_energy_system_id} не найдена.")
+
+    try:
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        parts = [f"Удалено: {successful_deletes}"]
+        if deleted_names:
+            parts.append(f"Наименование: {deleted_names}")
+        if not_found:
+            parts.append(f"Не найдены ID: {not_found}")
+        if invalid:
+            parts.append(f"Некорректные ID: {invalid}")
+
+        log_to_db(user, "Результат удаления ОЭС", "; ".join(parts))
+
+        return {
+            "deleted": successful_deletes,
+            "deleted_names": deleted_names,
+            "not_found": not_found,
+            "invalid": invalid,
+        }
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(user, "Ошибка удаления ОЭС", str(e))
         raise ValueError("Ошибка при удалении данных.")
 
 
-def import_union_energy_system_from_excel_service(file, user):
+@no_autoflush
+def import_union_energy_system_service(file, user):
     """Импортирует данные ОЭС из Excel-файла в базу данных с проверкой уникальности."""
-    import pandas as pd
-    from sqlalchemy.exc import IntegrityError
 
     try:
         # Чтение данных из файла Excel
@@ -306,7 +422,7 @@ def import_union_energy_system_from_excel_service(file, user):
                     id_energy_system_type=id_energy_system_type
                 ).first()
                 if duplicate:
-                    raise ValueError(f"Запись с именем '{name}' и федеральным округом '{energy_system_type}' уже существует.")
+                    raise ValueError(f"Запись с наименованием '{name}' и федеральным округом '{energy_system_type}' уже существует.")
 
                 # Добавляем новую запись
                 new_record = UnionEnergySystem(
@@ -349,60 +465,67 @@ def import_union_energy_system_from_excel_service(file, user):
         raise ValueError(f"Ошибка при импорте данных: {e}")
 
 
-def export_union_energy_system_to_excel_service(user, union_energy_system_filter=None, energy_system_type_filter=None, sort_by="id", sort_dir="asc"):
-    """Экспортирует данные ОЭС в Excel и возвращает бинарный поток."""
-
-    import pandas as pd
-    from io import BytesIO  
+def export_union_energy_system_service(
+        user, 
+        union_energy_system_filter=None, 
+        energy_system_type_filter=None, 
+        sort_by="id", 
+        sort_dir="asc"):
+    """ Экспортирует данные списка ОЭС в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы ОЭС из базы данных")
-    log_to_db(user, "Параметры экспорта", f"union_energy_system_filter={union_energy_system_filter}, sort_by={sort_by}, sort_dir={sort_dir}")
+    log_to_db(user, "Параметры экспорта", 
+            (
+                f"Фильтр по столбцу: Наименование ОЭС = {union_energy_system_filter},"
+                f"Фильтр по столбцу: Часть энергосистемы России = {get_energy_system_type_name(energy_system_type_filter)},"
+                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+            ),
+    )
     
-    query = UnionEnergySystem.query.options(joinedload(UnionEnergySystem.energy_system_type)).join(EnergySystemType)
+    # Базовый запрос
+    query = union_energy_system_query(
+        union_energy_system_filter=union_energy_system_filter,
+        energy_system_type_filter=energy_system_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
 
-    # Фильтрация
-    if union_energy_system_filter:
-        query = query.filter(
-            or_(
-                UnionEnergySystem.name.ilike(f"%{union_energy_system_filter}%"),
-                UnionEnergySystem.name_full.ilike(f"%{union_energy_system_filter}%"),
-            )
-        )
+    # Получение данных
+    items = query.all()
+    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
 
-    if energy_system_type_filter:
-        query = query.filter(EnergySystemType.id == energy_system_type_filter)
+    # Подготовка данных для Excel
+    data = []
+    for idx, o in enumerate(items, start=1):
+        data.append({
+            "№": idx + 1,
+            "Наименование ОЭС": _dash(o.name),
+            "Полное наименование ОЭС": _dash(o.name_full),
+            "Тип энергосистемы": getattr(o.energy_system_type, "name") or "Не указана",
+        })
 
-    # Сортировка
-    if sort_by in ["name", "name_full"]:
-        sort_field = getattr(UnionEnergySystem, sort_by)
-        query = query.order_by(sort_field.desc() if sort_dir == "desc" else sort_field.asc())
-    elif sort_by == "energy_system_type":
-    
-        query = query.order_by(
-            EnergySystemType.name.desc() if sort_dir == "desc" else EnergySystemType.name.asc()
-        )
-    else:
-        query = query.order_by(UnionEnergySystem.id.desc() if sort_dir == "desc" else UnionEnergySystem.id.asc())
-
-    union_energy_system_items = query.all()
-    data = [{
-        "ID": index + 1,
-        "Наименование ОЭС": o.name,
-        "Полное наименование ОЭС": o.name_full,
-        "Тип энергосистемы": o.energy_system_type.name if o.energy_system_type else "Не указан"
-    } for index, o in enumerate(union_energy_system_items)]
-
-    log_to_db(user, "Подготовка данных для экспорта таблицы ОЭС в Excel", f"Записей для экспорта: {len(data)}")
+    log_to_db(user, "Подготовка данных для экспорта таблицы ОЭС в Excel", 
+              f"Записей для экспорта: {len(data)}")
 
     # Подготовка данных к записи в Excel
     df = pd.DataFrame(data)
     
     # Создание Excel-файла
     output = BytesIO()
+    sheet_name = "ОЭС"
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name="ОЭС")
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+
+        # Автоподбор ширины с аккуратным лимитом
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы ОЭС в Excel завершён", f"Экспортировано записей: {len(data)}")
+    log_to_db(user, "Экспорт таблицы ОЭС в Excel завершён", 
+              f"Экспортировано записей: {len(data)}")
+
     return output
+

@@ -16,10 +16,8 @@ from app.refdata.forms.gen_companies.gen_company_forms import (
 )
 
 # Сервисы
-from app.refdata.services.common_services.get_services import (
-    get_total_gen_company_records,
-)
 from app.refdata.services.gen_companies.gen_company_services import (
+    gen_company_query,
     get_gen_company_list,
     update_gen_company_service,
     add_gen_company_service,
@@ -44,24 +42,24 @@ def gen_company_list():
     form = GenCompanyFilterForm()
 
     # Получение параметров запроса
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-    gen_company_filter = request.args.get("gen_company_filter", "").strip()
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    page                = request.args.get("page", 1, type=int)
+    per_page            = request.args.get("per_page", 10, type=int)
+    sort_by             = request.args.get("sort_by", "id")
+    sort_dir            = request.args.get("sort_dir", "asc")
+    gen_company_filter  = request.args.get("gen_company_filter", "").strip()
 
     if request.method == "POST":
         # Обновление параметров из формы
-        page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 10, type=int)
-        sort_by = request.form.get("sort_by", "id")
-        sort_dir = request.form.get("sort_dir", "asc")
-        gen_company_filter = request.form.get("gen_company_filter", "").strip()
+        page                = request.form.get("page", 1, type=int)
+        per_page            = request.form.get("per_page", 10, type=int)
+        sort_by             = request.form.get("sort_by", "id")
+        sort_dir            = request.form.get("sort_dir", "asc")
+        gen_company_filter  = request.form.get("gen_company_filter", "").strip()
 
         # Получение данных из формы
-        gen_company_ids = request.form.getlist("gen_company_ids[]")
-        gen_company_names = request.form.getlist("gen_company_names[]")
-        gen_company_delete = request.form.getlist("gen_company_delete[]")
+        gen_company_ids     = request.form.getlist("gen_company_ids[]")
+        gen_company_names   = request.form.getlist("gen_company_names[]")
+        gen_company_delete  = request.form.getlist("gen_company_delete[]")
         
         # Удаление записей
         if gen_company_delete:
@@ -97,7 +95,7 @@ def gen_company_list():
                     log_to_db(user, f"Пустое имя обнаружено: ID={gen_company_id}")
                     raise ValueError(f"Пустое имя для ID: {gen_company_id}")
                 gen_company_data.append({
-                    "id": int(gen_company_id) if gen_company_id else None,
+                    "gen_company_id": int(gen_company_id) if gen_company_id else None,
                     "name": gen_company_name.strip(),
                 })
             
@@ -108,15 +106,12 @@ def gen_company_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID генерирующих компаний: {duplicates}")
 
             # Обновление данных в базе
+            log_to_db(user, "Полученные данные для обновления генерирующих компаний", str(gen_company_data))
             update_gen_company_service(gen_company_data, user)
-
             flash("Изменения успешно сохранены.", "success")
+
         except ValueError as e:
-            msg = str(e)
-            if 'уже существует' in msg:
-                flash(msg, 'warning')
-            else:
-                flash(msg, 'danger')
+            flash(str(e), "danger")
         except Exception as e:
             log_to_db(user, f"Ошибка сохранения данных генерирующих компаний: {e}")
             flash("Ошибка сохранения данных.", "danger")
@@ -177,7 +172,7 @@ def add_gen_company():
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_gen_company_records(gen_company_filter)
+            total_records = gen_company_query(gen_company_filter).count
             last_page = (total_records + per_page - 1) // per_page
 
             # Если текущая страница больше последней, корректируем её
@@ -194,6 +189,7 @@ def add_gen_company():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
+            log_to_db(user, "Ошибка добавления новой генерирующей компании", str(e))
         except Exception as e:
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
@@ -265,6 +261,8 @@ def export_gen_company():
             gen_company_filter=gen_company_filter, 
             sort_by=sort_by, 
             sort_dir=sort_dir)
+
+        log_to_db(user, "Экспорт списка генерирующих компаний завершён", f"Фильтр: {gen_company_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
 
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:

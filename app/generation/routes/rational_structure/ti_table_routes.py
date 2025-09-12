@@ -7,7 +7,7 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
 from flask import render_template
 from sqlalchemy.orm import joinedload
-from app.refdata.services.common_services.help_services import (
+from app.common.services.help_services import (
     _clean_name,
 )
 

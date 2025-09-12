@@ -11,13 +11,13 @@ from io import BytesIO
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 
 # Сервисы
-from app.refdata.services.common_services.help_services import (
+from app.common.services.help_services import (
     _dash,
     _to_int_or_none,
     _replace_quotes_sequentially,
     _clean_name,
 )
-from app.refdata.services.common_services.tranzaction_services import (
+from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
@@ -27,15 +27,12 @@ from app.refdata.services.common_services.tranzaction_services import (
 from app.logs.services.logging_service import log_to_db
 
 
-@no_autoflush
-def get_gen_company_list(
-    page, 
-    per_page, 
-    gen_company_filter=None, 
-    sort_by="id", 
-    sort_dir="asc"
+def gen_company_query(
+    gen_company_filter=None,
+    sort_by="id",
+    sort_dir="asc",
 ):
-    """Получает список федеральных округов с пагинацией, фильтрацией и сортировкой."""
+    """ Базовый запрос для выборки списка генерирующих компаний с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id","name"}
@@ -73,6 +70,29 @@ def get_gen_company_list(
         sort_col = GenCompany.id
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
+    # Исключаем запись "Не указано" (id=0)
+    query = query.filter(GenCompany.id.isnot(None), GenCompany.id > 0)
+
+    return query
+
+
+@no_autoflush
+def get_gen_company_list(
+    page, 
+    per_page, 
+    gen_company_filter=None, 
+    sort_by="id", 
+    sort_dir="asc"
+):
+    """ Получает список генерирующих компаний с пагинацией, фильтрацией и сортировкой. """
+    
+    # Базовый запрос
+    query = gen_company_query(
+        gen_company_filter=gen_company_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+
     # Пагинация
     return query.paginate(page=page, per_page=per_page, error_out=False)
 
@@ -86,22 +106,28 @@ def update_gen_company_service(data, user):
 
     updated_ids = []
 
-    # Итерация по входным данным (валидация/применение)
+    log_to_db(user, "Получены данные для обновления списка субъектов РФ", 
+              f"{data}")
+
     with db.session.no_autoflush:
         for record in data:
-            gen_company_id = record.get("id")
+            gen_company_id = record.get("gen_company_id")
             name_to_clean = record.get("name", "").strip()
             name_clean = _clean_name(name_to_clean)
             name = _replace_quotes_sequentially(name_clean)
 
             if not name:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись: {record}")
                 raise ValueError("Поле 'name' обязательно для заполнения.")
             
             obj = db.session.get(GenCompany, gen_company_id)
             if not obj:
+                log_to_db(user, "Ошибка валидации", 
+                          f"Запись с ID «{gen_company_id}» не найдена.")
                 raise ValueError(f"Запись с ID «{gen_company_id}» не найдена.")
             
-            # Проверка уникальности name только если меняется
+            # Проверка уникальности name
             if name != (obj.name or ""):
                 q = (GenCompany.query
                      .filter(GenCompany.name == name,
@@ -146,103 +172,58 @@ def update_gen_company_service(data, user):
 
 @no_autoflush
 def add_gen_company_service(data, user):
-    """Создание/обновление генерирующей компании"""
+    """Создание новой записи: генерирующая компания"""
 
     if not isinstance(data, list):
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
     
-    log_to_db(user, "Получены данные для добавления/обновления генерирующих компаний", f"Кол-во записей: {len(data)}")
-
-    created_ids = []
-    updated_count = 0
-
     try:
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
-                gen_company_id = record.get("id")
-                name_to_clean = record.get("name", "").strip()
+                name_to_clean = (record.get("name") or "").strip()
                 name_clean = _clean_name(name_to_clean)
                 name = _replace_quotes_sequentially(name_clean)
 
-                if name is None:
+                # Проверка на наличие необходимых данных
+                if not name :
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name'.")
+                    raise ValueError("Каждая запись должна содержать 'name''. Данные: {record}")
 
-                #----- ОБНОВЛЕНИЕ-----
-                if gen_company_id:
-                    obj = _locked_get(GenCompany, gen_company_id)
-                    if not obj:
-                        log_to_db(user, "Ошибка обновления генерирующей компании", f"Запись с ID={gen_company_id} не найдена")
-                        raise ValueError(f"Запись с ID {gen_company_id} не найдена.")
+                # Проверяем уникальность name
+                dup = (GenCompany.query
+                        .filter(GenCompany.name == name)
+                        .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
-                    # Уникальность name — только если меняется
-                    if (obj.name or "") != name:
-                        dup = (GenCompany.query
-                               .filter(GenCompany.name == name,
-                                       GenCompany.id != gen_company_id)
-                               .with_for_update().first())
-                        if dup:
-                            raise ValueError(f"Запись с именем «{name}» уже существует.")
+                # Создаем новую запись
+                obj = GenCompany(
+                    name=name,
+                )
+                db.session.add(obj)
+                db.session.flush()  # получить id без полного коммита
 
-                    изменения = {}
-
-                    if (obj.name or "") != name:
-                        изменения["Наименование"] = f"{_dash(obj.name)} → {name}"
-                        obj.name = name
-
-                    if изменения:
-                        updated_count += 1
-                        log_to_db(user, "Обновлена генерирующая компания", f"Наименование = {name}. Изменения = {изменения}")
-
-                #----- СОЗДАНИЕ-----
-                else:
-                    # Уникальность name при создании
-                    dup = (GenCompany.query
-                           .filter(GenCompany.name == name)
-                           .with_for_update().first())
-                    if dup:
-                        raise ValueError(f"Запись с именем «{name}» уже существует.")
-
-                    obj = GenCompany(
-                        name=name,
-                    )
-                    db.session.add(obj)
-                    db.session.flush()  # получить id без полного коммита
-                    created_ids.append(obj.id)
-
-                    log_to_db(
-                        user,
-                        "Создана генерирующая компания",
-                        f"Наименование: {name}."
-                    )
+                log_to_db(
+                    user,
+                    "Создана генерирующая компания",
+                    f"Наименование: {name}."
+                )
 
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
         _commit_with_retry()
 
-        # Итоговый лог
-        tail = []
-        if created_ids:
-            tail.append(f"создано: {len(created_ids)} (id: {created_ids})")
-        if updated_count:
-            tail.append(f"обновлено: {updated_count}")
-        log_to_db(user, "Сохранение генерирующей компании завершено", "; ".join(tail) or "Изменений нет")
-
-        if len(created_ids) == 1:
-            return created_ids[0]
-        if created_ids:
-            return created_ids
         return None
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения генерирующей компании (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        log_to_db(user, "Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
+        raise ValueError("Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения генерирующей компании", str(e))
-        raise ValueError(f"Ошибка при добавлении/обновлении записей: {e}")
+        log_to_db(user, "Ошибка сохранения новой генерирующей компании", str(e))
+        raise ValueError(f"Ошибка сохранения новой генерирующей компании: {e}")
 
 
 @no_autoflush
@@ -252,7 +233,8 @@ def delete_gen_company_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError("Не переданы ID для удаления.")
 
-    log_to_db(user, "Удаление генерирующих компаний", f"Переданы ID для удаления: {ids}")
+    log_to_db(user, "Удаление генерирующих компаний", 
+              f"Переданы ID для удаления: {ids}")
 
     successful_deletes = 0
     deleted_names = []
@@ -264,7 +246,8 @@ def delete_gen_company_service(ids, user):
             gen_company_id = int(fd_id)
         except (TypeError, ValueError):
             invalid.append(fd_id)
-            log_to_db(user, "Ошибка удаления генерирующей компании", f"Некорректный ID: {fd_id}")
+            log_to_db(user, "Ошибка удаления генерирующей компании", 
+                      f"Некорректный ID: {fd_id}")
             continue
 
         obj = _locked_get(GenCompany, gen_company_id)
@@ -273,10 +256,12 @@ def delete_gen_company_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
-            log_to_db(user, "Удалена генерирующая компания", f"{name}")
+            log_to_db(user, "Удалена генерирующая компания", 
+                      f"{name}")
         else:
             not_found.append(gen_company_id)
-            log_to_db(user, "Ошибка удаления генерирующей компании", f"Генерирующая компания с ID={gen_company_id} не найдена.")
+            log_to_db(user, "Ошибка удаления генерирующей компании", 
+                      f"Генерирующая компания с ID={gen_company_id} не найдена.")
 
     try:
         # Сохранение изменений в базе данных
@@ -351,63 +336,33 @@ def export_gen_company_service(
         gen_company_filter=None, 
         sort_by="id", 
         sort_dir="asc"):
-    """Экспортирует данные генерирующих компаний в Excel и возвращает бинарный поток."""
-
-    # Нормализация входов
-    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
-    sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name"}
-    if sort_by not in allowed_sort:
-        sort_by = "id"
-
-    fdf = (gen_company_filter or "").strip()
+    """ Экспортирует данные генерирующих компаний в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы генерирующих компаний из базы данных")
-    log_to_db(
-        user,
-        "Параметры экспорта",
-        (
-            f"gen_company_filter={fdf!r}, "
-            f"sort_by={sort_by}, sort_dir={sort_dir}"
-        ),
+    log_to_db(user,"Параметры экспорта",
+            (
+                f"Фильтр по столбцу: Наименование генерирующей компании = {gen_company_filter},"
+                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+            ),  
     )
 
     # Базовый запрос
-    query = (
-        GenCompany.query
-        .filter(GenCompany.id.isnot(None), GenCompany.id > 0)
+    query = gen_company_query(
+        gen_company_filter=gen_company_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
 
-    # Фильтрация по названию
-    if gen_company_filter:
-        query = query.filter(
-            or_(
-                GenCompany.name.ilike(f"%{gen_company_filter}%"),
-            )
-        )
-
-    # Фильтрация
-    if fdf:
-        like = f"%{fdf}%"
-        query = query.filter(GenCompany.name.ilike(like))
-
-    # Сортировка
-    if sort_by == "name":
-        sort_col = GenCompany.name
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
-
-    else:  # "id" (по умолчанию)
-        sort_col = GenCompany.id
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
-
+    # Получение данных
     items = query.all()
+    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
 
     # Подготовка данных для Excel
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Наименование": o.name or "",
+            "Наименование": _dash(o.name),
         })
 
     log_to_db(user, "Подготовка данных для экспорта таблицы генерирующих компаний в Excel",

@@ -1,72 +1,73 @@
-# -*- coding: utf-8 -*-
 """Маршруты справочника «Синхронные зоны»."""
 
-from datetime import datetime
+from flask import render_template, request, redirect, url_for, flash, send_file, session, current_app
 from collections import Counter
-from flask import (render_template, request, redirect, url_for, flash, session, current_app, send_file)
+from datetime import datetime
+
 from flask_login import login_required
-from app.auth.routes import roles_required
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
 
 # Формы
-from app.refdata.forms.energy_systems.synchronous_area_forms import SynchronousAreaFilterForm, AddSynchronousAreaForm
+from app.refdata.forms.energy_systems.synchronous_area_forms import (
+    SynchronousAreaFilterForm, 
+    AddSynchronousAreaForm,
+)
 
 # Сервисы
 from app.refdata.services.energy_systems.synchronous_area_services import (
-    get_total_synchronous_area_records,
+    synchronous_area_query,
     get_synchronous_area_list,
     update_synchronous_area_service,
     add_synchronous_area_service,
     delete_synchronous_area_service,
-    export_synchronous_area_to_excel_service,
+    export_synchronous_area_service,
 )
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
 
-# Пагинация
-from app.common.models.pagination import Pagination
 
 @refdata_bp.route("/synchronous_area", methods=["GET", "POST"])
 @login_required
-@roles_required(['admin', 'generation'])
 def synchronous_area_list():
-    """Список «Синхронные зоны»: фильтр/сортировка/массовое редактирование/удаление/пагинация."""
+    """Маршрут для отображения списка синхронных зон."""
+
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница ФО")
+    log_to_db(user, "Открыта страница синхронных зон")
     
+    # Создание формы
     form = SynchronousAreaFilterForm()
 
-    # --- Чтение параметров запроса (режим просмотра списка) ---
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-    synchronous_area_filter = request.args.get("synchronous_area_filter", "").strip()
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    # Получение параметров запроса
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 10, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
 
     if request.method == "POST":
-        # --- Обновляем состояние интерфейса из POST (страница, сортировка, фильтр) ---
+        # Обновление параметров из формы
         page = request.form.get("page", 1, type=int)
         per_page = request.form.get("per_page", 10, type=int)
         sort_by = request.form.get("sort_by", "id")
         sort_dir = request.form.get("sort_dir", "asc")
         synchronous_area_filter = request.form.get("synchronous_area_filter", "").strip()
 
-        # --- Считываем массивы данных из формы (id, номер, наименование, пометка удаления) ---
+        # Получение данных из формы
         synchronous_area_ids = request.form.getlist("synchronous_area_ids[]")
         synchronous_area_numbers = request.form.getlist("synchronous_area_numbers[]")
         synchronous_area_names = request.form.getlist("synchronous_area_names[]")
         synchronous_area_delete = request.form.getlist("synchronous_area_delete[]")
   
-        # --- Обработка удаления выбранных записей ---
+        # Удаление записей
         if synchronous_area_delete:
             try:
                 delete_synchronous_area_service(synchronous_area_delete, user)
-                flash("Записи успешно удалены.", "success")
+                flash("Записи синхронных зон успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления записей: {e}")
+                log_to_db(user, f"Ошибка удаления синхронных зон: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.synchronous_area_list", 
                                     page=page, 
@@ -75,7 +76,7 @@ def synchronous_area_list():
                                     sort_by=sort_by, 
                                     sort_dir=sort_dir))
            
-        # --- Обработка пакетного сохранения изменений ---
+        # Обновление данных в базе
         try:
             if not (synchronous_area_ids and synchronous_area_names):
                 log_to_db(user, "Нет данных для обновления.")
@@ -92,31 +93,38 @@ def synchronous_area_list():
             for synchronous_area_id, synchronous_area_number, synchronous_area_name in zip(
                 synchronous_area_ids, synchronous_area_numbers, synchronous_area_names
             ):
-                # Контроль обязательного поля: наименование не должно быть пустым
-                if not synchronous_area_name.strip():
-                    log_to_db(user, f"Пустое имя обнаружено: ID={synchronous_area_id}")
-                    raise ValueError(f"Пустое имя для ID: {synchronous_area_id}")
+                try:
+                    synchronous_area_data.append({
+                        "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
+                        "number": synchronous_area_number.strip(),
+                        "name": synchronous_area_name.strip(),
+                    })
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки данных: id={synchronous_area_id},"
+                            f"Номер: {synchronous_area_number}, "
+                            f"Наименование: {synchronous_area_name}, "
+                            f"Ошибка: {str(e)}"
+                        )
+                    )
 
-                synchronous_area_data.append({
-                    "id": int(synchronous_area_id) if synchronous_area_id else None,
-                    "number": synchronous_area_number.strip(),
-                    "name": synchronous_area_name.strip(),
-                })
-            
-            # Контроль целостности: проверяем дублирование идентификаторов в одном запросе
+            # Проверка на дублирующиеся IDs
             ids = [record["id"] for record in synchronous_area_data if record["id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
+
             if duplicates:
-                raise ValueError(f"Обнаружены дублирующиеся ID ФО: {duplicates}")
+                raise ValueError(f"Обнаружены дублирующиеся ID синхронных зон: {duplicates}")
 
-            # --- Обработка пакетного сохранения изменений ---
-            update_synchronous_service_service(synchronous_area_data, user)
-
+            # Обновление данных в базе
+            log_to_db(user, "Полученные данные для обновления синхронных зон", str(synchronous_area_data))
+            update_synchronous_area_service(synchronous_area_data, user)
             flash("Изменения успешно сохранены.", "success")
+
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных ФО: {e}")
+            log_to_db(user, f"Ошибка сохранения данных синхронных зон: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.synchronous_area_list", 
@@ -126,7 +134,7 @@ def synchronous_area_list():
                                 sort_by=sort_by, 
                                 sort_dir=sort_dir))
 
-    # --- Загрузка данных и подготовка контекста для шаблона ---
+    # Получение данных для отображения
     pagination = get_synchronous_area_list(page, 
                               per_page, 
                               synchronous_area_filter, 
@@ -134,7 +142,7 @@ def synchronous_area_list():
                               sort_dir)
 
     return render_template(
-        "refdata/synchronous_area/synchronous_area.html",
+        "refdata/energy_systems/synchronous_area/synchronous_area.html",
         form=form,
         synchronous_area_list=pagination.items,
         pagination=pagination,
@@ -147,8 +155,7 @@ def synchronous_area_list():
 
 @refdata_bp.route("/add_synchronous_area", methods=["GET", "POST"])
 @login_required
-@roles_required(['admin', 'generation'])
-def add_synchronous_area_routes():
+def add_synchronous_area():
     """Добавление записи «Синхронные зоны»."""
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница добавления синхронной зоны")
@@ -185,7 +192,7 @@ def add_synchronous_area_routes():
             log_to_db(user, "Добавление новой синхронной зоны", f"Номер: {form.number.data}, Имя: {form.name.data}")
 
             # После успешного добавления перенаправляем на последнюю страницу списка (PRG)
-            total_records = get_total_synchronous_area_records(synchronous_area_filter)
+            total_records = synchronous_area_query(synchronous_area_filter).count
             last_page = (total_records + per_page - 1) // per_page
 
             # Если текущая страница больше последней, корректируем её
@@ -222,10 +229,9 @@ def add_synchronous_area_routes():
     )
 
 
-@refdata_bp.route("/export_synchronous_area_to_excel", methods=["GET"])
+@refdata_bp.route("/export_synchronous_area", methods=["GET"])
 @login_required
-@roles_required(['admin', 'generation'])
-def export_synchronous_area_to_excel_routes():
+def export_synchronous_area():
     """Экспорт «Синхронные зоны» в Excel с учётом текущих фильтров/сортировки."""
     user = session.get('username', 'Неизвестный пользователь')
     
@@ -235,7 +241,7 @@ def export_synchronous_area_to_excel_routes():
 
     try:
         # Запрашиваем у сервиса сформированный поток Excel
-        excel_data = export_synchronous_area_to_excel_service(user, synchronous_area_filter, sort_by, sort_dir)
+        excel_data = export_synchronous_area_service(user, synchronous_area_filter, sort_by, sort_dir)
         log_to_db(user, "Экспорт завершён", f"Фильтр: {synchronous_area_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
 
         # Если данных нет — информируем пользователя

@@ -16,7 +16,7 @@ from app.refdata.forms.territories.federal_district_forms import (
 )
 
 # Сервисы
-from app.refdata.services.common_services.get_services import (
+from app.common.services.get_services.territories.federal_district_get_services import (
     get_total_federal_district_records,
 )
 from app.refdata.services.territories.federal_district_services import (

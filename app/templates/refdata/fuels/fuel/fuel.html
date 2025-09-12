@@ -251,142 +251,138 @@
             </div>
         </form>
     {% else %}
-
-    <!-- Таблица с данными для чтения -->
-    <div class="table-responsive">
-        <table class="table table-hover table-striped table-bordered">
-            <thead class="table-success">
-                <tr>
-                    <!-- Шапка таблицы. Столбец "№" -->
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('refdata_bp.fuel_list', 
-                                    page=pagination.page, 
-                                    per_page=per_page, 
-                                    fuel_filter=fuel_filter,
-                                    fuel_type_filter=fuel_type_filter,
-                                    sort_by='number', 
-                                    sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-black">
-                            №
-                            {% if sort_by == 'number' %}
-                                {% if sort_dir == 'asc' %}
-                                    ▲
-                                {% else %}
-                                    ▼
-                                {% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <!-- Шапка таблицы. Столбец "Тип топлива" -->
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('refdata_bp.fuel_list', 
-                                    page=pagination.page, 
-                                    per_page=per_page, 
-                                    fuel_filter=fuel_filter, 
-                                    fuel_type_filter=fuel_type_filter,
-                                    sort_by='name', 
-                                    sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-black">
-                            Тип топлива
-                            {% if sort_by == 'name' %}
-                                {% if sort_dir == 'asc' %}
-                                    ▲
-                                {% else %}
-                                    ▼
-                                {% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <!-- Шапка таблицы. Столбец "Вид топлива" -->
-                    <th class="text-center align-middle">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="mx-auto">
-                                <a href="{{ url_for('refdata_bp.fuel_list', 
-                                            page=pagination.page, 
-                                            fuel_filter=fuel_filter,
-                                            fuel_type_filter=fuel_type_filter,
-                                            per_page=per_page,
-                                            sort_by='fuel_type', 
-                                            sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
-                                class="text-black">
-                                    Вид топлива
-                                    {% if sort_by == 'fuel_type' %}
-                                        {% if sort_dir == 'asc' %}
-                                            ▲
-                                        {% else %}
-                                            ▼
-                                        {% endif %}
+        <!-- Таблица с данными для чтения -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+                <thead class="table-success">
+                    <tr>
+                        <!-- Шапка таблицы. Столбец "№" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        fuel_filter=fuel_filter,
+                                        fuel_type_filter=fuel_type_filter,
+                                        sort_by='number', 
+                                        sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
                                     {% endif %}
-                                </a>
-                            </span>
-                            <!-- Кнопка выпадающего списка фильтра -->
-                            <div class="dropdown">
-                                <button 
-                                    class="btn btn-secondary btn-sm dropdown-toggle" 
-                                    type="button" 
-                                    id="fuel_typeFilterDropdown" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fuel_typeFilterDropdown">
-                                    <li>
-                                        <a href="{{ url_for('refdata_bp.fuel_list', 
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Тип топлива" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        fuel_filter=fuel_filter, 
+                                        fuel_type_filter=fuel_type_filter,
+                                        sort_by='name', 
+                                        sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                Тип топлива
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                page=pagination.page, 
+                                                fuel_filter=fuel_filter,
+                                                fuel_type_filter=fuel_type_filter,
+                                                per_page=per_page,
+                                                sort_by='fuel_type', 
+                                                sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
+                                    class="text-black">
+                                        Вид топлива
+                                        {% if sort_by == 'fuel_type' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="fuel_typeFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fuel_typeFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                        page=pagination.page, 
+                                                        fuel_filter=fuel_filter,
+                                                        fuel_type_filter='',
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                Все виды топлива
+                                            </a>
+                                        </li>
+                                        {% for fuel_type_id, fuel_type_name in fuel_types %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list', 
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
-                                                    fuel_type_filter='',
+                                                    fuel_type_filter=fuel_type_id,
                                                     per_page=per_page,
                                                     sort_by=sort_by,
                                                     sort_dir=sort_dir) }}" class="dropdown-item">
-                                            Все виды топлива
-                                        </a>
-                                    </li>
-                                    {% for fuel_type_id, fuel_type_name in fuel_types %}
-                                        <li>
-                                            <a href="{{ url_for('refdata_bp.fuel_list', 
-                                                page=pagination.page, 
-                                                fuel_filter=fuel_filter,
-                                                fuel_type_filter=fuel_type_id,
-                                                per_page=per_page,
-                                                sort_by=sort_by,
-                                                sort_dir=sort_dir) }}" class="dropdown-item">
-                                                {{ fuel_type_name }}
-                                            </a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
+                                                    {{ fuel_type_name }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                    </th>
+                        </th>
+                    </tr>
+                </thead>
 
-                    <!-- Шапка таблицы. Столбец "Удалить" -->
-                    <th class="text-center align-middle">Удалить</th>
-                </tr>
-            </thead>
+                <!-- Данные таблицы-->
+                <tbody>
+                    {% for item in fuel_list %}
+                    <tr class= "align-middle">
+                        <!-- Строки таблицы. Столбец "№" -->
+                        <td class="text-center">
+                            {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                        </td>
 
-            <!-- Данные таблицы-->
-            <tbody>
-                {% for item in fuel_list %}
-                <tr class= "align-middle">
-                    <!-- Строки таблицы. Столбец "№" -->
-                    <td class="text-center">
-                        {{ loop.index + (pagination.page - 1) * pagination.per_page }}
-                    </td>
+                        <!-- Строки таблицы. Столбец "Тип топлива" -->
+                        <td> {{ item.name }} </td>
 
-                    <!-- Строки таблицы. Столбец "Тип топлива" -->
-                    <td> {{ item.name }} </td>
+                        <!-- Строки таблицы. Столбец "Вид топлива" -->
+                        <td> {{ item.fuel_type.name }} </td>
 
-                    <!-- Строки таблицы. Столбец "Вид топлива" -->
-                    <td> {{ item.fuel_type.name }} </td>
-
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% endif %}
     
     <!-- Пагинация -->

@@ -57,20 +57,15 @@ class RegionalDistrict(db.Model):
         cascade='all, delete-orphan'
     )
 
-    # FK -> Энергозона (EnergyZone), ondelete SET NULL
-    id_energy_zone = db.Column(
-        db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.energy_zones.id', ondelete='SET NULL', onupdate='CASCADE'),
-        nullable=True,
-        index=True
-    )
-    energy_zone = db.relationship(
-        'EnergyZone',
-        back_populates='regional_districts',
-        foreign_keys=[id_energy_zone]
+    # FK -> Энергозона (EnergyZone)
+    energy_zones = db.relationship(
+        "EnergyZone",
+        back_populates="regional_district",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
-    # FK -> Синхронная зона (SynchronousArea), ondelete SET NULL
+    # FK -> Синхронная зона (SynchronousArea)
     id_synchronous_area = db.Column(
         db.Integer,
         db.ForeignKey(f'{SCHEMA_REFDATA}.synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),

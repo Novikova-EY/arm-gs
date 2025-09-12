@@ -17,12 +17,22 @@ class EnergyZone(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    # связь с моделью RegionalDistrict
-    regional_districts = db.relationship(
-        'RegionalDistrict',
-        back_populates='energy_zone',
-        foreign_keys='RegionalDistrict.id_energy_zone',
+    # FK -> RegionalDistrict
+    id_regional_district = db.Column(
+        "id_regional_district",
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_REFDATA}.regional_districts.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
+    regional_district = db.relationship(
+        "RegionalDistrict",
+        back_populates="energy_zones",
+        foreign_keys=[id_regional_district],
+    )
+
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     def __repr__(self) -> str:
         return f"<EnergyZone id={self.id} number={self.number!r} name={self.name!r}>"

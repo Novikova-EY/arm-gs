@@ -16,10 +16,11 @@ from app.refdata.forms.fuels.fuel_type_forms import (
 )
 
 # Сервисы
-from app.refdata.services.common_services.get_services import (
-    get_total_fuel_type_records,
+from app.common.services.get_services.fuels.fuel_type_get_services import (
+    get_fuel_type_list_full,
 )
 from app.refdata.services.fuels.fuel_type_services import (
+    fuel_type_query,
     get_fuel_type_list,
     update_fuel_type_service, 
     add_fuel_type_service, 
@@ -36,6 +37,7 @@ from app.logs.services.logging_service import log_to_db
 @login_required
 def fuel_type_list():
     """Маршрут для отображения списка видов топлива."""
+
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница видов топлива")
     
@@ -43,25 +45,25 @@ def fuel_type_list():
     form = FuelTypeFilterForm()
 
     # Получение параметров запроса
-    page = request.args.get("page", 1, type=int)
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-    fuel_type_filter = request.args.get("fuel_type_filter")
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    page                = request.args.get("page", 1, type=int)
+    page                = request.args.get("page", 1, type=int)
+    per_page            = request.args.get("per_page", 10, type=int)
+    sort_by             = request.args.get("sort_by", "id")
+    sort_dir            = request.args.get("sort_dir", "asc")
+    fuel_type_filter    = request.args.get("fuel_type_filter")
 
     if request.method == "POST":       
         # Обновление параметров из формы
-        page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 10, type=int)
-        sort_by = request.form.get("sort_by", "id")
-        sort_dir = request.form.get("sort_dir", "asc")
-        fuel_type_filter = request.form.get("fuel_type_filter")
+        page                = request.form.get("page", 1, type=int)
+        per_page            = request.form.get("per_page", 10, type=int)
+        sort_by             = request.form.get("sort_by", "id")
+        sort_dir            = request.form.get("sort_dir", "asc")
+        fuel_type_filter    = request.form.get("fuel_type_filter")
 
         # Получение данных из формы
-        fuel_type_ids = request.form.getlist("fuel_ids[]")
-        fuel_type_names = request.form.getlist("fuel_type_names[]")
-        fuel_type_delete = request.form.getlist("fuel_type_delete[]")
+        fuel_type_ids       = request.form.getlist("fuel_ids[]")
+        fuel_type_names     = request.form.getlist("fuel_type_names[]")
+        fuel_type_delete    = request.form.getlist("fuel_type_delete[]")
   
         # Удаление записей
         if fuel_type_delete:
@@ -93,7 +95,7 @@ def fuel_type_list():
             fuel_type_data = []
             for fuel_type_id, fuel_type_name in zip(fuel_type_ids, fuel_type_names):
                 fuel_type_data.append({
-                    "id": int(fuel_type_id) if fuel_type_id else None,
+                    "fuel_type_id": int(fuel_type_id) if fuel_type_id else None,
                     "name": fuel_type_name.strip(),
                 })
             
@@ -104,9 +106,10 @@ def fuel_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID видов топлива: {duplicates}")
 
             # Обновление данных в базе
+            log_to_db(user, "Полученные данные для обновления видов топлива", str(fuel_type_data))
             update_fuel_type_service(fuel_type_data, user)
-
             flash("Изменения успешно сохранены.", "success")
+
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
@@ -168,7 +171,7 @@ def add_fuel_type():
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_fuel_type_records(fuel_type_filter)
+            total_records = fuel_type_query(fuel_type_filter).count
             last_page = (total_records + per_page - 1) // per_page
             
             # Пересчет последней страницы (без дубля логики сервиса)
