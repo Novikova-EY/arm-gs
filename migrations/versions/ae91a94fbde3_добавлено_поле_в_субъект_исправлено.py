@@ -24,7 +24,7 @@ def upgrade():
         sa.Column('region_id', sa.Integer(), nullable=True),
         schema=SCHEMA,
     )
-    # 2) создаём индекс
+    # 2) создаем индекс
     op.create_index(
         op.f('ix_refdata_regional_districts_region_id'),
         'regional_districts',

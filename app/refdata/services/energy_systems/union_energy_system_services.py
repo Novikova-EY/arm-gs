@@ -443,7 +443,7 @@ def import_union_energy_system_service(file, user):
         # Логирование результата
         log_to_db(
             user,
-            "Импорт завершён",
+            "Импорт завершен",
             f"Обновлено записей: {updated_count}, добавлено новых: {added_count}, удалено лишних: {deleted_count}"
         )
         return {
@@ -498,7 +498,7 @@ def export_union_energy_system_service(
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
-            "№": idx + 1,
+            "№": idx,
             "Наименование ОЭС": _dash(o.name),
             "Полное наименование ОЭС": _dash(o.name_full),
             "Тип энергосистемы": getattr(o.energy_system_type, "name") or "Не указана",
@@ -524,7 +524,7 @@ def export_union_energy_system_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы ОЭС в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы ОЭС в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
 
     return output

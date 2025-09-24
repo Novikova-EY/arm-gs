@@ -120,7 +120,7 @@ def create_app():
         db.configure_mappers()
 
     # Фильтр форматирования чисел
-    from app.generation.services.station_services.help_services import format_decimal_for_display
+    from app.common.services.help_services import format_decimal_for_display
 
     @app.template_filter("format_decimal")
     def format_decimal_filter(value):

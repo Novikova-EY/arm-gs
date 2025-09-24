@@ -16,10 +16,8 @@ from app.refdata.forms.energy_systems.energy_system_type_forms import (
 )
 
 # Сервисы
-from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
-    get_total_energy_system_type_records,
-)
 from app.refdata.services.energy_systems.energy_system_type_services import (
+    energy_system_type_query,
     get_energy_system_type_list,
     update_energy_system_type_service,
     add_energy_system_type_service,
@@ -46,13 +44,13 @@ def energy_system_type_list():
     page                        = request.args.get("page", 1, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
-    per_page                    = request.args.get("per_page", 10, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
 
     if request.method == "POST":
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 10, type=int)
+        per_page                    = request.form.get("per_page", 20, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         energy_system_type_filter   = request.form.get("energy_system_type_filter", "").strip()
@@ -109,7 +107,7 @@ def energy_system_type_list():
                     )
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in energy_system_type_data if record["id"] is not None]
+            ids = [record["energy_system_type_id"] for record in energy_system_type_data if record["energy_system_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
 
             if duplicates:
@@ -141,7 +139,7 @@ def energy_system_type_list():
                               sort_dir)
 
     return render_template(
-        "refdata/energy_system_type/energy_system_type.html",
+        "refdata/energy_systems/energy_system_type/energy_system_type.html",
         form=form,
         energy_system_type_list=pagination.items,
         pagination=pagination,
@@ -154,22 +152,23 @@ def energy_system_type_list():
 
 @refdata_bp.route("/add_energy_system_type", methods=["GET", "POST"])
 @login_required
-def add_energy_system_type_routes():
-    """Добавление записи «Тип энергосистемы»."""
-    user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления типа энергосистемы")
+def add_energy_system_type():
+    """ Маршрут для добавления новой части энергосистемы России. """
 
-    # Создаём форму ввода данных
+    user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Открыта страница добавления части энергосистемы России")
+
+    # Создание формы
     form = AddEnergySystemTypeForm()
 
-    # Сохраняем текущие параметры фильтра/сортировки/страницы для возврата после добавления
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    energy_system_type_filter = request.args.get("energy_system_type_filter", "").strip()
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    # Сохранение текущих фильтров и параметров отображения
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
 
-    # --- Обработка отправки формы ---
+   # Обработка формы
     if request.method == "POST":
         if not form.validate_on_submit():
             flash("Пожалуйста, заполните все обязательные поля.", "danger")
@@ -177,81 +176,95 @@ def add_energy_system_type_routes():
                 for error in errors:
                     flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
             return render_template(
-                "refdata/energy_system_type/energy_system_type_add.html",
+                "refdata/energy_systems/energy_system_type/energy_system_type_add.html",
                 form=form
             )
         
         try:
-            # Формируем payload и передаём его сервису добавления
-            new_energy_system_type_id = add_energy_system_type_service([{
-                "number": form.number.data,
-                "name": form.name.data,}], 
-                user)
+            payload = [{
+                "name": (form.name.data or "").strip(),
+            }]
+            # Добавление новой записи
+            add_energy_system_type_service(payload, user)
+            log_to_db(user, "Добавление новой части энергосистемы России", 
+                      f"Наименование: {form.name.data}")
             flash("Новая запись успешно добавлена.", "success")
-            log_to_db(user, "Добавление новой типа энергосистемы", f"Номер: {form.number.data}, Имя: {form.name.data}")
 
-            # После успешного добавления перенаправляем на последнюю страницу списка (PRG)
-            total_records = get_total_energy_system_type_records(energy_system_type_filter)
+            # Перенаправление на список с сохранением параметров и переходом к новой записи
+            total_records = energy_system_type_query(
+                                energy_system_type_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
-            # Если текущая страница больше последней, корректируем её
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
                 "refdata_bp.energy_system_type_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 energy_system_type_filter=energy_system_type_filter,
-                per_page=per_page,
-                page=last_page,
-                highlight_id=new_energy_system_type_id
             ))
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой типа энергосистемы", str(e))
+            log_to_db(user, "Ошибка добавления новой части энергосистемы России", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой типа энергосистемы", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления новой части энергосистемы России", str(e))
 
     # Рендеринг формы
     return render_template(
-        "refdata/energy_system_type/energy_system_type_add.html", 
-        form=form,
+        "refdata/energy_systems/energy_system_type/energy_system_type_add.html", 
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form,
         energy_system_type_filter=energy_system_type_filter, 
-        per_page=per_page, 
-        page=page
     )
 
 
-@refdata_bp.route("/export_energy_system_type_to_excel", methods=["GET"])
+@refdata_bp.route("/export_energy_system_type", methods=["GET"])
 @login_required
-def export_energy_system_type_to_excel_routes():
-    """Экспорт «Типы энергосистем» в Excel с учётом текущих фильтров/сортировки."""
+def export_energy_system_type():
+    """Маршрут для экспорта типов частей энергосистемы России в Excel."""
+
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка типов частей энергосистемы России в Excel")
     
-    energy_system_type_filter = request.args.get("energy_system_type_filter", "").strip()
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
 
     try:
         # Запрашиваем у сервиса сформированный поток Excel
-        excel_data = export_energy_system_type_service(user, energy_system_type_filter, sort_by, sort_dir)
-        log_to_db(user, "Экспорт завершён", f"Фильтр: {energy_system_type_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
+        excel_data = export_energy_system_type_service(
+                        user, 
+                        energy_system_type_filter, 
+                        sort_by, 
+                        sort_dir
+        )
+        log_to_db(user, "Экспорт завершен",
+                (
+                    f"Фильтры: {energy_system_type_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
+        )
 
-        # Если данных нет — информируем пользователя
+        # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:
             flash("Нет данных для экспорта.", "warning")
             return redirect(url_for("refdata_bp.energy_system_type_list"))
         
-        # Формируем имя файла с меткой времени
+        # Формирование имени файла
         filename = f"energy_system_type_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
-        # Отдаём файл пользователю через send_file
+        # Возврат файла через send_file
         return send_file(
             excel_data,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

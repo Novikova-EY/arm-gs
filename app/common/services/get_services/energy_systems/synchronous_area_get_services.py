@@ -1,23 +1,29 @@
 """Сервисный get-модуль для SynchronousArea."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from functools import lru_cache
 from typing import Union, List
 
 # Модели
 from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
 
 
+@lru_cache(maxsize=1)
 def get_synchronous_area_list_full():
     """Получает полный список синхронных зон."""
-    return SynchronousArea.query.all()
+    return (
+        SynchronousArea.query
+        .order_by(SynchronousArea.id.asc())
+        .all()
+    )
 
 
+@lru_cache(maxsize=1)
 def get_synchronous_area_list():
     """Получает список синхронных зон (кроме "не указано")."""
     query = (
         SynchronousArea.query
         .filter(SynchronousArea.id.isnot(None), SynchronousArea.id > 0)
+        .order_by(SynchronousArea.name.asc())
     )
     return query
 

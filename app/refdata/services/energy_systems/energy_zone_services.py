@@ -102,7 +102,7 @@ def update_energy_zone_service(data, user):
     """Обновление данных по энергозонам."""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
 
@@ -114,13 +114,12 @@ def update_energy_zone_service(data, user):
             energy_zone_id = record.get("energy_zone_id")
             number = record.get("number")
             name = record.get("name")
-            regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
 
             # Проверки на валидность данных
-            if not name or not number or not regional_district_id:
+            if not name or not number:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'regional_district_id'. Данные: {record}")
+                raise ValueError(f"Каждая запись должна содержать 'name', 'number'. Данные: {record}")
 
             obj = db.session.get(EnergyZone, energy_zone_id)
             if not obj:
@@ -141,18 +140,6 @@ def update_energy_zone_service(data, user):
                              EnergyZone.id != energy_zone_id))
                 if q_full.first():
                     raise ValueError(f"Запись с номером «{number}» уже существует.")
-
-            # Проверка наличия субъекта РФ
-            if "regional_district_id" in record:
-                new_val = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
-                if new_val != obj.id_regional_district:
-                    new_obj = db.session.get(RegionalDistrict, new_val) if new_val is not None else None
-                    if new_val is not None and not new_obj:
-                        raise ValueError(f"Субъект РФ с id={new_val} не найден.")
-                    
-                    prev_obj = db.session.get(RegionalDistrict, obj.id_regional_district) if obj.id_regional_district else None
-                    changes["Субъект РФ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
-                    obj.id_regional_district = new_val
 
             changes = {}
 
@@ -188,7 +175,7 @@ def update_energy_zone_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения энергозон (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении энергозон", str(e))
@@ -200,7 +187,7 @@ def add_energy_zone_service(data, user):
     """ Создание новой записи: энергозона """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -208,18 +195,12 @@ def add_energy_zone_service(data, user):
             for record in data:
                 number = (record.get("number") or "").strip()
                 name = (record.get("name") or "").strip()
-                regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
 
                 # Проверка на наличие необходимых данных
-                if not name or not number or not regional_district_id:
+                if not name or not number:
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'number', 'name' и 'regional_district_id'.")
+                    raise ValueError(f"Каждая запись должна содержать 'number' и 'name'.")
 
-                # Проверяем существование субъекта РФ
-                obj = db.session.get(RegionalDistrict, regional_district_id)
-                if not obj:
-                    raise ValueError(f"Субъект РФ с id={regional_district_id} не найден.")
-                
                 # Проверяем уникальность name при создании
                 dup = (EnergyZone.query
                         .filter(EnergyZone.name == name)
@@ -238,7 +219,6 @@ def add_energy_zone_service(data, user):
                 obj = EnergyZone(
                     name=name,
                     number=number or None,
-                    id_regional_district=regional_district_id,
                 )
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
@@ -246,8 +226,7 @@ def add_energy_zone_service(data, user):
                 log_to_db(user, "Создана энергозона",
                     (
                         f"Номер: {_dash(number)};"
-                        f"Наименование: {name}; "
-                        f"Субъект РФ: {get_regional_district_name(regional_district_id)}"
+                        f"Наименование: {name}. "
                     )
                 )
 
@@ -260,7 +239,7 @@ def add_energy_zone_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой энергозоны. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения новой энергозоны. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения новой энергозоны. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой энергозоны", str(e))
@@ -272,7 +251,7 @@ def delete_energy_zone_service(ids, user):
     """Удаляет записи энергозон по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление списка энергозон", 
               f"Переданы ID для удаления: {ids}")
@@ -327,14 +306,15 @@ def delete_energy_zone_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления энергозон", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 def export_energy_zone_service(
         user, 
-        energy_zone_filter=None,
         sort_by="id", 
-        sort_dir="asc"):
+        sort_dir="asc",
+        energy_zone_filter=None,
+        ):
     """ Экспортирует данные списка энергозон в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы энергозон из базы данных")
@@ -360,7 +340,7 @@ def export_energy_zone_service(
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
-            "№": idx + 1,
+            "№": idx,
             "Номер энергозоны": _dash(o.number),
             "Наименование энергозоны": _dash(o.name),
         })
@@ -385,7 +365,7 @@ def export_energy_zone_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы энергозон в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы энергозон в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
 
     return output

@@ -1,23 +1,29 @@
 """Сервисный get-модуль для GenCompany."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from functools import lru_cache
 from typing import Union, List
 
 # Модели
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 
 
+@lru_cache(maxsize=1)
 def get_gen_company_list_full():
     """Получает полный список генерирующих компаний'."""
-    return GenCompany.query.all()
+    return (
+        GenCompany.query
+        .order_by(GenCompany.name.asc())
+        .all()
+    )
 
 
+@lru_cache(maxsize=1)
 def get_gen_company_list():
     """Получает список генерирующих компаний (кроме "не указано")."""
     query = (
         GenCompany.query
         .filter(GenCompany.id.isnot(None), GenCompany.id > 0)
+        .order_by(GenCompany.name.asc())
     )
     return query
 

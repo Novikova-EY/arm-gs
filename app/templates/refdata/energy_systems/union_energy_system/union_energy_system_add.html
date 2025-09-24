@@ -8,16 +8,16 @@
         <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить ОЭС</h2>
 
         <!-- Форма ввода данных -->
-        <form action="{{ url_for('refdata_bp.add_union_energy_system_routes') }}" method="POST">
+        <form action="{{ url_for('refdata_bp.add_union_energy_system') }}" method="POST">
             {{ form.hidden_tag() }}
         
         <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
-        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
-        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-        <input type="hidden" name="union_energy_system_filter" value="{{ request.args.get('union_energy_system_filter', '') }}">
-        <input type="hidden" name="union_energy_system_type_filter" value="{{ request.args.get('union_energy_system_type_filter', '') }}">
-        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+        <input type="hidden" name="page"                                value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"                            value="{{ per_page }}">
+        <input type="hidden" name="sort_by"                             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                            value="{{ sort_dir }}">
+        <input type="hidden" name="union_energy_system_filter"          value="{{ union_energy_system_filter }}">
+        <input type="hidden" name="union_energy_system_type_filter"     value="{{ union_energy_system_type_filter }}">
 
         <!-- Наименование ОЭС -->
         <div class="mb-3">
@@ -63,13 +63,14 @@
             <button type="submit" class="btn btn-primary">Добавить</button>
 
             <a href="{{ url_for('refdata_bp.union_energy_system_list', 
-                        sort_by=request.args.get('sort_by', 'id'),
-                        sort_dir=request.args.get('sort_dir', 'asc'),
-                        union_energy_system_filter=request.args.get('union_energy_system_filter', ''),
-                        union_energy_system_type_filter=request.args.get('union_energy_system_type_filter', ''),
-                        per_page=request.args.get('per_page', 10),
-                        page=request.args.get('page', 1)) }}" 
-                        class="btn btn-secondary" type="button">
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                union_energy_system_filter=union_energy_system_filter,
+                                union_energy_system_type_filter=union_energy_system_type_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
                         Отмена
             </a>
         </div>

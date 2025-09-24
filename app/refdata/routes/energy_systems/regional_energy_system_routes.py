@@ -51,7 +51,7 @@ def regional_energy_system_list():
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 10, type=int)
+    per_page                        = request.args.get("per_page", 20, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
@@ -60,7 +60,7 @@ def regional_energy_system_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
-        per_page                        = request.form.get("per_page", 10, type=int)
+        per_page                        = request.form.get("per_page", 20, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
         regional_energy_system_filter   = request.form.get("regional_energy_system_filter", "").strip()
@@ -89,12 +89,11 @@ def regional_energy_system_list():
                                     sort_by=sort_by, 
                                     sort_dir=sort_dir))
     
-        # Группируем субъектов РФ по энергосистемам
+        # Группируем субъектов по энергосистемам
         regional_districts_mapping = defaultdict(list)
-
-        for regional_energy_system_id in regional_energy_system_ids:
-            selected_districts = request.form.getlist(f"regional_districts_{regional_energy_system_id}[]")
-            regional_districts_mapping[int(regional_energy_system_id)] = [int(d) for d in selected_districts if d.isdigit()]
+        for res_id in regional_energy_system_ids:
+            selected = request.form.getlist(f"regional_districts_{res_id}[]")
+            regional_districts_mapping[int(res_id)] = [int(x) for x in selected if x.isdigit()]
            
         # Обновление данных в базе
         try:
@@ -133,7 +132,7 @@ def regional_energy_system_list():
                 
  
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in regional_energy_system_data if record["id"] is not None]
+            ids = [record["regional_energy_system_id"] for record in regional_energy_system_data if record["regional_energy_system_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID региональных энергосистем: {duplicates}")
@@ -153,19 +152,21 @@ def regional_energy_system_list():
         return redirect(url_for("refdata_bp.regional_energy_system_list",
                                 page=page,
                                 per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
                                 regional_energy_system_filter=regional_energy_system_filter,
                                 union_energy_system_filter=union_energy_system_filter,
-                                sort_by=sort_by,
-                                sort_dir=sort_dir
         ))
 
     # Получение данных для отображения
-    pagination = get_regional_energy_system_list(page, 
-                              per_page, 
-                              regional_energy_system_filter, 
-                              union_energy_system_filter, 
-                              sort_by, 
-                              sort_dir)
+    pagination = get_regional_energy_system_list(
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                regional_energy_system_filter=regional_energy_system_filter,
+                                union_energy_system_filter=union_energy_system_filter,
+                                )
     
     # Подготовка данных для формы
     union_energy_system_list = get_union_energy_system_list_full()
@@ -174,7 +175,7 @@ def regional_energy_system_list():
     regional_districts_list = get_regional_district_list_full()
 
     return render_template(
-        "references/regional_energy_system/regional_energy_system.html",
+        "refdata/energy_systems/regional_energy_system/regional_energy_system.html",
         form=form,
         regional_energy_system_list=pagination.items,
         pagination=pagination,
@@ -197,41 +198,23 @@ def add_regional_energy_system():
     log_to_db(user, "Открыта страница добавления региональной энергосистемы")
 
     # Создание формы
-    form = AddRegionalEnergySystemForm(request.form)
+    form = AddRegionalEnergySystemForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    page                            = int(request.args.get("page", 1))
-    per_page                        = int(request.args.get("per_page", 10))
+    page                            = request.args.get("page", 1, type=int)
+    per_page                        = request.args.get("per_page", 20, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
     union_energy_system_filter      = request.args.get("union_energy_system_filter", "").strip()
 
-    # Получение списка типов ОЭС и регионов
-    try:
-        union_energy_system = get_union_energy_system_list_full()
-        if not union_energy_system:
-            flash("Ошибка: отсутствует список ОЭС. Добавьте ОЭС перед созданием записи.", "danger")
-            log_to_db(user, "Ошибка добавления субъекта РФ", "Отсутствуют ОЭС.")
-            return redirect(url_for("refdata_bp.regional_energy_system_list"))
+    # Подготовка данных для формы
+    union_energy_system_list = get_union_energy_system_list_full()
+    form.union_energy_system.choices = [(ues.id, ues.name) for ues in union_energy_system_list]
 
-        regional_districts = get_regional_district_list_full()
-        if not regional_districts:
-            flash("Ошибка: отсутствует список регионов. Добавьте регионы перед созданием записи.", "danger")
-            log_to_db(user, "Ошибка добавления субъекта РФ", "Отсутствуют регионы.")
-            return redirect(url_for("refdata_bp.regional_energy_system_list"))
+    regional_district_list = get_regional_district_list_full()
+    form.regional_districts.choices = [(rd.id, rd.name) for rd in regional_district_list]
 
-        form.union_energy_system.choices = [(t.id, t.name) for t in union_energy_system]
-        form.regional_districts.choices = [(r.id, r.name) for r in regional_districts]
-
-        if form.regional_districts.data is None:
-            form.regional_districts.data = []  # Инициализация пустым списком для исключения ошибки
-
-    except Exception as e:
-        current_app.logger.error(f"Ошибка получения данных: {e}")
-        flash("Ошибка при загрузке данных. Попробуйте позже.", "danger")
-        return redirect(url_for("refdata_bp.regional_energy_system_list"))
- 
     # Обработка формы
     if request.method == "POST":
         try:
@@ -250,14 +233,14 @@ def add_regional_energy_system():
                     (
                         f"Наименование: {form.name.data}, "
                         f"Полное наименование: {form.name_full.data}, "
-                        f"ОЭС: {form.union_energy_system.data}"
+                        f"ОЭС: {get_union_energy_system_name(form.union_energy_system.data)}"
                     )
             )
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = regional_energy_system_query(
                                 regional_energy_system_filter, 
-                                union_energy_system_filter).count
+                                union_energy_system_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
             # Корректировка текущей страницы, если она больше последней
@@ -265,12 +248,12 @@ def add_regional_energy_system():
 
             return redirect(url_for(
                 "refdata_bp.regional_energy_system_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 regional_energy_system_filter=regional_energy_system_filter,
                 union_energy_system_filter=union_energy_system_filter,
-                per_page=per_page,
-                page=last_page,
             ))
         except ValueError as e:
             # Логирование и отображение ошибок валидации
@@ -283,16 +266,16 @@ def add_regional_energy_system():
             log_to_db(user, "Неизвестная ошибка добавления новой региональной энергосистемы", str(e))
 
     return render_template(
-        "references/regional_energy_system/regional_energy_system_add.html", 
-        form=form, 
-        union_energy_system=form.union_energy_system.choices, 
-        regional_districts=regional_districts, 
+        "refdata/energy_systems/regional_energy_system/regional_energy_system_add.html", 
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form, 
+        regional_districts=form.regional_districts.choices, 
+        union_energy_system=form.union_energy_system.choices, 
         regional_energy_system_filter=regional_energy_system_filter,
         union_energy_system_filter=union_energy_system_filter,
-        per_page=per_page, 
-        page=page
     )
 
 
@@ -332,9 +315,10 @@ def import_regional_energy_system():
 @refdata_bp.route("/export_regional_energy_system", methods=["GET"])
 @login_required
 def export_regional_energy_system():
-    """Маршрут для экспорта данных в Excel."""
+    """Маршрут для экспорта региональных энергосистем в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка региональных энергосистем в Excel")
     
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
@@ -343,8 +327,14 @@ def export_regional_energy_system():
 
     try:
         # Получение данных для экспорта
-        excel_data = export_regional_energy_system_service(user, regional_energy_system_filter, union_energy_system_filter, sort_by, sort_dir)
-        log_to_db(user, "Экспорт завершён", 
+        excel_data = export_regional_energy_system_service(
+                        user, 
+                        sort_by, 
+                        sort_dir,
+                        regional_energy_system_filter, 
+                        union_energy_system_filter, 
+        )
+        log_to_db(user, "Экспорт завершен", 
                 (
                     f"Фильтры: {regional_energy_system_filter, union_energy_system_filter}, "
                     f"Сортировка: {sort_by}, "

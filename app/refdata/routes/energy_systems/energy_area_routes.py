@@ -16,9 +16,6 @@ from app.refdata.forms.energy_systems.energy_area_forms import (
 )
 
 # Сервисы
-from app.common.services.get_services.energy_systems.energy_area_get_services import (
-    get_total_energy_area_records,
-)
 from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
     get_regional_energy_system_list_full,
 )
@@ -26,10 +23,11 @@ from app.common.services.get_services.energy_systems.union_energy_system_get_ser
     get_union_energy_system_list_full,
 )
 from app.common.services.get_services.territories.regional_district_get_services import (
-    get_regional_district_list,
+    get_regional_district_name,
     get_regional_district_list_full,
 )
 from app.refdata.services.energy_systems.energy_area_services import (
+    energy_area_query,
     get_energy_area_list, 
     update_energy_area_service, 
     add_energy_area_service, 
@@ -53,7 +51,7 @@ def energy_area_list():
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 10, type=int)
+    per_page                        = request.args.get("per_page", 20, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     energy_area_filter              = request.args.get("energy_area_filter", "").strip()
@@ -64,7 +62,7 @@ def energy_area_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
-        per_page                        = request.form.get("per_page", 10, type=int)
+        per_page                        = request.form.get("per_page", 20, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
         energy_area_filter              = request.form.get("energy_area_filter", "").strip()
@@ -89,12 +87,13 @@ def energy_area_list():
             return redirect(url_for("refdata_bp.energy_area_list", 
                                     page=page,
                                     per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
                                     energy_area_filter=energy_area_filter,
                                     regional_district_filter=regional_district_filter,
                                     regional_energy_system_filter=regional_energy_system_filter,
                                     union_energy_system_filter=union_energy_system_filter,
-                                    sort_by=sort_by,
-                                    sort_dir=sort_dir))
+                                    ))
 
         # Обновление данных в базе
         try:
@@ -104,12 +103,13 @@ def energy_area_list():
                 return redirect(url_for("refdata_bp.energy_area_list", 
                                     page=page,
                                     per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
                                     energy_area_filter=energy_area_filter,
                                     regional_district_filter=regional_district_filter,
                                     regional_energy_system_filter=regional_energy_system_filter,
                                     union_energy_system_filter=union_energy_system_filter,
-                                    sort_by=sort_by,
-                                    sort_dir=sort_dir))
+                                    ))
         
             # Формирование данных для обновления
             energy_area_data = []
@@ -127,13 +127,13 @@ def energy_area_list():
                         (
                             f"Ошибка обработки данных: id={energy_area_id},"
                             f"Наименование: {energy_area_name}, "
-                            f"Субъект РФ: {regional_district_id}. "
+                            f"Субъект РФ: {get_regional_district_name(regional_district_id)}. "
                             f"Ошибка: {str(e)}"
                         )
                     )
 
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in energy_area_data if record["id"] is not None]
+            ids = [record["energy_area_id"] for record in energy_area_data if record["energy_area_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
 
             if duplicates:
@@ -153,23 +153,25 @@ def energy_area_list():
         return redirect(url_for("refdata_bp.energy_area_list",
                                 page=page,
                                 per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
                                 energy_area_filter=energy_area_filter,
                                 regional_district_filter=regional_district_filter,
                                 regional_energy_system_filter=regional_energy_system_filter,
                                 union_energy_system_filter=union_energy_system_filter,
-                                sort_by=sort_by,
-                                sort_dir=sort_dir))
+                                ))
 
     # Получение данных для отображения
     pagination = get_energy_area_list( 
                                 page=page,
                                 per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
                                 energy_area_filter=energy_area_filter,
                                 regional_district_filter=regional_district_filter,
                                 regional_energy_system_filter=regional_energy_system_filter,
                                 union_energy_system_filter=union_energy_system_filter,
-                                sort_by=sort_by,
-                                sort_dir=sort_dir)
+                                )
     
     # Подготовка данных для формы
     regional_district_list = get_regional_district_list_full()
@@ -207,64 +209,71 @@ def add_energy_area():
     log_to_db(user, "Открыта страница добавления энергорайона")
 
     # Создание формы
-    form = AddEnergyAreaForm(request.form)
+    form = AddEnergyAreaForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    energy_area_filter = request.args.get("energy_area_filter", "").strip()
-    regional_district_filter = request.args.get("regional_district_filter", "").strip()
-    regional_energy_system_filter = request.args.get("regional_energy_system_filter", "").strip()
-    union_energy_system_filter = request.args.get("union_energy_system_filter", "").strip()
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    page                            = request.args.get("page", 1, type=int) or 1
+    per_page                        = request.args.get("per_page", 20, type=int) or 10
+    sort_by                         = request.args.get("sort_by", "id")
+    sort_dir                        = request.args.get("sort_dir", "asc")
+    energy_area_filter              = request.args.get("energy_area_filter", "").strip()
+    regional_district_filter        = request.args.get("regional_district_filter", "").strip()
+    regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
+    union_energy_system_filter      = request.args.get("union_energy_system_filter", "").strip()
  
     # Подготовка данных для формы
-    try:
-        regional_district_list = get_regional_district_list()
-        if not regional_district_list:
-            flash("Ошибка: отсутствует список субъектов РФ. Добавьте субъект РФ перед созданием записи.", "danger")
-            log_to_db(user, "Ошибка добавления энергорайоны", "Отсутствуют субъекты РФ")
-            return redirect(url_for("refdata_bp.energy_area_list"))
-        form.regional_district.choices = [(t.id, t.name) for t in regional_district_list]
-    except Exception as e:
-        current_app.logger.error(f"Ошибка получения списка субъектов РФ: {e}")
-        flash("Ошибка при загрузке списка субъектов РФ.", "danger")
-        return redirect(url_for("refdata_bp.energy_area_list"))
+    regional_district_list = get_regional_district_list_full()
+    form.regional_district.choices = [(t.id, t.name) for t in regional_district_list]
 
     # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/energy_systems/energy_area/energy_area_add.html",
+                form=form
+            )
+        
         try:
             payload = [{
                 "name": (form.name.data or "").strip(),
-                "id_regional_district": form.regional_district.data,
+                "regional_district_id": form.regional_district.data,
             }]
 
-            # Добавление новой записи через сервис
+            # Добавление новой записи
             add_energy_area_service(payload, user)
+            log_to_db(user, "Добавление нового энергорайона", 
+                    (
+                        f"Наименование: {form.name.data}, "
+                        f"Субъект РФ: {get_regional_district_name(form.regional_district.data)}"
+                    )
+            )
             flash("Новая запись успешно добавлена.", "success")
     
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_energy_area_records(
+            total_records = energy_area_query(
                                 energy_area_filter, 
                                 regional_district_filter, 
                                 regional_energy_system_filter, 
-                                union_energy_system_filter)
+                                union_energy_system_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
-            # Пересчет последней страницы (без дубля логики сервиса)
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
                 "refdata_bp.energy_area_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 energy_area_filter=energy_area_filter,
                 regional_district_filter=regional_district_filter,
                 regional_energy_system_filter=regional_energy_system_filter,
                 union_energy_system_filter=union_energy_system_filter,
-                per_page=per_page,
-                page=last_page,
             ))
         
         except ValueError as e:
@@ -272,6 +281,7 @@ def add_energy_area():
             flash(str(e), "danger")
             log_to_db(user, "Ошибка добавления нового энергорайона", str(e))
         except Exception as e:
+            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
             log_to_db(user, "Неизвестная ошибка добавления нового энергорайона", str(e))
@@ -279,15 +289,15 @@ def add_energy_area():
     # Рендеринг формы
     return render_template(
         "refdata/energy_systems/energy_area/energy_area_add.html", 
-        form=form, 
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form, 
         energy_area_filter=energy_area_filter,
         regional_district_filter=regional_district_filter,
         regional_energy_system_filter=regional_energy_system_filter,
         union_energy_system_filter=union_energy_system_filter,
-        per_page=per_page, 
-        page=page
     )
 
 
@@ -296,28 +306,34 @@ def export_energy_area():
     """Маршрут для экспорта данных в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка энергорайонов из Excel")
+    log_to_db(user, "Начат экспорт списка энергорайонов в Excel")
     
+    sort_by                         = request.args.get("sort_by", "id")
+    sort_dir                        = request.args.get("sort_dir", "asc")
     energy_area_filter              = request.args.get("energy_area_filter", "").strip()
     regional_district_filter        = request.args.get("regional_district_filter", "").strip()
     regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
     union_energy_system_filter      = request.args.get("union_energy_system_filter", "").strip()
-    sort_by                         = request.args.get("sort_by", "id")
-    sort_dir                        = request.args.get("sort_dir", "asc")
 
     try:
         # Получение данных для экспорта
         excel_data = export_energy_area_service(
             user=user, 
+            sort_by=sort_by, 
+            sort_dir=sort_dir,
             energy_area_filter=energy_area_filter, 
             regional_district_filter=regional_district_filter, 
             regional_energy_system_filter=regional_energy_system_filter, 
             union_energy_system_filter=union_energy_system_filter, 
-            sort_by=sort_by, 
-            sort_dir=sort_dir
         )
 
-        log_to_db(user, "Экспорт завершён", f"Фильтр: {energy_area_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
+        log_to_db(user, "Экспорт завершен", 
+                    (
+                        f"Фильтры: {energy_area_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter},"
+                        f"Сортировка: {sort_by},"
+                        f"Направление: {sort_dir}"
+                    )
+        )
         
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:

@@ -1,7 +1,7 @@
 """Сервисный модуль: Объединенные энергосистемы."""
 
 from app.extensions import db
-from sqlalchemy import or_
+from sqlalchemy import or_, desc
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -43,8 +43,9 @@ def regional_energy_system_query(
 
     # Нормализация входов
     sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
+    desc = (sort_dir == "desc")
     sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name", "name_full", "federal_district", "energy_zone", "synchronous_area"}
+    allowed_sort = {"id", "name", "name_full", "union_energy_system"}
     if sort_by not in allowed_sort:
         sort_by = "id"
 
@@ -76,8 +77,13 @@ def regional_energy_system_query(
         query = query.order_by(RegionalEnergySystem.name_full.desc() if sort_dir == "desc" else RegionalEnergySystem.name_full.asc())
     
     elif sort_by == "union_energy_system":
-        query = query.join(UnionEnergySystem).order_by(
-            UnionEnergySystem.name.desc() if sort_dir == "desc" else UnionEnergySystem.name.asc()
+        query = (query
+            .outerjoin(RegionalEnergySystem.union_energy_system)
+            .order_by(
+                UnionEnergySystem.name.desc().nulls_last() if desc
+                else UnionEnergySystem.name.asc().nulls_first(),
+                RegionalEnergySystem.id.desc() if desc else RegionalEnergySystem.id.asc(),
+            )
         )
     
     else:
@@ -94,18 +100,19 @@ def regional_energy_system_query(
 def get_regional_energy_system_list(
     page, 
     per_page, 
+    sort_by="id", 
+    sort_dir="asc",
     regional_energy_system_filter=None, 
     union_energy_system_filter=None, 
-    sort_by="id", 
-    sort_dir="asc"):
+    ):
     """ Получает список региональных энергосистем с пагинацией, фильтрацией и сортировкой, загружая связи с субъектами РФ. """
 
     # Базовый запрос
     query = regional_energy_system_query(
-        regional_energy_system_filter=regional_energy_system_filter,
-        union_energy_system_filter=union_energy_system_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        regional_energy_system_filter=regional_energy_system_filter,
+        union_energy_system_filter=union_energy_system_filter,
     )
 
     # Пагинация
@@ -117,20 +124,17 @@ def update_regional_energy_system_service(data, user):
     """Обновление данных по региональным энергосистемам."""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
-
-    log_to_db(user, "Получены данные для обновления списка региональных энергосистем", 
-              f"{data}")
 
     with db.session.no_autoflush:
         for record in data:
             regional_energy_system_id = record.get("regional_energy_system_id")
             name = record.get("name")
             name_full = record.get("name_full")
-            union_energy_system_id = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
-            regional_district_ids = _to_int_or_none(record.get("regional_district_ids", []), keep_zero=False)
+            union_energy_system_id = record.get("union_energy_system_id")
+            regional_district_ids = record.get("regional_district_ids", None)
 
             # Проверки на валидность данных
             if not name or union_energy_system_id is None:
@@ -183,57 +187,29 @@ def update_regional_energy_system_service(data, user):
                     obj.id_union_energy_system = ues
 
             # Обновление связей «многие ко многим»
-            # Выполняем обновление только если ключ присутствует в record
-            if "regional_district_ids" in record:
-                # Нормализация входа в множество целых id
-                raw_ids = regional_district_ids
-                normalized_ids = []
+            if regional_energy_system_id:
+                # Обновление существующей записи
+                regional_energy_system = RegionalEnergySystem.query.get(regional_energy_system_id)
+                if regional_energy_system:
+                    regional_energy_system.name = name
+                    regional_energy_system.name_full = name_full
+                    regional_energy_system.id_union_energy_system = union_energy_system_id
 
-                if isinstance(raw_ids, (list, tuple, set)):
-                    for v in raw_ids:
-                        iv = _to_int_or_none(v, keep_zero=False)
-                        if iv is not None:
-                            normalized_ids.append(iv)
-                elif isinstance(raw_ids, str):
-                    # поддержка "1,2,3"
-                    for part in raw_ids.split(","):
-                        iv = _to_int_or_none(part.strip(), keep_zero=False)
-                        if iv is not None:
-                            normalized_ids.append(iv)
-                else:
-                    # Неподдерживаемый формат — считаем, что список пуст
-                    normalized_ids = []
+                    # Обновление связей «многие ко многим»
+                    existing_districts = {district.id for district in regional_energy_system.regional_districts}
+                    new_districts = set(regional_district_ids)
 
-                new_district_ids = set(normalized_ids)
-                existing_district_ids = {d.id for d in obj.regional_districts}
+                    # Добавить новые связи
+                    for district_id in new_districts - existing_districts:
+                        district = RegionalDistrict.query.get(district_id)
+                        if district:
+                            regional_energy_system.regional_districts.append(district)
 
-                to_add_ids = new_district_ids - existing_district_ids
-                to_remove_ids = existing_district_ids - new_district_ids
-
-                # Добавить новые связи пакетно, с проверкой, что все есть в БД
-                if to_add_ids:
-                    districts_to_add = (RegionalDistrict.query
-                                        .filter(RegionalDistrict.id.in_(to_add_ids))
-                                        .all())
-                    found_ids = {d.id for d in districts_to_add}
-                    missing_ids = to_add_ids - found_ids
-                    if missing_ids:
-                        raise ValueError(f"Субъекты РФ не найдены: {sorted(missing_ids)}")
-
-                    for d in districts_to_add:
-                        obj.regional_districts.append(d)
-
-                # Удалить устаревшие связи (без лишних запросов)
-                if to_remove_ids:
-                    for d in list(obj.regional_districts):
-                        if d.id in to_remove_ids:
-                            obj.regional_districts.remove(d)
-
-                # Логируем изменения, если были
-                if to_add_ids or to_remove_ids:
-                    changes["Субъекты РФ (regional_districts)"] = (
-                        f"{sorted(existing_district_ids)} → {sorted(new_district_ids)}"
-                    )
+                    # Удалить устаревшие связи
+                    for district_id in existing_districts - new_districts:
+                        district = RegionalDistrict.query.get(district_id)
+                        if district:
+                            regional_energy_system.regional_districts.remove(district)
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -259,7 +235,7 @@ def update_regional_energy_system_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения региональной энергосистемы (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении региональной энергосистемы", str(e))
@@ -271,7 +247,7 @@ def add_regional_energy_system_service(data, user):
     """Создание новой записи: региональная энергосистема"""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -280,11 +256,12 @@ def add_regional_energy_system_service(data, user):
                 name = (record.get("name") or "").strip()
                 name_full = (record.get("name_full") or "").strip()
                 union_energy_system_id = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
+                regional_district_ids = record.get("regional_districts", [])
 
                 # Проверка на наличие необходимых данных
                 if not name or not name_full or not union_energy_system_id:
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'union_energy_system_id'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'union_energy_system_id'. Данные: {record}")
 
                 # Проверяем существование ОЭС
                 obj = db.session.get(UnionEnergySystem, union_energy_system_id)
@@ -311,6 +288,23 @@ def add_regional_energy_system_service(data, user):
                     name_full=name_full or None,
                     id_union_energy_system=union_energy_system_id,
                 )
+
+                # Обновление связей «многие ко многим»
+                existing_districts = {district.id for district in obj.regional_districts}
+                new_districts = set(regional_district_ids)
+
+                # Добавить новые связи
+                for district_id in new_districts - existing_districts:
+                    district = RegionalDistrict.query.get(district_id)
+                    if district:
+                        obj.regional_districts.append(district)
+
+                # Удалить устаревшие связи
+                for district_id in existing_districts - new_districts:
+                    district = RegionalDistrict.query.get(district_id)
+                    if district:
+                        obj.regional_districts.remove(district)
+
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
@@ -331,7 +325,7 @@ def add_regional_energy_system_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой региональной энергосистемы Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения новой региональной энергосистемы. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения новой региональной энергосистемы. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой региональной энергосистемы", str(e))
@@ -343,7 +337,7 @@ def delete_regional_energy_system_service(ids, user):
     """Удаляет записи региональных энергосистем по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
     
     log_to_db(user, "Удаление записей", 
               f"Переданы ID для удаления: {ids}")
@@ -398,7 +392,7 @@ def delete_regional_energy_system_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления региональных энергосистем", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 @no_autoflush
@@ -459,14 +453,14 @@ def import_regional_energy_system_service(file, user):
 
         # Сохраняем изменения
         db.session.commit()
-        log_to_db(user, "Импорт завершён", f"Добавлено записей: {imported_count}, Обновлено: {updated_count}")
+        log_to_db(user, "Импорт завершен", f"Добавлено записей: {imported_count}, Обновлено: {updated_count}")
 
         return {"imported": imported_count, "updated": updated_count}
 
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка импорта (IntegrityError)", str(e))
-        raise ValueError("Ошибка целостности данных. Возможно, дублируются ID или имена.")
+        raise ValueError(f"Ошибка целостности данных. Возможно, дублируются ID или имена.")
 
     except Exception as e:
         db.session.rollback()
@@ -507,7 +501,7 @@ def export_regional_energy_system_service(
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
-        "№": idx + 1,
+        "№": idx,
         "Региональная энергосистема": _dash(o.name),
         "Региональная энергосистема (полное название)": _dash(o.name_full),
         "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указана",
@@ -515,7 +509,7 @@ def export_regional_energy_system_service(
         })
 
     if not data:
-        log_to_db(user, "Экспорт завершён", "Нет данных для экспорта.")
+        log_to_db(user, "Экспорт завершен", "Нет данных для экспорта.")
         return None
 
     log_to_db(user, "Подготовка данных для экспорта таблицы региональных энергосистем в Excel", 
@@ -538,7 +532,7 @@ def export_regional_energy_system_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы региональных энергосистем в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы региональных энергосистем в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
     
     return output

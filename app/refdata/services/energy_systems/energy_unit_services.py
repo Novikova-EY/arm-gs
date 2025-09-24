@@ -1,7 +1,7 @@
 """Сервисный модуль: Энергоузлы."""
 
 from app.extensions import db
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -52,7 +52,7 @@ def energy_unit_query(
     """ Базовый запрос для выборки энергоузлов с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name", "energy_system_type"}
+    allowed_sort_by = {"id", "name", "regional_district", "regional_energy_system", "union_energy_system"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -64,9 +64,13 @@ def energy_unit_query(
     union_energy_system_id = _to_int_or_none(union_energy_system_filter)
 
     # Базовый запрос
-    query = EnergyUnit.query.options(
-        joinedload(EnergyUnit.regional_district)
-            .joinedload(RegionalDistrict.regional_energy_systems)
+    query = (
+        EnergyUnit.query
+        .options(
+            joinedload(EnergyUnit.regional_district)
+                .selectinload(RegionalDistrict.regional_energy_systems)
+        )
+        .filter(EnergyUnit.id > 0)
     )
 
     # Фильтрация по названию энергоузла
@@ -75,48 +79,99 @@ def energy_unit_query(
 
     # Фильтрация по субъекту РФ
     if regional_district_filter:
-        query = query.join(EnergyUnit.regional_district).filter(
-            RegionalDistrict.id == regional_district_id
-        )
+        query = query.join(EnergyUnit.regional_district)
+        if regional_district_id is not None:
+            query = query.filter(RegionalDistrict.id == regional_district_id)
+        else:
+            query = query.filter(RegionalDistrict.name.ilike(f"%{regional_district_filter}%"))
 
     # Фильтрация по региональной энергосистеме
     if regional_energy_system_filter:
-        query = query.join(EnergyUnit.regional_district).join(RegionalDistrict.regional_energy_systems).filter(
-            RegionalEnergySystem.id == regional_energy_system_id
+        query = query.join(EnergyUnit.regional_district).filter(
+            RegionalDistrict.regional_energy_systems.any(
+                RegionalEnergySystem.id == regional_energy_system_id
+                if regional_energy_system_id is not None
+                else RegionalEnergySystem.name.ilike(f"%{regional_energy_system_filter}%")
+            )
         )
 
     # Фильтрация по ОЭС
     if union_energy_system_filter:
-        query = query.join(EnergyUnit.regional_district)\
-                    .join(RegionalDistrict.regional_energy_systems)\
-                    .join(RegionalEnergySystem.union_energy_system)\
-                    .filter(UnionEnergySystem.id == union_energy_system_id)
+        query = query.join(EnergyUnit.regional_district).filter(
+            RegionalDistrict.regional_energy_systems.any(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.id == union_energy_system_id
+                    if union_energy_system_id is not None
+                    else UnionEnergySystem.name.ilike(f"%{union_energy_system_filter}%")
+                )
+            )
+        )
 
     # Сортировка
     if sort_by == "name":
-        query = query.order_by(
-            EnergyUnit.name.desc() if sort_dir == "desc" else EnergyUnit.name.asc()
+        query = query.order_by(EnergyUnit.name.desc() if sort_dir == "desc" else EnergyUnit.name.asc())
+
+    elif sort_by == "regional_district":
+        query = (
+            query
+            .outerjoin(EnergyUnit.regional_district)
+            .order_by(
+                RegionalDistrict.name.desc() if sort_dir == "desc" else RegionalDistrict.name.asc(),
+                EnergyUnit.id.desc() if sort_dir == "desc" else EnergyUnit.id.asc(),
             )
+        )
 
     elif sort_by == "regional_energy_system":
-        query = query.join(EnergyUnit.regional_district)\
-                    .join(RegionalDistrict.regional_energy_systems)\
-                    .order_by(
-                        RegionalEnergySystem.name.desc() if sort_dir == "desc" else RegionalEnergySystem.name.asc()
-                        )
+        res_key_sq = (
+            db.session.query(
+                RegionalDistrict.id.label("rd_id"),
+                func.min(RegionalEnergySystem.name).label("res_sort_key"),
+            )
+            .select_from(RegionalDistrict)
+            .outerjoin(RegionalDistrict.regional_energy_systems)
+            .group_by(RegionalDistrict.id)
+            .subquery()
+        )
+        query = (
+            query
+            .outerjoin(EnergyUnit.regional_district)
+            .outerjoin(res_key_sq, res_key_sq.c.rd_id == RegionalDistrict.id)
+            .order_by(
+                res_key_sq.c.res_sort_key.desc() if sort_dir == "desc" else res_key_sq.c.res_sort_key.asc(),
+                EnergyUnit.id.desc() if sort_dir == "desc" else EnergyUnit.id.asc(),
+            )
+        )
 
     elif sort_by == "union_energy_system":
-        query = query.join(EnergyUnit.regional_district)\
-                    .join(RegionalDistrict.regional_energy_systems)\
-                    .join(RegionalEnergySystem.union_energy_system)\
-                    .order_by(
-                        UnionEnergySystem.name.desc() if sort_dir == "desc" else UnionEnergySystem.name.asc()
-                        )
+        ues_key_sq = (
+            db.session.query(
+                RegionalDistrict.id.label("rd_id"),
+                func.coalesce(func.min(UnionEnergySystem.name), "").label("ues_sort_key"),
+            )
+            .select_from(RegionalDistrict)
+            .outerjoin(RegionalDistrict.regional_energy_systems)
+            .outerjoin(RegionalEnergySystem.union_energy_system)
+            .group_by(RegionalDistrict.id)
+            .subquery()
+        )
+
+        query = (
+            query
+            # нужен доступ к RD, чтобы связать сабквери
+            .outerjoin(EnergyUnit.regional_district)
+            .outerjoin(ues_key_sq, ues_key_sq.c.rd_id == RegionalDistrict.id)
+            .order_by(
+                (ues_key_sq.c.ues_sort_key.desc().nulls_last()
+                    if sort_dir == "desc"
+                    else ues_key_sq.c.ues_sort_key.asc().nulls_first()),
+                EnergyUnit.id.desc() if sort_dir == "desc" else EnergyUnit.id.asc(),
+            )
+        )
         
     else:  # сортировка по id
-        query = query.order_by
-        (EnergyUnit.id.desc() if sort_dir == "desc" else EnergyUnit.id.asc()
-         )
+        query = query.order_by(
+            EnergyUnit.id.desc() if sort_dir == "desc" else EnergyUnit.id.asc()
+        )
 
     # Исключаем запись "Не указано" (id=0)
     query = query.filter(EnergyUnit.id.isnot(None), EnergyUnit.id > 0)
@@ -128,16 +183,20 @@ def energy_unit_query(
 def get_energy_unit_list(
     page, 
     per_page, 
+    energy_unit_filter=None, 
+    regional_district_filter=None, 
+    regional_energy_system_filter=None, 
     union_energy_system_filter=None, 
-    energy_system_type_filter=None, 
     sort_by="id", 
     sort_dir="asc"):
     """ Получает список энергоузлов с пагинацией, фильтрацией и сортировкой. """
     
     # Базовый запрос
     query = energy_unit_query(
+        energy_unit_filter=energy_unit_filter,
+        regional_district_filter=regional_district_filter,
+        regional_energy_system_filter=regional_energy_system_filter,
         union_energy_system_filter=union_energy_system_filter,
-        energy_system_type_filter=energy_system_type_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -151,7 +210,7 @@ def update_energy_unit_service(data, user):
     """ Обновление данных по энергоузлам. """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
     
@@ -163,12 +222,13 @@ def update_energy_unit_service(data, user):
             energy_unit_id = record.get("energy_unit_id")
             name = record.get("name")
             regional_district_id = record.get("regional_district_id")
+            regional_energy_system_id = record.get("regional_energy_system_id")
 
             # Проверки на валидность данных
-            if not name or not regional_district_id:
+            if not name or not regional_district_id or not regional_energy_system_id:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Каждая запись должна содержать 'name' и 'regional_district'. Данные: {record}")
+                raise ValueError(f"Каждая запись должна содержать 'name' и 'regional_district_id' и 'regional_energy_system_id'. Данные: {record}")
 
             obj = db.session.get(EnergyUnit, energy_unit_id)
             if not obj:
@@ -204,6 +264,18 @@ def update_energy_unit_service(data, user):
                     changes["Субъект РФ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
                     obj.id_regional_district = new_val
 
+            # Проверка наличия региональной энергосистемы
+            if "regional_energy_system_id" in record:
+                new_val = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
+                if new_val != obj.id_regional_energy_system:
+                    new_obj = db.session.get(RegionalEnergySystem, new_val) if new_val is not None else None
+                    if new_val is not None and not new_obj:
+                        raise ValueError(f"Субъект РФ с id={new_val} не найден.")
+                    
+                    prev_obj = db.session.get(RegionalEnergySystem, obj.id_regional_energy_system) if obj.id_regional_energy_system else None
+                    changes["Региональная энергосистема"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    obj.id_regional_energy_system = new_val
+
             # Если есть реальные изменения — лог и добавление в список
             if changes:
                 log_to_db(user, f"Обновлен энергоузел: {name}", 
@@ -228,7 +300,7 @@ def update_energy_unit_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения энергоузлов (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении энергоузлов", str(e))
@@ -240,7 +312,7 @@ def add_energy_unit_service(data, user):
     """ Создание новой записи: энергоузел """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -248,17 +320,23 @@ def add_energy_unit_service(data, user):
             for record in data:
                 name = (record.get("name") or "").strip()
                 regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+                regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
 
                 # Проверка на наличие необходимых данных
-                if not name or not regional_district_id:
+                if not (name or regional_district_id or regional_energy_system_id):
                     log_to_db(user, "Ошибка валидации", 
                               f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name' и 'regional_district_id''. Данные: {record}")
-
+                    raise ValueError(f"Каждая запись должна содержать 'name', 'regional_district_id' и 'regional_energy_system_id'. Данные: {record}")
+                
                 # Проверяем существование субъекта РФ
-                obj = db.session.get(RegionalDistrict, regional_district_id)
-                if not obj:
+                rd_obj = db.session.get(RegionalDistrict, regional_district_id)
+                if not rd_obj:
                     raise ValueError(f"Субъект РФ с id={regional_district_id} не найдена.")
+                
+                # Проверяем существование региональной энергосистемы
+                res_obj = db.session.get(RegionalEnergySystem, regional_energy_system_id)
+                if not res_obj:
+                    raise ValueError(f"Региональная энергосистема с id={regional_energy_system_id} не найдена.")
                 
                 # Проверяем уникальность name
                 dup = (EnergyUnit.query
@@ -268,17 +346,19 @@ def add_energy_unit_service(data, user):
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
                 # Создаем новую запись
-                obj = RegionalEnergySystem(
+                eu_obj = EnergyUnit(
                     name=name,
-                    id_regional_district=regional_district_id,
+                    id_regional_district=rd_obj.id,
+                    id_regional_energy_system=res_obj.id,
                 )
-                db.session.add(obj)
+                db.session.add(eu_obj)
                 db.session.flush()  # получить id без полного коммита
 
                 log_to_db(user, "Создана региональная энергосистема",
                     (
                         f"Наименование: {name}; "
-                        f"Субъект РФ: {get_regional_district_name(regional_district_id)} "
+                        f"Субъект РФ: {rd_obj.name}; "
+                        f"Региональная энергосистема: {res_obj.name} "
                     )
                 )
 
@@ -291,7 +371,7 @@ def add_energy_unit_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового энергоузла. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения нового энергоузла. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения нового энергоузла. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового энергоузла", str(e))
@@ -303,7 +383,7 @@ def delete_energy_unit_service(ids, user):
     """Удаляет записи энергоузлов по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
     
     log_to_db(user, "Удаление записей", 
               f"Переданы ID для удаления: {ids}")
@@ -358,7 +438,7 @@ def delete_energy_unit_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления энергоузлов", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 def export_energy_unit_service(
@@ -383,7 +463,7 @@ def export_energy_unit_service(
     )
     
     # Базовый запрос
-    query = get_energy_unit_list(
+    query = energy_unit_query(
         energy_unit_filter=energy_unit_filter,
         regional_district_filter=regional_district_filter,
         regional_energy_system_filter=regional_energy_system_filter,
@@ -400,7 +480,7 @@ def export_energy_unit_service(
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
-            "№": idx + 1,
+            "№": idx,
             "Энергоузел": o.name,
             "Субъект РФ": o.regional_district.name if o.regional_district else "Не указан",
             "Региональная энергосистема": o.regional_energy_system.name if o.regional_energy_system.name else "Не указана",
@@ -427,7 +507,7 @@ def export_energy_unit_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы энергозулов в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы энергозулов в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
 
     return output

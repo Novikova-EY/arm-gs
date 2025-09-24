@@ -12,14 +12,14 @@
         {{ form.hidden_tag() }}
         
         <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
-        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
-        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-        <input type="hidden" name="energy_area_filter" value="{{ request.args.get('energy_area_filter', '') }}">
-        <input type="hidden" name="regional_district_filter" value="{{ request.args.get('regional_district_filter', '') }}">
-        <input type="hidden" name="regional_energy_system_filter" value="{{ request.args.get('regional_energy_system_filter', '') }}">
-        <input type="hidden" name="union_energy_system_filter" value="{{ request.args.get('union_energy_system_filter', '') }}">
-        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+        <input type="hidden" name="page"                            value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"                        value="{{ per_page }}">
+        <input type="hidden" name="sort_by"                         value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                        value="{{ sort_dir }}">
+        <input type="hidden" name="energy_area_filter"              value="{{ energy_area_filter }}">
+        <input type="hidden" name="regional_district_filter"        value="{{ regional_district_filter }}">
+        <input type="hidden" name="regional_energy_system_filter"   value="{{ regional_energy_system_filter }}">
+        <input type="hidden" name="union_energy_system_filter"      value="{{ union_energy_system_filter }}">
 
         <!-- Название -->
         <div class="mb-3">
@@ -35,7 +35,7 @@
         <!-- Выбор Субъекта РФ -->
         <div class="mb-3">
             <strong for="regional_district" class="form-label">Субъект РФ</strong>
-            <select name="regional_district" id="oesDropdown" class="form-select">
+            <select name="regional_district" id="resDropdown" class="form-select">
                 <option value="">Все субъекты РФ</option>
                 {% for regional_district in form.regional_district.choices %}
                     <option value="{{ regional_district[0] }}" {% if form.regional_district.data and regional_district[0] == form.regional_district.data %}selected{% endif %}>
@@ -57,16 +57,18 @@
             <button type="submit" class="btn btn-primary">Добавить</button>
 
             <a href="{{ url_for('refdata_bp.energy_area_list', 
-                                sort_by=request.args.get('sort_by', 'id'),
-                                sort_dir=request.args.get('sort_dir', 'asc'),
-                                energy_area_filter=request.args.get('energy_area_filter', ''),
-                                regional_district_filter=request.args.get('regional_district_filter', ''),
-                                regional_energy_system_filter=request.args.get('regional_energy_system_filter', ''),
-                                union_energy_system_filter=request.args.get('union_energy_system_filter', ''),
-                                per_page=request.args.get('per_page', 10),
-                                page=request.args.get('page', 1)) }}" 
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                energy_area_filter=energy_area_filter,
+                                regional_district_filter=regional_district_filter,
+                                regional_energy_system_filter=regional_energy_system_filter,
+                                union_energy_system_filter=union_energy_system_filter,
+                                ) }}" 
                                 class="btn btn-secondary">
-                        Отмена</a>
+                        Отмена
+            </a>
         </div>
     </form>
 </div>

@@ -16,9 +16,6 @@ from app.refdata.forms.fuels.fuel_type_forms import (
 )
 
 # Сервисы
-from app.common.services.get_services.fuels.fuel_type_get_services import (
-    get_fuel_type_list_full,
-)
 from app.refdata.services.fuels.fuel_type_services import (
     fuel_type_query,
     get_fuel_type_list,
@@ -47,7 +44,7 @@ def fuel_type_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 10, type=int)
+    per_page            = request.args.get("per_page", 20, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_type_filter    = request.args.get("fuel_type_filter")
@@ -55,7 +52,7 @@ def fuel_type_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 10, type=int)
+        per_page            = request.form.get("per_page", 20, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         fuel_type_filter    = request.form.get("fuel_type_filter")
@@ -100,8 +97,9 @@ def fuel_type_list():
                 })
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in fuel_type_data if record["id"] is not None]
+            ids = [record["fuel_type_id"] for record in fuel_type_data if record["fuel_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
+
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID видов топлива: {duplicates}")
 
@@ -124,11 +122,12 @@ def fuel_type_list():
                                 sort_dir=sort_dir))
 
     # Получение данных для отображения
-    pagination = get_fuel_type_list(page, 
-                              per_page, 
-                              fuel_type_filter,
-                              sort_by, 
-                              sort_dir)
+    pagination = get_fuel_type_list(
+                                page, 
+                                per_page, 
+                                fuel_type_filter,
+                                sort_by, 
+                                sort_dir)
 
     return render_template(
         "refdata/fuels/fuel_type/fuel_type.html",
@@ -141,10 +140,11 @@ def fuel_type_list():
         per_page=per_page
     )
 
+
 @refdata_bp.route("/add_fuel_type", methods=["GET", "POST"])
 @login_required
 def add_fuel_type():
-    """ Маршрут для добавления нового топлива. """
+    """ Маршрут для добавления нового вида топлива. """
 
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница добавления видов топлива")
@@ -153,14 +153,24 @@ def add_fuel_type():
     form = AddFuelTypeForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    fuel_type_filter = request.args.get("fuel_type_filter")
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    page                = request.args.get("page", 1, type=int)
+    per_page            = request.args.get("per_page", 20, type=int)
+    sort_by             = request.args.get("sort_by", "id")
+    sort_dir            = request.args.get("sort_dir", "asc")
+    fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
 
     # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/fuels/fuel_type/fuel_type_add.html",
+                form=form
+            )
+        
         try:
             payload = [{
                 "name": (form.name.data or "").strip(),
@@ -168,41 +178,48 @@ def add_fuel_type():
 
             # Добавление новой записи через сервис
             add_fuel_type_service(payload, user)
+            log_to_db(user, "Добавление нового вида топлива", 
+                    (
+                        f"Наименование: {form.name.data}"
+                    )
+            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = fuel_type_query(fuel_type_filter).count
+            total_records = fuel_type_query(
+                                fuel_type_filter).count()
             last_page = (total_records + per_page - 1) // per_page
             
-            # Пересчет последней страницы (без дубля логики сервиса)
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
                 "refdata_bp.fuel_type_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 fuel_type_filter=fuel_type_filter,
-                per_page=per_page,
-                page=last_page,
             ))
 
         except ValueError as e:
              # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
         except Exception as e:
+            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления субъекта РФ", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления нового вида топлива", str(e))
 
     # Рендеринг формы
     return render_template(
         "refdata/fuels/fuel_type/fuel_type_add.html",
-        form=form,
+        page=page,
+        per_page=per_page,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        form=form,
         fuel_type_filter=fuel_type_filter,
-        per_page=per_page,
-        page=page,
     )
 
 
@@ -241,21 +258,29 @@ def import_fuel_type():
 @refdata_bp.route("/export_fuel_type", methods=["GET"])
 @login_required
 def export_fuel_type():
-    """Маршрут для экспорта данных в Excel."""
+    """Маршрут для экспорта видов топлива в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка видов топлива в Excel")
 
-    fuel_type_filter    = request.args.get("fuel_type_filter")
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
+    fuel_type_filter    = request.args.get("fuel_type_filter")
 
     try:
         # Получение данных для экспорта
         excel_data = export_fuel_type_service(
-            user=user,
-            fuel_type_filter=fuel_type_filter,
-            sort_by=sort_by,
-            sort_dir=sort_dir,
+                        user=user,
+                        sort_by=sort_by,
+                        sort_dir=sort_dir,
+                        fuel_type_filter=fuel_type_filter,
+        )
+        log_to_db(user, "Экспорт завершен", 
+                (
+                    f"Фильтры: {fuel_type_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
         )
 
         # Проверка наличия данных
@@ -264,7 +289,7 @@ def export_fuel_type():
             return redirect(url_for("refdata_bp.fuel_type_list"))
         
         # Формирование имени файла
-        filename = f"fuel_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"fuel_type_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         excel_data.seek(0)
 
         # Возврат файла через send_file

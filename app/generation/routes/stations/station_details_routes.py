@@ -23,19 +23,34 @@ from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
-from app.generation.services.station_services.help_services import (
-    get_union_energy_systems, 
-    get_regional_districts, 
-    get_energy_system_types, 
-    get_regional_districts,
-    get_federal_districts, 
-    get_regional_energy_systems, 
-    get_current_year,
-    get_condition_type,
-    get_station_groups,
-    get_gen_companies,
-    get_station_groups,
+
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_list_full,
 )
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_list_full,
+)
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_list_full,
+)
+from app.common.services.get_services.territories.regional_district_get_services import (
+    get_regional_district_list_full,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list_full,
+)
+from app.common.services.get_services.stations.station_group_get_services import (
+    get_station_group_list_full,
+)
+from app.common.services.get_services.stations.condition_type_get_services import (
+    get_condition_type_list_full,
+)
+from app.common.services.get_services.years.years_get_services import (
+    get_current_year,
+)
+from app.common.services.get_services.gen_companies.gen_company_get_services import (
+    get_gen_company_list_full,
+) 
 from app.generation.services.station_services.station_services import (
     get_stations_list,
     get_station_by_id, 
@@ -72,9 +87,9 @@ def station_details(station_id):
     machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
 
     # Получаем данные по станции
-    condition_types = get_condition_type()
-    station_groups = get_station_groups()
-    gen_companies = get_gen_companies()
+    condition_types = get_condition_type_list_full()
+    station_groups = get_station_group_list_full()
+    gen_companies = get_gen_company_list_full()
 
     recalculate_station_power(station, start_year, end_year)
 
@@ -97,11 +112,11 @@ def station_details(station_id):
     machine_tes_types_map = get_current_machine_tes_types_map()
 
     # Загружаем списки данных из сервисов
-    regional_districts_list, regional_district_names = get_regional_districts()
-    federal_districts, regional_district_mapping = get_federal_districts()
-    regional_energy_systems_list, regional_energy_system_names = get_regional_energy_systems()
-    union_energy_systems, union_energy_system_names, _ = get_union_energy_systems()
-    energy_system_types, energy_system_type_names = get_energy_system_types()
+    regional_districts_list, regional_district_names = get_regional_district_list_full()
+    federal_districts, regional_district_mapping = get_federal_district_list_full()
+    regional_energy_systems_list, regional_energy_system_names = get_regional_energy_system_list_full()
+    union_energy_systems, union_energy_system_names, _ = get_union_energy_system_list_full()
+    energy_system_types, energy_system_type_names = get_energy_system_type_list_full()
 
     # Заполняем список субъектов РФ
     form.id_regional_district.choices = [(d["id"], d["name"]) for d in regional_districts_list]
@@ -339,7 +354,7 @@ def station_details(station_id):
 
     
     return render_template(
-        "stations/station_details.html",
+        "generation/stations/station_details.html",
         form=form,
         form_machines=form_machines,
         station=station,

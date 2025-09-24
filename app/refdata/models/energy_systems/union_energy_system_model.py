@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-UnionEnergySystem model (Объединённая энергосистема, ОЭС).
+UnionEnergySystem model (Объединенная энергосистема, ОЭС).
 - Связана с EnergySystemType (многие-к-одному).
 - Имеет набор RegionalEnergySystem (один-ко-многим).
 """

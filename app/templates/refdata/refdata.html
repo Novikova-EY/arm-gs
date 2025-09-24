@@ -4,12 +4,11 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-end mb-3 mt-4">
-        <!-- Кнопка возврата на главную страницу -->
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary me-2 fs-5">Вернуться на главную страницу</a>
-
-    </div>   
+<div class="container-fluid mt-4">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+    </div>  
 
     <div class="container mt-5 mb-5">
         <h2 class="text-center align-middle">Справочники</h2>
@@ -66,10 +65,10 @@
             <div class="row align-items-start mb-3">
                 <h4 class="text-center mt-4">Справочники топлива</h2>           
                 <div class="col">
-                    <a href="{{ url_for('refdata_bp.fuel_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Виды топлива</a>
+                    <a href="{{ url_for('refdata_bp.fuel_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы топлива</a>
                 </div>
                 <div class="col">
-                    <a href="{{ url_for('refdata_bp.fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы топлива</a>
+                    <a href="{{ url_for('refdata_bp.fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Виды топлива</a>
                 </div>
             </div>
         </div>

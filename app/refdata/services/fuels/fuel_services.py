@@ -35,10 +35,10 @@ def fuel_query(
     sort_by="id",
     sort_dir="asc",
 ):
-    """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
+    """Базовый запрос для выборки топлива с фильтрацией и сортировкой."""
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name","fuel_type"}
+    allowed_sort_by = {"id", "name", "fuel_type"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -48,39 +48,34 @@ def fuel_query(
     fuel_type_id = _to_int_or_none(fuel_type_filter)
 
     # Базовый запрос
-    query = (
-        Fuel.query
-        .filter(Fuel.id.isnot(None), Fuel.id > 0)
-    )
+    query = Fuel.query.filter(Fuel.id > 0)
 
     # Фильтрация
+    need_join = False
     ff = (fuel_filter or "").strip()
     if ff:
+        need_join = True
         query = query.outerjoin(FuelType, Fuel.id_fuel_type == FuelType.id)
         query = query.filter(or_(
             Fuel.name.ilike(f"%{ff}%"),
             FuelType.name.ilike(f"%{ff}%"),
         ))
 
+    # Фильтр по конкретному типу топлива (id)
     if fuel_type_id is not None:
         query = query.filter(Fuel.id_fuel_type == fuel_type_id)
-    
+
     # Сортировка
     if sort_by == "name":
         sort_col = Fuel.name
-        query = query.order_by(sort_col.name.desc() if sort_dir == "desc" else sort_col.name.asc())
-
     elif sort_by == "fuel_type":
-        query = query.join(FuelType, isouter=True)
+        if not ff:
+            query = query.outerjoin(FuelType, Fuel.id_fuel_type == FuelType.id)
         sort_col = FuelType.name
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
-
-    else: # "id" (по умолчанию)
+    else:
         sort_col = Fuel.id
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else Fuel.id.asc())
 
-    # Исключаем запись "Не указано" (id=0)
-    query = query.filter(Fuel.id.isnot(None), Fuel.id > 0)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
 
@@ -112,7 +107,7 @@ def update_fuel_service(data, user):
     """ Обновление данных по типам топлива """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
     
@@ -127,7 +122,7 @@ def update_fuel_service(data, user):
 
             # Проверки на валидность данных
             if not name:
-                raise ValueError("Поле 'name' обязательно для заполнения.")
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
 
             obj = db.session.get(Fuel, fuel_id)
             if not obj:
@@ -183,7 +178,7 @@ def update_fuel_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения типов топлива (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении типов топлива", str(e))
@@ -195,7 +190,7 @@ def add_fuel_service(data, user):
     """Создание новой записи: тип топлива"""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -207,7 +202,7 @@ def add_fuel_service(data, user):
                 if not name and not fuel_type_id:
                     log_to_db(user, "Ошибка валидации", 
                               f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name' и 'fuel_type_id'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name' и 'fuel_type_id'. Данные: {record}")
 
                 # Проверяем существование вида топлива
                 obj = db.session.get(FuelType, fuel_type_id)
@@ -245,7 +240,7 @@ def add_fuel_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового типа топлива. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения нового типа топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения нового типа топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового вида топлива", str(e))
@@ -257,7 +252,7 @@ def delete_fuel_service(ids, user):
     """Удаляет записи типов топлива по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление типов топлива", 
               f"Переданы ID для удаления: {ids}")
@@ -312,7 +307,7 @@ def delete_fuel_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления типов топлива", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 @no_autoflush
@@ -323,7 +318,7 @@ def import_fuel_service(file, user):
         data = pd.read_excel(file)
 
         if 'name' not in data.columns or 'id_fuel_type' not in data.columns:
-            raise ValueError("Неверный формат файла. Отсутствуют необходимые столбцы.")
+            raise ValueError(f"Неверный формат файла. Отсутствуют необходимые столбцы.")
 
         db.session.query(Fuel).delete()
         db.session.commit()
@@ -335,7 +330,7 @@ def import_fuel_service(file, user):
         db.session.bulk_save_objects(records)
         db.session.commit()
 
-        log_to_db(user, "Импорт завершён", f"Импортировано записей: {len(records)}")
+        log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}")
         return len(records)
     except Exception as e:
         log_to_db(user, "Ошибка импорта", str(e))

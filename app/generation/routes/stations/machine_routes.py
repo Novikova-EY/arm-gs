@@ -17,12 +17,11 @@ from app.generation.services.station_services.station_services import (
     get_station_by_id, 
     recalculate_station_power,
 )
-from app.generation.services.station_services.help_services import (
+from app.common.services.help_services import (
     convert_to_date,
-    rounded_decimal
 )
-from app.generation.services.station_services.help_services import (
-    get_year_features,
+from app.common.services.get_services.years.years_get_services import (
+    get_year_feature_dict,
 )
 
 
@@ -48,7 +47,7 @@ def machine_details(station_id, machine_id):
     else:
         result = handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits)
         return render_template(
-            "stations/machine_details.html",
+            "generation/stations/machine_details.html",
             main_form=result['main_form'],
             advanced_form=result['advanced_form'],
             pgu_machines_form=result['pgu_machines_form'],
@@ -90,7 +89,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
         )
 
         return render_template(
-            "stations/pgu_machine_details.html",
+            "generation/stations/pgu_machine_details.html",
             station=result['station'],
             parent_machine=result['parent_machine'],
             pgu_form=result['pgu_form'],

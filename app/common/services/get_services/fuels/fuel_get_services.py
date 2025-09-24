@@ -1,23 +1,29 @@
 """Сервисный get-модуль для Fuel."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from functools import lru_cache
 from typing import Union, List
 
 # Модели
 from app.refdata.models.fuels.fuel_model import Fuel
 
 
+@lru_cache(maxsize=1)
 def get_fuel_list_full():
     """Получает полный список типов топлива'."""
-    return Fuel.query.all()
+    return (
+        Fuel.query
+        .order_by(Fuel.name.asc())
+        .all()
+    )
 
 
+@lru_cache(maxsize=1)
 def get_fuel_list():
     """Получает список типов топлива (кроме "не указано")."""
     query = (
         Fuel.query
         .filter(Fuel.id.isnot(None), Fuel.id > 0)
+        .order_by(Fuel.name.asc())
     )
     return query
 

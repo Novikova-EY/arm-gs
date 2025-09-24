@@ -97,7 +97,7 @@ def update_synchronous_area_service(data, user):
     """Обновление данных по синхронным зонам."""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
 
@@ -111,10 +111,10 @@ def update_synchronous_area_service(data, user):
             name = record.get("name")
 
             # Проверки на валидность данных
-            if not name or not number:
+            if not name:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Каждая запись должна содержать 'name', 'name_full'. Данные: {record}")
+                raise ValueError(f"Каждая запись должна содержать 'name'. Данные: {record}")
 
             obj = db.session.get(SynchronousArea, synchronous_area_id)
             if not obj:
@@ -170,7 +170,7 @@ def update_synchronous_area_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения синхронных зон (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении синхронных зон", str(e))
@@ -182,7 +182,7 @@ def add_synchronous_area_service(data, user):
     """ Создание новой записи: синхронная зона """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -190,19 +190,13 @@ def add_synchronous_area_service(data, user):
             for record in data:
                 number = (record.get("number") or "").strip()
                 name = (record.get("name") or "").strip()
-                regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
 
                 # Проверка на наличие необходимых данных
-                if not name or not number or not regional_district_id:
+                if not name:
                     log_to_db(user, "Ошибка валидации", 
                               f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'number', 'name' и 'regional_district_id'.")
+                    raise ValueError(f"Каждая запись должна содержать 'name'.")
 
-                # Проверяем существование субъекта РФ
-                obj = db.session.get(RegionalDistrict, regional_district_id)
-                if not obj:
-                    raise ValueError(f"Субъект РФ с id={regional_district_id} не найден.")
-                
                 # Проверяем уникальность name при создании
                 dup = (SynchronousArea.query
                         .filter(SynchronousArea.name == name)
@@ -221,7 +215,6 @@ def add_synchronous_area_service(data, user):
                 obj = SynchronousArea(
                     name=name,
                     number=number or None,
-                    id_regional_district=regional_district_id,
                 )
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
@@ -230,7 +223,6 @@ def add_synchronous_area_service(data, user):
                     (
                         f"Номер: {_dash(number)};"
                         f"Наименование: {name}; "
-                        f"Субъект РФ: {get_regional_district_name(regional_district_id)}"
                     )
                 )
 
@@ -243,7 +235,7 @@ def add_synchronous_area_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой синхронной зоны. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения новой синхронной зоны. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения новой синхронной зоны. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой синхронной зоны", str(e))
@@ -255,7 +247,7 @@ def delete_synchronous_area_service(ids, user):
     """Удаляет записи синхронных зон по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление списка синхронных зон", f"Переданы ID для удаления: {ids}")
 
@@ -308,14 +300,15 @@ def delete_synchronous_area_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления синхронных зон", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
     
 
 def export_synchronous_area_service(
         user, 
-        synchronous_area_filter=None, 
         sort_by="id", 
-        sort_dir="asc"):
+        sort_dir="asc",
+        synchronous_area_filter=None, 
+        ):
     """ Экспортирует данные списка синхронных зон в Excel. """
 
     log_to_db(user, "Начата выгрузка таблицы синхронных зон из базы данных")
@@ -365,7 +358,7 @@ def export_synchronous_area_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы синхронных зон в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы синхронных зон в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
 
     return output

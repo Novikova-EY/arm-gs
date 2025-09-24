@@ -1,23 +1,29 @@
 """Сервисный get-модуль для EnergyZone."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from functools import lru_cache
 from typing import Union, List
 
 # Модели
 from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 
 
+@lru_cache(maxsize=1)
 def get_energy_zone_list_full():
     """Получает полный список энергозон'."""
-    return EnergyZone.query.all()
+    return (
+        EnergyZone.query
+        .order_by(EnergyZone.id.asc())
+        .all()
+    )
 
 
+@lru_cache(maxsize=1)
 def get_energy_zone_list():
     """Получает список энергозон (кроме "не указано")."""
     query = (
         EnergyZone.query
         .filter(EnergyZone.id.isnot(None), EnergyZone.id > 0)
+        .order_by(EnergyZone.name.asc())
     )
     return query
 

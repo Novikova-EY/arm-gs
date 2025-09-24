@@ -80,7 +80,7 @@ def station_changes_list():
     overall = time.time() - start_data
     print(f"⏱⏱ station_changes_list загрузка заняла: {overall:.2f} сек")
 
-    return render_template("station_changes/station_changes.html", has_active_filters=has_active_filters, **context)
+    return render_template("generation/station_changes/station_changes.html", has_active_filters=has_active_filters, **context)
 
 
 @station_changes_bp.route('/report_sipr_pril_2/export', methods=['GET'])

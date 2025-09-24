@@ -5,4 +5,4 @@ from flask import (
 
 @generation_bp.route("/generation")
 def generation_start():
-    return render_template("generation_start.html")
+    return render_template("generation/generation_start.html")

@@ -13,10 +13,9 @@ from app.refdata.models.energy_systems.energy_system_type_model import EnergySys
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
-from app.generation.services.station_services.station_services import (
-    get_current_year
+from app.common.services.get_services.years.years_get_services import (
+    get_current_year,
 )
-
 
 def extract_filters_from_args(args):
     return {
@@ -81,7 +80,7 @@ def get_stations_all(
             )
         )
 
-    # Фильтрация по объединённой энергосистеме
+    # Фильтрация по объединенной энергосистеме
     if union_energy_system_filter:
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
@@ -206,7 +205,7 @@ def get_filtered_stations(
             )
         )
 
-    # Фильтрация по объединённой энергосистеме
+    # Фильтрация по объединенной энергосистеме
     if union_energy_system_filter:
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]

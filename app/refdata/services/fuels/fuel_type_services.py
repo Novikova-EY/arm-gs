@@ -25,7 +25,7 @@ from app.common.services.tranzaction_services import (
 from app.logs.services.logging_service import log_to_db
 
 
-def get_fuel_type_query(
+def fuel_type_query(
         fuel_type_filter=None, 
         sort_by="id", 
         sort_dir="asc"
@@ -40,11 +40,8 @@ def get_fuel_type_query(
     sort_dir = "desc" if sort_dir == "desc" else "asc"
 
     # Базовый запрос
-    query = (
-        FuelType.query
-        .filter(FuelType.id.isnot(None), FuelType.id > 0)
-    )
-    
+    query = FuelType.query.filter(FuelType.id.isnot(None), FuelType.id > 0)
+
     # Фильтрация
     if fuel_type_filter:
         query = query.filter(FuelType.name.ilike(f"%{fuel_type_filter}%"))
@@ -52,17 +49,12 @@ def get_fuel_type_query(
     # Сортировка
     if sort_by == "name":
         sort_col = FuelType.name
-        query = query.order_by(sort_col.name.desc() if sort_dir == "desc" else sort_col.name.asc())
-
-    else: # сортировка по id
+    else:
         sort_col = FuelType.id
-        query = query.order_by(sort_col.desc() if sort_dir == "desc" else FuelType.id.asc())
 
-    # Исключаем запись "Не указано" (id=0)
-    query = query.filter(FuelType.id.isnot(None), FuelType.id > 0)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
-
 
 @no_autoflush
 def get_fuel_type_list(
@@ -74,7 +66,7 @@ def get_fuel_type_list(
     """ Получает список видов топлива с пагинацией, фильтрацией и сортировкой. """
     
     # Базовый запрос
-    query = get_fuel_type_query(
+    query = fuel_type_query(
         fuel_type_filter=fuel_type_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
@@ -89,7 +81,7 @@ def update_fuel_type_service(data, user):
     """ Обновление данных по видам топлива """
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
     
@@ -105,7 +97,7 @@ def update_fuel_type_service(data, user):
             if not name:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Поле 'name' обязательно для заполнения.")
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
 
             obj = db.session.get(FuelType, fuel_type_id)
             if not obj:
@@ -149,7 +141,7 @@ def update_fuel_type_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения видов топлива (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении видов топлива", str(e))
@@ -161,7 +153,7 @@ def add_fuel_type_service(data, user):
     """Создание новой записи: вид топлива"""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
@@ -172,7 +164,7 @@ def add_fuel_type_service(data, user):
                 if not name:
                     log_to_db(user, "Ошибка валидации", 
                               f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name'. Данные: {record}")
 
                 # Проверяем уникальность name
                 dup = (FuelType.query
@@ -203,7 +195,7 @@ def add_fuel_type_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового вида топлива. Возможно, нарушены уникальные ограничения или внешние ключи", str(e))
-        raise ValueError("Ошибка сохранения нового вида топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения нового вида топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового вида топлива", str(e))
@@ -215,7 +207,7 @@ def delete_fuel_type_service(ids, user):
     """Удаляет записи видов топлива по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление видов топлива", 
               f"Переданы ID для удаления: {ids}")
@@ -270,7 +262,7 @@ def delete_fuel_type_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления видов топлива", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 @no_autoflush
@@ -281,7 +273,7 @@ def import_fuel_type_service(file, user):
         data = pd.read_excel(file)
 
         if 'name' not in data.columns or 'id_fuel_type' not in data.columns:
-            raise ValueError("Неверный формат файла. Отсутствуют необходимые столбцы.")
+            raise ValueError(f"Неверный формат файла. Отсутствуют необходимые столбцы.")
 
         db.session.query(FuelType).delete()
         db.session.commit()
@@ -293,7 +285,7 @@ def import_fuel_type_service(file, user):
         db.session.bulk_save_objects(records)
         db.session.commit()
 
-        log_to_db(user, "Импорт завершён", f"Импортировано записей: {len(records)}")
+        log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}")
         return len(records)
     except Exception as e:
         log_to_db(user, "Ошибка импорта", str(e))
@@ -317,7 +309,7 @@ def export_fuel_type_service(
     )
 
     # Базовый запрос
-    query = get_fuel_type_query(
+    query = fuel_type_query(
         fuel_type_filter=fuel_type_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,

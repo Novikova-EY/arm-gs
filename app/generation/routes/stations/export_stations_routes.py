@@ -47,7 +47,7 @@ def export_station_sipr_ees_application_2_routes():
             flash("Нет данных для экспорта.", "warning")
             return redirect(url_for("station_bp.station_list"))
 
-        # Если возвращён один файл, отправляем его напрямую
+        # Если возвращен один файл, отправляем его напрямую
         if isinstance(excel_files, tuple):
             file_name, file_obj = excel_files
             return send_file(
@@ -57,7 +57,7 @@ def export_station_sipr_ees_application_2_routes():
                 download_name=file_name
             )
 
-        # Если файлов несколько, создаём ZIP-архив
+        # Если файлов несколько, создаем ZIP-архив
         zip_buffer = BytesIO()
         with ZipFile(zip_buffer, 'w') as zip_file:
             for file_name, file_obj in excel_files:
@@ -342,7 +342,7 @@ def export_station_list_to_excel(user, filters=None):
         start_col = 0
         end_col = len(df.columns) - 1  # Последний столбец
 
-        # Найти индекс строки, где находится региональная энергосистема (первое её появление в data)
+        # Найти индекс строки, где находится региональная энергосистема (первое ее появление в data)
         regional_row_idx = next(i for i, row in enumerate(data) if row["Электростанция"] == regional_energy_system_name)
 
         # Объединяем ячейки в Excel
@@ -369,7 +369,7 @@ def export_station_list_to_excel(user, filters=None):
 
     output.seek(0)
 
-    log_to_db(user, "Экспорт завершён", f"Экспортировано записей: {len(data)}")
+    log_to_db(user, "Экспорт завершен", f"Экспортировано записей: {len(data)}")
     return output
 
 

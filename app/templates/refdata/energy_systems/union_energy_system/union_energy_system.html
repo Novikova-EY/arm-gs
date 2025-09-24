@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container mt-2">
+<div class="container-fluid mt-2">
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
@@ -23,7 +23,11 @@
             <div class="col-12 col-lg-8">
                 <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
                     <div class="flex-grow-1" style="min-width: 220px;">
-                        {{ form.union_energy_system_filter(class="form-control") }}
+                        {{ form.union_energy_system_filter(
+                            class="form-control",
+                            value=union_energy_system_filter,
+                            placeholder="Поиск по объединенным энергосистемам"
+                        ) }}
                     </div>
 
                     <button type="submit"
@@ -44,12 +48,12 @@
             <div class="col-12 col-lg-4 text-lg-end">
                 <!-- Экспорт данных таблицы с фильтрами в Excel-->
                 <a class="btn btn-warning fw-bold"
-                href="{{ url_for('refdata_bp.export_union_energy_system',
-                                    union_energy_system_filter=union_energy_system_filter or '',
-                                    energy_system_type_filter=energy_system_type_filter or '',
-                                    sort_by=sort_by, sort_dir=sort_dir) }}"
-                target="_blank" rel="noopener">
-                Экспорт в Excel
+                    href="{{ url_for('refdata_bp.export_union_energy_system',
+                                        union_energy_system_filter=union_energy_system_filter or '',
+                                        energy_system_type_filter=energy_system_type_filter or '',
+                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    target="_blank" rel="noopener">
+                    Экспорт в Excel
                 </a>
 
                 <select name="per_page"
@@ -64,26 +68,23 @@
         </div>
 
         {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
-        <input type="hidden" name="energy_system_type_filter"     value="{{ energy_system_type_filter  or '' }}">
-
+        <input type="hidden" name="page"                        value="{{ pagination.page if pagination else 1 }}">
         <input type="hidden" name="sort_by"                     value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"                    value="{{ sort_dir }}">
-        <input type="hidden" name="page"                        value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="energy_system_type_filter"   value="{{ energy_system_type_filter }}">
     </form>
 
     <!-- Таблица данных -->
      {% if current_user.has_admin %}
         <form method="POST" action="{{ url_for('refdata_bp.union_energy_system_list') }}">
             {{ form.csrf_token }}
-            {{ form.page(value=pagination.page) }}
 
-            <input type="hidden" name="union_energy_system_filter"  value="{{ request.args.get('union_energy_system_filter', '') }}">
-            <input type="hidden" name="energy_system_type_filter"   value="{{ request.args.get('energy_system_type_filter', '') }}">
-            
-            <input type="hidden" name="sort_by"                     value="{{ request.args.get('sort_by', 'id') }}">
-            <input type="hidden" name="sort_dir"                    value="{{ request.args.get('sort_dir', 'asc') }}">
-            <input type="hidden" name="per_page"                    value="{{ request.args.get('per_page', 10) }}">
-            <input type="hidden" name="page"                        value="{{ request.args.get('page', 1) }}">
+            <input type="hidden" name="page"                        value="{{ pagination.page }}">
+            <input type="hidden" name="per_page"                    value="{{ per_page }}">
+            <input type="hidden" name="sort_by"                     value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir"                    value="{{ sort_dir }}">
+            <input type="hidden" name="union_energy_system_filter"  value="{{ union_energy_system_filter }}">
+            <input type="hidden" name="energy_system_type_filter"   value="{{ energy_system_type_filter }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -91,15 +92,15 @@
                 <button type="submit" class="btn btn-success">Сохранить изменения</button>
 
                 <!-- Кнопка добавления новой записи -->
-                <a href="{{ url_for('refdata_bp.add_union_energy_system_routes', 
-                                    sort_by=request.args.get('sort_by', 'id'),
-                                    sort_dir=request.args.get('sort_dir', 'asc'),
-                                    union_energy_system_filter=request.args.get('union_energy_system_filter', ''),
-                                    energy_system_type_filter=request.args.get('energy_system_type_filter'),
-                                    per_page=request.args.get('per_page', 10),
-                                    page=request.args.get('page', 1)) }}" 
-                                    class="btn btn-primary fw-bold">
-                                    Добавить новую запись
+                <a href="{{ url_for('refdata_bp.add_union_energy_system', 
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    union_energy_system_filter=union_energy_system_filter,
+                                    energy_system_type_filter=energy_system_type_filter,
+                                    ) }}" class="btn btn-primary">
+                    Добавить новую запись
                 </a>
             </div>
 
@@ -120,7 +121,7 @@
                                                     energy_system_type_filter=energy_system_type_filter,
                                                     sort_by='number', 
                                                     sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
-                                                    class="link-dark">
+                                                    class="text-black">
                                     №
                                     {% if sort_by == 'number' %}
                                         {% if sort_dir == 'asc' %}
@@ -141,7 +142,7 @@
                                                     energy_system_type_filter=energy_system_type_filter,
                                                     sort_by='name', 
                                                     sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
-                                                    class="link-dark">
+                                                    class="text-black">
                                     Наименование ОЭС
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
@@ -162,7 +163,7 @@
                                                     energy_system_type_filter=energy_system_type_filter,
                                                     sort_by='name_full', 
                                                     sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" 
-                                                    class="link-dark">
+                                                    class="text-black">
                                     Полное наименование ОЭС
                                     {% if sort_by == 'name_full' %}
                                         {% if sort_dir == 'asc' %}
@@ -185,7 +186,7 @@
                                                             sort_by='energy_system_type', 
                                                             sort_dir='asc' if sort_by != 'energy_system_type' or sort_dir == 'desc' else 'desc') }}" 
                                                             class="link-dark">
-                                        Наименование типа энергосистемы
+                                        Наименование части энергосистемы России
                                         {% if sort_by == 'energy_system_type' %}
                                             {% if sort_dir == 'asc' %}
                                                 ▲
@@ -212,24 +213,24 @@
                                                     energy_system_type_filter='',
                                                     per_page=per_page,
                                                     sort_by=sort_by,
-                                                    sort_dir=sort_dir) }}" class="dropdown-item">
-                                                    Все типы энергосистем
+                                                    sort_dir=sort_dir) }}" 
+                                                    class="dropdown-item">
+                                                    Все типы частей энергосистемы России
                                                 </a>
                                             </li>
-                                            {% for id_energy_system_type, energy_system_type_name in energy_system_types %}
-                                                {% if energy_system_type_name != 'Не указан' %}
-                                                    <li>
-                                                        <a href="{{ url_for('refdata_bp.union_energy_system_list', 
-                                                            page=pagination.page, 
-                                                            union_energy_system_filter=union_energy_system_filter, 
-                                                            energy_system_type_filter=id_energy_system_type,  
-                                                            per_page=per_page,
-                                                            sort_by=sort_by,
-                                                            sort_dir=sort_dir) }}" class="dropdown-item">
-                                                            {{ energy_system_type_name }}
-                                                        </a>
-                                                    </li>
-                                                {% endif %}
+                                            {% for energy_system_type in energy_system_types %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.union_energy_system_list', 
+                                                        page=pagination.page, 
+                                                        union_energy_system_filter=union_energy_system_filter, 
+                                                        energy_system_type_filter=energy_system_type[0],  
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" 
+                                                        class="dropdown-item">
+                                                        {{ energy_system_type[1] }}
+                                                    </a>
+                                                </li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -243,12 +244,12 @@
 
                     <!-- Данные таблицы-->
                     <tbody>
-                        {% for item in union_energy_system_list %}
+                        {% for union_energy_system in union_energy_system_list %}
                             <tr class="align-middle text-center">
                                 <!-- Строки таблицы. Столбец "№" -->
                                 <td>
                                     {{ loop.index + (pagination.page - 1) * pagination.per_page }}
-                                    <input type="hidden" name="union_energy_system_ids[]" value="{{ item.id }}">
+                                    <input type="hidden" name="union_energy_system_ids[]" value="{{ union_energy_system.id }}">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Наименование ОЭС" -->
@@ -257,7 +258,7 @@
                                         type="text" 
                                         name="union_energy_system_names[]" 
                                         class="form-control" 
-                                        value="{{ item.name }}"
+                                        value="{{ union_energy_system.name }}"
                                         style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent;"
                                     >
                                 </td>
@@ -269,16 +270,16 @@
                                         class="form-control" 
                                         style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
                                         rows="1"
-                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ item.name_full }}</textarea>
+                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ union_energy_system.name_full }}</textarea>
                                 </td> 
 
                                 <!-- Строки таблицы. Столбец "Тип энергосистемы" -->
                                 <td>
                                     <select name="energy_system_types[]" class="form-select" required>
-                                        {% for energy_system_type_item in energy_system_types %}
-                                        <option value="{{ energy_system_type_item[0] }}" 
-                                                {% if energy_system_type_item[0] == item.id_energy_system_type %}selected{% endif %}>
-                                            {{ energy_system_type_item[1] }}
+                                        {% for energy_system_type in energy_system_types %}
+                                        <option value="{{ energy_system_type[0] }}" 
+                                                {% if energy_system_type[0] == union_energy_system.id_energy_system_type %}selected{% endif %}>
+                                            {{ energy_system_type[1] }}
                                         </option>
                                         {% endfor %}
                                     </select>
@@ -286,7 +287,7 @@
 
                                 <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
                                 <td>
-                                    <input type="checkbox" name="union_energy_system_delete[]" value="{{ item.id }}" class="form-check-input">
+                                    <input type="checkbox" name="union_energy_system_delete[]" value="{{ union_energy_system.id }}" class="form-check-input">
                                 </td>
                             </tr>
                         {% else %}
@@ -303,12 +304,10 @@
         <div class="table-responsive">
             <table class="table table-hover table-striped table-bordered">
 
-                <!-- Шапка таблицы с данными -->
+                <!-- Шапка таблицы. Столбец "№" -->
                 <thead>
                     <tr class="table-success" style="word-wrap: break-word;">
-
-                        <!-- Шапка таблицы. Столбец "№" -->
-                        <th>
+                        <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.union_energy_system_list', 
                                                 page=pagination.page, 
                                                 per_page=per_page, 
@@ -316,7 +315,7 @@
                                                 energy_system_type_filter=energy_system_type_filter,
                                                 sort_by='number', 
                                                 sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
-                                                class="link-dark">
+                                                class="text-black">
                                 №
                                 {% if sort_by == 'number' %}
                                     {% if sort_dir == 'asc' %}
@@ -329,7 +328,7 @@
                         </th>
 
                         <!-- Шапка таблицы. Столбец "Наименование ОЭС" -->
-                        <th>
+                        <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.union_energy_system_list', 
                                                 page=pagination.page, 
                                                 per_page=per_page, 
@@ -337,7 +336,7 @@
                                                 energy_system_type_filter=energy_system_type_filter,
                                                 sort_by='name', 
                                                 sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
-                                                class="link-dark">
+                                                class="text-black">
                                 Наименование ОЭС
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
@@ -350,7 +349,7 @@
                         </th>
 
                         <!-- Шапка таблицы. Столбец "Полное наименование ОЭС" -->
-                        <th>
+                        <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.union_energy_system_list', 
                                                 page=pagination.page, 
                                                 per_page=per_page, 
@@ -358,7 +357,7 @@
                                                 energy_system_type_filter=energy_system_type_filter,
                                                 sort_by='name_full', 
                                                 sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" 
-                                                class="link-dark">
+                                                class="text-black">
                                 Полное наименование ОЭС
                                 {% if sort_by == 'name_full' %}
                                     {% if sort_dir == 'asc' %}
@@ -371,7 +370,7 @@
                         </th>
 
                         <!-- Шапка таблицы. Столбец "Тип энергосистемы" -->
-                        <th>
+                        <th class="text-center align-middle">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
                                     <a href="{{url_for('refdata_bp.union_energy_system_list', 
@@ -381,7 +380,7 @@
                                                         sort_by='energy_system_type', 
                                                         sort_dir='asc' if sort_by != 'energy_system_type' or sort_dir == 'desc' else 'desc') }}" 
                                                         class="link-dark">
-                                    Наименование типа энергосистемы
+                                    Наименование части энергосистемы России
                                     {% if sort_by == 'energy_system_type' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
@@ -408,24 +407,24 @@
                                                 energy_system_type_filter='',
                                                 per_page=per_page,
                                                 sort_by=sort_by,
-                                                sort_dir=sort_dir) }}" class="dropdown-item">
-                                                Все типы энергосистем
+                                                sort_dir=sort_dir) }}" 
+                                                class="dropdown-item">
+                                                Все типы частей энергосистемы России
                                             </a>
                                         </li>
-                                        {% for id_energy_system_type, energy_system_type_name in energy_system_types %}
-                                            {% if energy_system_type_name != 'Не указан' %}
-                                                <li>
-                                                    <a href="{{ url_for('refdata_bp.union_energy_system_list', 
-                                                        page=pagination.page, 
-                                                        union_energy_system_filter=union_energy_system_filter, 
-                                                        energy_system_type_filter=id_energy_system_type,  
-                                                        per_page=per_page,
-                                                        sort_by=sort_by,
-                                                        sort_dir=sort_dir) }}" class="dropdown-item">
-                                                        {{ energy_system_type_name }}
-                                                    </a>
-                                                </li>
-                                            {% endif %}
+                                        {% for energy_system_type in energy_system_types %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.union_energy_system_list', 
+                                                    page=pagination.page, 
+                                                    union_energy_system_filter=union_energy_system_filter, 
+                                                    energy_system_type_filter=energy_system_type[0],  
+                                                    per_page=per_page,
+                                                    sort_by=sort_by,
+                                                    sort_dir=sort_dir) }}" 
+                                                    class="dropdown-item">
+                                                    {{ energy_system_type[1] }}
+                                                </a>
+                                            </li>
                                         {% endfor %}
                                     </ul>
                                 </div>
@@ -436,7 +435,7 @@
 
                 <!-- Данные таблицы-->
                 <tbody>
-                    {% for item in union_energy_system_list %}
+                    {% for union_energy_system in union_energy_system_list %}
                         <tr class="align-middle text-center">
                             <!-- Строки таблицы. Столбец "№" -->
                             <td class="text-center">
@@ -444,13 +443,13 @@
                             </td>
 
                             <!-- Строки таблицы. Столбец "Наименование ОЭС" -->
-                            <td>{{ item.name }}</td>
+                            <td>{{ union_energy_system.name }}</td>
 
                             <!-- Строки таблицы. Столбец "Полное наименование ОЭС" -->
-                            <td>{{ item.name_full }}</td>
+                            <td>{{ union_energy_system.name_full }}</td>
 
                             <!-- Строки таблицы. Столбец "Тип энергосистемы" -->
-                            <td>{{ item.energy_system_type.name if item.energy_system_type else '—' }}</td>
+                            <td>{{ union_energy_system.energy_system_type.name if union_energy_system.energy_system_type else '—' }}</td>
                         </tr>
                     {% else %}
                         <tr>
@@ -467,18 +466,10 @@
         {% include 'refdata/energy_systems/union_energy_system/union_energy_system_pagination.html' %}
     </div>
 
+</div>
 
 <!-- Скрипт подстройки высоты строк под содержимое ячеек -->
-<script>
-    function autoResize(textarea) {
-        textarea.style.height = 'auto'; // Сбрасываем текущую высоту
-        textarea.style.height = textarea.scrollHeight + 'px'; // Устанавливаем новую высоту
-    }
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
 
-    // Если нужно, чтобы поле изначально подстраивалось под контент:
-    document.querySelectorAll('textarea').forEach(textarea => {
-        autoResize(textarea);
-    });
-</script>
 {% endif %}
 {% endblock %}

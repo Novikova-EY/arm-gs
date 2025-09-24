@@ -1,0 +1,23 @@
+Открой PowerShell в папке со скриптом и запускай:
+
+Полный бэкап БД (структура + данные):
+.\backup_pg.ps1 -DbName arm_gs
+
+Бэкап только нужных схем:
+.\backup_pg.ps1 -DbName arm_gs -Schemas auth,logs,refdata,generation
+
+Только структуру (DDL) по схемам:
+.\backup_pg.ps1 -DbName arm_gs -Schemas refdata,generation -SchemaOnly
+
+
+Указать нестандартный порт/каталог инструментов и срок хранения 30 дней:
+.\backup_pg.ps1 -DbName arm_gs -Port 5433 -PgBin "D:\pgsql\bin" -RetentionDays 30
+
+Восстановление (под рукой)
+
+Для восстановления из такого .dump удобнее pg_restore:
+$env:PGPASSWORD = "ТВОЙ_ПАРОЛЬ"
+& "C:\Program Files\PostgreSQL\17\bin\pg_restore.exe" `
+  -h localhost -p 5432 -U postgres -d arm_gs `
+  --clean --if-exists "C:\backup\arm_gs_full_20250919_1130.dump"
+$env:PGPASSWORD = $null

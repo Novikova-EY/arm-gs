@@ -15,7 +15,7 @@ from app.refdata.forms.energy_systems.energy_zone_forms import EnergyZoneFilterF
 
 # Сервисы
 from app.refdata.services.energy_systems.energy_zone_services import (
-    get_energy_zone_query,
+    energy_zone_query,
     get_energy_zone_list,
     update_energy_zone_service,
     add_energy_zone_service,
@@ -40,7 +40,7 @@ def energy_zone_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 10, type=int)
+    per_page            = request.args.get("per_page", 20, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     energy_zone_filter  = request.args.get("energy_zone_filter", "").strip()
@@ -48,7 +48,7 @@ def energy_zone_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 10, type=int)
+        per_page            = request.form.get("per_page", 20, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         energy_zone_filter  = request.form.get("energy_zone_filter", energy_zone_filter).strip()
@@ -108,7 +108,7 @@ def energy_zone_list():
                     )
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in energy_zone_data if record["id"] is not None]
+            ids = [record["energy_zone_id"] for record in energy_zone_data if record["energy_zone_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
 
             if duplicates:
@@ -153,56 +153,129 @@ def energy_zone_list():
 @refdata_bp.route("/add_energy_zone", methods=["GET", "POST"])
 @login_required
 def add_energy_zone():
-    """Добавление записи «Энергозоны»."""
-    user = session.get("username", "anonymous")
+    """ Маршрут для добавления новой энергозоны». """
+
+    user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Открыта страница добавления энергозоны")
+
+    # Создание формы
     form = AddEnergyZoneForm()
 
+    # Сохранение текущих фильтров и параметров отображения
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    energy_zone_filter          = request.args.get("energy_zone_filter", "").strip()
+
     if request.method == "POST":
-        # --- Обновляем состояние интерфейса из POST (страница/сортировка/фильтр) ---
-        if form.validate_on_submit():
-            try:
-                payload = {"name": form.name.data.strip()}
-                if hasattr(form, "number") and form.number.data:
-                    payload["number"] = str(form.number.data).strip()
-                for fname in ("fuel_type", "federal_district", "energy_zone", "synchronous_area",
-                              "union_energy_system", "regional_energy_system", "regional_district"):
-                    if hasattr(form, fname) and getattr(form, fname).data not in (None, "", []):
-                        payload[fname] = getattr(form, fname).data
-                log_to_db(user, f"Добавление Энергозоны: {payload}")
-                new_id = add_energy_zone(payload, user)
-                flash("Запись добавлена.", "success")
-                return redirect(url_for("refdata_bp.energy_zone_list"))
-            except Exception as e:
-                current_app.logger.exception(e)
-                log_to_db(user, f"Ошибка добавления Энергозоны: {e}")
-                flash("Ошибка добавления записи.", "danger")
-        else:
-            flash("Проверьте заполнение формы.", "warning")
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/energy_systems/energy_zone/energy_zone_add.html",
+                form=form
+            )
+        
+        try:
+            payload = [{
+                "number": (form.number.data or "").strip(),
+                "name": (form.name.data or "").strip(),
+            }]
 
-    return render_template("refdata/energy_zone_add.html", form=form)
+            add_energy_zone_service(payload, user)
+            log_to_db(user, "Добавление новой энергозоны'", 
+                    (
+                        f"Номер: {form.number.data}, "
+                        f"Наименование: {form.name.data}, "
+                    )
+            )
+            flash("Новая запись успешно добавлена.", "success")
 
+            # Перенаправление на список с сохранением параметров и переходом к новой записи
+            total_records = energy_zone_query(
+                                energy_zone_filter).count()
+            last_page = (total_records + per_page - 1) // per_page
+
+            # Корректировка текущей страницы, если она больше последней
+            page = min(page, last_page)
+
+            return redirect(url_for(
+                "refdata_bp.energy_zone_list",
+                page=last_page,
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+                energy_zone_filter=energy_zone_filter,
+            ))
+        except ValueError as e:
+            # Логирование и отображение ошибок валидации
+            flash(str(e), "danger")
+            log_to_db(user, "Ошибка добавления новой энергозоны", str(e))
+        except Exception as e:
+            # Логирование и отображение других ошибок
+            current_app.logger.error(f"Ошибка добавления записи: {e}")
+            flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
+            log_to_db(user, "Неизвестная ошибка добавления новой энергозоны", str(e))
+    
+    # Рендеринг формы
+    return render_template(
+        "refdata/energy_systems/energy_zone/energy_zone_add.html", 
+        page=page,
+        per_page=per_page, 
+        sort_by=sort_by, 
+        sort_dir=sort_dir, 
+        form=form, 
+        energy_zone_filter=energy_zone_filter, 
+    )
 
 @refdata_bp.route("/export_energy_zone", methods=["GET"])
 @login_required
 def export_energy_zone():
-    """Экспорт «Энергозоны» в Excel с учётом текущих фильтров/сортировки."""
-    user = session.get("username", "anonymous")
-    try:
-        filter_value = request.args.get("energy_zone_filter", "", type=str).strip()
-        sort_by = request.args.get("sort_by", "id", type=str)
-        sort_dir = request.args.get("sort_dir", "asc", type=str)
+    """Маршрут для экспорта энергозон в Excel."""
 
-        excel_io = export_energy_zone_service(filter_value=filter_value, sort_by=sort_by, sort_dir=sort_dir)
+    user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка энергозон в Excel")
+
+    sort_by                 = request.args.get("sort_by", "id")
+    sort_dir                = request.args.get("sort_dir", "asc")
+    energy_zone_filter      = request.args.get("energy_zone_filter", "").strip()
+
+    try:
+        # Получение данных для экспорта
+        excel_data = export_energy_zone_service(
+                        user, 
+                        sort_by, 
+                        sort_dir,
+                        energy_zone_filter, 
+        )
+        log_to_db(user, "Экспорт завершен", 
+                (
+                    f"Фильтр: {energy_zone_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
+        )
+
+        # Проверка наличия данных
+        if excel_data is None or excel_data.getbuffer().nbytes == 0:
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(url_for("refdata_bp.energy_zone_list"))
+        
+        # Формирование имени файла
         filename = f"energy_zone_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        # --- Экспорт: отдаём файл пользователю ---
+
+        # Возврат файла через send_file
         return send_file(
-            excel_io,
+            excel_data,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
             download_name=filename
         )
+    
     except Exception as e:
-        current_app.logger.exception(e)
-        log_to_db(user, f"Ошибка экспорта Энергозоны: {e}")
-        flash("Ошибка экспорта данных.", "danger")
+        current_app.logger.error(f"Ошибка экспорта: {e}")
+        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
         return redirect(url_for("refdata_bp.energy_zone_list"))

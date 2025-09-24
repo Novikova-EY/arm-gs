@@ -102,7 +102,7 @@ def update_gen_company_service(data, user):
     """Обновление данных по генерирующим компаниям."""
 
     if not isinstance(data, list) or not data:
-        raise ValueError("Данные должны быть предоставлены в виде непустого списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде непустого списка словарей.")
 
     updated_ids = []
 
@@ -119,7 +119,7 @@ def update_gen_company_service(data, user):
             if not name:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Поле 'name' обязательно для заполнения.")
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
             
             obj = db.session.get(GenCompany, gen_company_id)
             if not obj:
@@ -163,7 +163,7 @@ def update_gen_company_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения генерирующей компании (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении генерирующих компаний", str(e))
@@ -175,7 +175,7 @@ def add_gen_company_service(data, user):
     """Создание новой записи: генерирующая компания"""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
     
     try:
         with db.session.no_autoflush:
@@ -188,7 +188,7 @@ def add_gen_company_service(data, user):
                 # Проверка на наличие необходимых данных
                 if not name :
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name''. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name''. Данные: {record}")
 
                 # Проверяем уникальность name
                 dup = (GenCompany.query
@@ -219,7 +219,7 @@ def add_gen_company_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения новой генерирующей компании", str(e))
@@ -231,7 +231,7 @@ def delete_gen_company_service(ids, user):
     """Удаляет записи генерирующих компаний по переданным ID."""
     
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление генерирующих компаний", 
               f"Переданы ID для удаления: {ids}")
@@ -287,7 +287,7 @@ def delete_gen_company_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления генерирующих компаний", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 @no_autoflush
@@ -299,7 +299,7 @@ def import_gen_company_service(file, user):
 
         # Проверяем наличие столбца name
         if 'name' not in data.columns:
-            raise ValueError("Неверный формат файла. Отсутствуют необходимые столбцы.")
+            raise ValueError(f"Неверный формат файла. Отсутствуют необходимые столбцы.")
 
         # Очистка данных
         data['name'] = data['name'].apply(_clean_name)
@@ -323,7 +323,7 @@ def import_gen_company_service(file, user):
         db.session.commit()
 
         # Лог успешного импорта
-        log_to_db(user, "Импорт завершён", f"Импортировано записей: {len(records)}")
+        log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}")
         return len(records)
     except Exception as e:
         db.session.rollback()

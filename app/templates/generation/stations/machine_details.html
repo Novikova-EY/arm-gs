@@ -962,7 +962,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const hasUrlParam = (name) => urlParams.has(name) && urlParams.get(name).trim() !== "";
 
-    // Только если параметра нет в URL, берём из localStorage
+    // Только если параметра нет в URL, берем из localStorage
     if (!hasUrlParam("start_year") && localStorage.getItem("start_year")) {
         startYearSelect.value = localStorage.getItem("start_year");
     }
@@ -1010,7 +1010,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
-<script src="{{ url_for('static', filename='js/stations/highlight_changes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
 
 {% endif %}
 {% endblock %}

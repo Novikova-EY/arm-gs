@@ -88,7 +88,7 @@
         // Скрыть при обычной загрузке
         window.addEventListener('load', hide);
 
-        // Возврат/вперёд из истории: страница из bfcache
+        // Возврат/вперед из истории: страница из bfcache
         window.addEventListener('pageshow', function (e) {
             if (e.persisted) hide();
         });

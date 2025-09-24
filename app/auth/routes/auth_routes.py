@@ -97,7 +97,7 @@ def register():
             db.session.add(guest_role)
             db.session.flush()  # получим guest_role.id
 
-        # создаём пользователя
+        # создаем пользователя
         user = User(username=username, email=email)
         user.set_password(password)
         db.session.add(user)

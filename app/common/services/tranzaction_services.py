@@ -46,7 +46,7 @@ def no_autoflush(func):
             _commit_with_retry()
             return
         except OperationalError as e:
-            # Откатываем транзакцию и пробуем ещё раз (deadlock/timeout и т.п.)
+            # Откатываем транзакцию и пробуем еще раз (deadlock/timeout и т.п.)
             db.session.rollback()
             if attempt >= tries - 1:
                 raise

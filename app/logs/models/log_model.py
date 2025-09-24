@@ -2,7 +2,7 @@
 """
 Log model (Аудит действий).
 - Хранит событие, пользователя и произвольные детали.
-- Таймстемп задаётся на стороне БД (UTC) через func.now().
+- Таймстемп задается на стороне БД (UTC) через func.now().
 """
 from sqlalchemy.sql import func
 from app.extensions import db

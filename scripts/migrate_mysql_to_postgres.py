@@ -189,7 +189,7 @@ def main():
         schemas = {sch for _, (sch, _) in TABLE_MAP}
         ensure_schemas(pg_conn, schemas)
 
-    # Идём по таблицам в явном порядке
+    # Идем по таблицам в явном порядке
     for src_name, (pg_schema, pg_name) in TABLE_MAP:
         if src_name in SKIP_TABLES:
             print(f"\n⏭ Пропускаю (в SKIP_TABLES): {src_name}")
@@ -258,7 +258,7 @@ def main():
 
         print(f"  📦 Итого по таблице: {total}")
 
-    print("\n✅ Перенос завершён.")
+    print("\n✅ Перенос завершен.")
 
 if __name__ == "__main__":
     main()

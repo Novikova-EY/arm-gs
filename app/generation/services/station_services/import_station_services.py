@@ -362,7 +362,7 @@ def assign_machine_power_p_rasp(machine, row, start_year, end_year, user):
             print(f"Создание p_rasp электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}")
 
 
-# Отдельная функция для пересчёта ограничений мощности
+# Отдельная функция для пересчета ограничений мощности
 def update_machine_power_ogr(machine, start_year, end_year, user):
     for year in range(start_year, end_year + 1):
         power = MachinePower.query.filter_by(year_number=year, id_machine=machine.id).first()
@@ -373,13 +373,13 @@ def update_machine_power_ogr(machine, start_year, end_year, user):
 
             if old_ogr != power.p_ogr:
                 log_to_db(
-                    user, f"Пересчёт ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}))",
+                    user, f"Пересчет ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}))",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}"
                 )
-                print(f"Пересчёт ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}")
+                print(f"Пересчет ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}")
 
 
-# Вспомогательная функция: расчёт агрегированной мощности станции по годам
+# Вспомогательная функция: расчет агрегированной мощности станции по годам
 def update_station_power(station, start_year, end_year, user):
     for year in range(start_year, end_year + 1):
         total_values = db.session.query(
@@ -685,7 +685,7 @@ def import_station_list_from_excel(file, user):
                 update_machine_power_ogr(current_machine, start_year, end_year, user)
             
 
-    # После всех строк: расчёт агрегированных мощностей по каждой станции
+    # После всех строк: расчет агрегированных мощностей по каждой станции
     station_ids = df['station_name'].dropna().unique()
     for name in station_ids:
         station = Station.query.filter_by(name=_clean_name(name)).first()

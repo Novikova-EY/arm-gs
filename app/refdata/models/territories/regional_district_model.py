@@ -43,14 +43,14 @@ class RegionalDistrict(db.Model):
     # One-to-many: Станции
     stations = db.relationship('Station', back_populates='regional_district')
 
-    # One-to-many: Энергорайоны (каскад был сохранён)
+    # One-to-many: Энергорайоны (каскад был сохранен)
     energy_areas = db.relationship(
         'EnergyArea',
         back_populates='regional_district',
         cascade='all, delete-orphan'
     )
 
-    # One-to-many: Энергоузлы (каскад был сохранён)
+    # One-to-many: Энергоузлы (каскад был сохранен)
     energy_units = db.relationship(
         'EnergyUnit',
         back_populates='regional_district',
@@ -58,11 +58,16 @@ class RegionalDistrict(db.Model):
     )
 
     # FK -> Энергозона (EnergyZone)
-    energy_zones = db.relationship(
+    id_energy_zone = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_REFDATA}.energy_zones.id", ondelete="SET NULL", onupdate="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    energy_zone = db.relationship(
         "EnergyZone",
-        back_populates="regional_district",
-        cascade="all, delete-orphan",
-        passive_deletes=True
+        back_populates="regional_districts",
+        foreign_keys=[id_energy_zone],
     )
 
     # FK -> Синхронная зона (SynchronousArea)

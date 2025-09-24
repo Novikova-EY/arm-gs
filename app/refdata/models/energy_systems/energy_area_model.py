@@ -44,7 +44,7 @@ class EnergyArea(db.Model):
     def regional_energy_system(self):
         """
         Удобное «одиночное» представление РЭС:
-        - Если ровно одна РЭС у субъекта — вернём её.
+        - Если ровно одна РЭС у субъекта — вернем ее.
         - Иначе None (чтобы не навязывать произвольный выбор).
         """
         ress = self.regional_energy_systems
@@ -61,7 +61,7 @@ class EnergyArea(db.Model):
     def union_energy_system(self):
         """
         Удобное «одиночное» представление ОЭС:
-        - Если все РЭС субъекта относятся к одной и той же ОЭС — вернём её.
+        - Если все РЭС субъекта относятся к одной и той же ОЭС — вернем ее.
         - Иначе None.
         """
         ues = {res.union_energy_system for res in self.regional_energy_systems if res.union_energy_system}

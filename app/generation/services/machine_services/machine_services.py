@@ -24,18 +24,19 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.years.year_model import Year
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
-from app.generation.services.station_services.help_services import (
-    convert_to_date
-)
+
 from app.generation.services.station_services.station_services import (
     recalculate_station_power,
     get_machine_by_id,
     get_station_by_id,
 )
-from app.generation.services.station_services.help_services import (
+from app.common.services.help_services import (
+    convert_to_date,
     rounded_decimal,
-    get_year_features,
     format_decimal_for_display,
+)
+from app.common.services.get_services.years.years_get_services import (
+    get_year_feature_dict,
 )
 
 def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits):
@@ -44,7 +45,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
 
     years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
     year_dict = {y.number: y for y in years}
-    year_features = get_year_features()
+    year_features = get_year_feature_dict()
 
     machine_powers = {mp.year.number: mp for mp in machine.machine_powers}
     machine_fuels = {mf.year.number: mf for mf in machine.machine_fuels}
@@ -158,7 +159,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
     station = get_station_by_id(station_id)
     machine = get_machine_by_id(machine_id)
-    year_features = get_year_features()
+    year_features = get_year_feature_dict()
 
     _fill_main_form_choices(main_form)
     _fill_advanced_form_choices(advanced_form)
@@ -210,7 +211,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print("pgu_machines_form.errors:", pgu_machines_form.errors)
         flash("Ошибка в заполнении формы. Проверьте поля.", "danger")
         return render_template(
-            "stations/machine_details.html",
+            "generation/stations/machine_details.html",
             start_year=start_year,
             end_year=end_year,
             rounding_digits=rounding_digits,
@@ -348,7 +349,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         flash(f"Ошибка при обновлении данных: {exc}", "danger")
         log_to_db(user, f"Ошибка обновления агрегата №{machine.machine_number} {machine.machine_name} станции {station.name}", details=str(exc))
         return render_template(
-            "stations/machine_details.html",
+            "generation/stations/machine_details.html",
             start_year=start_year,
             end_year=end_year,
             rounding_digits=rounding_digits,
@@ -364,7 +365,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, end_year):
     station = Station.query.get_or_404(station_id)
     parent_machine = Machine.query.get_or_404(machine_id)
-    year_features = get_year_features()
+    year_features = get_year_feature_dict()
 
     if pgu_machine_id == 0:
         pgu_machine = None
@@ -411,7 +412,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
     if not pgu_form.validate():
         flash("Ошибка в заполнении формы.", "danger")
         return render_template(
-            "stations/pgu_machine_details.html",
+            "generation/stations/pgu_machine_details.html",
             station=station,
             parent_machine=parent_machine,
             pgu_form=pgu_form,
@@ -451,9 +452,9 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
 
         db.session.commit()
 
-        action = "Добавлен" if pgu_machine_id == 0 else "Обновлён"
+        action = "Добавлен" if pgu_machine_id == 0 else "Обновлен"
         log_to_db(user, f"{action} ПГУ агрегат '{pgu_machine.machine_name}'", details=f"ID: {pgu_machine.id}")
-        flash(f"Агрегат ПГУ успешно сохранён!", "success")
+        flash(f"Агрегат ПГУ успешно сохранен!", "success")
 
         return redirect(url_for('station_bp.machine_details',
                                 station_id=station.id,
@@ -465,7 +466,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         db.session.rollback()
         flash(f"Ошибка при сохранении: {e}", "danger")
         return render_template(
-            "stations/pgu_machine_details.html",
+            "generation/stations/pgu_machine_details.html",
             station=station,
             parent_machine=parent_machine,
             pgu_form=pgu_form,
@@ -662,22 +663,22 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     last_nz_index = max(i for i, (_, p) in enumerate(years_by_ust) if p > 0)
     new_decomp_year = years_by_ust[last_nz_index][0]
 
-    # --- Год ввода: не задаём, если уже есть ---
+    # --- Год ввода: не задаем, если уже есть ---
     if machine.date_exploitation is None:
         machine.date_exploitation = new_expl_year
         changes.append(f"Год ввода: — → {new_expl_year}")
-        flash(f"🧠 Год ввода автоматически определён: {new_expl_year}", "info")
+        flash(f"🧠 Год ввода автоматически определен: {new_expl_year}", "info")
 
     # --- Год вывода ---
     if new_decomp_year < Config.END_YEAR:
         if machine.date_decompressing_expected != new_decomp_year:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → {new_decomp_year}")
-            flash(f"🧠 Год вывода автоматически определён: {new_decomp_year}", "info")
+            flash(f"🧠 Год вывода автоматически определен: {new_decomp_year}", "info")
             machine.date_decompressing_expected = new_decomp_year
     else:
         if machine.date_decompressing_expected is not None:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")
-            flash(f"🧠 Год вывода удалён: агрегат продолжает работать", "info")
+            flash(f"🧠 Год вывода удален: агрегат продолжает работать", "info")
             machine.date_decompressing_expected = None
 
     # Модернизация по плану
@@ -694,12 +695,12 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
         if prev_p != curr_p:
             if machine.date_modernization_expected != curr_y:
                 changes.append(f"Год модернизации: {machine.date_modernization_expected} → {curr_y}")
-                flash(f"🧠 Год модернизации автоматически определён: {curr_y}", "info")
+                flash(f"🧠 Год модернизации автоматически определен: {curr_y}", "info")
                 machine.date_modernization_expected = curr_y
             found = True
             break
 
     if not found and machine.date_modernization_expected is not None:
-        flash("⚠️ Расчётный год модернизации не найден, но в данных указано значение. Проверьте корректность вручную.", "warning")
+        flash("⚠️ Расчетный год модернизации не найден, но в данных указано значение. Проверьте корректность вручную.", "warning")
 
 

@@ -88,8 +88,8 @@ def update_users_and_roles(user: Any,
                            assign: Dict[str, Dict[str, str]],
                            assign_present: Optional[Dict[str, str]] = None) -> int:
     """
-    Обновляем только реально изменённые поля/роли.
-    Логируем ПО ФАКТУ (после commit): для каждого изменённого пользователя — детальный список изменений.
+    Обновляем только реально измененные поля/роли.
+    Логируем ПО ФАКТУ (после commit): для каждого измененного пользователя — детальный список изменений.
     """
     if not (user_ids and usernames and emails) or \
        not (len(user_ids) == len(usernames) == len(emails)):
@@ -192,7 +192,7 @@ def bulk_delete_users(user: Any, user_ids_to_delete: List[int]) -> int:
             )
             db.session.delete(u)
             deleted += 1
-            to_log.append(("Пользователь: удалён", details_before))
+            to_log.append(("Пользователь: удален", details_before))
 
         db.session.commit()
 

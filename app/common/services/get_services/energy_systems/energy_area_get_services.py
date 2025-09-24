@@ -1,27 +1,28 @@
 """Сервисный get-модуль для EnergyArea."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
 from typing import Union, List
+from functools import lru_cache
 
 # Модели
 from app.refdata.models.energy_systems.energy_area_model import EnergyArea
-from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
-from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
-
-from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
 
+@lru_cache(maxsize=1)
 def get_energy_area_list_full():
     """Получает полный список энергорайонов."""
-    return EnergyArea.query.all()
+    return (
+        EnergyArea.query
+        .order_by(EnergyArea.name.asc())
+        .all()
+    )
 
-
+@lru_cache(maxsize=1)
 def get_energy_area_list():
     """Получает список энергорайонов (кроме "не указано")."""
     query = (
         EnergyArea.query
         .filter(EnergyArea.id.isnot(None), EnergyArea.id > 0)
+        .order_by(EnergyArea.name.asc())
     )
     return query
 

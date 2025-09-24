@@ -2,6 +2,8 @@ from config import Config
 from app.extensions import db
 from sqlalchemy import and_, func, select, or_
 from sqlalchemy.orm import selectinload, joinedload
+
+# Модели
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
@@ -13,7 +15,8 @@ from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
-from app.generation.services.station_services.help_services import get_year_range
+
+# Сервисы
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_rows import (
     get_full_aggregation_rows
     )
@@ -21,21 +24,56 @@ from app.generation.services.station_services.station_services import (
     get_current_machine_tes_types_map,
     assign_machine_powers_by_year,
     )
-from app.generation.services.station_services.help_services import (
+from app.common.services.get_services.years.years_get_services import (
     get_current_year,
-    get_station_types,
-    get_tes_types,
-    get_tes_machine_types,
-    get_pgu_tes_machine_types,
-    get_fuel_types,
-    get_energy_units,
-    get_energy_system_types,
-    get_union_energy_systems,
-    get_regional_energy_systems,
-    get_regional_districts,
-    get_federal_districts,
-    get_year_features,
-    )
+    get_year_feature_dict,
+)
+from app.common.services.get_services.fuels.fuel_type_get_services import (
+    get_fuel_type_list_full,
+)
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_list_full,
+    get_energy_system_type_map,
+)
+from app.common.services.get_services.energy_systems.energy_unit_get_services import (
+    get_energy_unit_list_full,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_list_full,
+    get_union_energy_systems_map,
+    get_ues_to_res_ids_map,
+)
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_list_full,
+    get_regional_energy_systems_map,
+)
+from app.common.services.get_services.territories.regional_district_get_services import (
+    get_regional_district_list_full,
+    get_rd_to_fd_id_map,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list_full,
+    get_fd_to_rd_ids_map,
+)
+from app.common.services.get_services.stations.station_type_get_services import (
+    get_station_type_list_full,
+)
+from app.common.services.get_services.stations.tes_type_get_services import (
+    get_tes_type_list_full,
+)
+from app.common.services.get_services.stations.tes_machine_type_get_services import (
+    get_tes_machine_type_list_full,
+)
+from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
+    get_pgu_tes_machine_type_list_full,
+)
+
+from app.common.services.get_services.stations.station_get_services import (
+    get_station_by_id,
+)
+from app.common.services.get_services.stations.machine_get_services import (
+    get_machine_by_id,
+)
 from app.generation.services.station_services.groupped_services import (
     fetch_machines_with_rowspans,
     )
@@ -702,30 +740,40 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     import time
     start_time = time.time()
 
-    year_features = get_year_features()
-    energy_system_type_list, energy_system_type_names = get_energy_system_types()
-    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
-    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
-    federal_district_list, regional_district_mapping = get_federal_districts()
-    regional_district_list, regional_district_names = get_regional_districts()
-    regional_district_dict = {int(r["id"]): r for r in regional_district_list}
-    
-    energy_units = get_energy_units()
+    year_features = get_year_feature_dict()
+
+    energy_system_type_list = get_energy_system_type_list_full()
+    energy_system_type_names = get_energy_system_type_map()
+
+    union_energy_system_list = get_union_energy_system_list_full()
+    union_energy_system_names = get_union_energy_systems_map()
+    regional_energy_system_mapping = get_ues_to_res_ids_map()
+
+    regional_energy_system_list = get_regional_energy_system_list_full()
+    regional_energy_system_names = get_regional_energy_systems_map()
+
+    federal_district_list = get_federal_district_list_full()
+    regional_district_mapping = get_fd_to_rd_ids_map()
+
+    regional_district_list = get_regional_district_list_full()
+    regional_district_names = get_rd_to_fd_id_map()
+
+    energy_units = get_energy_unit_list_full()
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
     
-    station_type_names = get_station_types()
+    station_type_names = get_station_type_list_full()
     station_type_list = {st.id: st.name for st in station_type_names}
 
-    tes_type_names = get_tes_types()
+    tes_type_names = get_tes_type_list_full()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
-    tes_machine_type_names = get_tes_machine_types()
+    tes_machine_type_names = get_tes_machine_type_list_full()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
-    pgu_tes_machine_type_names = get_pgu_tes_machine_types()
+    pgu_tes_machine_type_names = get_pgu_tes_machine_type_list_full()
     pgu_tes_machine_type_list = {pt.id: pt.name for pt in pgu_tes_machine_type_names}
 
-    fuel_type_names = get_fuel_types()
+    fuel_type_names = get_fuel_type_list_full()
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()
@@ -753,7 +801,6 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "federal_district_list": federal_district_list,
             "regional_district_list": regional_district_list,
             "regional_district_names": regional_district_names,
-            "regional_district_dict": regional_district_dict,
             "regional_district_mapping": regional_district_mapping,
             "station_type_name": station_type_names,
             "station_type_list": station_type_list,

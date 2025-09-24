@@ -24,7 +24,11 @@
             <div class="col-12 col-lg-8">
                 <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
                     <div class="flex-grow-1" style="min-width: 220px;">
-                        {{ form.energy_area_filter(class="form-control") }}
+                        {{ form.energy_area_filter(
+                            class="form-control",
+                            value=energy_area_filter,
+                            placeholder="Поиск по энергозонам"
+                        ) }}
                     </div>
 
                     <button type="submit"
@@ -45,14 +49,14 @@
             <div class="col-12 col-lg-4 text-lg-end">
                 <!-- Экспорт данных таблицы с фильтрами в Excel-->
                 <a class="btn btn-warning fw-bold"
-                href="{{ url_for('refdata_bp.export_energy_area',
-                                    energy_area_filter=energy_area_filter,
-                                    regional_district_filter=regional_district_filter,
-                                    regional_energy_system_filter=regional_energy_system_filter or '',
-                                    union_energy_system_filter=union_energy_system_filter or '',
-                                    sort_by=sort_by, sort_dir=sort_dir) }}"
-                target="_blank" rel="noopener">
-                Экспорт в Excel
+                    href="{{ url_for('refdata_bp.export_energy_area',
+                                        energy_area_filter=energy_area_filter or '',
+                                        regional_district_filter=regional_district_filter or '',
+                                        regional_energy_system_filter=regional_energy_system_filter or '',
+                                        union_energy_system_filter=union_energy_system_filter or '',
+                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    target="_blank" rel="noopener">
+                    Экспорт в Excel
                 </a>
 
                 <select name="per_page"
@@ -67,30 +71,27 @@
         </div>
 
         {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="page"                            value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by"                         value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                        value="{{ sort_dir }}">
         <input type="hidden" name="regional_district_filter"        value="{{ regional_district_filter }}">
         <input type="hidden" name="regional_energy_system_filter"   value="{{ regional_energy_system_filter }}">
         <input type="hidden" name="union_energy_system_filter"      value="{{ union_energy_system_filter }}">
-        
-        <input type="hidden" name="sort_by"                         value="{{ sort_by }}">
-        <input type="hidden" name="sort_dir"                        value="{{ sort_dir }}">
-        <input type="hidden" name="page"                            value="{{ pagination.page if pagination else 1 }}">
     </form>
 
     <!-- Таблица данных -->
     {% if current_user.has_admin %}
         <form method="POST" action="{{ url_for('refdata_bp.energy_area_list') }}">
             {{ form.csrf_token }}
-            {{ form.page(value=pagination.page) }}
 
+            <input type="hidden" name="page"                            value="{{ pagination.page }}">
+            <input type="hidden" name="per_page"                        value="{{ per_page }}">
+            <input type="hidden" name="sort_by"                         value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir"                        value="{{ sort_dir }}">
             <input type="hidden" name="energy_area_filter"              value="{{ energy_area_filter }}">
             <input type="hidden" name="regional_district_filter"        value="{{ regional_district_filter }}">
             <input type="hidden" name="regional_energy_system_filter"   value="{{ regional_energy_system_filter }}">
             <input type="hidden" name="union_energy_system_filter"      value="{{ union_energy_system_filter }}">
-            
-            <input type="hidden" name="sort_by"                         value="{{ sort_by }}">
-            <input type="hidden" name="sort_dir"                        value="{{ sort_dir }}">
-            <input type="hidden" name="per_page"                        value="{{ per_page }}">
-            <input type="hidden" name="page"                            value="{{ pagination.page }}">
             
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -99,15 +100,15 @@
                 
                 <!-- Кнопка добавления новой записи -->
                 <a href="{{ url_for('refdata_bp.add_energy_area', 
-                                    sort_by=request.args.get('sort_by', 'id'),
-                                    sort_dir=request.args.get('sort_dir', 'asc'),
-                                    energy_area_filter=request.args.get('energy_area_filter', ''),
-                                    regional_district_filter=request.args.get('regional_district_filter', ''),
-                                    regional_energy_system_filter=request.args.get('regional_energy_system_filter', ''),
-                                    union_energy_system_filter=request.args.get('union_energy_system_filter', ''),
-                                    per_page=request.args.get('per_page', 10),
-                                    page=request.args.get('page', 1)) }}" 
-                                    class="btn btn-primary">
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    energy_area_filter=energy_area_filter,
+                                    regional_district_filter=regional_district_filter,
+                                    regional_energy_system_filter=regional_energy_system_filter,
+                                    union_energy_system_filter=union_energy_system_filter,
+                                    ) }}" class="btn btn-primary">
                     Добавить новую запись
                 </a>
             </div>
@@ -131,7 +132,7 @@
                                                     union_energy_system_filter=union_energy_system_filter, 
                                                     sort_by='number', 
                                                     sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
-                                                    class="link-dark">
+                                                    class="text-black">
                                     №
                                     {% if sort_by == 'number' %}
                                         {% if sort_dir == 'asc' %}
@@ -154,7 +155,7 @@
                                                     union_energy_system_filter=union_energy_system_filter, 
                                                     sort_by='name', 
                                                     sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
-                                                    class="link-dark">
+                                                    class="text-black">
                                     Энергорайон
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
@@ -172,16 +173,16 @@
                                     <span class="mx-auto">
                                         <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                             page=pagination.page, 
+                                                            per_page=per_page,
                                                             energy_area_filter=energy_area_filter,
                                                             regional_district_filter=regional_district_filter,
                                                             regional_energy_system_filter=regional_energy_system_filter,
                                                             union_energy_system_filter=union_energy_system_filter,
-                                                            per_page=per_page,
                                                             sort_by='regional_district', 
-                                                            sort_dir='asc' if sort_by != 'regional_energy_system' or sort_dir == 'desc' else 'desc') }}" 
+                                                            sort_dir='asc' if sort_by != 'regional_district' or sort_dir == 'desc' else 'desc') }}" 
                                                             class="link-dark">
                                             Субъект РФ
-                                            {% if sort_by == 'regional_energy_system' %}
+                                            {% if sort_by == 'regional_district' %}
                                                 {% if sort_dir == 'asc' %}
                                                     ▲
                                                 {% else %}
@@ -195,19 +196,19 @@
                                         <button 
                                             class="btn btn-secondary btn-sm dropdown-toggle" 
                                             type="button" 
-                                            id="regional_districtFilterDropdown" 
+                                            id="rdFilterDropdown" 
                                             data-bs-toggle="dropdown" 
                                             aria-expanded="false">
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="union_energy_systemFilterDropdown">
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="rdFilterDropdown">
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                                     page=pagination.page, 
+                                                                    per_page=per_page,
                                                                     energy_area_filter=energy_area_filter,
                                                                     regional_district_filter='',
                                                                     regional_energy_system_filter=regional_energy_system_filter,
                                                                     union_energy_system_filter=union_energy_system_filter,
-                                                                    per_page=per_page,
                                                                     sort_by=sort_by,
                                                                     sort_dir=sort_dir) }}" 
                                                                     class="dropdown-item">
@@ -218,13 +219,14 @@
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.energy_area_list',
                                                                         page=pagination.page,
+                                                                        per_page=per_page,
                                                                         energy_area_filter=energy_area_filter,
                                                                         regional_district_filter=regional_district.id,
                                                                         regional_energy_system_filter=regional_energy_system_filter,
                                                                         union_energy_system_filter=union_energy_system_filter,
-                                                                        per_page=per_page,
                                                                         sort_by=sort_by,
-                                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                                        sort_dir=sort_dir) }}" 
+                                                                        class="dropdown-item">
                                                         {{ regional_district.name }}
                                                     </a>
                                                 </li>
@@ -240,11 +242,11 @@
                                     <span class="mx-auto">
                                         <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                             page=pagination.page, 
+                                                            per_page=per_page,
                                                             energy_area_filter=energy_area_filter,
                                                             regional_district_filter=regional_district_filter,
                                                             regional_energy_system_filter=regional_energy_system_filter,
                                                             union_energy_system_filter=union_energy_system_filter,
-                                                            per_page=per_page,
                                                             sort_by='regional_energy_system', 
                                                             sort_dir='asc' if sort_by != 'regional_energy_system' or sort_dir == 'desc' else 'desc') }}" 
                                                             class="link-dark">
@@ -263,11 +265,11 @@
                                         <button 
                                             class="btn btn-secondary btn-sm dropdown-toggle" 
                                             type="button" 
-                                            id="regional_energy_systemFilterDropdown" 
+                                            id="resFilterDropdown" 
                                             data-bs-toggle="dropdown" 
                                             aria-expanded="false">
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="union_energy_systemFilterDropdown">
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="resFilterDropdown">
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                                     page=pagination.page, 
@@ -283,7 +285,6 @@
                                                 </a>
                                             </li>
                                             {% for regional_energy_system in regional_energy_system_list %}
-                                            {% if regional_energy_system.name != 'Не указан' %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                                         page=pagination.page, 
@@ -298,7 +299,6 @@
                                                         {{ regional_energy_system.name }}
                                                     </a>
                                                 </li>
-                                            {% endif %}
                                         {% endfor %}
                                         </ul>
                                     </div>
@@ -335,11 +335,11 @@
                                         <button 
                                             class="btn btn-secondary btn-sm dropdown-toggle" 
                                             type="button" 
-                                            id="union_energy_systemFilterDropdown" 
+                                            id="uesFilterDropdown" 
                                             data-bs-toggle="dropdown" 
                                             aria-expanded="false">
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="union_energy_systemFilterDropdown">
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="uesFilterDropdown">
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                                     page=pagination.page, 
@@ -355,7 +355,6 @@
                                                 </a>
                                             </li>
                                             {% for union_energy_system in union_energy_system_list %}
-                                            {% if union_energy_system.name != 'Не указан' %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                                         page=pagination.page, 
@@ -370,7 +369,6 @@
                                                         {{ union_energy_system.name }}
                                                     </a>
                                                 </li>
-                                            {% endif %}
                                         {% endfor %}
                                         </ul>
                                     </div>
@@ -384,12 +382,12 @@
 
                     <!-- Данные таблицы-->
                     <tbody>
-                        {% for item in energy_area_list %}
+                        {% for energy_area in energy_area_list %}
                             <tr class="text-center align-middle">
                                 <!-- Строки таблицы. Столбец "№" -->
                                 <td class="text-center align-middle">
                                     {{ loop.index + (pagination.page - 1) * pagination.per_page }}
-                                    <input type="hidden" name="energy_area_ids[]" value="{{ item.id }}">
+                                    <input type="hidden" name="energy_area_ids[]" value="{{ energy_area.id }}">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Энергорайон" -->
@@ -399,7 +397,7 @@
                                         class="form-control" 
                                         style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
                                         rows="1"
-                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ item.name }}</textarea>
+                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ energy_area.name }}</textarea>
                                 </td>
                                 
                                 <!-- Столбец "Субъекты РФ" -->
@@ -407,10 +405,10 @@
                                     <select 
                                         name="regional_district_ids[]" 
                                         class="form-select regional_district-select" 
-                                        data-energy-area-id="{{ item.id }}">
+                                        data-energy-area-id="{{ energy_area.id }}">
                                         {% for regional_district in regional_district_list %}
                                             <option value="{{ regional_district.id }}"
-                                                {% if item.regional_district and regional_district.id == item.regional_district.id %}
+                                                {% if energy_area.regional_district and regional_district.id == energy_area.regional_district.id %}
                                                     selected
                                                 {% endif %}>
                                                 {{ regional_district.name }}
@@ -421,22 +419,22 @@
 
                                 <!-- Столбец "Региональная энергосистема" -->
                                 <td>
-                                    <div id="res-display-{{ item.id }}" class="form-control" style="background: transparent; border: none;">
-                                        {{ item.regional_energy_system.name if item.regional_energy_system else '' }}
+                                    <div id="res-display-{{ energy_area.id }}" class="form-control" style="background: transparent; border: none;">
+                                        {{ energy_area.regional_energy_system.name if energy_area.regional_energy_system else '—' }}
                                     </div>
                                 </td>
 
                                 <!-- Столбец "ОЭС" -->
                                 <td>
-                                    <div id="ues-display-{{ item.id }}" class="form-control" style="background: transparent; border: none;">
-                                        {{ item.union_energy_system.name if item.union_energy_system else '' }}
+                                    <div id="ues-display-{{ energy_area.id }}" class="form-control" style="background: transparent; border: none;">
+                                        {{ energy_area.union_energy_system.name if energy_area.union_energy_system else '—' }}
                                     </div>
                                 </td>
 
 
                                 <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
                                 <td class="text-center align-middle">
-                                    <input type="checkbox" name="energy_area_delete[]" value="{{ item.id }}" class="form-check-input">
+                                    <input type="checkbox" name="energy_area_delete[]" value="{{ energy_area.id }}" class="form-check-input">
                                 </td>
                             </tr>
                         {% else %}
@@ -449,6 +447,307 @@
             </div>
         </form>
     {% else %}
+        <!-- Таблица с данными для чтения -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+
+                <!-- Шапка таблицы с данными -->
+                <thead>
+                    <tr class="table-success" style="word-wrap: break-word;">
+
+                        <!-- Шапка таблицы. Столбец "№" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                energy_area_filter=energy_area_filter,
+                                                regional_district_filter=regional_district_filter,
+                                                regional_energy_system_filter=regional_energy_system_filter,
+                                                union_energy_system_filter=union_energy_system_filter, 
+                                                sort_by='number', 
+                                                sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
+                                                class="text-black">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Энергорайон" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                energy_area_filter=energy_area_filter,
+                                                regional_district_filter=regional_district_filter,
+                                                regional_energy_system_filter=regional_energy_system_filter,
+                                                union_energy_system_filter=union_energy_system_filter, 
+                                                sort_by='name', 
+                                                sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
+                                                class="text-black">
+                                Энергорайон
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Субъект РФ" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                        page=pagination.page, 
+                                                        per_page=per_page,
+                                                        energy_area_filter=energy_area_filter,
+                                                        regional_district_filter=regional_district_filter,
+                                                        regional_energy_system_filter=regional_energy_system_filter,
+                                                        union_energy_system_filter=union_energy_system_filter,
+                                                        sort_by='regional_district', 
+                                                        sort_dir='asc' if sort_by != 'regional_district' or sort_dir == 'desc' else 'desc') }}" 
+                                                        class="link-dark">
+                                        Субъект РФ
+                                        {% if sort_by == 'regional_district' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="rdFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="rdFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                                page=pagination.page, 
+                                                                per_page=per_page,
+                                                                energy_area_filter=energy_area_filter,
+                                                                regional_district_filter='',
+                                                                regional_energy_system_filter=regional_energy_system_filter,
+                                                                union_energy_system_filter=union_energy_system_filter,
+                                                                sort_by=sort_by,
+                                                                sort_dir=sort_dir) }}" 
+                                                                class="dropdown-item">
+                                                Все субъекты РФ
+                                            </a>
+                                        </li>
+                                        {% for regional_district in regional_district_list %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.energy_area_list',
+                                                                    page=pagination.page,
+                                                                    per_page=per_page,
+                                                                    energy_area_filter=energy_area_filter,
+                                                                    regional_district_filter=regional_district.id,
+                                                                    regional_energy_system_filter=regional_energy_system_filter,
+                                                                    union_energy_system_filter=union_energy_system_filter,
+                                                                    sort_by=sort_by,
+                                                                    sort_dir=sort_dir) }}" 
+                                                                    class="dropdown-item">
+                                                    {{ regional_district.name }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Региональная энергосистема" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                        page=pagination.page, 
+                                                        per_page=per_page,
+                                                        energy_area_filter=energy_area_filter,
+                                                        regional_district_filter=regional_district_filter,
+                                                        regional_energy_system_filter=regional_energy_system_filter,
+                                                        union_energy_system_filter=union_energy_system_filter,
+                                                        sort_by='regional_energy_system', 
+                                                        sort_dir='asc' if sort_by != 'regional_energy_system' or sort_dir == 'desc' else 'desc') }}" 
+                                                        class="link-dark">
+                                        Региональная энергосистема
+                                        {% if sort_by == 'regional_energy_system' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="resFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="resFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                                page=pagination.page, 
+                                                                energy_area_filter=energy_area_filter,
+                                                                regional_district_filter=regional_district_filter,
+                                                                regional_energy_system_filter='',
+                                                                union_energy_system_filter=union_energy_system_filter,
+                                                                per_page=per_page,
+                                                                sort_by=sort_by,
+                                                                sort_dir=sort_dir) }}" 
+                                                                class="dropdown-item">
+                                                Все регональные энергосистемы
+                                            </a>
+                                        </li>
+                                        {% for regional_energy_system in regional_energy_system_list %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                                    page=pagination.page, 
+                                                                    energy_area_filter=energy_area_filter,
+                                                                    regional_district_filter=regional_district_filter,
+                                                                    regional_energy_system_filter=regional_energy_system.id,
+                                                                    union_energy_system_filter=union_energy_system_filter,
+                                                                    per_page=per_page,
+                                                                    sort_by=sort_by,
+                                                                    sort_dir=sort_dir) }}" 
+                                                                    class="dropdown-item">
+                                                    {{ regional_energy_system.name }}
+                                                </a>
+                                            </li>
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "ОЭС" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                        page=pagination.page, 
+                                                        energy_area_filter=energy_area_filter,
+                                                        regional_district_filter=regional_district_filter,
+                                                        regional_energy_system_filter=regional_energy_system_filter,
+                                                        union_energy_system_filter=union_energy_system_filter,
+                                                        per_page=per_page,
+                                                        sort_by='union_energy_system', 
+                                                        sort_dir='asc' if sort_by != 'union_energy_system' or sort_dir == 'desc' else 'desc') }}" 
+                                                        class="link-dark">
+                                        ОЭС
+                                        {% if sort_by == 'union_energy_system' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <!-- Кнопка выпадающего списка фильтра -->
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="uesFilterDropdown" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="uesFilterDropdown">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                                page=pagination.page, 
+                                                                energy_area_filter=energy_area_filter,
+                                                                regional_district_filter=regional_district_filter,
+                                                                regional_energy_system_filter=regional_energy_system_filter,
+                                                                union_energy_system_filter='',
+                                                                per_page=per_page,
+                                                                sort_by=sort_by,
+                                                                sort_dir=sort_dir) }}" 
+                                                                class="dropdown-item">
+                                                Все ОЭС
+                                            </a>
+                                        </li>
+                                        {% for union_energy_system in union_energy_system_list %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.energy_area_list', 
+                                                                    page=pagination.page, 
+                                                                    energy_area_filter=energy_area_filter,
+                                                                    regional_district_filter=regional_district_filter,
+                                                                    regional_energy_system_filter=regional_energy_system_filter,
+                                                                    union_energy_system_filter=union_energy_system.id,
+                                                                    per_page=per_page,
+                                                                    sort_by=sort_by,
+                                                                    sort_dir=sort_dir) }}" 
+                                                                    class="dropdown-item">
+                                                    {{ union_energy_system.name }}
+                                                </a>
+                                            </li>
+                                    {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+
+                <!-- Данные таблицы-->
+                <tbody>
+                    {% for item in energy_area_list %}
+                        <tr class="text-center align-middle">
+                            <!-- Строки таблицы. Столбец "№" -->
+                            <td class="text-center">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Энергорайон" -->
+                            <td>
+                                {{ item.name }}
+                            </td>
+                            
+                            <!-- Столбец "Субъекты РФ" -->
+                            <td>
+                                {{ item.regional_district.name if item.regional_district else '—' }}
+                            </td>
+
+                            <!-- Столбец "Региональная энергосистема" -->
+                            <td>
+                                {{ item.regional_energy_system.name if item.regional_energy_system else '—' }}
+                            </td>
+
+                            <!-- Столбец "ОЭС" -->
+                            <td>
+                                {{ item.union_energy_system.name if item.union_energy_system else '—' }}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
     {% endif %}
 
     <!-- Пагинация -->
@@ -457,19 +756,8 @@
     </div>
 
 </div>
-</div>
 
 <!-- Скрипт подстройки высоты строк под содержимое ячеек -->
-<script>
-    function autoResize(textarea) {
-        textarea.style.height = 'auto'; // Сбрасываем текущую высоту
-        textarea.style.height = textarea.scrollHeight + 'px'; // Устанавливаем новую высоту
-    }
-
-    // Если нужно, чтобы поле изначально подстраивалось под контент:
-    document.querySelectorAll('textarea').forEach(textarea => {
-        autoResize(textarea);
-    });
-</script>
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
 {% endif %}
 {% endblock %}

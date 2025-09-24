@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // Добавляем стили, если ещё не добавлены
+        // Добавляем стили, если еще не добавлены
         if (!document.getElementById("highlightStyle")) {
             const style = document.createElement("style");
             style.id = "highlightStyle";

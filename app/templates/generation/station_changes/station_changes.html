@@ -23,7 +23,7 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'station_changes/station_changes_filters.html' %}
+    {% include 'generation/station_changes/station_changes_filters.html' %}
 
     <!-- Таблица с данными -->
     <div class="table-responsive">
@@ -255,44 +255,44 @@
                 {% for es_type_id, es_type_group in stations_grouped.items() %}
                 {% for event_type, event_label in event_types %}
                     {% if per_page == 'all' %}
-                        {% include 'station_changes/aggregated_data/energy_system_types/energy_system_type_header.html' %}
+                        {% include 'generation/station_changes/aggregated_data/energy_system_types/energy_system_type_header.html' %}
                     {% endif %}
             
                     {% for ues_id, ues_group in es_type_group.items() %}
             
                         {% if per_page == 'all' %}
-                            {% include 'station_changes/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
+                            {% include 'generation/station_changes/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
                         {% endif %}
             
                         {% for res_id, res_group in ues_group.items() %}
             
                             {% if per_page == 'all' %}
-                                <!-- {% include 'station_changes/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}-->
+                                <!-- {% include 'generation/station_changes/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}-->
                             {% endif %}
             
                             {% for rd_id, rd_group in res_group.items() %}
             
                                 {% if rd_id != 0 %}
                                     {% if per_page == 'all' %}
-                                            {% include 'station_changes/aggregated_data/regional_districts/regional_district_header.html' %}
+                                            {% include 'generation/station_changes/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
             
                                         {% if eu_id != 0 %}
                                             {% if per_page == 'all' %}
-                                                {% include 'station_changes/aggregated_data/energy_units/energy_unit_header.html' %}
+                                                {% include 'generation/station_changes/aggregated_data/energy_units/energy_unit_header.html' %}
                                             {% endif %}
                                         {% endif %}
 
                                             {% for station in eu_group %}
-                                                {% include 'station_changes/station_changes_rows.html' %}
+                                                {% include 'generation/station_changes/station_changes_rows.html' %}
                                             {% endfor %}
             
                                         {# Итог по энергоузлу #}
                                         {% if per_page == 'all' and eu_id != 0 %}
                                             {% set current_eu_id = eu_id %}
-                                            {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                            {% include 'generation/station_changes/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
                                         {% endif %}
             
                                     {% endfor %}
@@ -300,7 +300,7 @@
                                     {# Итог по субъекту РФ #}
                                     {% if per_page == 'all' %}
                                         {% set current_rd_id = rd_id %}
-                                        {% include 'station_changes/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
+                                        {% include 'generation/station_changes/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
                                     {% endif %}
             
                                 {% endif %}
@@ -315,10 +315,10 @@
             
                         {% endfor %}
             
-                        {# Итог по объединённой энергосистеме #}
+                        {# Итог по объединенной энергосистеме #}
                         {% if per_page == 'all' %}
                             {% set current_ues_id = ues_id %}
-                                {% include 'station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
+                                {% include 'generation/station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
                         {% endif %}
             
                     {% endfor %}
@@ -326,14 +326,14 @@
                     {# Итог по типу энергосистемы #}
                     {% if per_page == 'all' %}
                         {% set current_es_type_id = es_type_id %}
-                        {% include 'station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
+                        {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
                 {% endfor %}
                 {% endfor %}
             
                 {# Итог по России #}
                 {% if per_page == 'all' %}
-                    {% include 'station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
+                    {% include 'generation/station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>
             
@@ -345,7 +345,7 @@
 <!-- Пагинация -->
 <div>
     {% if per_page is not none %}
-        {% include 'includes/pagination_station_changes.html' %}
+        {% include 'generation/includes/pagination_station_changes.html' %}
     {% endif %}
 </div> 
 
@@ -362,8 +362,8 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 
-<script src="{{ url_for('static', filename='js/station_changes/station_page_logic.js') }}"></script>
-<script src="{{ url_for('static', filename='js/station_changes/highlight_changes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/station_changes/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/station_changes/highlight_changes.js') }}"></script>
 
 
 {% endblock %}

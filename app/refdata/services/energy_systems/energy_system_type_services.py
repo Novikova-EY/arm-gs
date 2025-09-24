@@ -95,7 +95,7 @@ def update_energy_system_type_service(data, user):
     """ Обновление данных по частям энергосистемы России. """
         
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
 
@@ -111,7 +111,7 @@ def update_energy_system_type_service(data, user):
             if not name:
                 log_to_db(user, "Ошибка валидации", 
                           f"Запись: {record}")
-                raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
+                raise ValueError(f"Каждая запись должна содержать 'name'. Данные: {record}")
             
             obj = db.session.get(EnergySystemType, energy_system_type_id)
             if not obj:
@@ -159,7 +159,7 @@ def update_energy_system_type_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения части энергосистемы России (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении части энергосистемы России", str(e))
@@ -171,19 +171,17 @@ def add_energy_system_type_service(data, user):
     """ Создание новой записи: часть энергосистемы России """
         
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     try:
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
-                energy_system_type_id = record.get("id")
                 name = record.get("name")
-                regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
 
-                if not name or not regional_district_id:
+                if not name:
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name'. Данные: {record}")
 
                 # Проверяем уникальность name
                 dup = (EnergySystemType.query
@@ -214,7 +212,7 @@ def add_energy_system_type_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения части энергосистемы России (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения части энергосистемы России", str(e))
@@ -226,7 +224,7 @@ def delete_energy_system_type_service(ids, user):
     """Удаляет записи частей энергосистемы России по переданным ID."""
 
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
     
     log_to_db(user, "Удаление записей", 
               f"Переданы ID для удаления: {ids}")
@@ -281,7 +279,7 @@ def delete_energy_system_type_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления частей энергосистемы России", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
     
 
 def export_energy_system_type_service(
@@ -315,7 +313,7 @@ def export_energy_system_type_service(
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
-            "№": idx + 1,
+            "№": idx,
             "Наименование части энергосистемы России": _dash(o.name),
         })
 
@@ -339,7 +337,7 @@ def export_energy_system_type_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы частей энергосистемы России в Excel завершён", 
+    log_to_db(user, "Экспорт таблицы частей энергосистемы России в Excel завершен", 
               f"Экспортировано записей: {len(data)}")
 
     return output

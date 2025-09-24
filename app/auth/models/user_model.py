@@ -47,7 +47,7 @@ class User(db.Model, UserMixin):
         if not self.roles:
             return False
         for role in self.roles:
-            # на всякий случай уберём случайные пробелы в БД
+            # на всякий случай уберем случайные пробелы в БД
             if (role.name or '').strip() == 'admin':
                 return True
         return False

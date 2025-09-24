@@ -17,7 +17,6 @@ from app.refdata.forms.energy_systems.union_energy_system_forms import (
 
 # Сервисы
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
-    get_energy_system_type_list, 
     get_energy_system_type_list_full,
     get_energy_system_type_name,
 )
@@ -48,7 +47,7 @@ def union_energy_system_list():
 
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 10, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
@@ -57,7 +56,7 @@ def union_energy_system_list():
     if request.method == "POST":        
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 10, type=int)
+        per_page                    = request.form.get("per_page", 20, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         union_energy_system_filter  = request.form.get("union_energy_system_filter", "").strip()
@@ -123,7 +122,7 @@ def union_energy_system_list():
                     )
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in union_energy_system_data if record["id"] is not None]
+            ids = [record["union_energy_system_id"] for record in union_energy_system_data if record["union_energy_system_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
 
             if duplicates:
@@ -149,12 +148,13 @@ def union_energy_system_list():
                                 sort_dir=sort_dir))
 
     # Получение данных для отображения
-    pagination = get_union_energy_system_list(page, 
-                              per_page, 
-                              union_energy_system_filter, 
-                              energy_system_type_filter,
-                              sort_by, 
-                              sort_dir)
+    pagination = get_union_energy_system_list(
+                                page=page, 
+                                per_page=per_page, 
+                                union_energy_system_filter=union_energy_system_filter, 
+                                energy_system_type_filter=energy_system_type_filter,
+                                sort_by=sort_by, 
+                                sort_dir=sort_dir)
 
     # Подготовка данных для формы
     energy_system_types = get_energy_system_type_list_full()
@@ -186,41 +186,38 @@ def add_union_energy_system():
     form = AddUnionEnergySystemForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    page                        = int(request.args.get("page", 1))
-    per_page                    = int(request.args.get("per_page", 10))
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
 
-    # Получение списка типов ОЭС
-    try:
-        energy_system_types = get_energy_system_type_list()
-        if not energy_system_types:
-            flash("Ошибка: отсутствуют типы ОЭС. Добавьте типы перед созданием записи.", "danger")
-            log_to_db(user, "Ошибка добавления ОЭС", "Отсутствуют типы ОЭС.")
-            return redirect(url_for("refdata_bp.union_energy_system_list"))
-
-        form.energy_system_type.choices = [(0, "Не указан")] + [(t.id, t.name) for t in energy_system_types]
+    # Подготовка данных для формы
+    energy_system_type_list = get_energy_system_type_list_full()
+    form.energy_system_type.choices = [(est.id, est.name) for est in energy_system_type_list]
         
-    except Exception as e:
-        current_app.logger.error(f"Ошибка получения типов ОЭС: {e}")
-        flash("Ошибка при загрузке данных типов ОЭС.", "danger")
-        return redirect(url_for("refdata_bp.union_energy_system_list"))
-
-   # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    # Обработка формы
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/energy_systems/union_energy_system/union_energy_system_add.html",
+                form=form
+            )
+        
         try:
             payload = [{
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
-                "id_energy_system_type": form.energy_system_type.data
+                "energy_system_type_id": form.energy_system_type.data
             }]
                         
-            # Добавление новой записи через сервис
+            # Добавление новой записи
             add_union_energy_system_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
-
             log_to_db(user, "Добавление новой ОЭС", 
                     (
                         f"Наименование: {form.name.data}, "
@@ -228,11 +225,12 @@ def add_union_energy_system():
                         f"Часть энергосистемы России: {get_energy_system_type_name(form.energy_system_type.data)}"
                     )
             )
+            flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = union_energy_system_query(
                                 union_energy_system_filter, 
-                                energy_system_type_filter).count
+                                energy_system_type_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
             # Корректировка текущей страницы, если она больше последней
@@ -240,12 +238,12 @@ def add_union_energy_system():
 
             return redirect(url_for(
                 "refdata_bp.union_energy_system_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 union_energy_system_filter=union_energy_system_filter,
                 energy_system_type_filter=energy_system_type_filter,
-                per_page=per_page,
-                page=last_page,
             ))
         except ValueError as e:
             # Логирование и отображение ошибок валидации
@@ -255,19 +253,19 @@ def add_union_energy_system():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления ОЭС", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления новой ОЭС", str(e))
 
     # Рендеринг формы
     return render_template(
         "refdata/energy_systems/union_energy_system/union_energy_system_add.html", 
-        form=form, 
-        energy_system_types=energy_system_types, 
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form, 
+        energy_system_types=form.energy_system_type.choices, 
         union_energy_system_filter=union_energy_system_filter, 
         energy_system_type_filter=energy_system_type_filter,
-        per_page=per_page, 
-        page=page
     )
 
 
@@ -306,9 +304,10 @@ def import_union_energy_system():
 @refdata_bp.route("/export_union_energy_system", methods=["GET"])
 @login_required
 def export_union_energy_system():
-    """Маршрут для экспорта данных в Excel."""
+    """Маршрут для экспорта ОЭС в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка ОЭС в Excel")
     
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
@@ -322,9 +321,9 @@ def export_union_energy_system():
                         union_energy_system_filter, 
                         energy_system_type_filter, 
                         sort_by, 
-                        sort_dir
+                        sort_dir,
         )
-        log_to_db(user, "Экспорт завершён", 
+        log_to_db(user, "Экспорт завершен", 
                 (
                     f"Фильтры: {union_energy_system_filter, energy_system_type_filter},"
                     f"Сортировка: {sort_by}, "

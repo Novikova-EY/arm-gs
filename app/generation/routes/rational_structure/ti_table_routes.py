@@ -50,7 +50,7 @@ def ti_table():
             "resurs_gas": m.resurs_gas if m.resurs_gas else "—",
         })
 
-    return render_template("stations/ti_table.html", rows=data)
+    return render_template("generation/stations/ti_table.html", rows=data)
 
 
 import re
@@ -196,7 +196,7 @@ def upload_and_update_machines():
         ])
         log_df.to_excel(log_filename, index=False, engine="openpyxl")
 
-        print(f"📁 Excel-лог сохранён: {log_filename}")
+        print(f"📁 Excel-лог сохранен: {log_filename}")
 
         return jsonify({"updated": updated, "skipped": skipped, "log_file": log_filename})
 

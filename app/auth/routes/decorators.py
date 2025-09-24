@@ -11,7 +11,7 @@ def roles_required(allowed_roles):
             if not has_request_context():
                 abort(403)
 
-            # Если current_user не определён или не авторизован
+            # Если current_user не определен или не авторизован
             if not current_user or not current_user.is_authenticated:
                 abort(403)
 

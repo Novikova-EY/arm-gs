@@ -25,9 +25,9 @@ class FederalDistrictFilterForm(FlaskForm):
         ],
     )
     name_abr = StringField(
-        "Сокращённое наименование ФО",
+        "Сокращенное наименование ФО",
         validators=[
-            DataRequired(message="Поле «Сокращённое наименование ФО» обязательно."),
+            DataRequired(message="Поле «Сокращенное наименование ФО» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
@@ -65,9 +65,9 @@ class AddFederalDistrictForm(FlaskForm):
         ],
     )
     name_abr = StringField(
-        "Сокращённое наименование ФО",
+        "Сокращенное наименование ФО",
         validators=[
-            DataRequired(message="Поле «Сокращённое наименование ФО» обязательно."),
+            DataRequired(message="Поле «Сокращенное наименование ФО» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )

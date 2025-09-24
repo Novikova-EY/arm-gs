@@ -1,23 +1,29 @@
 """Сервисный get-модуль для EnergyUnit."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from typing import Union, List
+from functools import lru_cache
 
 # Модели
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
-from typing import Union, List
 
 
+@lru_cache(maxsize=1)
 def get_energy_unit_list_full():
     """Получает полный список энергоузлов."""
-    return EnergyUnit.query.all()
+    return (
+        EnergyUnit.query
+        .order_by(EnergyUnit.name.asc())
+        .all()
+    )
 
 
+@lru_cache(maxsize=1)
 def get_energy_unit_list():
     """Получает список энергоузлов (кроме "не указано")."""
     query = (
         EnergyUnit.query
         .filter(EnergyUnit.id.isnot(None), EnergyUnit.id > 0)
+        .order_by(EnergyUnit.name.asc())
     )
     return query
 

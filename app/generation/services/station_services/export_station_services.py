@@ -24,19 +24,42 @@ from app.generation.services.station_services.groupped_services import (
 from app.generation.services.station_services.filters_services import (
         get_stations_all
 )
-from app.generation.services.station_services.help_services import (
+from app.common.services.get_services.years.years_get_services import (
     get_current_year,
-    get_station_types,
-    get_tes_types,
-    get_tes_machine_types,
-    get_fuel_types,
-    get_energy_units,
-    get_energy_system_types,
-    get_union_energy_systems,
-    get_regional_energy_systems,
-    get_regional_districts,
-    get_federal_districts,
-    get_year_features,
+    get_year_feature_dict,
+)
+from app.common.services.get_services.fuels.fuel_type_get_services import (
+    get_fuel_type_list_full,
+)
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_list_full,
+)
+from app.common.services.get_services.energy_systems.energy_unit_get_services import (
+    get_energy_unit_list_full,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_list_full,
+)
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_list_full,
+)
+from app.common.services.get_services.territories.regional_district_get_services import (
+    get_regional_district_list_full,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list_full,
+)
+from app.common.services.get_services.stations.station_type_get_services import (
+    get_station_type_list_full,
+)
+from app.common.services.get_services.stations.tes_type_get_services import (
+    get_tes_type_list_full,
+)
+from app.common.services.get_services.stations.tes_machine_type_get_services import (
+    get_tes_machine_type_list_full,
+)
+from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
+    get_pgu_tes_machine_type_list_full,
 )
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_energy_units import (
     aggregate_power_by_energy_units,
@@ -133,25 +156,25 @@ def attach_all_aggregates(data, rows):
     data["aggregate_total_energy_system_types_by_tes_machine_types"] = aggregate_total_energy_system_types_by_tes_machine_types(rows)
     data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"] = aggregate_total_energy_system_types_by_tes_machine_types_with_fuel(rows)
 
-    station_type_names = get_station_types()
+    station_type_names = get_station_type_list_full()
     data["station_type_name"] = {
         st.id: st.name
         for st in station_type_names
     }
 
-    tes_type_names = get_tes_types()
+    tes_type_names = get_tes_type_list_full()
     data["tes_type_name"] = {
         tt.id: tt.name
         for tt in tes_type_names
     }
 
-    tes_machine_type_names = get_tes_machine_types()
+    tes_machine_type_names = get_tes_machine_type_list_full()
     data["tes_machine_type_name"] = {
         tmt.id: tmt.name
         for tmt in tes_machine_type_names
     }
 
-    fuel_type_names = get_fuel_types()
+    fuel_type_names = get_fuel_type_list_full()
     data["fuel_type_name"] = {
         ft.id: ft.name
         for ft in fuel_type_names
@@ -996,7 +1019,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 start_col = 0
                 end_col = len(df.columns) - 5  # Последний столбец
 
-                # Найти индекс строки, где находится региональная энергосистема (первое её появление в data)
+                # Найти индекс строки, где находится региональная энергосистема (первое ее появление в data)
                 regional_row_idx = next(
                     (i for i, row in enumerate(data) if row["Электростанция"] == region_label),
                     None
@@ -1071,7 +1094,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
             log_to_db(user, error_message)
             print(error_message)
 
-    log_to_db(user, "Экспорт завершён", f"Обработано {processed_stations} из {total_stations} станций.")
+    log_to_db(user, "Экспорт завершен", f"Обработано {processed_stations} из {total_stations} станций.")
 
     return output_files[0] if len(output_files) == 1 else output_files
 

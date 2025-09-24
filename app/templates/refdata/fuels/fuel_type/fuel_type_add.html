@@ -11,11 +11,11 @@
         {{ form.hidden_tag() }}
 
         <!-- Скрытые поля возврата -->
-        <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'id') }}">
-        <input type="hidden" name="sort_dir" value="{{ request.args.get('sort_dir', 'asc') }}">
-        <input type="hidden" name="fuel_type_filter" value="{{ request.args.get('fuel_type_filter', '') }}">
-        <input type="hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-        <input type="hidden" name="page" value="{{ request.args.get('page', 1) }}">
+        <input type="hidden" name="page"                value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"            value="{{ per_page }}">
+        <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+        <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
 
         <div class="mb-3">
             <label for="name" class="form-label">Вид топлива</label>
@@ -28,11 +28,15 @@
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Добавить</button>
             <a href="{{ url_for('refdata_bp.fuel_type_list',
-                                 sort_by=request.args.get('sort_by', 'id'),
-                                 sort_dir=request.args.get('sort_dir', 'asc'),
-                                 fuel_type_filter=request.args.get('fuel_type_filter', ''),
-                                 per_page=request.args.get('per_page', 10),
-                                 page=request.args.get('page', 1)) }}" class="btn btn-secondary" type="button">Отмена</a>
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                fuel_type_filter=fuel_type_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>
         </div>
       </form>
   </div>

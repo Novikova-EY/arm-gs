@@ -16,10 +16,8 @@ from app.refdata.forms.territories.federal_district_forms import (
 )
 
 # Сервисы
-from app.common.services.get_services.territories.federal_district_get_services import (
-    get_total_federal_district_records,
-)
 from app.refdata.services.territories.federal_district_services import (
+    federal_district_query,
     get_federal_district_list, 
     update_federal_district_service, 
     add_federal_district_service, 
@@ -45,7 +43,7 @@ def federal_district_list():
 
     # Получение параметров запроса
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
     federal_district_filter = request.args.get("federal_district_filter", "").strip()
     sort_by = request.args.get("sort_by", "id")
     sort_dir = request.args.get("sort_dir", "asc")
@@ -53,7 +51,7 @@ def federal_district_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 10, type=int)
+        per_page = request.form.get("per_page", 20, type=int)
         sort_by = request.form.get("sort_by", "id")
         sort_dir = request.form.get("sort_dir", "asc")
         federal_district_filter = request.form.get("federal_district_filter", "").strip()
@@ -103,7 +101,7 @@ def federal_district_list():
                         raise ValueError(f"Пустое имя для ID: {federal_district_id}")
 
                     federal_district_data.append({
-                        "id": int(federal_district_id) if federal_district_id else None,
+                        "federal_district_id": int(federal_district_id) if federal_district_id else None,
                         "name": federal_district_name.strip(),
                         "name_full": federal_district_full_name.strip(),
                         "name_abr": federal_district_abr_name.strip(),
@@ -111,7 +109,7 @@ def federal_district_list():
                 except ValueError as e:
                     raise ValueError(
                         f"Ошибка обработки данных: "
-                        f"id={federal_district_id}, "
+                        f"federal_district_id={federal_district_id}, "
                         f"name={federal_district_name}, "
                         f"name_full={federal_district_full_name}, "
                         f"name_abr={federal_district_abr_name}. "
@@ -119,7 +117,7 @@ def federal_district_list():
                     )
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in federal_district_data if record["id"] is not None]
+            ids = [record["federal_district_id"] for record in federal_district_data if record["federal_district_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
            
             if duplicates:
@@ -167,7 +165,7 @@ def federal_district_list():
 
 @refdata_bp.route("/add_federal_district", methods=["GET", "POST"])
 @login_required
-def add_federal_district_routes():
+def add_federal_district():
     """ Маршрут для добавления нового федерального округа. """
 
     user = session.get('username', 'Неизвестный пользователь')
@@ -177,14 +175,24 @@ def add_federal_district_routes():
     form = AddFederalDistrictForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    federal_district_filter = request.args.get("federal_district_filter", "").strip()
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    federal_district_filter     = request.args.get("federal_district_filter", "").strip()
 
     # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/territories/federal_district/federal_district_add.html",
+                form=form
+            )
+        
         try:
             payload = [{
                 "name": form.name.data,
@@ -193,41 +201,50 @@ def add_federal_district_routes():
             }]
         
             # Добавление новой записи через сервис
-            add_federal_district_service(payload, user)
+            add_federal_district_service(payload, user)            
+            log_to_db(user, "Добавление нового федерального округа", 
+                    (
+                        f"Наименование: {form.name.data}, "
+                        f"Полное наименование: {form.name_full.data}, "
+                        f"Сокращенное наименование: {form.name_abr.data}, "
+                    )
+            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_federal_district_records(federal_district_filter)
+            total_records = federal_district_query(
+                                federal_district_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
-            # Если текущая страница больше последней, корректируем её
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
                 "refdata_bp.federal_district_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 federal_district_filter=federal_district_filter,
-                per_page=per_page,
-                page=last_page,
             ))
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
         except Exception as e:
+            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления федерального округа", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления нового федерального округа", str(e))
 
     # Рендеринг формы
     return render_template(
         "refdata/territories/federal_district/federal_district_add.html", 
-        form=form,
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form,
         federal_district_filter=federal_district_filter, 
-        per_page=per_page, 
-        page=page
     )
 
 
@@ -264,22 +281,31 @@ def import_federal_district():
 
 
 @refdata_bp.route("/export_federal_district", methods=["GET"])
-def export_federal_districts():
-    """Маршрут для экспорта данных в Excel."""
+def export_federal_district():
+    """ Маршрут для экспорта федеральных округов в Excel. """
+
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка федеральных округов в Excel")
     
-    federal_district_filter     = request.args.get("federal_district_filter", "").strip()
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
+    federal_district_filter     = request.args.get("federal_district_filter", "").strip()
 
     try:
         # Получение данных для экспорта
         excel_data = export_federal_district_service(
-            user=user, 
-            federal_district_filter=federal_district_filter, 
-            sort_by=sort_by, 
-            sort_dir=sort_dir)
-
+                user=user, 
+                sort_by=sort_by, 
+                sort_dir=sort_dir,
+                federal_district_filter=federal_district_filter, 
+        )
+        log_to_db(user, "Экспорт завершен", 
+                (
+                    f"Фильтр: {federal_district_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
+        )
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:
             flash("Нет данных для экспорта.", "warning")

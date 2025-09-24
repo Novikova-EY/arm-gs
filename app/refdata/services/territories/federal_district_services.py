@@ -30,7 +30,7 @@ def federal_district_query(
     sort_by="id",
     sort_dir="asc",
 ):
-    """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
+    """ Базовый запрос для выборки списка федеральных округов с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id","name","name_full","name_abr"}
@@ -110,20 +110,20 @@ def update_federal_district_service(data, user):
     """Обновление данных по федеральным округам."""
 
     if not isinstance(data, list) or not data:
-        raise ValueError("Данные должны быть предоставлены в виде непустого списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде непустого списка словарей.")
 
     updated_ids = []
 
     # Итерация по входным данным (валидация/применение)
     with db.session.no_autoflush:
         for record in data:
-            federal_district_id = record.get("id")
+            federal_district_id = record.get("federal_district_id")
             name = record.get("name", "").strip()
             name_full = record.get("name_full", "").strip()
             name_abr = record.get("name_abr", "").strip()
 
             if not name:
-                raise ValueError("Поле 'name' обязательно для заполнения.")
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
             
             obj = db.session.get(FederalDistrict, federal_district_id)
             if not obj:
@@ -173,7 +173,7 @@ def update_federal_district_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения федерального округа (уникальность/целостность)", str(e))
-        raise ValueError("Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Неизвестная ошибка при сохранении федеральных округов", str(e))
@@ -185,7 +185,7 @@ def add_federal_district_service(data, user):
     """Создание новой записи: федеральный округ"""
 
     if not isinstance(data, list):
-        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
     
     try:
         with db.session.no_autoflush:
@@ -198,7 +198,7 @@ def add_federal_district_service(data, user):
                 # Проверка на наличие необходимых данных
                 if not name or not name_full or not name_abr:
                     log_to_db(user, "Ошибка валидации", f"Запись: {record}")
-                    raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'name_abr'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'name_abr'. Данные: {record}")
 
                 # Проверяем уникальность name
                 dup = (FederalDistrict.query
@@ -247,7 +247,7 @@ def add_federal_district_service(data, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError("Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        raise ValueError(f"Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка сохранения нового федерального округа", str(e))
@@ -259,7 +259,7 @@ def delete_federal_district_service(ids, user):
     """Удаляет записи федеральных округов по переданным ID."""
     
     if not isinstance(ids, (list, tuple)) or not ids:
-        raise ValueError("Не переданы ID для удаления.")
+        raise ValueError(f"Не переданы ID для удаления.")
 
     log_to_db(user, "Удаление федеральных округов", 
               f"Переданы ID для удаления: {ids}")
@@ -315,7 +315,7 @@ def delete_federal_district_service(ids, user):
     except Exception as e:
         db.session.rollback()
         log_to_db(user, "Ошибка удаления федеральных округов", str(e))
-        raise ValueError("Ошибка при удалении данных.")
+        raise ValueError(f"Ошибка при удалении данных.")
 
 
 @no_autoflush
@@ -328,13 +328,13 @@ def import_federal_district_service(file, user):
         # Проверка наличия обязательных столбцов
         required_columns = {'name', 'name_full', 'name_abr'}
         if not required_columns.issubset(data.columns):
-            raise ValueError("Неверный формат файла. Отсутствуют необходимые столбцы: 'name', 'name_full', 'name_abr'.")
+            raise ValueError(f"Неверный формат файла. Отсутствуют необходимые столбцы: 'name', 'name_full', 'name_abr'.")
 
         # Очистка данных (удаление пустых строк)
         data = data.dropna(subset=['name', 'name_full', 'name_abr'])
 
         if data.empty:
-            raise ValueError("Файл не содержит данных для обновления.")
+            raise ValueError(f"Файл не содержит данных для обновления.")
 
         # Счетчики для статистики
         updated_count = 0
@@ -379,7 +379,7 @@ def import_federal_district_service(file, user):
 
         # Если нет изменений, данных для обновления нет
         if updated_count == 0 and added_count == 0 and deleted_count == 0:
-            raise ValueError("Данные для обновления отсутствуют.")
+            raise ValueError(f"Данные для обновления отсутствуют.")
 
         # Сохранение изменений в базе данных
         db.session.commit()
@@ -387,7 +387,7 @@ def import_federal_district_service(file, user):
         # Логирование результата
         log_to_db(
             user,
-            "Импорт завершён",
+            "Импорт завершен",
             f"Обновлено записей: {updated_count}, добавлено новых: {added_count}, удалено лишних: {deleted_count}"
         )
         return {
@@ -398,7 +398,7 @@ def import_federal_district_service(file, user):
     except IntegrityError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка импорта данных (IntegrityError)", str(e))
-        raise ValueError("Ошибка целостности данных при импорте. Проверьте уникальность записей.")
+        raise ValueError(f"Ошибка целостности данных при импорте. Проверьте уникальность записей.")
     except ValueError as e:
         db.session.rollback()
         log_to_db(user, "Ошибка импорта данных (ValueError)", str(e))

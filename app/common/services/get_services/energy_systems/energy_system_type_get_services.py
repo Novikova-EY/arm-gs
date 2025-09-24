@@ -1,25 +1,40 @@
 """Сервисный get-модуль для EnergySystemType."""
 
-from sqlalchemy import text, or_
-from sqlalchemy.orm import joinedload
+from app.extensions import db
 from typing import Union, List
+from functools import lru_cache
 
 # Модели
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 
 
+@lru_cache(maxsize=1)
 def get_energy_system_type_list_full():
     """Получает полный список типов энергосистем."""
-    return EnergySystemType.query.all()
+    return (
+        EnergySystemType.query
+        .order_by(EnergySystemType.name.asc())
+        .all()
+    )
 
-
+@lru_cache(maxsize=1)
 def get_energy_system_type_list():
     """Получает список типов энергосистем (кроме "не указано")."""
     query = (
         EnergySystemType.query
         .filter(EnergySystemType.id.isnot(None), EnergySystemType.id > 0)
+        .order_by(EnergySystemType.name.asc())
     )
     return query
+
+
+@lru_cache(maxsize=1)
+def get_energy_system_type_map():
+    """Возвращает отображение {id: name} для всех типов энергосистем."""
+    rows = db.session.query(EnergySystemType.id, EnergySystemType.name) \
+                    .order_by(EnergySystemType.id).all()
+    energy_system_type_names = {id_: name for id_, name in rows}
+    return energy_system_type_names
 
 
 def get_energy_system_type_name(energy_system_type_ids: Union[str, int, List[int]]) -> str:
@@ -48,3 +63,5 @@ def get_energy_system_type_name(energy_system_type_ids: Union[str, int, List[int
     # Возвращаем строку в порядке входных ID
     result = [id_to_name.get(i, f"ID={i}") for i in ids]
     return ", ".join(result)
+
+

@@ -11,7 +11,7 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
-# ---- Достаём engine из Flask-Migrate / Flask-SQLAlchemy ----
+# ---- Достаем engine из Flask-Migrate / Flask-SQLAlchemy ----
 def get_engine():
     try:
         # Flask-SQLAlchemy < 3
@@ -29,7 +29,7 @@ def get_engine_url():
 # Alembic будет брать URL из текущего приложения
 config.set_main_option("sqlalchemy.url", get_engine_url())
 
-# Flask-Migrate даёт нам объект db
+# Flask-Migrate дает нам объект db
 target_db = current_app.extensions["migrate"].db
 
 # ---- Импортируем модели, чтобы заполнить metadata всеми таблицами ----
@@ -85,7 +85,7 @@ def import_all_models():
 import_all_models()
 
 # ---- Собираем target_metadata ----
-# Обычно у Flask-SQLAlchemy единая metadata (db.metadata) — её достаточно.
+# Обычно у Flask-SQLAlchemy единая metadata (db.metadata) — ее достаточно.
 # Alembic умеет принимать список MetaData, но в типовой схеме нужен один объект.
 target_metadata = target_db.metadata
 
@@ -98,6 +98,17 @@ def process_revision_directives(context, revision, directives):
             directives[:] = []
             logger.info("No changes in schema detected.")
 
+# ---- Фильтр объектов: не удалять то, чего нет в metadata, и игнорировать alembic_version ----
+def include_object(object, name, type_, reflected, compare_to):
+    # не трогаем таблицу версий Alembic
+    if type_ == "table" and name == "alembic_version":
+        return False
+    # объект есть в БД (reflected=True), но отсутствует в metadata (compare_to is None)
+    # => это что-то не импортировали в модели; не генерим DROP
+    if reflected and compare_to is None:
+        return False
+    return True
+
 # ---- Offline ----
 def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
@@ -105,9 +116,12 @@ def run_migrations_offline():
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        include_schemas=True,           # ключ: учитываем все схемы, не только public
+        include_schemas=True,
         compare_type=True,
         compare_server_default=True,
+        include_object=include_object,
+        version_table='alembic_version',
+        version_table_schema='auth',
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -122,8 +136,10 @@ def run_migrations_online():
             include_schemas=True,        # ключ: учитываем все схемы
             compare_type=True,           # сравниваем типы колонок
             compare_server_default=True, # сравниваем server_default (func.now() и т.п.)
+            include_object=include_object,
             process_revision_directives=process_revision_directives,
-            # version_table_schema="public",  # можно явно хранить alembic_version в public
+            version_table='alembic_version',
+            version_table_schema='auth',
         )
         with context.begin_transaction():
             context.run_migrations()
@@ -132,3 +148,24 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+
+from alembic.operations.ops import DropTableOp, DropColumnOp, DropConstraintOp, DropIndexOp
+
+def process_revision_directives(context, revision, directives):
+    """Не генерировать пустые миграции + вычищать DROP-операции при autogenerate."""
+    if getattr(config.cmd_opts, "autogenerate", False) and directives:
+        script = directives[0]
+
+        # 1) убрать дропы из upgrade_ops
+        keep_ops = []
+        for op in script.upgrade_ops.ops:
+            if isinstance(op, (DropTableOp, DropColumnOp, DropConstraintOp, DropIndexOp)):
+                # пропускаем разрушительные операции
+                continue
+            keep_ops.append(op)
+        script.upgrade_ops.ops = keep_ops
+
+        # 2) удалить пустые миграции
+        if script.upgrade_ops.is_empty():
+            directives[:] = []
+            logger.info("No changes in schema detected.")

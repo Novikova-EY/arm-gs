@@ -722,7 +722,7 @@
             const roundingDigits = $('#rounding_digits').val();
 
             $('.power-column').each(function() {
-                const original = $(this).attr('data-original-value'); // Берём сохранённое значение
+                const original = $(this).attr('data-original-value'); // Берем сохраненное значение
                 const newText = roundValue(original, roundingDigits);
                 $(this).text(newText);
             });

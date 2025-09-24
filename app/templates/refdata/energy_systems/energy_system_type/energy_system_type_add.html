@@ -16,7 +16,7 @@
 
   <h1 class="text-center mb-4">Добавить тип энергосистемы</h1>
 
-  <form method="POST" action="{{ url_for('refdata_bp.add_energy_system_type_routes',
+  <form method="POST" action="{{ url_for('refdata_bp.add_energy_system_type',
                                          sort_by=request.args.get('sort_by', 'id'),
                                          sort_dir=request.args.get('sort_dir', 'asc'),
                                          energy_system_type_filter=request.args.get('energy_system_type_filter', ''),
@@ -24,7 +24,7 @@
                                          page=request.args.get('page', 1)) }}">
     {{ form.csrf_token }}
     <div class="mb-3">
-      <label for="name" class="form-label">Наименование типа энергосистемы</label>
+      <label for="name" class="form-label">Наименование части энергосистемы России</label>
       {{ form.name(class="form-control", id="name", maxlength="255") }}
       <div class="form-text">Наименование должно быть уникальным.</div>
     </div>

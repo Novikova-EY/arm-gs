@@ -199,7 +199,7 @@ def add_user():
 @roles_required(["admin"])
 def delete_user(user_id: int):
     """
-    Совместимость для кнопок/скриптов, которые ещё могут вызывать одиночное удаление.
+    Совместимость для кнопок/скриптов, которые еще могут вызывать одиночное удаление.
     В новой версии используется массовое удаление чекбоксами в основной форме.
     """
     q = (request.values.get("q") or "").strip()
@@ -218,7 +218,7 @@ def delete_user(user_id: int):
     try:
         deleted = bulk_delete_users(current_user, [user_id])
         if deleted:
-            flash("Пользователь удалён.", "success")
+            flash("Пользователь удален.", "success")
         else:
             flash("Пользователь не найден.", "warning")
     except Exception as e:

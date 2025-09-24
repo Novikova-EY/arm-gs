@@ -1,4 +1,4 @@
-"""Формы для «Объединённые энергосистемы (ОЭС)»."""
+"""Формы для «Объединенные энергосистемы (ОЭС)»."""
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange

@@ -43,7 +43,7 @@ def gen_company_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 10, type=int)
+    per_page            = request.args.get("per_page", 20, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     gen_company_filter  = request.args.get("gen_company_filter", "").strip()
@@ -51,7 +51,7 @@ def gen_company_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 10, type=int)
+        per_page            = request.form.get("per_page", 20, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         gen_company_filter  = request.form.get("gen_company_filter", "").strip()
@@ -100,8 +100,9 @@ def gen_company_list():
                 })
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in gen_company_data if record["id"] is not None]
+            ids = [record["gen_company_id"] for record in gen_company_data if record["gen_company_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
+
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID генерирующих компаний: {duplicates}")
 
@@ -131,7 +132,7 @@ def gen_company_list():
                               sort_dir)
 
     return render_template(
-        "refdata/gen_company/gen_company.html",
+        "refdata/gen_companies/gen_company.html",
         form=form,
         gen_company_list=pagination.items,
         pagination=pagination,
@@ -145,7 +146,7 @@ def gen_company_list():
 @refdata_bp.route("/add_gen_company", methods=["GET", "POST"])
 @login_required
 def add_gen_company():
-    """Маршрут для добавления новой генерирующей компании."""
+    """ Маршрут для добавления новой генерирующей компании. """
 
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница добавления генерирующей компании")
@@ -154,14 +155,24 @@ def add_gen_company():
     form = AddGenCompanyForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    gen_company_filter = request.args.get("gen_company_filter", "").strip()
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    page                = request.args.get("page", 1, type=int)
+    per_page            = request.args.get("per_page", 20, type=int)
+    sort_by             = request.args.get("sort_by", "id")
+    sort_dir            = request.args.get("sort_dir", "asc")
+    gen_company_filter  = request.args.get("gen_company_filter", "").strip()
 
     # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/gen_companies/gen_company_add.html",
+                form=form
+            )
+
         try:
             payload = [{
                 "name": form.name.data,
@@ -169,41 +180,48 @@ def add_gen_company():
         
             # Добавление новой записи через сервис
             add_gen_company_service(payload, user)
+            log_to_db(user, "Добавление новой генерирующей компании", 
+                    (
+                        f"Наименование: {form.name.data}, "
+                    )
+            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = gen_company_query(gen_company_filter).count
+            total_records = gen_company_query(
+                                gen_company_filter).count()
             last_page = (total_records + per_page - 1) // per_page
 
-            # Если текущая страница больше последней, корректируем её
+            # Корректировка текущей страницы, если она больше последней
             page = min(page, last_page)
 
             return redirect(url_for(
                 "refdata_bp.gen_company_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 gen_company_filter=gen_company_filter,
-                per_page=per_page,
-                page=last_page,
             ))
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
             log_to_db(user, "Ошибка добавления новой генерирующей компании", str(e))
         except Exception as e:
+            # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления генерирующей компании", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления новой генерирующей компании", str(e))
 
     # Рендеринг формы
     return render_template(
-        "refdata/gen_company/gen_company_add.html", 
-        form=form,
+        "refdata/gen_companies/gen_company_add.html", 
+        page=page,
+        per_page=per_page, 
         sort_by=sort_by, 
         sort_dir=sort_dir, 
+        form=form,
         gen_company_filter=gen_company_filter, 
-        per_page=per_page, 
-        page=page
     )
 
 
@@ -246,23 +264,30 @@ def import_gen_company():
 @refdata_bp.route("/export_gen_company", methods=["GET"])
 @login_required
 def export_gen_company():
-    """Маршрут для экспорта данных в Excel."""
+    """Маршрут для экспорта видов топлива в Excel."""
     
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка видов топлива в Excel")
     
-    gen_company_filter     = request.args.get("gen_company_filter", "").strip()
     sort_by                = request.args.get("sort_by", "id")
     sort_dir               = request.args.get("sort_dir", "asc")
+    gen_company_filter     = request.args.get("gen_company_filter", "").strip()
 
     try:
         # Получение данных для экспорта
         excel_data = export_gen_company_service(
-            user=user, 
-            gen_company_filter=gen_company_filter, 
-            sort_by=sort_by, 
-            sort_dir=sort_dir)
-
-        log_to_db(user, "Экспорт списка генерирующих компаний завершён", f"Фильтр: {gen_company_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
+                        user=user, 
+                        sort_by=sort_by, 
+                        sort_dir=sort_dir,
+                        gen_company_filter=gen_company_filter, 
+        )
+        log_to_db(user, "Экспорт завершен", 
+                (
+                    f"Фильтры: {gen_company_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
+        )
 
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:

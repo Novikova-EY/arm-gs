@@ -16,19 +16,18 @@ from app.refdata.forms.territories.regional_district_forms import (
 )
 
 # Сервисы
-from app.common.services.get_services.territories.regional_district_get_services import (
-    get_total_regional_district_records,
-)
 from app.common.services.get_services.territories.federal_district_get_services import (
-    get_federal_district_list,
+    get_federal_district_list_full,
+    get_federal_district_name,
 )
 from app.common.services.get_services.energy_systems.energy_zone_get_services import (
-    get_energy_zone_list,
+    get_energy_zone_list_full,
 )
 from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
-    get_synchronous_area_list,
+    get_synchronous_area_list_full,
 )
 from app.refdata.services.territories.regional_district_services import (
+    regional_district_query,
     get_regional_district_list,
     update_regional_district_service, 
     add_regional_district_service, 
@@ -53,36 +52,36 @@ def regional_district_list():
     form = RegionalDistrictFilterForm()
 
     # Получение параметров запроса
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 10, type=int)
-    region_ids = request.args.getlist("region_ids[]")
-    regional_district_filter = request.args.get("regional_district_filter", "").strip()
-    federal_district_filter = request.args.get("federal_district_filter")
-    energy_zone_filter = request.args.get("energy_zone_filter")
-    synchronous_area_filter = request.args.get("synchronous_area_filter")
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    region_ids                  = request.args.getlist("region_ids[]")
+    regional_district_filter    = request.args.get("regional_district_filter", "").strip()
+    federal_district_filter     = request.args.get("federal_district_filter")
+    energy_zone_filter          = request.args.get("energy_zone_filter")
+    synchronous_area_filter     = request.args.get("synchronous_area_filter")
 
     if request.method == "POST":
         # Обновление параметров из формы
-        page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 10, type=int)
-        sort_by = request.form.get("sort_by", "id")
-        sort_dir = request.form.get("sort_dir", "asc")
-        regional_district_filter = request.form.get("regional_district_filter", "").strip()
-        federal_district_filter = request.form.get("federal_district_filter")
-        energy_zone_filter = request.args.get("energy_zone_filter")
-        synchronous_area_filter = request.args.get("synchronous_area_filter")
+        page                        = request.form.get("page", 1, type=int)
+        per_page                    = request.form.get("per_page", 20, type=int)
+        sort_by                     = request.form.get("sort_by", "id")
+        sort_dir                    = request.form.get("sort_dir", "asc")
+        regional_district_filter    = request.form.get("regional_district_filter", "").strip()
+        federal_district_filter     = request.form.get("federal_district_filter")
+        energy_zone_filter          = request.form.get("energy_zone_filter")
+        synchronous_area_filter     = request.form.get("synchronous_area_filter")
 
         # Получение данных из формы
-        region_ids = request.form.getlist("region_ids[]")
-        regional_district_ids = request.form.getlist("regional_district_ids[]")
-        regional_district_names = request.form.getlist("regional_district_names[]")
-        regional_district_full_names = request.form.getlist("regional_district_full_names[]")
-        regional_district_delete = request.form.getlist("regional_district_delete[]")
-        federal_district_ids = request.form.getlist("federal_districts[]")
-        energy_zone_ids = request.form.getlist("energy_zones[]")
-        synchronous_area_ids = request.form.getlist("synchronous_areas[]")
+        region_ids                      = request.form.getlist("region_ids[]")
+        regional_district_ids           = request.form.getlist("regional_district_ids[]")
+        regional_district_names         = request.form.getlist("regional_district_names[]")
+        regional_district_full_names    = request.form.getlist("regional_district_full_names[]")
+        regional_district_delete        = request.form.getlist("regional_district_delete[]")
+        federal_district_ids            = request.form.getlist("federal_districts[]")
+        energy_zone_ids                 = request.form.getlist("energy_zones[]")
+        synchronous_area_ids            = request.form.getlist("synchronous_areas[]")
 
         # Удаление записей
         if regional_district_delete:
@@ -125,12 +124,12 @@ def regional_district_list():
                 try:
                     regional_district_data.append({
                         "regional_district_id": int(regional_district_id) if regional_district_id else None,
-                        "region_id": int(region_id) if region_id else None,
+                        "region_id": (region_id or "").strip() or None,
                         "name": regional_district_name.strip(),
                         "name_full": regional_district_full_name.strip(),
                         "federal_district_id": int(federal_district_id) if federal_district_id else None,
-                        "energy_zone_id": int(energy_zone_id) if energy_zone_id else None,
-                        "id_synchronous_area": int(synchronous_area_id) if synchronous_area_id else None,
+                        "id_energy_zone": int(energy_zone_id) if energy_zone_id else None,
+                        "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
                     })
                 except ValueError as e:
                     raise ValueError(
@@ -146,7 +145,7 @@ def regional_district_list():
                     )
             
             # Проверка на дублирующиеся IDs
-            ids = [record["id"] for record in regional_district_data if record["id"] is not None]
+            ids = [record["regional_district_id"] for record in regional_district_data if record["regional_district_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
 
             if duplicates:
@@ -173,24 +172,30 @@ def regional_district_list():
                                 sort_dir=sort_dir))
 
     # Получение данных для отображения
-    pagination = get_regional_district_list(page, 
-                              per_page, 
-                              regional_district_filter,
-                              federal_district_filter,
-                              energy_zone_filter,
-                              synchronous_area_filter,
-                              sort_by, 
-                              sort_dir)
+    pagination = get_regional_district_list(
+                                page=page, 
+                                per_page=per_page, 
+                                regional_district_filter=regional_district_filter,
+                                federal_district_filter=federal_district_filter,
+                                energy_zone_filter=energy_zone_filter,
+                                synchronous_area_filter=synchronous_area_filter,
+                                sort_by=sort_by, 
+                                sort_dir=sort_dir,
+                                )
 
     # Подготовка данных для формы
-    federal_districts = get_federal_district_list()
+    federal_districts = get_federal_district_list_full()
     form.federal_district.choices = [(fd.id, fd.name) for fd in federal_districts]
 
-    energy_zones = get_energy_zone_list()
-    form.energy_zone.choices = [(ez.id, ez.number, ez.name) for ez in energy_zones]
+    # Энергозоны — для формы (пары) и для таблицы (тройки)
+    energy_zones = get_energy_zone_list_full()
+    form.energy_zone.choices = [(ez.id, f"{ez.number} ({ez.name})") for ez in energy_zones]
+    energy_zone_list = [(ez.id, ez.number, ez.name) for ez in energy_zones]
 
-    synchronous_areas = get_synchronous_area_list()
-    form.synchronous_area.choices = [(sa.id, sa.name) for sa in synchronous_areas]
+    # Синхронные зоны — обычно (id, name); если у вас есть number — добавьте его
+    synchronous_areas = get_synchronous_area_list_full()
+    form.synchronous_area.choices = [(sa.id, f"{sa.number} ({sa.name})") for sa in synchronous_areas]
+    synchronous_area_list = [(sa.id, sa.number, sa.name) for sa in synchronous_areas]
 
     return render_template(
         "refdata/territories/regional_district/regional_district.html",
@@ -198,8 +203,8 @@ def regional_district_list():
         regional_districts_list=pagination.items,
         pagination=pagination,
         federal_district_list=form.federal_district.choices,
-        energy_zone_list=form.energy_zone.choices,
-        synchronous_area_list=form.synchronous_area.choices,
+        energy_zone_list=energy_zone_list,
+        synchronous_area_list=synchronous_area_list,
         regional_district_filter=regional_district_filter,
         federal_district_filter=federal_district_filter,
         energy_zone_filter=energy_zone_filter,
@@ -222,50 +227,55 @@ def add_regional_district():
     form = AddRegionalDistrictForm()
 
     # Сохранение текущих фильтров и параметров отображения
-    sort_by = request.args.get("sort_by", "id")
-    sort_dir = request.args.get("sort_dir", "asc")
-    regional_district_filter = (request.args.get("regional_district_filter") or "").strip()
-    federal_district_filter = request.args.get("federal_district_filter")
-    energy_zone_filter = request.args.get("energy_zone_filter")
-    synchronous_area_filter = request.args.get("synchronous_area_filter")
-    per_page = int(request.args.get("per_page", 10))
-    page = int(request.args.get("page", 1))
+    page                        = request.args.get("page", 1, type=int)
+    per_page                    = request.args.get("per_page", 20, type=int)
+    sort_by                     = request.args.get("sort_by", "id")
+    sort_dir                    = request.args.get("sort_dir", "asc")
+    regional_district_filter    = request.args.get("regional_district_filter", "").strip()
+    federal_district_filter     = request.args.get("federal_district_filter", "").strip()
+    energy_zone_filter          = request.args.get("energy_zone_filter", "").strip()
+    synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
     
-    # Получение списка федеральных округов
-    try:
-        federal_districts = get_federal_district_list()
-        if not federal_districts:
-            flash("Ошибка: отсутствует список федеральных округов. Добавьте ФО перед созданием записи.", "danger")
-            log_to_db(user, "Ошибка добавления субъекта РФ", "Отсутствуют федеральные округа")
-            return redirect(url_for("refdata_bp.regional_district_list"))
-        form.federal_district.choices = [(t.id, t.name) for t in federal_districts]
-    except Exception as e:
-        current_app.logger.error(f"Ошибка получения списка ФО: {e}")
-        flash("Ошибка при загрузке списка федеральных округов.", "danger")
-        return redirect(url_for("refdata_bp.regional_district_list"))
+    # Подготовка данных для формы
+    federal_district_list = get_federal_district_list_full()
+    form.federal_district.choices = [(t.id, t.name) for t in federal_district_list]
 
     # Обработка формы
-    if request.method == "POST" and form.validate_on_submit():
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Пожалуйста, заполните все обязательные поля.", "danger")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
+            return render_template(
+                "refdata/territories/regional_district/regional_district_add.html",
+                form=form
+            )
+        
         try:
             payload = [{
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
-                "id_federal_district": form.federal_district.data,
+                "federal_district_id": form.federal_district.data,
             }]
 
             # Добавление новой записи через сервис
             add_regional_district_service(payload, user)
+            log_to_db(user, "Добавление новой ОЭС", 
+                    (
+                        f"Наименование: {form.name.data}, "
+                        f"Полное наименование: {form.name_full.data}, "
+                        f"Федеральный округ: {get_federal_district_name(form.federal_district.data)}"
+                    )
+            )
             flash("Новая запись успешно добавлена.", "success")
 
-            log_to_db(user, "Добавление нового субъекта РФ", 
-                      f"Имя: {form.name.data}, Полное имя: {form.name_full.data}, ФО: {form.federal_district.data}")
-
             # Перенаправление на список с сохранением параметров и переходом к новой записи
-            total_records = get_total_regional_district_records(
+            total_records = regional_district_query(
                                 regional_district_filter, 
                                 federal_district_filter, 
                                 energy_zone_filter, 
-                                synchronous_area_filter)
+                                synchronous_area_filter).count()
             last_page = (total_records + per_page - 1) // per_page
             
             # Корректировка текущей страницы, если она больше последней
@@ -273,14 +283,14 @@ def add_regional_district():
 
             return redirect(url_for(
                 "refdata_bp.regional_district_list",
+                page=last_page,
+                per_page=per_page,
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 regional_district_filter=regional_district_filter,
                 federal_district_filter=federal_district_filter,
                 energy_zone_filter=energy_zone_filter,
                 synchronous_area_filter=synchronous_area_filter,
-                per_page=per_page,
-                page=last_page,
             ))
 
         except ValueError as e:
@@ -291,21 +301,21 @@ def add_regional_district():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления субъекта РФ", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления нового субъекта РФ", str(e))
 
     # Рендеринг формы
     return render_template(
         "refdata/territories/regional_district/regional_district_add.html",
-        form=form,
-        federal_district=form.federal_district.choices,
+        page=page,
+        per_page=per_page,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        form=form,
+        federal_district=form.federal_district.choices,
         regional_district_filter=regional_district_filter,
         federal_district_filter=federal_district_filter,
         energy_zone_filter=energy_zone_filter,
         synchronous_area_filter=synchronous_area_filter,
-        per_page=per_page,
-        page=page,
     )
 
 
@@ -322,9 +332,13 @@ def import_regional_district():
         return redirect(url_for("refdata_bp.regional_district_list"))
 
     file = request.files['file']
-    if file.mimetype not in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-        flash("Неверный формат файла.", "danger")
 
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("refdata_bp.regional_district_list"))  # ← добавлен return
 
     if not file.filename.endswith((".xlsx", ".xls")):
         flash("Неверный формат файла.", "danger")
@@ -345,30 +359,36 @@ def import_regional_district():
 @refdata_bp.route("/export_regional_district", methods=["GET"])
 @login_required
 def export_regional_district():
-    """Маршрут для экспорта данных в Excel."""
+    """ Маршрут для экспорта субъектов РФ в Excel. """
 
     user = session.get('username', 'Неизвестный пользователь')
+    log_to_db(user, "Начат экспорт списка субъектов РФ в Excel")
 
-    regional_district_filter = request.args.get("regional_district_filter", "").strip()
-    federal_district_filter  = request.args.get("federal_district_filter")
-    energy_zone_filter       = request.args.get("energy_zone_filter")
-    synchronous_area_filter  = request.args.get("synchronous_area_filter")
     sort_by                  = request.args.get("sort_by", "id")
     sort_dir                 = request.args.get("sort_dir", "asc")
+    regional_district_filter = request.args.get("regional_district_filter", "").strip()
+    federal_district_filter  = request.args.get("federal_district_filter", "").strip()
+    energy_zone_filter       = request.args.get("energy_zone_filter", "").strip()
+    synchronous_area_filter  = request.args.get("synchronous_area_filter", "").strip()
 
     try:
         # Получение данных для экспорта
         excel_data = export_regional_district_service(
-                user=user,
-                regional_district_filter=regional_district_filter,
-                federal_district_filter=federal_district_filter,
-                energy_zone_filter=energy_zone_filter,
-                synchronous_area_filter=synchronous_area_filter,
-                sort_by=sort_by,
-                sort_dir=sort_dir,
+                        user=user,
+                        sort_by=sort_by,
+                        sort_dir=sort_dir,
+                        regional_district_filter=regional_district_filter,
+                        federal_district_filter=federal_district_filter,
+                        energy_zone_filter=energy_zone_filter,
+                        synchronous_area_filter=synchronous_area_filter,
         )
-        log_to_db(user, "Экспорт завершён", f"Фильтр: {regional_district_filter, federal_district_filter, energy_zone_filter, synchronous_area_filter}, Сортировка: {sort_by}, Направление: {sort_dir}")
-
+        log_to_db(user, "Экспорт завершен", 
+                (
+                    f"Фильтры: {regional_district_filter, federal_district_filter, energy_zone_filter, synchronous_area_filter},"
+                    f"Сортировка: {sort_by}, "
+                    f"Направление: {sort_dir}"
+                )
+        )
 
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:
@@ -377,7 +397,6 @@ def export_regional_district():
         
         # Формирование имени файла
         filename = f"regional_district_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        excel_data.seek(0)
 
         # Возврат файла через send_file
         return send_file(

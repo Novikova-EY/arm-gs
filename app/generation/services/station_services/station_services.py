@@ -1,41 +1,82 @@
-
+"""Сервисный модуль: Список электростанций Российской Федерации."""
 
 from app.extensions import db
-from decimal import Decimal
-from app.logs.services.logging_service import log_to_db
-from collections import defaultdict
-from sqlalchemy import and_, func, select, or_, literal
-from collections import defaultdict
+from sqlalchemy import and_
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy.sql import exists
+from decimal import Decimal
+from collections import defaultdict
+
+# Модели
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_power_model import StationPower
+
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+
 from app.refdata.models.fuels.fuel_model import Fuel
+
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
+
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
-from app.generation.services.station_services.help_services import (
+
+# Сервисы
+from app.common.services.get_services.years.years_get_services import (
     get_current_year,
-    get_station_types,
-    get_tes_types,
-    get_tes_machine_types,
-    get_pgu_tes_machine_types,
-    get_fuel_types,
-    get_energy_units,
-    get_energy_system_types,
-    get_union_energy_systems,
-    get_regional_energy_systems,
-    get_regional_districts,
-    get_federal_districts,
-    get_year_features,
-    )
+    get_year_feature_dict,
+)
+from app.common.services.get_services.fuels.fuel_type_get_services import (
+    get_fuel_type_list_full,
+)
+from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+    get_energy_system_type_list_full,
+    get_energy_system_type_map,
+)
+from app.common.services.get_services.energy_systems.energy_unit_get_services import (
+    get_energy_unit_list_full,
+)
+from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+    get_union_energy_system_list_full,
+    get_union_energy_systems_map,
+    get_ues_to_res_ids_map,
+)
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_list_full,
+    get_regional_energy_systems_map,
+)
+from app.common.services.get_services.territories.regional_district_get_services import (
+    get_regional_district_list_full,
+    get_rd_to_fd_id_map,
+)
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list_full,
+    get_fd_to_rd_ids_map,
+)
+from app.common.services.get_services.stations.station_type_get_services import (
+    get_station_type_list_full,
+)
+from app.common.services.get_services.stations.tes_type_get_services import (
+    get_tes_type_list_full,
+)
+from app.common.services.get_services.stations.tes_machine_type_get_services import (
+    get_tes_machine_type_list_full,
+)
+from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
+    get_pgu_tes_machine_type_list_full,
+)
+
+from app.common.services.get_services.stations.station_get_services import (
+    get_station_by_id,
+)
+from app.common.services.get_services.stations.machine_get_services import (
+    get_machine_by_id,
+)
 from app.generation.services.station_services.groupped_services import (
     get_station_hierarchy_aggregates,
     build_hierarchy_structure,
@@ -224,7 +265,7 @@ def get_stations_list(
             )
         )
 
-    # 4. Подсчёт и пагинация
+    # 4. Подсчет и пагинация
     total_count = station_ids_query.count()
 
     if isinstance(per_page, str) and per_page.lower() == "all":
@@ -475,13 +516,13 @@ def get_station_list_data(
     show_p_rasp=False,
     show_all=False,
 ):
-    # 🧹 Очистка служебных полей из filters
+    # Очистка служебных полей из filters
     filters = filters.copy()
     filters.pop("page", None)
     filters.pop("start_year", None)
     filters.pop("end_year", None)
 
-    # ⏱ Настройка параметров пагинации
+    # Настройка параметров пагинации
     if isinstance(per_page, str) and per_page.lower() == "all":
         show_all = True
         per_page_int = None
@@ -492,7 +533,7 @@ def get_station_list_data(
         except (TypeError, ValueError):
             per_page_int = 10
 
-    # 🧩 Загружаем отфильтрованные станции
+    # Загружаем отфильтрованные станции
     station_data = get_stations_list(
         page=page,
         per_page=per_page,
@@ -503,11 +544,11 @@ def get_station_list_data(
     total_count = station_data["total_count"]
     total_pages = 1 if show_all else max(1, (total_count + per_page_int - 1) // per_page_int)
 
-    # ✅ Получаем агрегаты с рассчитанными rowspan
+    # Получаем агрегаты с рассчитанными rowspan
     station_ids = [s.id for s in stations]
     machines, station_totals = fetch_machines_with_rowspans(station_ids, show_p_ogr=show_p_ogr, show_p_rasp=show_p_rasp)
 
-    # 🔗 Привязываем машины обратно к станциям
+    # Привязываем машины обратно к станциям
     station_machines_map = defaultdict(list)
     for m in machines:
         station_machines_map[m.id_station].append(m)
@@ -520,12 +561,12 @@ def get_station_list_data(
         for machine in station.machines:
             assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
 
-    # 📊 Перерасчёт мощностей станции
+    # Перерасчет мощностей станции
     recalculate_station_powers_by_filtered_machines(
         stations, start_year, end_year, rounding_digits
     )
 
-    # 📥 Агрегация по иерархии
+    # Агрегация по иерархии
     hierarchy_data = build_hierarchy_structure(stations, include_names=True)
 
     stations = station_data["stations"]
@@ -602,30 +643,40 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     import time
     start_time = time.time()
 
-    year_features = get_year_features()
-    energy_system_type_list, energy_system_type_names = get_energy_system_types()
-    union_energy_system_list, union_energy_system_names, regional_energy_system_mapping = get_union_energy_systems()
-    regional_energy_system_list, regional_energy_system_names = get_regional_energy_systems()
-    federal_district_list, regional_district_mapping = get_federal_districts()
-    regional_district_list, regional_district_names = get_regional_districts()
-    regional_district_dict = {int(r["id"]): r for r in regional_district_list}
-    
-    energy_units = get_energy_units()
+    year_features = get_year_feature_dict()
+
+    energy_system_type_list = get_energy_system_type_list_full()
+    energy_system_type_names = get_energy_system_type_map()
+
+    union_energy_system_list = get_union_energy_system_list_full()
+    union_energy_system_names = get_union_energy_systems_map()
+    regional_energy_system_mapping = get_ues_to_res_ids_map()
+
+    regional_energy_system_list = get_regional_energy_system_list_full()
+    regional_energy_system_names = get_regional_energy_systems_map()
+
+    federal_district_list = get_federal_district_list_full()
+    regional_district_mapping = get_fd_to_rd_ids_map()
+
+    regional_district_list = get_regional_district_list_full()
+    regional_district_names = get_rd_to_fd_id_map()
+
+    energy_units = get_energy_unit_list_full()
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
     
-    station_type_names = get_station_types()
+    station_type_names = get_station_type_list_full()
     station_type_list = {st.id: st.name for st in station_type_names}
 
-    tes_type_names = get_tes_types()
+    tes_type_names = get_tes_type_list_full()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
-    tes_machine_type_names = get_tes_machine_types()
+    tes_machine_type_names = get_tes_machine_type_list_full()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
-    pgu_tes_machine_type_names = get_pgu_tes_machine_types()
+    pgu_tes_machine_type_names = get_pgu_tes_machine_type_list_full()
     pgu_tes_machine_type_list = {pt.id: pt.name for pt in pgu_tes_machine_type_names}
 
-    fuel_type_names = get_fuel_types()
+    fuel_type_names = get_fuel_type_list_full()
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()
@@ -654,7 +705,6 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "federal_district_list": federal_district_list,
             "regional_district_list": regional_district_list,
             "regional_district_names": regional_district_names,
-            "regional_district_dict": regional_district_dict,
             "regional_district_mapping": regional_district_mapping,
             "station_type_name": station_type_names,
             "station_type_list": station_type_list,
@@ -688,7 +738,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
         return context
     else:
-        # 📦 Генерация агрегатов по уровням
+        # Генерация агрегатов по уровням
         energy_unit_aggregates = build_energy_unit_aggregates(data)
         regional_district_aggregates = build_regional_district_aggregates(data)
         regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
@@ -696,7 +746,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         energy_system_type_aggregates = build_energy_system_type_aggregates(data)
         total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
 
-        # ⏬ Включаем агрегаты по уровням в context
+        # Включаем агрегаты по уровням в context
         context.update(energy_unit_aggregates)
         context.update(regional_district_aggregates)
         context.update(regional_energy_system_aggregates)
@@ -706,25 +756,6 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
         print(f"[⏱] get_station_list_template_context с show_all заняла: {time.time() - start_time:.2f} сек")
         return context
-
-
-def get_station_by_id(station_id):
-    return (
-        db.session.query(Station)
-        .options(joinedload(Station.machines))
-        .filter_by(id=station_id)
-        .first()
-    )
-
-
-def get_machine_by_id(machine_id):
-    machine = (
-        db.session.query(Machine)
-        .filter_by(id=machine_id)
-        .first()
-    )
-    
-    return machine
 
 
 def extract_station_data_from_form(form):
@@ -842,7 +873,7 @@ def recalculate_station_power(station, start_year, end_year):
                 power_by_year[year]["p_ogr"] += Decimal(str(mp.p_ogr or "0"))
                 power_by_year[year]["p_rasp"] += Decimal(str(mp.p_rasp or "0"))
 
-    # Загружаем или создаём StationPower по годам
+    # Загружаем или создаем StationPower по годам
     existing_spowers = {
         sp.year_number: sp
         for sp in StationPower.query.filter_by(id_station=station.id)

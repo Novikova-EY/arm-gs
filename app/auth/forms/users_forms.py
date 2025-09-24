@@ -2,5 +2,5 @@
 from flask_wtf import FlaskForm
 
 class UsersBulkForm(FlaskForm):
-    """Мини-форма только ради CSRF. Поля не описываем — всё остальное читаем из request.form."""
+    """Мини-форма только ради CSRF. Поля не описываем — все остальное читаем из request.form."""
     pass

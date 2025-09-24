@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function loadFiltersScript() {
         if (window.stationFiltersInitialized) return;
         const script = document.createElement("script");
-        script.src = "{{ url_for('static', filename='js/stations/station_filters_first_row.js') }}";
+        script.src = "{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}";
         script.onload = () => {
             if (typeof initializeStationFilters === "function") {
                 initializeStationFilters();
@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 <!-- Скрипт подсвечивания изменяющихся значений -->
-<script src="{{ url_for('static', filename='js/stations/highlight_changes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
 
 <!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
 <script>
@@ -191,7 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Скрипт для поиска по фильтрам в шапке таблицы -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // Найдём все чекбоксы в выпадающих фильтрах
+        // Найдем все чекбоксы в выпадающих фильтрах
         document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
             input.addEventListener('change', updateFilters);
         });

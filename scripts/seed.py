@@ -54,7 +54,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.extensions import db, create_app
 from sqlalchemy.exc import IntegrityError
 
-# Создаём контекст приложения
+# Создаем контекст приложения
 app = create_app()
 with app.app_context():
     def seed_data():
@@ -215,7 +215,7 @@ with app.app_context():
             print(f"{len(energy_system_types)} типов энергосистем добавлено.")
 
             ### 5. Добавляем ОЭС ###
-            print("Добавление объединённых энергосистем (ОЭС)...")
+            print("Добавление объединенных энергосистем (ОЭС)...")
             union_energy_systems = [
                 (1, "ОЭС Востока", "Объединенная энергосистема Востока", 1),
                 (2, "ОЭС Северо-Запада", "Объединенная энергосистема Северо-Запада", 1),
