@@ -75,46 +75,113 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     }
+    
+    // Скрипт для отображения строк с располагаемой мощность и ограничениями мощности
+    $(document).ready(function() {
+        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
+        $('.rowspan-td').each(function() {
+            $(this).data('original-rowspan', $(this).attr('rowspan'));
+        });
+
+        // Сохраняем rowspan для ячеек с названием станции
+        $('.station-rowspan-td').each(function() {
+            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
+            let totalMachines = (originalRowspan - 1) / 3;
+            $(this).data('total-machines', totalMachines);
+        });
+
+        // Функция обновления строк
+        function updateRows() {
+            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
+            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
+
+            // Показываем/скрываем строки p_ogr-row
+            if (showPOgr) {
+                $('.p-ogr-row').show();
+            } else {
+                $('.p-ogr-row').hide();
+            }
+
+            // Показываем/скрываем строки p_rasp-row
+            if (showPRasp) {
+                $('.p-rasp-row').show();
+            } else {
+                $('.p-rasp-row').hide();
+            }
+
+            // Количество отображаемых строк на агрегат (1..3)
+            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+
+            // Обновляем rowspan для ячейки "Всего по станции"
+            $('.total-row-cell').attr('rowspan', aggregatorRows);
+
+            // Меняем rowspan для ячеек агрегатов
+            $('.rowspan-td').each(function() {
+                let original = parseInt($(this).data('original-rowspan'), 10);
+                $(this).attr('rowspan', aggregatorRows);
+            });
+
+            // Меняем rowspan для ячеек с названием станции
+            $('.station-rowspan-td').each(function() {
+                let totalMachines = parseInt($(this).data('total-machines'), 10);
+                let newRowSpan = totalMachines * aggregatorRows + 1;
+                $(this).attr('rowspan', newRowSpan);
+            });
+
+            // Обновляем корректное отображение суммарных мощностей
+            $('.power-column').each(function() {
+                let totalRow = $(this).closest('tr').find('.total-row-cell');
+                if (totalRow.length) {
+                    totalRow.attr('rowspan', aggregatorRows);
+                }
+            });
+
+        }
+
+        // Обновляем строки при загрузке страницы
+        updateRows();
+
+        // Обновляем строки при изменении чекбоксов
+        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
+            updateRows();
+        });
+    });
 
     // === 3. Обработка отображения p_ogr / p_rasp
     function setupMachinePowerRows() {
+        const togglePOgr = document.getElementById("toggleP_Ogr");
+        const togglePRasp = document.getElementById("toggleP_Rasp");
         const form = document.getElementById('stationFilterForm');
-        const togglePOgr = document.getElementById('toggleP_Ogr');
-        const togglePRasp = document.getElementById('toggleP_Rasp');
 
-        function cleanAndSubmit() {
-            // Если чекбокс снят → удаляем его из формы
-            if (!togglePOgr.checked) {
-                togglePOgr.removeAttribute('name');
-            } else {
-                togglePOgr.setAttribute('name', 'show_p_ogr');
-            }
+        function update() {
+            const showPOgr = togglePOgr?.checked || false;
+            const showPRasp = togglePRasp?.checked || false;
 
-            if (!togglePRasp.checked) {
-                togglePRasp.removeAttribute('name');
-            } else {
-                togglePRasp.setAttribute('name', 'show_p_rasp');
-            }
+            // Показ/скрытие всех строк Рогр (и станций, и машин)
+            document.querySelectorAll(".p-ogr-row").forEach(row => {
+                row.style.display = showPOgr ? "" : "none";
+            });
 
-            form.submit();
+            // Показ/скрытие всех строк Ррасп
+            document.querySelectorAll(".p-rasp-row").forEach(row => {
+                row.style.display = showPRasp ? "" : "none";
+            });
         }
 
-        togglePOgr?.addEventListener('change', cleanAndSubmit);
-        togglePRasp?.addEventListener('change', cleanAndSubmit);
-
-        // При первой загрузке — подсветить что нужно
-        const showPOgr = togglePOgr?.checked || false;
-        const showPRasp = togglePRasp?.checked || false;
-
-        document.querySelectorAll(".p-ogr-row").forEach(row => {
-            row.style.display = showPOgr ? "" : "none";
+        // При изменении — автосабмит формы
+        togglePOgr?.addEventListener('change', () => {
+            form.submit();
         });
 
-        document.querySelectorAll(".p-rasp-row").forEach(row => {
-            row.style.display = showPRasp ? "" : "none";
+        togglePRasp?.addEventListener('change', () => {
+            form.submit();
         });
+
+        // Вызываем обновление видимости строк при загрузке (чтобы они скрывались даже без перезагрузки)
+        update();
+
+        window.updateRows = update;
     }
-
 
     // === 4. Переключатель "все станции / постранично"
     function setupPerPageToggle() {
@@ -150,15 +217,15 @@ document.addEventListener("DOMContentLoaded", () => {
     setupCollapseToggle(
         "filtersCollapse",
         "filtersToggleBtn",
-        "/static/js/stations/station_filters_first_row.js",
-        "stationFiltersInitialized",
+        "/static/js/generation/stations/station_filters_first_row.js",
+        "initializeStationFilters",
         window.initialState.hasActiveFilters // ← только для фильтров
     );
 
     setupCollapseToggle(
         "importExportCollapse",
         "importExportToggleBtn",
-        "/static/js/stations/station_second_row.js",
+        "/static/js/generation/stations/station_second_row.js",
         "importExportScriptLoaded",
         false // ← никогда не раскрывать импорт/экспорт автоматически
     );

@@ -13,9 +13,13 @@ def get_energy_system_type_list_full():
     """Получает полный список типов энергосистем."""
     return (
         EnergySystemType.query
-        .order_by(EnergySystemType.name.asc())
+        .order_by(
+            (EnergySystemType.id != 0),
+            EnergySystemType.name.asc()
+        )
         .all()
     )
+
 
 @lru_cache(maxsize=1)
 def get_energy_system_type_list():

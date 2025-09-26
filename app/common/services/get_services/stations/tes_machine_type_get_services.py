@@ -9,6 +9,9 @@ def get_tes_machine_type_list_full():
     """Получает полный список типов агрегатов ТЭС."""
     return (
         TesMachineType.query
-        .order_by(TesMachineType.name.asc())
+        .order_by(
+            (TesMachineType.id != 0),
+            TesMachineType.name.asc()
+        )
         .all()
     )

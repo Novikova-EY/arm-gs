@@ -1,4 +1,4 @@
-from . import station_bp
+from app.generation.routes.stations import station_bp
 from app.extensions import db
 from flask import (
     request, redirect, url_for, flash, session, current_app

@@ -1,4 +1,4 @@
-from . import station_bp
+from app.generation.routes.stations import station_bp
 from config import Config
 from zipfile import ZipFile
 from io import BytesIO
@@ -133,7 +133,7 @@ from io import BytesIO
 import pandas as pd
 from app.logs.services.logging_service import log_to_db
 from app.generation.services.station_services.filters_services import (
-        get_filtered_stations
+        get_filtered_station_ids
 )
 
 def export_station_list_to_excel(user, filters=None):
@@ -142,7 +142,7 @@ def export_station_list_to_excel(user, filters=None):
     log_to_db(user, "Начата выгрузка таблицы электростанций из базы данных")
     log_to_db(user, "Параметры экспорта", f"Фильтры: {filters}")
 
-    query = get_filtered_stations(**filters)
+    query = get_filtered_station_ids(**filters)
     station_list = query.all()
 
     # Собираем уникальные компании для каждой станции

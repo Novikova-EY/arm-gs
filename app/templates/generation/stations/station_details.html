@@ -580,7 +580,7 @@
             // Проверка, выбран ли субъект РФ
             if (!district_id) return;
     
-            fetch(`/stations/get_energy_system_data/${district_id}`)
+            fetch(`/generation/stations/get_energy_system_data/${district_id}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log("Данные с сервера:", data); // Отладка

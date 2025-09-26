@@ -12,7 +12,10 @@ def get_synchronous_area_list_full():
     """Получает полный список синхронных зон."""
     return (
         SynchronousArea.query
-        .order_by(SynchronousArea.id.asc())
+        .order_by(
+            (SynchronousArea.id != 0),
+            SynchronousArea.name.asc()
+        )
         .all()
     )
 

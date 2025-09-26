@@ -12,7 +12,10 @@ def get_energy_area_list_full():
     """Получает полный список энергорайонов."""
     return (
         EnergyArea.query
-        .order_by(EnergyArea.name.asc())
+        .order_by(
+            (EnergyArea.id != 0),
+            EnergyArea.name.asc()
+        )
         .all()
     )
 

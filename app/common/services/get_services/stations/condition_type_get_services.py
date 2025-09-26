@@ -8,6 +8,9 @@ def get_condition_type_list_full():
     """Получает полный список типов состояний."""
     return (
         ConditionType.query
-        .order_by(ConditionType.name.asc())
+        .order_by(
+            (ConditionType.id != 0),
+            ConditionType.name.asc()
+        )
         .all()
     )

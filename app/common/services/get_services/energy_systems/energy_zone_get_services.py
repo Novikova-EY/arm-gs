@@ -12,7 +12,10 @@ def get_energy_zone_list_full():
     """Получает полный список энергозон'."""
     return (
         EnergyZone.query
-        .order_by(EnergyZone.id.asc())
+        .order_by(
+            (EnergyZone.id != 0),
+            EnergyZone.name.asc()
+        )
         .all()
     )
 

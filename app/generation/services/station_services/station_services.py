@@ -47,15 +47,16 @@ from app.common.services.get_services.energy_systems.union_energy_system_get_ser
     get_ues_to_res_ids_map,
 )
 from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
-    get_regional_energy_system_list_full,
+    get_regional_energy_systems_dto_list,
     get_regional_energy_systems_map,
 )
 from app.common.services.get_services.territories.regional_district_get_services import (
-    get_regional_district_list_full,
-    get_rd_to_fd_id_map,
+    get_regional_districts_dto_list,
+    get_regional_districts_map,
 )
 from app.common.services.get_services.territories.federal_district_get_services import (
-    get_federal_district_list_full,
+    get_federal_districts_dto_list,
+    get_federal_districts_map,
     get_fd_to_rd_ids_map,
 )
 from app.common.services.get_services.stations.station_type_get_services import (
@@ -648,18 +649,18 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     energy_system_type_list = get_energy_system_type_list_full()
     energy_system_type_names = get_energy_system_type_map()
 
-    union_energy_system_list = get_union_energy_system_list_full()
-    union_energy_system_names = get_union_energy_systems_map()
+    regional_energy_system_list = get_regional_energy_systems_dto_list()
+    regional_energy_system_names = get_regional_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
 
-    regional_energy_system_list = get_regional_energy_system_list_full()
-    regional_energy_system_names = get_regional_energy_systems_map()
-
-    federal_district_list = get_federal_district_list_full()
+    federal_district_list = get_federal_districts_dto_list()
     regional_district_mapping = get_fd_to_rd_ids_map()
 
-    regional_district_list = get_regional_district_list_full()
-    regional_district_names = get_rd_to_fd_id_map()
+    regional_district_list = get_regional_districts_dto_list()
+    regional_district_names = get_regional_districts_map()
+
+    union_energy_system_list = get_union_energy_system_list_full()
+    union_energy_system_names    = get_union_energy_systems_map()
 
     energy_units = get_energy_unit_list_full()
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
@@ -753,6 +754,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         context.update(union_energy_system_aggregates)
         context.update(energy_system_type_aggregates)
         context.update(total_energy_system_type_aggregates)
+
+
 
         print(f"[⏱] get_station_list_template_context с show_all заняла: {time.time() - start_time:.2f} сек")
         return context

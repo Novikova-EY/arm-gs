@@ -14,7 +14,10 @@ def get_regional_energy_system_list_full():
     """Получает полный список региональных энергосистем."""
     return (
         RegionalEnergySystem.query
-        .order_by(RegionalEnergySystem.name.asc())
+        .order_by(
+            (RegionalEnergySystem.id != 0),
+            RegionalEnergySystem.name.asc()
+        )
         .all()
     )
 

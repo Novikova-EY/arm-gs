@@ -12,7 +12,10 @@ def get_gen_company_list_full():
     """Получает полный список генерирующих компаний'."""
     return (
         GenCompany.query
-        .order_by(GenCompany.name.asc())
+        .order_by(
+            (GenCompany.id != 0),
+            GenCompany.name.asc()
+        )
         .all()
     )
 

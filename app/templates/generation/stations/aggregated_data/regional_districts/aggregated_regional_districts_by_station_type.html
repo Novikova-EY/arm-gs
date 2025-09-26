@@ -58,9 +58,9 @@
             
         {% if station_type_id in [4, 7, 8] %}
                 
-            {#– {% include 'stations/aggregated_data/regional_districts/aggregated_regional_districts_by_station_type_with_fuel.html' %} -#}
+            {#– {% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_by_station_type_with_fuel.html' %} -#}
             
-            {% include 'stations/aggregated_data/regional_districts/aggregated_regional_districts_by_tes_type.html' %}
+            {% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_by_tes_type.html' %}
         
         {% endif %}
                 
@@ -72,4 +72,4 @@
        
 {% endfor %}
         
-{% include 'stations/aggregated_data/regional_districts/aggregated_regional_districts_by_via.html' %}
+{% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_by_via.html' %}

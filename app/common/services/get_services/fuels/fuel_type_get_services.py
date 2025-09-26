@@ -12,7 +12,10 @@ def get_fuel_type_list_full():
     """Получает полный список видов топлива'."""
     return (
         FuelType.query
-        .order_by(FuelType.name.asc())
+        .order_by(
+            (FuelType.id != 0),
+            FuelType.name.asc()
+        )
         .all()
     )
 

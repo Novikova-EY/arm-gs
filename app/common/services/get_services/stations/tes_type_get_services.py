@@ -9,6 +9,9 @@ def get_tes_type_list_full():
     """Получает полный список типов ТЭС."""
     return (
         TesType.query
-        .order_by(TesType.name.asc())
+        .order_by(
+            (TesType.id != 0),
+            TesType.name.asc()
+        )
         .all()
     )

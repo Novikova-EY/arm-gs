@@ -9,6 +9,9 @@ def get_station_type_list_full():
     """Получает полный список типов электростанций'."""
     return (
         StationType.query
-        .order_by(StationType.name.asc())
+        .order_by(
+            (StationType.id != 0),
+            StationType.name.asc()
+        )
         .all()
     )

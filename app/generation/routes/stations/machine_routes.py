@@ -1,5 +1,5 @@
 from config import Config
-from . import station_bp
+from app.generation.routes.stations import station_bp
 from app.extensions import db
 from flask import render_template, request, session, flash, redirect, url_for
 from flask_login import login_required

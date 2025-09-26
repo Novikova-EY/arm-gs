@@ -66,18 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (e.target.matches('input[type="checkbox"]')) {
                     const filterName = e.target.name;
                     const params = new URLSearchParams(window.location.search);
-
-                    // Удаляем все старые значения фильтра
                     params.delete(filterName);
-
-                    // Добавляем все выбранные значения
                     document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
                         params.append(filterName, cb.value);
                     });
-
-                    // Переход на новый URL с фильтрами
-                    const newUrl = window.location.pathname + "?" + params.toString();
-                    window.location.href = newUrl;
+                    window.location.href = window.location.pathname + "?" + params.toString();
                 }
             });
         });
@@ -85,43 +78,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // === 3. Обработка отображения p_ogr / p_rasp
     function setupMachinePowerRows() {
+        const togglePOgr = document.getElementById("toggleP_Ogr");
+        const togglePRasp = document.getElementById("toggleP_Rasp");
         const form = document.getElementById('stationFilterForm');
-        const togglePOgr = document.getElementById('toggleP_Ogr');
-        const togglePRasp = document.getElementById('toggleP_Rasp');
 
-        function cleanAndSubmit() {
-            // Если чекбокс снят → удаляем его из формы
-            if (!togglePOgr.checked) {
-                togglePOgr.removeAttribute('name');
-            } else {
-                togglePOgr.setAttribute('name', 'show_p_ogr');
-            }
+        function update() {
+            const showPOgr = togglePOgr?.checked || false;
+            const showPRasp = togglePRasp?.checked || false;
 
-            if (!togglePRasp.checked) {
-                togglePRasp.removeAttribute('name');
-            } else {
-                togglePRasp.setAttribute('name', 'show_p_rasp');
-            }
+            // Показ/скрытие всех строк Рогр (и станций, и машин)
+            document.querySelectorAll(".p-ogr-row").forEach(row => {
+                row.style.display = showPOgr ? "" : "none";
+            });
 
-            form.submit();
+            // Показ/скрытие всех строк Ррасп
+            document.querySelectorAll(".p-rasp-row").forEach(row => {
+                row.style.display = showPRasp ? "" : "none";
+            });
         }
 
-        togglePOgr?.addEventListener('change', cleanAndSubmit);
-        togglePRasp?.addEventListener('change', cleanAndSubmit);
-
-        // При первой загрузке — подсветить что нужно
-        const showPOgr = togglePOgr?.checked || false;
-        const showPRasp = togglePRasp?.checked || false;
-
-        document.querySelectorAll(".p-ogr-row").forEach(row => {
-            row.style.display = showPOgr ? "" : "none";
+        // При изменении — автосабмит формы
+        togglePOgr?.addEventListener('change', () => {
+            form.submit();
         });
 
-        document.querySelectorAll(".p-rasp-row").forEach(row => {
-            row.style.display = showPRasp ? "" : "none";
+        togglePRasp?.addEventListener('change', () => {
+            form.submit();
         });
+
+        // Вызываем обновление видимости строк при загрузке (чтобы они скрывались даже без перезагрузки)
+        update();
+
+        window.updateRows = update;
     }
-
 
     // === 4. Переключатель "все станции / постранично"
     function setupPerPageToggle() {
@@ -157,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupCollapseToggle(
         "filtersCollapse",
         "filtersToggleBtn",
-        "/static/js/stations/station_filters_first_row.js",
+        "/static/js/generation/stations/station_filters_first_row.js",
         "stationFiltersInitialized",
         window.initialState.hasActiveFilters // ← только для фильтров
     );
@@ -165,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupCollapseToggle(
         "importExportCollapse",
         "importExportToggleBtn",
-        "/static/js/stations/station_second_row.js",
+        "/static/js/generation/stations/station_second_row.js",
         "importExportScriptLoaded",
         false // ← никогда не раскрывать импорт/экспорт автоматически
     );

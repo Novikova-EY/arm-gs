@@ -12,7 +12,10 @@ def get_energy_unit_list_full():
     """Получает полный список энергоузлов."""
     return (
         EnergyUnit.query
-        .order_by(EnergyUnit.name.asc())
+        .order_by(
+            (EnergyUnit.id != 0),
+            EnergyUnit.name.asc()
+        )
         .all()
     )
 

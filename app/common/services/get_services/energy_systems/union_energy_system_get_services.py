@@ -16,7 +16,10 @@ def get_union_energy_system_list_full():
     """Получает полный список ОЭС."""
     return (
         UnionEnergySystem.query
-        .order_by(UnionEnergySystem.name.asc())
+        .order_by(
+            (UnionEnergySystem.id != 0),
+            UnionEnergySystem.name.asc()
+        )
         .all()
     )
 

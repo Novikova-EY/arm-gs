@@ -9,6 +9,9 @@ def get_machine_type_list_full():
     """Получает полный список типов агрегатов электростанций'."""
     return (
         MachineType.query
-        .order_by(MachineType.name.asc())
+        .order_by(
+            (MachineType.id != 0),
+            MachineType.name.asc()
+        )
         .all()
     )

@@ -1,4 +1,4 @@
-from . import station_bp
+from app.generation.routes.stations import station_bp
 from app.extensions import db
 from config import Config
 from decimal import Decimal
@@ -26,18 +26,27 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
     get_energy_system_type_list_full,
+    get_energy_system_type_map,
+)
+from app.common.services.get_services.energy_systems.energy_unit_get_services import (
+    get_energy_unit_list_full,
 )
 from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
     get_union_energy_system_list_full,
+    get_union_energy_systems_map,
+    get_ues_to_res_ids_map,
 )
 from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
     get_regional_energy_system_list_full,
+    get_regional_energy_systems_map,
 )
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
+    get_rd_to_fd_id_map,
 )
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list_full,
+    get_fd_to_rd_ids_map,
 )
 from app.common.services.get_services.stations.station_group_get_services import (
     get_station_group_list_full,
@@ -112,14 +121,24 @@ def station_details(station_id):
     machine_tes_types_map = get_current_machine_tes_types_map()
 
     # Загружаем списки данных из сервисов
-    regional_districts_list, regional_district_names = get_regional_district_list_full()
-    federal_districts, regional_district_mapping = get_federal_district_list_full()
-    regional_energy_systems_list, regional_energy_system_names = get_regional_energy_system_list_full()
-    union_energy_systems, union_energy_system_names, _ = get_union_energy_system_list_full()
-    energy_system_types, energy_system_type_names = get_energy_system_type_list_full()
+    energy_system_type_list = get_energy_system_type_list_full()
+    energy_system_type_names = get_energy_system_type_map()
+
+    union_energy_system_list = get_union_energy_system_list_full()
+    union_energy_system_names = get_union_energy_systems_map()
+    regional_energy_system_mapping = get_ues_to_res_ids_map()
+
+    regional_energy_system_list = get_regional_energy_system_list_full()
+    regional_energy_system_names = get_regional_energy_systems_map()
+
+    federal_district_list = get_federal_district_list_full()
+    regional_district_mapping = get_fd_to_rd_ids_map()
+
+    regional_district_list = get_regional_district_list_full()
+    regional_district_names = get_rd_to_fd_id_map()
 
     # Заполняем список субъектов РФ
-    form.id_regional_district.choices = [(d["id"], d["name"]) for d in regional_districts_list]
+    form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
     form.id_condition_type.choices = [(ct.id, ct.name) for ct in condition_types]
     form.id_station_group.choices = [(ct.id, ct.name) for ct in station_groups]
     form_machines.id_gen_company.choices = [(gc.id, gc.name) for gc in gen_companies]
@@ -235,7 +254,7 @@ def station_details(station_id):
                 # Проверяем субъект РФ
                 if station.id_regional_district != form.id_regional_district.data:
                     old_value = station.regional_district.name if station.regional_district else "не указано"
-                    new_value = next((d["name"] for d in regional_districts_list if d["id"] == form.id_regional_district.data), "не указано")
+                    new_value = next((d["name"] for d in regional_district_list if d["id"] == form.id_regional_district.data), "не указано")
                     changes.append(f"Субъект РФ: {old_value} → {new_value}")
                     station.id_regional_district = form.id_regional_district.data
 
@@ -364,8 +383,8 @@ def station_details(station_id):
         energy_unit_names=energy_unit_names,
         current_year=current_year,
         machine_tes_types_map=machine_tes_types_map,
-        federal_districts=federal_districts,
-        regional_districts_list=regional_districts_list,
-        regional_energy_systems_list=regional_energy_systems_list,
-        union_energy_systems=union_energy_systems,
-        energy_system_types=energy_system_types, )
+        federal_districts=federal_district_list,
+        regional_districts_list=regional_district_list,
+        regional_energy_systems_list=regional_energy_system_list,
+        union_energy_systems=union_energy_system_list,
+        energy_system_types=energy_system_type_list, )

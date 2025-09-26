@@ -35,8 +35,6 @@
                 {% endif %}
             {% endfor %}
 
-            <input type="hidden" id="per_page_hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-
             <!-- Чекбокс Рогр -->
             <input type="checkbox" class="btn-check" id="toggleP_Ogr" name="show_p_ogr" value="1" {% if show_p_ogr %}checked{% endif %}>
             <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center {% if show_p_ogr %}active{% endif %}" style="min-width: 80px;">

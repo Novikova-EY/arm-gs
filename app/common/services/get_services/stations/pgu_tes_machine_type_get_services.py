@@ -9,6 +9,9 @@ def get_pgu_tes_machine_type_list_full():
     """Получает полный список типов агрегатов ТЭС."""
     return (
         PGUTesMachineType.query
-        .order_by(PGUTesMachineType.name.asc())
+        .order_by(
+            (PGUTesMachineType.id != 0),
+            PGUTesMachineType.name.asc()
+        )
         .all()
     )
