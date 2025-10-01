@@ -1,0 +1,348 @@
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+
+{% for machine in station.machines %}
+    {% set machine_powers_by_year = {} %}
+    {% set machine_fuels_by_year = {} %}
+
+    {% for mp in machine.machine_powers %}
+        {% if mp.year and start_year <= mp.year.number <= end_year %}
+            {% set _ = machine_powers_by_year.update({mp.year.number: mp}) %}
+        {% endif %}
+    {% endfor %}
+
+    {% for mf in machine.machine_fuels %}
+        {% if mf.year and start_year <= mf.year.number <= end_year %}
+            {% set _ = machine_fuels_by_year.update({mf.year.number: mf}) %}
+        {% endif %}
+    {% endfor %}
+
+    {% set has_pgu = machine.pgu_machines|length > 0 %}
+
+    {% if not has_pgu %}
+    <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
+        <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
+        <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
+        <td class="rowspan-td" rowspan="3">
+            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                {{ machine.machine_name }}
+            </a>
+        </td>
+        <td class="rowspan-td col-owner" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+            {% if can_edit %}
+                <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
+                    <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
+                    {% for gid, gname in gen_company_choices %}
+                        <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% endif %}>{{ gname }}</option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
+            {% endif %}
+        </td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
+        <td class="rowspan-td col-modernization" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
+        <td class="rowspan-td col-energy-unit-type" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
+        <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
+        <td class="rowspan-td" rowspan="3">
+            {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
+                {{ machine.tes_machine_type.name }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        <td class="rowspan-td col-fuel-type text-center" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+            {% if can_edit %}
+                <input type="text" name="fuel_so_{{ machine.id }}" value="{{ machine.fuel_so or '' }}" placeholder="Введите топливо" class="form-control bg-transparent">
+            {% else %}
+                {% set fuel_text = (machine.fuel_so or '') %}
+                <span>{{ '—' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
+            {% endif %}
+        </td>
+
+        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="text-center power-column">
+            {% set mp = machine_powers_by_year.get(year) %}
+            {% if mp and mp.p_ust and mp.p_ust != 0 %}
+                {{ mp.p_ust | format_decimal }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="fuel-column rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+            {% set mf = machine_fuels_by_year.get(year) %}
+            {% if mf and mf.fuel and mf.fuel.fuel_type %}
+                {% set fid = mf.fuel.fuel_type.id %}
+                {% set fname = mf.fuel.fuel_type.name %}
+                {% if fid != 0 and fid != 100 and (fname|lower != 'не указано') %}
+                    {{ fname }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+
+        <td class="rowspan-td col-note" rowspan="3">
+            {% if can_edit %}
+                <input type="text" name="note_{{ machine.id }}" value="{{ machine.note or '' }}" class="form-control bg-transparent">
+            {% else %}
+                <span>{{ machine.note or '' }}</span>
+            {% endif %}
+        </td>
+
+        <td class="rowspan-td col-delete" rowspan="3">
+            {% if can_edit %}
+                <input type="checkbox" name="machines_delete[]" value="{{ machine.id }}" class="form-check-input">
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr class="text-center p-ogr-row" style="font-size: 1.15rem;">
+        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set mp = machine_powers_by_year.get(year) %}
+            {% if mp and mp.p_ogr and mp.p_ogr != 0 %}
+                {{ mp.p_ogr | format_decimal }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+
+    <tr class="text-center p-rasp-row" style="font-size: 1.15rem;">
+        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+            {% for year in range(start_year, end_year + 1) %}
+            <td class="power-column">
+                {% set mp = machine_powers_by_year.get(year) %}
+                {% if mp and mp.p_rasp and mp.p_rasp != 0 %}
+                    {{ mp.p_rasp | format_decimal }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+    
+    {% else %}
+
+        <!-- Вариант с ПГУ: первая строка агрегата + строки по каждой машине ПГУ -->
+        <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
+            <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
+            <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
+            <td>
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                    {{ machine.machine_name }}
+                </a>
+            </td>
+            <td class="rowspan-td col-owner" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% if can_edit %}
+                    <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
+                        <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
+                        {% for gid, gname in gen_company_choices %}
+                            <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% endif %}>{{ gname }}</option>
+                        {% endfor %}
+                    </select>
+                {% else %}
+                    {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
+                {% endif %}
+            </td>
+            <td>{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
+            <td>{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
+            <td class="col-modernization">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
+            <td class="rowspan-td col-energy-unit-type" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
+            <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
+            <td>
+                {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
+                    {{ machine.tes_machine_type.name }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+            <td class="rowspan-td col-fuel-type text-center" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% if can_edit %}
+                    <input type="text" name="fuel_so_{{ machine.id }}" value="{{ machine.fuel_so or '' }}" placeholder="Введите топливо" class="form-control bg-transparent">
+                {% else %}
+                    {% set fuel_text = (machine.fuel_so or '') %}
+                    <span>{{ '—' if not fuel_text or fuel_text|lower == 'не указано' else fuel_text }}</span>
+                {% endif %}
+            </td>
+
+            <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+            {% for year in range(start_year, end_year + 1) %}
+            <td class="text-center power-column">
+                {% set mp = machine_powers_by_year.get(year) %}
+                {% if mp and mp.p_ust and mp.p_ust != 0 %}
+                    {{ mp.p_ust | format_decimal }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+            {% endfor %}
+
+            {% for year in range(start_year, end_year + 1) %}
+            <td class="fuel-column rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% set mf = machine_fuels_by_year.get(year) %}
+                {% if mf and mf.fuel and mf.fuel.fuel_type %}
+                    {% set fid = mf.fuel.fuel_type.id %}
+                    {% set fname = mf.fuel.fuel_type.name %}
+                    {% if fid != 0 and fid != 100 and (fname|lower != 'не указано') %}
+                        {{ fname }}
+                    {% else %}
+                        &mdash;
+                    {% endif %}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </td>
+            {% endfor %}
+
+            <td class="col-note">
+                {% if can_edit %}
+                    <input type="text" name="note_{{ machine.id }}" value="{{ machine.note or '' }}" class="form-control bg-transparent">
+                {% else %}
+                    <span>{{ machine.note or '' }}</span>
+                {% endif %}
+            </td>
+
+            <td class="rowspan-td col-delete" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% if can_edit %}
+                    <input type="checkbox" name="machines_delete[]" value="{{ machine.id }}" class="form-check-input">
+                {% endif %}
+            </td>
+        </tr>
+
+    {% for pgu in machine.pgu_machines %}
+    <tr class="text-center small text-muted" style="vertical-align: middle; font-size: 1.15rem;">
+        <td>
+            <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=pgu.id, **request.args) }}" class="text-decoration-none">
+                {{ pgu.machine_name }}
+            </a>
+        </td>
+        <td>{{ pgu.date_exploitation or '—' }}</td>
+        <td>{{ pgu.date_decompressing_expected or '—' }}</td>
+        <td>{{ pgu.date_modernization_expected or '—' }}</td>
+        <td> 
+            {% if pgu.pgu_tes_machine_type and pgu.pgu_tes_machine_type.id != 0 %}
+                {{ pgu.pgu_tes_machine_type.name }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+
+        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="text-center power-column">
+            {% set pp = pgu.powers_by_year.get(year) %}
+            {% if pp and pp.p_ust and pp.p_ust != 0 %}
+                {{ pp.p_ust | format_decimal }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+
+        <td>{{ pgu.note or '—' }}</td>
+    </tr>
+    {% endfor %}
+
+    <!-- Дополнительные строки агрегата: p_ogr/p_rasp -->
+
+    <tr class="text-center p-ogr-row" style="font-size: 1.15rem;">
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set mp = machine_powers_by_year.get(year) %}
+            {% if mp and mp.p_ogr and mp.p_ogr != 0 %}
+                {{ mp.p_ogr | format_decimal }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+
+    <tr class="text-center p-rasp-row" style="font-size: 1.15rem;">
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+        {% for year in range(start_year, end_year + 1) %}
+        <td class="power-column">
+            {% set mp = machine_powers_by_year.get(year) %}
+            {% if mp and mp.p_rasp and mp.p_rasp != 0 %}
+                {{ mp.p_rasp | format_decimal }}
+            {% else %}
+                &mdash;
+            {% endif %}
+        </td>
+        {% endfor %}
+    </tr>
+
+    {% endif %}
+{% endfor %}
+
+<!-- Итоги по станции -->
+<tr class="text-center total-power-row" style="vertical-align: middle; font-size: 1.2rem;">
+    <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+        Всего по станции:
+    </td>
+    <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
+    {% for year in range(start_year, end_year + 1) %}
+    <td class="power-column" style="font-weight: bold;">
+        {% set p_ust_value = station.powers_by_year.get(year, {}).get('p_ust', 0) %}
+        {% if p_ust_value and p_ust_value != 0 %}
+            {{ p_ust_value | format_decimal }}
+        {% else %}
+            &mdash;
+        {% endif %}
+    </td>
+    {% endfor %}
+
+    <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} "></td>
+</tr>
+
+<tr class="text-center p-ogr-row" style="font-size: 1.2rem;">
+    <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
+    {% for year in range(start_year, end_year + 1) %}
+    <td class="power-column" style="font-weight: bold;">
+        {% set p_ogr_value = station.powers_by_year.get(year, {}).get('p_ogr', 0) %}
+        {% if p_ogr_value and p_ogr_value != 0 %}
+            {{ p_ogr_value | format_decimal }}
+        {% else %}
+            &mdash;
+        {% endif %}
+    </td>
+    {% endfor %}
+</tr>
+
+<tr class="text-center p-rasp-row" style="font-size: 1.2rem;">
+    <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
+    {% for year in range(start_year, end_year + 1) %}
+    <td class="power-column" style="font-weight: bold;">
+        {% set p_rasp_value = station.powers_by_year.get(year, {}).get('p_rasp', 0) %}
+        {% if p_rasp_value and p_rasp_value != 0 %}
+            {{ p_rasp_value | format_decimal }}
+        {% else %}
+            &mdash;
+        {% endif %}
+    </td>
+    {% endfor %}
+</tr>
+

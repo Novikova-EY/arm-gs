@@ -33,12 +33,34 @@ function initializeStationFilters() {
         initializeSelect2('#regional_district', 'Субъект РФ');
     }, 100);
 
-    const selectedUnionValues = (window.union_energy_system_filter_json ?? []);
-    const selectedFederalValues = (window.federal_district_filter_json ?? []);
-    const regionalEnergySystemsMapping = (window.regional_energy_system_mapping_json ?? {});
-    const allRegionalSystems = (window.regional_energy_system_list_json ?? []);
-    const regionalDistrictsMapping = (window.regional_district_mapping_json ?? {});
-    const allRegionalDistricts = (window.regional_district_list_json ?? []);
+    function parseMaybeJSON(value, fallback) {
+        if (value == null) return fallback;
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try { return JSON.parse(trimmed); } catch (e) { return fallback; }
+            }
+            return fallback;
+        }
+        return value;
+    }
+
+    // Источник данных: JSON-блок на странице, затем фолбэк к глобальным переменным
+    let filtersData = null;
+    const filtersEl = document.getElementById('filters-data');
+    if (filtersEl && filtersEl.textContent) {
+        try { filtersData = JSON.parse(filtersEl.textContent); } catch (e) { filtersData = null; }
+    }
+
+    const selectedUnionValuesRaw = filtersData?.union_energy_system_filter ?? parseMaybeJSON(window.union_energy_system_filter_json, window.union_energy_system_filter_json || []);
+    const selectedFederalValuesRaw = filtersData?.federal_district_filter ?? parseMaybeJSON(window.federal_district_filter_json, window.federal_district_filter_json || []);
+    const regionalEnergySystemsMapping = filtersData?.regional_energy_system_mapping ?? parseMaybeJSON(window.regional_energy_system_mapping_json, {});
+    const allRegionalSystems = filtersData?.regional_energy_system_list ?? parseMaybeJSON(window.regional_energy_system_list_json, []);
+    const regionalDistrictsMapping = filtersData?.regional_district_mapping ?? parseMaybeJSON(window.regional_district_mapping_json, {});
+    const allRegionalDistricts = filtersData?.regional_district_list ?? parseMaybeJSON(window.regional_district_list_json, []);
+
+    const selectedUnionValues = Array.isArray(selectedUnionValuesRaw) ? selectedUnionValuesRaw : [];
+    const selectedFederalValues = Array.isArray(selectedFederalValuesRaw) ? selectedFederalValuesRaw : [];
 
     function updateRegionalEnergySystemOptions(selectedUnionIDs) {
         let options = '<option></option>';

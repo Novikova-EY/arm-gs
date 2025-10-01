@@ -26,11 +26,12 @@ def _to_username(user: Any) -> Optional[str]:
     except Exception:
         return None
 
-def log_to_db(user: Any, action: str, details: Optional[str] = None) -> None:
+def log_to_db(user: Any, action: str, details: Optional[str] = None, entity_type: Optional[str] = None, entity_id: Optional[int] = None) -> None:
     """
     Безопасная запись лога:
     - username приводим к строке
     - details приводим к строке при необходимости
+    - entity_type и entity_id для привязки к конкретным сущностям
     - при ошибке — rollback и тихий выход (не ломаем основной поток)
     """
     try:
@@ -38,7 +39,13 @@ def log_to_db(user: Any, action: str, details: Optional[str] = None) -> None:
         if details is not None and not isinstance(details, str):
             details = str(details)
 
-        rec = Log(username=username, action=action, details=details)
+        rec = Log(
+            username=username, 
+            action=action, 
+            details=details,
+            entity_type=entity_type,
+            entity_id=entity_id
+        )
         db.session.add(rec)
         db.session.commit()
     except Exception:

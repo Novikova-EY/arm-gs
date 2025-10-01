@@ -13,17 +13,31 @@ logs_bp = Blueprint('logs', __name__)
 def view_logs():
     username_filter = request.args.get('username', '').strip()
     action_filter = request.args.get('action', '').strip()
+    details_filter = request.args.get('details', '').strip()
+    entity_type_filter = request.args.get('entity_type', '').strip()
     sort_by = request.args.get('sort_by', 'timestamp')
     sort_dir = request.args.get('sort_dir', 'desc')
     per_page = request.args.get('per_page', 10, type=int)
+    show_page_events = request.args.get('show_page_events', 'false').lower() == 'true'
+    
     if per_page not in [10, 25, 50, 100]:
         per_page = 10
 
     query = Log.query
+    
+    # Исключаем события типа "Открыта страница..." для более чистого отображения
+    # Показываем их только если явно запрошено через параметр show_page_events=true
+    if not show_page_events:
+        query = query.filter(~Log.action.ilike("Открыта страница%"))
+    
     if username_filter:
         query = query.filter(Log.username.ilike(f"%{username_filter}%"))
     if action_filter:
         query = query.filter(Log.action.ilike(f"%{action_filter}%"))
+    if details_filter:
+        query = query.filter(Log.details.ilike(f"%{details_filter}%"))
+    if entity_type_filter:
+        query = query.filter(Log.entity_type.ilike(f"%{entity_type_filter}%"))
 
     if hasattr(Log, sort_by):
         column = getattr(Log, sort_by)
@@ -52,9 +66,12 @@ def view_logs():
         logs=logs,
         username_filter=username_filter,
         action_filter=action_filter,
+        details_filter=details_filter,
+        entity_type_filter=entity_type_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page,
+        show_page_events=show_page_events,
         db_now_utc=db_now_utc, db_now_msk=db_now_msk,
         app_now_utc=app_now_utc, app_now_msk=app_now_msk
     )

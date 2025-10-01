@@ -14,6 +14,7 @@ class MachinePower(db.Model):
     __table_args__ = (
         Index('ix_machine_power_id_machine', 'id_machine'),
         Index('ix_machine_power_year_number', 'year_number'),
+        Index('ix_machine_powers_station_year', 'id_machine', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )
 

@@ -13,21 +13,34 @@
     'per_page',
 ] %}
 {% set allowed_roles = ['generation', 'admin'] %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-end mb-3">
+<div class="container-fluid mt-4 machine-details-page">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Страница "Электростанции"</a>
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
-            Вернуться на страницу "Электростанция"
+            Страница "{{ station.name }}"
         </a>
     </div>
-    
+
     <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
     {% for param in filters %}
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
     {% endfor %}
 
     <div class="container-fluid">
-        <h2 class="mb-4">Информация об агрегате электростанции</h2>
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате электростанции
+                {% if can_edit %}
+                    <span class="edit-indicator ms-3">Режим редактирования</span>
+                {% else %}
+                    <span class="readonly-indicator ms-3">Режим просмотра</span>
+                {% endif %}
+            </h2>
+        </div>
 
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
             <strong>{{ station.name }}</strong>
@@ -41,379 +54,232 @@
             
             <!-- Скрытое поле для ID агрегата -->
             {{ main_form.id_machine }}
-            <div class="container-fluid fs-5">
-                <div class="row">
-                    <!-- Первый блок -->
-                    <div class="col-md-3">
-                        <div class="card mb-4">
-                            <div class="card-body">
-
-                                <!-- Номер/название группы агрегата -->
-                                <div class="mb-3">
-                                    <strong>Номер/название группы агрегата:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.machine_group(class="form-control fs-5") }}
-                                    {% else %}
-                                        {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
-                                    {% endif %}
-                                    {% if main_form.machine_group.errors %}
-                                        <div class="text-danger">
-                                            {% for error in main_form.machine_group.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <!-- Номер агрегата -->
-                                <div class="mb-3">
-                                    <strong>Номер агрегата:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.machine_number(class="form-control fw-bold fs-5") }}
-                                        {% if main_form.machine_number.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.machine_number.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+            <div class="container-fluid">
+                <div class="card mb-3 border-0 shadow-none">
+                    <div class="card-body">
+                        <!-- Четыре столбца, в каждом строки: наименование + значение, выравнивание слева -->
+                        <div class="row">
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Номер/название группы агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.machine_group(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Название агрегата -->
-                                <div class="mb-3">
-                                    <strong>Название агрегата:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.machine_name(class="form-control fw-bold fs-5") }}
-                                        {% if main_form.machine_name.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.machine_name.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Номер агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.machine_number(class="form-control fw-bold") }}
+                                        {% else %}
+                                            {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.machine_name.data if main_form.machine_name.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-                                
-                                <!-- Состояние агрегата станции -->
-                                <div class="mb-3">
-                                    <strong>Состояние агрегата станции:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.id_condition_type(class="form-select fs-5") }}
-                                        {% if main_form.id_condition_type.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_condition_type.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Название агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.machine_name(class="form-control fw-bold") }}
+                                        {% else %}
+                                            {{ main_form.machine_name.data if main_form.machine_name.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ machine.condition_type.name if machine.condition_type else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Организация-собственник агрегата станции -->
-                                <div class="mb-3">
-                                    <strong>Организация-собственник:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.id_gen_company(class="form-select fs-5") }}
-                                        {% if main_form.id_gen_company.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_gen_company.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Состояние агрегата станции:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_condition_type(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.condition_type.name if machine.condition_type else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Организация-собственник:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_gen_company(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.gen_company.name if machine.gen_company else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Второй блок -->
-                    <div class="col-md-3">
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <!-- Энергорайон агрегата станции -->
-                                <div class="mb-3">
-                                    <strong>Энергорайон агрегата станции:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.id_energy_area(class="form-select fs-5") }}
-                                        {% if main_form.id_energy_area.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_energy_area.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_energy_area(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.gen_company.name if machine.gen_company else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-                                
-                                <!-- Тип электростанции -->
-                                <div class="mb-3">
-                                    <strong>Тип электростанции:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.id_station_type(class="form-select fs-5") }}
-                                        {% if main_form.id_station_type.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_station_type.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип технологии:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_equipment_group(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ machine.gen_company.name if machine.gen_company else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                
-                                <!-- Тип агрегата ТЭС -->
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип электростанции:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_station_type(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.gen_company.name if machine.gen_company else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 {% if main_form.id_tes_machine_type.data == 4 %}
-                                    <div class="mb-3">
-                                        <strong>Тип агрегата ТЭС:</strong>
-                                        {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                            {{ main_form.id_tes_machine_type(class="form-select fs-5") }}
-                                            {% if main_form.id_tes_machine_type.errors %}
-                                                <div class="text-danger">
-                                                    {% for error in main_form.id_tes_machine_type.errors %}
-                                                        {{ error }}
-                                                    {% endfor %}
-                                                </div>
-                                            {% endif %}
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_tes_machine_type(class="form-select") }}
                                         {% else %}
                                             {{ machine.tes_machine_type.name if machine.tes_machine_type else '—' }}
                                         {% endif %}
                                     </div>
+                                </div>
                                 {% endif %}
-
-                                <!-- Тип агрегата -->
-                                <div class="mb-3">
-                                    <strong>Тип агрегата:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.id_machine_type(class="form-select fs-5") }}
-                                        {% if main_form.id_machine_type.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.id_machine_type.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.id_machine_type(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.machine_type.name if machine.machine_type else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ machine.machine_type.name if machine.machine_type else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Примечание -->
-                                <div class="mb-3">
-                                    <strong>Примечание:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.note(class="form-control fs-5") }}
-                                        {% if main_form.note.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.note.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Примечание:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.note(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.note.data if main_form.note.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.note.data if main_form.note.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Третий блок -->
-                    <div class="col-md-3">
-                        <div class="card mb-4">
-                            <div class="card-body">
-
-                                <!-- Год ввода в эксплуатацию -->
-                                <div class="mb-3">
-                                    <strong>Год ввода в эксплуатацию:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_exploitation(class="form-control fs-5") }}
-                                        {% if main_form.date_exploitation.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_exploitation.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_exploitation(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата ввода в работу -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата ввода в работу:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_commission_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_commission_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_commission_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_commission_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Ожидаемая дата присоединения -->
-                                <div class="mb-3">
-                                    <strong>Ожидаемая дата присоединения:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_joining_expected(class="form-control fs-5") }}
-                                        {% if main_form.date_joining_expected.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_joining_expected.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемая дата присоединения:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_joining_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата присоединения -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата присоединения:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_joining_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_joining_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_joining_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_joining_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата отсоединения -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата отсоединения:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_detatchment_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_detatchment_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_detatchment_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата отсоединения:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_detatchment_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Четвертый блок -->
-                    <div class="col-md-3">
-                        <div class="card mb-4">
-                            <div class="card-body">
-
-                                <!-- Ожидаемый год вывода из эксплуатации -->
-                                <div class="mb-3">
-                                    <strong>Ожидаемый год вывода из эксплуатации:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_decompressing_expected(class="form-control fs-5") }}
-                                        {% if main_form.date_decompressing_expected.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_decompressing_expected.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_decompressing_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата вывода из эксплуатации -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата вывода из эксплуатации:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_decompressing_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_decompressing_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_decompressing_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_decompressing_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата перемаркировки -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата перемаркировки:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_relabing_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_relabing_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_relabing_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_relabing_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Ожидаемый год модернизации -->
-                                <div class="mb-3">
-                                    <strong>Ожидаемый год модернизации:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_modernization_expected(class="form-control fs-5") }}
-                                        {% if main_form.date_modernization_expected.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_modernization_expected.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_modernization_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
-
-                                <!-- Фактическая дата уточнения -->
-                                <div class="mb-3">
-                                    <strong>Фактическая дата уточнения:</strong>
-                                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
-                                        {{ main_form.date_update_fact(class="form-control fs-5") }}
-                                        {% if main_form.date_update_fact.errors %}
-                                            <div class="text-danger">
-                                                {% for error in main_form.date_update_fact.errors %}
-                                                    {{ error }}
-                                                {% endfor %}
-                                            </div>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_update_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
                                         {% endif %}
-                                    {% else %}
-                                        {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
-                                    {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -505,7 +371,7 @@
                     {% endif %}
 
                 </div>
-                <div class="table-responsive fs-5">
+                <div class="table-responsive">
                     <table class="table table-hover table-striped table-bordered table-responsive">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
@@ -565,8 +431,8 @@
             {% endif %}
 
             <!-- Таблица с агрегатами (Machines) -->
-            <div class="table-responsive fs-5">
-                <table class="table table-hover table-striped table-bordered">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered machines-table">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
                             <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
@@ -591,12 +457,12 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                         <input type="text"
                                             name="{{ p.p_ust.name }}"
                                             value="{{ p.p_ust.data | format_decimal }}"
                                             data-original-value="{{ p.p_ust.data | format_decimal }}"
-                                            class="form-control text-center fs-5">
+                                            class="form-control text-center">
                                     {% else %}
                                         <span>{{ p.p_ust.data | format_decimal if p.p_ust.data else '—' }}</span>
                                     {% endif %}
@@ -610,12 +476,12 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
                                         value="{{ p.p_ogr.data | format_decimal }}"
                                         data-original-value="{{ p.p_ogr.data | format_decimal }}"
-                                        class="form-control text-center fs-5">
+                                        class="form-control text-center">
                                     {% else %}
                                         <span>{{ p.p_ogr.data | format_decimal if p.p_ogr.data else '—' }}</span>
                                     {% endif %}
@@ -629,12 +495,12 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
-                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
                                         value="{{ p.p_rasp.data | format_decimal }}"
                                         data-original-value="{{ p.p_rasp.data | format_decimal }}"
-                                        class="form-control text-center fs-5">
+                                        class="form-control text-center">
                                     {% else %}
                                         <span>{{ p.p_rasp.data | format_decimal if p.p_rasp.data else '—' }}</span>
                                     {% endif %}
@@ -648,8 +514,8 @@
 
             {% if main_form.id_station_type.data == 4 %}
                 <!-- Таблица "Типы ТЭС" -->
-                <div class="table-responsive fs-5">
-                    <table class="table table-hover table-striped table-bordered">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered machines-table">
                         <thead class="table-success">
                             <tr class="text-center fw-bold align-middle">
                                 <th colspan="{{ end_year - start_year + 2 }}">Тип ТЭС</th>
@@ -674,15 +540,15 @@
                                 {% for t in advanced_form.tes_types %}
                                     {{ t.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ t.tes_type(
-                                                class="form-select fuel-column text-center fs-5",
+                                                class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
                                                 **{"data-original-value": t.tes_type.data}
                                             ) }}
                                         {% else %}
                                             {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
-                                            <span>{{ selected_tes_type or '—' }}</span>
+                                            <span>{{ '—' if t.tes_type.data == 0 else (selected_tes_type or '—') }}</span>
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -692,8 +558,8 @@
                 </div>
                 
                 <!-- Таблица "Типы топлива" -->
-                <div class="table-responsive fs-5">
-                    <table class="table table-hover table-striped table-bordered">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered machines-table">
                         <thead class="table-success">
                             <tr class="text-center fw-bold align-middle">
                                 <th colspan="{{ end_year - start_year + 2 }}">Топливо</th>
@@ -718,15 +584,15 @@
                                 {% for f in advanced_form.fuels %}
                                     {{ f.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ f.fuel_type(
-                                                class="form-select fuel-column text-center fs-5",
+                                                class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
                                                 **{"data-original-value": f.fuel_type.data}
                                             ) }}
                                         {% else %}
                                             {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
-                                            <span>{{ selected_fuel_type or '—' }}</span>
+                                            <span>{{ '—' if f.fuel_type.data == 0 else (selected_fuel_type or '—') }}</span>
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -739,20 +605,16 @@
             <!-- Контейнер для кнопок -->
             <div class="d-flex justify-content-end mt-3 gap-3">
                 <!-- Кнопка "Сохранить" -->
-                 {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                    <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
+                 {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
                 
-                <!-- Кнопка "Сбросить" -->
-                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
-                class="btn btn-outline-danger m-2 fs-5">
-                    Сбросить
-                </a>
+                    <!-- Кнопка "Сбросить" -->
+                    <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
+                    class="btn btn-outline-danger fs-5">
+                        Сбросить
+                    </a>
                 {% endif %}
 
-                <!-- Кнопка "Назад" -->
-                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}"class="btn btn-outline-secondary m-2 fs-5">
-                    Назад
-                </a>
             </div>
         </form>     
     </div>  
@@ -768,6 +630,65 @@
 
 <!-- CSS для адаптивной высоты строк -->
 <style>
+    /* Увеличенный шрифт на странице агрегата */
+    .machine-details-page a.mb-3.fs-3.d-inline-block { font-size: 2rem !important; }
+    .machine-details-page .card.mb-3.border-0.shadow-none .card-body { font-size: 1.05rem; }
+    .machine-details-page .card.mb-3.border-0.shadow-none .fw-semibold { font-size: 1.1em; }
+    .machine-details-page table { font-size: 1.05rem; }
+    .machine-details-page thead th { font-size: 1.08rem; }
+
+    /* Крупнее текст значений в верхнем блоке (правые колонки) */
+    .machine-details-page .card.mb-3.border-0.shadow-none .col-7.text-start {
+        font-size: 1.15rem;
+        line-height: 1.4;
+    }
+    .machine-details-page .card.mb-3.border-0.shadow-none .col-7.text-start .form-control,
+    .machine-details-page .card.mb-3.border-0.shadow-none .col-7.text-start .form-select {
+        font-size: 1.15rem;
+        line-height: 1.4;
+    }
+
+    /* Крупнее шрифт во всех ячейках строк таблиц: Мощность, Тип ТЭС, Топливо */
+    .machine-details-page table tbody td { font-size: 1.15rem; }
+    .machine-details-page table tbody td .form-control,
+    .machine-details-page table tbody td .form-select { font-size: 1.15rem; }
+    /* Select2 в таблицах */
+    .machine-details-page table tbody td .select2-container--default .select2-selection--single {
+        font-size: 1.15rem;
+    }
+    .machine-details-page table tbody td .select2-container .select2-selection__rendered {
+        font-size: 1.15rem !important;
+    }
+    .readonly-indicator {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        vertical-align: middle;
+        gap: 0.5rem;
+    }
+    .readonly-indicator::before { content: "👁️"; font-size: 1rem; }
+    .edit-indicator {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        vertical-align: middle;
+        gap: 0.5rem;
+    }
+    .edit-indicator::before { content: "✏️"; font-size: 1rem; }
     /* Фиксированная ширина колонок с равномерным распределением */
     table {
         width: 100%;
@@ -831,8 +752,13 @@
         min-height: 40px !important; /* Достаточная высота для отображения нескольких строк */
     }
 
+    /* Единые горизонтальные отступы у всех таблиц на странице агрегата */
+    /* Отменяем прежнее выравнивание — как на странице станции */
+
 
 </style>
+
+
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -923,6 +849,13 @@ document.addEventListener("DOMContentLoaded", function () {
         $(".p-ogr-row").toggle(showOgr);
         $(".p-rasp-row").toggle(showRasp);
 
+        // Обновляем стили кнопок
+        const $ogrLabel = $('label[for="toggleP_Ogr"]');
+        const $raspLabel = $('label[for="toggleP_Rasp"]');
+        
+        $ogrLabel.toggleClass('btn-primary', showOgr).toggleClass('btn-outline-primary', !showOgr);
+        $raspLabel.toggleClass('btn-primary', showRasp).toggleClass('btn-outline-primary', !showRasp);
+
         const rows = 1 + (showOgr ? 1 : 0) + (showRasp ? 1 : 0);
 
         $(".total-row-cell").attr("rowspan", rows);
@@ -1011,6 +944,127 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+
+<!-- Журнал изменений по агрегату -->
+<h3 class="mb-0 ms-3">Журнал изменений по агрегату</h3>
+<div class="container-fluid mt-3">
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered" id="machine-logs-table">
+                <thead class="table-light">
+                    <tr>
+                        <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
+                        <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
+                        <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
+                        <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
+                        <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if machine_logs and machine_logs|length > 0 %}
+                        {% for log in machine_logs %}
+                            <tr>
+                                <td data-date="{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}">{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}</td>
+                                <td data-time="{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</td>
+                                <td data-user="{{ log.username|lower }}">{{ log.username }}</td>
+                                <td><div data-action="{{ log.action|lower }}">{{ log.action }}</div></td>
+                                <td>{% if log.details %}<div data-details="{{ log.details|lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    <div class="my-3"></div>
+ </div>
+
+<script>
+(function(){
+    const table = document.getElementById('machine-logs-table');
+    if (!table) return;
+    const thead = table.tHead;
+    const tbody = table.tBodies[0];
+    let sortState = { key: 'date', asc: false };
+    function val(node, dataKey){
+        if (!node) return '';
+        return (node.dataset && node.dataset[dataKey]) ? node.dataset[dataKey] : node.textContent.trim().toLowerCase();
+    }
+    function sortBy(key){
+        const rows = Array.from(tbody.rows);
+        rows.sort((r1, r2)=>{
+            let a='', b='';
+            if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
+            else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
+            else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
+            else if (key === 'action'){
+                a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
+                b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
+            } else if (key === 'details'){
+                a = val(r1.cells[4].querySelector('[data-details]')||r1.cells[4], 'details');
+                b = val(r2.cells[4].querySelector('[data-details]')||r2.cells[4], 'details');
+            }
+            if (a<b) return sortState.asc ? -1 : 1;
+            if (a>b) return sortState.asc ? 1 : -1;
+            return 0;
+        });
+        tbody.append(...rows);
+        sortState = { key, asc: !sortState.asc };
+    }
+    thead.addEventListener('click', (e)=>{
+        const th = e.target.closest('th[data-key]');
+        if (!th) return;
+        sortBy(th.dataset.key);
+    });
+    const filterRow = document.createElement('tr');
+    ['date','time','user','action','details'].forEach((key)=>{
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.className = 'form-control form-control-sm';
+        input.placeholder = 'Фильтр';
+        input.addEventListener('input', ()=>{
+            const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
+            for (const tr of tbody.rows){
+                const dDate = val(tr.cells[0], 'date');
+                const dTime = val(tr.cells[1], 'time');
+                const dUser = val(tr.cells[2], 'user');
+                const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
+                const dDetails = val(tr.cells[4].querySelector('[data-details]')||tr.cells[4], 'details');
+                const data = [dDate, dTime, dUser, dAction, dDetails];
+                const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
+                tr.style.display = ok ? '' : 'none';
+            }
+        });
+        td.appendChild(input);
+        filterRow.appendChild(td);
+    });
+    thead.appendChild(filterRow);
+})();
+</script>
+
+<style>
+#machine-logs-table { table-layout: fixed; width: 100%; }
+/* Фиксированные ширины первых трёх колонок */
+#machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) { width: 140px !important; }
+#machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) { width: 120px !important; }
+#machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) { width: 300px !important; }
+/* Последние две — поровну */
+#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) { width: 50% !important; }
+#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(5) { width: 50% !important; }
+#machine-logs-table td:nth-child(4) div, #machine-logs-table td:nth-child(5) div { white-space: pre-wrap; }
+
+/* Переопределяем глобальные ограничения таблиц выше в файле */
+#machine-logs-table th, #machine-logs-table td { max-width: none !important; overflow-wrap: normal; }
+#machine-logs-table td:nth-child(1),
+#machine-logs-table td:nth-child(2),
+#machine-logs-table td:nth-child(3) { white-space: nowrap; }
+</style>
 
 {% endif %}
 {% endblock %}

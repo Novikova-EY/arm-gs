@@ -16,21 +16,36 @@
 
         <!-- Форма фильтрации и выбора количества строк -->
         <form method="get" action="{{ url_for('logs.view_logs') }}" class="row g-3 mb-4 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <input type="text" name="username" class="form-control" placeholder="Фильтр по пользователю" value="{{ request.args.get('username', '') }}">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <input type="text" name="action" class="form-control" placeholder="Фильтр по действию" value="{{ request.args.get('action', '') }}">
             </div>
             <div class="col-md-2">
+                <input type="text" name="details" class="form-control" placeholder="Фильтр по деталям" value="{{ request.args.get('details', '') }}">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="entity_type" class="form-control" placeholder="Тип сущности" value="{{ request.args.get('entity_type', '') }}">
+            </div>
+            <div class="col-md-1">
                 <select name="per_page" class="form-select" onchange="this.form.submit()">
-                    <option value="10" {% if request.args.get('per_page', '10')|int == 10 %}selected{% endif %}>10 записей</option>
-                    <option value="25" {% if request.args.get('per_page', '10')|int == 25 %}selected{% endif %}>25 записей</option>
-                    <option value="50" {% if request.args.get('per_page', '10')|int == 50 %}selected{% endif %}>50 записей</option>
-                    <option value="100" {% if request.args.get('per_page', '10')|int == 100 %}selected{% endif %}>100 записей</option>
+                    <option value="10" {% if request.args.get('per_page', '10')|int == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if request.args.get('per_page', '10')|int == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if request.args.get('per_page', '10')|int == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if request.args.get('per_page', '10')|int == 100 %}selected{% endif %}>100</option>
                 </select>
             </div>
             <div class="col-md-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="show_page_events" value="true" id="show_page_events" 
+                           {% if show_page_events %}checked{% endif %}>
+                    <label class="form-check-label" for="show_page_events" style="font-size: 0.9em;">
+                        Показать события "открыта страница"
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-primary w-100">Применить</button>
             </div>
         </form>
@@ -45,7 +60,12 @@
                             <a href="{{ 
                             url_for('logs.view_logs', 
                             sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10)) }}">
+                            per_page=request.args.get('per_page', 10),
+                            username=request.args.get('username', ''),
+                            action=request.args.get('action', ''),
+                            details=request.args.get('details', ''),
+                            entity_type=request.args.get('entity_type', ''),
+                            show_page_events='true' if show_page_events else 'false') }}">
                                 Время
                             </a>
                         </th>
@@ -54,20 +74,44 @@
                             url_for('logs.view_logs', 
                             sort_by='username', 
                             sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10)) }}">
+                            per_page=request.args.get('per_page', 10),
+                            username=request.args.get('username', ''),
+                            action=request.args.get('action', ''),
+                            details=request.args.get('details', ''),
+                            entity_type=request.args.get('entity_type', ''),
+                            show_page_events='true' if show_page_events else 'false') }}">
                                 Пользователь
                             </a>
                         </th>
-                        <th class="p-3" style="width: 30%;">
+                        <th class="p-3" style="width: 25%;">
                             <a href="{{ 
                             url_for('logs.view_logs', 
                             sort_by='action', 
                             sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10)) }}">
+                            per_page=request.args.get('per_page', 10),
+                            username=request.args.get('username', ''),
+                            action=request.args.get('action', ''),
+                            details=request.args.get('details', ''),
+                            entity_type=request.args.get('entity_type', ''),
+                            show_page_events='true' if show_page_events else 'false') }}">
                                 Действие
                             </a>
                         </th>
-                        <th class="p-3" style="width: 50%;">Детали</th>
+                        <th class="p-3" style="width: 15%;">Сущность</th>
+                        <th class="p-3" style="width: 40%;">
+                            <a href="{{ 
+                            url_for('logs.view_logs', 
+                            sort_by='details', 
+                            sort_dir='asc' if sort_by != 'details' or sort_dir == 'desc' else 'desc', 
+                            per_page=request.args.get('per_page', 10),
+                            username=request.args.get('username', ''),
+                            action=request.args.get('action', ''),
+                            details=request.args.get('details', ''),
+                            entity_type=request.args.get('entity_type', ''),
+                            show_page_events='true' if show_page_events else 'false') }}">
+                                Детали
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,6 +120,13 @@
                             <td class="p-3">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] }}</td>
                             <td class="p-3">{{ log.username }}</td>
                             <td class="p-3">{{ log.action }}</td>
+                            <td class="p-3">
+                                {% if log.entity_type and log.entity_id %}
+                                    <span class="badge bg-info">{{ log.entity_type }} #{{ log.entity_id }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
                             <td class="p-3">{{ log.details }}</td>
                         </tr>
                     {% endfor %}

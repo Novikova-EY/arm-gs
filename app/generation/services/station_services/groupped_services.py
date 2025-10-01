@@ -2,10 +2,12 @@ from app.extensions import db
 from decimal import Decimal
 from sqlalchemy import func
 from collections import defaultdict
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.refdata.models.fuels.fuel_model import Fuel
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
@@ -122,6 +124,10 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
         joinedload(Machine.tes_machine_type),
         joinedload(Machine.machine_station),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
+        selectinload(Machine.machine_powers),
+        selectinload(Machine.machine_fuels)
+            .selectinload(MachineFuel.fuel)
+            .selectinload(Fuel.fuel_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
 
     machine_ids = [m.id for m in machines]
@@ -150,7 +156,7 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
         machine_list.sort(key=lambda m: (
             (m.machine_group or '').lower(),
             (m.fuel_so or '').lower(),
-            int(m.machine_number) if m.machine_number and str(m.machine_number).isdigit() else float('inf')
+            int(m.machine_number) if m.machine_number and str(m.machine_number).strip().isdigit() else float('inf')
         ))
 
         group_dict = defaultdict(list)
@@ -160,19 +166,29 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
 
         for group in group_dict.values():
             group_rowspan = 0
+            group_base_rows = 0  # сумма (1 + num_pgu) по всем машинам группы
             for m in group:
                 num_pgu = len(m.pgu_machines)
                 base_rows = 1 + num_pgu
+                # total_rows = базовые + дополнительные строки отображения
+                total_rows = base_rows
                 if show_p_ogr:
-                    base_rows += 1
+                    total_rows += 1
                 if show_p_rasp:
-                    base_rows += 1
-                m.total_rows = base_rows
-                group_rowspan += base_rows
+                    total_rows += 1
+                m.total_rows = total_rows
+                m.base_rows = base_rows
+                group_rowspan += total_rows
+                group_base_rows += base_rows
 
+            # Передаём метаданные только в первую строку группы
             group[0].group_rowspan = group_rowspan
+            group[0].group_base_rows = group_base_rows
+            group[0].group_machine_count = len(group)
             for m in group[1:]:
                 m.group_rowspan = 0
+                m.group_base_rows = 0
+                m.group_machine_count = 0
 
         fuel_dict = defaultdict(list)
         for m in machine_list:
@@ -181,9 +197,14 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
 
         for group in fuel_dict.values():
             fuel_rowspan = sum(m.total_rows for m in group)
+            fuel_base_rows = sum((1 + len(m.pgu_machines)) for m in group)
             group[0].fuel_rowspan = fuel_rowspan
+            group[0].fuel_base_rows = fuel_base_rows
+            group[0].fuel_machine_count = len(group)
             for m in group[1:]:
                 m.fuel_rowspan = 0
+                m.fuel_base_rows = 0
+                m.fuel_machine_count = 0
 
         # station total rows = sum total_rows of all machines + header row (1)
         station_total_rows = sum(m.total_rows for m in machine_list) + 1

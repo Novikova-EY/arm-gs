@@ -24,5 +24,9 @@ class Log(db.Model):
     action = db.Column(db.String(500), nullable=False, index=True)
     details = db.Column(db.Text, nullable=True)
 
+    # Привязка к сущности (например, entity_type='station', entity_id=123)
+    entity_type = db.Column(db.String(50), nullable=True, index=True)
+    entity_id = db.Column(db.Integer, nullable=True, index=True)
+
     def __repr__(self) -> str:
         return f"<Log id={self.id} ts={self.timestamp} user={self.username!r} action={self.action!r}>"

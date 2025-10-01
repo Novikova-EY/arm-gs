@@ -6,7 +6,7 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Главная страница</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -216,7 +216,7 @@
                         Тип <br> мощ-ти
                     </th>
 
-                    <!-- Столбцы для годов с start_year по end_year + 1 -->
+                    <!-- Столбцы для годов с start_year по end_year -->
                     {% for year in range(start_year, end_year + 1) %}
                     <th style="width: 50px; text-align: center;">
                         {{ year }}
@@ -228,8 +228,8 @@
                     </th>
                     {% endfor %}
 
-
-                    <!-- Столбцы для годов с start_year по end_year + 1 -->
+                    
+                    <!-- Столбцы для годов с start_year по end_year -->
                     {% for year in range(start_year, end_year + 1) %}
                     <th style="width: 50px; text-align: center;">
                         {{ year }}
@@ -350,6 +350,18 @@
     {
         "hasActiveFilters": {{ has_active_filters | tojson }}
     }
+</script>
+
+<!-- Данные фильтров (для первой строки) -->
+<script id="filters-data" type="application/json">
+    {{ {
+        'union_energy_system_filter': union_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_energy_system_list': regional_energy_system_list,
+        'regional_district_mapping': regional_district_mapping,
+        'regional_district_list': regional_district_list
+    } | tojson | safe }}
 </script>
 
 <!-- Подключаем jQuery -->

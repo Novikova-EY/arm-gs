@@ -26,42 +26,42 @@
     {% if not has_pgu %}
         <tr class="text-center machine-row" style="vertical-align: middle;">
             {% if machine.group_rowspan > 0 %}
-                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">
+                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}" data-base-rowspan="{{ machine.group_base_rows or 1 }}" data-group-machine-count="{{ machine.group_machine_count or 0 }}">
                     {{ machine.machine_group }}
                 </td>
             {% endif %}
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.machine_number }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                     {{ machine.machine_name }}
                 </a>
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.date_exploitation or '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.date_decompressing_expected or '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.date_modernization_expected or '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.station_type.name if machine.station_type else '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.tes_types or '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
                     {{ machine.tes_machine_type.name }}
                 {% else %}
@@ -69,13 +69,23 @@
                 {% endif %}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" style="font-weight: bold;">
-                {{ machine.primary_fuel_type or '—' }}
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" style="font-weight: bold;" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% set pft = machine.primary_fuel_type %}
+                {% if pft is string %}
+                    {{ '—' if pft|lower == 'не указано' else pft }}
+                {% else %}
+                    {{ pft or '—' }}
+                {% endif %}
             </td>
 
             {% if machine.fuel_rowspan > 0 %}
-                <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}" data-base-rowspan="{{ machine.fuel_base_count }}" data-total-pgu-count="{{ machine.fuel_pgu_count }}">
-                    {{ machine.fuel_so or '—' }}
+                <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}" data-base-rowspan="{{ machine.fuel_base_rows or 1 }}" data-fuel-machine-count="{{ machine.fuel_machine_count or 0 }}">
+                    {% set fuel_text = machine.fuel_so %}
+                    {% if fuel_text is string and fuel_text|lower == 'не указано' %}
+                        &mdash;
+                    {% else %}
+                        {{ fuel_text or '—' }}
+                    {% endif %}
                 </td>
             {% endif %}
 
@@ -83,18 +93,23 @@
 
             {% for year in range(start_year, end_year + 1) %}
                 <td class="text-center power-column">
-                    {{ machine.powers_by_year.get(year, {}).get("p_ust")|default('—')|format_decimal }}
+                    {% set p_ust_value = machine.powers_by_year.get(year, {}).get("p_ust") %}
+                    {% if p_ust_value is none or p_ust_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ust_value | format_decimal }}
+                    {% endif %}
                 </td>
             {% endfor %}
 
             {% for year in range(start_year, end_year + 1) %}
-                <td class="fuel-column rowspan-td" rowspan="{{ machine.total_rows }}">
-                    {% set fuel = machine.machine_fuels|selectattr('year.number', 'equalto', year)|map(attribute='fuel')|first %}
-                    {% if fuel %}
-                        {% if fuel.fuel_type.id == 100 %}
+                <td class="fuel-column rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                    {% set fuel_name = machine.fuel_type_by_year.get(year) %}
+                    {% if fuel_name %}
+                        {% if fuel_name is string and fuel_name|lower == 'не указано' %}
                             &mdash;
                         {% else %}
-                            {{ fuel.fuel_type.name }}
+                            {{ fuel_name }}
                         {% endif %}
                     {% else %}
                         &mdash;
@@ -151,12 +166,12 @@
 
         <tr class="text-center machine-row" style="vertical-align: middle;">
             {% if machine.group_rowspan > 0 %}
-                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">
+                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}" data-base-rowspan="{{ machine.group_base_rows or 1 }}" data-group-machine-count="{{ machine.group_machine_count or 0 }}">
                     {{ machine.machine_group }}
                 </td>
             {% endif %}
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.machine_number }}
             </td>
 
@@ -178,11 +193,11 @@
                 {{ machine.date_modernization_expected or '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.station_type.name if machine.station_type else '—' }}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.tes_types or '—' }}
             </td>
 
@@ -194,13 +209,18 @@
                 {% endif %}
             </td>
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" style="font-weight: bold;">
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" style="font-weight: bold;" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.primary_fuel_type or '—' }}
             </td>
 
             {% if machine.fuel_rowspan > 0 %}
-                <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}">
-                    {{ machine.fuel_so or '—' }}
+                <td class="fuel-cell" rowspan="{{ machine.fuel_rowspan }}" data-base-rowspan="{{ machine.fuel_base_rows or 1 }}" data-fuel-machine-count="{{ machine.fuel_machine_count or 0 }}">
+                    {% set fuel_text = machine.fuel_so %}
+                    {% if fuel_text is string and fuel_text|lower == 'не указано' %}
+                        &mdash;
+                    {% else %}
+                        {{ fuel_text or '—' }}
+                    {% endif %}
                 </td>
             {% endif %}
 
@@ -208,18 +228,23 @@
 
             {% for year in range(start_year, end_year + 1) %}
                 <td class="text-center power-column">
-                    {{ machine.powers_by_year.get(year, {}).get("p_ust")|default('—')|format_decimal }}
+                    {% set p_ust_value = machine.powers_by_year.get(year, {}).get("p_ust") %}
+                    {% if p_ust_value is none or p_ust_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ust_value | format_decimal }}
+                    {% endif %}
                 </td>
             {% endfor %}
 
             {% for year in range(start_year, end_year + 1) %}
-                <td class="fuel-column rowspan-td" rowspan="{{ machine.total_rows }}">
-                    {% set fuel = machine.machine_fuels|selectattr('year.number', 'equalto', year)|map(attribute='fuel')|first %}
-                    {% if fuel %}
-                        {% if fuel.fuel_type.id == 100 %}
+                <td class="fuel-column rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                    {% set fuel_name = machine.fuel_type_by_year.get(year) %}
+                    {% if fuel_name %}
+                        {% if fuel_name is string and fuel_name|lower == 'не указано' %}
                             &mdash;
                         {% else %}
-                            {{ fuel.fuel_type.name }}
+                            {{ fuel_name }}
                         {% endif %}
                     {% else %}
                         &mdash;
@@ -227,7 +252,7 @@
                 </td>
             {% endfor %}
 
-            <td class="rowspan-td" >
+            <td>
                 {{ machine.note or '—' }}
             </td>
         </tr>

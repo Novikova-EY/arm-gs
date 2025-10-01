@@ -6,6 +6,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     let isHighlighted = false;
+    // Хелпер: добавить подсветку ячейке и вложенному input/select (если есть)
+    function addHighlightToCellAndField(cell, className) {
+        if (!cell) return;
+        cell.classList.add(className);
+        const field = cell.querySelector('input, select');
+        if (field) field.classList.add(className);
+    }
 
     button.addEventListener("click", function () {
         // СБРОС ПОДСВЕТКИ
@@ -27,14 +34,15 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("✨ Подсветка изменений активирована");
 
         document.querySelectorAll("tr").forEach(row => {
-            const powerCells = row.querySelectorAll(".power-column");
-            const fuelCells = row.querySelectorAll(".fuel-column");
+            const powerCells = row.querySelectorAll("td.power-column");
+            const fuelCells = row.querySelectorAll("td.fuel-column");
 
             let previousPowerCell = null;
             let previousFuelCell = null;
 
             powerCells.forEach(cell => {
-                const currentValue = cell.textContent.trim();
+                const inputEl = cell.querySelector('input');
+                const currentValue = inputEl ? (inputEl.value || '').trim() : cell.textContent.trim();
                 const currentNumericValue = parseFloat(currentValue.replace(',', '.'));
                 const isCurrentDash = currentValue === "-" || currentValue === "—";
                 const num = Number.isFinite(currentNumericValue) ? currentNumericValue : null;
@@ -42,49 +50,59 @@ document.addEventListener("DOMContentLoaded", function () {
                 cell.setAttribute("data-prev-value", currentValue);
 
                 if (previousPowerCell) {
-                    const previousValue = previousPowerCell.getAttribute("data-prev-value");
+                    const prevInputEl = previousPowerCell.querySelector('input');
+                    const previousValue = prevInputEl ? (prevInputEl.value || '').trim() : previousPowerCell.getAttribute("data-prev-value");
                     const previousNumeric = parseFloat(previousValue.replace(',', '.'));
                     const isPreviousDash = previousValue === "-" || previousValue === "—";
                     const prevNum = Number.isFinite(previousNumeric) ? previousNumeric : null;
 
                     if ((prevNum === 0 || isPreviousDash) && num > 0) {
-                        previousPowerCell.classList.add("highlight-green");
-                        cell.classList.add("highlight-green");
+                        addHighlightToCellAndField(previousPowerCell, "highlight-green");
+                        addHighlightToCellAndField(cell, "highlight-green");
                     } else if (prevNum > 0 && (num === 0 || isCurrentDash)) {
-                        previousPowerCell.classList.add("highlight-red");
-                        cell.classList.add("highlight-red");
+                        addHighlightToCellAndField(previousPowerCell, "highlight-red");
+                        addHighlightToCellAndField(cell, "highlight-red");
                     } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
-                        previousPowerCell.classList.add("highlight-blue");
-                        cell.classList.add("highlight-blue");
+                        addHighlightToCellAndField(previousPowerCell, "highlight-blue");
+                        addHighlightToCellAndField(cell, "highlight-blue");
                     }
                 }
 
                 previousPowerCell = cell;
             });
 
-            fuelCells.forEach(cell => {
-                const currentValue = cell.textContent.trim();
-                const isCurrentDash = currentValue === "-" || currentValue === "—";
-                cell.setAttribute("data-prev-value", currentValue);
+            // Подсветка для «Тип ТЭС» и «Топливо»: подсвечиваем только границы изменения между соседними годами
+            (function(){
+                let prevCell = null;
+                let prevVal = null;
+                const isDash = (v) => v === '-' || v === '—' || v === '' || v === null || v === undefined;
+                fuelCells.forEach(cell => {
+                    const fieldEl = cell.querySelector('select, input');
+                    const currRaw = fieldEl ? (fieldEl.value || '').trim() : (cell.textContent || '').trim();
+                    const currIsDash = isDash(currRaw);
 
-                if (previousFuelCell) {
-                    const previousValue = previousFuelCell.getAttribute("data-prev-value");
-                    const isPreviousDash = previousValue === "-" || previousValue === "—";
-
-                    if (isPreviousDash && !isCurrentDash) {
-                        previousFuelCell.classList.add("highlight-green");
-                        cell.classList.add("highlight-green");
-                    } else if (!isPreviousDash && isCurrentDash) {
-                        previousFuelCell.classList.add("highlight-red");
-                        cell.classList.add("highlight-red");
-                    } else if (previousValue !== currentValue) {
-                        previousFuelCell.classList.add("highlight-blue");
-                        cell.classList.add("highlight-blue");
+                    if (prevCell !== null) {
+                        const prevIsDash = isDash(prevVal);
+                        const changed = (prevIsDash && !currIsDash) || (!prevIsDash && currIsDash) || (prevVal !== currRaw);
+                        if (changed) {
+                            // Пара «было/стало»
+                            if (prevIsDash && !currIsDash) {
+                                addHighlightToCellAndField(prevCell, 'highlight-green');
+                                addHighlightToCellAndField(cell, 'highlight-green');
+                            } else if (!prevIsDash && currIsDash) {
+                                addHighlightToCellAndField(prevCell, 'highlight-red');
+                                addHighlightToCellAndField(cell, 'highlight-red');
+                            } else {
+                                addHighlightToCellAndField(prevCell, 'highlight-blue');
+                                addHighlightToCellAndField(cell, 'highlight-blue');
+                            }
+                        }
                     }
-                }
 
-                previousFuelCell = cell;
-            });
+                    prevCell = cell;
+                    prevVal = currRaw;
+                });
+            })();
         });
 
         // ПОДСВЕТКА INPUT-ПОЛЕЙ (РУСТ/РОГР/РРАСП)

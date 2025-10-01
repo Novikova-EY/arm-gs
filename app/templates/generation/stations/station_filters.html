@@ -37,13 +37,13 @@
 
             <!-- Чекбокс Рогр -->
             <input type="checkbox" class="btn-check" id="toggleP_Ogr" name="show_p_ogr" value="1" {% if show_p_ogr %}checked{% endif %}>
-            <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center {% if show_p_ogr %}active{% endif %}" style="min-width: 80px;">
+            <label for="toggleP_Ogr" class="btn {% if show_p_ogr %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
                 Рогр
             </label>
 
             <!-- Чекбокс Ррасп -->
             <input type="checkbox" class="btn-check" id="toggleP_Rasp" name="show_p_rasp" value="1" {% if show_p_rasp %}checked{% endif %}>
-            <label for="toggleP_Rasp" class="btn btn-outline-primary px-3 text-center {% if show_p_rasp %}active{% endif %}" style="min-width: 80px;">
+            <label for="toggleP_Rasp" class="btn {% if show_p_rasp %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
                 Ррасп
             </label>
 

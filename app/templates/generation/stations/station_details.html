@@ -3,6 +3,138 @@
 {% block title %}{{ station.name }}{% endblock %}
 
 {% block content %}
+<style>
+/* Стили для таблицы агрегатов станции */
+.machines-table {
+    font-size: 1rem;
+    min-width: 100%;
+}
+
+/* Фиксированные ширины столбцов - только нужные */
+.machines-table .col-owner {
+    width: 320px !important;
+    min-width: 320px;
+    max-width: 420px;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+.machines-table .col-modernization {
+    width: 100px !important;
+    min-width: 100px;
+    max-width: 100px;
+}
+
+.machines-table .col-energy-unit-type {
+    width: 120px !important;
+    min-width: 120px;
+    max-width: 120px;
+}
+
+.machines-table .col-fuel-type {
+    width: 140px !important;
+    min-width: 140px;
+    max-width: 140px;
+}
+
+.machines-table .col-note {
+    width: 180px !important;
+    min-width: 180px;
+    max-width: 180px;
+}
+
+/* Столбцы мощности и топлива - одинаковой ширины */
+.machines-table .power-section ~ th:not(.fuel-section):not(.col-note):not(.col-delete) {
+    width: 80px !important;
+    min-width: 80px;
+    max-width: 80px;
+}
+
+.machines-table .fuel-section ~ th:not(.col-note):not(.col-delete) {
+    width: 80px !important;
+    min-width: 80px;
+    max-width: 80px;
+}
+
+/* Стили для ячеек данных */
+.machines-table tbody td {
+    padding: 10px 8px;
+}
+
+.machines-table tbody td.col-owner {
+    text-align: left;
+    padding: 10px 8px;
+}
+
+.machines-table tbody td.col-note {
+    text-align: left;
+    padding: 10px 8px;
+}
+
+/* Стили для полей ввода */
+.machines-table input[type="text"],
+.machines-table input[type="number"],
+.machines-table select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+/* Специальные стили для полей в столбцах с фиксированной шириной */
+.machines-table .col-owner select {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 0.9rem;
+}
+
+/* Ограничения ширины Select2 в столбце "Собственник" */
+.machines-table .col-owner .select2-container {
+    width: 100% !important;
+    max-width: 100%;
+}
+.machines-table .col-owner .select2-selection--single {
+    height: auto;
+}
+.machines-table .col-owner .select2-selection__rendered {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+.machines-table .col-owner .select2-dropdown {
+    max-width: 100% !important;
+}
+
+.machines-table .col-fuel-type input[type="text"],
+.machines-table .col-note input[type="text"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 0.85rem;
+}
+
+/* Центрирование текста в столбце топлива */
+.machines-table .col-fuel-type {
+    text-align: center;
+}
+
+.machines-table .col-fuel-type input[type="text"] {
+    text-align: center;
+}
+
+.machines-table input[type="text"]:focus,
+.machines-table input[type="number"]:focus,
+.machines-table select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+</style>
+
 {% if current_user.is_authenticated %}
 
 {% set filters = [
@@ -12,13 +144,85 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
     'sort_by', 'sort_dir', 'per_page', 'start_year', 'end_year'
 ] %}
-{% set allowed_roles = ['generation', 'admin'] %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+
+<!-- Стили для режима чтения -->
+<style>
+
+.readonly-indicator {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+
+.readonly-indicator::before {
+    content: "👁️";
+    font-size: 1rem;
+}
+
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+
+.edit-indicator::before {
+    content: "✏️";
+    font-size: 1rem;
+}
+</style>
+<style>
+/* Крупнее шрифт для таблицы агрегатов, как на странице агрегата */
+.machines-table { font-size: 1.05rem; }
+.machines-table thead th { font-size: 1.08rem; }
+.machines-table tbody td { font-size: 1.15rem; }
+.machines-table tbody td .form-control,
+.machines-table tbody td .form-select { font-size: 1.15rem; }
+/* Крупнее шрифт в выпадающих списках блока информации о станции */
+.station-info .form-select { font-size: 1.15rem; line-height: 1.4; }
+</style>
+{% if not can_edit %}
+<style>
+/* В режиме просмотра скрываем колонку удаления в таблице агрегатов */
+.machines-table .col-delete { display: none; }
+</style>
+{% endif %}
+
+<style>
+/* Увеличенный шрифт для разделов информации о станции */
+.station-info { font-size: 1.15rem; }
+.station-info .card-title { font-size: 1.25rem; }
+.station-info .row .fw-semibold { font-size: 1.05em; }
+.station-info .form-control { font-size: 1.05rem; }
+/* Крупнее и жирнее название электростанции */
+.station-info .station-name { font-size: 1.35rem; font-weight: 700; }
+</style>
 
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">
-            Вернуться на страницу "Электростанции"
-        </a>
+   
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Страница "Электростанции"</a>
     </div>
     
     <body>
@@ -27,142 +231,167 @@
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
         {% endfor %}
 
-        <h2 class="mb-4">Информация об электростанции</h2>
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">Информация об электростанции
+                {% if can_edit %}
+                    <span class="edit-indicator ms-3">Режим редактирования</span>
+                {% else %}
+                    <span class="readonly-indicator ms-3">Режим просмотра</span>
+                {% endif %}
+            </h2>
+        </div>
 
         <!-- Карточка с основной информацией -->
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="container-fluid">
-                <div class="d-flex gap-4 justify-content-start">
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <p class="fs-5"><strong>Название:</strong> 
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <input type="text" name="name" class="fs-5 form-control d-inline-block w-auto" value="{{ form.name.data or '' }}">
-                                {% else %}
-                                    <span>{{ form.name.data or '' }}</span>
-                                {% endif %}
-                            </p>
-                            <p class="fs-5"><strong>Состояние:</strong> 
-                                <span id="id_condition_type_span">
-                                    {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                        {{ form.id_condition_type(class="form-select d-inline-block w-auto fs-5") }}
+                <div class="station-info">
+                    <div class="mb-4 p-3" style="background: transparent; border: none;">
+                        <div class="row g-4">
+                            <div class="col-12 col-xl-6">
+                                <div class="p-0">
+                                    <h4 class="card-title text-decoration-underline mb-3"><strong>Общая информация</strong></h4>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Название:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit %}
+                                        <input type="text" name="name" class="form-control station-name" value="{{ form.name.data or '' }}">
                                     {% else %}
-                                        {{ form.id_condition_type.data.label if form.id_condition_type.data else '—' }}
+                                        <span class="station-name">{{ form.name.data or '' }}</span>
                                     {% endif %}
-                                </span>
-                            </p>
-                            <p class="fs-5"><strong>Собственник:</strong> {{ station.gen_companies or '—' }}</p>
-                            <p class="fs-5"><strong>Тип электростанции:</strong> {{ station.station_types if station.station_types else '—' }}</p>
-                            <p class="fs-5"><strong>Группа электростанций:</strong> 
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <span id="id_station_group_span">
-                                        {{ form.id_station_group(class="form-select d-inline-block w-auto fs-5") }}
-                                    </span>
-                                {% else %}
-                                    <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '—' }}</span>
-                                {% endif %}
-                            </p>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Группа электростанций:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit %}
+                                        <span id="id_station_group_span">
+                                            {{ form.id_station_group(class="form-select") }}
+                                        </span>
+                                    {% else %}
+                                        <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Состояние:</div>
+                                <div class="col-7 text-start" id="id_condition_type_span">
+                                    {% if can_edit %}
+                                        {{ form.id_condition_type(class="form-select") }}
+                                    {% else %}
+                                        {{ (form.id_condition_type.choices | selectattr('0','equalto', form.id_condition_type.data) | map(attribute=1) | list | first) or '—' }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Собственник:</div>
+                                <div class="col-7 text-start">{{ station.gen_companies or '—' }}</div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Тип электростанции:</div>
+                                <div class="col-7 text-start">{{ station.station_types if station.station_types else '—' }}</div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-0">
+                                <div class="col-5 text-start fw-semibold">Примечание:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit %}
+                                        <span id="note">
+                                            {{ form.note(class="form-control") }}
+                                        </span>
+                                    {% else %}
+                                        <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                                </div>
+                            </div>
 
-                            <p class="fs-5"><strong>Примечание:</strong> 
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <span id="note">
-                                        {{ form.note(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
-                                    </span>
-                                {% else %}
-                                    <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
-                                {% endif %}
-                            </p>
-
-                            <!-- Кнопка "Сохранить" -->
-                            {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                <button type="submit" class="btn btn-outline-primary">Сохранить</button>
-                                
-                            <!-- Кнопка "Сбросить" -->
-                            <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-secondary">
-                                Сбросить
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-            
-                    <div class="card mb-4 w-50">
-                        <div class="card-body">
-                            <h4 class="card-title text-decoration-underline mb-3">
-                                <strong>Местоположение</strong>
-                            </h4>
-                            
-                            <p class="fs-5"><strong>Часть энергосистемы России:</strong> 
-                                <span id="energy_system_type">
+                            <div class="col-12 col-xl-6">
+                                <div class="p-0">
+                                    <h4 class="card-title text-decoration-underline mb-3"><strong>Местоположение</strong></h4>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Часть энергосистемы России:</div>
+                                <div class="col-7 text-start" id="energy_system_type">
                                     {% if station.regional_district.regional_energy_systems %}
                                         {{ station.regional_district.regional_energy_systems[0].union_energy_system.energy_system_type.name }}
                                     {% else %} Нет данных {% endif %}
-                                </span>
-                            </p>
-                        
-                            <p class="fs-5"><strong>ОЭС:</strong> 
-                                <span id="union_energy_system">
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">ОЭС:</div>
+                                <div class="col-7 text-start" id="union_energy_system">
                                     {% if station.regional_district.regional_energy_systems %}
                                         {{ station.regional_district.regional_energy_systems[0].union_energy_system.name }}
                                     {% else %} Нет данных {% endif %}
-                                </span>
-                            </p>
-                        
-                            <p class="fs-5"><strong>Региональная энергосистема:</strong> 
-                                <span id="regional_energy_system">
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Региональная энергосистема:</div>
+                                <div class="col-7 text-start" id="regional_energy_system">
                                     {% if station.regional_district.regional_energy_systems %}
                                         {{ station.regional_district.regional_energy_systems[0].name }}
                                     {% else %} Нет данных {% endif %}
-                                </span>
-                            </p>
-
-                            <p class="fs-5"><strong>Энергоузел:</strong>
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <span id="id_energy_unit_span">
-                                        {{ form.id_energy_unit(class="form-select d-inline-block w-auto fs-5") }}
-                                    </span>
-                                {% else %}
-                                    <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '—' }}</span>
-                                {% endif %}
-                            </p>
-                        
-                            <p class="fs-5"><strong>Федеральный округ:</strong> 
-                                <span id="federal_district">
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Энергоузел:</div>
+                                <div class="col-7 text-start" id="id_energy_unit_span">
+                                    {% if can_edit %}
+                                        {{ form.id_energy_unit(class="form-select") }}
+                                    {% else %}
+                                        <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Федеральный округ:</div>
+                                <div class="col-7 text-start" id="federal_district">
                                     {{ station.regional_district.federal_district.name }}
-                                </span>
-                            </p>
-
-                            <p class="fs-5"><strong>Субъект РФ:</strong> 
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <span id="id_regional_district_span">
-                                        {{ form.id_regional_district(class="form-select d-inline-block w-auto fs-5", id="id_regional_district") }}
-                                    </span>
-                                {% else %}
-                                    <span>{{ form.id_regional_district.data.label if form.id_regional_district.data.label else '—' }}</span>
-                                {% endif %}
-                            </p>
-                        
-                            <p class="fs-5"><strong>Местоположение:</strong> 
-                                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                    <span id="location_span">
-                                        {{ form.location(class="form-control d-inline-block w-auto", style="display: inline-block; width: auto; fs-5") }}
-                                    </span>
-                                {% else %}
-                                    <span>{{ form.location.data.label if form.location.data.label else '—' }}</span>
-                                {% endif %}
-                            </p>
-
-
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Субъект РФ:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit %}
+                                        <span id="id_regional_district_span">
+                                            {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+                                        </span>
+                                    {% else %}
+                                        <span>{{ (form.id_regional_district.choices | selectattr('0','equalto', form.id_regional_district.data) | map(attribute=1) | list | first) or '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-0">
+                                <div class="col-5 text-start fw-semibold">Местоположение:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit %}
+                                        <span id="location_span">
+                                            {{ form.location(class="form-control") }}
+                                        </span>
+                                    {% else %}
+                                        <span>{{ form.location.data.label if form.location.data.label else '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    {% if can_edit %}
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="submit" class="btn btn-outline-primary me-2">Сохранить</button>
+                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-secondary">Сбросить</a>
+                    </div>
+                    {% endif %}
+                    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
                 </div>
             </div>
         </form>
         
         <!-- Таблица с агрегатами (Machines) -->
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0">Агрегаты станции</h3>
-            {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
+            <h3 class="mb-0 ms-3">Агрегаты станции</h3>
+            {% if can_edit %}
                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
                     ➕ Добавить агрегат
                 </a>
@@ -244,25 +473,25 @@
         <form method="POST">
             {{ form_machines.hidden_tag() }}
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered table-responsive">
+                <table class="table table-hover table-striped table-bordered table-responsive machines-table">
                     <thead class="table-success">
                         <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                             <th rowspan="2" style="width: 50px;">гр.</th>
                             <th rowspan="2" style="width: 80px;">cт.№</th>
                             <th rowspan="2" style="width: 150px;">Тип агрегата</th>
-                            <th rowspan="2" style="width: 150px;">Собственник</th>
+                            <th rowspan="2" class="col-owner">Собственник</th>
                             <th rowspan="2" style="width: 80px;">Год ввода</th>
                             <th rowspan="2" style="width: 80px;">Год вывода</th>
-                            <th rowspan="2" style="width: 80px;">Модерни-<br>зация</th>
-                            <th rowspan="2" style="width: 80px;">Тип энергоблока</th>
+                            <th rowspan="2" class="col-modernization">Модерни<br>зация</th>
+                            <th rowspan="2" class="col-energy-unit-type">Тип<br>энерго<br>блока</th>
                             <th rowspan="2" style="width: 80px;">Тип ТЭС</th>
                             <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
-                            <th rowspan="2" style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
-                            <td rowspan="2" class="fw-bold" style="width: 50px;">Тип <br> мощ-ти</td>
+                            <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
+                            <th rowspan="2" class="fw-bold" style="width: 50px;">Тип <br> мощ-ти</th>
                             <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
                             <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
-                            <th rowspan="2">Примечание</th>
-                            <th rowspan="2">Удалить</th>
+                            <th rowspan="2" class="col-note">Примечание</th>
+                            <th rowspan="2" class="col-delete" style="width: 80px;">Удалить</th>
                         </tr>
                         <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                             <!-- Столбцы для годов с start_year по end_year + 1 -->
@@ -275,209 +504,115 @@
                             {% endfor %}
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Строки с машинами -->
-                        {% for machine in station.machines %}
-                            <tr class="text-center align-middle" style="vertical-align: middle;">
-                                <!-- Cтрока с значениями p_ust -->
-                                <tr class="text-center machine-row" style="vertical-align: middle;">
-                                    <td class="rowspan-td" rowspan="3">{{ machine.machine_group}}</td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.machine_number if machine.machine_number else "—" }}</td>
-                                    <td class="rowspan-td" rowspan="3">
-                                        <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                                            {{ machine.machine_name }}
-                                        </a>
-                                    </td>
-                                    <td class="rowspan-td" rowspan="3">
-                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                            <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="width: 100%;">
-                                                <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
-                                                {% for gc in form_machines.id_gen_company.choices %}
-                                                    <option value="{{ gc[0] }}" {% if machine.gen_company and machine.gen_company.id == gc[0] %}selected{% endif %}>{{ gc[1] }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        {% else %}
-                                            {{ machine.gen_company.name if machine.gen_company else 'не указано' }}
-                                        {% endif %}
-                                    </td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
-                                    <td class="rowspan-td" rowspan="3">{{ machine.tes_types or '—' }}</td>
-                                    <td class="rowspan-td" rowspan="3">
-                                        {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
-                                            {{ machine.tes_machine_type.name }}
-                                        {% else %}
-                                            &mdash;
-                                        {% endif %}
-                                    </td>
-                                    <td class="rowspan-td" rowspan="3">
-                                        {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                                            <input type="text" name="fuel_so_{{ machine.id }}" 
-                                            value="{{ machine.fuel_so or '' }}" 
-                                            placeholder="Введите топливо" 
-                                            class="form-control text-center d-inline-block w-auto bg-transparent">
-                                        {% else %}
-                                            <span>{{ machine.fuel_so if machine.fuel_so else '—' }}</span>
-                                        {% endif %}
-                                    </td>
-
-                                    
-                                    <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
-                                    {% for year in range(start_year, end_year + 1) %}
-                                    <td class="text-center power-column">
-                                        
-                                        {% set p_ust_value = machine.machine_powers
-                                                            | selectattr('year.number', 'equalto', year)
-                                                            | map(attribute='p_ust')
-                                                            | first %}
-                                        {% if p_ust_value == 0 or p_ust_value == None %}
-                                            &mdash;
-                                        {% else %}
-                                            {{ p_ust_value | format_decimal }}
-                                        {% endif %}
-                                    </td>
-                                    {% endfor %}  
-                                    
-                                    {% for year in range(start_year, end_year + 1) %}
-                                    <td class="fuel-column rowspan-td" rowspan="3">
-                                        {% set fuel = machine.machine_fuels
-                                                    | selectattr('year.number', 'equalto', year)
-                                                    | map(attribute='fuel')
-                                                    | first %}
-                                        {% if fuel %}
-                                            {% if fuel.fuel_type.id == 100 %}
-                                                &mdash;
-                                            {% else %}
-                                                {{ fuel.fuel_type.name }}
-                                            {% endif %}
-                                        {% else %}
-                                            &mdash;
-                                        {% endif %}
-                                    </td>
-                                {% endfor %}
-
-                                <td class="rowspan-td" rowspan="3">
-                                    <input type="text" name="note_{{ machine.id }}" 
-                                            value="{{ machine.note or '' }}" 
-                                            class="form-control text-center d-inline-block w-auto bg-transparent">
-                                </td>
-
-                                <td class="rowspan-td" rowspan="3">
-                                    <input type="checkbox" name="machines_delete[]" value="{{ machine.id }}" class="form-check-input">
-                                </td>
-
-                                </tr>
-                    
-                                <!-- Вторая строка: p_ogr -->
-                                <tr class="text-center p-ogr-row">
-                                    <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
-                                    {% for year in range(start_year, end_year + 1) %}
-                                    <td class="power-column">
-                                        {% set p_ogr_value = machine.machine_powers
-                                                            | selectattr('year.number', 'equalto', year)
-                                                            | map(attribute='p_ogr')
-                                                            | first %}
-                                        {% if p_ogr_value == 0 or p_ogr_value == None %}
-                                            &mdash;
-                                        {% else %}
-                                            {{ p_ogr_value | format_decimal }}
-                                        {% endif %}
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                    
-                                <!-- Третья строка: p_rasp -->
-                                <tr class="text-center p-rasp-row">
-                                    <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
-                                    {% for year in range(start_year, end_year + 1) %}
-                                    <td class="power-column">
-                                        {% set p_rasp_value = machine.machine_powers
-                                                            | selectattr('year.number', 'equalto', year)
-                                                            | map(attribute='p_rasp')
-                                                            | first %}
-                                        {% if p_rasp_value == 0 or p_rasp_value == None %}
-                                            &mdash;
-                                        {% else %}
-                                            {{ p_rasp_value | format_decimal }}
-                                        {% endif %}
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                            </tr>
-                        {% endfor %}
-                        
-                        <!-- Строки с суммарной мощностью по годам -->
-                        <!-- Первая строка: p_ust -->
-                        <tr class="text-center total-power-row" style="vertical-align: middle;">
-                            <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
-                                Всего по станции:
-                            </td>
-                            <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_ust_value = station.powers_by_year.get(year, {}).get("p_ust", "-") %}
-                                {% if p_ust_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_ust_value | format_decimal }}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-
-                            <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} ">
+                    <tbody id="machines-tbody">
+                        <tr>
+                            <td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
+                                <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+                                Загрузка агрегатов...
                             </td>
                         </tr>
-
-                        <!-- Вторая строка: p_ogr -->
-                        <tr class="text-center p-ogr-row">
-                            <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_ogr_value = station.powers_by_year.get(year, {}).get("p_ogr", "-") %}
-                                {% if p_ogr_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_ogr_value | format_decimal }}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-
-                        <!-- Третья строка: p_rasp -->
-                        <tr class="text-center p-rasp-row">
-                            <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
-                            {% for year in range(start_year, end_year + 1) %}
-                            <td class="power-column" style="font-weight: bold;">
-                                {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp", "-") %}
-                                {% if p_rasp_value == 0 %}
-                                    &mdash;
-                                {% else %}
-                                    {{ p_rasp_value | format_decimal }}
-                                {% endif %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-
                     </tbody>
                 </table>
             </div>
             
             <!-- Кнопки сохранения -->
-            <div class="d-flex justify-content-end mt-3">
-                {% if current_user.role_names | select('in', allowed_roles) | list | length > 0 %}
-                    <button type="submit" class="btn btn-outline-primary m-2 fs-5">Сохранить</button>
-                    <a href="{{ url_for('station_bp.station_details', station_id=station.id) }}" class="btn btn-outline-danger m-2 fs-5">Сбросить</a>
+            <div class="d-flex justify-content-end mt-3 gap-3">
+                {% if can_edit %}
+                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                    <a href="{{ url_for('station_bp.station_details', station_id=station.id) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 {% endif %}
-
-                <!-- Кнопка "Назад" -->
-                <a href="{{ url_for('station_bp.station_list', **request.args) }}"class="btn btn-outline-secondary m-2 fs-5">
-                    Назад
-                </a>
             </div>
         </div>
     </body>
+
+<!-- Логи изменений по станции -->
+<h3 class="mb-0 ms-3">Журнал изменений по станции</h3>
+<div class="container-fluid mt-3">
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped table-bordered table-responsive" id="station-logs-table">
+                <thead class="table-light">
+                    <tr>
+                        <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
+                        <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
+                        <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
+                        <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
+                        <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if station_logs and station_logs|length > 0 %}
+                        {% for log in station_logs %}
+                            <tr>
+                                <td data-date="{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}">{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}</td>
+                                <td data-time="{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</td>
+                                <td data-user="{{ log.username|lower }}">{{ log.username }}</td>
+                                <td>
+                                    <div data-action="{{ log.action|lower }}">{{ log.action }}</div>
+                                </td>
+                                <td>
+                                    {% if log.details %}
+                                        <div data-details="{{ log.details|lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted p-3">Нет записей</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="my-3"></div>
+</div>
+
+<style>
+/* Общие правила раскладки столбцов для таблиц журналов */
+#station-logs-table,
+#machine-logs-table { table-layout: fixed; width: 100%; }
+
+/* Фиксированные ширины первых трёх колонок */
+#station-logs-table th.log-col-date, #station-logs-table td:nth-child(1),
+#machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) {
+  width: 140px !important;
+}
+#station-logs-table th.log-col-time, #station-logs-table td:nth-child(2),
+#machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) {
+  width: 120px !important;
+}
+#station-logs-table th.log-col-user, #station-logs-table td:nth-child(3),
+#machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) {
+  width: 300px !important;
+}
+/* Без переноса в первых трёх колонках для данных */
+#station-logs-table td:nth-child(1),
+#station-logs-table td:nth-child(2),
+#station-logs-table td:nth-child(3),
+#machine-logs-table td:nth-child(1),
+#machine-logs-table td:nth-child(2),
+#machine-logs-table td:nth-child(3) { white-space: nowrap; }
+
+/* Последние два — поровну от оставшегося пространства */
+#station-logs-table th.log-col-action, #station-logs-table td:nth-child(4),
+#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) {
+  width: 50% !important;
+}
+#station-logs-table th.log-col-details, #station-logs-table td:nth-child(5),
+#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(5) {
+  width: 50% !important;
+}
+
+/* Детали можно переносить */
+#station-logs-table td:nth-child(4) div,
+#station-logs-table td:nth-child(5) div,
+#machine-logs-table td:nth-child(4) div,
+#machine-logs-table td:nth-child(5) div {
+  white-space: pre-wrap;
+}
+</style>
 
 <!-- Подключаем jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -486,121 +621,406 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
 
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+
 <script>
-    $(document).ready(function() {
-        $('.gen-company-select').select2({
+    // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
+    $(document).on('focus', '.gen-company-select', function () {
+        const $el = $(this);
+        if ($el.data('select2')) return;
+        performance.mark && performance.mark('select2-init-start');
+        $el.select2({
             placeholder: "Выберите компанию",
-            allowClear: true
+            allowClear: true,
+            width: 'resolve',
+            dropdownAutoWidth: false,
+            dropdownParent: $el.closest('.table-responsive'),
+            minimumResultsForSearch: 10
         });
+        performance.mark && performance.mark('select2-init-end');
+        performance.measure && performance.measure('select2-init', 'select2-init-start', 'select2-init-end');
+        const m = performance.getEntriesByName && performance.getEntriesByName('select2-init').pop();
+        if (m) console.log('select2 init:', Math.round(m.duration), 'ms');
     });
 </script>
 
-<!-- Скрипт для отображения строк с располагаемой мощность и ограничениями мощности -->
 <script>
-    $(document).ready(function() {
-        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
-        $('.rowspan-td').each(function() {
-            $(this).data('original-rowspan', $(this).attr('rowspan'));
-        });
+    // Сортировка и фильтрация таблицы логов
+    (function(){
+        const table = document.getElementById('station-logs-table');
+        if (!table) return;
+        const thead = table.tHead;
+        const tbody = table.tBodies[0];
+        let sortState = { key: 'date', asc: false };
 
-        // Сохраняем rowspan для ячеек с названием станции
-        $('.station-rowspan-td').each(function() {
-            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
-            let totalMachines = (originalRowspan - 1) / 3;
-            $(this).data('total-machines', totalMachines);
-        });
-
-        // Функция обновления строк
-        function updateRows() {
-            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
-            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
-
-            // Показываем/скрываем строки p_ogr-row
-            if (showPOgr) {
-                $('.p-ogr-row').show();
-            } else {
-                $('.p-ogr-row').hide();
-            }
-
-            // Показываем/скрываем строки p_rasp-row
-            if (showPRasp) {
-                $('.p-rasp-row').show();
-            } else {
-                $('.p-rasp-row').hide();
-            }
-
-            // Количество отображаемых строк на агрегат (1..3)
-            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
-
-            // Обновляем rowspan для ячейки "Всего по станции"
-            $('.total-row-cell').attr('rowspan', aggregatorRows);
-
-            // Меняем rowspan для ячеек агрегатов
-            $('.rowspan-td').each(function() {
-                let original = parseInt($(this).data('original-rowspan'), 10);
-                $(this).attr('rowspan', aggregatorRows);
-            });
-
-            // Меняем rowspan для ячеек с названием станции
-            $('.station-rowspan-td').each(function() {
-                let totalMachines = parseInt($(this).data('total-machines'), 10);
-                let newRowSpan = totalMachines * aggregatorRows + 1;
-                $(this).attr('rowspan', newRowSpan);
-            });
-
-            // Обновляем корректное отображение суммарных мощностей
-            $('.power-column').each(function() {
-                let totalRow = $(this).closest('tr').find('.total-row-cell');
-                if (totalRow.length) {
-                    totalRow.attr('rowspan', aggregatorRows);
-                }
-            });
-
+        function val(node, dataKey){
+            if (!node) return '';
+            return (node.dataset && node.dataset[dataKey]) ? node.dataset[dataKey] : node.textContent.trim().toLowerCase();
         }
 
-        // Обновляем строки при загрузке страницы
-        updateRows();
+        function sortBy(key){
+            const rows = Array.from(tbody.rows);
+            rows.sort((r1, r2)=>{
+                let a='', b='';
+                if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
+                else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
+                else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
+                else if (key === 'action'){
+                    a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
+                    b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
+                } else if (key === 'details'){
+                    a = val(r1.cells[4].querySelector('[data-details]')||r1.cells[4], 'details');
+                    b = val(r2.cells[4].querySelector('[data-details]')||r2.cells[4], 'details');
+                }
+                if (a<b) return sortState.asc ? -1 : 1;
+                if (a>b) return sortState.asc ? 1 : -1;
+                return 0;
+            });
+            tbody.append(...rows);
+            sortState = { key, asc: !sortState.asc };
+        }
 
-        // Обновляем строки при изменении чекбоксов
-        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
-            updateRows();
+        thead.addEventListener('click', (e)=>{
+            const th = e.target.closest('th[data-key]');
+            if (!th) return;
+            sortBy(th.dataset.key);
         });
-    });
+
+        // Добавляем строку фильтров
+        const filterRow = document.createElement('tr');
+        ['date','time','user','action','details'].forEach((key, idx)=>{
+            const td = document.createElement('td');
+            const input = document.createElement('input');
+            input.className = 'form-control form-control-sm';
+            input.placeholder = 'Фильтр';
+            input.addEventListener('input', ()=>{
+                const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
+                for (const tr of tbody.rows){
+                    const dDate = val(tr.cells[0], 'date');
+                    const dTime = val(tr.cells[1], 'time');
+                    const dUser = val(tr.cells[2], 'user');
+                    const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
+                    const dDetails = val(tr.cells[4].querySelector('[data-details]')||tr.cells[4], 'details');
+                    const data = [dDate, dTime, dUser, dAction, dDetails];
+                    const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
+                    tr.style.display = ok ? '' : 'none';
+                }
+            });
+            td.appendChild(input);
+            filterRow.appendChild(td);
+        });
+        thead.appendChild(filterRow);
+    })();
 </script>
 
-<!-- Скрипт подсвечивания изменяющихся значений -->
-<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+<!-- Оптимизированный скрипт для отображения строк -->
+<script>
+    // === 3. Обработка отображения p_ogr / p_rasp
+    function setupMachinePowerRows() {
+        const togglePOgr = document.getElementById("toggleP_Ogr");
+        const togglePRasp = document.getElementById("toggleP_Rasp");
+        const labelPOgr = document.querySelector('label[for="toggleP_Ogr"]');
+        const labelPRasp = document.querySelector('label[for="toggleP_Rasp"]');
+
+        function syncToggleStyles() {
+            if (labelPRasp && togglePRasp) {
+                labelPRasp.classList.toggle('btn-primary', togglePRasp.checked);
+                labelPRasp.classList.toggle('btn-outline-primary', !togglePRasp.checked);
+            }
+            if (labelPOgr && togglePOgr) {
+                // Сохраняем существующий стиль: активная = заливка, неактивная = outline
+                labelPOgr.classList.toggle('btn-primary', togglePOgr.checked);
+                labelPOgr.classList.toggle('btn-outline-primary', !togglePOgr.checked);
+            }
+        }
+
+        // При изменении — только единая функция обновления, без дублирования логики
+        togglePOgr?.addEventListener('change', () => {
+            window.applyPowerRowsUpdate?.();
+            syncToggleStyles();
+        });
+
+        togglePRasp?.addEventListener('change', () => {
+            window.applyPowerRowsUpdate?.();
+            syncToggleStyles();
+        });
+
+        // Первичная синхронизация
+        window.applyPowerRowsUpdate?.();
+        syncToggleStyles();
+    }
+</script>
+
+<!-- Скрипт подсвечивания изменяющихся значений (defer, чтобы не блокировать парсинг) -->
+<script defer src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
 
 <!-- Скрипт для автоматической подстановки данных по наименованию субъекта -->
 <script>
+    // Диагностика времени фронтенда и бэкенда
+    (function () {
+        try {
+            const navStart = (performance.timing && performance.timing.navigationStart) || performance.timeOrigin || Date.now();
+            const now = () => (performance.now ? performance.now() : Date.now() - navStart);
+
+            let frontendDomReadyMs = Math.round(now());
+
+            // Попытка прочитать Server-Timing через Performance API (если поддерживается)
+            let backendTotalMs = null;
+            let backendPrepareMs = null;
+            let backendRenderMs = null;
+
+            try {
+                const entries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+                if (entries && entries.length > 0) {
+                    const nav = entries[0];
+                    // Server-Timing entries
+                    if (nav.serverTiming && nav.serverTiming.length) {
+                        for (const st of nav.serverTiming) {
+                            if (st.name === 'total') backendTotalMs = Math.round(st.duration);
+                            if (st.name === 'prepare') backendPrepareMs = Math.round(st.duration);
+                            if (st.name === 'render') backendRenderMs = Math.round(st.duration);
+                        }
+                    }
+                }
+            } catch (e) { /* игнорируем */ }
+
+            // Резервный вариант: читаем явные заголовки через HEAD-запрос к текущему URL
+            const tryFetchHeaders = async () => {
+                try {
+                    const res = await fetch(location.href, { method: 'HEAD', cache: 'no-store' });
+                    const getNum = (h) => {
+                        const v = res.headers.get(h);
+                        return v ? parseInt(v, 10) : null;
+                    };
+                    backendPrepareMs = backendPrepareMs ?? getNum('X-Backend-Timing-Prepare');
+                    backendRenderMs = backendRenderMs ?? getNum('X-Backend-Timing-Render');
+                    backendTotalMs = backendTotalMs ?? getNum('X-Backend-Timing-Total');
+                } catch (e) { /* игнорируем */ }
+            };
+
+            // Логирование после получения заголовков (если получилось)
+            (async () => {
+                await tryFetchHeaders();
+                // Защита от отрицательных значений (особенности разных браузеров)
+                if (frontendDomReadyMs < 0) frontendDomReadyMs = Math.abs(frontendDomReadyMs);
+                const frontendMs = frontendDomReadyMs;
+                const backendMs = backendTotalMs;
+
+                console.group('%cStation details performance', 'color:#1976d2;font-weight:bold;');
+                if (backendMs != null) {
+                    console.log('Backend total:', backendMs, 'ms');
+                    if (backendPrepareMs != null) console.log('  - Prepare (ORM/logic):', backendPrepareMs, 'ms');
+                    if (backendRenderMs != null) console.log('  - Render (Jinja):', backendRenderMs, 'ms');
+                } else {
+                    console.log('Backend total: n/a');
+                }
+                console.log('Frontend (DOM ready since navigation):', frontendMs, 'ms');
+
+                if (backendMs != null) {
+                    const bottleneck = backendMs > frontendMs ? 'backend' : 'frontend';
+                    console.log('Likely bottleneck:', bottleneck);
+                }
+                console.groupEnd();
+            })();
+        } catch (e) {
+            // ничего не делаем
+        }
+    })();
+
+    // Дополнительная диагностика фронтенда: подробная разбивка и «длинные задачи»
+    (function () {
+        try {
+            const entries = performance.getEntriesByType && performance.getEntriesByType('navigation');
+            if (entries && entries.length) {
+                const n = entries[0];
+                const ttfb = Math.round(n.responseStart - n.requestStart);
+                const download = Math.round(n.responseEnd - n.responseStart);
+                const domParse = Math.round(n.domInteractive - n.responseEnd);
+                const dcl = Math.round(n.domContentLoadedEventEnd - n.domInteractive);
+                const load = Math.round(n.loadEventEnd - n.domContentLoadedEventEnd);
+                const transfer = n.transferSize || n.encodedBodySize || 0;
+
+                console.group('%cFrontend breakdown', 'color:#2e7d32;font-weight:bold;');
+                console.log('TTFB:', ttfb, 'ms');
+                console.log('Download:', download, 'ms');
+                console.log('DOM parse:', domParse, 'ms');
+                console.log('DOMContentLoaded handlers:', dcl, 'ms');
+                console.log('Load handlers:', load, 'ms');
+                if (transfer) console.log('Transfer size:', transfer, 'bytes');
+                console.groupEnd();
+            }
+
+            if ('PerformanceObserver' in window) {
+                try {
+                    const po = new PerformanceObserver((list) => {
+                        for (const entry of list.getEntries()) {
+                            if (entry.entryType === 'longtask' || entry.name === 'self') {
+                                console.warn('Long Task:', Math.round(entry.duration), 'ms', 'at', Math.round(entry.startTime), 'ms');
+                            }
+                        }
+                    });
+                    po.observe({ type: 'longtask', buffered: true });
+                } catch (_) { /* игнорируем */ }
+            }
+        } catch (e) { /* игнорируем */ }
+    })();
+
+    // Ленивая подгрузка tbody агрегатов
+    (function () {
+        try {
+            const tbody = document.getElementById('machines-tbody');
+            if (!tbody) return;
+            const url = `{{ url_for('station_bp.station_details_tbody', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits={{ rounding_digits }}`;
+            requestAnimationFrame(() => {
+                performance.mark && performance.mark('tbody-fetch-start');
+                fetch(url, { cache: 'no-store' })
+                    .then(r => r.text())
+                    .then(html => {
+                        // Парсим во временный контейнер и инкрементально вставляем по чанкам
+                        const tmp = document.createElement('tbody');
+                        tmp.innerHTML = html;
+                        const rows = Array.from(tmp.children).filter(n => n.tagName === 'TR');
+
+                        // Очистим текущий tbody (убираем спиннер)
+                        tbody.innerHTML = '';
+
+                        const chunkSize = 60; // ~60 строк за кадр, чтобы не блокировать UI
+                        let idx = 0;
+                        function appendChunk() {
+                            const frag = document.createDocumentFragment();
+                            for (let i = 0; i < chunkSize && idx < rows.length; i++, idx++) {
+                                frag.appendChild(rows[idx]);
+                            }
+                            tbody.appendChild(frag);
+                            if (idx === chunkSize) {
+                                // Первый фрагмент вставлен — обновим rowspan/раскладку
+                                if (typeof window.updateRows === 'function') {
+                                    window.updateRows();
+                                }
+                            }
+                            if (idx < rows.length) {
+                                requestAnimationFrame(appendChunk);
+                            } else {
+                                performance.mark && performance.mark('tbody-insert-end');
+                                if (performance.measure) {
+                                    performance.measure('tbody-fetch', 'tbody-fetch-start', 'tbody-insert-end');
+                                }
+                                const m = performance.getEntriesByName && performance.getEntriesByName('tbody-fetch').pop();
+                                if (m) console.log('tbody fetch+insert:', Math.round(m.duration), 'ms');
+                                // Финальный пересчет строк/rowspan после полной вставки
+                                if (typeof window.updateRows === 'function') {
+                                    window.updateRows();
+                                }
+                            }
+                        }
+                        performance.mark && performance.mark('tbody-insert-start');
+                        requestAnimationFrame(appendChunk);
+                    })
+                    .catch(err => console.error('Ошибка загрузки агрегатов:', err));
+            });
+        } catch (e) { /* игнорируем */ }
+    })();
+
     document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById("id_regional_district").addEventListener("change", function() {
+        const districtSelect = document.getElementById("id_regional_district");
+        
+        if (districtSelect) {
+            districtSelect.addEventListener("change", function() {
             let district_id = this.value;
             
-            // Проверка, выбран ли субъект РФ
-            if (!district_id) return;
-    
-            fetch(`/generation/stations/get_energy_system_data/${district_id}`)
-                .then(response => response.json())
+                if (!district_id || district_id === "0") {
+                    clearEnergySystemFields();
+                    return;
+                }
+        
+                // Показываем индикатор загрузки
+                showLoadingIndicator();
+                
+                const url = `/generation/stations/get_energy_system_data/${district_id}`;
+                
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                 .then(data => {
-                    console.log("Данные с сервера:", data); // Отладка
-    
-                    // Проверяем, существуют ли элементы перед изменением
-                    if (document.getElementById("federal_district")) {
-                        document.getElementById("federal_district").innerText = data.federal_district || "Нет данных";
-                    }
-                    if (document.getElementById("union_energy_system")) {
-                        document.getElementById("union_energy_system").innerText = data.union_energy_system || "Нет данных";
-                    }
-                    if (document.getElementById("energy_system_type")) {
-                        document.getElementById("energy_system_type").innerText = data.energy_system_type || "Нет данных";
-                    }
-                    if (document.getElementById("regional_energy_system")) {
-                        document.getElementById("regional_energy_system").innerText = data.regional_energy_system || "Нет данных";
-                    }
-                })
-                .catch(error => console.error("Ошибка загрузки данных:", error));
-        });
+                        // Обновляем элементы только если они существуют
+                        updateEnergySystemFields(data);
+                        hideLoadingIndicator();
+                    })
+                    .catch(error => {
+                        console.error("Ошибка загрузки данных:", error);
+                        showErrorMessage("Ошибка загрузки данных энергосистемы");
+                        hideLoadingIndicator();
+                    });
+            });
+        }
+        
+        function updateEnergySystemFields(data) {
+            const elements = {
+                "federal_district": data.federal_district || "Нет данных",
+                "union_energy_system": data.union_energy_system || "Нет данных", 
+                "energy_system_type": data.energy_system_type || "Нет данных",
+                "regional_energy_system": data.regional_energy_system || "Нет данных"
+            };
+            
+            Object.entries(elements).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerText = value;
+                    // Добавляем анимацию обновления
+                    element.style.transition = "background-color 0.3s ease";
+                    element.style.backgroundColor = "#d4edda";
+                    setTimeout(() => {
+                        element.style.backgroundColor = "";
+                    }, 1000);
+                }
+            });
+        }
+        
+        function clearEnergySystemFields() {
+            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerText = "Нет данных";
+                }
+            });
+        }
+        
+        function showLoadingIndicator() {
+            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerText = "Загрузка...";
+                    element.style.color = "#6c757d";
+                }
+            });
+        }
+        
+        function hideLoadingIndicator() {
+            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.color = "";
+                }
+            });
+        }
+        
+        function showErrorMessage(message) {
+            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerText = "Ошибка загрузки";
+                    element.style.color = "#dc3545";
+                }
+            });
+        }
     });
 </script>
 
@@ -608,10 +1028,31 @@
 <script>
     document.getElementById('rounding_digits').addEventListener('change', function() {
         const selectedRounding = this.value;
-        const url = new URL(window.location.href);
-        url.searchParams.set('rounding_digits', selectedRounding);
-        url.searchParams.set('page', 1); // Чтобы всегда начинать с первой страницы при новом округлении
-        window.location.href = url.toString();
+        
+        // Обновляем tbody без перезагрузки страницы
+        const tbody = document.getElementById('machines-tbody');
+        if (tbody) {
+            // Показываем спиннер
+            tbody.innerHTML = `<tr><td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
+            
+            // Загружаем новые данные
+            const url = `{{ url_for('station_bp.station_details_tbody', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
+            fetch(url, { cache: 'no-store' })
+                .then(r => r.text())
+                .then(html => {
+                    tbody.innerHTML = html;
+                    // Обновляем строки после загрузки
+                    if (typeof window.updateRows === 'function') {
+                        window.updateRows();
+                    }
+                })
+                .catch(err => console.error('Ошибка загрузки агрегатов:', err));
+        }
+        
+        // Обновляем URL без перезагрузки страницы
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('rounding_digits', selectedRounding);
+        window.history.replaceState({}, '', newUrl.toString());
     });
 </script>
 

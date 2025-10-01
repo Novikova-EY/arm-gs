@@ -14,6 +14,8 @@ class StationPower(db.Model):
     __table_args__ = (
         Index('ix_station_power_id_station', 'id_station'),
         Index('ix_station_power_year_number', 'year_number'),
+        # Составной индекс для оптимизации запросов по станции и году
+        Index('ix_station_powers_station_year', 'id_station', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )
 

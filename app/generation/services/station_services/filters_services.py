@@ -115,7 +115,7 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         machine_list.sort(key=lambda m: (
             (m.machine_group or '').lower(),
             (m.fuel_so or '').lower(),
-            int(m.machine_number) if m.machine_number and str(m.machine_number).isdigit() else float('inf')
+            int(m.machine_number) if m.machine_number and str(m.machine_number).strip().isdigit() else float('inf')
         ))
 
         group_dict = defaultdict(list)

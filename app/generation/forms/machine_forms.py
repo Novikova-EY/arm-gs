@@ -78,6 +78,13 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
+    id_equipment_group = SelectField(
+        'Тип технологии (EquipmentGroup)',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
     date_exploitation = StringField(
         'Год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
@@ -159,6 +166,13 @@ class PGUMachineFilterForm(FlaskForm):
 
     id_pgu_tes_machine_type = SelectField(
         'Тип агрегата ПГУ',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
+    id_equipment_group_pgu = SelectField(
+        'Тип технологии (EquipmentGroup)',
         coerce=int,
         choices=[],
         validators=[Optional()]

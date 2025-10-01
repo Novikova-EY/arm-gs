@@ -14,6 +14,7 @@ class MachineFuel(db.Model):
         Index('ix_machine_fuel_id_machine', 'id_machine'),
         Index('ix_machine_fuel_id_fuel', 'id_fuel'),
         Index('ix_machine_fuel_id_year_number', 'year_number'),
+        Index('ix_machine_fuels_machine_year', 'id_machine', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )
 

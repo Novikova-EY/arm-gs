@@ -3,7 +3,7 @@
 from config import Config
 from app.extensions import db
 from flask import (
-    render_template, request, redirect, url_for, flash, session, jsonify
+    render_template, request, redirect, url_for, flash, session, jsonify, current_app
 )
 from collections import defaultdict
 
@@ -14,7 +14,10 @@ from . import station_bp
 
 # Модели
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.generation.models.station.station_model import Station
+from sqlalchemy.orm import joinedload
 
 # Формы
 from app.generation.forms.station_forms import(
@@ -63,7 +66,8 @@ def station_list():
     page                = filters.pop("page", 1)
     start_year          = filters.pop("start_year", Config.START_YEAR)
     end_year            = filters.pop("end_year", Config.END_YEAR)
-    show_p_ogr          = request.args.get("show_p_ogr") == "1"
+    # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
+    show_p_ogr          = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp         = request.args.get("show_p_rasp", "1") == "1"
     per_page_param      = request.args.get("per_page", "10")
 
@@ -138,7 +142,7 @@ def add_station():
             db.session.commit()
 
             flash("Новая станция успешно создана!", "success")
-            log_to_db(user, f"Создана новая станция: {new_station.name}")
+            log_to_db(user, f"Создана новая станция: {new_station.name}", entity_type="station", entity_id=new_station.id)
 
             return redirect(url_for("station_bp.station_details", station_id=new_station.id))
 
@@ -152,33 +156,66 @@ def add_station():
 
 @station_bp.route("/get_energy_system_data/<int:regional_district_id>", methods=["GET"])
 def get_energy_system_data(regional_district_id):
-    regional_district = db.session.query(RegionalDistrict).filter_by(id=regional_district_id).first()
+    """API endpoint для получения данных энергосистемы по субъекту РФ."""
+    try:
+        # Загружаем субъект РФ с предзагрузкой связанных данных
+        regional_district = (
+            db.session.query(RegionalDistrict)
+            .options(
+                joinedload(RegionalDistrict.federal_district),
+                joinedload(RegionalDistrict.regional_energy_systems)
+                    .joinedload(RegionalEnergySystem.union_energy_system)
+                    .joinedload(UnionEnergySystem.energy_system_type)
+            )
+            .filter_by(id=regional_district_id)
+            .first()
+        )
 
-    if not regional_district:
-        return jsonify({"error": "Регион не найден"}), 404
+        if not regional_district:
+            return jsonify({"error": "Субъект РФ не найден"}), 404
 
-    federal_district = regional_district.federal_district.name if regional_district.federal_district else "Нет данных"
+        # Получаем федеральный округ
+        federal_district = regional_district.federal_district.name if regional_district.federal_district else "Нет данных"
 
-    # Получаем все возможные энергосистемы для данного субъекта РФ
-    energy_systems = regional_district.regional_energy_systems
+        # Получаем все возможные энергосистемы для данного субъекта РФ
+        energy_systems = regional_district.regional_energy_systems
 
-    if not energy_systems:
-        return jsonify({"error": "Нет данных по энергосистеме"}), 404
+        if not energy_systems:
+            return jsonify({
+                "federal_district": federal_district,
+                "regional_energy_system": "Нет данных",
+                "union_energy_system": "Нет данных", 
+                "energy_system_type": "Нет данных"
+            })
 
-    # Ищем правильную РЭС (если их несколько)
-    regional_energy_system = next((res.name for res in energy_systems if res.union_energy_system), energy_systems[0].name)
+        # Ищем основную РЭС (приоритет у той, что имеет ОЭС)
+        main_res = None
+        for res in energy_systems:
+            if res.union_energy_system:
+                main_res = res
+                break
+        
+        if not main_res:
+            main_res = energy_systems[0]
 
-    # Определяем ОЭС по найденной РЭС
-    union_energy_system = next((res.union_energy_system.name for res in energy_systems if res.union_energy_system), "Нет данных")
+        # Определяем данные энергосистемы
+        regional_energy_system = main_res.name if main_res else "Нет данных"
+        union_energy_system = main_res.union_energy_system.name if main_res and main_res.union_energy_system else "Нет данных"
+        energy_system_type = (
+            main_res.union_energy_system.energy_system_type.name 
+            if main_res and main_res.union_energy_system and main_res.union_energy_system.energy_system_type 
+            else "Нет данных"
+        )
 
-    # Определяем тип энергосистемы
-    energy_system_type = next((res.union_energy_system.energy_system_type.name for res in energy_systems if res.union_energy_system), "Нет данных")
+        data = {
+            "federal_district": federal_district,
+            "regional_energy_system": regional_energy_system,
+            "union_energy_system": union_energy_system,
+            "energy_system_type": energy_system_type
+        }
 
-    data = {
-        "federal_district": federal_district,
-        "regional_energy_system": regional_energy_system,
-        "union_energy_system": union_energy_system,
-        "energy_system_type": energy_system_type
-    }
+        return jsonify(data)
 
-    return jsonify(data)
+    except Exception as e:
+        current_app.logger.error(f"Ошибка при получении данных энергосистемы для субъекта {regional_district_id}: {str(e)}")
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500

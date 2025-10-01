@@ -1,6 +1,8 @@
 """Сервисный модуль: Список электростанций Российской Федерации."""
 
 from app.extensions import db
+from sqlalchemy import text
+from config import SCHEMA_GENERATION
 from sqlalchemy import and_
 from sqlalchemy.orm import selectinload, joinedload
 from decimal import Decimal
@@ -855,28 +857,36 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
         machine.powers_by_year[mp.year_number]["p_ogr"] = mp.p_ogr
         machine.powers_by_year[mp.year_number]["p_rasp"] = mp.p_rasp
 
+        # Предрасчет справочника топлива по годам для шаблона
         machine.fuel_type_by_year = {
-            mf.year_number: mf.fuel.fuel_type.name
+            mf.year_number: (mf.fuel.fuel_type.name if mf.fuel and mf.fuel.fuel_type else None)
             for mf in machine.machine_fuels
-            if mf.fuel and mf.fuel.fuel_type
         }
 
 
 def recalculate_station_power(station, start_year, end_year):
+    """Оптимизированный пересчет мощностей станции."""
     power_by_year = {
         year: {"p_ust": Decimal("0"), "p_ogr": Decimal("0"), "p_rasp": Decimal("0")}
         for year in range(start_year, end_year + 1)
     }
 
+    # Оптимизация: используем предзагруженные данные
     for machine in station.machines:
         for mp in machine.machine_powers:
-            year = mp.year.number
+            # Проверяем, что year загружен
+            if hasattr(mp, 'year') and mp.year:
+                year = mp.year.number
+            else:
+                # Fallback для случаев, когда year не загружен
+                continue
+                
             if start_year <= year <= end_year:
                 power_by_year[year]["p_ust"] += Decimal(str(mp.p_ust or "0"))
                 power_by_year[year]["p_ogr"] += Decimal(str(mp.p_ogr or "0"))
                 power_by_year[year]["p_rasp"] += Decimal(str(mp.p_rasp or "0"))
 
-    # Загружаем или создаем StationPower по годам
+    # Оптимизация: загружаем существующие мощности одним запросом
     existing_spowers = {
         sp.year_number: sp
         for sp in StationPower.query.filter_by(id_station=station.id)
@@ -884,12 +894,21 @@ def recalculate_station_power(station, start_year, end_year):
         .all()
     }
 
+    # Оптимизация: собираем изменения и коммитим одним запросом
+    powers_to_update = []
+    powers_to_create = []
+    
     for year, values in power_by_year.items():
         if year in existing_spowers:
             sp = existing_spowers[year]
-            sp.p_ust = values["p_ust"]
-            sp.p_ogr = values["p_ogr"]
-            sp.p_rasp = values["p_rasp"]
+            # Проверяем, изменились ли значения
+            if (sp.p_ust != values["p_ust"] or 
+                sp.p_ogr != values["p_ogr"] or 
+                sp.p_rasp != values["p_rasp"]):
+                sp.p_ust = values["p_ust"]
+                sp.p_ogr = values["p_ogr"]
+                sp.p_rasp = values["p_rasp"]
+                powers_to_update.append(sp)
         else:
             sp = StationPower(
                 id_station=station.id,
@@ -898,9 +917,26 @@ def recalculate_station_power(station, start_year, end_year):
                 p_ogr=values["p_ogr"],
                 p_rasp=values["p_rasp"],
             )
-            db.session.add(sp)
+            powers_to_create.append(sp)
 
-    db.session.commit()
+    # Коммитим только если есть изменения
+    if powers_to_update or powers_to_create:
+        if powers_to_create:
+            # Перед вставкой убеждаемся, что последовательность PK синхронизирована (для PostgreSQL)
+            try:
+                seq_name = f"{SCHEMA_GENERATION}.station_powers_id_seq"
+                db.session.execute(
+                    text(
+                        "SELECT setval(:seq, COALESCE((SELECT MAX(id) FROM "
+                        f"{SCHEMA_GENERATION}.station_powers), 0))"
+                    ),
+                    {"seq": seq_name},
+                )
+            except Exception:
+                # Если БД не PostgreSQL или нет последовательности — тихо пропускаем
+                pass
+        db.session.add_all(powers_to_create)
+        db.session.commit()
 
 
 def build_energy_unit_aggregates(data):

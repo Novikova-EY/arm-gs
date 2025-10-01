@@ -78,16 +78,35 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Скрипт для отображения строк с располагаемой мощность и ограничениями мощности
     $(document).ready(function() {
-        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3")
+        if (window.machineRowsSetupDone) {
+            return;
+        }
+        window.machineRowsSetupDone = true;
+
+        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3") — только один раз
         $('.rowspan-td').each(function() {
-            $(this).data('original-rowspan', $(this).attr('rowspan'));
+            if ($(this).data('original-rowspan') == null) {
+                $(this).data('original-rowspan', $(this).attr('rowspan'));
+            }
         });
 
-        // Сохраняем rowspan для ячеек с названием станции
+        // Сохраняем базовое количество агрегатов на станцию — только один раз
         $('.station-rowspan-td').each(function() {
-            let originalRowspan = parseInt($(this).attr('rowspan'), 10);
-            let totalMachines = (originalRowspan - 1) / 3;
-            $(this).data('total-machines', totalMachines);
+            // Приоритет: использовать данные из разметки, если есть
+            const dataTotalMachines = $(this).attr('data-total-machines');
+            const dataTotalPgu = $(this).attr('data-total-pgu-count');
+            if ($(this).data('total-machines') == null) {
+                if (dataTotalMachines != null) {
+                    $(this).data('total-machines', parseInt(dataTotalMachines, 10) || 0);
+                } else {
+                    let originalRowspan = parseInt($(this).attr('rowspan'), 10);
+                    let totalMachines = (originalRowspan - 1) / 3;
+                    $(this).data('total-machines', totalMachines);
+                }
+            }
+            if ($(this).data('total-pgu-count') == null && dataTotalPgu != null) {
+                $(this).data('total-pgu-count', parseInt(dataTotalPgu, 10) || 0);
+            }
         });
 
         // Функция обновления строк
@@ -115,28 +134,55 @@ document.addEventListener("DOMContentLoaded", () => {
             // Обновляем rowspan для ячейки "Всего по станции"
             $('.total-row-cell').attr('rowspan', aggregatorRows);
 
-            // Меняем rowspan для ячеек агрегатов
+            // Меняем rowspan для ячеек агрегатов: baseRows + extras
             $('.rowspan-td').each(function() {
-                let original = parseInt($(this).data('original-rowspan'), 10);
-                $(this).attr('rowspan', aggregatorRows);
+                const baseRowsAttr = this.getAttribute('data-machine-base-rowspan');
+                const baseRows = parseInt(baseRowsAttr, 10);
+                if (Number.isFinite(baseRows) && baseRows > 0) {
+                    const extras = aggregatorRows - 1; // доп. строки на агрегат
+                    this.setAttribute('rowspan', String(baseRows + extras));
+                } else {
+                    // fallback для ячеек без базового атрибута
+                    this.setAttribute('rowspan', String(aggregatorRows));
+                }
             });
 
             // Меняем rowspan для ячеек с названием станции
             $('.station-rowspan-td').each(function() {
-                let totalMachines = parseInt($(this).data('total-machines'), 10);
-                let newRowSpan = totalMachines * aggregatorRows + 1;
+                const totalMachines = parseInt($(this).data('total-machines'), 10) || 0;
+                const totalPgu = parseInt($(this).data('total-pgu-count'), 10) || 0;
+                const newRowSpan = (totalMachines * aggregatorRows) + totalPgu + 1;
                 $(this).attr('rowspan', newRowSpan);
             });
 
-            // Обновляем корректное отображение суммарных мощностей
-            $('.power-column').each(function() {
-                let totalRow = $(this).closest('tr').find('.total-row-cell');
-                if (totalRow.length) {
-                    totalRow.attr('rowspan', aggregatorRows);
-                }
+            // Обновляем rowspan для ячейки "Всего по станции" согласно формуле
+            $('.total-row-cell').attr('rowspan', aggregatorRows);
+
+            // Синхронизация высоты ячеек "гр." и "Топливо (по СО ЕЭС)"
+            const rowMultiplier = aggregatorRows; // 1..3
+            document.querySelectorAll('.fuel-cell').forEach(cell => {
+                if (!cell) return;
+                // baseRows = сумма базовых строк по всем агрегатам группы: Σ(1 + num_pgu)
+                const baseRows = parseInt(cell.getAttribute('data-base-rowspan'), 10) || 1;
+                const groupCount = parseInt(cell.getAttribute('data-group-machine-count'), 10);
+                const fuelCount = parseInt(cell.getAttribute('data-fuel-machine-count'), 10);
+                const machinesCount = Number.isFinite(groupCount) ? groupCount
+                    : Number.isFinite(fuelCount) ? fuelCount
+                    : 1;
+                // extras = число доп. строк (Рогр, Ррасп) на агрегат
+                const extras = rowMultiplier - 1;
+                // Итог: Σ(1 + num_pgu) + countMachines * extras
+                const newRowspan = baseRows + machinesCount * extras;
+                cell.setAttribute('rowspan', String(newRowspan));
+                cell.style.display = 'table-cell';
             });
 
         }
+
+        // Экспортируем функцию для других обработчиков
+        window.applyPowerRowsUpdate = updateRows;
+        // Алиас для совместимости с вызовами в station_details.html
+        window.updateRows = updateRows;
 
         // Обновляем строки при загрузке страницы
         updateRows();
@@ -151,36 +197,35 @@ document.addEventListener("DOMContentLoaded", () => {
     function setupMachinePowerRows() {
         const togglePOgr = document.getElementById("toggleP_Ogr");
         const togglePRasp = document.getElementById("toggleP_Rasp");
-        const form = document.getElementById('stationFilterForm');
+        const labelPOgr = document.querySelector('label[for="toggleP_Ogr"]');
+        const labelPRasp = document.querySelector('label[for="toggleP_Rasp"]');
 
-        function update() {
-            const showPOgr = togglePOgr?.checked || false;
-            const showPRasp = togglePRasp?.checked || false;
-
-            // Показ/скрытие всех строк Рогр (и станций, и машин)
-            document.querySelectorAll(".p-ogr-row").forEach(row => {
-                row.style.display = showPOgr ? "" : "none";
-            });
-
-            // Показ/скрытие всех строк Ррасп
-            document.querySelectorAll(".p-rasp-row").forEach(row => {
-                row.style.display = showPRasp ? "" : "none";
-            });
+        function syncToggleStyles() {
+            if (labelPRasp && togglePRasp) {
+                labelPRasp.classList.toggle('btn-primary', togglePRasp.checked);
+                labelPRasp.classList.toggle('btn-outline-primary', !togglePRasp.checked);
+            }
+            if (labelPOgr && togglePOgr) {
+                // Сохраняем существующий стиль: активная = заливка, неактивная = outline
+                labelPOgr.classList.toggle('btn-primary', togglePOgr.checked);
+                labelPOgr.classList.toggle('btn-outline-primary', !togglePOgr.checked);
+            }
         }
 
-        // При изменении — автосабмит формы
+        // При изменении — только единая функция обновления, без дублирования логики
         togglePOgr?.addEventListener('change', () => {
-            form.submit();
+            window.applyPowerRowsUpdate?.();
+            syncToggleStyles();
         });
 
         togglePRasp?.addEventListener('change', () => {
-            form.submit();
+            window.applyPowerRowsUpdate?.();
+            syncToggleStyles();
         });
 
-        // Вызываем обновление видимости строк при загрузке (чтобы они скрывались даже без перезагрузки)
-        update();
-
-        window.updateRows = update;
+        // Первичная синхронизация
+        window.applyPowerRowsUpdate?.();
+        syncToggleStyles();
     }
 
     // === 4. Переключатель "все станции / постранично"

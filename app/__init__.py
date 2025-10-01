@@ -10,6 +10,7 @@ from sqlalchemy.engine import URL
 from app.extensions import db, migrate, login_manager
 from config import Config
 import logging
+from flask_compress import Compress
 
 def create_app():
     app = Flask(__name__)
@@ -18,6 +19,8 @@ def create_app():
     app.debug = app.config.get("DEBUG", False)
     app.config['SQLALCHEMY_ECHO'] = False
     app.logger.setLevel(logging.DEBUG)
+    # Включаем сжатие ответов (gzip, br, zstd)
+    Compress(app)
 
     db_uri = URL.create(
         "postgresql+psycopg2",
@@ -143,7 +146,7 @@ def create_app():
     app.register_blueprint(users_bp, url_prefix="/users")
     app.register_blueprint(refdata_bp, url_prefix="/refdata")
     app.register_blueprint(generation_bp, url_prefix="/generation")
-    app.register_blueprint(station_bp, url_prefix="/stations")
+    app.register_blueprint(station_bp, url_prefix="/generation/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
     app.register_blueprint(station_changes_bp, url_prefix="/station_changes")
     app.register_blueprint(auth_bp, url_prefix="/auth")

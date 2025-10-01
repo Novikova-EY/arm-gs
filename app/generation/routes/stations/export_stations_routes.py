@@ -86,8 +86,9 @@ def export_station_full_routes():
     end_year = int(request.args.get("end_year", Config.END_YEAR))
     rounding_digits = request.args.get("rounding_digits", "1")
     per_page = request.args.get("per_page", "all")
-    show_p_ogr = request.args.get("show_p_ogr") == "1"
-    show_p_rasp = request.args.get("show_p_rasp") == "1"
+    # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
+    show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
+    show_p_rasp = request.args.get("show_p_rasp", "1") == "1"
 
     try:
         rounding_digits = int(rounding_digits)

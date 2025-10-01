@@ -226,12 +226,15 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     try:
         changes, pgu_changes = [], []
 
+        from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+        
         field_map = {
             "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
             "id_gen_company": lambda x: GenCompany.query.get(x).name if x else "не указано",
             "id_station_type": lambda x: StationType.query.get(x).name if x else "не указано",
             "id_machine_type": lambda x: MachineType.query.get(x).name if x else "не указано",
             "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x else "не указано",
+            "id_equipment_group": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
             "machine_name": str,
             "note": lambda x: x or "не указано",
             "machine_group": str,
@@ -303,12 +306,14 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         if is_pgu_action and pgu_machines_form.id_pgu_machine.data:
             pgu_machine = PGUMachine.query.get(pgu_machines_form.id_pgu_machine.data)
             if pgu_machine:
+                from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
                 for fld, to_str in {
                     "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
                     "id_parent_machine": lambda x: Machine.query.get(x).machine_name if x else "не указано",
                     "machine_number": str,
                     "machine_name": str,
                     "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x else "не указано",
+                    "id_equipment_group_pgu": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
                     "note": lambda x: x or "не указано",
                 }.items():
                     old_val, new_val = getattr(pgu_machine, fld), getattr(pgu_machines_form, fld).data
@@ -422,49 +427,127 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         )
 
     try:
-        if pgu_machine_id == 0:
+        changes = []
+        is_new = pgu_machine_id == 0
+        
+        if is_new:
             pgu_machine = PGUMachine(id_parent_machine=machine_id)
             db.session.add(pgu_machine)
+            db.session.flush()  # Получаем ID для новой записи
         else:
             pgu_machine = PGUMachine.query.get_or_404(pgu_machine_id)
 
-        for field in [
-            'id_condition_type', 'machine_number', 'machine_name', 'id_pgu_tes_machine_type', 'note',
-            'date_exploitation', 'date_commission_fact', 'date_joining_expected', 'date_joining_fact',
-            'date_detatchment_fact', 'date_decompressing_expected', 'date_decompressing_fact',
-            'date_modernization_expected', 'date_relabing_fact', 'date_update_fact'
-        ]:
-            value = getattr(pgu_form, field).data
-            if 'date' in field and field not in {'date_exploitation', 'date_decompressing_expected', 'date_modernization_expected'}:
-                value = convert_to_date(value)
-            elif field in {'date_exploitation', 'date_decompressing_expected', 'date_modernization_expected'}:
-                value = int(value) if value else None
-            setattr(pgu_machine, field, value)
+        # Логирование изменений полей
+        from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+        from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+        
+        field_map = {
+            "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
+            "machine_number": str,
+            "machine_name": str,
+            "id_pgu_tes_machine_type": lambda x: PGUTesMachineType.query.get(x).name if x else "не указано",
+            "id_equipment_group_pgu": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
+            "note": lambda x: x or "не указано",
+        }
+
+        for fld, to_str in field_map.items():
+            old_v = getattr(pgu_machine, fld) if not is_new else None
+            new_v = getattr(pgu_form, fld).data
+            
+            if is_new:
+                if new_v:
+                    changes.append(f"{fld}: {to_str(new_v)}")
+                setattr(pgu_machine, fld, new_v)
+            else:
+                if old_v != new_v:
+                    changes.append(f"{fld}: {to_str(old_v)} → {to_str(new_v)}")
+                    setattr(pgu_machine, fld, new_v)
+
+        # Логирование изменений дат
+        date_fields = [
+            "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
+            "date_detatchment_fact", "date_decompressing_expected", "date_decompressing_fact",
+            "date_modernization_expected", "date_relabing_fact", "date_update_fact",
+        ]
+
+        for fld in date_fields:
+            raw_form_value = getattr(pgu_form, fld).data
+            if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
+                new_val = int(raw_form_value) if raw_form_value else None
+            else:
+                new_val = convert_to_date(raw_form_value)
+
+            old_val = getattr(pgu_machine, fld) if not is_new else None
+            old_val_str = old_val.strftime("%Y-%m-%d") if isinstance(old_val, (date, datetime)) else str(old_val) if old_val else None
+            new_val_str = new_val.strftime("%Y-%m-%d") if isinstance(new_val, (date, datetime)) else str(new_val) if new_val else None
+
+            if is_new:
+                if new_val:
+                    changes.append(f"{fld}: {new_val_str}")
+                setattr(pgu_machine, fld, new_val)
+            else:
+                if old_val_str != new_val_str:
+                    changes.append(f"{fld}: {old_val_str} → {new_val_str}")
+                    setattr(pgu_machine, fld, new_val)
 
         db.session.flush()
 
+        # Получаем существующие мощности для сравнения
+        existing_powers = {}
+        if not is_new:
+            for power in PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).all():
+                existing_powers[power.year_number] = power.p_ust
+
+        # Удаляем старые мощности и добавляем новые
         PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).delete()
 
         for power_entry in pgu_form.powers.entries:
             year = power_entry.year.data
             p_ust = to_decimal(power_entry.p_ust.data)
+            
+            # Логируем изменения мощности
+            if is_new:
+                if p_ust and p_ust > 0:
+                    changes.append(f"{year} – p_ust: {format_decimal_for_display(p_ust)}")
+            else:
+                old_p_ust = existing_powers.get(year)
+                if not is_same_decimal(old_p_ust, p_ust):
+                    changes.append(f"{year} – p_ust: {format_decimal_for_display(old_p_ust)} → {format_decimal_for_display(p_ust)}")
+            
             db.session.add(PGUMachinePower(id_pgu_machine=pgu_machine.id, year_number=year, p_ust=p_ust))
 
         db.session.commit()
 
-        action = "Добавлен" if pgu_machine_id == 0 else "Обновлен"
-        log_to_db(user, f"{action} ПГУ агрегат '{pgu_machine.machine_name}'", details=f"ID: {pgu_machine.id}")
-        flash(f"Агрегат ПГУ успешно сохранен!", "success")
+        # Логирование
+        if is_new:
+            log_to_db(
+                user, 
+                f"Добавлен ПГУ агрегат '{pgu_form.machine_name.data}' на станции {station.name}", 
+                details="; ".join(changes) if changes else f"ID: {pgu_machine.id}"
+            )
+            flash(f"Агрегат ПГУ успешно добавлен!", "success")
+        else:
+            if changes:
+                log_to_db(
+                    user, 
+                    f"Изменения на станции {station.name} в агрегате ПГУ '{pgu_machine.machine_name}' (UID: {pgu_machine.id}) ", 
+                    details="; ".join(changes)
+                )
+                flash(f"Агрегат ПГУ успешно обновлен!", "success")
+            else:
+                flash("Изменений не обнаружено", "info")
 
-        return redirect(url_for('station_bp.machine_details',
+        return redirect(url_for('station_bp.pgu_machine_details',
                                 station_id=station.id,
                                 machine_id=parent_machine.id,
-                                start_year=start_year,
-                                end_year=end_year))
+                                pgu_machine_id=pgu_machine.id,
+                                **request.args))
 
     except Exception as e:
         db.session.rollback()
+        traceback.print_exc()
         flash(f"Ошибка при сохранении: {e}", "danger")
+        log_to_db(user, f"Ошибка при сохранении ПГУ агрегата на станции {station.name}", details=str(e))
         return render_template(
             "generation/stations/pgu_machine_details.html",
             station=station,
@@ -477,11 +560,14 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
     
 
 def _fill_main_form_choices(form):
+    from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+    
     form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
     form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
     form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
     form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
     form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
+    form.id_equipment_group.choices = [(eg.id, eg.name) for eg in EquipmentGroup.query.order_by(EquipmentGroup.id).all()]
     
     form.id_condition_type.choices = [
         (c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()
@@ -509,6 +595,8 @@ def _fill_advanced_form_choices(form):
 
 
 def _fill_pgu_machines_form_choices(form, machine_id):
+    from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+    
     form.id_parent_machine.choices = [
         (m.id, m.machine_name) for m in Machine.query.order_by(Machine.machine_name).all()
     ]
@@ -524,6 +612,10 @@ def _fill_pgu_machines_form_choices(form, machine_id):
     ]
     if form.id_pgu_tes_machine_type.data is None:
         form.id_pgu_tes_machine_type.data = 0
+
+    form.id_equipment_group_pgu.choices = [
+        (eg.id, eg.name) for eg in EquipmentGroup.query.order_by(EquipmentGroup.id).all()
+    ]
 
 
 def is_empty(val):

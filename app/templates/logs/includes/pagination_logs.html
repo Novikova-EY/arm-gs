@@ -6,11 +6,14 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=1, 
-            username_filter=username_filter, 
-            action_filter=action_filter, 
+            username=username_filter, 
+            action=action_filter, 
+            details=details_filter,
+            entity_type=entity_type_filter,
             sort_by=sort_by, 
             sort_dir=sort_dir,
-            per_page=per_page) }}" aria-label="Первая">
+            per_page=per_page,
+            show_page_events='true' if show_page_events else 'false') }}" aria-label="Первая">
                 <span aria-hidden="true">&laquo;&laquo;</span>
             </a>
         </li>
@@ -20,11 +23,14 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.prev_num, 
-            username_filter=username_filter, 
-            action_filter=action_filter, 
+            username=username_filter, 
+            action=action_filter, 
+            details=details_filter,
+            entity_type=entity_type_filter,
             sort_by=sort_by, 
             sort_dir=sort_dir,
-            per_page=per_page) }}" aria-label="Предыдущая">
+            per_page=per_page,
+            show_page_events='true' if show_page_events else 'false') }}" aria-label="Предыдущая">
                 <span aria-hidden="true">&laquo;</span>
             </a>
         </li>
@@ -35,11 +41,13 @@
                 <a class="page-link" href="{{ 
                 url_for('logs.view_logs', 
                 page=1, 
-                username_filter=username_filter, 
-                action_filter=action_filter, 
+                username=username_filter, 
+                action=action_filter, 
+                details=details_filter,
                 sort_by=sort_by, 
                 sort_dir=sort_dir,
-                per_page=per_page) }}">1</a>
+                per_page=per_page,
+                show_page_events='true' if show_page_events else 'false') }}">1</a>
             </li>
             {% if logs.page > 4 %}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -52,11 +60,13 @@
                     <a class="page-link" href="{{ 
                     url_for('logs.view_logs', 
                     page=num, 
-                    username_filter=username_filter, 
-                    action_filter=action_filter, 
+                    username=username_filter, 
+                    action=action_filter, 
+                    details=details_filter,
                     sort_by=sort_by, 
                     sort_dir=sort_dir,
-                    per_page=per_page) }}">{{ num }}</a>
+                    per_page=per_page,
+                    show_page_events='true' if show_page_events else 'false') }}">{{ num }}</a>
                 </li>
             {% endif %}
         {% endfor %}
@@ -69,11 +79,13 @@
                 <a class="page-link" href="{{ 
                 url_for('logs.view_logs', 
                 page=logs.pages, 
-                username_filter=username_filter, 
-                action_filter=action_filter, 
+                username=username_filter, 
+                action=action_filter, 
+                details=details_filter,
                 sort_by=sort_by, 
                 sort_dir=sort_dir,
-                per_page=per_page) }}">{{ logs.pages }}</a>
+                per_page=per_page,
+                show_page_events='true' if show_page_events else 'false') }}">{{ logs.pages }}</a>
             </li>
         {% endif %}
 
@@ -82,11 +94,14 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.next_num, 
-            username_filter=username_filter, 
-            action_filter=action_filter, 
+            username=username_filter, 
+            action=action_filter, 
+            details=details_filter,
+            entity_type=entity_type_filter,
             sort_by=sort_by, 
             sort_dir=sort_dir,
-            per_page=per_page) }}" aria-label="Следующая">
+            per_page=per_page,
+            show_page_events='true' if show_page_events else 'false') }}" aria-label="Следующая">
                 <span aria-hidden="true">&raquo;</span>
             </a>
         </li>
@@ -96,11 +111,14 @@
             <a class="page-link" href="{{ 
             url_for('logs.view_logs', 
             page=logs.pages, 
-            username_filter=username_filter, 
-            action_filter=action_filter, 
+            username=username_filter, 
+            action=action_filter, 
+            details=details_filter,
+            entity_type=entity_type_filter,
             sort_by=sort_by, 
             sort_dir=sort_dir,
-            per_page=per_page) }}" aria-label="Последняя">
+            per_page=per_page,
+            show_page_events='true' if show_page_events else 'false') }}" aria-label="Последняя">
                 <span aria-hidden="true">&raquo;&raquo;</span>
             </a>
         </li>
