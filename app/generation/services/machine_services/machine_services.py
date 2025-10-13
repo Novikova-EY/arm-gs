@@ -6,6 +6,11 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm.attributes import flag_modified
 from flask import flash,request, render_template, request, flash, redirect, url_for
 from app.logs.services.logging_service import log_to_db
+from app.common.services.tranzaction_services import (
+    _commit_with_retry,
+    _locked_get,
+    no_autoflush,
+)
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
@@ -23,6 +28,7 @@ from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model 
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.years.year_model import Year
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
 
 from app.generation.services.station_services.station_services import (
@@ -39,6 +45,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
 )
 
+@no_autoflush
 def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits):
     machine = get_machine_by_id(machine_id)
     station = get_station_by_id(station_id)
@@ -125,7 +132,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         fuel_entry.fuel_type.choices = fuel_choices
         fuel_entry.fuel_type.data = mf.id_fuel if mf.id_fuel is not None else 0
 
-    db.session.commit()
+    _commit_with_retry()
 
     return {
         "start_year": start_year,
@@ -142,6 +149,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     }
 
 
+@no_autoflush
 def handle_machine_post(station_id, machine_id, form_data, user, start_year, end_year, rounding_digits):
     from werkzeug.datastructures import MultiDict
 
@@ -174,15 +182,21 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         for pgu_machine in pgu_to_delete:
             try:
-                for power in pgu_machine.pgu_machine_powers:
-                    db.session.delete(power)
-                db.session.delete(pgu_machine)
-                deleted_names.append(pgu_machine.machine_name or f"ID={pgu_machine.id}")
+                # Блокируем запись для безопасного удаления
+                locked_pgu = _locked_get(PGUMachine, pgu_machine.id)
+                if locked_pgu:
+                    for power in locked_pgu.pgu_machine_powers:
+                        db.session.delete(power)
+                    db.session.delete(locked_pgu)
+                    deleted_names.append(locked_pgu.machine_name or f"ID={locked_pgu.id}")
             except Exception as e:
                 flash(f"Ошибка при удалении ПГУ ID={pgu_machine.id}: {e}", "danger")
-                log_to_db(user, f"Ошибка удаления ПГУ ID={pgu_machine.id}", details=str(e))
+                log_to_db(
+                    user, f"Ошибка удаления ПГУ ID={pgu_machine.id}", details=str(e),
+                    entity_type="pgu_machine",
+                    entity_id=pgu_machine.id)
 
-        db.session.commit()
+        _commit_with_retry()
 
         if deleted_names:
             log_to_db(user, f"Удаление ПГУ агрегатов на станции {station.name}", details="; ".join(deleted_names))
@@ -226,9 +240,8 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     try:
         changes, pgu_changes = [], []
 
-        from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
-        
-        field_map = {
+        with db.session.no_autoflush:
+            field_map = {
             "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
             "id_gen_company": lambda x: GenCompany.query.get(x).name if x else "не указано",
             "id_station_type": lambda x: StationType.query.get(x).name if x else "не указано",
@@ -242,8 +255,14 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         for fld, to_str in field_map.items():
             old_v, new_v = getattr(machine, fld), getattr(main_form, fld).data
-            if old_v != new_v:
-                changes.append(f"{fld}: {to_str(old_v)} → {to_str(new_v)}")
+            old_v_str = to_str(old_v)
+            new_v_str = to_str(new_v)
+            # Логируем только если строковые представления различаются
+            if old_v_str != new_v_str:
+                changes.append(f"{fld}: {old_v_str} → {new_v_str}")
+                setattr(machine, fld, new_v)
+            elif old_v != new_v:
+                # Если строки одинаковы, но значения разные, просто обновляем без логирования
                 setattr(machine, fld, new_v)
 
         date_fields = [
@@ -290,35 +309,43 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                 if not is_same_decimal(old_val, val):
                     setattr(mp, attr, val)
                     flag_modified(mp, attr)
-                    changes.append(f"{year_num} – {attr}: {format_decimal_for_display(old_val)} → {format_decimal_for_display(val)}")
+                    changes.append(f"{attr}: {year_num} год - {format_decimal_for_display(old_val)} → {format_decimal_for_display(val)}")
 
             new_tt = advanced_form.tes_types[i].tes_type.data
             new_fuel = advanced_form.fuels[i].fuel_type.data
 
             if mt.id_tes_type != new_tt and new_tt is not None:
-                changes.append(f"{year_num} – Тип ТЭС: {mt.id_tes_type} → {new_tt}")
+                old_tes_name = TesType.query.get(mt.id_tes_type).name if mt.id_tes_type else "не указано"
+                new_tes_name = TesType.query.get(new_tt).name if new_tt and new_tt != 0 else "не указано"
+                changes.append(f"Тип ТЭС: {year_num} год - {old_tes_name} → {new_tes_name}")
                 mt.id_tes_type = new_tt
 
             if mf.id_fuel != new_fuel and new_fuel is not None:
-                changes.append(f"{year_num} – Топливо: {mf.id_fuel} → {new_fuel}")
+                old_fuel_name = Fuel.query.get(mf.id_fuel).name if mf.id_fuel else "не указано"
+                new_fuel_name = Fuel.query.get(new_fuel).name if new_fuel and new_fuel != 0 else "не указано"
+                changes.append(f"Топливо: {year_num} год - {old_fuel_name} → {new_fuel_name}")
                 mf.id_fuel = new_fuel
 
         if is_pgu_action and pgu_machines_form.id_pgu_machine.data:
             pgu_machine = PGUMachine.query.get(pgu_machines_form.id_pgu_machine.data)
             if pgu_machine:
-                from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
                 for fld, to_str in {
                     "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
                     "id_parent_machine": lambda x: Machine.query.get(x).machine_name if x else "не указано",
                     "machine_number": str,
                     "machine_name": str,
                     "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x else "не указано",
-                    "id_equipment_group_pgu": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
                     "note": lambda x: x or "не указано",
                 }.items():
                     old_val, new_val = getattr(pgu_machine, fld), getattr(pgu_machines_form, fld).data
-                    if old_val != new_val:
-                        pgu_changes.append(f"ПГУ {fld}: {old_val} → {new_val}")
+                    old_val_str = to_str(old_val)
+                    new_val_str = to_str(new_val)
+                    # Логируем только если строковые представления различаются
+                    if old_val_str != new_val_str:
+                        pgu_changes.append(f"ПГУ {fld}: {old_val_str} → {new_val_str}")
+                        setattr(pgu_machine, fld, new_val)
+                    elif old_val != new_val:
+                        # Если строки одинаковы, но значения разные, просто обновляем без логирования
                         setattr(pgu_machine, fld, new_val)
 
                 for fld in date_fields:
@@ -329,11 +356,11 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                         pgu_changes.append(f"ПГУ {fld}: {old_val} → {new_val}")
                         setattr(pgu_machine, fld, new_val)
 
-        autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year)
-        recalculate_station_power(station, start_year, end_year)
-        recalculate_machine_years_by_p_ust(machine, changes, year_features)
+            autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year)
+            recalculate_station_power(station, start_year, end_year)
+            recalculate_machine_years_by_p_ust(machine, changes, year_features)
 
-        db.session.commit()
+        _commit_with_retry()
 
         if pgu_changes:
             log_to_db(user, f"Изменения по ПГУ агрегату {pgu_machine.machine_name} станции {station.name}", details="; ".join(pgu_changes))
@@ -367,6 +394,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         )
 
 
+@no_autoflush
 def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, end_year):
     station = Station.query.get_or_404(station_id)
     parent_machine = Machine.query.get_or_404(machine_id)
@@ -407,6 +435,7 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
     return context
 
 
+@no_autoflush
 def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, user, start_year, end_year):
     station = get_station_by_id(station_id)
     parent_machine = get_machine_by_id(machine_id)
@@ -430,93 +459,99 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         changes = []
         is_new = pgu_machine_id == 0
         
-        if is_new:
-            pgu_machine = PGUMachine(id_parent_machine=machine_id)
-            db.session.add(pgu_machine)
-            db.session.flush()  # Получаем ID для новой записи
-        else:
-            pgu_machine = PGUMachine.query.get_or_404(pgu_machine_id)
+        with db.session.no_autoflush:
+            if is_new:
+                pgu_machine = PGUMachine(id_parent_machine=machine_id)
+                db.session.add(pgu_machine)
+                db.session.flush()  # Получаем ID для новой записи
+            else:
+                pgu_machine = PGUMachine.query.get_or_404(pgu_machine_id)
 
-        # Логирование изменений полей
-        from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
-        from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
-        
-        field_map = {
+            # Логирование изменений полей
+            from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
+            from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+            
+            field_map = {
             "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
             "machine_number": str,
             "machine_name": str,
             "id_pgu_tes_machine_type": lambda x: PGUTesMachineType.query.get(x).name if x else "не указано",
-            "id_equipment_group_pgu": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
             "note": lambda x: x or "не указано",
         }
 
-        for fld, to_str in field_map.items():
-            old_v = getattr(pgu_machine, fld) if not is_new else None
-            new_v = getattr(pgu_form, fld).data
-            
-            if is_new:
-                if new_v:
-                    changes.append(f"{fld}: {to_str(new_v)}")
-                setattr(pgu_machine, fld, new_v)
-            else:
-                if old_v != new_v:
-                    changes.append(f"{fld}: {to_str(old_v)} → {to_str(new_v)}")
+            for fld, to_str in field_map.items():
+                old_v = getattr(pgu_machine, fld) if not is_new else None
+                new_v = getattr(pgu_form, fld).data
+                
+                if is_new:
+                    if new_v:
+                        changes.append(f"{fld}: {to_str(new_v)}")
                     setattr(pgu_machine, fld, new_v)
+                else:
+                    old_v_str = to_str(old_v)
+                    new_v_str = to_str(new_v)
+                    # Логируем только если строковые представления различаются
+                    if old_v_str != new_v_str:
+                        changes.append(f"{fld}: {old_v_str} → {new_v_str}")
+                        setattr(pgu_machine, fld, new_v)
+                    elif old_v != new_v:
+                        # Если строки одинаковы, но значения разные, просто обновляем без логирования
+                        setattr(pgu_machine, fld, new_v)
 
-        # Логирование изменений дат
-        date_fields = [
-            "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
-            "date_detatchment_fact", "date_decompressing_expected", "date_decompressing_fact",
-            "date_modernization_expected", "date_relabing_fact", "date_update_fact",
-        ]
+            # Логирование изменений дат
+            date_fields = [
+                "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
+                "date_detatchment_fact", "date_decompressing_expected", "date_decompressing_fact",
+                "date_modernization_expected", "date_relabing_fact", "date_update_fact",
+            ]
 
-        for fld in date_fields:
-            raw_form_value = getattr(pgu_form, fld).data
-            if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
-                new_val = int(raw_form_value) if raw_form_value else None
-            else:
-                new_val = convert_to_date(raw_form_value)
+            for fld in date_fields:
+                raw_form_value = getattr(pgu_form, fld).data
+                if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
+                    new_val = int(raw_form_value) if raw_form_value else None
+                else:
+                    new_val = convert_to_date(raw_form_value)
 
-            old_val = getattr(pgu_machine, fld) if not is_new else None
-            old_val_str = old_val.strftime("%Y-%m-%d") if isinstance(old_val, (date, datetime)) else str(old_val) if old_val else None
-            new_val_str = new_val.strftime("%Y-%m-%d") if isinstance(new_val, (date, datetime)) else str(new_val) if new_val else None
+                old_val = getattr(pgu_machine, fld) if not is_new else None
+                old_val_str = old_val.strftime("%Y-%m-%d") if isinstance(old_val, (date, datetime)) else str(old_val) if old_val else None
+                new_val_str = new_val.strftime("%Y-%m-%d") if isinstance(new_val, (date, datetime)) else str(new_val) if new_val else None
 
-            if is_new:
-                if new_val:
-                    changes.append(f"{fld}: {new_val_str}")
-                setattr(pgu_machine, fld, new_val)
-            else:
-                if old_val_str != new_val_str:
-                    changes.append(f"{fld}: {old_val_str} → {new_val_str}")
+                if is_new:
+                    if new_val:
+                        changes.append(f"{fld}: {new_val_str}")
                     setattr(pgu_machine, fld, new_val)
+                else:
+                    if old_val_str != new_val_str:
+                        changes.append(f"{fld}: {old_val_str} → {new_val_str}")
+                        setattr(pgu_machine, fld, new_val)
 
-        db.session.flush()
+            db.session.flush()
 
-        # Получаем существующие мощности для сравнения
-        existing_powers = {}
-        if not is_new:
-            for power in PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).all():
-                existing_powers[power.year_number] = power.p_ust
+            # Получаем существующие мощности для сравнения
+            existing_powers = {}
+            if not is_new:
+                for power in PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).all():
+                    existing_powers[power.year_number] = power.p_ust
 
-        # Удаляем старые мощности и добавляем новые
-        PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).delete()
+            # Удаляем старые мощности и добавляем новые
+            PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).delete()
 
-        for power_entry in pgu_form.powers.entries:
-            year = power_entry.year.data
-            p_ust = to_decimal(power_entry.p_ust.data)
-            
-            # Логируем изменения мощности
-            if is_new:
-                if p_ust and p_ust > 0:
-                    changes.append(f"{year} – p_ust: {format_decimal_for_display(p_ust)}")
-            else:
-                old_p_ust = existing_powers.get(year)
-                if not is_same_decimal(old_p_ust, p_ust):
-                    changes.append(f"{year} – p_ust: {format_decimal_for_display(old_p_ust)} → {format_decimal_for_display(p_ust)}")
-            
-            db.session.add(PGUMachinePower(id_pgu_machine=pgu_machine.id, year_number=year, p_ust=p_ust))
+            for power_entry in pgu_form.powers.entries:
+                year = power_entry.year.data
+                p_ust = to_decimal(power_entry.p_ust.data)
+                
+                # Логируем изменения мощности
+                if is_new:
+                    if p_ust and p_ust > 0:
+                        changes.append(f"p_ust: {year} год - {format_decimal_for_display(p_ust)}")
+                else:
+                    old_p_ust = existing_powers.get(year)
+                    if not is_same_decimal(old_p_ust, p_ust):
+                        changes.append(f"p_ust: {year} год - {format_decimal_for_display(old_p_ust)} → {format_decimal_for_display(p_ust)}")
+                
+                db.session.add(PGUMachinePower(id_pgu_machine=pgu_machine.id, year_number=year, p_ust=p_ust))
 
-        db.session.commit()
+        _commit_with_retry()
 
         # Логирование
         if is_new:
@@ -560,8 +595,6 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
     
 
 def _fill_main_form_choices(form):
-    from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
-    
     form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
     form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
     form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
@@ -595,8 +628,6 @@ def _fill_advanced_form_choices(form):
 
 
 def _fill_pgu_machines_form_choices(form, machine_id):
-    from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
-    
     form.id_parent_machine.choices = [
         (m.id, m.machine_name) for m in Machine.query.order_by(Machine.machine_name).all()
     ]
@@ -612,10 +643,6 @@ def _fill_pgu_machines_form_choices(form, machine_id):
     ]
     if form.id_pgu_tes_machine_type.data is None:
         form.id_pgu_tes_machine_type.data = 0
-
-    form.id_equipment_group_pgu.choices = [
-        (eg.id, eg.name) for eg in EquipmentGroup.query.order_by(EquipmentGroup.id).all()
-    ]
 
 
 def is_empty(val):
@@ -707,25 +734,27 @@ def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end
 
         if is_empty(p_ust) and is_empty(p_ogr) and is_empty(p_rasp):
             if mt.id_tes_type != 0:
-                changes.append(f"{year_num} - Тип ТЭС: {mt.id_tes_type} → 'не указано'")
+                old_tes_name = tes_names.get(mt.id_tes_type, f"[{mt.id_tes_type}]")
+                changes.append(f"Тип ТЭС: {year_num} год - {old_tes_name} → не указано")
                 mt.id_tes_type = 0
                 flash(f"🧠 {year_num} год: Тип ТЭС установлен: 'не указано' (все мощности = 0)", "info")
 
             if mf.id_fuel != 0:
-                changes.append(f"{year_num} - Топливо: {mf.id_fuel} → 'не указано'")
+                old_fuel_name = fuel_names.get(mf.id_fuel, f"[{mf.id_fuel}]")
+                changes.append(f"Топливо: {year_num} год - {old_fuel_name} → не указано")
                 mf.id_fuel = 0
                 flash(f"🧠 {year_num} год: Топливо установлено: 'не указано' (все мощности = 0)", "info")
         else:
             if mt.id_tes_type in (None, 0) and prev_tes_type not in (None, 0):
-                changes.append(f"{year_num} - Тип ТЭС: {mt.id_tes_type} → {prev_tes_type}")
-                mt.id_tes_type = prev_tes_type
                 tes_name = tes_names.get(prev_tes_type, f"[{prev_tes_type}]")
+                changes.append(f"Тип ТЭС: {year_num} год - не указано → {tes_name}")
+                mt.id_tes_type = prev_tes_type
                 flash(f"🧠 {year_num} год: Тип ТЭС скопирован из предыдущего года ({tes_name})", "info")
 
             if mf.id_fuel in (None, 0) and prev_fuel_type not in (None, 0):
-                changes.append(f"{year_num} - Топливо: {mf.id_fuel} → {prev_fuel_type}")
-                mf.id_fuel = prev_fuel_type
                 fuel_name = fuel_names.get(prev_fuel_type, f"[{prev_fuel_type}]")
+                changes.append(f"Топливо: {year_num} год - не указано → {fuel_name}")
+                mf.id_fuel = prev_fuel_type
                 flash(f"🧠 {year_num} год: Топливо скопировано из предыдущего года ({fuel_name})", "info")
 
         # Обновляем форму

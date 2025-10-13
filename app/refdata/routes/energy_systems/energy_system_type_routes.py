@@ -35,7 +35,10 @@ def energy_system_type_list():
     """Маршрут для отображения списка типов частей энергосистемы России."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница типов частей энергосистемы России")
+    log_to_db(
+        user, 
+        "Открыта страница типов частей энергосистемы России", 
+        entity_type="energy_system_type")
 
     # Создание формы
     form = EnergySystemTypeFilterForm()
@@ -66,7 +69,6 @@ def energy_system_type_list():
                 delete_energy_system_type_service(energy_system_type_delete, user)
                 flash("Записи типов частей энергосистемы России успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления типов частей энергосистемы России: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.energy_system_type_list", 
                                     page=page, 
@@ -78,7 +80,6 @@ def energy_system_type_list():
         # Обновление данных в базе
         try:
             if not (energy_system_type_ids and energy_system_type_names):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_system_type_list", 
                                         page=page, 
@@ -114,14 +115,12 @@ def energy_system_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов частей энергосистем России: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления ОЭС", str(energy_system_type_data))
             update_energy_system_type_service(energy_system_type_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных списка типов частей энергосистем России: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.energy_system_type_list", 
@@ -156,7 +155,10 @@ def add_energy_system_type():
     """ Маршрут для добавления новой части энергосистемы России. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления части энергосистемы России")
+    log_to_db(
+        user, 
+        "Открыта страница добавления части энергосистемы России", 
+        entity_type="energy_system_type")
 
     # Создание формы
     form = AddEnergySystemTypeForm()
@@ -186,8 +188,6 @@ def add_energy_system_type():
             }]
             # Добавление новой записи
             add_energy_system_type_service(payload, user)
-            log_to_db(user, "Добавление новой части энергосистемы России", 
-                      f"Наименование: {form.name.data}")
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -209,12 +209,10 @@ def add_energy_system_type():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой части энергосистемы России", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой части энергосистемы России", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -234,7 +232,6 @@ def export_energy_system_type():
     """Маршрут для экспорта типов частей энергосистемы России в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка типов частей энергосистемы России в Excel")
     
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
@@ -247,13 +244,6 @@ def export_energy_system_type():
                         energy_system_type_filter, 
                         sort_by, 
                         sort_dir
-        )
-        log_to_db(user, "Экспорт завершен",
-                (
-                    f"Фильтры: {energy_system_type_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

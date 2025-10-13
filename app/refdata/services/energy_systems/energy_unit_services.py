@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
+from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
@@ -35,6 +36,7 @@ from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
+    quick_fix_seq,
 )
 
 # Логирование
@@ -47,8 +49,7 @@ def energy_unit_query(
         regional_energy_system_filter=None, 
         union_energy_system_filter=None, 
         sort_by="id", 
-        sort_dir="asc"
-):
+        sort_dir="asc"):
     """ Базовый запрос для выборки энергоузлов с фильтрацией и сортировкой. """
 
     # Валидация сортировки
@@ -214,8 +215,11 @@ def update_energy_unit_service(data, user):
 
     updated_ids = []
     
-    log_to_db(user, "Получены данные для обновления списка энергоузлов", 
-              f"{data}")
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка энергоузлов", 
+        f"{data}",
+        entity_type="energy_unit")
     
     with db.session.no_autoflush:
         for record in data:
@@ -226,14 +230,22 @@ def update_energy_unit_service(data, user):
 
             # Проверки на валидность данных
             if not name or not regional_district_id or not regional_energy_system_id:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись: {record}")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись: {record}",
+                    entity_type="energy_unit",
+                    entity_id=energy_unit_id)
                 raise ValueError(f"Каждая запись должна содержать 'name' и 'regional_district_id' и 'regional_energy_system_id'. Данные: {record}")
 
             obj = db.session.get(EnergyUnit, energy_unit_id)
             if not obj:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись с ID «{energy_unit_id}» не найдена.")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись с ID «{energy_unit_id}» не найдена.",
+                    entity_type="energy_unit", 
+                    entity_id=energy_unit_id)
                 raise ValueError(f"Запись с ID «{energy_unit_id}» не найдена.")
 
             # Проверка уникальности name только если меняется
@@ -242,8 +254,12 @@ def update_energy_unit_service(data, user):
                      .filter(EnergyUnit.name == name,
                              EnergyUnit.id != energy_unit_id))
                 if q.first():
-                    log_to_db(user, "Ошибка валидации", 
-                              f"Запись с наименованием «{name}» уже существует.")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись с наименованием «{name}» уже существует.",
+                        entity_type="energy_unit",
+                        entity_id=energy_unit_id)
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
                 
             changes = {}
@@ -278,8 +294,12 @@ def update_energy_unit_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлен энергоузел: {name}", 
-                          f"Изменения = {changes}")
+                log_to_db(
+                    user, 
+                    f"Обновлен энергоузел: {name}", 
+                    f"Изменения = {changes}",
+                    entity_type="energy_unit", 
+                    entity_id=energy_unit_id)
                 updated_ids.append(energy_unit_id)
 
         db.session.flush()
@@ -290,20 +310,35 @@ def update_energy_unit_service(data, user):
         _commit_with_retry()
 
         if updated_ids:
-            log_to_db(user, "Сохранены изменения по энергоузлам", 
-                      f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+            log_to_db(
+                user, 
+                "Сохранены изменения по энергоузлам", 
+                f"Измененных записей: {len(updated_ids)} (id: {updated_ids})",
+                entity_type="energy_unit")
         else:
-            log_to_db(user, "Изменений по энергоузлам не обнаружено", "")
+            log_to_db(
+                user, 
+                "Изменений по энергоузлам не обнаружено", 
+                "", 
+                entity_type="energy_unit")
             
         return updated_ids
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения энергоузлов (уникальность/целостность)", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения энергоузлов (уникальность/целостность)", 
+            str(e), 
+            entity_type="energy_unit")
         raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка при сохранении энергоузлов", str(e))
+        log_to_db(
+            user, 
+            "Неизвестная ошибка при сохранении энергоузлов", 
+            str(e), 
+            entity_type="energy_unit")
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
@@ -314,7 +349,7 @@ def add_energy_unit_service(data, user):
     if not isinstance(data, list):
         raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
-    try:
+    def _do_insert():
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
@@ -324,8 +359,11 @@ def add_energy_unit_service(data, user):
 
                 # Проверка на наличие необходимых данных
                 if not (name or regional_district_id or regional_energy_system_id):
-                    log_to_db(user, "Ошибка валидации", 
-                              f"Запись: {record}")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}",
+                        entity_type="energy_unit")
                     raise ValueError(f"Каждая запись должна содержать 'name', 'regional_district_id' и 'regional_energy_system_id'. Данные: {record}")
                 
                 # Проверяем существование субъекта РФ
@@ -346,35 +384,43 @@ def add_energy_unit_service(data, user):
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
                 # Создаем новую запись
-                eu_obj = EnergyUnit(
+                obj = EnergyUnit(
                     name=name,
                     id_regional_district=rd_obj.id,
                     id_regional_energy_system=res_obj.id,
                 )
-                db.session.add(eu_obj)
+                db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
-                log_to_db(user, "Создана региональная энергосистема",
+                log_to_db(
+                    user, 
+                    "Создана региональная энергосистема",
                     (
                         f"Наименование: {name}; "
                         f"Субъект РФ: {rd_obj.name}; "
                         f"Региональная энергосистема: {res_obj.name} "
-                    )
-                )
+                    ),
+                    entity_type="energy_unit", 
+                    entity_id=obj.id)
 
-        # Сохранение изменений в базе данных
-        # Фиксация транзакции (устойчивый коммит)
+    try:
+        _do_insert()
         _commit_with_retry()
-
         return None
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового энергоузла. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError(f"Ошибка сохранения нового энергоузла. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        quick_fix_seq(SCHEMA_REFDATA, "energy_units")
+        _do_insert()
+        _commit_with_retry()
+        return None
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового энергоузла", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения нового энергоузла", 
+            str(e), 
+            entity_type="energy_unit")
         raise ValueError(f"Ошибка сохранения нового энергоузла: {e}")
 
 
@@ -385,8 +431,11 @@ def delete_energy_unit_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError(f"Не переданы ID для удаления.")
     
-    log_to_db(user, "Удаление записей", 
-              f"Переданы ID для удаления: {ids}")
+    log_to_db(
+        user, 
+        "Удаление записей", 
+        f"Переданы ID для удаления: {ids}",
+        entity_type="energy_unit")
 
     successful_deletes = 0
     deleted_names = []
@@ -398,8 +447,12 @@ def delete_energy_unit_service(ids, user):
             energy_unit_id = _to_int_or_none(eu_id, keep_zero=False)
         except (TypeError, ValueError):
             invalid.append(eu_id)
-            log_to_db(user, "Ошибка удаления энергоузла", 
-                      f"Некорректный ID: {eu_id}")
+            log_to_db(
+                user, 
+                "Ошибка удаления энергоузла", 
+                f"Некорректный ID: {eu_id}",
+                entity_type="energy_unit",
+                entity_id=eu_id)
             continue
 
         obj = _locked_get(EnergyUnit, energy_unit_id)
@@ -407,12 +460,20 @@ def delete_energy_unit_service(ids, user):
             db.session.delete(obj)
             deleted_names.append(get_energy_unit_name(energy_unit_id))
             successful_deletes += 1
-            log_to_db(user, "Удален энергоузел", 
-                      f"{get_energy_unit_name(energy_unit_id)}")
+            log_to_db(
+                user, 
+                "Удален энергоузел", 
+                f"{get_energy_unit_name(energy_unit_id)}",
+                entity_type="energy_unit",
+                entity_id=energy_unit_id)
         else:
             not_found.append(energy_unit_id)
-            log_to_db(user, "Ошибка удаления энергоузла", 
-                      f"Энергоузел с ID={energy_unit_id} не найден.")
+            log_to_db(
+                user, 
+                "Ошибка удаления энергоузла", 
+                f"Энергоузел с ID={energy_unit_id} не найден.",
+                entity_type="energy_unit",
+                entity_id=energy_unit_id)
 
     try:
         # Сохранение изменений в базе данных
@@ -427,8 +488,6 @@ def delete_energy_unit_service(ids, user):
         if invalid:
             parts.append(f"Некорректные ID: {invalid}")
 
-        log_to_db(user, "Результат удаления энергоузлов", "; ".join(parts))
-
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
@@ -437,7 +496,12 @@ def delete_energy_unit_service(ids, user):
         }
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления энергоузлов", str(e))
+        log_to_db(
+            user, 
+            "Ошибка удаления энергоузлов", 
+            str(e), 
+            entity_type="energy_unit",
+            entity_id=energy_unit_id)
         raise ValueError(f"Ошибка при удалении данных.")
 
 
@@ -451,16 +515,17 @@ def export_energy_unit_service(
         sort_dir="asc"):
     """ Экспортирует данные списка энергозулов в Excel. """
 
-    log_to_db(user, "Начата выгрузка таблицы энергозулов из базы данных")
-    log_to_db(user, "Параметры экспорта", 
-            (
-                f"Фильтр по столбцу: Наименование энергоузла = {energy_unit_filter},"
-                f"Фильтр по столбцу: Субъект РФ = {get_regional_district_name(regional_district_filter)},"
-                f"Фильтр по столбцу: Региональная энергосистема = {get_regional_energy_system_name(regional_energy_system_filter)},"
-                f"Фильтр по столбцу: ОЭС = {get_union_energy_system_name(union_energy_system_filter)},"
-                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
-            ),
-    )
+    log_to_db(
+        user, 
+        "Начата выгрузка таблицы энергозулов. Параметры экспорта", 
+        (
+            f"Фильтр по столбцу: Наименование энергоузла = {energy_unit_filter},"
+            f"Фильтр по столбцу: Субъект РФ = {get_regional_district_name(regional_district_filter)},"
+            f"Фильтр по столбцу: Региональная энергосистема = {get_regional_energy_system_name(regional_energy_system_filter)},"
+            f"Фильтр по столбцу: ОЭС = {get_union_energy_system_name(union_energy_system_filter)},"
+            f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+        ),
+        entity_type="energy_unit")
     
     # Базовый запрос
     query = energy_unit_query(
@@ -474,7 +539,11 @@ def export_energy_unit_service(
 
     # Получение данных
     items = query.all()
-    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
+    log_to_db(
+        user, 
+        "Получение данных завершено", 
+        f"Найдено записей: {len(items)}", 
+        entity_type="energy_unit")
 
     # Подготовка данных для Excel
     data = []
@@ -487,8 +556,11 @@ def export_energy_unit_service(
             "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указана",
         })
 
-    log_to_db(user, "Подготовка данных для экспорта таблицы энергозулов в Excel", 
-              f"Записей для экспорта: {len(data)}")
+    log_to_db(
+        user, 
+        "Подготовка данных для экспорта таблицы энергозулов в Excel", 
+        f"Записей для экспорта: {len(data)}",
+        entity_type="energy_unit")
 
     # Подготовка данных к записи в Excel
     df = pd.DataFrame(data)
@@ -507,7 +579,10 @@ def export_energy_unit_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы энергозулов в Excel завершен", 
-              f"Экспортировано записей: {len(data)}")
+    log_to_db(
+        user, 
+        "Экспорт таблицы энергозулов в Excel завершен", 
+        f"Экспортировано записей: {len(data)}",
+        entity_type="energy_unit")
 
     return output

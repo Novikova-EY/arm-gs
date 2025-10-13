@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
+from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
@@ -21,6 +22,7 @@ from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
+    quick_fix_seq,
 )
 
 # Логирование
@@ -30,8 +32,7 @@ from app.logs.services.logging_service import log_to_db
 def gen_company_query(
     gen_company_filter=None,
     sort_by="id",
-    sort_dir="asc",
-):
+    sort_dir="asc",):
     """ Базовый запрос для выборки списка генерирующих компаний с фильтрацией и сортировкой. """
 
     # Валидация сортировки
@@ -82,8 +83,7 @@ def get_gen_company_list(
     per_page, 
     gen_company_filter=None, 
     sort_by="id", 
-    sort_dir="asc"
-):
+    sort_dir="asc"):
     """ Получает список генерирующих компаний с пагинацией, фильтрацией и сортировкой. """
     
     # Базовый запрос
@@ -106,8 +106,11 @@ def update_gen_company_service(data, user):
 
     updated_ids = []
 
-    log_to_db(user, "Получены данные для обновления списка субъектов РФ", 
-              f"{data}")
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка генерирующих компаний", 
+        f"{data}", 
+        entity_type="gen_company")
 
     with db.session.no_autoflush:
         for record in data:
@@ -117,14 +120,22 @@ def update_gen_company_service(data, user):
             name = _replace_quotes_sequentially(name_clean)
 
             if not name:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись: {record}")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись: {record}", 
+                    entity_type="gen_company",
+                    entity_id=gen_company_id)
                 raise ValueError(f"Поле 'name' обязательно для заполнения.")
             
             obj = db.session.get(GenCompany, gen_company_id)
             if not obj:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись с ID «{gen_company_id}» не найдена.")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись с ID «{gen_company_id}» не найдена.", 
+                    entity_type="gen_company", 
+                    entity_id=gen_company_id)
                 raise ValueError(f"Запись с ID «{gen_company_id}» не найдена.")
             
             # Проверка уникальности name
@@ -143,7 +154,12 @@ def update_gen_company_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлена генерирующая компания {name}", f"Изменения = {changes}")
+                log_to_db(
+                    user, 
+                    f"Обновлена генерирующая компания {name}", 
+                    f"Изменения = {changes}", 
+                    entity_type="gen_company", 
+                    entity_id=gen_company_id)
                 updated_ids.append(gen_company_id)
 
         db.session.flush()
@@ -154,19 +170,35 @@ def update_gen_company_service(data, user):
         _commit_with_retry()
         
         if updated_ids:
-            log_to_db(user, "Сохранены изменения по генерирующим компаниям", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+            log_to_db(
+                user, 
+                "Сохранены изменения по генерирующим компаниям", 
+                f"Измененных записей: {len(updated_ids)} (id: {updated_ids})", 
+                entity_type="gen_company")
         else:
-            log_to_db(user, "Изменений по генерирующим компаниям не обнаружено", "")
+            log_to_db(
+                user, 
+                "Изменений по генерирующим компаниям не обнаружено", 
+                "", 
+                entity_type="gen_company")
         
         return updated_ids
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения генерирующей компании (уникальность/целостность)", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения генерирующей компании (уникальность/целостность)", 
+            str(e), 
+            entity_type="gen_company")
         raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка при сохранении генерирующих компаний", str(e))
+        log_to_db(
+            user, 
+            "Неизвестная ошибка при сохранении генерирующих компаний", 
+            str(e), 
+            entity_type="gen_company")
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
@@ -177,7 +209,7 @@ def add_gen_company_service(data, user):
     if not isinstance(data, list):
         raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
     
-    try:
+    def _do_insert():
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
@@ -187,7 +219,11 @@ def add_gen_company_service(data, user):
 
                 # Проверка на наличие необходимых данных
                 if not name :
-                    log_to_db(user, "Ошибка валидации", f"Запись: {record}")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}", 
+                        entity_type="gen_company")
                     raise ValueError(f"Каждая запись должна содержать 'name''. Данные: {record}")
 
                 # Проверяем уникальность name
@@ -207,22 +243,28 @@ def add_gen_company_service(data, user):
                 log_to_db(
                     user,
                     "Создана генерирующая компания",
-                    f"Наименование: {name}."
-                )
+                    f"Наименование: {name}.",
+                    entity_type="gen_company", 
+                    entity_id=obj.id)
 
-        # Сохранение изменений в базе данных
-        # Фиксация транзакции (устойчивый коммит)
+    try:
+        _do_insert()
         _commit_with_retry()
-
         return None
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError(f"Ошибка сохранения новой генерирующей компании. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        quick_fix_seq(SCHEMA_REFDATA, "gen_companies")
+        _do_insert()
+        _commit_with_retry()
+        return None
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения новой генерирующей компании", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения новой генерирующей компании", 
+            str(e), 
+            entity_type="gen_company")
         raise ValueError(f"Ошибка сохранения новой генерирующей компании: {e}")
 
 
@@ -233,8 +275,11 @@ def delete_gen_company_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError(f"Не переданы ID для удаления.")
 
-    log_to_db(user, "Удаление генерирующих компаний", 
-              f"Переданы ID для удаления: {ids}")
+    log_to_db(
+        user, 
+        "Удаление генерирующих компаний", 
+        f"Переданы ID для удаления: {ids}", 
+        entity_type="gen_company")
 
     successful_deletes = 0
     deleted_names = []
@@ -246,8 +291,12 @@ def delete_gen_company_service(ids, user):
             gen_company_id = int(fd_id)
         except (TypeError, ValueError):
             invalid.append(fd_id)
-            log_to_db(user, "Ошибка удаления генерирующей компании", 
-                      f"Некорректный ID: {fd_id}")
+            log_to_db(
+                user, 
+                "Ошибка удаления генерирующей компании", 
+                f"Некорректный ID: {fd_id}", 
+                entity_type="gen_company",
+                entity_id=fd_id)
             continue
 
         obj = _locked_get(GenCompany, gen_company_id)
@@ -256,12 +305,20 @@ def delete_gen_company_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
-            log_to_db(user, "Удалена генерирующая компания", 
-                      f"{name}")
+            log_to_db(
+                user, 
+                "Удалена генерирующая компания", 
+                f"{name}", 
+                entity_type="gen_company", 
+                entity_id=gen_company_id)
         else:
             not_found.append(gen_company_id)
-            log_to_db(user, "Ошибка удаления генерирующей компании", 
-                      f"Генерирующая компания с ID={gen_company_id} не найдена.")
+            log_to_db(
+                user, 
+                "Ошибка удаления генерирующей компании", 
+                f"Генерирующая компания с ID={gen_company_id} не найдена.", 
+                entity_type="gen_company", 
+                entity_id=gen_company_id)
 
     try:
         # Сохранение изменений в базе данных
@@ -276,8 +333,6 @@ def delete_gen_company_service(ids, user):
         if invalid:
             parts.append(f"Некорректные ID: {invalid}")
         
-        log_to_db(user, "Результат удаления генерирующих компаний", "; ".join(parts))
-        
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
@@ -286,7 +341,12 @@ def delete_gen_company_service(ids, user):
         }
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления генерирующих компаний", str(e))
+        log_to_db(
+            user, 
+            "Ошибка удаления генерирующих компаний", 
+            str(e), 
+            entity_type="gen_company",
+            entity_id=gen_company_id)
         raise ValueError(f"Ошибка при удалении данных.")
 
 
@@ -323,11 +383,19 @@ def import_gen_company_service(file, user):
         db.session.commit()
 
         # Лог успешного импорта
-        log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}")
+        log_to_db(
+            user, 
+            "Импорт завершен", 
+            f"Импортировано записей: {len(records)}", 
+            entity_type="gen_company")
         return len(records)
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта", str(e))
+        log_to_db(
+            user, 
+            "Ошибка импорта", 
+            str(e), 
+            entity_type="gen_company")
         raise ValueError(f"Ошибка при импорте данных: {e}")
 
 
@@ -338,13 +406,14 @@ def export_gen_company_service(
         sort_dir="asc"):
     """ Экспортирует данные генерирующих компаний в Excel. """
 
-    log_to_db(user, "Начата выгрузка таблицы генерирующих компаний из базы данных")
-    log_to_db(user,"Параметры экспорта",
-            (
-                f"Фильтр по столбцу: Наименование генерирующей компании = {gen_company_filter},"
-                f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
-            ),  
-    )
+    log_to_db(
+        user, 
+        "Начата выгрузка таблицы генерирующих компаний. Параметры экспорта",
+        (
+            f"Фильтр по столбцу: Наименование генерирующей компании = {gen_company_filter},"
+            f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+        ), 
+        entity_type="gen_company")
 
     # Базовый запрос
     query = gen_company_query(
@@ -355,7 +424,11 @@ def export_gen_company_service(
 
     # Получение данных
     items = query.all()
-    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
+    log_to_db(
+        user, 
+        "Получение данных завершено", 
+        f"Найдено записей: {len(items)}", 
+        entity_type="gen_company")
 
     # Подготовка данных для Excel
     data = []
@@ -365,8 +438,11 @@ def export_gen_company_service(
             "Наименование": _dash(o.name),
         })
 
-    log_to_db(user, "Подготовка данных для экспорта таблицы генерирующих компаний в Excel",
-              f"Записей для экспорта: {len(data)}")
+    log_to_db(
+        user, 
+        "Подготовка данных для экспорта таблицы генерирующих компаний в Excel",
+        f"Записей для экспорта: {len(data)}", 
+        entity_type="gen_company")
 
     df = pd.DataFrame(data)
 
@@ -383,5 +459,9 @@ def export_gen_company_service(
             ws.set_column(i, i, min(max_len + 2, 60))
 
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы генерирующих компаний в Excel завершен", f"Экспортировано записей: {len(data)}")
+    log_to_db(
+        user, 
+        "Экспорт таблицы генерирующих компаний в Excel завершен", 
+        f"Экспортировано записей: {len(data)}", 
+        entity_type="gen_company")
     return output

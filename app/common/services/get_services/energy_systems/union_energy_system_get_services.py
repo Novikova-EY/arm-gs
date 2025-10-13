@@ -17,6 +17,8 @@ def get_union_energy_system_list_full():
     return (
         UnionEnergySystem.query
         .order_by(
+            (UnionEnergySystem.display_order.is_(None)),
+            UnionEnergySystem.display_order.asc(),
             (UnionEnergySystem.id != 0),
             UnionEnergySystem.name.asc()
         )

@@ -18,7 +18,7 @@ from app.refdata.models.energy_systems.synchronous_area_model import Synchronous
 # --- Прочие справочники ---
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
-from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
 from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
 from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType

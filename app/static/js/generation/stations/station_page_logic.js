@@ -228,20 +228,33 @@ document.addEventListener("DOMContentLoaded", () => {
         syncToggleStyles();
     }
 
-    // === 4. Переключатель "все станции / постранично"
+    // === 4. Переключатель отображения сумм и выбор количества станций
     function setupPerPageToggle() {
-        const checkbox = document.getElementById("per_page_switch");
-        const selectBlock = document.getElementById("per_page_select_block");
-        if (!checkbox) return;
+        const showTotalsCheckbox = document.getElementById("show_totals_switch");
+        const perPageSelect = document.getElementById("per_page_select");
 
-        checkbox.addEventListener("change", () => {
-            const params = new URLSearchParams(window.location.search);
-            params.set("per_page", checkbox.checked ? "all" : "10");
-            window.location.href = window.location.pathname + "?" + params.toString();
-        });
+        // Обработчик переключателя отображения сумм
+        if (showTotalsCheckbox) {
+            showTotalsCheckbox.addEventListener("change", () => {
+                const params = new URLSearchParams(window.location.search);
+                if (showTotalsCheckbox.checked) {
+                    params.set("show_totals", "1");
+                } else {
+                    params.delete("show_totals");
+                }
+                params.set("page", 1); // Сбрасываем на первую страницу
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        }
 
-        if (selectBlock) {
-            selectBlock.classList.toggle("d-none", checkbox.checked);
+        // Обработчик для выпадающего списка количества станций
+        if (perPageSelect) {
+            perPageSelect.addEventListener("change", () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set("per_page", perPageSelect.value);
+                params.set("page", 1); // Сбрасываем на первую страницу
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
         }
     }
 

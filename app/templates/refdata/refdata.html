@@ -71,6 +71,44 @@
                     <a href="{{ url_for('refdata_bp.fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Виды топлива</a>
                 </div>
             </div>
+
+            <div class="row align-items-start mb-3">
+                <h4 class="text-center mt-4">Справочники для станций</h2>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.station_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы электростанций</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.condition_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы состояния оборудования</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.machine_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы агрегатов</a>
+                </div>
+            </div>
+
+            <div class="row align-items-start mb-3">
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.tes_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы ТЭС</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.tes_machine_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы агрегатов ТЭС</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.pgu_tes_machine_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы агрегатов ПГУ</a>
+                </div>
+            </div>
+
+            <div class="row align-items-start mb-3">
+                <h4 class="text-center mt-4">Справочники технологий</h2>
+                    <div class="col">
+                        <a href="{{ url_for('refdata_bp.equipment_group_list') }}" class="btn btn-outline-primary fs-4 w-100">Группы оборудования</a>
+                    </div>                
+                    <div class="col">
+                        <a href="{{ url_for('refdata_bp.technology_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы технологий</a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ url_for('refdata_bp.technology_availability_list') }}" class="btn btn-outline-primary fs-4 w-100">Доступность технологии</a>
+                    </div>                
+            </div>
         </div>
     </div>
 </div>

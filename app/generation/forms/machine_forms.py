@@ -170,13 +170,6 @@ class PGUMachineFilterForm(FlaskForm):
         choices=[],
         validators=[Optional()]
     )
-
-    id_equipment_group_pgu = SelectField(
-        'Тип технологии (EquipmentGroup)',
-        coerce=int,
-        choices=[],
-        validators=[Optional()]
-    )
     
     machine_number = StringField(
         'Номер агрегата',

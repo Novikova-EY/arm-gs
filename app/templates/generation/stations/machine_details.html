@@ -124,16 +124,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип технологии:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_equipment_group(class="form-select") }}
-                                        {% else %}
-                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center mb-2">
+
                                     <div class="col-5 text-start fw-semibold">Тип электростанции:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
@@ -156,15 +147,16 @@
                                 </div>
                                 {% endif %}
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип агрегата:</div>
+                                    <div class="col-5 text-start fw-semibold">Тип технологии:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_machine_type(class="form-select") }}
+                                            {{ main_form.id_equipment_group(class="form-select") }}
                                         {% else %}
-                                            {{ machine.machine_type.name if machine.machine_type else '—' }}
+                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
+
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Примечание:</div>
                                     <div class="col-7 text-start">

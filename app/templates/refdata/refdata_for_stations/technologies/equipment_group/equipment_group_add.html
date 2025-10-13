@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый тип группы оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип группы оборудования</h2>
+
+      <form action="{{ url_for('refdata_bp.add_equipment_group') }}" method="POST">
+        {{ form.hidden_tag() }}
+
+        <!-- Скрытые поля возврата -->
+        <input type="hidden" name="page"                  value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"              value="{{ per_page }}">
+        <input type="hidden" name="sort_by"               value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"              value="{{ sort_dir }}">
+        <input type="hidden" name="equipment_group_filter"   value="{{ equipment_group_filter }}">
+        <input type="hidden" name="technology_type_filter"   value="{{ technology_type_filter }}">
+        <input type="hidden" name="technology_availability_filter"   value="{{ technology_availability_filter }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Тип группы оборудования</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="technology_type" class="form-label">Тип технологии</label>
+            {{ form.technology_type(class="form-control", id="technology_type") }}
+            {% if form.technology_type.errors %}
+                <div class="text-danger">{{ form.technology_type.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="technology_availability" class="form-label">Доступность технологии</label>
+            {{ form.technology_availability(class="form-control", id="technology_availability") }}
+            {% if form.technology_availability.errors %}
+                <div class="text-danger">{{ form.technology_availability.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            <a href="{{ url_for('refdata_bp.equipment_group_list',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                equipment_group_filter=equipment_group_filter,
+                                technology_type_filter=technology_type_filter,
+                                technology_availability_filter=technology_availability_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}

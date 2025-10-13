@@ -1,6 +1,6 @@
 """Формы для «Объединенные энергосистемы (ОЭС)»."""
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, HiddenField
+from wtforms import StringField, SelectField, HiddenField, IntegerField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 
@@ -29,6 +29,10 @@ class UnionEnergySystemFilterForm(FlaskForm):
         choices=[],
         coerce=int,
         validators=[DataRequired(message="Выберите тип энергосистемы.")],
+    )
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional()],
     )
 
     union_energy_system_delete = HiddenField("Удалить")
@@ -71,6 +75,10 @@ class AddUnionEnergySystemForm(FlaskForm):
         choices=[],
         coerce=int,
         validators=[DataRequired(message="Выберите тип энергосистемы.")],
+    )
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional()],
     )
 
 

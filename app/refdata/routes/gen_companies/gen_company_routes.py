@@ -36,7 +36,10 @@ def gen_company_list():
     """Маршрут для отображения генерирующих компаний"""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница генерирующих компаний")
+    log_to_db(
+        user, 
+        "Открыта страница генерирующих компаний", 
+        entity_type="gen_company")
     
     # Создание формы
     form = GenCompanyFilterForm()
@@ -67,7 +70,6 @@ def gen_company_list():
                 delete_gen_company_service(gen_company_delete, user)
                 flash("Записи генерирующих компаний успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления генерирующих компаний: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.gen_company_list", 
                                     page=page, 
@@ -79,7 +81,6 @@ def gen_company_list():
         # Обновление данных в базе
         try:
             if not gen_company_ids or not gen_company_names:
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.gen_company_list", 
                                         page=page, 
@@ -92,7 +93,6 @@ def gen_company_list():
             gen_company_data = []
             for gen_company_id, gen_company_name in zip(gen_company_ids, gen_company_names):
                 if gen_company_name is None or gen_company_name.strip() == "":
-                    log_to_db(user, f"Пустое имя обнаружено: ID={gen_company_id}")
                     raise ValueError(f"Пустое имя для ID: {gen_company_id}")
                 gen_company_data.append({
                     "gen_company_id": int(gen_company_id) if gen_company_id else None,
@@ -107,14 +107,12 @@ def gen_company_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID генерирующих компаний: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления генерирующих компаний", str(gen_company_data))
             update_gen_company_service(gen_company_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных генерирующих компаний: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.gen_company_list", 
@@ -149,7 +147,10 @@ def add_gen_company():
     """ Маршрут для добавления новой генерирующей компании. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления генерирующей компании")
+    log_to_db(
+        user, 
+        "Открыта страница добавления генерирующей компании", 
+        entity_type="gen_company")
 
     # Создание формы
     form = AddGenCompanyForm()
@@ -180,11 +181,6 @@ def add_gen_company():
         
             # Добавление новой записи через сервис
             add_gen_company_service(payload, user)
-            log_to_db(user, "Добавление новой генерирующей компании", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -206,12 +202,10 @@ def add_gen_company():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой генерирующей компании", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой генерирующей компании", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -231,7 +225,6 @@ def import_gen_company():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт списка генерирующих компаний из Excel")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -267,7 +260,6 @@ def export_gen_company():
     """Маршрут для экспорта видов топлива в Excel."""
     
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка видов топлива в Excel")
     
     sort_by                = request.args.get("sort_by", "id")
     sort_dir               = request.args.get("sort_dir", "asc")
@@ -280,13 +272,6 @@ def export_gen_company():
                         sort_by=sort_by, 
                         sort_dir=sort_dir,
                         gen_company_filter=gen_company_filter, 
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {gen_company_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

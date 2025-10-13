@@ -13,10 +13,15 @@ from app.refdata.models.fuels.fuel_type_model import FuelType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.generation.services.station_services.aggregation_cache import cache_aggregation
 
 
-def get_full_aggregation_rows(start_year, end_year, station_ids):
-    rows = (
+@cache_aggregation
+def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
+    if filters is None:
+        filters = {}
+    
+    query = (
         db.session.query(
             EnergySystemType.id.label("energy_system_type_id"),
             UnionEnergySystem.id.label("union_energy_system_id"),
@@ -55,18 +60,55 @@ def get_full_aggregation_rows(start_year, end_year, station_ids):
             Station.id.in_(station_ids),
             MachinePower.year_number.between(start_year, end_year)
         )
-        .group_by(
-            EnergySystemType.id,
-            UnionEnergySystem.id,
-            RegionalEnergySystem.id,
-            RegionalDistrict.id,
-            Station.id_energy_unit,
-            Machine.id_station_type,
-            TesType.id,
-            TesMachineType.id,
-            FuelType.id,
-            MachinePower.year_number
-        )
-        .all()
     )
+    
+    # Применяем фильтры по машинам
+    if filters.get("tes_type_filter"):
+        query = query.filter(TesType.id.in_(filters["tes_type_filter"]))
+    
+    if filters.get("tes_machine_type_filter"):
+        query = query.filter(Machine.id_tes_machine_type.in_(filters["tes_machine_type_filter"]))
+    
+    if filters.get("fuel_type_filter"):
+        query = query.filter(FuelType.id.in_(filters["fuel_type_filter"]))
+    
+    if filters.get("condition_type_filter"):
+        query = query.filter(Machine.id_condition_type == filters["condition_type_filter"])
+    
+    if filters.get("date_exploitation_filter"):
+        query = query.filter(Machine.date_exploitation.in_(filters["date_exploitation_filter"]))
+    
+    if filters.get("date_decompressing_expected_filter"):
+        query = query.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
+    
+    if filters.get("date_modernization_expected_filter"):
+        query = query.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
+    
+    # Применяем фильтры по станции
+    if filters.get("station_type_filter"):
+        query = query.filter(Station.id_station_type.in_(filters["station_type_filter"]))
+    
+    if filters.get("station_name_filter"):
+        query = query.filter(Station.name.ilike(f"%{filters['station_name_filter']}%"))
+    
+    # Фильтр по компании - требует join с GenCompany
+    if filters.get("gen_company_filter"):
+        from app.refdata.models.gen_companies.gen_company_model import GenCompany
+        query = query.join(Machine.gen_company).filter(
+            GenCompany.name.ilike(f"%{filters['gen_company_filter']}%")
+        )
+    
+    rows = query.group_by(
+        EnergySystemType.id,
+        UnionEnergySystem.id,
+        RegionalEnergySystem.id,
+        RegionalDistrict.id,
+        Station.id_energy_unit,
+        Machine.id_station_type,
+        TesType.id,
+        TesMachineType.id,
+        FuelType.id,
+        MachinePower.year_number
+    ).all()
+    
     return rows

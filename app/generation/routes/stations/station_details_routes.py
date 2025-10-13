@@ -79,7 +79,10 @@ from app.generation.services.station_services.station_services import (
     get_station_list_template_context, 
     recalculate_station_power,
     get_current_machine_tes_types_map, 
-    recalculate_station_powers_by_filtered_machines
+    recalculate_station_powers_by_filtered_machines,
+    update_station_from_form_service,
+    delete_machines_service,
+    update_machines_from_form_service,
 )
 from app.generation.services.station_services.import_station_services import (
     import_station_list_from_excel, 
@@ -239,223 +242,36 @@ def station_details(station_id):
         if is_station_form:
             if not form.validate():
                 print("Ошибки в form:", form.errors)
-            changes = []
             if form.validate_on_submit():
                 try:
-                    # Проверяем название станции
-                    if station.name != form.name.data:
-                        changes.append(f"Название: {station.name} → {form.name.data}")
-                        station.name = form.name.data
-                    
-                    # Проверяем состояние станции
-                    new_condition_type_id = int(form.id_condition_type.data)
-                    new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
-                    if new_condition_type:
-                        old_value = station.condition_type.name if station.condition_type else "не указано"
-                        new_value = new_condition_type.name
-                        if old_value != new_value:
-                            changes.append(f"Состояние: {old_value} → {new_value}")
-                        station.id_condition_type = new_condition_type.id
-                    else:
-                        flash("Ошибка: выбранное состояние не найдено!", "danger")
-
-
-                    # Проверяем группу станции
-                    new_group_id = form.id_station_group.data
-                    if new_group_id:
-                        group_exists = db.session.query(StationGroup).filter_by(id=new_group_id).first()
-                        if group_exists:
-                            if station.id_group != new_group_id:
-                                old_group = station.group.name if station.group else "не указано"
-                                new_group = group_exists.name
-                                changes.append(f"Группа: {old_group} → {new_group}")
-                                station.id_group = new_group_id
-                        else:
-                            flash("Выбранная группа не существует!", "warning")
-
-                    # Проверяем примечание
-                    old_note = station.note.strip() if station.note and station.note.strip() else None
-                    new_note = form.note.data.strip() if form.note.data and form.note.data.strip() else None
-
-                    if old_note != new_note:
-                        changes.append(f"Примечание: {station.note} → {new_note}")
-                        station.note = new_note
-
-                    # Проверяем субъект РФ
-                    if station.id_regional_district != form.id_regional_district.data:
-                        old_value = station.regional_district.name if station.regional_district else "не указано"
-                        new_value = next((d["name"] for d in regional_district_list if d["id"] == form.id_regional_district.data), "не указано")
-                        changes.append(f"Субъект РФ: {old_value} → {new_value}")
-                        station.id_regional_district = form.id_regional_district.data
-
-                    # Проверяем местоположение
-                    new_location = form.location.data.strip() if form.location.data.strip() else None
-                    if station.location != new_location:
-                        changes.append(f"Местоположение: {station.location} → {new_location}")
-                        station.location = new_location
-
-                    # Обновляем связанные данные при изменении субъекта РФ
-                    if station.id_regional_district != form.id_regional_district.data:
-                        # Загружаем новый субъект РФ с предзагрузкой связанных данных
-                        new_regional_district_obj = (
-                            db.session.query(RegionalDistrict)
-                            .options(
-                                joinedload(RegionalDistrict.federal_district),
-                                joinedload(RegionalDistrict.regional_energy_systems)
-                                    .joinedload(RegionalEnergySystem.union_energy_system)
-                                    .joinedload(UnionEnergySystem.energy_system_type)
-                            )
-                            .filter_by(id=form.id_regional_district.data)
-                            .first()
-                        )
-
-                        if new_regional_district_obj:
-                            # Обновляем федеральный округ
-                            old_federal_district = station.regional_district.federal_district.name if station.regional_district and station.regional_district.federal_district else "не указано"
-                            new_federal_district = new_regional_district_obj.federal_district.name if new_regional_district_obj.federal_district else "не указано"
-                            if old_federal_district != new_federal_district:
-                                changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
-
-                            # Обновляем энергосистемы
-                            old_energy_systems = station.regional_district.regional_energy_systems if station.regional_district else []
-                            new_energy_systems = new_regional_district_obj.regional_energy_systems
-
-                            if old_energy_systems != new_energy_systems:
-                                # Логируем изменения в энергосистемах
-                                old_res_name = old_energy_systems[0].name if old_energy_systems else "не указано"
-                                new_res_name = new_energy_systems[0].name if new_energy_systems else "не указано"
-                                if old_res_name != new_res_name:
-                                    changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
-
-                                old_ues_name = (
-                                    old_energy_systems[0].union_energy_system.name 
-                                    if old_energy_systems and old_energy_systems[0].union_energy_system 
-                                    else "не указано"
-                                )
-                                new_ues_name = (
-                                    new_energy_systems[0].union_energy_system.name 
-                                    if new_energy_systems and new_energy_systems[0].union_energy_system 
-                                    else "не указано"
-                                )
-                                if old_ues_name != new_ues_name:
-                                    changes.append(f"ОЭС: {old_ues_name} → {new_ues_name}")
-
-                                old_est_name = (
-                                    old_energy_systems[0].union_energy_system.energy_system_type.name 
-                                    if old_energy_systems and old_energy_systems[0].union_energy_system and old_energy_systems[0].union_energy_system.energy_system_type 
-                                    else "не указано"
-                                )
-                                new_est_name = (
-                                    new_energy_systems[0].union_energy_system.energy_system_type.name 
-                                    if new_energy_systems and new_energy_systems[0].union_energy_system and new_energy_systems[0].union_energy_system.energy_system_type 
-                                    else "не указано"
-                                )
-                                if old_est_name != new_est_name:
-                                    changes.append(f"Часть энергосистемы России: {old_est_name} → {new_est_name}")
-
-                            # Обновляем связь со станцией
-                            station.regional_district = new_regional_district_obj
-
-
-                    # Сохраняем в БД
-                    db.session.commit()
-
+                    changes = update_station_from_form_service(user, station, form, regional_district_list)
                     if changes:
-                        log_to_db(user, f"Изменения в электростанции {station.name} ({regional_district_name})", details="; ".join(changes), entity_type="station", entity_id=station.id)
-
-                    flash("Изменения в электростанции успешно обновлены!", "success")
+                        flash("Изменения в электростанции успешно обновлены!", "success")
                     return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
-
                 except Exception as e:
-                    db.session.rollback()
                     print(f"Ошибка при обновлении: {str(e)}")
                     flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
-                    log_to_db(user, f"Ошибка обновления электростанции {station.name} ({regional_district_name})", details=str(e), entity_type="station", entity_id=station.id)
         # Обработка отправки формы агрегатов
         if is_machines_form:
             if not form_machines.validate():
                 print("Ошибки в form_machines:", form_machines.errors)
 
-            changes = []
-
             if machine_ids_to_delete:
-                machines_to_delete = Machine.query.filter(Machine.id.in_(machine_ids_to_delete)).all()
-                affected_station_ids = set()
-
-                for machine in machines_to_delete:
-                    try:
-                        affected_station_ids.add(machine.id_station)
-
-                        # Удаление мощностей
-                        for mp in machine.machine_powers:
-                            db.session.delete(mp)
-
-                        # Удаление топлива
-                        for mf in machine.machine_fuels:
-                            db.session.delete(mf)
-
-                        # Удаление типов ТЭС
-                        for mtt in machine.machine_tes_types:
-                            db.session.delete(mtt)
-
-                        changes.append(f"Агрегат {machine.machine_number or '—'} и связанные данные удалены")
-                        db.session.delete(machine)
-
-                    except Exception as e:
-                        flash(f"Ошибка при удалении агрегата ID={machine.id}: {e}", "danger")
-                        log_to_db(user, f"Ошибка удаления агрегата ID={machine.id}", details=str(e))
-
-                # Проверка: если на станции больше нет агрегатов — удалить station_powers
-                for station_id in affected_station_ids:
-                    remaining_machines = Machine.query.filter_by(id_station=station_id).count()
-                    if remaining_machines == 0:
-                        powers_to_delete = StationPower.query.filter_by(id_station=station_id).all()
-                        for sp in powers_to_delete:
-                            db.session.delete(sp)
-                        changes.append(f"Мощности станции ID={station_id} удалены, так как все агрегаты были удалены")
-
-                db.session.commit()
-
-                if changes:
-                    log_to_db(user, f"Агрегаты удалены на станции {station.name}", details="; ".join(changes), entity_type="station", entity_id=station.id)
-                    flash("Выбранные агрегаты и связанные данные были удалены!", "success")
+                try:
+                    changes = delete_machines_service(user, station, machine_ids_to_delete)
+                    if changes:
+                        flash("Выбранные агрегаты и связанные данные были удалены!", "success")
+                except Exception as e:
+                    flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
             if form_machines.validate_on_submit():
-                for machine in station.machines:
-                    fuel_so_key = f"fuel_so_{machine.id}"
-                    gen_company_key = f"id_gen_company_{machine.id}"
-                    new_note_key = f"note_{machine.id}"
-
-                    new_fuel_so = request.form.get(fuel_so_key, "").strip()
-                    new_gen_company_id = request.form.get(gen_company_key, type=int)
-                    new_note = request.form.get(new_note_key, "").strip()
-
-                    if machine.fuel_so != new_fuel_so:
-                        changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
-                        machine.fuel_so = new_fuel_so
-
-                    if machine.note != new_note:
-                        changes.append(f"Агрегат {machine.machine_number}: Примечание {machine.note} → {new_note}")
-                        machine.note = new_note
-
-                    # Обновляем собственника агрегата
-                    if new_gen_company_id:
-                        new_gen_company = db.session.query(GenCompany).filter_by(id=new_gen_company_id).first()
-                        if new_gen_company:
-                            old_gen_company_name = machine.gen_company.name if machine.gen_company else "не указано"
-                            if machine.gen_company is None or machine.gen_company.id != new_gen_company_id:
-                                changes.append(f"Агрегат {machine.machine_number}: Собственник {old_gen_company_name} → {new_gen_company.name}")
-                                machine.gen_company = new_gen_company
-                        else:
-                            flash(f"Ошибка: выбранная генерирующая компания не существует!", "danger")
-
-                db.session.commit()
-
-                if changes:
-                    log_to_db(user, f"Обновлены агрегаты станции {station.name}", details="; ".join(changes), entity_type="station", entity_id=station.id)
-                    flash("Изменения агрегатов сохранены!", "success")
-
-                return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+                try:
+                    changes = update_machines_from_form_service(user, station, form_machines, request.form)
+                    if changes:
+                        flash("Изменения агрегатов сохранены!", "success")
+                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+                except Exception as e:
+                    flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
 
     # Timing: measure preparation time right before render
     before_render_at = time.perf_counter()

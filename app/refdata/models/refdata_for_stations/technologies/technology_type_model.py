@@ -1,0 +1,24 @@
+# -*- coding: utf-8 -*-
+"""
+Technology model (Тип технологии).
+"""
+from sqlalchemy.sql import func
+from app.extensions import db
+from config import SCHEMA_REFDATA
+
+class TechnologyType(db.Model):
+    __tablename__ = 'technology_types'
+    __table_args__ = {"schema": SCHEMA_REFDATA}
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Сохраняем исходную nullable=True, чтобы не трогать существующие данные.
+    name = db.Column(db.String(80), unique=True, nullable=True, index=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    equipment_groups = db.relationship('EquipmentGroup', back_populates='technology_type')
+    machines = db.relationship('Machine', back_populates='technology_type')
+
+    def __repr__(self) -> str:
+        return f"<TechnologyType id={self.id} name={self.name!r}>"

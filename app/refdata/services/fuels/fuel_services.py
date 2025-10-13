@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
+from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.fuels.fuel_model import Fuel
@@ -23,6 +24,7 @@ from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
+    quick_fix_seq,
 )
 
 # Логирование
@@ -33,8 +35,7 @@ def fuel_query(
     fuel_filter=None,
     fuel_type_filter=None,
     sort_by="id",
-    sort_dir="asc",
-):
+    sort_dir="asc"):
     """Базовый запрос для выборки топлива с фильтрацией и сортировкой."""
 
     # Валидация сортировки
@@ -111,14 +112,16 @@ def update_fuel_service(data, user):
 
     updated_ids = []
     
-    log_to_db(user, "Получены данные для обновления списка типов топлива", 
-              f"{data}")
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка типов топлива", 
+        f"{data}",
+        entity_type="fuel")
     
     with db.session.no_autoflush:
         for record in data:
             fuel_id = record.get("fuel_id")
             name = (record.get("name") or "").strip()
-            fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
 
             # Проверки на валидность данных
             if not name:
@@ -126,8 +129,12 @@ def update_fuel_service(data, user):
 
             obj = db.session.get(Fuel, fuel_id)
             if not obj:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись: {record}")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись: {record}", 
+                    entity_type="fuel", 
+                    entity_id=fuel_id)
                 raise ValueError(f"Запись с ID «{fuel_id}» не найдена.")
 
             # Проверка уникальности name
@@ -158,7 +165,12 @@ def update_fuel_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлен тип топлива: {name}", f"Изменения = {changes}")
+                log_to_db(
+                    user, 
+                    f"Обновлен тип топлива: {name}", 
+                    f"Изменения = {changes}", 
+                    entity_type="fuel", 
+                    entity_id=fuel_id)
                 updated_ids.append(fuel_id)
 
         db.session.flush()
@@ -169,19 +181,35 @@ def update_fuel_service(data, user):
         _commit_with_retry()
 
         if updated_ids:
-            log_to_db(user, "Сохранены изменения по типам топлива", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+            log_to_db(
+                user, 
+                "Сохранены изменения по типам топлива", 
+                f"Измененных записей: {len(updated_ids)} (id: {updated_ids})", 
+                entity_type="fuel")
         else:
-            log_to_db(user, "Изменений по типам топлива не обнаружено", "")
+            log_to_db(
+                user, 
+                "Изменений по типам топлива не обнаружено", 
+                "", 
+                entity_type="fuel")
             
         return updated_ids
     
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения типов топлива (уникальность/целостность)", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения типов топлива (уникальность/целостность)", 
+            str(e), 
+            entity_type="fuel")
         raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка при сохранении типов топлива", str(e))
+        log_to_db(
+            user, 
+            "Неизвестная ошибка при сохранении типов топлива", 
+            str(e), 
+            entity_type="fuel")
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
@@ -192,7 +220,7 @@ def add_fuel_service(data, user):
     if not isinstance(data, list):
         raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
-    try:
+    def _do_insert():
         with db.session.no_autoflush:
             # Итерация по входным данным (валидация/применение)
             for record in data:
@@ -200,8 +228,11 @@ def add_fuel_service(data, user):
                 fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
 
                 if not name and not fuel_type_id:
-                    log_to_db(user, "Ошибка валидации", 
-                              f"Запись: {record}")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}", 
+                        entity_type="fuel")
                     raise ValueError(f"Каждая запись должна содержать 'name' и 'fuel_type_id'. Данные: {record}")
 
                 # Проверяем существование вида топлива
@@ -228,22 +259,28 @@ def add_fuel_service(data, user):
                     user,
                     "Создан тип топлива",
                     f"Наименование: {name};"
-                    f"Вид топлива: {get_fuel_type_name(fuel_type_id)} "
-                )
+                    f"Вид топлива: {get_fuel_type_name(fuel_type_id)} ",
+                    entity_type="fuel", 
+                    entity_id=obj.id)
 
-        # Сохранение изменений в базе данных
-        # Фиксация транзакции (устойчивый коммит)
+    try:
+        _do_insert()
         _commit_with_retry()
-
         return None
 
-    except IntegrityError as e:
+    except IntegrityError:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового типа топлива. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
-        raise ValueError(f"Ошибка сохранения нового типа топлива. Возможно, нарушены уникальные ограничения или внешние ключи.")
+        quick_fix_seq(SCHEMA_REFDATA, "fuels")
+        _do_insert()
+        _commit_with_retry()
+        return None
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового вида топлива", str(e))
+        log_to_db(
+            user, 
+            "Ошибка сохранения нового вида топлива",
+            str(e),
+            entity_type="fuel")
         raise ValueError(f"Ошибка сохранения нового вида топлива: {e}")
 
 
@@ -254,8 +291,11 @@ def delete_fuel_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError(f"Не переданы ID для удаления.")
 
-    log_to_db(user, "Удаление типов топлива", 
-              f"Переданы ID для удаления: {ids}")
+    log_to_db(
+        user, 
+        "Удаление типов топлива", 
+        f"Переданы ID для удаления: {ids}", 
+        entity_type="fuel")
 
     successful_deletes = 0
     deleted_names = []
@@ -267,8 +307,12 @@ def delete_fuel_service(ids, user):
             fuel_id = int(rd_id)
         except (TypeError, ValueError):
             invalid.append(rd_id)
-            log_to_db(user, "Ошибка удаления типов топлива", 
-                      f"Некорректный ID: {rd_id}")
+            log_to_db(
+                user, 
+                "Ошибка удаления типов топлива", 
+                f"Некорректный ID: {rd_id}", 
+                entity_type="fuel",
+                entity_id=rd_id)
             continue
 
         obj = _locked_get(Fuel, fuel_id)
@@ -277,12 +321,20 @@ def delete_fuel_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
-            log_to_db(user, "Удален тип топлива", f"{name}")
+            log_to_db(
+                user, 
+                "Удален тип топлива", 
+                f"{name}", 
+                entity_type="fuel", 
+                entity_id=fuel_id)
         else:
             not_found.append(fuel_id)
-            log_to_db(user, "Ошибка удаления типов топлива", 
-                      f"Тип топлива с ID={fuel_id} не найден.")
-
+            log_to_db(
+                user, 
+                "Ошибка удаления типов топлива", 
+                f"Тип топлива с ID={fuel_id} не найден.", 
+                entity_type="fuel", 
+                entity_id=fuel_id)
     try:
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
@@ -296,8 +348,6 @@ def delete_fuel_service(ids, user):
         if invalid:
             parts.append(f"Некорректные ID: {invalid}")
 
-        log_to_db(user, "Результат удаления типов топлива", "; ".join(parts))
-
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
@@ -306,7 +356,12 @@ def delete_fuel_service(ids, user):
         }
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления типов топлива", str(e))
+        log_to_db(
+            user, 
+            "Ошибка удаления типов топлива", 
+            str(e), 
+            entity_type="fuel",
+            entity_id=fuel_id)
         raise ValueError(f"Ошибка при удалении данных.")
 
 
@@ -321,19 +376,27 @@ def import_fuel_service(file, user):
             raise ValueError(f"Неверный формат файла. Отсутствуют необходимые столбцы.")
 
         db.session.query(Fuel).delete()
-        db.session.commit()
+        _commit_with_retry()
 
         db.session.execute(text("ALTER TABLE fuel AUTO_INCREMENT = 1"))
-        db.session.commit()
+        _commit_with_retry()
 
         records = [Fuel(name=row['name'], id_fuel_type=row['id_fuel_type']) for _, row in data.iterrows()]
         db.session.bulk_save_objects(records)
-        db.session.commit()
+        _commit_with_retry()
 
-        log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}")
+        log_to_db(
+            user, 
+            "Импорт завершен", 
+            f"Импортировано записей: {len(records)}", 
+            entity_type="fuel")
         return len(records)
     except Exception as e:
-        log_to_db(user, "Ошибка импорта", str(e))
+        log_to_db(
+            user, 
+            "Ошибка импорта", 
+            str(e), 
+            entity_type="fuel")
         raise ValueError(f"Ошибка при импорте данных: {e}")
 
 
@@ -346,13 +409,15 @@ def export_fuel_service(
 ):
     """ Экспортирует данные типов топлива в Excel. """
 
-    log_to_db(user, "Начата выгрузка таблицы типов топлива из базы данных")
-    log_to_db(user, "Параметры экспорта",
+    log_to_db(
+        user, 
+        "Начата выгрузка таблицы типов топлива. Параметры экспорта",
         (
             f"Фильтр по столбцу: Наименование типа топлива = {fuel_filter},"
             f"Фильтр по столбцу: Вид топлива = {get_fuel_type_name(fuel_type_filter)},"
             f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
-        ),
+        ), 
+        entity_type="fuel"
     )
 
     # Базовый запрос
@@ -365,7 +430,11 @@ def export_fuel_service(
 
     # Получение данных
     items = query.all()
-    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
+    log_to_db(
+        user, 
+        "Получение данных завершено", 
+        f"Найдено записей: {len(items)}", 
+        entity_type="fuel")
 
     # Подготовка данных для Excel
     data = []
@@ -376,8 +445,11 @@ def export_fuel_service(
             "Вид топлива": getattr(o.fuel_type, "name", "Не указан") or "Не указан",
         })
 
-    log_to_db(user, "Подготовка данных для экспорта таблицы типов топлива в Excel",
-              f"Записей для экспорта: {len(data)}")
+    log_to_db(
+        user, 
+        "Подготовка данных для экспорта таблицы типов топлива в Excel",
+        f"Записей для экспорта: {len(data)}", 
+        entity_type="fuel")
 
     df = pd.DataFrame(data)
 
@@ -394,5 +466,9 @@ def export_fuel_service(
             ws.set_column(i, i, min(max_len + 2, 60))
 
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы типов топлива в Excel завершен", f"Экспортировано записей: {len(data)}")
+    log_to_db(
+        user, 
+        "Экспорт таблицы типов топлива в Excel завершен", 
+        f"Экспортировано записей: {len(data)}", 
+        entity_type="fuel")
     return output

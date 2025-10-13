@@ -48,7 +48,7 @@ def aggregate_energy_units_by_station_types_with_fuel(rows):
 
         p_ust[eu][station_type][fuel][year] += row.p_ust or Decimal(0)
         p_ogr[eu][station_type][fuel][year] += row.p_ogr or Decimal(0)
-        p_rasp[eu][station_type][fuel][year] += row.p_ogr or Decimal(0)
+        p_rasp[eu][station_type][fuel][year] += row.p_rasp or Decimal(0)
 
     return {"aggregated": {"p_ust": p_ust, "p_ogr": p_ogr, "p_rasp": p_rasp}}
 
@@ -65,7 +65,7 @@ def aggregate_energy_units_by_tes_types(rows):
 
         p_ust[eu][tes_type][year] += row.p_ust or Decimal(0)
         p_ogr[eu][tes_type][year] += row.p_ogr or Decimal(0)
-        p_rasp[eu][tes_type][year] += row.p_ogr or Decimal(0)
+        p_rasp[eu][tes_type][year] += row.p_rasp or Decimal(0)
 
     return {"aggregated": {"p_ust": p_ust, "p_ogr": p_ogr, "p_rasp": p_rasp}}
 

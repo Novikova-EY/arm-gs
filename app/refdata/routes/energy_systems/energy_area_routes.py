@@ -44,7 +44,10 @@ def energy_area_list():
     """Маршрут для отображения списка энергорайонов'"""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница энергорайонов")
+    log_to_db(
+        user, 
+        "Открыта страница энергорайонов", 
+        entity_type="energy_area")
 
     # Создание формы
     form = EnergyAreaFilterForm()
@@ -82,7 +85,6 @@ def energy_area_list():
                 delete_energy_area_service(energy_area_delete, user)
                 flash("Записи энергорайонов успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления энергорайонов': {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.energy_area_list", 
                                     page=page,
@@ -98,7 +100,6 @@ def energy_area_list():
         # Обновление данных в базе
         try:
             if not (energy_area_ids and energy_area_names):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_area_list", 
                                     page=page,
@@ -140,14 +141,12 @@ def energy_area_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID энергорайона: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления энергорайона", str(energy_area_data))
             update_energy_area_service(energy_area_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных энергорайонов: {e}")
             flash("Ошибка сохранения данных энергорайонов.", "danger")
 
         return redirect(url_for("refdata_bp.energy_area_list",
@@ -206,7 +205,10 @@ def add_energy_area():
     """Маршрут для добавления нового энергорайона."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления энергорайона")
+    log_to_db(
+        user, 
+        "Открыта страница добавления энергорайона", 
+        entity_type="energy_area")
 
     # Создание формы
     form = AddEnergyAreaForm()
@@ -245,12 +247,6 @@ def add_energy_area():
 
             # Добавление новой записи
             add_energy_area_service(payload, user)
-            log_to_db(user, "Добавление нового энергорайона", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Субъект РФ: {get_regional_district_name(form.regional_district.data)}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
     
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -279,12 +275,10 @@ def add_energy_area():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления нового энергорайона", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового энергорайона", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -306,8 +300,7 @@ def export_energy_area():
     """Маршрут для экспорта данных в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка энергорайонов в Excel")
-    
+
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     energy_area_filter              = request.args.get("energy_area_filter", "").strip()
@@ -327,14 +320,6 @@ def export_energy_area():
             union_energy_system_filter=union_energy_system_filter, 
         )
 
-        log_to_db(user, "Экспорт завершен", 
-                    (
-                        f"Фильтры: {energy_area_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter},"
-                        f"Сортировка: {sort_by},"
-                        f"Направление: {sort_dir}"
-                    )
-        )
-        
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:
             flash("Нет данных для экспорта.", "warning")

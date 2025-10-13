@@ -28,15 +28,6 @@ class Machine(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_ti = db.Column(db.Integer, nullable=True)
 
-    # FK -> EquipmentGroup
-    id_equipment_group = db.Column(
-        db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.equipment_groups.id', ondelete='RESTRICT'),
-        nullable=True,
-        index=True,
-    )
-    equipment_group = db.relationship('EquipmentGroup', back_populates='machines')
-
     # FK -> ConditionType
     id_condition_type = db.Column(
         db.Integer,
@@ -95,7 +86,7 @@ class Machine(db.Model):
         nullable=True,
         index=True,
     )
-    type = db.relationship('MachineType', back_populates='machines')
+    machine_type = db.relationship('MachineType', back_populates='machines')
 
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(
@@ -105,6 +96,33 @@ class Machine(db.Model):
         index=True,
     )
     tes_machine_type = db.relationship('TesMachineType', back_populates='machines')
+
+    # FK -> TechnologyAvailability  
+    id_technology_availability = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.technology_availabilities.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    technology_availability = db.relationship('TechnologyAvailability', back_populates='machines')
+
+    # FK -> TechnologyType 
+    id_technology_type = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.technology_types.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    technology_type = db.relationship('TechnologyType', back_populates='machines')
+
+    # FK -> EquipmentGroup
+    id_equipment_group = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.equipment_groups.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    equipment_group = db.relationship('EquipmentGroup', back_populates='machines')
 
     # Children: powers / fuels / tes_types
     machine_powers = db.relationship(

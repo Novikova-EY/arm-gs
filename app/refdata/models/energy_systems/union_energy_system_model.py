@@ -14,8 +14,12 @@ class UnionEnergySystem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
+    # Порядок отображения
+    display_order = db.Column(db.Integer, nullable=True)
+
     # Наименование и полное наименование
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
+
     # Устанавливаем по умолчанию name_full := name на уровне Python-контекста вставки
     name_full = db.Column(
         db.String(80),

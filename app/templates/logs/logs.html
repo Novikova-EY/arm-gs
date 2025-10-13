@@ -97,7 +97,8 @@
                                 Действие
                             </a>
                         </th>
-                        <th class="p-3" style="width: 15%;">Сущность</th>
+                        <th class="p-3" style="width: 15%;">Тип сущности</th>
+                        <th class="p-3" style="width: 15%;">ID cущности</th>
                         <th class="p-3" style="width: 40%;">
                             <a href="{{ 
                             url_for('logs.view_logs', 
@@ -120,6 +121,11 @@
                             <td class="p-3">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] }}</td>
                             <td class="p-3">{{ log.username }}</td>
                             <td class="p-3">{{ log.action }}</td>
+                            <td class="p-3">
+                                {% if log.entity_type %}
+                                    <span class="badge bg-info">{{ log.entity_type }} </span>
+                                {% endif %}
+                            </td>
                             <td class="p-3">
                                 {% if log.entity_type and log.entity_id %}
                                     <span class="badge bg-info">{{ log.entity_type }} #{{ log.entity_id }}</span>

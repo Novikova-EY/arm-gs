@@ -17,7 +17,7 @@ class MachineType(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    machines = db.relationship('Machine', back_populates='type')
+    machines = db.relationship('Machine', back_populates='machine_type')
 
     def __repr__(self) -> str:
         return f"<MachineType id={self.id} name={self.name!r}>"

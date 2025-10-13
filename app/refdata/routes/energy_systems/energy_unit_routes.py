@@ -46,7 +46,10 @@ def energy_unit_list():
     """Маршрут для отображения списка энергоузлов."""
     
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница энергоузла")
+    log_to_db(
+        user, 
+        "Открыта страница энергоузла", 
+        entity_type="energy_unit")
 
     # Создание формы
     form = EnergyUnitFilterForm()
@@ -85,7 +88,6 @@ def energy_unit_list():
                 delete_energy_unit_service(energy_unit_delete, user)
                 flash("Записи энергоузлов успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления энергозон {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.energy_unit_list", 
                                     page=page, 
@@ -101,7 +103,6 @@ def energy_unit_list():
         # Обновление данных в базе
         try:
             if not (energy_unit_ids and energy_unit_names and regional_energy_system_ids and regional_district_ids):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_unit_list", 
                                         page=page, 
@@ -145,14 +146,12 @@ def energy_unit_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID энергоузлы: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления энергоузлов", str(energy_unit_data))
             update_energy_unit_service(energy_unit_data, user)
             flash("Изменения энергоузлов успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных энергоузлов: {e}")
             flash("Ошибка сохранения данных энергоузлов.", "danger")
 
         return redirect(url_for("refdata_bp.energy_unit_list",
@@ -212,7 +211,10 @@ def add_energy_unit():
     """ Маршрут для добавления нового энергоузла. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления энергоузла")
+    log_to_db(
+        user, 
+        "Открыта страница добавления энергоузла", 
+        entity_type="energy_unit")
 
     # Создание формы
     form = AddEnergyUnitForm()
@@ -255,13 +257,6 @@ def add_energy_unit():
             }]
 
             add_energy_unit_service(payload, user)
-            log_to_db(user, "Добавление нового энергоузла", 
-                      (
-                        f"Имя: {form.name.data},"
-                        f"Субъект РФ: {form.regional_district.data},"
-                        f"Региональная энергосистема: {get_regional_energy_system_name(form.regional_energy_system.data)}"
-                      )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -289,12 +284,10 @@ def add_energy_unit():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления нового энергоузла", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового энергоузла", str(e))
 
 
     return render_template(
@@ -317,7 +310,6 @@ def export_energy_unit():
     """Маршрут для экспорта энергоузлов в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка энергоузлов в Excel")
     
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
@@ -336,13 +328,6 @@ def export_energy_unit():
                         union_energy_system_filter, 
                         sort_by, 
                         sort_dir
-        )
-        log_to_db(user, "Экспорт завершен",
-                (
-                    f"Фильтры: {energy_unit_filter, regional_district_filter, regional_energy_system_filter, union_energy_system_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

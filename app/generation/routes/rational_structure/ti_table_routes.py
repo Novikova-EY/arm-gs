@@ -4,7 +4,7 @@ from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
-from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
 from flask import render_template
 from sqlalchemy.orm import joinedload
 from app.common.services.help_services import (

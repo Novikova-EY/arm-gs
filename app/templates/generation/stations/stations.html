@@ -4,9 +4,23 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
+
+<!-- Индикатор загрузки для per_page=all -->
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных по станциям...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
 <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Главная страница</a>
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Страница "Электростанции РФ"</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Страница "Справочники"</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -246,56 +260,67 @@
 
             <!-- Данные таблицы-->
             <tbody>
-                {% for es_type_id, es_type_group in stations_grouped.items() %}
+                {% for es_type_id in sorted_energy_system_type_ids %}
+                    {% set es_type_group = stations_grouped[es_type_id] %}
             
-                    {% if per_page == 'all' %}
+                    {# Заголовок типа энергосистемы - показываем только для per_page=all или если это первое вхождение #}
+                    {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
                         {% include 'generation/stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}
                     {% endif %}
             
-                    {% for ues_id, ues_group in es_type_group.items() %}
+                    {% for ues in union_energy_system_list %}
+                        {% set ues_id = ues.id %}
+                        {% if es_type_group.get(ues_id) is defined %}
+                        {% set ues_group = es_type_group[ues_id] %}
             
-                        {% if per_page == 'all' %}
+                        {# Заголовок ОЭС - показываем только для per_page=all или если это первое вхождение #}
+                        {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
                             {% include 'generation/stations/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
                         {% endif %}
             
                         {% for res_id, res_group in ues_group.items() %}
             
-                            {% if per_page == 'all' %}
+                            {# Заголовок РЭС - показываем только для per_page=all или если это первое вхождение #}
+                            {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
                                 {% include 'generation/stations/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}
                             {% endif %}
             
                             {% for rd_id, rd_group in res_group.items() %}
             
                                 {% if rd_id != 0 %}
-                                    {% if per_page == 'all' %}
+                                    {# Заголовок субъекта РФ - показываем только для per_page=all или если это первое вхождение #}
+                                    {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
             
                                         {% if eu_id != 0 %}
-                                            {% if per_page == 'all' %}
+                                            {# Заголовок энергоузла - показываем только для per_page=all или если это первое вхождение #}
+                                            {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
                                                 {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
                                             {% endif %}
                                         {% endif %}
 
-                                        {% if per_page != 'all' %}
-                                            {% for station in eu_group %}
-                                                {% include 'generation/stations/station_rows.html' %}
-                                                {% include 'generation/stations/aggregated_data/aggregated_station.html' %}
-                                            {% endfor %}
-                                        {% endif %}
+                                        {% for station in eu_group %}
+                                            {% include 'generation/stations/station_rows.html' %}
+                                            {% include 'generation/stations/aggregated_data/aggregated_station.html' %}
+                                        {% endfor %}
             
                                         {# Итог по энергоузлу #}
-                                        {% if per_page == 'all' and eu_id != 0 %}
-                                            {% set current_eu_id = eu_id %}
-                                            {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                        {% if eu_id != 0 %}
+                                        {% set show_eu_totals = (should_show_totals|default({})).get('energy_units', {}).get(eu_id) %}
+                                        {% if show_eu_totals %}
+                                                {% set current_eu_id = eu_id %}
+                                                {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                            {% endif %}
                                         {% endif %}
             
                                     {% endfor %}
             
                                     {# Итог по субъекту РФ #}
-                                    {% if per_page == 'all' %}
+                                    {% set show_rd_totals = (should_show_totals|default({})).get('regional_districts', {}).get(rd_id) %}
+                                    {% if show_rd_totals %}
                                         {% set current_rd_id = rd_id %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
                                     {% endif %}
@@ -305,7 +330,8 @@
                             {% endfor %}
             
                             {# Итог по региональной энергосистеме #}
-                            {% if per_page == 'all' %}
+                            {% set show_res_totals = (should_show_totals|default({})).get('regional_energy_systems', {}).get(res_id) %}
+                            {% if show_res_totals %}
                                 {% set current_res_id = res_id %}
                                 {% include 'generation/stations/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_total.html' %}
                             {% endif %}
@@ -313,15 +339,18 @@
                         {% endfor %}
             
                         {# Итог по объединенной энергосистеме #}
-                        {% if per_page == 'all' %}
+                        {% set show_ues_totals = (should_show_totals|default({})).get('union_energy_systems', {}).get(ues_id) %}
+                        {% if show_ues_totals %}
                             {% set current_ues_id = ues_id %}
                                 {% include 'generation/stations/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
                         {% endif %}
             
+                        {% endif %}
                     {% endfor %}
             
                     {# Итог по типу энергосистемы #}
-                    {% if per_page == 'all' %}
+                    {% set show_es_totals = (should_show_totals|default({})).get('energy_system_types', {}).get(es_type_id) %}
+                    {% if show_es_totals %}
                         {% set current_es_type_id = es_type_id %}
                         {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
@@ -329,7 +358,8 @@
                 {% endfor %}
             
                 {# Итог по России #}
-                {% if per_page == 'all' %}
+                {% set show_totals = (should_show_totals|default({})).get('total') %}
+                {% if show_totals %}
                     {% include 'generation/stations/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>
@@ -373,5 +403,17 @@
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+
+<!-- Скрываем индикатор загрузки после полной загрузки -->
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 500);
+    });
+</script>
 
 {% endblock %}

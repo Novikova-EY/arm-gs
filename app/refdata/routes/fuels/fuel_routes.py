@@ -40,7 +40,7 @@ def fuel_list():
     """Маршрут для отображения списка типов топлива."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница типов топлива")
+    log_to_db(user, "Открыта страница типов топлива", entity_type="fuel")
     
     # Создание формы
     form = FuelFilterForm()
@@ -75,7 +75,6 @@ def fuel_list():
                 delete_fuel_service(fuel_delete, user)
                 flash("Записи типов топлива успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления типов топлива: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.fuel_list", 
                                     page=page, 
@@ -87,7 +86,6 @@ def fuel_list():
         # Обновление данных в базе
         try:
             if not fuel_ids or not fuel_names:
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.fuel_list", 
                                         page=page, 
@@ -114,14 +112,12 @@ def fuel_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов топлива: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления типов топлива", str(fuel_data))
             update_fuel_service(fuel_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных типов топлива: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.fuel_list", 
@@ -163,7 +159,10 @@ def add_fuel():
     """ Маршрут для добавления нового топлива. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления типов топлива")
+    log_to_db(
+        user, 
+        "Открыта страница добавления типов топлива", 
+        entity_type="fuel")
 
     # Создание формы
     form = AddFuelForm()
@@ -190,12 +189,6 @@ def add_fuel():
 
             # Добавление новой записи через сервис
             add_fuel_service(payload, user)
-            log_to_db(user, "Добавление нового типа топлива", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Вид топлива: {get_fuel_type_name(form.fuel_type.data)}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -224,7 +217,6 @@ def add_fuel():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового типа топлива", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -246,7 +238,6 @@ def import_fuel():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт типов топлива из Excel")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -278,7 +269,6 @@ def export_fuel():
     """Маршрут для экспорта типов топлива в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка типов топлива в Excel")
 
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
@@ -293,13 +283,6 @@ def export_fuel():
                         sort_dir=sort_dir,
                         fuel_filter=fuel_filter,
                         fuel_type_filter=fuel_type_filter,
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {fuel_filter, fuel_type_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

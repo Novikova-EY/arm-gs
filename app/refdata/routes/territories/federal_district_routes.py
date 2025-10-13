@@ -36,7 +36,7 @@ def federal_district_list():
     """Маршрут для отображения списка федеральных округов."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница федеральных округов")
+    log_to_db(user, "Открыта страница федеральных округов", entity_type="federal_district")
     
     # Создание формы
     form = FederalDistrictFilterForm()
@@ -69,7 +69,6 @@ def federal_district_list():
                 delete_federal_district_service(federal_district_delete, user)
                 flash("Записи успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления записей: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.federal_district_list", 
                                     page=page, 
@@ -81,7 +80,7 @@ def federal_district_list():
         # Обновление данных в базе
         try:
             if not (federal_district_ids and federal_district_names and federal_district_full_names and federal_district_abr_names):
-                log_to_db(user, "Нет данных для обновления.")
+                log_to_db(user, "Нет данных для обновления.", entity_type="federal_district")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.federal_district_list", 
                                         page=page, 
@@ -97,7 +96,7 @@ def federal_district_list():
             ):
                 try:
                     if not federal_district_name.strip():
-                        log_to_db(user, f"Пустое имя обнаружено: ID={federal_district_id}")
+                        log_to_db(user, f"Пустое имя обнаружено: ID={federal_district_id}", entity_type="federal_district")
                         raise ValueError(f"Пустое имя для ID: {federal_district_id}")
 
                     federal_district_data.append({
@@ -125,8 +124,8 @@ def federal_district_list():
 
             # Обновление данных в базе
             update_federal_district_service(federal_district_data, user)
-
             flash("Изменения успешно сохранены.", "success")
+            
         except ValueError as e:
             msg = str(e)
             if 'уже существует' in msg:
@@ -134,7 +133,7 @@ def federal_district_list():
             else:
                 flash(msg, 'danger')
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных федерального округа: {e}")
+            log_to_db(user, f"Ошибка сохранения данных федерального округа: {e}", entity_type="federal_district")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.federal_district_list", 
@@ -169,7 +168,7 @@ def add_federal_district():
     """ Маршрут для добавления нового федерального округа. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления федерального округа")
+    log_to_db(user, "Открыта страница добавления федерального округа", entity_type="federal_district")
 
     # Создание формы
     form = AddFederalDistrictForm()
@@ -202,13 +201,6 @@ def add_federal_district():
         
             # Добавление новой записи через сервис
             add_federal_district_service(payload, user)            
-            log_to_db(user, "Добавление нового федерального округа", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Полное наименование: {form.name_full.data}, "
-                        f"Сокращенное наименование: {form.name_abr.data}, "
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -234,7 +226,7 @@ def add_federal_district():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового федерального округа", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления нового федерального округа", str(e, entity_type="federal_district"))
 
     # Рендеринг формы
     return render_template(
@@ -254,7 +246,7 @@ def import_federal_district():
     """Маршрут для импорта данных из Excel."""
     
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт федеральных округов из Excel")
+    log_to_db(user, "Начат импорт федеральных округов из Excel", entity_type="federal_district")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -285,7 +277,6 @@ def export_federal_district():
     """ Маршрут для экспорта федеральных округов в Excel. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка федеральных округов в Excel")
     
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
@@ -299,13 +290,7 @@ def export_federal_district():
                 sort_dir=sort_dir,
                 federal_district_filter=federal_district_filter, 
         )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтр: {federal_district_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
-        )
+
         # Проверка наличия данных
         if excel_data is None or excel_data.getbuffer().nbytes == 0:
             flash("Нет данных для экспорта.", "warning")

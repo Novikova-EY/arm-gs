@@ -35,7 +35,10 @@ def synchronous_area_list():
     """Маршрут для отображения списка синхронных зон."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница синхронных зон")
+    log_to_db(
+        user, 
+        "Открыта страница синхронных зон", 
+        entity_type="synchronous_area")
     
     # Создание формы
     form = SynchronousAreaFilterForm()
@@ -67,7 +70,6 @@ def synchronous_area_list():
                 delete_synchronous_area_service(synchronous_area_delete, user)
                 flash("Записи синхронных зон успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления синхронных зон: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.synchronous_area_list", 
                                     page=page, 
@@ -79,7 +81,6 @@ def synchronous_area_list():
         # Обновление данных в базе
         try:
             if not (synchronous_area_ids and synchronous_area_names):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.synchronous_area_list", 
                                         page=page, 
@@ -117,14 +118,12 @@ def synchronous_area_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID синхронных зон: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления синхронных зон", str(synchronous_area_data))
             update_synchronous_area_service(synchronous_area_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных синхронных зон: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.synchronous_area_list", 
@@ -159,7 +158,10 @@ def add_synchronous_area():
     """ Маршрут для добавления новой cинхронной зоны. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления синхронной зоны")
+    log_to_db(
+        user, 
+        "Открыта страница добавления синхронной зоны", 
+        entity_type="synchronous_area")
 
     # Создание формы
     form = AddSynchronousAreaForm()
@@ -191,12 +193,6 @@ def add_synchronous_area():
                         
             # Добавление новой записи
             add_synchronous_area_service(payload, user)
-            log_to_db(user, "Добавление новой синхронной зоны", 
-                    (
-                        f"Номер: {form.number.data},"
-                        f"Наименование: {form.name.data}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
              # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -218,12 +214,10 @@ def add_synchronous_area():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой синхронной зоны", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой синхронной зоны", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -243,7 +237,6 @@ def export_synchronous_area():
     """Маршрут для экспорта синхронных зон в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка синхронных зон в Excel")
     
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
@@ -256,13 +249,6 @@ def export_synchronous_area():
                         sort_by, 
                         sort_dir,
                         synchronous_area_filter, 
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтр: {synchronous_area_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

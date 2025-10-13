@@ -114,6 +114,12 @@ def update_federal_district_service(data, user):
 
     updated_ids = []
 
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка федеральных округов", 
+        f"{data}", 
+        entity_type="federal_district")
+
     # Итерация по входным данным (валидация/применение)
     with db.session.no_autoflush:
         for record in data:
@@ -127,6 +133,12 @@ def update_federal_district_service(data, user):
             
             obj = db.session.get(FederalDistrict, federal_district_id)
             if not obj:
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись с ID «{federal_district_id}» не найдена.", 
+                    entity_type="federal_district", 
+                    entity_id=federal_district_id)
                 raise ValueError(f"Запись с ID «{federal_district_id}» не найдена.")
             
             # Проверка уникальности name только если меняется
@@ -153,7 +165,12 @@ def update_federal_district_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлен федеральный округ: {name}", f"Изменения = {changes}")
+                log_to_db(
+                    user, 
+                    f"Обновлен федеральный округ: {name}", 
+                    f"Изменения = {changes}", 
+                    entity_type="federal_district", 
+                    entity_id=federal_district_id)  
                 updated_ids.append(federal_district_id)
 
         db.session.flush()
@@ -164,19 +181,19 @@ def update_federal_district_service(data, user):
         _commit_with_retry()
 
         if updated_ids:
-            log_to_db(user, "Сохранены изменения по федеральным округам", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+            log_to_db(user, "Сохранены изменения по федеральным округам", f"Измененных записей: {len(updated_ids)} (id: {updated_ids})", entity_type="federal_district")
         else:
-            log_to_db(user, "Изменений по федеральным округам не обнаружено", "")
+            log_to_db(user, "Изменений по федеральным округам не обнаружено", "", entity_type="federal_district")
             
         return updated_ids
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения федерального округа (уникальность/целостность)", str(e))
+        log_to_db(user, "Ошибка сохранения федерального округа (уникальность/целостность)", str(e, entity_type="federal_district"))
         raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка при сохранении федеральных округов", str(e))
+        log_to_db(user, "Неизвестная ошибка при сохранении федеральных округов", str(e, entity_type="federal_district"))
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
@@ -197,7 +214,11 @@ def add_federal_district_service(data, user):
 
                 # Проверка на наличие необходимых данных
                 if not name or not name_full or not name_abr:
-                    log_to_db(user, "Ошибка валидации", f"Запись: {record}")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}", 
+                        entity_type="federal_district")
                     raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'name_abr'. Данные: {record}")
 
                 # Проверяем уникальность name
@@ -233,10 +254,13 @@ def add_federal_district_service(data, user):
                 log_to_db(
                     user,
                     "Создан федеральный округ",
-                    f"Наименование: {name};"
-                    f"Полное наименование: {_dash(name_full)};"
-                    f"Сокращенное наименование: {_dash(name_abr)}"
-                )
+                    (
+                        f"Наименование: {name};"
+                        f"Полное наименование: {_dash(name_full)};"
+                        f"Сокращенное наименование: {_dash(name_abr)}", 
+                    ),
+                    entity_type="federal_district",
+                    entity_id=obj.id)
 
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
@@ -246,11 +270,11 @@ def add_federal_district_service(data, user):
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
+        log_to_db(user, "Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e, entity_type="federal_district"))
         raise ValueError(f"Ошибка сохранения нового федерального округа. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового федерального округа", str(e))
+        log_to_db(user, "Ошибка сохранения нового федерального округа", str(e, entity_type="federal_district"))
         raise ValueError(f"Ошибка сохранения нового федерального округа: {e}")
 
 
@@ -274,8 +298,12 @@ def delete_federal_district_service(ids, user):
             federal_district_id = int(fd_id)
         except (TypeError, ValueError):
             invalid.append(fd_id)
-            log_to_db(user, "Ошибка удаления федерального округа", 
-                      f"Некорректный ID: {fd_id}")
+            log_to_db(
+                user, 
+                "Ошибка удаления федерального округа", 
+                f"Некорректный ID: {fd_id}",
+                entity_type="federal_district",
+                entity_id=fd_id)
             continue
 
         obj = _locked_get(FederalDistrict, federal_district_id)
@@ -284,12 +312,20 @@ def delete_federal_district_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
-            log_to_db(user, "Удален федеральный округ", 
-                      f"{name}")
+            log_to_db(
+                user,
+                "Удален федеральный округ", 
+                f"{name}",
+                entity_type="federal_district",
+                entity_id=federal_district_id)
         else:
             not_found.append(federal_district_id)
-            log_to_db(user, "Ошибка удаления федерального округа", 
-                      f"Федеральный округ с ID={federal_district_id} не найден.")
+            log_to_db(
+                user, 
+                "Ошибка удаления федерального округа", 
+                f"Федеральный округ с ID={federal_district_id} не найден.",
+                entity_type="federal_district",
+                entity_id=federal_district_id)
 
     try:
         # Сохранение изменений в базе данных
@@ -304,8 +340,6 @@ def delete_federal_district_service(ids, user):
         if invalid:
             parts.append(f"Некорректные ID: {invalid}")
 
-        log_to_db(user, "Результат удаления федеральных округов", "; ".join(parts))
-
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
@@ -314,7 +348,11 @@ def delete_federal_district_service(ids, user):
         }
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления федеральных округов", str(e))
+        log_to_db(
+            user, 
+            "Ошибка удаления федеральных округов", 
+            str(e, entity_type="federal_district"),
+            entity_id=federal_district_id)
         raise ValueError(f"Ошибка при удалении данных.")
 
 
@@ -397,15 +435,15 @@ def import_federal_district_service(file, user):
         }
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных (IntegrityError)", str(e))
+        log_to_db(user, "Ошибка импорта данных (IntegrityError)", str(e, entity_type="federal_district"))
         raise ValueError(f"Ошибка целостности данных при импорте. Проверьте уникальность записей.")
     except ValueError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных (ValueError)", str(e))
+        log_to_db(user, "Ошибка импорта данных (ValueError)", str(e, entity_type="federal_district"))
         raise
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных", str(e))
+        log_to_db(user, "Ошибка импорта данных", str(e, entity_type="federal_district"))
         raise ValueError(f"Ошибка при импорте данных: {e}")
 
 
@@ -416,7 +454,7 @@ def export_federal_district_service(
         sort_dir="asc"):
     """ Экспортирует данные ФО в Excel. """
 
-    log_to_db(user, "Начата выгрузка таблицы федеральных округов из базы данных")
+    log_to_db(user, "Начата выгрузка таблицы федеральных округов из базы данных", entity_type="federal_district")
     log_to_db(user, "Параметры экспорта",
         (
                 f"Фильтр по столбцу: Наименование ФО = {federal_district_filter},"
@@ -461,5 +499,5 @@ def export_federal_district_service(
             ws.set_column(i, i, min(max_len + 2, 60))
 
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы федеральных округов в Excel завершен", f"Экспортировано записей: {len(data)}")
+    log_to_db(user, "Экспорт таблицы федеральных округов в Excel завершен", f"Экспортировано записей: {len(data)}", entity_type="federal_district")
     return output

@@ -33,7 +33,7 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
-from app.refdata.models.refdata_for_stations.machine.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
 from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
 from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType

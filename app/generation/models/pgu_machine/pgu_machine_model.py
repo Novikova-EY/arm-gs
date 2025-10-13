@@ -13,22 +13,12 @@ class PGUMachine(db.Model):
     __table_args__ = (
         Index('ix_pgu_machine_id_parent_machine', 'id_parent_machine'),
         Index('ix_pgu_machine_id_tes_machine_type', 'id_tes_machine_type'),
-        Index('ix_pgu_machine_id_equipment_group_pgu', 'id_equipment_group_pgu'),
         Index('ix_pgu_machine_id_condition_type', 'id_condition_type'),
         {"schema": SCHEMA_GENERATION},
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     id_ti = db.Column(db.Integer, nullable=True)
-
-    # FK -> EquipmentGroup (ПГУ)
-    id_equipment_group_pgu = db.Column(
-        db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.equipment_groups.id', ondelete='RESTRICT'),
-        nullable=True,
-        index=True,
-    )
-    equipment_group_pgu = db.relationship('EquipmentGroup', back_populates='pgu_machines')
 
     # FK -> ConditionType
     id_condition_type = db.Column(

@@ -1,0 +1,430 @@
+"""Сервисный модуль: Типы агрегатов ПГУ."""
+
+from app.extensions import db
+from sqlalchemy import func as sa_func, text
+from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.exc import IntegrityError
+import pandas as pd
+from io import BytesIO 
+from config import SCHEMA_REFDATA
+        
+# Модели
+from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+
+# Сервисы
+from app.common.services.help_services import (
+    _dash,
+    _clean_name,
+)
+from app.common.services.tranzaction_services import (
+    _commit_with_retry,
+    _locked_get,
+    no_autoflush,
+    quick_fix_seq,
+)
+
+# Логирование
+from app.logs.services.logging_service import log_to_db
+
+
+def pgu_tes_machine_type_query(
+        pgu_tes_machine_type_filter=None, 
+        sort_by="id", 
+        sort_dir="asc"):
+    """ Базовый запрос для выборки типов агрегатов с фильтрацией и сортировкой. """
+
+    # Валидация сортировки
+    allowed_sort_by = {"id","name"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+
+    sort_dir = (sort_dir or "asc").lower()
+    sort_dir = "desc" if sort_dir == "desc" else "asc"
+
+    # Базовый запрос
+    query = PGUTesMachineType.query.filter(PGUTesMachineType.id.isnot(None), PGUTesMachineType.id > 0)
+
+    # Фильтрация
+    if pgu_tes_machine_type_filter:
+        query = query.filter(PGUTesMachineType.name.ilike(f"%{pgu_tes_machine_type_filter}%"))
+
+    # Сортировка
+    if sort_by == "name":
+        sort_col = PGUTesMachineType.name
+    else:
+        sort_col = PGUTesMachineType.id
+
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+
+    return query
+
+
+@no_autoflush
+def get_pgu_tes_machine_type_list(
+    page, 
+    per_page, 
+    pgu_tes_machine_type_filter=None, 
+    sort_by="id", 
+    sort_dir="asc"):
+    """ Получает список типов агрегатов ПГУ с пагинацией, фильтрацией и сортировкой. """
+    
+    # Базовый запрос
+    query = pgu_tes_machine_type_query(
+        pgu_tes_machine_type_filter=pgu_tes_machine_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+
+    # Пагинация
+    return query.paginate(page=page, per_page=per_page, error_out=False)
+
+
+@no_autoflush
+def update_pgu_tes_machine_type_service(data, user):
+    """ Обновление данных по типам агрегатов ПГУ """
+
+    if not isinstance(data, list):
+        raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
+
+    updated_ids = []
+    
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка типов агрегатов ПГУ", 
+        f"{data}", 
+        entity_type="pgu_tes_machine_type")
+    
+    # Проверки на валидность данных
+    with db.session.no_autoflush:
+        for record in data:
+            pgu_tes_machine_type_id = record.get("pgu_tes_machine_type_id")
+            name = (record.get("name") or "").strip()
+
+            if not name:
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись: {record}", 
+                    entity_type="pgu_tes_machine_type",
+                    entity_id=pgu_tes_machine_type_id)
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
+
+            obj = db.session.get(PGUTesMachineType, pgu_tes_machine_type_id)
+            if not obj:
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись с ID «{pgu_tes_machine_type_id}» не найдена.", 
+                    entity_type="pgu_tes_machine_type", 
+                    entity_id=pgu_tes_machine_type_id)
+                raise ValueError(f"Запись с ID «{pgu_tes_machine_type_id}» не найдена.")
+
+            # Проверка уникальности name
+            if name != (obj.name or ""):
+                q = (PGUTesMachineType.query
+                     .filter(PGUTesMachineType.name == name,
+                             PGUTesMachineType.id != pgu_tes_machine_type_id))
+                if q.first():
+                    raise ValueError(f"Запись с именем «{name}» уже существует.")
+
+            changes = {}
+
+            if name != (obj.name or ""):
+                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                obj.name = name
+
+            # Если есть реальные изменения — лог и добавление в список
+            if changes:
+                log_to_db(
+                    user, 
+                    f"Обновлен тип агрегата: {name}", 
+                    f"Изменения = {changes}", 
+                    entity_type="pgu_tes_machine_type", 
+                    entity_id=pgu_tes_machine_type_id)
+                updated_ids.append(pgu_tes_machine_type_id)
+
+        db.session.flush()
+
+    try:
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        if updated_ids:
+            log_to_db(
+                user, 
+                "Сохранены изменения по типам агрегатов", 
+                f"Измененных записей: {len(updated_ids)} (id: {updated_ids})", 
+                entity_type="pgu_tes_machine_type",
+                entity_id=pgu_tes_machine_type_id)
+        else:
+            log_to_db(
+                user, 
+                "Изменений по типам агрегатов не обнаружено", 
+                "", 
+                entity_type="pgu_tes_machine_type",
+                entity_id=pgu_tes_machine_type_id)
+            
+        return updated_ids
+    
+    except IntegrityError as e:
+        db.session.rollback()
+        log_to_db(
+            user, 
+            "Ошибка сохранения типов агрегатов (уникальность/целостность)", 
+            str(e), 
+            entity_type="pgu_tes_machine_type",
+            entity_id=pgu_tes_machine_type_id)
+        raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(
+            user, 
+            "Неизвестная ошибка при сохранении типов агрегатов", 
+            str(e), 
+            entity_type="pgu_tes_machine_type",
+            entity_id=pgu_tes_machine_type_id)
+        raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
+
+
+@no_autoflush
+def add_pgu_tes_machine_type_service(data, user):
+    """Создание новой записи: тип агрегата ПГУ"""
+    if not isinstance(data, list):
+        raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
+
+    def _do_insert():
+        with db.session.no_autoflush:
+            for record in data:
+                name = (record.get("name") or "").strip()
+                if not name:
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}", 
+                        entity_type="pgu_tes_machine_type")
+                    raise ValueError("Каждая запись должна содержать 'name'.")
+
+                dup = (PGUTesMachineType.query
+                       .filter(PGUTesMachineType.name == name)
+                       .with_for_update().first())
+                if dup:
+                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+
+                obj = PGUTesMachineType(name=name)
+                db.session.add(obj)
+                db.session.flush()
+
+                log_to_db(
+                    user, 
+                    "Создан тип агрегата ПГУ", 
+                    f"Наименование: {name}",
+                    entity_type="pgu_tes_machine_type", 
+                    entity_id=obj.id)
+
+    try:
+        _do_insert()
+        _commit_with_retry()
+        return None
+
+    except IntegrityError:
+        db.session.rollback()
+        quick_fix_seq(SCHEMA_REFDATA, "pgu_tes_machine_types")
+        _do_insert()
+        _commit_with_retry()
+        return None
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(
+            user, 
+            "Ошибка сохранения нового типа агрегата ПГУ", 
+            str(e), 
+            entity_type="pgu_tes_machine_type")
+        raise ValueError(f"Ошибка сохранения нового типа агрегата ПГУ: {e}") from e
+
+
+@no_autoflush
+def delete_pgu_tes_machine_type_service(ids, user):
+    """Удаляет записи типов агрегатов ПГУ по переданным ID."""
+
+    if not isinstance(ids, (list, tuple)) or not ids:
+        raise ValueError(f"Не переданы ID для удаления.")
+
+    log_to_db(
+        user, 
+        "Удаление типов агрегатов ПГУ", 
+        f"Переданы ID для удаления: {ids}", 
+        entity_type="pgu_tes_machine_type")
+
+    successful_deletes = 0
+    deleted_names = []
+    not_found = []
+    invalid = []
+
+    for ft_id in ids:
+        try:
+            pgu_tes_machine_type_id = int(ft_id)
+        except (TypeError, ValueError):
+            invalid.append(ft_id)
+            log_to_db(
+                user, 
+                "Ошибка удаления типов агрегатов ПГУ", 
+                f"Некорректный ID: {ft_id}", 
+                entity_type="pgu_tes_machine_type",
+                entity_id=ft_id)
+            continue
+
+        obj = _locked_get(PGUTesMachineType, pgu_tes_machine_type_id)
+        if obj:
+            name = obj.name or f"ID={pgu_tes_machine_type_id}"
+            db.session.delete(obj)
+            successful_deletes += 1
+            deleted_names.append(name)
+            log_to_db(
+                user, 
+                "Удален тип агрегата ПГУ", 
+                f"{name}", 
+                entity_type="pgu_tes_machine_type", 
+                entity_id=pgu_tes_machine_type_id)
+        else:
+            not_found.append(pgu_tes_machine_type_id)
+            log_to_db(
+                user, 
+                "Ошибка удаления типов агрегатов ПГУ", 
+                f"Тип агрегата с ID={pgu_tes_machine_type_id} не найден.", 
+                entity_type="pgu_tes_machine_type", 
+                entity_id=pgu_tes_machine_type_id)
+
+    try:
+        # Сохранение изменений в базе данных
+        # Фиксация транзакции (устойчивый коммит)
+        _commit_with_retry()
+
+        parts = [f"Удалено: {successful_deletes}"]
+        if deleted_names:
+            parts.append(f"Наименование: {deleted_names}")
+        if not_found:
+            parts.append(f"Не найдены ID: {not_found}")
+        if invalid:
+            parts.append(f"Некорректные ID: {invalid}")
+
+        return {
+            "deleted": successful_deletes,
+            "deleted_names": deleted_names,
+            "not_found": not_found,
+            "invalid": invalid,
+        }
+    except Exception as e:
+        db.session.rollback()
+        log_to_db(
+            user, 
+            "Ошибка удаления типов агрегатов ПГУ", 
+            str(e), 
+            entity_type="pgu_tes_machine_type",
+            entity_id=pgu_tes_machine_type_id)
+        raise ValueError(f"Ошибка при удалении данных.")
+
+
+def export_pgu_tes_machine_type_service(
+    user,
+    pgu_tes_machine_type_filter=None,
+    sort_by="id",
+    sort_dir="asc",):
+    """ Экспортирует данные типов агрегатов ПГУ в Excel. """
+
+    log_to_db(
+        user, 
+        "Начата выгрузка таблицы типов агрегатов ПГУ. Параметры экспорта",
+        (
+            f"Фильтр по столбцу: Наименование типа агрегата ПГУ = {pgu_tes_machine_type_filter},"
+            f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
+        ), 
+        entity_type="pgu_tes_machine_type"
+    )
+
+    # Базовый запрос
+    query = pgu_tes_machine_type_query(
+        pgu_tes_machine_type_filter=pgu_tes_machine_type_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+
+    # Получение данных
+    items = query.all()
+    log_to_db(
+        user, 
+        "Получение данных завершено", 
+        f"Найдено записей: {len(items)}", 
+        entity_type="pgu_tes_machine_type")
+
+    # Подготовка данных для Excel
+    data = []
+    for idx, o in enumerate(items, start=1):
+        data.append({
+            "№": idx,
+            "Наименование": _dash(o.name),
+        })
+
+    log_to_db(
+        user, 
+        "Подготовка данных для экспорта таблицы типов агрегатов ПГУ в Excel",
+        f"Записей для экспорта: {len(data)}", 
+        entity_type="pgu_tes_machine_type")
+
+    df = pd.DataFrame(data)
+
+    # Создание Excel и авто-ширина столбцов
+    output = BytesIO()
+    sheet_name = "Типы агрегатов ПГУ"
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+
+        # Автоподбор ширины с аккуратным лимитом
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
+
+    output.seek(0)
+    log_to_db(
+        user, 
+        "Экспорт таблицы типов агрегатов ПГУ в Excel завершен", 
+        f"Экспортировано записей: {len(data)}", 
+        entity_type="pgu_tes_machine_type")
+    return output
+
+
+def repair_pgu_tes_machine_types_sequence_hard(user: str) -> None:
+    """
+    Выравнивает sequence для refdata.pgu_tes_machine_types.id под MAX(id)
+    в ОТДЕЛЬНОЙ транзакции (engine.begin), чтобы её не откатил внешний rollback().
+    Работает и для SERIAL, и для IDENTITY, т.к. имя берём через pg_get_serial_sequence.
+    """
+    try:
+        with db.engine.begin() as conn:  # <— отдельная транзакция, гарантированный commit
+            seq_name = conn.execute(
+                text("SELECT pg_get_serial_sequence(:tbl, :col)"),
+                {"tbl": f"{SCHEMA_REFDATA}.pgu_tes_machine_types", "col": "id"}
+            ).scalar()
+            if not seq_name:
+                raise RuntimeError("pg_get_serial_sequence вернул NULL для refdata.pgu_tes_machine_types(id)")
+
+            max_id = conn.execute(
+                text(f"SELECT COALESCE(MAX(id), 0) FROM {SCHEMA_REFDATA}.pgu_tes_machine_types")
+            ).scalar()
+
+            # true => следующий nextval будет max_id + 1
+            conn.execute(
+                text("SELECT setval(:seq::regclass, :new_val, true)"),
+                {"seq": seq_name, "new_val": int(max_id)}
+            )
+
+        log_to_db(user,
+                  "Ремонт последовательности pgu_tes_machine_types (HARD) выполнен",
+                  f"seq={seq_name}, max_id={max_id}",
+                  entity_type="pgu_tes_machine_type")
+
+    except Exception as e:
+        log_to_db(user,
+                  "Не удалось выполнить ремонт последовательности pgu_tes_machine_types (HARD)",
+                  str(e),
+                  entity_type="pgu_tes_machine_type")

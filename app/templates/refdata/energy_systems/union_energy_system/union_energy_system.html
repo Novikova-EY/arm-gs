@@ -113,7 +113,7 @@
                         <tr class="table-success" style="word-wrap: break-word;">
 
                             <!-- Шапка таблицы. Столбец "№" -->
-                            <th>
+                            <th class="align-middle text-center">
                                 <a href="{{ url_for('refdata_bp.union_energy_system_list', 
                                                     page=pagination.page, 
                                                     per_page=per_page, 
@@ -124,6 +124,27 @@
                                                     class="text-black">
                                     №
                                     {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.union_energy_system_list', 
+                                                    page=pagination.page, 
+                                                    per_page=per_page, 
+                                                    union_energy_system_filter=union_energy_system_filter, 
+                                                    energy_system_type_filter=energy_system_type_filter,
+                                                    sort_by='display_order', 
+                                                    sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                                    class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
                                         {% else %}
@@ -252,6 +273,18 @@
                                     <input type="hidden" name="union_energy_system_ids[]" value="{{ union_energy_system.id }}">
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                                <td>
+                                    <input 
+                                        type="text" 
+                                        name="display_orders[]" 
+                                        class="form-control text-center" 
+                                        value="{{ union_energy_system.display_order if union_energy_system.display_order is not none else '' }}"
+                                        style="border: none; resize: none; width: 100%; background: transparent;"
+                                        pattern="[0-9]*"
+                                    >
+                                </td>
+
                                 <!-- Строки таблицы. Столбец "Наименование ОЭС" -->
                                 <td>
                                     <input 
@@ -292,7 +325,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -451,11 +484,11 @@
                             <!-- Строки таблицы. Столбец "Тип энергосистемы" -->
                             <td>{{ union_energy_system.energy_system_type.name if union_energy_system.energy_system_type else '—' }}</td>
                         </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
-                        </tr>
-                    {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                            </tr>
+                        {% endfor %}
                 </tbody>
             </table>
         </div>

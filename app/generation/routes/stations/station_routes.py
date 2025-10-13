@@ -27,9 +27,14 @@ from app.generation.forms.station_forms import(
 
 # Сервисы
 from app.generation.services.station_services.station_services import (
-    get_station_list_template_context, 
-    get_station_list_template_context, 
+    get_station_list_template_context,
+    get_station_list_template_context,
     get_station_list_data,
+    add_station_service,
+)
+from app.generation.services.station_services.export_cache import (
+    build_export_key,
+    set_export_payload,
 )
 from app.generation.services.station_services.filters_services import (
     has_any_filters,
@@ -69,6 +74,8 @@ def station_list():
     # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
     show_p_ogr          = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp         = request.args.get("show_p_rasp", "1") == "1"
+    # Новый параметр для управления отображением агрегированных сумм (по умолчанию скрыты)
+    show_totals         = request.args.get("show_totals", "0") == "1"
     per_page_param      = request.args.get("per_page", "10")
 
     show_all = per_page_param.lower() == "all"
@@ -98,8 +105,34 @@ def station_list():
                 show_p_ogr=show_p_ogr,
                 show_p_rasp=show_p_rasp,
                 show_all=show_all,
+                show_totals=show_totals,
     )
     print(f"⏱ get_station_list_data заняла: {time.time() - start_data:.2f} сек")
+
+    # Save ready dataset for export (per user and filters)
+    try:
+        export_key = build_export_key(
+            {**filters},
+            rounding_digits,
+            start_year,
+            end_year,
+            show_p_ogr,
+            show_p_rasp,
+        )
+        # We store only the data needed for export to keep memory usage low
+        export_payload = {
+            "data": data,
+            "params": {
+                "rounding_digits": rounding_digits,
+                "start_year": start_year,
+                "end_year": end_year,
+                "show_p_ogr": show_p_ogr,
+                "show_p_rasp": show_p_rasp,
+            },
+        }
+        set_export_payload(session.get('username') or 'anonymous', export_key, export_payload)
+    except Exception as _e:
+        current_app.logger.warning(f"[EXPORT_CACHE] Failed to store export payload: {_e}")
 
     if data["page"] > data["total_pages"]:
         return redirect(url_for("station_bp.station_list", page=data["total_pages"], per_page=per_page))
@@ -134,22 +167,15 @@ def add_station():
 
     if form.validate_on_submit():
         try:
-            new_station = Station(
+            new_station = add_station_service(
+                user=user,
                 name=form.name.data,
-                id_regional_district=form.id_regional_district.data
+                id_regional_district=form.id_regional_district.data,
             )
-            db.session.add(new_station)
-            db.session.commit()
-
             flash("Новая станция успешно создана!", "success")
-            log_to_db(user, f"Создана новая станция: {new_station.name}", entity_type="station", entity_id=new_station.id)
-
             return redirect(url_for("station_bp.station_details", station_id=new_station.id))
-
         except Exception as e:
-            db.session.rollback()
             flash(f"Ошибка при создании станции: {str(e)}", "danger")
-            log_to_db(user, "Ошибка создания новой станции", details=str(e))
 
     return render_template("generation/stations/station_add.html", form=form)
 

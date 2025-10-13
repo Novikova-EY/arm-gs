@@ -36,7 +36,7 @@ def fuel_type_list():
     """Маршрут для отображения списка видов топлива."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница видов топлива")
+    log_to_db(user, "Открыта страница видов топлива", entity_type="fuel_type")
     
     # Создание формы
     form = FuelTypeFilterForm()
@@ -68,7 +68,6 @@ def fuel_type_list():
                 delete_fuel_type_service(fuel_type_delete, user)
                 flash("Записи видов топлива успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления видов топлива: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.fuel_type_list", 
                                     page=page, 
@@ -79,7 +78,6 @@ def fuel_type_list():
         # Обновление данных в базе
         try:
             if not fuel_type_ids or not fuel_type_names:
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.fuel_type_list", 
                                         page=page, 
@@ -104,14 +102,12 @@ def fuel_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID видов топлива: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления видов топлива", str(fuel_type_data))
             update_fuel_type_service(fuel_type_data, user)
             flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных видов топлива: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.fuel_type_list", 
@@ -147,7 +143,10 @@ def add_fuel_type():
     """ Маршрут для добавления нового вида топлива. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления видов топлива")
+    log_to_db(
+        user, 
+        "Открыта страница добавления видов топлива", 
+        entity_type="fuel_type")
 
     # Создание формы
     form = AddFuelTypeForm()
@@ -178,11 +177,6 @@ def add_fuel_type():
 
             # Добавление новой записи через сервис
             add_fuel_type_service(payload, user)
-            log_to_db(user, "Добавление нового вида топлива", 
-                    (
-                        f"Наименование: {form.name.data}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -209,7 +203,6 @@ def add_fuel_type():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового вида топлива", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -229,7 +222,6 @@ def import_fuel_type():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт видов топлива из Excel")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -261,7 +253,6 @@ def export_fuel_type():
     """Маршрут для экспорта видов топлива в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка видов топлива в Excel")
 
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
@@ -274,13 +265,6 @@ def export_fuel_type():
                         sort_by=sort_by,
                         sort_dir=sort_dir,
                         fuel_type_filter=fuel_type_filter,
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {fuel_type_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

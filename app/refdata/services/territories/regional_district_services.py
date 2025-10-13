@@ -163,8 +163,11 @@ def update_regional_district_service(data, user):
 
     updated_ids = []
     
-    log_to_db(user, "Получены данные для обновления списка субъектов РФ", 
-              f"{data}")
+    log_to_db(
+        user, 
+        "Получены данные для обновления списка субъектов РФ", 
+        f"{data}", 
+        entity_type="regional_district")
     
     with db.session.no_autoflush:
         for record in data:
@@ -175,14 +178,22 @@ def update_regional_district_service(data, user):
 
             # Проверки на валидность данных
             if not name:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись: {record}")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись: {record}", 
+                    entity_type="regional_district",
+                    entity_id=regional_district_id)
                 raise ValueError(f"Поле 'name' обязательно для заполнения. Данные: {record}")
 
             obj = db.session.get(RegionalDistrict, regional_district_id)
             if not obj:
-                log_to_db(user, "Ошибка валидации", 
-                          f"Запись с ID «{regional_district_id}» не найдена.")
+                log_to_db(
+                    user, 
+                    "Ошибка валидации", 
+                    f"Запись с ID «{regional_district_id}» не найдена.", 
+                    entity_type="regional_district", 
+                    entity_id=regional_district_id)
                 raise ValueError(f"Запись с ID «{regional_district_id}» не найдена.")
 
             # Проверка уникальности name
@@ -191,8 +202,12 @@ def update_regional_district_service(data, user):
                      .filter(RegionalDistrict.name == name,
                              RegionalDistrict.id != regional_district_id))
                 if q.first():
-                    log_to_db(user, "Ошибка валидации", 
-                              f"Запись с наименованием «{name}» уже существует.")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись с наименованием «{name}» уже существует.", 
+                        entity_type="regional_district",
+                        entity_id=regional_district_id)
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
                 
             # Проверка уникальности name_full
@@ -201,8 +216,12 @@ def update_regional_district_service(data, user):
                      .filter(RegionalDistrict.name_full == name_full,
                              RegionalDistrict.id != regional_district_id))
                 if q_full.first():
-                    log_to_db(user, "Ошибка валидации", 
-                              f"Запись с полным наименованием «{name_full}» уже существует.")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись с полным наименованием «{name_full}» уже существует.", 
+                        entity_type="regional_district",
+                        entity_id=regional_district_id)
                     raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
             changes = {}
@@ -257,8 +276,12 @@ def update_regional_district_service(data, user):
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
-                log_to_db(user, f"Обновлен субъект РФ: {name}", 
-                          f"Изменения = {changes}")
+                log_to_db(
+                    user, 
+                    f"Обновлен субъект РФ: {name}", 
+                    f"Изменения = {changes}", 
+                    entity_type="regional_district", 
+                    entity_id=regional_district_id)
                 updated_ids.append(regional_district_id)
 
         db.session.flush()
@@ -270,19 +293,19 @@ def update_regional_district_service(data, user):
 
         if updated_ids:
             log_to_db(user, "Сохранены изменения по субъектам РФ", 
-                      f"Измененных записей: {len(updated_ids)} (id: {updated_ids})")
+                      f"Измененных записей: {len(updated_ids)} (id: {updated_ids})", entity_type="regional_district")
         else:
-            log_to_db(user, "Изменений по субъектам РФ не обнаружено", "")
+            log_to_db(user, "Изменений по субъектам РФ не обнаружено", "", entity_type="regional_district")
             
         return updated_ids
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения субъектов РФ (уникальность/целостность)", str(e))
+        log_to_db(user, "Ошибка сохранения субъектов РФ (уникальность/целостность)", str(e), entity_type="regional_district")
         raise ValueError(f"Ошибка сохранения данных. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Неизвестная ошибка при сохранении субъектов РФ", str(e))
+        log_to_db(user, "Неизвестная ошибка при сохранении субъектов РФ", str(e), entity_type="regional_district")
         raise ValueError(f"Произошла ошибка при обновлении данных: {e}")
 
 
@@ -303,7 +326,11 @@ def add_regional_district_service(data, user):
 
                 # Проверка на наличие необходимых данных
                 if not name or not name_full or federal_district_id is None:
-                    log_to_db(user, "Ошибка валидации", f"Запись: {record}")
+                    log_to_db(
+                        user, 
+                        "Ошибка валидации", 
+                        f"Запись: {record}", 
+                        entity_type="regional_district")
                     raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'federal_district_id'. Данные: {record}")
 
                 # Проверяем существование федерального округа
@@ -337,10 +364,13 @@ def add_regional_district_service(data, user):
                 log_to_db(
                     user,
                     "Создан субъект РФ",
-                    f"Наименование: {name};"
-                    f"Полное наименование: {_dash(name_full)};"
-                    f"Федеральный округ: {get_federal_district_name(federal_district_id)}"
-                )
+                    (
+                        f"Наименование: {name};"
+                        f"Полное наименование: {_dash(name_full)};"
+                        f"Федеральный округ: {get_federal_district_name(federal_district_id)}",
+                    ),
+                    entity_type="regional_district", 
+                    entity_id=obj.id)
 
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
@@ -350,11 +380,11 @@ def add_regional_district_service(data, user):
 
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового субъекта РФ. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e))
+        log_to_db(user, "Ошибка сохранения нового субъекта РФ. Возможно, нарушены уникальные ограничения или внешние ключи.", str(e), entity_type="regional_district")
         raise ValueError(f"Ошибка сохранения нового субъекта РФ. Возможно, нарушены уникальные ограничения или внешние ключи.")
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка сохранения нового субъекта РФ", str(e))
+        log_to_db(user, "Ошибка сохранения нового субъекта РФ", str(e), entity_type="regional_district")
         raise ValueError(f"Ошибка при сохранения нового субъекта РФ: {e}")
 
 
@@ -365,7 +395,11 @@ def delete_regional_district_service(ids, user):
     if not isinstance(ids, (list, tuple)) or not ids:
         raise ValueError(f"Не переданы ID для удаления.")
 
-    log_to_db(user, "Удаление субъектов РФ", f"Переданы ID для удаления: {ids}")
+    log_to_db(
+        user, 
+        "Удаление субъектов РФ", 
+        f"Переданы ID для удаления: {ids}", 
+        entity_type="regional_district")
 
     successful_deletes = 0
     deleted_names = []
@@ -377,8 +411,12 @@ def delete_regional_district_service(ids, user):
             regional_district_id = int(rd_id)
         except (TypeError, ValueError):
             invalid.append(rd_id)
-            log_to_db(user, "Ошибка удаления субъекта РФ", 
-                      f"Некорректный ID: {rd_id}")
+            log_to_db(
+                user, 
+                "Ошибка удаления субъекта РФ", 
+                f"Некорректный ID: {rd_id}",
+                entity_type="regional_district",
+                entity_id=regional_district_id)
             continue
 
         obj = _locked_get(RegionalDistrict, regional_district_id)
@@ -387,11 +425,20 @@ def delete_regional_district_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
-            log_to_db(user, "Удален субъект РФ", f"{name}")
+            log_to_db(
+                user, 
+                "Удален субъект РФ", 
+                f"{name}", 
+                entity_type="regional_district", 
+                entity_id=regional_district_id)
         else:
             not_found.append(regional_district_id)
-            log_to_db(user, "Ошибка удаления субъекта РФ", 
-                      f"Субъект РФ с ID={regional_district_id} не найден.")
+            log_to_db(
+                user, 
+                "Ошибка удаления субъекта РФ", 
+                f"Субъект РФ с ID={regional_district_id} не найден.", 
+                entity_type="regional_district", 
+                entity_id=regional_district_id)
 
     try:
         # Сохранение изменений в базе данных
@@ -406,8 +453,6 @@ def delete_regional_district_service(ids, user):
         if invalid:
             parts.append(f"Некорректные ID: {invalid}")
 
-        log_to_db(user, "Результат удаления субъектов РФ", "; ".join(parts))
-
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
@@ -416,7 +461,12 @@ def delete_regional_district_service(ids, user):
         }
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка удаления субъектов РФ", str(e))
+        log_to_db(
+            user, 
+            "Ошибка удаления субъектов РФ", 
+            str(e), 
+            entity_type="regional_district",
+            entity_id=regional_district_id)
         raise ValueError(f"Ошибка при удалении данных.")
 
 
@@ -528,15 +578,15 @@ def import_regional_district_service(file, user):
         }
     except IntegrityError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных (IntegrityError)", str(e))
+        log_to_db(user, "Ошибка импорта данных (IntegrityError)", str(e), entity_type="regional_district")
         raise ValueError(f"Ошибка целостности данных при импорте. Проверьте уникальность записей.")
     except ValueError as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных (ValueError)", str(e))
+        log_to_db(user, "Ошибка импорта данных (ValueError)", str(e), entity_type="regional_district")
         raise
     except Exception as e:
         db.session.rollback()
-        log_to_db(user, "Ошибка импорта данных", str(e))
+        log_to_db(user, "Ошибка импорта данных", str(e), entity_type="regional_district")
         raise ValueError(f"Ошибка при импорте данных: {e}")
 
 
@@ -551,7 +601,7 @@ def export_regional_district_service(
 ):
     """ Экспортирует данные субъектов РФ в Excel. """
 
-    log_to_db(user, "Начата выгрузка таблицы субъектов РФ из базы данных")
+    log_to_db(user, "Начата выгрузка таблицы субъектов РФ из базы данных", entity_type="regional_district")
     log_to_db(user, "Параметры экспорта",
             (
                 f"Фильтр по столбцу: Наименование субъекта РФ = {regional_district_filter},"
@@ -559,7 +609,7 @@ def export_regional_district_service(
                 f"Фильтр по столбцу: Энергозона = {get_energy_zone_name(energy_zone_filter)},"
                 f"Фильтр по столбцу: Синхронная зона = {get_synchronous_area_name(synchronous_area_filter)},"
                 f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
-            ),
+            ), entity_type="regional_district"
     )
 
     # Базовый запрос
@@ -574,7 +624,7 @@ def export_regional_district_service(
 
     # Получение данных
     items = query.all()
-    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}")
+    log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}", entity_type="regional_district")
 
     # Подготовка данных для Excel
     data = []
@@ -595,7 +645,7 @@ def export_regional_district_service(
         })
 
     log_to_db(user, "Подготовка данных для экспорта таблицы субъектов РФ в Excel",
-              f"Записей для экспорта: {len(data)}")
+              f"Записей для экспорта: {len(data)}", entity_type="regional_district")
 
     # Подготовка данных к записи в Excel
     df = pd.DataFrame(data)
@@ -614,5 +664,5 @@ def export_regional_district_service(
 
     # Возврат файла в ответе
     output.seek(0)
-    log_to_db(user, "Экспорт таблицы субъектов РФ в Excel завершен", f"Экспортировано записей: {len(data)}")
+    log_to_db(user, "Экспорт таблицы субъектов РФ в Excel завершен", f"Экспортировано записей: {len(data)}", entity_type="regional_district")
     return output

@@ -3,6 +3,7 @@ from decimal import Decimal
 from sqlalchemy import func
 from collections import defaultdict
 from sqlalchemy.orm import joinedload, selectinload
+import re
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
@@ -50,6 +51,19 @@ def get_station_hierarchy_aggregates(start_year, end_year):
 
 
 def build_hierarchy_structure(stations: list[Station], include_names=False):
+    # Проверка на дубликаты станций
+    station_ids_seen = {}
+    duplicates = []
+    for station in stations:
+        if station.id in station_ids_seen:
+            duplicates.append(f"Station ID {station.id} ({station.name}) - duplicate")
+        station_ids_seen[station.id] = station
+    
+    if duplicates:
+        print(f"⚠️ [WARNING] Обнаружены дубликаты станций в списке:")
+        for dup in duplicates:
+            print(f"  - {dup}")
+    
     # Многоуровневая вложенность
     grouped_data = defaultdict(
         lambda: defaultdict(
@@ -67,39 +81,54 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
     res_names = {}
     rd_names = {}
     eu_names = {}
+    
+    # Используем set для отслеживания уже добавленных станций
+    added_stations = set()
 
     for station in stations:
         # Проверка наличия регионального округа и региональной энергосистемы
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
-        for res in station.regional_district.regional_energy_systems:
-            ues = res.union_energy_system
-            if not ues:
-                continue
+        # Берем только ПЕРВУЮ (основную) региональную энергосистему
+        # Это предотвращает дублирование станций, если субъект принадлежит к нескольким РЭС
+        res = station.regional_district.regional_energy_systems[0]
+        ues = res.union_energy_system
+        if not ues:
+            continue
 
-            est_id = ues.id_energy_system_type
-            ues_id = ues.id
-            res_id = res.id
-            rd_id = station.id_regional_district
+        est_id = ues.id_energy_system_type
+        ues_id = ues.id
+        res_id = res.id
+        rd_id = station.id_regional_district
 
-            # Важно: проверяем наличие энергоузла
-            if station.id_energy_unit is not None:
-                eu_id = station.id_energy_unit
-                eu_name = station.energy_unit.name if station.energy_unit else 0
-            else:
-                eu_id = 0
-                eu_name = "без энергоузла"
+        # Важно: проверяем наличие энергоузла
+        if station.id_energy_unit is not None:
+            eu_id = station.id_energy_unit
+            eu_name = station.energy_unit.name if station.energy_unit else 0
+        else:
+            eu_id = 0
+            eu_name = "без энергоузла"
 
-            # Добавляем станцию в иерархию
-            grouped_data[est_id][ues_id][res_id][rd_id][eu_id].append(station)
+        # Создаем уникальный ключ для отслеживания добавленных станций
+        station_key = (station.id, est_id, ues_id, res_id, rd_id, eu_id)
+        
+        # Проверяем, не была ли эта станция уже добавлена в эту группу
+        if station_key in added_stations:
+            print(f"⚠️ [WARNING] Станция {station.id} ({station.name}) уже добавлена в группу {station_key}, пропускаем")
+            continue
+        
+        added_stations.add(station_key)
 
-            if include_names:
-                est_names[est_id] = ues.energy_system_type.name if ues.energy_system_type else f"id={est_id}"
-                ues_names[ues_id] = ues.name
-                res_names[res_id] = res.name
-                rd_names[rd_id] = station.regional_district.name
-                eu_names[eu_id] = eu_name
+        # Добавляем станцию в иерархию
+        grouped_data[est_id][ues_id][res_id][rd_id][eu_id].append(station)
+
+        if include_names:
+            est_names[est_id] = ues.energy_system_type.name if ues.energy_system_type else f"id={est_id}"
+            ues_names[ues_id] = ues.name
+            res_names[res_id] = res.name
+            rd_names[rd_id] = station.regional_district.name
+            eu_names[eu_id] = eu_name
 
     result = {
         "grouped_stations": grouped_data,
@@ -153,10 +182,18 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
         station_machine_map[m.id_station].append(m)
 
     for station_id, machine_list in station_machine_map.items():
+        def machine_number_key(value):
+            s = str(value).strip() if value is not None else ''
+            match = re.match(r"(\d+)", s)
+            if match:
+                num = int(match.group(1))
+                suffix = s[match.end():].lower()
+                return (0, num, suffix)
+            return (1, float('inf'), s.lower())
+
         machine_list.sort(key=lambda m: (
             (m.machine_group or '').lower(),
-            (m.fuel_so or '').lower(),
-            int(m.machine_number) if m.machine_number and str(m.machine_number).strip().isdigit() else float('inf')
+            machine_number_key(getattr(m, 'machine_number', None))
         ))
 
         group_dict = defaultdict(list)

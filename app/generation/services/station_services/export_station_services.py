@@ -110,6 +110,9 @@ from app.generation.services.station_services.aggregation_station_services.aggre
 def round_value(val, digits):
     if val is None or val == 0:
         return ""
+    # Поддержка режима "Не округлять" (digits is None)
+    if digits is None:
+        return val
     try:
         return round(val, digits) if digits >= 0 else int(round(val, 0))
     except Exception:
@@ -180,13 +183,59 @@ def attach_all_aggregates(data, rows):
         for ft in fuel_type_names
     }
 
+    # Дополняем словари имён для уровней иерархии (для экспорта)
+    try:
+        energy_unit_list = get_energy_unit_list_full()
+        data["energy_unit_name"] = {
+            eu.id: getattr(eu, "name_full", getattr(eu, "name", str(eu.id)))
+            for eu in energy_unit_list
+        }
+    except Exception:
+        data.setdefault("energy_unit_name", {})
+
+    try:
+        regional_district_list = get_regional_district_list_full()
+        data["regional_district_name"] = {
+            rd.id: getattr(rd, "name_full", getattr(rd, "name", str(rd.id)))
+            for rd in regional_district_list
+        }
+    except Exception:
+        data.setdefault("regional_district_name", {})
+
+    try:
+        regional_energy_system_list = get_regional_energy_system_list_full()
+        data["regional_energy_system_name"] = {
+            res.id: getattr(res, "name_full", getattr(res, "name", str(res.id)))
+            for res in regional_energy_system_list
+        }
+    except Exception:
+        data.setdefault("regional_energy_system_name", {})
+
+    try:
+        union_energy_system_list = get_union_energy_system_list_full()
+        data["union_energy_system_name"] = {
+            ues.id: getattr(ues, "name_full", getattr(ues, "name", str(ues.id)))
+            for ues in union_energy_system_list
+        }
+    except Exception:
+        data.setdefault("union_energy_system_name", {})
+
+    try:
+        energy_system_type_list = get_energy_system_type_list_full()
+        data["energy_system_type_name"] = {
+            est.id: getattr(est, "name_full", getattr(est, "name", str(est.id)))
+            for est in energy_system_type_list
+        }
+    except Exception:
+        data.setdefault("energy_system_type_name", {})
+
     return data
 
 
 # Универсальная конфигурация агрегации для разных уровней иерархии
 AGGREGATION_CONFIG = {
     "energy_unit": {
-        "aggregated_power_key": "aggregated_by_energy_unit",
+        "aggregated_power_key": "aggregate_power_by_energy_units",
         "station_type_key": "aggregate_energy_units_by_station_types",
         "tes_type_key": "aggregate_energy_units_by_tes_types",
         "tes_machine_type_key": "aggregate_energy_units_by_tes_machine_types",
@@ -194,7 +243,7 @@ AGGREGATION_CONFIG = {
         "name_dict": "energy_unit_name",
     },
     "regional_district": {
-        "aggregated_power_key": "aggregated_by_regional_district",
+        "aggregated_power_key": "aggregate_power_by_regional_districts",
         "station_type_key": "aggregate_regional_districts_by_station_types",
         "tes_type_key": "aggregate_regional_districts_by_tes_types",
         "tes_machine_type_key": "aggregate_regional_districts_by_tes_machine_types",
@@ -202,7 +251,7 @@ AGGREGATION_CONFIG = {
         "name_dict": "regional_district_name",
     },
     "regional_energy_system": {
-        "aggregated_power_key": "aggregated_by_regional_energy_system",
+        "aggregated_power_key": "aggregate_power_by_regional_energy_systems",
         "station_type_key": "aggregate_regional_energy_systems_by_station_types",
         "tes_type_key": "aggregate_regional_energy_systems_by_tes_types",
         "tes_machine_type_key": "aggregate_regional_energy_systems_by_tes_machine_types",
@@ -210,7 +259,7 @@ AGGREGATION_CONFIG = {
         "name_dict": "regional_energy_system_name",
     },
     "union_energy_system": {
-        "aggregated_power_key": "aggregated_by_union_energy_system",
+        "aggregated_power_key": "aggregate_power_by_union_energy_systems",
         "station_type_key": "aggregate_union_energy_systems_by_station_types",
         "tes_type_key": "aggregate_union_energy_systems_by_tes_types",
         "tes_machine_type_key": "aggregate_union_energy_systems_by_tes_machine_types",
@@ -218,7 +267,7 @@ AGGREGATION_CONFIG = {
         "name_dict": "union_energy_system_name",
     },
     "energy_system_type": {
-        "aggregated_power_key": "aggregated_by_energy_system_type",
+        "aggregated_power_key": "aggregate_power_by_energy_system_types",
         "station_type_key": "aggregate_energy_system_types_by_station_types",
         "tes_type_key": "aggregate_energy_system_types_by_tes_types",
         "tes_machine_type_key": "aggregate_energy_system_types_by_tes_machine_types",
@@ -226,7 +275,7 @@ AGGREGATION_CONFIG = {
         "name_dict": "energy_system_type_name",
     },
     "russia": {
-        "aggregated_power_key": "aggregated_by_total",
+        "aggregated_power_key": "aggregate_power_by_total_energy_system_types",
         "station_type_key": "aggregate_total_energy_system_types_by_station_types",
         "tes_type_key": "aggregate_total_energy_system_types_by_tes_types",
         "tes_machine_type_key": "aggregate_total_energy_system_types_by_tes_machine_types",
@@ -237,11 +286,13 @@ AGGREGATION_CONFIG = {
 
 
 def get_aggregated_power_by_year(entity_id, source, start_year, end_year):
+    # source содержит структуру: {"aggregated": {"p_ust": {entity_id: {year: value}}, "p_ogr": ..., "p_rasp": ...}}
+    aggregated = source.get("aggregated", {})
     return {
         year: {
-            "p_ust": source["p_ust"].get(entity_id, {}).get(year),
-            "p_ogr": source["p_ogr"].get(entity_id, {}).get(year),
-            "p_rasp": source["p_rasp"].get(entity_id, {}).get(year),
+            "p_ust": aggregated.get("p_ust", {}).get(entity_id, {}).get(year),
+            "p_ogr": aggregated.get("p_ogr", {}).get(entity_id, {}).get(year),
+            "p_rasp": aggregated.get("p_rasp", {}).get(entity_id, {}).get(year),
         }
         for year in range(start_year, end_year + 1)
     }
@@ -249,13 +300,91 @@ def get_aggregated_power_by_year(entity_id, source, start_year, end_year):
 
 # Выгрузка в эксель по форме файла "Список станций"
 def generate_excel_export_with_all_totals(data, rows, start_year, end_year, rounding_digits, show_p_ogr=False, show_p_rasp=False):
+    import time
+    start_time = time.time()
+    print(f"[EXPORT] Начало экспорта в Excel")
+    
     def round_val(val):
         return round_value(val, rounding_digits)
 
-    # 🧩 Включаем все агрегаты в data на основе rows
-    attach_all_aggregates(data, rows)
+    # ⚠️ Агрегаты уже должны быть в data (вызываются в get_station_list_data с show_totals=True)
+    # Если их нет — дополняем вручную (для совместимости)
+    t1 = time.time()
+    if "aggregate_power_by_regional_districts" not in data:
+        attach_all_aggregates(data, rows)
+    print(f"[EXPORT] Проверка/создание агрегатов: {time.time() - t1:.2f}с")
+    
+    # 🏷️ Всегда дополняем словари имён (на случай если они отсутствуют)
+    t2 = time.time()
+    if "station_type_name" not in data:
+        station_type_names = get_station_type_list_full()
+        data["station_type_name"] = {st.id: st.name for st in station_type_names}
+    
+    if "tes_type_name" not in data:
+        tes_type_names = get_tes_type_list_full()
+        data["tes_type_name"] = {tt.id: tt.name for tt in tes_type_names}
+    
+    if "tes_machine_type_name" not in data:
+        tes_machine_type_names = get_tes_machine_type_list_full()
+        data["tes_machine_type_name"] = {tmt.id: tmt.name for tmt in tes_machine_type_names}
+    
+    if "fuel_type_name" not in data:
+        fuel_type_names = get_fuel_type_list_full()
+        data["fuel_type_name"] = {ft.id: ft.name for ft in fuel_type_names}
+    
+    if "energy_unit_name" not in data:
+        try:
+            energy_unit_list = get_energy_unit_list_full()
+            data["energy_unit_name"] = {
+                eu.id: getattr(eu, "name_full", getattr(eu, "name", str(eu.id)))
+                for eu in energy_unit_list
+            }
+        except Exception:
+            data["energy_unit_name"] = {}
+    
+    if "regional_district_name" not in data:
+        try:
+            regional_district_list = get_regional_district_list_full()
+            data["regional_district_name"] = {
+                rd.id: getattr(rd, "name_full", getattr(rd, "name", str(rd.id)))
+                for rd in regional_district_list
+            }
+        except Exception:
+            data["regional_district_name"] = {}
+    
+    if "regional_energy_system_name" not in data:
+        try:
+            regional_energy_system_list = get_regional_energy_system_list_full()
+            data["regional_energy_system_name"] = {
+                res.id: getattr(res, "name_full", getattr(res, "name", str(res.id)))
+                for res in regional_energy_system_list
+            }
+        except Exception:
+            data["regional_energy_system_name"] = {}
+    
+    if "union_energy_system_name" not in data:
+        try:
+            union_energy_system_list = get_union_energy_system_list_full()
+            data["union_energy_system_name"] = {
+                ues.id: getattr(ues, "name_full", getattr(ues, "name", str(ues.id)))
+                for ues in union_energy_system_list
+            }
+        except Exception:
+            data["union_energy_system_name"] = {}
+    
+    if "energy_system_type_name" not in data:
+        try:
+            energy_system_type_list = get_energy_system_type_list_full()
+            data["energy_system_type_name"] = {
+                est.id: getattr(est, "name_full", getattr(est, "name", str(est.id)))
+                for est in energy_system_type_list
+            }
+        except Exception:
+            data["energy_system_type_name"] = {}
+    print(f"[EXPORT] Создание словарей имён: {time.time() - t2:.2f}с")
 
     # 📦 Формируем все словари агрегатов для шаблона
+    t3 = time.time()
     energy_unit_aggregates = build_energy_unit_aggregates(data)
     regional_district_aggregates = build_regional_district_aggregates(data)
     regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
@@ -271,8 +400,10 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     aggregates.update(union_energy_system_aggregates)
     aggregates.update(energy_system_type_aggregates)
     aggregates.update(total_energy_system_type_aggregates)
+    print(f"[EXPORT] Формирование словарей агрегатов: {time.time() - t3:.2f}с")
 
-    stations_grouped = data["grouped_stations"]
+    t4 = time.time()
+    stations_grouped = data.get("stations_grouped") or data.get("grouped_stations", {})
     rows = []
 
     def add_machine_row(machine, station_name, subject_name):
@@ -344,10 +475,10 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             end_year
         )
 
-        station_type_data = data[config["station_type_key"]]["p_ust"]
-        tes_type_data = data[config["tes_type_key"]]["p_ust"]
-        tes_machine_type_data = data[config["tes_machine_type_key"]]["p_ust"]
-        fuel_type_data = data[config["fuel_type_key"]]["p_ust"]
+        station_type_data = data[config["station_type_key"]].get("aggregated", {}).get("p_ust", {})
+        tes_type_data = data[config["tes_type_key"]].get("aggregated", {}).get("p_ust", {})
+        tes_machine_type_data = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ust", {})
+        fuel_type_data = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ust", {})
 
         station_type_names = data.get("station_type_name", {})
         tes_type_names = data.get("tes_type_name", {})
@@ -378,8 +509,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             total_row("Ррасп", "p_rasp")
 
 
-        station_type_data_ogr = data[config["station_type_key"]]["p_ogr"] if show_p_ogr else {}
-        station_type_data_rasp = data[config["station_type_key"]]["p_rasp"] if show_p_rasp else {}
+        station_type_data_ogr = data[config["station_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
+        station_type_data_rasp = data[config["station_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
         for station_type_id, st_years in station_type_data.get(level_id, {}).items():
             if station_type_id is None:
@@ -419,8 +550,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 rows.append(row_rasp)
 
             if station_type_id == 4:
-                tes_type_data_ogr = data[config["tes_type_key"]]["p_ogr"] if show_p_ogr else {}
-                tes_type_data_rasp = data[config["tes_type_key"]]["p_rasp"] if show_p_rasp else {}
+                tes_type_data_ogr = data[config["tes_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
+                tes_type_data_rasp = data[config["tes_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
                 for tes_type_id, tt_years in tes_type_data.get(level_id, {}).items():
                     if tes_type_id is None:
@@ -460,8 +591,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         rows.append(row_rasp)
 
                     mt_dict = tes_machine_type_data.get(level_id, {}).get(tes_type_id, {})
-                    tes_machine_type_data_ogr = data[config["tes_machine_type_key"]]["p_ogr"] if show_p_ogr else {}
-                    tes_machine_type_data_rasp = data[config["tes_machine_type_key"]]["p_rasp"] if show_p_rasp else {}
+                    tes_machine_type_data_ogr = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
+                    tes_machine_type_data_rasp = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
                     for machine_type_id, mt_years in mt_dict.items():
                         if machine_type_id is None:
@@ -500,8 +631,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             rows.append(row_rasp)
 
                         fuel_dict = fuel_type_data.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                        fuel_type_data_ogr = data[config["fuel_type_key"]]["p_ogr"] if show_p_ogr else {}
-                        fuel_type_data_rasp = data[config["fuel_type_key"]]["p_rasp"] if show_p_rasp else {}
+                        fuel_type_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
+                        fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
                         for fuel_type_id, fuel_years in fuel_dict.items():
                             fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
@@ -541,13 +672,13 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
         
     for es_type_id, es_type_group in stations_grouped.items():
-        es_name = data["energy_system_type_name"].get(es_type_id, f"id={es_type_id}")
+        es_name = data.get("energy_system_type_name", {}).get(es_type_id, f"id={es_type_id}")
         for ues_id, ues_group in es_type_group.items():
-            ues_name = data["union_energy_system_name"].get(ues_id, f"id={ues_id}")
+            ues_name = data.get("union_energy_system_name", {}).get(ues_id, f"id={ues_id}")
             for res_id, res_group in ues_group.items():
-                res_name = data["regional_energy_system_name"].get(res_id, f"id={res_id}")
+                res_name = data.get("regional_energy_system_name", {}).get(res_id, f"id={res_id}")
                 for rd_id, rd_group in res_group.items():
-                    rd_name = data["regional_district_name"].get(rd_id, f"id={rd_id}")
+                    rd_name = data.get("regional_district_name", {}).get(rd_id, f"id={rd_id}")
                     row_rd = {
                         "Электростанция": rd_name,
                         " ": "",
@@ -563,7 +694,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                     rows.append({})
 
                     for eu_id, eu_group in rd_group.items():
-                        eu_name = data["energy_unit_name"].get(eu_id, f"id={eu_id}")
+                        eu_name = data.get("energy_unit_name", {}).get(eu_id, f"id={eu_id}")
                         if eu_id != 0:
                             row_eu = {
                                 "Электростанция": eu_name,
@@ -604,7 +735,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             add_named_total_row(ues_id, "union_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
         add_named_total_row(es_type_id, "energy_system_type", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
     add_named_total_row("Россия", "russia", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+    print(f"[EXPORT] Формирование строк данных: {time.time() - t4:.2f}с, всего строк: {len(rows)}")
 
+    t5 = time.time()
     year_columns = [str(year) for year in range(start_year, end_year + 1)]
     fuel_columns = [f"{year} (топливо)" for year in range(start_year, end_year + 1)]
 
@@ -654,6 +787,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
     wb.save(output)
     output.seek(0)
+    print(f"[EXPORT] Запись в Excel файл: {time.time() - t5:.2f}с")
+    print(f"[EXPORT] ИТОГО время экспорта: {time.time() - start_time:.2f}с")
     return output
 
 

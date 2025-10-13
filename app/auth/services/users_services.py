@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 
 from app.extensions import db
+from app.common.services.tranzaction_services import _commit_with_retry
 from app.auth.models.user_model import User
 from app.auth.models.role_model import Role
 from app.logs.services.logging_service import log_to_db
@@ -155,11 +156,11 @@ def update_users_and_roles(user: Any,
                     f"Пользователь={username_display!r}; " + " | ".join(per_user_changes)
                 ))
 
-        db.session.commit()
+        _commit_with_retry()
 
         # Пишем логи только после успешного коммита
         for action, details in change_logs:
-            log_to_db(user, action, details)
+            log_to_db(user, action, details, entity_type="user")
 
         return updated
 
@@ -194,10 +195,10 @@ def bulk_delete_users(user: Any, user_ids_to_delete: List[int]) -> int:
             deleted += 1
             to_log.append(("Пользователь: удален", details_before))
 
-        db.session.commit()
+        _commit_with_retry()
 
         for action, details in to_log:
-            log_to_db(user, action, details)
+            log_to_db(user, action, details, entity_type="user")
 
         return deleted
 
@@ -230,14 +231,14 @@ def create_user(user: Any, username: str, email: str, raw_password: str,
             u.roles = roles
 
         db.session.add(u)
-        db.session.commit()
+        _commit_with_retry()
 
         names_map = _roles_names_map()
         details = (
             f"Пользователь={u.username!r}, email={u.email!r}, "
             f"Роли={_fmt_roles([r.id for r in u.roles], names_map)}"
         )
-        log_to_db(user, "Пользователь: создан", details)
+        log_to_db(user, "Пользователь: создан", details, entity_type="user", entity_id=u.id)
         return u
 
     except (IntegrityError, ValueError):

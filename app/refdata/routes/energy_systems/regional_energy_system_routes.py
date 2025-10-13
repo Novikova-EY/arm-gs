@@ -44,7 +44,10 @@ def regional_energy_system_list():
     """Маршрут для отображения списка региональных энергосистем."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница региональных энергосистем")
+    log_to_db(
+        user, 
+        "Открыта страница региональных энергосистем", 
+        entity_type="regional_energy_system")
 
     # Создание формы
     form = RegionalEnergySystemFilterForm()
@@ -79,7 +82,6 @@ def regional_energy_system_list():
                 delete_regional_energy_system_service(regional_energy_system_delete, user)
                 flash("Записи региональных энергосистем успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления региональной энергосистемы {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.regional_energy_system_list", 
                                     page=page, 
@@ -98,7 +100,6 @@ def regional_energy_system_list():
         # Обновление данных в базе
         try:
             if not (regional_energy_system_ids and regional_energy_system_names and regional_energy_system_full_names):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.regional_energy_system_list", 
                                         page=page, 
@@ -137,16 +138,13 @@ def regional_energy_system_list():
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID региональных энергосистем: {duplicates}")
 
-            log_to_db(user, "Полученные данные для обновления региональных энергосистем", str(regional_energy_system_data))
-
             # Обновление данных в базе
             update_regional_energy_system_service(regional_energy_system_data, user)
-
             flash("Изменения успешно сохранены.", "success")
+            
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных региональных энергосистем: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.regional_energy_system_list",
@@ -195,7 +193,10 @@ def add_regional_energy_system():
     """ Маршрут для добавления новой региональной энергосистемы. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления региональной энергосистемы")
+    log_to_db(
+        user, 
+        "Открыта страница добавления региональной энергосистемы", 
+        entity_type="regional_energy_system")
 
     # Создание формы
     form = AddRegionalEnergySystemForm()
@@ -229,14 +230,6 @@ def add_regional_energy_system():
             add_regional_energy_system_service(payload, user)
             flash("Новая запись успешно добавлена.", "success")
 
-            log_to_db(user, "Добавление новой региональной энергосистемы", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Полное наименование: {form.name_full.data}, "
-                        f"ОЭС: {get_union_energy_system_name(form.union_energy_system.data)}"
-                    )
-            )
-
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = regional_energy_system_query(
                                 regional_energy_system_filter, 
@@ -258,12 +251,10 @@ def add_regional_energy_system():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой региональной энергосистемы", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой региональной энергосистемы", str(e))
 
     return render_template(
         "refdata/energy_systems/regional_energy_system/regional_energy_system_add.html", 
@@ -285,7 +276,6 @@ def import_regional_energy_system():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт региональных энергосистем из Excel")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -318,7 +308,6 @@ def export_regional_energy_system():
     """Маршрут для экспорта региональных энергосистем в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка региональных энергосистем в Excel")
     
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
@@ -333,13 +322,6 @@ def export_regional_energy_system():
                         sort_dir,
                         regional_energy_system_filter, 
                         union_energy_system_filter, 
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {regional_energy_system_filter, union_energy_system_filter}, "
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
         
         # Проверка наличия данных

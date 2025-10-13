@@ -46,7 +46,7 @@ def regional_district_list():
     """Маршрут для отображения списка субъектов РФ."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница субъектов РФ")
+    log_to_db(user, "Открыта страница субъектов РФ", entity_type="regional_district")
     
     # Создание формы
     form = RegionalDistrictFilterForm()
@@ -89,7 +89,6 @@ def regional_district_list():
                 delete_regional_district_service(regional_district_delete, user)
                 flash("Записи субъектов РФ успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления субъектов РФ: {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.regional_district_list", 
                                     page=page, 
@@ -104,7 +103,7 @@ def regional_district_list():
         # Обновление данных в базе
         try:
             if not regional_district_ids:
-                log_to_db(user, "Нет данных для обновления.")
+                log_to_db(user, "Нет данных для обновления.", entity_type="regional_district")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.regional_district_list", 
                                         page=page, 
@@ -153,12 +152,12 @@ def regional_district_list():
 
             # Обновление данных в базе
             update_regional_district_service(regional_district_data, user)
-
             flash("Изменения успешно сохранены.", "success")
+            
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных: {e}")
+            log_to_db(user, f"Ошибка сохранения данных: {e}", entity_type="regional_district")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.regional_district_list", 
@@ -221,7 +220,7 @@ def add_regional_district():
     """ Маршрут для добавления нового субъекта РФ."""
 
     user = session.get("username", "Неизвестный пользователь")
-    log_to_db(user, "Открыта страница добавления субъекта РФ")
+    log_to_db(user, "Открыта страница добавления субъекта РФ", entity_type="regional_district")
 
     # Создание формы
     form = AddRegionalDistrictForm()
@@ -261,13 +260,6 @@ def add_regional_district():
 
             # Добавление новой записи через сервис
             add_regional_district_service(payload, user)
-            log_to_db(user, "Добавление новой ОЭС", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Полное наименование: {form.name_full.data}, "
-                        f"Федеральный округ: {get_federal_district_name(form.federal_district.data)}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -296,12 +288,12 @@ def add_regional_district():
         except ValueError as e:
              # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления нового субъекта РФ", str(e))
+            log_to_db(user, "Ошибка добавления нового субъекта РФ", str(e, entity_type="regional_district"))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового субъекта РФ", str(e))
+            log_to_db(user, "Неизвестная ошибка добавления нового субъекта РФ", str(e, entity_type="regional_district"))
 
     # Рендеринг формы
     return render_template(
@@ -325,7 +317,7 @@ def import_regional_district():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт списка субъектов РФ из Excel")
+    log_to_db(user, "Начат импорт списка субъектов РФ из Excel", entity_type="regional_district")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -362,7 +354,6 @@ def export_regional_district():
     """ Маршрут для экспорта субъектов РФ в Excel. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка субъектов РФ в Excel")
 
     sort_by                  = request.args.get("sort_by", "id")
     sort_dir                 = request.args.get("sort_dir", "asc")
@@ -381,13 +372,6 @@ def export_regional_district():
                         federal_district_filter=federal_district_filter,
                         energy_zone_filter=energy_zone_filter,
                         synchronous_area_filter=synchronous_area_filter,
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {regional_district_filter, federal_district_filter, energy_zone_filter, synchronous_area_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

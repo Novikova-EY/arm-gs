@@ -33,7 +33,10 @@ def energy_zone_list():
     """Маршрут для отображения списка энергозон."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница: Энергозоны")
+    log_to_db(
+        user, 
+        "Открыта страница: энергозоны", 
+        entity_type="energy_zone")
 
     # Создание формы
     form = EnergyZoneFilterForm()
@@ -65,7 +68,6 @@ def energy_zone_list():
                 delete_energy_zone_service(energy_zone_delete, user)
                 flash("Записи энергозон успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления энергозоны {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.energy_zone_list", 
                                     page=page, 
@@ -77,7 +79,6 @@ def energy_zone_list():
         # Обновление данных в базе
         try:
             if not (energy_zone_ids and energy_zone_names and energy_zone_numbers):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_zone_list", 
                                         page=page, 
@@ -115,14 +116,12 @@ def energy_zone_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID энергозоны: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления энергозон", str(energy_zone_data))
             update_energy_zone_service(energy_zone_data, user)
             flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных энергозон: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.energy_zone_list", 
@@ -156,7 +155,10 @@ def add_energy_zone():
     """ Маршрут для добавления новой энергозоны». """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления энергозоны")
+    log_to_db(
+        user, 
+        "Открыта страница добавления энергозоны", 
+        entity_type="energy_zone")
 
     # Создание формы
     form = AddEnergyZoneForm()
@@ -186,12 +188,6 @@ def add_energy_zone():
             }]
 
             add_energy_zone_service(payload, user)
-            log_to_db(user, "Добавление новой энергозоны'", 
-                    (
-                        f"Номер: {form.number.data}, "
-                        f"Наименование: {form.name.data}, "
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -213,12 +209,10 @@ def add_energy_zone():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой энергозоны", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой энергозоны", str(e))
     
     # Рендеринг формы
     return render_template(
@@ -237,7 +231,6 @@ def export_energy_zone():
     """Маршрут для экспорта энергозон в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка энергозон в Excel")
 
     sort_by                 = request.args.get("sort_by", "id")
     sort_dir                = request.args.get("sort_dir", "asc")
@@ -250,13 +243,6 @@ def export_energy_zone():
                         sort_by, 
                         sort_dir,
                         energy_zone_filter, 
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтр: {energy_zone_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

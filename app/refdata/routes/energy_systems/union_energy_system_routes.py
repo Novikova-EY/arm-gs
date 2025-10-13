@@ -40,7 +40,10 @@ def union_energy_system_list():
     """Маршрут для отображения списка ОЭС."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница ОЭС")
+    log_to_db(
+        user, 
+        "Открыта страница ОЭС", 
+        entity_type="union_energy_system")
     
     # Создание формы
     form = UnionEnergySystemFilterForm()
@@ -68,6 +71,7 @@ def union_energy_system_list():
         union_energy_system_full_names  = request.form.getlist("union_energy_system_full_names[]")
         union_energy_system_delete      = request.form.getlist("union_energy_system_delete[]")
         energy_system_type_ids          = request.form.getlist("energy_system_types[]")
+        display_orders                  = request.form.getlist("display_orders[]")
   
         # Удаление записей
         if union_energy_system_delete:
@@ -75,7 +79,6 @@ def union_energy_system_list():
                 delete_union_energy_system_service(union_energy_system_delete, user)
                 flash("Записи ОЭС успешно удалены.", "success")
             except Exception as e:
-                log_to_db(user, f"Ошибка удаления ОЭС {e}")
                 flash("Ошибка удаления записей.", "danger")
             return redirect(url_for("refdata_bp.union_energy_system_list", 
                                     page=page, 
@@ -88,7 +91,6 @@ def union_energy_system_list():
         # Обновление данных в базе
         try:
             if not (union_energy_system_ids and union_energy_system_names and union_energy_system_full_names):
-                log_to_db(user, "Нет данных для обновления.")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.union_energy_system_list", 
                                         page=page, 
@@ -100,12 +102,14 @@ def union_energy_system_list():
 
            # Формирование данных для обновления
             union_energy_system_data = []
-            for union_energy_system_id, union_energy_system_name, union_energy_system_name_full, energy_system_type_id in zip(
-                union_energy_system_ids, union_energy_system_names, union_energy_system_full_names, energy_system_type_ids
+            
+            for union_energy_system_id, display_order, union_energy_system_name, union_energy_system_name_full, energy_system_type_id in zip(
+                union_energy_system_ids, display_orders, union_energy_system_names, union_energy_system_full_names, energy_system_type_ids
             ):
                 try:
                     union_energy_system_data.append({
                         "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
+                        "display_order": int(display_order) if display_order and str(display_order).strip() else None,
                         "name": union_energy_system_name.strip(),
                         "name_full": union_energy_system_name_full.strip(),
                         "energy_system_type_id": int(energy_system_type_id) if energy_system_type_id else None
@@ -114,6 +118,7 @@ def union_energy_system_list():
                     raise ValueError(
                         (
                             f"Ошибка обработки данных: id={union_energy_system_id},"
+                            f"Порядок отображения: {display_order}, "
                             f"Наименование: {union_energy_system_name}, "
                             f"Полное наименование: {union_energy_system_name_full}, "
                             f"Часть энергосистемы России: {energy_system_type_id}. "
@@ -129,14 +134,12 @@ def union_energy_system_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID ОЭС: {duplicates}")
 
             # Обновление данных в базе
-            log_to_db(user, "Полученные данные для обновления ОЭС", str(union_energy_system_data))
             update_union_energy_system_service(union_energy_system_data, user)
             flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            log_to_db(user, f"Ошибка сохранения данных ОЭС: {e}")
             flash("Ошибка сохранения данных.", "danger")
 
         return redirect(url_for("refdata_bp.union_energy_system_list", 
@@ -180,7 +183,10 @@ def add_union_energy_system():
     """ Маршрут для добавления новой ОЭС. """
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница добавления ОЭС")
+    log_to_db(
+        user, 
+        "Открыта страница добавления ОЭС", 
+        entity_type="union_energy_system")
 
     # Создание формы
     form = AddUnionEnergySystemForm()
@@ -211,20 +217,14 @@ def add_union_energy_system():
         
         try:
             payload = [{
+                "display_order": form.display_order.data if form.display_order.data else None,
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
-                "energy_system_type_id": form.energy_system_type.data
+                "energy_system_type_id": form.energy_system_type.data,
             }]
                         
             # Добавление новой записи
             add_union_energy_system_service(payload, user)
-            log_to_db(user, "Добавление новой ОЭС", 
-                    (
-                        f"Наименование: {form.name.data}, "
-                        f"Полное наименование: {form.name_full.data}, "
-                        f"Часть энергосистемы России: {get_energy_system_type_name(form.energy_system_type.data)}"
-                    )
-            )
             flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
@@ -248,12 +248,10 @@ def add_union_energy_system():
         except ValueError as e:
             # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления новой ОЭС", str(e))
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления новой ОЭС", str(e))
 
     # Рендеринг формы
     return render_template(
@@ -275,7 +273,6 @@ def import_union_energy_system():
     """Маршрут для импорта данных из Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат импорт ОЭС из Excel")
 
     if 'file' not in request.files:
         flash("Файл не найден.", "danger")
@@ -307,7 +304,6 @@ def export_union_energy_system():
     """Маршрут для экспорта ОЭС в Excel."""
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Начат экспорт списка ОЭС в Excel")
     
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
@@ -322,13 +318,6 @@ def export_union_energy_system():
                         energy_system_type_filter, 
                         sort_by, 
                         sort_dir,
-        )
-        log_to_db(user, "Экспорт завершен", 
-                (
-                    f"Фильтры: {union_energy_system_filter, energy_system_type_filter},"
-                    f"Сортировка: {sort_by}, "
-                    f"Направление: {sort_dir}"
-                )
         )
 
         # Проверка наличия данных

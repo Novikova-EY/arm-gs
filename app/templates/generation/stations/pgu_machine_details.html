@@ -2,7 +2,7 @@
 
 {% block title %}
     {% if pgu_machine %}
-        №{{ pgu_machine.machine_number or '—' }} {{ pgu_machine.machine_name or 'Агрегат ПГУ' }} ({{ station.name }})
+        {{ pgu_machine.machine_name }} {{ parent_machine.machine_name }} ({{ station.name }})
     {% else %}
         Добавление агрегата ПГУ: {{ parent_machine.machine_name }} ({{ station.name }})
     {% endif %}
@@ -106,17 +106,6 @@
                                         {% else %}
                                             {% set selected_pgu_type = pgu_form.id_pgu_tes_machine_type.choices | selectattr('0', 'equalto', pgu_form.id_pgu_tes_machine_type.data) | map(attribute='1') | first %}
                                             {{ selected_pgu_type or (parent_machine.pgu_tes_machine_type.name if parent_machine.pgu_tes_machine_type else '—') }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип технологии:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.id_equipment_group_pgu(class="form-select") }}
-                                        {% else %}
-                                            {% set selected_equipment_group = pgu_form.id_equipment_group_pgu.choices | selectattr('0', 'equalto', pgu_form.id_equipment_group_pgu.data) | map(attribute='1') | first %}
-                                            {{ selected_equipment_group or (pgu_machine.equipment_group_pgu.name if pgu_machine and pgu_machine.equipment_group_pgu else '—') }}
                                         {% endif %}
                                     </div>
                                 </div>

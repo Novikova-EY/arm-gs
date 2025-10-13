@@ -4,6 +4,7 @@ from app.extensions import db
 from sqlalchemy.exc import OperationalError
 from functools import wraps
 import time
+from sqlalchemy import text
 
 
 def _commit_with_retry(tries: int = 3, delay: float = 0.05) -> None:
@@ -35,23 +36,22 @@ def no_autoflush(func):
             return func(*args, **kwargs)
     return wrapper
 
-    """Коммит с повтором при временных ошибках блокировок.
-    :param tries: число попыток
-    :param delay: базовая задержка между попытками (увеличивается линейно)
-    """
-    for attempt in range(tries):
-        try:
-            # --- Фиксация транзакции (устойчивый коммит) ---
 
-            _commit_with_retry()
+def quick_fix_seq(schema: str, table: str, col: str = "id"):
+    """
+    Быстро выравнивает sequence под MAX(id) для указанной таблицы.
+    """
+    with db.engine.begin() as conn:
+        seq = conn.execute(
+            text("SELECT pg_get_serial_sequence(:tbl, :col)"),
+            {"tbl": f"{schema}.{table}", "col": col}
+        ).scalar()
+        if not seq:
             return
-        except OperationalError as e:
-            # Откатываем транзакцию и пробуем еще раз (deadlock/timeout и т.п.)
-            db.session.rollback()
-            if attempt >= tries - 1:
-                raise
-            time.sleep(delay * (attempt + 1))
-        except Exception:
-            # Любая другая ошибка — просто пробрасываем дальше после отката
-            db.session.rollback()
-            raise
+        max_id = conn.execute(
+            text(f"SELECT COALESCE(MAX({col}), 0) FROM {schema}.{table}")
+        ).scalar()
+
+        conn.execute(
+            text(f"SELECT setval('{seq}', {int(max_id)}, true)")
+        )

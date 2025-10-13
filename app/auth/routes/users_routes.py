@@ -222,8 +222,6 @@ def delete_user(user_id: int):
         else:
             flash("Пользователь не найден.", "warning")
     except Exception as e:
-        db.session.rollback()
-        log_to_db(current_user, "Ошибка удаления пользователя", str(e))
         flash(str(e), "danger")
 
     return redirect(url_for(

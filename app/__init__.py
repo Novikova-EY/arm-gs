@@ -1,8 +1,9 @@
 import os
 from app.generation.models.boiler import boiler_model
 from app.generation.models.machine import machine_tes_type_model
-from app.refdata.models.refdata_for_stations.machine import equipment_group_model, machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
+from app.refdata.models.refdata_for_stations.machine import machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
 from app.refdata.models.refdata_for_stations.station import station_type_model
+from app.refdata.models.refdata_for_stations.technologies import equipment_group_model, technology_availability_model, technology_type_model
 from config import SECRET_KEY, DEBUG
 from flask import Flask, redirect, request, url_for, flash
 from sqlalchemy import event
@@ -88,11 +89,13 @@ def create_app():
             station_type_model,
         )
         from app.refdata.models.refdata_for_stations.machine import (
-            equipment_group_model,
             machine_type_model,
             pgu_tes_machine_type_model,
             tes_type_model,
             tes_machine_type_model,
+        )
+        from app.refdata.models.refdata_for_stations.technologies import (
+            equipment_group_model,
         )
         from app.refdata.models.refdata_for_stations import (
             condition_type_model,

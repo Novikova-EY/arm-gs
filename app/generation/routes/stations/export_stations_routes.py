@@ -18,6 +18,10 @@ from app.generation.services.station_services.export_station_services import (
     export_station_sipr_ees_application_2_service, 
     generate_excel_export_with_all_totals,
 )
+from app.generation.services.station_services.export_cache import (
+    build_export_key,
+    get_export_payload,
+)
 
 
 @station_bp.route('/export_station_sipr_ees_application_2', methods=['GET'])
@@ -85,7 +89,8 @@ def export_station_full_routes():
     start_year = int(request.args.get("start_year", Config.START_YEAR))
     end_year = int(request.args.get("end_year", Config.END_YEAR))
     rounding_digits = request.args.get("rounding_digits", "1")
-    per_page = request.args.get("per_page", "all")
+    # Всегда выгружаем без пагинации: все строки по текущим фильтрам
+    per_page = "all"
     # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "1") == "1"
@@ -97,18 +102,27 @@ def export_station_full_routes():
     except (ValueError, TypeError):
         rounding_digits = 1
 
-    data = get_station_list_data(
-        filters=filters,
-        per_page=None,
-        page=1,
-        rounding_digits=rounding_digits,
-        start_year=start_year,
-        end_year=end_year,
-        show_p_ogr=show_p_ogr,
-        show_p_rasp=show_p_rasp,
-    )
+    # Try get precomputed dataset from export cache (from station_list render)
+    user = session.get('username', 'anonymous')
+    cache_key = build_export_key(filters, rounding_digits, start_year, end_year, show_p_ogr, show_p_rasp)
+    cached = get_export_payload(user, cache_key)
+    if cached:
+        data = cached.get("data") or {}
+    else:
+        data = get_station_list_data(
+            filters=filters,
+            per_page=per_page,  # 'all' включает show_all и отключает пагинацию
+            page=1,
+            rounding_digits=rounding_digits,
+            start_year=start_year,
+            end_year=end_year,
+            show_p_ogr=show_p_ogr,
+            show_p_rasp=show_p_rasp,
+            show_all=True,
+            show_totals=True,  # Нужно для расчёта агрегатов и итогов
+        )
 
-    rows = data["rows"]
+    rows = data.get("rows", [])
 
     excel_file = generate_excel_export_with_all_totals(
         data=data,
