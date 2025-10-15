@@ -50,6 +50,7 @@ from app.common.services.get_services.energy_systems.regional_energy_system_get_
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
     get_rd_to_fd_id_map,
+    get_regional_districts_map,
 )
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list_full,
@@ -98,6 +99,7 @@ from app.generation.services.station_changes_services.aggregation_station_change
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_services_regional_energy_systems import (
     aggregate_changes_by_regional_energy_systems,
     aggregate_changes_regional_energy_systems_by_station_types,
+    aggregate_changes_regional_energy_systems_by_station_types_with_events,
     aggregate_changes_regional_energy_systems_by_station_types_with_fuel,
     aggregate_changes_regional_energy_systems_by_tes_types,
     aggregate_changes_regional_energy_systems_by_tes_types_with_fuel,
@@ -107,6 +109,7 @@ from app.generation.services.station_changes_services.aggregation_station_change
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_services_union_energy_systems import (
     aggregate_changes_by_union_energy_systems,
     aggregate_changes_union_energy_systems_by_station_types,
+    aggregate_changes_union_energy_systems_by_station_types_with_events,
     aggregate_changes_union_energy_systems_by_station_types_with_fuel,
     aggregate_changes_union_energy_systems_by_tes_types,
     aggregate_changes_union_energy_systems_by_tes_types_with_fuel,
@@ -116,6 +119,7 @@ from app.generation.services.station_changes_services.aggregation_station_change
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_services_energy_system_types import (
     aggregate_changes_by_energy_system_types,
     aggregate_changes_energy_system_types_by_station_types,
+    aggregate_changes_energy_system_types_by_station_types_with_events,
     aggregate_changes_energy_system_types_by_station_types_with_fuel,
     aggregate_changes_energy_system_types_by_tes_types,
     aggregate_changes_energy_system_types_by_tes_types_with_fuel,
@@ -125,6 +129,7 @@ from app.generation.services.station_changes_services.aggregation_station_change
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_services_total_energy_system_types import (
     aggregate_changes_by_total_energy_system_types,
     aggregate_changes_total_energy_system_types_by_station_types,
+    aggregate_changes_total_energy_system_types_by_station_types_with_events,
     aggregate_changes_total_energy_system_types_by_station_types_with_fuel,
     aggregate_changes_total_energy_system_types_by_tes_types,
     aggregate_changes_total_energy_system_types_by_tes_types_with_fuel,
@@ -404,7 +409,6 @@ def get_station_changes_list_data(
     # 2. ID и иерархия
     all_stations = station_data["stations"]
     station_ids = [s.id for s in all_stations]
-    hierarchy_data = build_hierarchy_structure_for_changes(all_stations, include_names=True)
 
     # 3. Загрузка всех агрегатов
     all_machines = load_all_machines_with_changes(
@@ -418,28 +422,109 @@ def get_station_changes_list_data(
     # 4. Отбираем только машины с event_type
     machines_with_event = [m for m in all_machines if m.event_types]
     rows = get_full_aggregation_rows(machines_with_event)
-            
-    # 4. Применяем rowspans ко всей выборке
-    apply_all_rowspans(all_machines)
+    
+    # 5. Применяем rowspans к машинам каждой станции
+    for station in all_stations:
+        station.machines = [m for m in all_machines if m.id_station == station.id]
+        # Сортируем машины внутри станции по генкомпании
+        station.machines.sort(key=lambda m: (
+            m.gen_company.id if m.gen_company else 999999,
+            m.id
+        ))
+        if station.machines:
+            apply_all_rowspans_for_station(station.machines)
+    
+    # 6. Глобальное объединение ячеек по субъекту РФ и генкомпании
+    # Сначала строим иерархию, чтобы знать фактический порядок рендера
+    hierarchy_data = build_hierarchy_structure_for_changes(all_stations, include_names=True)
+    # Формируем последовательность машин В ТОЧНОМ порядке рендера шаблона
+    machines_in_display_order: list[Machine] = []
+    grouped = rows and hierarchy_data.get("grouped_stations", {}) or {}
+    for es_type_id, es_type_group in grouped.items():
+        for ues_id, ues_group in es_type_group.items():
+            for res_id, res_group in ues_group.items():
+                for rd_id, rd_group in res_group.items():
+                    if rd_id == 0:
+                        continue
+                    for eu_id, eu_group in rd_group.items():
+                        for st in eu_group:
+                            if getattr(st, "machines", None):
+                                # Привязываем машины к субъекту из текущего блока отображения
+                                for _m in st.machines:
+                                    setattr(_m, "_display_rd_id", rd_id)
+                                    machines_in_display_order.append(_m)
 
-    # 5. Привязка машин к станциям
-    station_machines_map = defaultdict(list)
-    for m in all_machines:
-        station_machines_map[m.id_station].append(m)
+    # На всякий случай сбрасываем предыдущие значения и отфильтровываем невидимые агрегаты
+    visible_machines_in_order = []
+    for m in machines_in_display_order:
+        if getattr(m, "total_rows", 0) and m.total_rows > 0:
+            setattr(m, "region_rowspan", 0)
+            setattr(m, "gen_company_rowspan", 0)
+            visible_machines_in_order.append(m)
 
-    for s in all_stations:
-        s.machines = station_machines_map.get(s.id, [])
-    filtered_stations = [s for s in all_stations if s.machines]
+    # 6.1. Объединение по субъекту РФ (континуальные блоки в отображаемой последовательности)
+    current_rd_id = None
+    rd_start_idx = 0
+    for idx, m in enumerate(visible_machines_in_order):
+        rd_id = getattr(m, "_display_rd_id", None)
 
-    # 6. Обрезаем по странице
+        if rd_id != current_rd_id:
+            if current_rd_id is not None and rd_start_idx < idx:
+                total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(rd_start_idx, idx))
+                if total_rows > 0:
+                    visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
+                    for i in range(rd_start_idx + 1, idx):
+                        visible_machines_in_order[i].region_rowspan = 0
 
-    # 6. Постраничная нарезка
+            current_rd_id = rd_id
+            rd_start_idx = idx
+
+    # Завершаем последний блок субъекта
+    if current_rd_id is not None and rd_start_idx < len(visible_machines_in_order):
+        total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(rd_start_idx, len(visible_machines_in_order)))
+        if total_rows > 0:
+            visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
+            for i in range(rd_start_idx + 1, len(visible_machines_in_order)):
+                visible_machines_in_order[i].region_rowspan = 0
+
+    # 6.2. Объединение по генкомпании (внутри субъекта РФ)
+    current_key = None  # (rd_id, gen_company_id)
+    gc_start_idx = 0
+    for idx, m in enumerate(visible_machines_in_order):
+        rd_id = getattr(m, "_display_rd_id", None)
+        gen_company_id = m.gen_company.id if m.gen_company else None
+        key = (rd_id, gen_company_id)
+
+        if key != current_key:
+            if current_key is not None and gc_start_idx < idx:
+                total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(gc_start_idx, idx))
+                if total_rows > 0:
+                    visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
+                    for i in range(gc_start_idx + 1, idx):
+                        visible_machines_in_order[i].gen_company_rowspan = 0
+
+            current_key = key
+            gc_start_idx = idx
+
+    # Завершаем последний блок генкомпании
+    if current_key is not None and gc_start_idx < len(visible_machines_in_order):
+        total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(gc_start_idx, len(visible_machines_in_order)))
+        if total_rows > 0:
+            visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
+            for i in range(gc_start_idx + 1, len(visible_machines_in_order)):
+                visible_machines_in_order[i].gen_company_rowspan = 0
+
+    # 7. Строим иерархию с обычными станциями (уже построена выше)
+    
+    filtered_stations = all_stations
+
+    # 9. Постраничная нарезка
     total_count = len(filtered_stations)
     total_pages = 1 if show_all else max(1, (total_count + per_page_int - 1) // per_page_int)
     if not show_all:
-        stations = all_stations[(page - 1) * per_page_int: page * per_page_int]
+        stations = filtered_stations[(page - 1) * per_page_int: page * per_page_int]
     else:
-        stations = all_stations
+        stations = filtered_stations
 
 
     result = {
@@ -451,55 +536,57 @@ def get_station_changes_list_data(
         "page": page,
         "per_page": per_page,
         }
-
-    if show_all:
-        result.update({
-            "event_types": EVENT_TYPES,
-            "event_types_dict":dict(EVENT_TYPES),
-            "aggregate_changes_by_energy_units": aggregate_changes_by_energy_units(rows),
-            "aggregate_changes_energy_units_by_station_types": aggregate_changes_energy_units_by_station_types(rows),
-            "aggregate_changes_energy_units_by_station_type_with_fuel": aggregate_changes_energy_units_by_station_types_with_fuel(rows),
-            "aggregate_changes_energy_units_by_tes_types": aggregate_changes_energy_units_by_tes_types(rows),
-            "aggregate_changes_energy_units_by_tes_types_with_fuel": aggregate_changes_energy_units_by_tes_types_with_fuel(rows),
-            "aggregate_changes_energy_units_by_tes_machine_types": aggregate_changes_energy_units_by_tes_machine_types(rows),
-            "aggregate_changes_energy_units_by_tes_machine_types_with_fuel": aggregate_changes_energy_units_by_tes_machine_types_with_fuel(rows),
-            "aggregate_changes_by_regional_districts": aggregate_changes_by_regional_districts(rows),
-            "aggregate_changes_regional_districts_by_station_types": aggregate_changes_regional_districts_by_station_types(rows),
-            "aggregate_changes_regional_districts_by_station_types_with_fuel": aggregate_changes_regional_districts_by_station_types_with_fuel(rows),
-            "aggregate_changes_regional_districts_by_tes_types": aggregate_changes_regional_districts_by_tes_types(rows),
-            "aggregate_changes_regional_districts_by_tes_types_with_fuel": aggregate_changes_regional_districts_by_tes_types_with_fuel(rows),
-            "aggregate_changes_regional_districts_by_tes_machine_types": aggregate_changes_regional_districts_by_tes_machine_types(rows),
-            "aggregate_changes_regional_districts_by_tes_machine_types_with_fuel": aggregate_changes_regional_districts_by_tes_machine_types_with_fuel(rows),
-            "aggregate_changes_by_regional_energy_systems": aggregate_changes_by_regional_energy_systems(rows),
-            "aggregate_changes_regional_energy_systems_by_station_types": aggregate_changes_regional_energy_systems_by_station_types(rows),
-            "aggregate_changes_regional_energy_systems_by_station_types_with_fuel": aggregate_changes_regional_energy_systems_by_station_types_with_fuel(rows),
-            "aggregate_changes_regional_energy_systems_by_tes_types": aggregate_changes_regional_energy_systems_by_tes_types(rows),
-            "aggregate_changes_regional_energy_systems_by_tes_types_with_fuel": aggregate_changes_regional_energy_systems_by_tes_types_with_fuel(rows),
-            "aggregate_changes_regional_energy_systems_by_tes_machine_types": aggregate_changes_regional_energy_systems_by_tes_machine_types(rows),
-            "aggregate_changes_regional_energy_systems_by_tes_machine_types_with_fuel": aggregate_changes_regional_energy_systems_by_tes_machine_types_with_fuel(rows),
-            "aggregate_changes_by_union_energy_systems": aggregate_changes_by_union_energy_systems(rows),
-            "aggregate_changes_union_energy_systems_by_station_types": aggregate_changes_union_energy_systems_by_station_types(rows),
-            "aggregate_changes_union_energy_systems_by_station_types_with_fuel": aggregate_changes_union_energy_systems_by_station_types_with_fuel(rows),
-            "aggregate_changes_union_energy_systems_by_tes_types": aggregate_changes_union_energy_systems_by_tes_types(rows),
-            "aggregate_changes_union_energy_systems_by_tes_types_with_fuel": aggregate_changes_union_energy_systems_by_tes_types_with_fuel(rows),
-            "aggregate_changes_union_energy_systems_by_tes_machine_types": aggregate_changes_union_energy_systems_by_tes_machine_types(rows),
-            "aggregate_changes_union_energy_systems_by_tes_machine_types_with_fuel": aggregate_changes_union_energy_systems_by_tes_machine_types_with_fuel(rows),
-            "aggregate_changes_by_energy_system_types": aggregate_changes_by_energy_system_types(rows),
-            "aggregate_changes_energy_system_types_by_station_types": aggregate_changes_energy_system_types_by_station_types(rows),
-            "aggregate_changes_energy_system_types_by_station_types_with_fuel": aggregate_changes_energy_system_types_by_station_types_with_fuel(rows),
-            "aggregate_changes_energy_system_types_by_tes_types": aggregate_changes_energy_system_types_by_tes_types(rows),
-            "aggregate_changes_energy_system_types_by_tes_types_with_fuel": aggregate_changes_energy_system_types_by_tes_types_with_fuel(rows),
-            "aggregate_changes_energy_system_types_by_tes_machine_types": aggregate_changes_energy_system_types_by_tes_machine_types(rows),
-            "aggregate_changes_energy_system_types_by_tes_machine_types_with_fuel": aggregate_changes_energy_system_types_by_tes_machine_types_with_fuel(rows),
-            "aggregate_changes_by_total_energy_system_types": aggregate_changes_by_total_energy_system_types(rows),
-            "aggregate_changes_total_energy_system_types_by_station_types": aggregate_changes_total_energy_system_types_by_station_types(rows),
-            "aggregate_changes_total_energy_system_types_by_station_types_with_fuel": aggregate_changes_total_energy_system_types_by_station_types_with_fuel(rows),
-            "aggregate_changes_total_energy_system_types_by_tes_types": aggregate_changes_total_energy_system_types_by_tes_types(rows),
-            "aggregate_changes_total_energy_system_types_by_tes_types_with_fuel": aggregate_changes_total_energy_system_types_by_tes_types_with_fuel(rows),
-            "aggregate_changes_total_energy_system_types_by_tes_machine_types": aggregate_changes_total_energy_system_types_by_tes_machine_types(rows),
-            "aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel": aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel(rows),
-        }
-        )
+    
+    result.update({
+        "event_types": EVENT_TYPES,
+        "event_types_dict":dict(EVENT_TYPES),
+        "aggregate_changes_by_energy_units": aggregate_changes_by_energy_units(rows),
+        "aggregate_changes_energy_units_by_station_types": aggregate_changes_energy_units_by_station_types(rows),
+        "aggregate_changes_energy_units_by_station_type_with_fuel": aggregate_changes_energy_units_by_station_types_with_fuel(rows),
+        "aggregate_changes_energy_units_by_tes_types": aggregate_changes_energy_units_by_tes_types(rows),
+        "aggregate_changes_energy_units_by_tes_types_with_fuel": aggregate_changes_energy_units_by_tes_types_with_fuel(rows),
+        "aggregate_changes_energy_units_by_tes_machine_types": aggregate_changes_energy_units_by_tes_machine_types(rows),
+        "aggregate_changes_energy_units_by_tes_machine_types_with_fuel": aggregate_changes_energy_units_by_tes_machine_types_with_fuel(rows),
+        "aggregate_changes_by_regional_districts": aggregate_changes_by_regional_districts(rows),
+        "aggregate_changes_regional_districts_by_station_types": aggregate_changes_regional_districts_by_station_types(rows),
+        "aggregate_changes_regional_districts_by_station_types_with_fuel": aggregate_changes_regional_districts_by_station_types_with_fuel(rows),
+        "aggregate_changes_regional_districts_by_tes_types": aggregate_changes_regional_districts_by_tes_types(rows),
+        "aggregate_changes_regional_districts_by_tes_types_with_fuel": aggregate_changes_regional_districts_by_tes_types_with_fuel(rows),
+        "aggregate_changes_regional_districts_by_tes_machine_types": aggregate_changes_regional_districts_by_tes_machine_types(rows),
+        "aggregate_changes_regional_districts_by_tes_machine_types_with_fuel": aggregate_changes_regional_districts_by_tes_machine_types_with_fuel(rows),
+        "aggregate_changes_by_regional_energy_systems": aggregate_changes_by_regional_energy_systems(rows),
+        "aggregate_changes_regional_energy_systems_by_station_types": aggregate_changes_regional_energy_systems_by_station_types(rows),
+        "aggregate_changes_regional_energy_systems_by_station_types_with_events": aggregate_changes_regional_energy_systems_by_station_types_with_events(rows),
+        "aggregate_changes_regional_energy_systems_by_station_types_with_fuel": aggregate_changes_regional_energy_systems_by_station_types_with_fuel(rows),
+        "aggregate_changes_regional_energy_systems_by_tes_types": aggregate_changes_regional_energy_systems_by_tes_types(rows),
+        "aggregate_changes_regional_energy_systems_by_tes_types_with_fuel": aggregate_changes_regional_energy_systems_by_tes_types_with_fuel(rows),
+        "aggregate_changes_regional_energy_systems_by_tes_machine_types": aggregate_changes_regional_energy_systems_by_tes_machine_types(rows),
+        "aggregate_changes_regional_energy_systems_by_tes_machine_types_with_fuel": aggregate_changes_regional_energy_systems_by_tes_machine_types_with_fuel(rows),
+        "aggregate_changes_by_union_energy_systems": aggregate_changes_by_union_energy_systems(rows),
+        "aggregate_changes_union_energy_systems_by_station_types": aggregate_changes_union_energy_systems_by_station_types(rows),
+        "aggregate_changes_union_energy_systems_by_station_types_with_events": aggregate_changes_union_energy_systems_by_station_types_with_events(rows),
+        "aggregate_changes_union_energy_systems_by_station_types_with_fuel": aggregate_changes_union_energy_systems_by_station_types_with_fuel(rows),
+        "aggregate_changes_union_energy_systems_by_tes_types": aggregate_changes_union_energy_systems_by_tes_types(rows),
+        "aggregate_changes_union_energy_systems_by_tes_types_with_fuel": aggregate_changes_union_energy_systems_by_tes_types_with_fuel(rows),
+        "aggregate_changes_union_energy_systems_by_tes_machine_types": aggregate_changes_union_energy_systems_by_tes_machine_types(rows),
+        "aggregate_changes_union_energy_systems_by_tes_machine_types_with_fuel": aggregate_changes_union_energy_systems_by_tes_machine_types_with_fuel(rows),
+        "aggregate_changes_by_energy_system_types": aggregate_changes_by_energy_system_types(rows),
+        "aggregate_changes_energy_system_types_by_station_types": aggregate_changes_energy_system_types_by_station_types(rows),
+        "aggregate_changes_energy_system_types_by_station_types_with_events": aggregate_changes_energy_system_types_by_station_types_with_events(rows),
+        "aggregate_changes_energy_system_types_by_station_types_with_fuel": aggregate_changes_energy_system_types_by_station_types_with_fuel(rows),
+        "aggregate_changes_energy_system_types_by_tes_types": aggregate_changes_energy_system_types_by_tes_types(rows),
+        "aggregate_changes_energy_system_types_by_tes_types_with_fuel": aggregate_changes_energy_system_types_by_tes_types_with_fuel(rows),
+        "aggregate_changes_energy_system_types_by_tes_machine_types": aggregate_changes_energy_system_types_by_tes_machine_types(rows),
+        "aggregate_changes_energy_system_types_by_tes_machine_types_with_fuel": aggregate_changes_energy_system_types_by_tes_machine_types_with_fuel(rows),
+        "aggregate_changes_by_total_energy_system_types": aggregate_changes_by_total_energy_system_types(rows),
+        "aggregate_changes_total_energy_system_types_by_station_types": aggregate_changes_total_energy_system_types_by_station_types(rows),
+        "aggregate_changes_total_energy_system_types_by_station_types_with_events": aggregate_changes_total_energy_system_types_by_station_types_with_events(rows),
+        "aggregate_changes_total_energy_system_types_by_station_types_with_fuel": aggregate_changes_total_energy_system_types_by_station_types_with_fuel(rows),
+        "aggregate_changes_total_energy_system_types_by_tes_types": aggregate_changes_total_energy_system_types_by_tes_types(rows),
+        "aggregate_changes_total_energy_system_types_by_tes_types_with_fuel": aggregate_changes_total_energy_system_types_by_tes_types_with_fuel(rows),
+        "aggregate_changes_total_energy_system_types_by_tes_machine_types": aggregate_changes_total_energy_system_types_by_tes_machine_types(rows),
+        "aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel": aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel(rows),
+    })
     return result
 
     
@@ -526,12 +613,30 @@ def load_all_machines_with_changes(
 
     # Фильтрация по типу мероприятия
     if event_type_filter:
-        machines = [m for m in machines if m.event_type in event_type_filter]
+        # event_type_filter содержит коды событий, а у машины сохранено множество codes в m.event_types
+        event_codes = set(event_type_filter)
+        
+        # Фильтруем машины, у которых есть хотя бы одно выбранное событие
+        machines = [m for m in machines if hasattr(m, "event_types") and m.event_types and (m.event_types & event_codes)]
+        
+        # Для каждой машины фильтруем powers_by_year, оставляя только строки с выбранными событиями
+        for m in machines:
+            m.powers_by_year = [p for p in m.powers_by_year if p["event"] in event_codes]
+            m.total_rows = len(m.powers_by_year)
+            # Обновляем event_types - оставляем только те, что есть в отфильтрованных строках
+            m.event_types = set(p["event"] for p in m.powers_by_year)
 
     return machines
 
 
-def apply_all_rowspans(machines: list[Machine]):
+def apply_all_rowspans_for_station(machines: list[Machine]):
+    """
+    Применяет rowspans для всех машин одной станции.
+    В списке машины одной станции, но могут быть с разными генкомпаниями.
+    
+    Устанавливает начальные значения для station_rowspan и fuel_rowspan.
+    region_rowspan и gen_company_rowspan устанавливаются глобально.
+    """
     def apply_rowspan_grouping(machines, key_func, attr_name: str, use_total_rows: bool = False):
         from collections import defaultdict
 
@@ -544,65 +649,48 @@ def apply_all_rowspans(machines: list[Machine]):
             # Суммируем total_rows при необходимости
             rowspan = sum(m.total_rows if use_total_rows else 1 for m in group)
 
-            used_rows = 0
-            for m in group:
-                if used_rows == 0:
-                    setattr(m, attr_name, rowspan)
-                else:
-                    setattr(m, attr_name, 0)
-                used_rows += m.total_rows if use_total_rows else 1
+            if use_total_rows:
+                # Назначаем rowspan первому видимому агрегату в группе
+                leader_index = next((i for i, gm in enumerate(group) if gm.total_rows > 0), None)
+                for i, gm in enumerate(group):
+                    if leader_index is not None and i == leader_index and rowspan > 0:
+                        setattr(gm, attr_name, rowspan)
+                    else:
+                        setattr(gm, attr_name, 0)
+            else:
+                used_rows = 0
+                for m in group:
+                    if used_rows == 0:
+                        setattr(m, attr_name, rowspan)
+                    else:
+                        setattr(m, attr_name, 0)
+                    used_rows += 1
 
-    # Применяем группировки
+    if not machines:
+        return
+    
+    # Все машины относятся к одной станции, но могут быть с разными генкомпаниями
+    # Устанавливаем только station_rowspan и fuel_rowspan
+    # region_rowspan и gen_company_rowspan будут установлены глобально
+    
+    # 1. Станция - объединяем все машины одной станции (по станциям внутри генкомпании)
     apply_rowspan_grouping(
         machines,
-        key_func=lambda m: m.machine_station.regional_district.id if m.machine_station and m.machine_station.regional_district else None,
-        attr_name="region_rowspan",
-        use_total_rows=True,
-    )
-
-    apply_rowspan_grouping(
-        machines,
-        key_func=lambda m: m.machine_station.id if m.machine_station else None,
+        key_func=lambda m: (
+            m.machine_station.id if m.machine_station else None,
+            m.gen_company.id if m.gen_company else None
+        ),
         attr_name="station_rowspan",
         use_total_rows=True,
     )
 
+    # 2. Топливо - группируем по fuel_so (как было)
     apply_rowspan_grouping(
         machines,
-        key_func=lambda m: (m.machine_station.id, m.gen_company.id if m.gen_company else None),
-        attr_name="gen_company_rowspan",
-        use_total_rows=True,
-    )
-
-    apply_rowspan_grouping(
-        machines,
-        key_func=lambda m: (m.machine_station.id, m.fuel_so or ''),
+        key_func=lambda m: m.fuel_so or '',
         attr_name="fuel_rowspan",
         use_total_rows=True,
     )
-
-
-def apply_rowspan_grouping(machines, key_func, attr_name: str, use_total_rows: bool = False):
-    from collections import defaultdict
-
-    group_map = defaultdict(list)
-
-    # Группируем агрегаты по ключу
-    for m in machines:
-        key = key_func(m)
-        group_map[key].append(m)
-
-    for group in group_map.values():
-        # Вычисляем суммарное количество строк
-        rowspan = sum(m.total_rows if use_total_rows else 1 for m in group)
-
-        current = 0
-        for m in group:
-            if current == 0:
-                setattr(m, attr_name, rowspan)
-            else:
-                setattr(m, attr_name, 0)
-            current += 1
 
 
 def assign_machine_powers_changes_by_year(machine, start_year, end_year, rounding_digits):
@@ -719,6 +807,27 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
                 rd_names[rd_id] = station.regional_district.name
                 eu_names[eu_id] = eu_name
 
+    # Упорядочиваем уровень ОЭС по display_order (None и неизвестные — в конец)
+    # Используем кэшируемый список ОЭС, уже отсортированный по display_order
+    from collections import OrderedDict
+    try:
+        ues_sorted_list = get_union_energy_system_list_full()
+        ues_order_index = {ues.id: idx for idx, ues in enumerate(ues_sorted_list)}
+    except Exception:
+        # На случай непредвиденной ошибки — не ломаем отображение
+        ues_order_index = {}
+
+    sorted_grouped_data = OrderedDict()
+    for est_id, ues_group in grouped_data.items():
+        # Сортируем ключи ОЭС внутри каждого типа энергосистемы по индексам из ues_order_index
+        sorted_ues_items = sorted(
+            ues_group.items(),
+            key=lambda kv: ues_order_index.get(kv[0], 10**9)
+        )
+        sorted_grouped_data[est_id] = OrderedDict(sorted_ues_items)
+
+    grouped_data = sorted_grouped_data
+
     result = {
         "grouped_stations": grouped_data,
         "stations": stations,
@@ -756,7 +865,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     regional_district_mapping = get_fd_to_rd_ids_map()
 
     regional_district_list = get_regional_district_list_full()
-    regional_district_names = get_rd_to_fd_id_map()
+    regional_district_names = get_regional_districts_map()
 
     energy_units = get_energy_unit_list_full()
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
@@ -777,6 +886,24 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()
+
+    # Подготовка сериализуемых списков для Select2 (во избежание ошибок JSON-сериализации моделей)
+    regional_energy_system_list_json = [
+        {
+            "id": getattr(res, "id", None),
+            "name": getattr(res, "name", None),
+            "name_full": getattr(res, "name_full", None),
+        }
+        for res in regional_energy_system_list
+    ]
+    regional_district_list_json = [
+        {
+            "id": getattr(rd, "id", None),
+            "name": getattr(rd, "name", None),
+            "name_full": getattr(rd, "name_full", None),
+        }
+        for rd in regional_district_list
+    ]
 
     context = {
             "form": form,
@@ -815,43 +942,84 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "condition_type_filter": filters.get("condition_type_filter"),
             "gen_company_filter": filters.get("gen_company_filter"),
             "station_name_filter": filters.get("station_name_filter"),
-            "station_type_filter": filters.get("station_type_filter"),
-            "tes_type_filter": filters.get("tes_type_filter"),
-            "tes_machine_type_filter": filters.get("tes_machine_type_filter"),
-            "pgu_tes_machine_type_filter": filters.get("pgu_tes_machine_type_filter"),
-            "energy_system_type_filter": filters.get("energy_system_type_filter"),
-            "union_energy_system_filter": filters.get("union_energy_system_filter"),
-            "regional_energy_system_filter": filters.get("regional_energy_system_filter"),
-            "federal_district_filter": filters.get("federal_district_filter"),
-            "regional_district_filter": filters.get("regional_district_filter"),
+            "station_type_filter": filters.get("station_type_filter") or [],
+            "tes_type_filter": filters.get("tes_type_filter") or [],
+            "tes_machine_type_filter": filters.get("tes_machine_type_filter") or [],
+            "pgu_tes_machine_type_filter": filters.get("pgu_tes_machine_type_filter") or [],
+            "energy_system_type_filter": filters.get("energy_system_type_filter") or [],
+            "union_energy_system_filter": filters.get("union_energy_system_filter") or [],
+            "regional_energy_system_filter": filters.get("regional_energy_system_filter") or [],
+            "federal_district_filter": filters.get("federal_district_filter") or [],
+            "regional_district_filter": filters.get("regional_district_filter") or [],
             "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
             "year_features": year_features,
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,
+            # JSON-готовые данные для Select2 в station_changes
+            "regional_energy_system_list_json": regional_energy_system_list_json,
+            "regional_district_list_json": regional_district_list_json,
     }
     
-    if not show_all:
-        print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
-        return context
-    else:
-        # 📦 Генерация агрегатов по уровням
-        energy_unit_aggregates = build_energy_unit_aggregates(data)
-        regional_district_aggregates = build_regional_district_aggregates(data)
-        regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
-        union_energy_system_aggregates = build_union_energy_system_aggregates(data)
-        energy_system_type_aggregates = build_energy_system_type_aggregates(data)
-        total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
+    # 📦 Генерация агрегатов по уровням (всегда добавляем, чтобы в шаблонах были суммы)
+    energy_unit_aggregates = build_energy_unit_aggregates(data)
+    regional_district_aggregates = build_regional_district_aggregates(data)
+    regional_energy_system_aggregates = build_regional_energy_system_aggregates(data)
+    union_energy_system_aggregates = build_union_energy_system_aggregates(data)
+    energy_system_type_aggregates = build_energy_system_type_aggregates(data)
+    total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
 
-        # ⏬ Включаем агрегаты по уровням в context
-        context.update(energy_unit_aggregates)
-        context.update(regional_district_aggregates)
-        context.update(regional_energy_system_aggregates)
-        context.update(union_energy_system_aggregates)
-        context.update(energy_system_type_aggregates)
-        context.update(total_energy_system_type_aggregates)
+    # ⏬ Включаем агрегаты по уровням в context
+    context.update(energy_unit_aggregates)
+    context.update(regional_district_aggregates)
+    context.update(regional_energy_system_aggregates)
+    context.update(union_energy_system_aggregates)
+    context.update(energy_system_type_aggregates)
+    context.update(total_energy_system_type_aggregates)
 
-        print(f"[⏱] get_station_list_template_context с show_all заняла: {time.time() - start_time:.2f} сек")
-        return context
+    # Данные для разбивки по мероприятиям (используется в шаблонах include)
+    context["aggregate_changes_union_energy_systems_by_station_types_with_events"] = (
+        data.get("aggregate_changes_union_energy_systems_by_station_types_with_events", {})
+    )
+    context["aggregate_changes_regional_energy_systems_by_station_types_with_events"] = (
+        data.get("aggregate_changes_regional_energy_systems_by_station_types_with_events", {})
+    )
+    context["aggregate_changes_energy_system_types_by_station_types_with_events"] = (
+        data.get("aggregate_changes_energy_system_types_by_station_types_with_events", {})
+    )
+    context["aggregate_changes_total_energy_system_types_by_station_types_with_events"] = (
+        data.get("aggregate_changes_total_energy_system_types_by_station_types_with_events", {})
+    )
+
+    # Динамический rowspan для субъектов РФ
+    context["regional_district_rowspans"] = compute_regional_district_rowspans(
+        data,
+        station_type_list,
+        EVENT_TYPES,
+    )
+
+    # Динамический rowspan для объединённых энергосистем (ОЭС)
+    context["union_energy_system_rowspans"] = compute_union_energy_system_rowspans(
+        data,
+        station_type_list,
+        EVENT_TYPES,
+    )
+
+    # Динамический rowspan для типов энергосистем
+    context["energy_system_type_rowspans"] = compute_energy_system_type_rowspans(
+        data,
+        station_type_list,
+        EVENT_TYPES,
+    )
+
+    # Динамический rowspan для России в целом
+    context["total_energy_system_type_rowspans"] = compute_total_energy_system_type_rowspans(
+        data,
+        station_type_list,
+        EVENT_TYPES,
+    )
+
+    print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
+    return context
 
 
 def build_energy_unit_aggregates(data):
@@ -915,6 +1083,9 @@ def build_regional_energy_system_aggregates(data):
         # По типам станций
         "regional_energy_systems_by_station_types_yearly_p_ust": data["aggregate_changes_regional_energy_systems_by_station_types"]["aggregated"]["p_ust"],
 
+        # По типам станций с мероприятиями
+        "regional_energy_systems_by_station_types_with_events_yearly_p_ust": data.get("aggregate_changes_regional_energy_systems_by_station_types_with_events", {}).get("aggregated", {}).get("p_ust", {}),
+
         # По типам станций и топливу
         "regional_energy_systems_by_station_types_with_fuel_yearly_p_ust": data["aggregate_changes_regional_energy_systems_by_station_types_with_fuel"]["aggregated"]["p_ust"],
 
@@ -935,10 +1106,10 @@ def build_regional_energy_system_aggregates(data):
 def build_union_energy_system_aggregates(data):
 
     return {
-        # Основная агрегация
+        # Основная агрегация (по событиям)
         "union_energy_systems_yearly_p_ust": data["aggregate_changes_by_union_energy_systems"]["aggregated"]["p_ust"],
 
-        # По типам станций
+        # По типам станций (теперь структура {ues_id: {station_type_id: {event_type: {year: value}}}})
         "union_energy_systems_by_station_types_yearly_p_ust": data["aggregate_changes_union_energy_systems_by_station_types"]["aggregated"]["p_ust"],
 
         # По типам станций и топливу
@@ -961,11 +1132,14 @@ def build_union_energy_system_aggregates(data):
 def build_energy_system_type_aggregates(data):
 
     return {
-        # Основная агрегация
+        # Основная агрегация (по событиям)
         "energy_system_types_yearly_p_ust": data["aggregate_changes_by_energy_system_types"]["aggregated"]["p_ust"],
 
-        # По типам станций
+        # По типам станций (теперь структура {es_type_id: {station_type_id: {event_type: {year: value}}}})
         "energy_system_types_by_station_types_yearly_p_ust": data["aggregate_changes_energy_system_types_by_station_types"]["aggregated"]["p_ust"],
+
+        # По типам станций с мероприятиями
+        "energy_system_types_by_station_types_with_events_yearly_p_ust": data.get("aggregate_changes_energy_system_types_by_station_types_with_events", {}).get("aggregated", {}).get("p_ust", {}),
 
         # По типам станций и топливу
         "energy_system_types_by_station_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ust"],
@@ -987,11 +1161,14 @@ def build_energy_system_type_aggregates(data):
 def build_total_energy_system_type_aggregates(data):
 
     return {
-        # Основная агрегация
+        # Основная агрегация (по событиям)
         "total_energy_system_types_yearly_p_ust": data["aggregate_changes_by_total_energy_system_types"]["aggregated"]["p_ust"],
 
-        # По типам станций
+        # По типам станций (теперь структура {station_type_id: {event_type: {year: value}}})
         "total_energy_system_types_by_station_types_yearly_p_ust": data["aggregate_changes_total_energy_system_types_by_station_types"]["aggregated"]["p_ust"],
+
+        # По типам станций с мероприятиями
+        "total_energy_system_types_by_station_types_with_events_yearly_p_ust": data.get("aggregate_changes_total_energy_system_types_by_station_types_with_events", {}).get("aggregated", {}).get("p_ust", {}),
 
         # По типам станций и топливу
         "total_energy_system_types_by_station_types_with_fuel_yearly_p_ust": data["aggregate_changes_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ust"],
@@ -1008,3 +1185,169 @@ def build_total_energy_system_type_aggregates(data):
         # По типам машин ТЭС и топливу
         "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": data["aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ust"],
     }
+
+
+def compute_regional_district_rowspans(
+    data,
+    station_type_list: dict,
+    event_types: list[tuple[str, str]],
+) -> dict[int, int]:
+    """Возвращает {rd_id: rowspan} для блока субъекта РФ.
+
+    Считаем количество реально отображаемых строк:
+      - по каждому событию, если есть агрегаты для субъекта
+      - по каждому событию и типу станции, если есть агрегаты
+    """
+    rd_event_map = data.get("aggregate_changes_by_regional_districts", {}).get("aggregated", {}).get("p_ust", {})
+    rd_by_station_map = data.get("aggregate_changes_regional_districts_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
+
+    # Собираем множество всех rd_id, присутствующих в агрегатах
+    rd_ids = set(rd_event_map.keys()) | set(rd_by_station_map.keys())
+
+    result: dict[int, int] = {}
+    event_codes = [code for code, _ in event_types]
+
+    for rd_id in rd_ids:
+        rows = 0
+
+        # Строки "Всего" по событиям
+        rd_events = rd_event_map.get(rd_id, {})
+        for code in event_codes:
+            if rd_events.get(code):
+                rows += 1
+
+        # Строки по типам станций, по событиям
+        rd_stations = rd_by_station_map.get(rd_id, {})
+        for code in event_codes:
+            for st_id in station_type_list.keys():
+                if st_id == 0:
+                    continue
+                event_years_map = rd_stations.get(st_id, {}).get(code)
+                if event_years_map:
+                    rows += 1
+
+        result[rd_id] = max(rows, 1)
+
+    return result
+
+
+def compute_union_energy_system_rowspans(
+    data,
+    station_type_list: dict,
+    event_types: list[tuple[str, str]],
+) -> dict[int, int]:
+    """Возвращает {ues_id: rowspan} для блока объединённой энергосистемы.
+
+    Считаем количество реально отображаемых строк:
+      - по каждому событию, если есть агрегаты для ОЭС
+      - по каждому событию и типу станции, если есть агрегаты
+    """
+    ues_event_map = data.get("aggregate_changes_by_union_energy_systems", {}).get("aggregated", {}).get("p_ust", {})
+    ues_by_station_map = data.get("aggregate_changes_union_energy_systems_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
+
+    # Собираем множество всех ues_id, присутствующих в агрегатах
+    ues_ids = set(ues_event_map.keys()) | set(ues_by_station_map.keys())
+
+    result: dict[int, int] = {}
+    event_codes = [code for code, _ in event_types]
+
+    for ues_id in ues_ids:
+        rows = 0
+
+        # Строки "Всего" по событиям
+        ues_events = ues_event_map.get(ues_id, {})
+        for code in event_codes:
+            if ues_events.get(code):
+                rows += 1
+
+        # Строки по типам станций, по событиям
+        ues_stations = ues_by_station_map.get(ues_id, {})
+        for code in event_codes:
+            for st_id in station_type_list.keys():
+                if st_id == 0:
+                    continue
+                event_years_map = ues_stations.get(st_id, {}).get(code)
+                if event_years_map:
+                    rows += 1
+
+        result[ues_id] = max(rows, 1)
+
+    return result
+
+
+def compute_energy_system_type_rowspans(
+    data,
+    station_type_list: dict,
+    event_types: list[tuple[str, str]],
+) -> dict[int, int]:
+    """Возвращает {es_type_id: rowspan} для блока типа энергосистемы.
+
+    Считаем количество реально отображаемых строк:
+      - по каждому событию, если есть агрегаты для типа энергосистемы
+      - по каждому событию и типу станции, если есть агрегаты
+    """
+    es_type_event_map = data.get("aggregate_changes_by_energy_system_types", {}).get("aggregated", {}).get("p_ust", {})
+    es_type_by_station_map = data.get("aggregate_changes_energy_system_types_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
+
+    # Собираем множество всех es_type_id, присутствующих в агрегатах
+    es_type_ids = set(es_type_event_map.keys()) | set(es_type_by_station_map.keys())
+
+    result: dict[int, int] = {}
+    event_codes = [code for code, _ in event_types]
+
+    for es_type_id in es_type_ids:
+        rows = 0
+
+        # Строки "Всего" по событиям
+        es_type_events = es_type_event_map.get(es_type_id, {})
+        for code in event_codes:
+            if es_type_events.get(code):
+                rows += 1
+
+        # Строки по типам станций, по событиям
+        es_type_stations = es_type_by_station_map.get(es_type_id, {})
+        for code in event_codes:
+            for st_id in station_type_list.keys():
+                if st_id == 0:
+                    continue
+                event_years_map = es_type_stations.get(st_id, {}).get(code)
+                if event_years_map:
+                    rows += 1
+
+        result[es_type_id] = max(rows, 1)
+
+    return result
+
+
+def compute_total_energy_system_type_rowspans(
+    data,
+    station_type_list: dict,
+    event_types: list[tuple[str, str]],
+) -> int:
+    """Возвращает rowspan для блока России в целом.
+
+    Считаем количество реально отображаемых строк:
+      - по каждому событию, если есть агрегаты для России
+      - по каждому событию и типу станции, если есть агрегаты
+    """
+    total_event_map = data.get("aggregate_changes_by_total_energy_system_types", {}).get("aggregated", {}).get("p_ust", {})
+    total_by_station_map = data.get("aggregate_changes_total_energy_system_types_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
+
+    rows = 0
+    event_codes = [code for code, _ in event_types]
+
+    # Строки "Всего" по событиям
+    for code in event_codes:
+        if total_event_map.get(code):
+            rows += 1
+
+    # Строки по типам станций, по событиям
+    for code in event_codes:
+        for st_id in station_type_list.keys():
+            if st_id == 0:
+                continue
+            event_years_map = total_by_station_map.get(st_id, {}).get(code)
+            if event_years_map:
+                rows += 1
+
+    return max(rows, 1)

@@ -10,26 +10,9 @@
 
             <!-- Правая часть (экспорт) -->
             <div class="d-flex align-items-center gap-2 flex-nowrap ms-4">
-
-                <!-- СиПР -->
-                <form method="GET" action="{{ url_for('station_bp.export_station_sipr_ees_application_2_routes') }}">
-                    {{ form.csrf_token }}
-                    {% for key, value in request.args.items() %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endfor %}
-                </form>
-
-                <!-- Экспорт в Excel -->
-                <form id="exportExcelFormFull" method="GET" action="{{ url_for('station_bp.export_station_full_routes') }}">
-                    {{ form.csrf_token }}
-                    {% for key, value in request.args.items() %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endfor %}
-                    <button type="submit" id="exportExcelFull"  class="btn btn-outline-success" style="white-space: nowrap;">
-                        Экспорт в Excel
-                    </button>
-                </form>
-
+                <button id="exportStationChangesExcel" class="btn btn-outline-success" style="white-space: nowrap;">
+                    Экспорт изменений в Excel
+                </button>
             </div>
 
         </div>

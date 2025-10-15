@@ -3,24 +3,34 @@ from decimal import Decimal
 
 
 def aggregate_changes_by_total_energy_system_types(rows):
-    p_ust = defaultdict(Decimal)
+    p_ust = defaultdict(lambda: defaultdict(Decimal))
 
     for row in rows:
         year = row.year
-    
-        p_ust[year] += row.p_ust or Decimal(0)
+        events = row.event_type
+
+        if isinstance(events, (set, list, tuple)):
+            for event in events:
+                p_ust[event][year] += row.p_ust or Decimal(0)
+        elif events:
+            p_ust[events][year] += row.p_ust or Decimal(0)
 
     return {"aggregated": {"p_ust": p_ust}}
 
 
 def aggregate_changes_total_energy_system_types_by_station_types(rows):
-    p_ust = defaultdict(lambda: defaultdict(Decimal))
+    p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
 
     for row in rows:
         station_type = row.station_type_id
         year = row.year
+        events = row.event_type
 
-        p_ust[station_type][year] += row.p_ust or Decimal(0)
+        if isinstance(events, (set, list, tuple)):
+            for event in events:
+                p_ust[station_type][event][year] += row.p_ust or Decimal(0)
+        elif events:
+            p_ust[station_type][events][year] += row.p_ust or Decimal(0)
 
     return {"aggregated": {"p_ust": p_ust}}
 
@@ -86,5 +96,28 @@ def aggregate_changes_total_energy_system_types_by_tes_machine_types_with_fuel(r
         year = row.year
 
         p_ust[tes_type][tes_machine_type][fuel_type][year] += row.p_ust or Decimal(0)
+
+    return {"aggregated": {"p_ust": p_ust}}
+
+
+def aggregate_changes_total_energy_system_types_by_station_types_with_events(rows):
+    """
+    Возвращает p_ust[station_type_id][event_code][year] = sum для России
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+
+    p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+
+    for row in rows:
+        station_type = row.station_type_id
+        year = row.year
+        events = row.event_type
+
+        if isinstance(events, (set, list, tuple)):
+            for ev in events:
+                p_ust[station_type][ev][year] += row.p_ust or Decimal(0)
+        elif events:
+            p_ust[station_type][events][year] += row.p_ust or Decimal(0)
 
     return {"aggregated": {"p_ust": p_ust}}

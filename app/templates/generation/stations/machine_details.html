@@ -20,9 +20,9 @@
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Страница "Электростанции"</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Модуль "Электростанции"</a>
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
-            Страница "{{ station.name }}"
+            Модуль "{{ station.name }}"
         </a>
     </div>
 

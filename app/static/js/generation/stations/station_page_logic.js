@@ -215,11 +215,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // При изменении — только единая функция обновления, без дублирования логики
         togglePOgr?.addEventListener('change', () => {
             window.applyPowerRowsUpdate?.();
+            window.applyHideAggregatesUpdate?.();
             syncToggleStyles();
         });
 
         togglePRasp?.addEventListener('change', () => {
             window.applyPowerRowsUpdate?.();
+            window.applyHideAggregatesUpdate?.();
             syncToggleStyles();
         });
 
@@ -258,7 +260,68 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // === 5. Изменение округления
+    // === 5. Переключатель скрытия агрегатов
+    function setupHideAggregatesToggle() {
+        const hideAggregatesCheckbox = document.getElementById("hide_aggregates_switch");
+        const hideAggregatesLabel = document.querySelector('label[for="hide_aggregates_switch"]');
+
+        if (!hideAggregatesCheckbox || !hideAggregatesLabel) return;
+
+        // Функция для переключения видимости агрегатов
+        function toggleAggregates() {
+            const isHidden = hideAggregatesCheckbox.checked;
+            const showPOgr = document.getElementById('toggleP_Ogr')?.checked || false;
+            const showPRasp = document.getElementById('toggleP_Rasp')?.checked || false;
+            
+            // Скрываем/показываем строки с агрегатами
+            document.querySelectorAll('.machine-row').forEach(row => {
+                row.style.display = isHidden ? 'none' : '';
+            });
+
+            // Также скрываем/показываем строки p-ogr и p-rasp для агрегатов
+            // Учитываем состояние соответствующих чекбоксов
+            document.querySelectorAll('.p-ogr-row:not(.station-ogr-row)').forEach(row => {
+                if (isHidden) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = showPOgr ? '' : 'none';
+                }
+            });
+            
+            document.querySelectorAll('.p-rasp-row:not(.station-rasp-row)').forEach(row => {
+                if (isHidden) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = showPRasp ? '' : 'none';
+                }
+            });
+
+            // НЕ скрываем первую строку с названием станции
+            // Она остаётся всегда видимой
+
+            // Обновляем стиль кнопки и текст
+            if (isHidden) {
+                hideAggregatesLabel.classList.remove('btn-outline-secondary', 'text-dark');
+                hideAggregatesLabel.classList.add('btn-primary');
+                hideAggregatesLabel.textContent = 'Показать агрегаты';
+            } else {
+                hideAggregatesLabel.classList.remove('btn-primary');
+                hideAggregatesLabel.classList.add('btn-outline-secondary', 'text-dark');
+                hideAggregatesLabel.textContent = 'Скрыть агрегаты';
+            }
+        }
+
+        // Обработчик изменения состояния чекбокса
+        hideAggregatesCheckbox.addEventListener('change', toggleAggregates);
+
+        // Инициализация при загрузке страницы
+        toggleAggregates();
+
+        // Экспортируем функцию для использования в других обработчиках
+        window.applyHideAggregatesUpdate = toggleAggregates;
+    }
+
+    // === 6. Изменение округления
     function setupRoundingDigits() {
         const select = document.getElementById("rounding_digits");
         if (!select) return;
@@ -268,6 +331,98 @@ document.addEventListener("DOMContentLoaded", () => {
             url.searchParams.set("rounding_digits", select.value);
             url.searchParams.set("page", 1);
             window.location.href = url.toString();
+        });
+    }
+
+    // === 7. Обработка экспорта без блокировки страницы
+    function setupExportFormSync() {
+        const exportButton = document.getElementById("exportExcelFull");
+        const hideAggregatesCheckbox = document.getElementById("hide_aggregates_switch");
+        const showPOgrCheckbox = document.getElementById("toggleP_Ogr");
+        const showPRaspCheckbox = document.getElementById("toggleP_Rasp");
+        const showTotalsCheckbox = document.getElementById("show_totals_switch");
+
+        if (!exportButton || !hideAggregatesCheckbox) return;
+
+        exportButton.addEventListener("click", function(e) {
+            e.preventDefault();
+            
+            // Визуальная индикация
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            this.disabled = true;
+            
+            // Формируем URL с текущими параметрами
+            const currentUrl = new URL(window.location.href);
+            const params = new URLSearchParams(currentUrl.search);
+            
+            // Добавляем параметр hide_aggregates
+            if (hideAggregatesCheckbox.checked) {
+                params.set('hide_aggregates', '1');
+            } else {
+                params.delete('hide_aggregates');
+            }
+            
+            // Добавляем параметры show_p_ogr и show_p_rasp из чекбоксов
+            // Важно: явно передаем "0" или "1", а не удаляем параметр,
+            // чтобы избежать использования значений по умолчанию на сервере
+            if (showPOgrCheckbox) {
+                params.set('show_p_ogr', showPOgrCheckbox.checked ? '1' : '0');
+            }
+            
+            if (showPRaspCheckbox) {
+                params.set('show_p_rasp', showPRaspCheckbox.checked ? '1' : '0');
+            }
+            
+            // Добавляем параметр show_totals (показывать суммы по регионам)
+            if (showTotalsCheckbox) {
+                params.set('show_totals', showTotalsCheckbox.checked ? '1' : '0');
+            }
+            
+            // Формируем URL для экспорта
+            const exportUrl = '/generation/stations/export_station_full?' + params.toString();
+            
+            // Простой и быстрый способ - прямое скачивание без блокировки UI
+            // Браузер автоматически начнёт скачивание, страница не перезагрузится
+            window.location.href = exportUrl;
+            
+            // Возвращаем состояние кнопки
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 500);
+        });
+    }
+
+    // === 8. Обработка экспорта СиПР без блокировки страницы
+    function setupExportSiprSync() {
+        const exportSiprButton = document.getElementById("exportExcelSipr");
+        const exportSiprForm = document.getElementById("exportSiprForm");
+        
+        if (!exportSiprButton || !exportSiprForm) return;
+
+        exportSiprButton.addEventListener("click", function(e) {
+            e.preventDefault();
+            
+            // Визуальная индикация
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            this.disabled = true;
+            
+            // Собираем URL из формы (action + все hidden поля)
+            const formAction = exportSiprForm.action;
+            const formData = new FormData(exportSiprForm);
+            const params = new URLSearchParams(formData);
+            const exportUrl = formAction + '?' + params.toString();
+            
+            // Открываем в новой вкладке - файл скачается, страница не зависнет
+            window.open(exportUrl, '_blank');
+            
+            // Возвращаем состояние кнопки
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 500);
         });
     }
 
@@ -290,5 +445,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setupDropdownCheckboxFilters();
     setupMachinePowerRows();
     setupPerPageToggle();
+    setupHideAggregatesToggle();
     setupRoundingDigits();
+    setupExportFormSync();
+    setupExportSiprSync();
 });

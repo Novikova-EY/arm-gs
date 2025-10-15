@@ -1,44 +1,34 @@
-<!-- Итоговые значения по типам электростанций -->
+{# Итоговые значения по типам электростанций с разбивкой по мероприятиям #}
 {% for station_type_id, st_name in station_type_list.items() %}
-    {% set has_st = total_energy_system_types_by_station_types_yearly_p_ust
-                    .get(station_type_id) %}
+    {% if station_type_id != 0 %}
+        {% set station_data = total_energy_system_types_by_station_types_yearly_p_ust
+                                .get(station_type_id, {}) %}
+        {% set yearly_data = station_data.get(current_event_type) if station_data else None %}
 
-    {% if has_st %}
-        {% if station_type_id not in [5, 6] %}
-            <!-- Первая строка: p_ust -->
+        {% if yearly_data %}
             <tr class="table-danger text-center total-power-row" style="vertical-align: middle;">
-                <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+                <td class="total-row-cell" style="font-weight: bold;">
                     {{ st_name }}
                 </td>
-                <td class="fw-bold">Руст</td>
+                <td colspan="4"></td>
+                <td></td>
                 {% for y in range(start_year, end_year + 1) %}
-                    <td class="power-column" style="font-weight: bold;">
-                        {{ total_energy_system_types_by_station_types_yearly_p_ust
-                            .get(station_type_id, {})
-                            .get(y, '—') | format_decimal or '—' }}
+                    <td class="power-column">
+                        {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
                     </td>
                 {% endfor %}
-                <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
-                </td>
+                <td></td>
             </tr>
+        {% endif %}
 
-        
-        {% endif %}
-            
-        {% if station_type_id in [4, 7, 8] %}
-                
-            {#– {% include 'station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_station_type_with_fuel.html' %} -#}
-            
-            {% include 'station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_type.html' %}
-        
-        {% endif %}
-                
-        {% if station_type_id in [5, 6] %}
-                        
-        {% endif %}
-        
     {% endif %}
-       
+
+    {% if station_type_id in [4, 7, 8] %}
+
+    {#– {% include 'generation/station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_station_type_with_fuel.html' %} -#}
+    
+    {#– {% include 'generation/station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_type.html' %} -#}
+    
+    {% endif %}
+
 {% endfor %}
-        
-{% include 'station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_via.html' %}

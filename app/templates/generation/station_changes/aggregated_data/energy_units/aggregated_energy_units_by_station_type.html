@@ -30,9 +30,9 @@
 
         {% if station_type_id == 4 or station_type_id == 7 or station_type_id == 8 %}
             
-            {#–- {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_by_station_type_with_fuel.html' %} --#}
+            {#–- {% include 'generation/station_changes/aggregated_data/energy_units/aggregated_energy_units_by_station_type_with_fuel.html' %} --#}
 
-            {% include 'station_changes/aggregated_data/energy_units/aggregated_energy_units_by_tes_type.html' %}
+            {% include 'generation/station_changes/aggregated_data/energy_units/aggregated_energy_units_by_tes_type.html' %}
 
         {% endif %}
     {% endfor %}

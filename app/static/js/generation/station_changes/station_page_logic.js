@@ -1,3 +1,32 @@
+document.addEventListener("DOMContentLoaded", () => {
+    // Экспорт station_changes без зависания страницы (по аналогии со stations)
+    const exportButton = document.getElementById("exportStationChangesExcel");
+    if (exportButton) {
+        exportButton.addEventListener("click", function (e) {
+            e.preventDefault();
+
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            this.disabled = true;
+
+            // Берём текущие параметры из URL
+            const currentUrl = new URL(window.location.href);
+            const params = new URLSearchParams(currentUrl.search);
+
+            // Формируем URL для экспорта
+            const exportUrl = '/generation/station_changes/station_changes_list/export?' + params.toString();
+
+            // Запускаем скачивание в новой вкладке, чтобы не блокировать UI
+            window.open(exportUrl, '_blank');
+
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 800);
+        });
+    }
+});
+
 // station_combined.js
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -112,20 +141,18 @@ document.addEventListener("DOMContentLoaded", () => {
         window.updateRows = update;
     }
 
-    // === 4. Переключатель "все станции / постранично"
+    // === 4. Переключатель "все станции / постранично" + выпадающий список
     function setupPerPageToggle() {
-        const checkbox = document.getElementById("per_page_switch");
-        const selectBlock = document.getElementById("per_page_select_block");
-        if (!checkbox) return;
+        const perPageSelect = document.getElementById("per_page_select");
 
-        checkbox.addEventListener("change", () => {
-            const params = new URLSearchParams(window.location.search);
-            params.set("per_page", checkbox.checked ? "all" : "10");
-            window.location.href = window.location.pathname + "?" + params.toString();
-        });
-
-        if (selectBlock) {
-            selectBlock.classList.toggle("d-none", checkbox.checked);
+        // Обработчик для выпадающего списка количества станций
+        if (perPageSelect) {
+            perPageSelect.addEventListener("change", () => {
+                const params = new URLSearchParams(window.location.search);
+                params.set("per_page", perPageSelect.value);
+                params.set("page", 1); // Сбрасываем на первую страницу
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
         }
     }
 
@@ -140,6 +167,21 @@ document.addEventListener("DOMContentLoaded", () => {
             url.searchParams.set("page", 1);
             window.location.href = url.toString();
         });
+    }
+
+    // === 6. Переключатель "Суммы по регионам" (show_totals)
+    function setupShowTotalsToggle() {
+        const toggle = document.getElementById('show_totals_switch');
+        if (!toggle) return;
+
+        const updateUrl = () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('show_totals', toggle.checked ? '1' : '0');
+            url.searchParams.set('page', 1);
+            window.location.href = url.toString();
+        };
+
+        toggle.addEventListener('change', updateUrl);
     }
 
     // === Инициализация всех блоков ===
@@ -162,4 +204,5 @@ document.addEventListener("DOMContentLoaded", () => {
     setupMachinePowerRows();
     setupPerPageToggle();
     setupRoundingDigits();
+    setupShowTotalsToggle();
 });

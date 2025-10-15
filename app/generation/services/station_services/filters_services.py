@@ -44,6 +44,8 @@ def extract_filters_from_args(args):
         "date_modernization_expected_filter": args.getlist("date_modernization_expected_filter", type=int),
         "sort_by": args.get("sort_by", "id"),
         "sort_dir": args.get("sort_dir", "asc"),
+        # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
+        "event_type_filter": args.getlist("event_type_filter"),
     }
 
 

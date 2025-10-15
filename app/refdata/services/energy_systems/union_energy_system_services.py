@@ -42,7 +42,7 @@ def union_energy_system_query(
     """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name", "energy_system_type"}
+    allowed_sort_by = {"id", "name", "name_full", "energy_system_type", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -85,7 +85,19 @@ def union_energy_system_query(
             EnergySystemType.name.desc() if sort_dir == "desc" else EnergySystemType.name.asc()
         )
 
-    else:  # сортировка по id
+    elif sort_by == "display_order":
+        if sort_dir == "desc":
+            query = query.order_by(
+                (UnionEnergySystem.display_order.is_(None)),
+                UnionEnergySystem.display_order.desc()
+            )
+        else:
+            query = query.order_by(
+                (UnionEnergySystem.display_order.is_(None)),
+                UnionEnergySystem.display_order.asc()
+            )
+
+    else:
         query = query.order_by(
             UnionEnergySystem.id.desc() if sort_dir == "desc" else UnionEnergySystem.id.asc()
         )

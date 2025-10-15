@@ -6,7 +6,7 @@
       {# Субъект РФ — только один раз для первой строки агрегата #}
       {% if power_row == first_power and machine.region_rowspan > 0 %}
         <td rowspan="{{ machine.region_rowspan }}" class="fw-bold align-middle">
-            {{ station.regional_district.name }}
+            {{ station.regional_district.name_full if station.regional_district and station.regional_district.name_full else (station.regional_district.name if station.regional_district and station.regional_district.name else 'Без субъекта') }}
         </td>
       {% endif %}
 

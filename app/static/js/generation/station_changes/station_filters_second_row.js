@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (document.getElementById("toggleP_Rasp")?.checked) {
             const inputRasp = document.createElement("input");
-            inputRasp.type = "hidden".style;
+            inputRasp.type = "hidden";
             inputRasp.name = "show_p_rasp";
             inputRasp.value = "1";
             form.appendChild(inputRasp);

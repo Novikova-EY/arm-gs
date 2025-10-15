@@ -1,22 +1,30 @@
-<!-- Итоговые значения по субъекту РФ -->
-{% if energy_system_types_yearly_p_ust.get(current_es_type_id, {}) %}
-    <!-- Первая строка: p_ust -->
-    <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
-            {{ energy_system_type_names[current_es_type_id] }}, всего
-        </td>
-        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
-        {% for year in range(start_year, end_year + 1) %}
-            <td class="power-column" style="font-weight: bold;">
-                {{ energy_system_types_yearly_p_ust
-                    .get(current_es_type_id, {})
-                    .get(year, 0) | format_decimal or '—' }}
-            </td>
-        {% endfor %}
-        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
-        </td>
-    </tr>
+<!-- Итоговые значения по типу энергосистемы -->
+{% set ns = namespace(printed=false) %}
+{% for event_type, event_label in event_types %}
+    {% set event_data = energy_system_types_yearly_p_ust
+        .get(current_es_type_id, {})
+        .get(event_type, {}) %}
 
-    {% include 'station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_by_station_type.html' %}
+    {% if event_data %}
+        <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
+            {% if not ns.printed %}
+                <td class="total-row-cell" rowspan="{{ energy_system_type_rowspans[current_es_type_id] or 1 }}" colspan="8" style="font-weight: bold;">
+                    {{ energy_system_type_names[current_es_type_id] }}, всего
+                </td>
+                {% set ns.printed = true %}
+            {% endif %}
+            <td class="text-center fw-bold">Всего</td>
+            <td class="text-center align-middle" colspan="4"></td>
+            <td class="text-center align-middle">{{ event_label }}</td>
+            {% for year in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ event_data.get(year, '—') | format_decimal if event_data }}
+                </td>
+            {% endfor %}
+            <td></td>
+        </tr>
+    {% endif %}
 
-{% endif %}
+    {% set current_event_type = event_type %}
+    {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_by_station_type.html' %}
+{% endfor %}

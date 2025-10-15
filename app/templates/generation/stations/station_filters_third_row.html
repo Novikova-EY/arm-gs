@@ -56,6 +56,16 @@
                         </label>
                     </div>
 
+                    <!-- Переключатель отображения агрегатов -->
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="btn-check" id="hide_aggregates_switch" autocomplete="off">
+                        <label for="hide_aggregates_switch"
+                            class="btn btn-outline-secondary text-dark px-3 text-center"
+                            style="min-width: 260px;">
+                            Скрыть агрегаты
+                        </label>
+                    </div>
+
                     <!-- Выпадающий список -->
                     <div id="per_page_select_block" class="ms-2">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
@@ -64,6 +74,7 @@
                                 <option value="10" {% if request.args.get('per_page') == '10' %}selected{% endif %}>10 станций</option>
                                 <option value="25" {% if request.args.get('per_page') == '25' %}selected{% endif %}>25 станций</option>
                                 <option value="50" {% if request.args.get('per_page') == '50' %}selected{% endif %}>50 станций</option>
+                                <option value="50" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100 станций</option>
                                 <option value="all" {% if request.args.get('per_page') == 'all' %}selected{% endif %}>Все станции</option>
                             </select>
                         </div>

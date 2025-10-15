@@ -5,8 +5,11 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">Вернуться на главную страницу</a>
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Модуль "Электростанции РФ"</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Модуль "Справочники"</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -33,7 +36,7 @@
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th colspan="14">Электростанция</th>
-                    <th colspan="{{ end_year - start_year + 1 }}">Установленная ощность</th>
+                    <th colspan="{{ end_year - start_year + 1 }}">Установленная мощность</th>
                     <th rowspan="2" style="width: 200px;">Основание</th>
                 </tr>
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
@@ -199,7 +202,7 @@
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="fuel_type_filter"
                                                 value="{{ fuel_type.id }}"
-                                                {% if fuel_type.id|string in _fuel_type_filter|map('string') %}checked{% endif %}>
+                                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
                                             {{ fuel_type.name }}
                                         </label>
                                     </li>
@@ -217,14 +220,11 @@
                                 <strong>Мероприятие</strong>
                             </button>
                             <ul class="dropdown-menu w-100">
-                                {% set event_options = ["Ввод в эксплуатацию", "Вывод из эксплуатации", "До модернизации", "После модернизации", "Изменение мощности"] %}
-                                {% for event_option in event_options %}
+                                {% for code, label in event_types %}
                                     <li>
                                         <label class="dropdown-item">
-                                            <input type="checkbox" name="event_type_filter"
-                                                value="{{ event_option }}"
-                                                {% if event_option in request.args.getlist('event_type_filter') %}checked{% endif %}>
-                                            {{ event_option }}
+                                            <input type="checkbox" name="event_type_filter" value="{{ code }}" {% if code in request.args.getlist('event_type_filter') %}checked{% endif %}>
+                                            {{ label }}
                                         </label>
                                     </li>
                                 {% endfor %}
@@ -253,52 +253,36 @@
             <tbody>
 
                 {% for es_type_id, es_type_group in stations_grouped.items() %}
-                {% for event_type, event_label in event_types %}
-                    {% if per_page == 'all' %}
-                        {% include 'generation/station_changes/aggregated_data/energy_system_types/energy_system_type_header.html' %}
-                    {% endif %}
             
                     {% for ues_id, ues_group in es_type_group.items() %}
             
-                        {% if per_page == 'all' %}
-                            {% include 'generation/station_changes/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
-                        {% endif %}
             
                         {% for res_id, res_group in ues_group.items() %}
             
-                            {% if per_page == 'all' %}
-                                <!-- {% include 'generation/station_changes/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}-->
-                            {% endif %}
             
                             {% for rd_id, rd_group in res_group.items() %}
             
                                 {% if rd_id != 0 %}
-                                    {% if per_page == 'all' %}
-                                            {% include 'generation/station_changes/aggregated_data/regional_districts/regional_district_header.html' %}
-                                    {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
             
-                                        {% if eu_id != 0 %}
-                                            {% if per_page == 'all' %}
-                                                {% include 'generation/station_changes/aggregated_data/energy_units/energy_unit_header.html' %}
-                                            {% endif %}
-                                        {% endif %}
 
-                                            {% for station in eu_group %}
-                                                {% include 'generation/station_changes/station_changes_rows.html' %}
-                                            {% endfor %}
+                                        {% for station in eu_group %}
+                                            {% include 'generation/station_changes/station_changes_rows.html' %}
+                                        {% endfor %}
             
                                         {# Итог по энергоузлу #}
-                                        {% if per_page == 'all' and eu_id != 0 %}
+                                        {% if show_totals %}
                                             {% set current_eu_id = eu_id %}
-                                            {% include 'generation/station_changes/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                            {% if current_eu_id != 0 %}
+                                                {% include 'generation/station_changes/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                            {% endif %}
                                         {% endif %}
             
                                     {% endfor %}
             
                                     {# Итог по субъекту РФ #}
-                                    {% if per_page == 'all' %}
+                                    {% if show_totals %}
                                         {% set current_rd_id = rd_id %}
                                         {% include 'generation/station_changes/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
                                     {% endif %}
@@ -310,29 +294,28 @@
                             {# Итог по региональной энергосистеме #}
                             {% if per_page == 'all' %}
                                 {% set current_res_id = res_id %}
-                                {# {% include 'station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_total.html' #}
+                                {# {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_total.html' #}
                             {% endif %}
             
                         {% endfor %}
             
                         {# Итог по объединенной энергосистеме #}
-                        {% if per_page == 'all' %}
+                        {% if show_totals %}
                             {% set current_ues_id = ues_id %}
-                                {% include 'generation/station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
+                            {% include 'generation/station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
                         {% endif %}
             
                     {% endfor %}
             
                     {# Итог по типу энергосистемы #}
-                    {% if per_page == 'all' %}
+                    {% if show_totals %}
                         {% set current_es_type_id = es_type_id %}
                         {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
                 {% endfor %}
-                {% endfor %}
             
                 {# Итог по России #}
-                {% if per_page == 'all' %}
+                {% if show_totals %}
                     {% include 'generation/station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>
@@ -342,18 +325,25 @@
 </div>
 {% endif %}
 
-<!-- Пагинация -->
-<div>
-    {% if per_page is not none %}
-        {% include 'generation/includes/pagination_station_changes.html' %}
-    {% endif %}
-</div> 
+
 
 <script id="initial-state-json" type="application/json">
     {
         "hasActiveFilters": {{ has_active_filters | tojson }}
     }
 </script>
+
+<!-- Данные для инициализации зависимых выпадающих списков (ОЭС → РЭС, ФО → субъекты) -->
+<script id="filters-data" type="application/json">
+    {
+        "union_energy_system_filter": {{ (union_energy_system_filter or []) | tojson }},
+        "federal_district_filter": {{ (federal_district_filter or []) | tojson }},
+        "regional_energy_system_mapping": {{ (regional_energy_system_mapping or {}) | tojson }},
+        "regional_energy_system_list": {{ (regional_energy_system_list_json or []) | tojson }},
+        "regional_district_mapping": {{ (regional_district_mapping or {}) | tojson }},
+        "regional_district_list": {{ (regional_district_list_json or []) | tojson }}
+    }
+    </script>
 
 <!-- Подключаем jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

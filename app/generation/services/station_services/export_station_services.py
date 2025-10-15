@@ -108,8 +108,10 @@ from app.generation.services.station_services.aggregation_station_services.aggre
 
 
 def round_value(val, digits):
-    if val is None or val == 0:
-        return ""
+    if val is None:
+        return 0
+    if val == 0:
+        return 0
     # Поддержка режима "Не округлять" (digits is None)
     if digits is None:
         return val
@@ -299,7 +301,7 @@ def get_aggregated_power_by_year(entity_id, source, start_year, end_year):
 
 
 # Выгрузка в эксель по форме файла "Список станций"
-def generate_excel_export_with_all_totals(data, rows, start_year, end_year, rounding_digits, show_p_ogr=False, show_p_rasp=False):
+def generate_excel_export_with_all_totals(data, rows, start_year, end_year, rounding_digits, show_p_ogr=False, show_p_rasp=False, hide_aggregates=False, show_totals=False):
     import time
     start_time = time.time()
     print(f"[EXPORT] Начало экспорта в Excel")
@@ -452,7 +454,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             }
             for year in range(start_year, end_year + 1):
                 value = station.powers_by_year.get(year, {}).get(power_key)
-                row[str(year)] = round_val(value) if value is not None else None
+                row[str(year)] = round_val(value)
                 row[f"Топливо {year}"] = ""
             rows.append(row)
 
@@ -512,10 +514,13 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         station_type_data_ogr = data[config["station_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
         station_type_data_rasp = data[config["station_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-        for station_type_id, st_years in station_type_data.get(level_id, {}).items():
+        # Выводим ВСЕ типы станций из справочника, даже если данных нет (st_years пусты)
+        station_type_ids = list(station_type_names.keys())
+        for station_type_id in station_type_ids:
             if station_type_id is None:
                 continue
 
+            st_years = station_type_data.get(level_id, {}).get(station_type_id, {})
             station_type_name = station_type_names.get(station_type_id, f"id={station_type_id}")
             row_st = {
                 "Электростанция": f"   {station_type_name}",
@@ -529,7 +534,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 "Примечание": ""
             }
             for year in range(start_year, end_year + 1):
-                row_st[str(year)] = round_val(st_years.get(year)) if st_years.get(year) is not None else None
+                row_st[str(year)] = round_val(st_years.get(year))
                 row_st[f"Топливо {year}"] = None
             rows.append(row_st)
 
@@ -538,7 +543,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 row_ogr["Тип мощности"] = "Рогр"
                 for year in range(start_year, end_year + 1):
                     val = station_type_data_ogr.get(level_id, {}).get(station_type_id, {}).get(year)
-                    row_ogr[str(year)] = round_val(val) if val is not None else None
+                    row_ogr[str(year)] = round_val(val)
                 rows.append(row_ogr)
 
             if show_p_rasp:
@@ -546,31 +551,34 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 row_rasp["Тип мощности"] = "Ррасп"
                 for year in range(start_year, end_year + 1):
                     val = station_type_data_rasp.get(level_id, {}).get(station_type_id, {}).get(year)
-                    row_rasp[str(year)] = round_val(val) if val is not None else None
+                    row_rasp[str(year)] = round_val(val)
                 rows.append(row_rasp)
 
             if station_type_id == 4:
                 tes_type_data_ogr = data[config["tes_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                 tes_type_data_rasp = data[config["tes_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                for tes_type_id, tt_years in tes_type_data.get(level_id, {}).items():
+                # Для ТЭС: выводим все типы ТЭС, даже без данных
+                tes_type_ids = list(tes_type_names.keys())
+                for tes_type_id in tes_type_ids:
                     if tes_type_id is None:
                         continue
 
+                    tt_years = tes_type_data.get(level_id, {}).get(tes_type_id, {})
                     tes_type_name = tes_type_names.get(tes_type_id, f"id={tes_type_id}")
                     row_tt = {
-                            "Электростанция": f"      {tes_type_name}",
-                            " ": "",
-                            "Генерирующая компания": "",
-                            "Год ввода": "",
-                            "Тип мощности": "Руст",
-                            "Тип станции": "",
-                            "Тип ТЭС": "",
-                            "Тип агрегата ТЭС": "",
-                            "Примечание": ""
-                        }
+                        "Электростанция": f"      {tes_type_name}",
+                        " ": "",
+                        "Генерирующая компания": "",
+                        "Год ввода": "",
+                        "Тип мощности": "Руст",
+                        "Тип станции": "",
+                        "Тип ТЭС": "",
+                        "Тип агрегата ТЭС": "",
+                        "Примечание": ""
+                    }
                     for year in range(start_year, end_year + 1):
-                        row_tt[str(year)] = round_val(tt_years.get(year)) if tt_years.get(year) is not None else None
+                        row_tt[str(year)] = round_val(tt_years.get(year))
                         row_tt[f"Топливо {year}"] = None
                     rows.append(row_tt)
 
@@ -579,7 +587,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         row_ogr["Тип мощности"] = "Рогр"
                         for year in range(start_year, end_year + 1):
                             val = station_type_data_ogr.get(level_id, {}).get(station_type_id, {}).get(year)
-                            row_ogr[str(year)] = round_val(val) if val is not None else None
+                            row_ogr[str(year)] = round_val(val)
                         rows.append(row_ogr)
 
                     if show_p_rasp:
@@ -587,16 +595,19 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         row_rasp["Тип мощности"] = "Ррасп"
                         for year in range(start_year, end_year + 1):
                             val = tes_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(year)
-                            row_rasp[str(year)] = round_val(val) if val is not None else None
+                            row_rasp[str(year)] = round_val(val)
                         rows.append(row_rasp)
 
                     mt_dict = tes_machine_type_data.get(level_id, {}).get(tes_type_id, {})
                     tes_machine_type_data_ogr = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                     tes_machine_type_data_rasp = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                    for machine_type_id, mt_years in mt_dict.items():
+                    # Для типов машин ТЭС: выводим все типы машин
+                    machine_type_ids = list(machine_type_names.keys())
+                    for machine_type_id in machine_type_ids:
                         if machine_type_id is None:
                             continue
+                        mt_years = mt_dict.get(machine_type_id, {})
                         machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
                         row_mt = {
                                 "Электростанция": f"         {machine_type_name}",
@@ -610,7 +621,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 "Примечание": ""
                             }
                         for year in range(start_year, end_year + 1):
-                            row_mt[str(year)] = round_val(mt_years.get(year)) if mt_years.get(year) is not None else None
+                            row_mt[str(year)] = round_val(mt_years.get(year))
                             row_mt[f"Топливо {year}"] = None
                         rows.append(row_mt)
 
@@ -619,7 +630,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             row_ogr["Тип мощности"] = "Рогр"
                             for year in range(start_year, end_year + 1):
                                 val = tes_machine_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                row_ogr[str(year)] = round_val(val) if val is not None else None
+                                row_ogr[str(year)] = round_val(val)
                             rows.append(row_ogr)
 
                         if show_p_rasp:
@@ -627,14 +638,17 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             row_rasp["Тип мощности"] = "Ррасп"
                             for year in range(start_year, end_year + 1):
                                 val = tes_machine_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                row_rasp[str(year)] = round_val(val) if val is not None else None
+                                row_rasp[str(year)] = round_val(val)
                             rows.append(row_rasp)
 
                         fuel_dict = fuel_type_data.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
                         fuel_type_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                         fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                        for fuel_type_id, fuel_years in fuel_dict.items():
+                        # Для видов топлива: выводим все виды топлива
+                        fuel_type_ids = list(fuel_type_names.keys())
+                        for fuel_type_id in fuel_type_ids:
+                            fuel_years = fuel_dict.get(fuel_type_id, {})
                             fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
                             row_ft = {
                                     "Электростанция": f"            {fuel_type_name}",
@@ -648,7 +662,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                     "Примечание": ""
                                 }
                             for year in range(start_year, end_year + 1):
-                                row_ft[str(year)] = round_val(fuel_years.get(year)) if fuel_years.get(year) is not None else None
+                                row_ft[str(year)] = round_val(fuel_years.get(year))
                                 row_ft[f"Топливо {year}"] = None
                             rows.append(row_ft)
 
@@ -657,7 +671,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 row_ogr["Тип мощности"] = "Рогр"
                                 for year in range(start_year, end_year + 1):
                                     val = fuel_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    row_ogr[str(year)] = round_val(val) if val is not None else None
+                                    row_ogr[str(year)] = round_val(val)
                                 rows.append(row_ogr)
 
                             if show_p_rasp:
@@ -665,7 +679,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 row_rasp["Тип мощности"] = "Ррасп"
                                 for year in range(start_year, end_year + 1):
                                     val = fuel_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    row_rasp[str(year)] = round_val(val) if val is not None else None
+                                    row_rasp[str(year)] = round_val(val)
                                 rows.append(row_rasp)
 
                                 rows.append({})
@@ -723,18 +737,34 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             }
                             rows.append(row_station)
 
-                            for machine in station.machines:
-                                add_machine_row(machine, station.name if first_machine else "", rd_name if first_machine else "")
-                                first_machine = False
+                            # Добавляем строки с агрегатами только если hide_aggregates=False
+                            if not hide_aggregates:
+                                for machine in station.machines:
+                                    add_machine_row(machine, station.name if first_machine else "", rd_name if first_machine else "")
+                                    first_machine = False
+                            
+                            # Всегда добавляем итоговые строки по станции
                             if hasattr(station, "powers_by_year"):
                                 add_station_total_row(station)
-                        if eu_id != 0:
+                        
+                        # Добавляем итоговые строки по регионам только если show_totals=True
+                        if show_totals and eu_id != 0:
                             add_named_total_row(eu_id, "energy_unit", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-                    add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-                add_named_total_row(res_id, "regional_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-            add_named_total_row(ues_id, "union_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-        add_named_total_row(es_type_id, "energy_system_type", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-    add_named_total_row("Россия", "russia", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+                    
+                    if show_totals:
+                        add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+                
+                if show_totals:
+                    add_named_total_row(res_id, "regional_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+            
+            if show_totals:
+                add_named_total_row(ues_id, "union_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+        
+        if show_totals:
+            add_named_total_row(es_type_id, "energy_system_type", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
+    
+    if show_totals:
+        add_named_total_row("Россия", "russia", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
     print(f"[EXPORT] Формирование строк данных: {time.time() - t4:.2f}с, всего строк: {len(rows)}")
 
     t5 = time.time()
@@ -850,8 +880,12 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
             regional_districts[district_name] = []
         regional_districts[district_name].append(station)
 
-        regional_system = station.regional_district.regional_energy_system
-        regional_system_name = regional_system.name_full if regional_system else "Неизвестно"
+        if station.regional_district:
+            regional_system = station.regional_district.regional_energy_system
+            regional_system_name = regional_system.name_full if regional_system else "Неизвестно"
+        else:
+            regional_system_name = "Неизвестно"
+        
         if regional_system_name not in regional_systems:
             regional_systems[regional_system_name] = set()
         regional_systems[regional_system_name].add(district_name)
@@ -859,7 +893,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
     processed_stations = 0
     
     aggregated_rows = get_station_hierarchy_aggregates(Config.START_YEAR_SIPR, Config.END_YEAR_SIPR)
-    build_hierarchy_structure(aggregated_rows, station_list, include_names=False)
+    build_hierarchy_structure(station_list, include_names=False)
 
     for district_name, stations in regional_districts.items():
         log_to_db(user, f"Выгрузка данных по форме Приложения А к СиПР ЭЭС: {district_name} (Энергосистема: {regional_system_name}) | Найдено станций: {len(stations)}")
@@ -876,7 +910,9 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 else "Неизвестно"
             )
 
-            if first_station.regional_district.regional_energy_system.regional_district_count > 1:
+            if (first_station.regional_district and 
+                first_station.regional_district.regional_energy_system and 
+                first_station.regional_district.regional_energy_system.regional_district_count > 1):
                 region_label = f"{regional_system_name}, территория {district_name}"
             else:
                 region_label = regional_system_name

@@ -67,6 +67,7 @@ def get_full_aggregation_rows(machines):
         for p in m.powers_by_year:
             year = p["year"]
             p_ust = Decimal(p["p_ust"])
+            event_code = p.get("event")
 
             rows.append(SimpleNamespace(
                 energy_system_type_id=get_energy_system_type_id(m),
@@ -80,7 +81,7 @@ def get_full_aggregation_rows(machines):
                 fuel_type_id=get_fuel_type_id(m, year),
                 year=year,
                 p_ust=p_ust,
-                event_type=m.event_types,
+                event_type=event_code,
             ))
 
     return rows

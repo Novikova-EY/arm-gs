@@ -26,21 +26,14 @@
         </div>
 
         <!-- Правая группа ВНУТРИ формы -->
-        <form method="get" action="{{ url_for('station_changes_bp.station_changes_list') }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        <form method="get" action="{{ url_for('station_changes_bp.station_changes_list') }}" id="stationChangesFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
 
-            <!-- Скрытые фильтры -->
+            <!-- Скрытые фильтры для сохранения параметров при изменении округления -->
             {% for key, value in request.args.items() %}
-                {% if key not in ['show_p_ogr', 'show_p_rasp'] %}
+                {% if key not in ['rounding_digits'] %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
-
-            <input type="hidden" id="per_page_hidden" name="per_page" value="{{ request.args.get('per_page', 10) }}">
-
-            <!-- Подсветка -->
-            <button id="highlightChangesBtn" class="btn btn-outline-secondary text-dark" type="button" style="min-width: 250px;">
-                ✨ Подсветить изменения
-            </button>
 
             <!-- Округление -->
             <div class="d-flex align-items-center gap-1">
@@ -56,8 +49,6 @@
         </form>
     </div>
 </div>
-
-
 
 <!-- Блок фильтров -->
 {% include 'generation/station_changes/station_changes_filters_first_row.html' %}

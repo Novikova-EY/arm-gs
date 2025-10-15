@@ -24,12 +24,35 @@
                 </td>
             </tr>     
         {% endif %}
+
+        {# Дополнительные строки: разбивка по мероприятиям #}
+        {% set by_events = regional_energy_systems_by_station_types_with_events_yearly_p_ust
+                            .get(current_res_id, {})
+                            .get(station_type_id, {}) %}
+        {% if by_events %}
+            {% for event_code, event_label in event_types %}
+                {% set yearly = by_events.get(event_code, {}) %}
+                {% if yearly %}
+                    <tr class="table-info text-center total-power-row" style="vertical-align: middle;">
+                        <td class="total-row-cell" style="font-weight: bold; padding-left: 2cm;">
+                            {{ event_label }}
+                        </td>
+                        {% for y in range(start_year, end_year + 1) %}
+                            <td class="power-column">
+                                {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                            </td>
+                        {% endfor %}
+                        <td></td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
             
         {% if station_type_id in [4, 7, 8] %}
                 
-            {#– {% include 'station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_station_type_with_fuel.html' %} -#}
+            {#– {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_station_type_with_fuel.html' %} -#}
             
-            {% include 'station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_tes_type.html' %}
+            {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_tes_type.html' %}
         
         {% endif %}
                 
@@ -41,4 +64,4 @@
        
 {% endfor %}
         
-{% include 'station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_via.html' %}
+{% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_via.html' %}

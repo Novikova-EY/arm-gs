@@ -18,6 +18,9 @@ def create_app():
     app.config.from_object(Config) 
     app.secret_key = SECRET_KEY
     app.debug = app.config.get("DEBUG", False)
+    # Обновление шаблонов без перезапуска (особенно важно в разработке)
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.jinja_env.auto_reload = True
     app.config['SQLALCHEMY_ECHO'] = False
     app.logger.setLevel(logging.DEBUG)
     # Включаем сжатие ответов (gzip, br, zstd)
@@ -151,7 +154,7 @@ def create_app():
     app.register_blueprint(generation_bp, url_prefix="/generation")
     app.register_blueprint(station_bp, url_prefix="/generation/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
-    app.register_blueprint(station_changes_bp, url_prefix="/station_changes")
+    app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
 

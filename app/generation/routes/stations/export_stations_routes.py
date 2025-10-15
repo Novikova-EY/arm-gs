@@ -77,8 +77,11 @@ def export_station_sipr_ees_application_2_routes():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Ошибка экспорта: {e}")
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Ошибка экспорта: {e}\n{error_details}")
         print(f"Ошибка экспорта: {e}")
+        print(f"Полный traceback:\n{error_details}")
         flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
         return redirect(url_for("station_bp.station_list", **filters))
 
@@ -94,6 +97,10 @@ def export_station_full_routes():
     # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "1") == "1"
+    # Скрытие агрегатов (показывать только итоговые суммы по станциям)
+    hide_aggregates = request.args.get("hide_aggregates", "0") == "1"
+    # Показывать суммы по регионам
+    show_totals = request.args.get("show_totals", "0") == "1"
 
     try:
         rounding_digits = int(rounding_digits)
@@ -132,6 +139,8 @@ def export_station_full_routes():
         rounding_digits=rounding_digits,
         show_p_ogr=show_p_ogr,
         show_p_rasp=show_p_rasp,
+        hide_aggregates=hide_aggregates,
+        show_totals=show_totals,
     )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
