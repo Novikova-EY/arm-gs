@@ -143,16 +143,16 @@ def ensure_schemas(pg_conn, schemas: set[str]):
         if sch and sch not in existing:
             try:
                 pg_conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{sch}"'))
-                print(f"  🏗 Создана схема: {sch}")
+                print(f"  [SCHEMA] Создана схема: {sch}")
             except Exception as e:
-                print(f"  ⚠️ Не удалось создать схему {sch}: {e}")
+                print(f"  [WARNING] Не удалось создать схему {sch}: {e}")
 
 def get_pg_table(engine, schema: str, name: str) -> Table | None:
     """Пробует отразить существующую таблицу в PG. Если не выходит — возвращает None."""
     try:
         return Table(name, MetaData(), autoload_with=engine, schema=schema)
     except Exception as e:
-        print(f"  ❌ Не удалось отразить целевую таблицу {schema}.{name}: {e}")
+        print(f"  [ERROR] Не удалось отразить целевую таблицу {schema}.{name}: {e}")
         return None
 
 def upsert_batch(conn, dst_table: Table, rows: list[dict], conflict_col: str):
@@ -192,14 +192,14 @@ def main():
     # Идем по таблицам в явном порядке
     for src_name, (pg_schema, pg_name) in TABLE_MAP:
         if src_name in SKIP_TABLES:
-            print(f"\n⏭ Пропускаю (в SKIP_TABLES): {src_name}")
+            print(f"\n[SKIP] Пропускаю (в SKIP_TABLES): {src_name}")
             continue
 
         if src_name not in mysql_md.tables:
-            print(f"\n⏭ MySQL-таблица '{src_name}' не найдена — пропуск.")
+            print(f"\n[SKIP] MySQL-таблица '{src_name}' не найдена — пропуск.")
             continue
 
-        print(f"\n📄 {src_name}  →  {pg_schema}.{pg_name}")
+        print(f"\n[TABLE] {src_name}  →  {pg_schema}.{pg_name}")
         src_table = mysql_md.tables[src_name]
 
         # Целевая таблица должна существовать (создана миграциями)
@@ -211,7 +211,7 @@ def main():
         dst_cols = set(dst_table.columns.keys())
         common_cols = [c for c in src_table.columns if c.name in dst_cols]
         if not common_cols:
-            print("  ⚠️ Нет общих колонок — пропуск.")
+            print("  [WARNING] Нет общих колонок — пропуск.")
             continue
 
         # Опционально очистка (внимательно с FK!)
@@ -219,9 +219,9 @@ def main():
             try:
                 with pg_engine.begin() as conn:
                     conn.execute(text(f'TRUNCATE TABLE "{pg_schema}"."{pg_name}" RESTART IDENTITY CASCADE'))
-                print("  🧹 TRUNCATE выполнен.")
+                print("  [TRUNCATE] TRUNCATE выполнен.")
             except Exception as e:
-                print(f"  ⚠️ TRUNCATE не выполнен: {e}")
+                print(f"  [WARNING] TRUNCATE не выполнен: {e}")
 
         total = 0
         offset = 0
@@ -248,17 +248,17 @@ def main():
                     else:
                         insert_batch(conn, dst_table, payload)
                 total += len(rows)
-                print(f"  ✅ вставлено {total} (+{len(rows)})")
+                print(f"  [OK] вставлено {total} (+{len(rows)})")
             except IntegrityError as e:
-                print(f"  ❌ Ошибка вставки (IntegrityError) на offset={offset}: {e.orig}")
+                print(f"  [ERROR] Ошибка вставки (IntegrityError) на offset={offset}: {e.orig}")
                 # Обычно это FK — проверьте порядок TABLE_MAP и наличие справочников
                 break
 
             offset += BATCH_SIZE
 
-        print(f"  📦 Итого по таблице: {total}")
+        print(f"  [TOTAL] Итого по таблице: {total}")
 
-    print("\n✅ Перенос завершен.")
+    print("\n[SUCCESS] Перенос завершен.")
 
 if __name__ == "__main__":
     main()

@@ -48,7 +48,7 @@ def cache_aggregation(func):
         if cache_key in _cache:
             cached_data, cached_time = _cache[cache_key]
             if datetime.now() - cached_time < _cache_timeout:
-                print(f"[📦 CACHE HIT] Используются кэшированные данные агрегации")
+                print(f"[CACHE HIT] Используются кэшированные данные агрегации")
                 return cached_data
             else:
                 # Удаляем устаревшие данные
@@ -59,7 +59,7 @@ def cache_aggregation(func):
         
         # Сохраняем в кэш
         _cache[cache_key] = (result, datetime.now())
-        print(f"[💾 CACHE MISS] Данные агрегации закэшированы")
+        print(f"[CACHE MISS] Данные агрегации закэшированы")
         
         return result
     
@@ -113,10 +113,10 @@ def cache_sorted_stations(filters, sorted_station_ids):
     cache_key = get_sorted_stations_cache_key(filters)
     # Проверяем, не закэширован ли уже этот список
     if cache_key in _sorted_stations_cache:
-        print(f"[📦 SORTED CACHE] Список уже закэширован, пропускаем")
+        print(f"[SORTED CACHE] Список уже закэширован, пропускаем")
         return
     _sorted_stations_cache[cache_key] = (sorted_station_ids, datetime.now())
-    print(f"[💾 SORTED CACHE] Закэширован отсортированный список из {len(sorted_station_ids)} станций")
+    print(f"[SORTED CACHE] Закэширован отсортированный список из {len(sorted_station_ids)} станций")
 
 def get_cached_sorted_stations(filters):
     """Получает закэшированный отсортированный список ID станций."""
@@ -124,7 +124,7 @@ def get_cached_sorted_stations(filters):
     if cache_key in _sorted_stations_cache:
         sorted_ids, cached_time = _sorted_stations_cache[cache_key]
         if datetime.now() - cached_time < _cache_timeout:
-            print(f"[📦 SORTED CACHE HIT] Используется закэшированный список из {len(sorted_ids)} станций")
+            print(f"[SORTED CACHE HIT] Используется закэшированный список из {len(sorted_ids)} станций")
             return sorted_ids
         else:
             del _sorted_stations_cache[cache_key]
@@ -140,15 +140,15 @@ def cache_page_position(filters, page, end_position, last_station_info=None):
     if cache_key not in _page_positions_cache:
         _page_positions_cache[cache_key] = {}
     _page_positions_cache[cache_key][page] = (end_position, last_station_info, datetime.now())
-    print(f"[💾 PAGE POSITION] Сохранена позиция page={page}, end_position={end_position}, cache_key={cache_key[:8]}...")
+    print(f"[PAGE POSITION] Сохранена позиция page={page}, end_position={end_position}, cache_key={cache_key[:8]}...")
 
 def get_cached_page_position(filters, page):
     """Получает реальную позицию начала страницы и информацию о последней станции предыдущей страницы."""
     cache_key = get_sorted_stations_cache_key(filters)
-    print(f"[📦 GET PAGE POSITION] Page {page}, cache_key={cache_key[:8]}..., cache exists: {cache_key in _page_positions_cache}")
+    print(f"[GET PAGE POSITION] Page {page}, cache_key={cache_key[:8]}..., cache exists: {cache_key in _page_positions_cache}")
     
     if cache_key in _page_positions_cache:
-        print(f"[📦 GET PAGE POSITION] Cached pages for this key: {list(_page_positions_cache[cache_key].keys())}")
+        print(f"[GET PAGE POSITION] Cached pages for this key: {list(_page_positions_cache[cache_key].keys())}")
         # Начало страницы N = конец страницы N-1
         if page > 1 and (page - 1) in _page_positions_cache[cache_key]:
             cached_data = _page_positions_cache[cache_key][page - 1]
@@ -160,12 +160,12 @@ def get_cached_page_position(filters, page):
                 last_station_info = None
             
             if datetime.now() - cached_time < _cache_timeout:
-                print(f"[📦 PAGE POSITION CACHE HIT] Page {page} starts at {end_pos}")
+                print(f"[PAGE POSITION CACHE HIT] Page {page} starts at {end_pos}")
                 return end_pos, last_station_info
         else:
-            print(f"[📦 PAGE POSITION] Page {page-1} not found in cache")
+            print(f"[PAGE POSITION] Page {page-1} not found in cache")
     else:
-        print(f"[📦 PAGE POSITION] Cache key not found")
+        print(f"[PAGE POSITION] Cache key not found")
     
     return None, None
 

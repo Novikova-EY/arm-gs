@@ -124,6 +124,9 @@ def create_app():
         from app.generation.models.boiler import (
             boiler_model,
         )
+        from app.generation.models.document import (
+            document_model,
+        )
 
         # Проброс мапперов
         db.configure_mappers()
@@ -136,6 +139,55 @@ def create_app():
         from flask import request
         digits = request.args.get("rounding_digits", default=None, type=int)
         return format_decimal_for_display(value, digits=digits)
+    
+    # Фильтр для обработки ссылок на документы в тексте
+    @app.template_filter("render_document_links")
+    def render_document_links_filter(text):
+        """
+        Преобразует ссылки формата [DOC:id:название] в HTML-ссылки.
+        Пример: [DOC:5:Приказ №123] -> <a href="/generation/stations/view_document/5">Приказ №123</a>
+        """
+        if not text:
+            return ""
+        
+        import re
+        from markupsafe import Markup, escape
+        
+        # Паттерн для поиска ссылок на документы: [DOC:id:название]
+        pattern = r'\[DOC:(\d+):([^\]]+)\]'
+        
+        def replace_link(match):
+            doc_id = match.group(1)
+            doc_name = match.group(2)
+            # Экранируем название документа для безопасности
+            safe_name = escape(doc_name)
+            # Создаем HTML-ссылку для просмотра (не скачивания)
+            return f'<a href="{url_for("station_bp.view_document_file", document_id=doc_id)}" class="document-link" target="_blank" rel="noopener noreferrer">{safe_name}</a>'
+        
+        # Разбиваем текст на части: обычный текст и ссылки
+        parts = []
+        last_end = 0
+        
+        for match in re.finditer(pattern, text):
+            # Добавляем экранированный текст перед ссылкой
+            if match.start() > last_end:
+                text_part = text[last_end:match.start()]
+                # Заменяем переносы строк на <br> для правильного отображения
+                text_part = escape(text_part).replace('\n', Markup('<br>'))
+                parts.append(text_part)
+            # Добавляем ссылку
+            parts.append(replace_link(match))
+            last_end = match.end()
+        
+        # Добавляем оставшийся текст после последней ссылки
+        if last_end < len(text):
+            text_part = text[last_end:]
+            # Заменяем переносы строк на <br> для правильного отображения
+            text_part = escape(text_part).replace('\n', Markup('<br>'))
+            parts.append(text_part)
+        
+        # Объединяем все части и возвращаем как безопасный HTML
+        return Markup(''.join(parts))
 
     # Регистрация блюпринтов
     from app.auth.routes import auth_bp

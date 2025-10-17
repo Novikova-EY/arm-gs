@@ -1018,7 +1018,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         EVENT_TYPES,
     )
 
-    print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
+    print(f"[TIME] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
     return context
 
 

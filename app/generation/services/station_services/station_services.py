@@ -290,7 +290,7 @@ def get_stations_list(
     # Проверка на дубликаты в SQL запросе
     if len(raw_station_ids) != len(all_station_ids):
         duplicates_count = len(raw_station_ids) - len(all_station_ids)
-        print(f"⚠️ [SQL DUPLICATES] Обнаружено {duplicates_count} дубликатов в SQL запросе station_ids")
+        print(f"[SQL DUPLICATES] Обнаружено {duplicates_count} дубликатов в SQL запросе station_ids")
         print(f"   До уникализации: {len(raw_station_ids)} станций, после: {len(all_station_ids)} станций")
     
     total_count = len(all_station_ids)
@@ -323,7 +323,7 @@ def get_stations_list(
             if cached_start_position is not None:
                 # Используем сохраненную позицию (где закончилась предыдущая страница)
                 offset_in_sorted_list = cached_start_position
-                print(f"[📦 PAGE POSITION CACHE] Используется закэшированная позиция: {offset_in_sorted_list}")
+                print(f"[PAGE POSITION CACHE] Используется закэшированная позиция: {offset_in_sorted_list}")
             else:
                 # Первая страница или кэш позиции не найден
                 offset_in_sorted_list = (page - 1) * per_page_int
@@ -440,7 +440,7 @@ def get_stations_list(
                 seen_ids.add(station.id)
                 unique_stations_list.append(station)
             else:
-                print(f"⚠️ [WARNING] Дубликат станции обнаружен при загрузке: ID={station.id}, name={station.name}")
+                print(f"[WARNING] Дубликат станции обнаружен при загрузке: ID={station.id}, name={station.name}")
         
         stations = unique_stations_list
         
@@ -463,7 +463,7 @@ def get_stations_list(
         # Используем реальную позицию из кэша (если есть) или стандартный offset
         if cached_start_position is not None:
             start_idx = cached_start_position
-            print(f"[📦 PAGE POSITION CACHE] Используется закэшированная позиция: {start_idx}")
+            print(f"[PAGE POSITION CACHE] Используется закэшированная позиция: {start_idx}")
         else:
             start_idx = (page - 1) * per_page_int
         
@@ -799,7 +799,7 @@ def get_stations_list_with_pgu_machines(
             seen_ids.add(station.id)
             unique_stations_list.append(station)
         else:
-            print(f"⚠️ [WARNING] Дубликат станции обнаружен при загрузке (with PGU): ID={station.id}, name={station.name}")
+            print(f"[WARNING] Дубликат станции обнаружен при загрузке (with PGU): ID={station.id}, name={station.name}")
     
     stations = unique_stations_list
     
@@ -1190,9 +1190,9 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 
                 if total_rd_in_res > 1 and rd_with_stations_count > 1:
                     show_totals['regional_districts'][rd_id] = True
-                    print(f"[DEBUG] ✅ Regional district итог показывается (РЭС содержит {total_rd_in_res} субъектов, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
+                    print(f"[DEBUG] [OK] Regional district итог показывается (РЭС содержит {total_rd_in_res} субъектов, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
                 else:
-                    print(f"[DEBUG] ❌ Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
+                    print(f"[DEBUG] [SKIP] Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
         for res_id in groups_on_page['regional_energy_systems']:
             show_totals['regional_energy_systems'][res_id] = True
         for ues_id in groups_on_page['union_energy_systems']:
@@ -1239,9 +1239,9 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                         
                         if total_rd_in_res > 1 and rd_with_stations_count > 1:
                             show_totals['regional_districts'][prev_rd] = True
-                            print(f"[DEBUG] ✅ Regional district завершается внутри страницы (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
+                            print(f"[DEBUG] [OK] Regional district завершается внутри страницы (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
                         else:
-                            print(f"[DEBUG] ❌ Regional district завершается внутри страницы, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
+                            print(f"[DEBUG] [SKIP] Regional district завершается внутри страницы, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
                 prev_rd = curr_rd
             # Проверяем последний regional district
             if last_regional_district_id and next_station.get('regional_district_id') != last_regional_district_id:
@@ -1255,9 +1255,9 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                     
                     if total_rd_in_res > 1 and rd_with_stations_count > 1:
                         show_totals['regional_districts'][last_regional_district_id] = True
-                        print(f"[DEBUG] ✅ Regional district завершается на границе страниц (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
+                        print(f"[DEBUG] [OK] Regional district завершается на границе страниц (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
                     else:
-                        print(f"[DEBUG] ❌ Regional district завершается на границе страниц, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
+                        print(f"[DEBUG] [SKIP] Regional district завершается на границе страниц, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
             
             # Regional Energy Systems - находим завершившиеся на странице
             prev_res = None
@@ -1324,9 +1324,9 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                     
                     if total_rd_in_res > 1 and rd_with_stations_count > 1:
                         show_totals['regional_districts'][rd_id] = True
-                        print(f"[DEBUG] ✅ Regional district итог показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
+                        print(f"[DEBUG] [OK] Regional district итог показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
                     else:
-                        print(f"[DEBUG] ❌ Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
+                        print(f"[DEBUG] [SKIP] Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
             for res_id in groups_on_page['regional_energy_systems']:
                 show_totals['regional_energy_systems'][res_id] = True
             for ues_id in groups_on_page['union_energy_systems']:
@@ -1987,7 +1987,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         context.update(energy_system_type_aggregates)
         context.update(total_energy_system_type_aggregates)
 
-    print(f"[⏱] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
+    print(f"[TIME] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
     return context
 
 

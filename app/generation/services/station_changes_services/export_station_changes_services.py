@@ -1,6 +1,7 @@
 from io import BytesIO
 from datetime import datetime
 from config import Config
+import re
 
 from flask import current_app
 from xlsxwriter.utility import xl_col_to_name  # type: ignore
@@ -30,6 +31,29 @@ def _get_event_label(event_types: list[tuple[str, str]], code: str) -> str:
         if k == code:
             return v
     return code
+
+
+def _extract_document_names(text: str) -> str:
+    """
+    Извлекает названия документов из токенов формата [DOC:id:название].
+    Возвращает только текст названий без ID, разделенный запятыми.
+    Пример: "[DOC:5:Приказ №123], [DOC:7:Распоряжение №456]" -> "Приказ №123, Распоряжение №456"
+    """
+    if not text:
+        return ""
+    
+    # Паттерн для поиска ссылок на документы: [DOC:id:название]
+    pattern = r'\[DOC:\d+:([^\]]+)\]'
+    
+    # Находим все совпадения и извлекаем только названия (группа 1)
+    matches = re.findall(pattern, text)
+    
+    if matches:
+        # Объединяем названия через запятую
+        return ", ".join(matches)
+    
+    # Если токенов нет, возвращаем исходный текст (на случай, если это обычный текст)
+    return text
 
 
 def export_station_changes_to_excel(
@@ -388,7 +412,10 @@ def export_station_changes_to_excel(
                                     # Основание — один раз на агрегат, объединяем на высоту агрегата
                                     if idx_power == 0:
                                         r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        merge_if_needed(current_row, note_col, r2, note_col, getattr(machine, "note", None), text_center_format)
+                                        change_doc = getattr(machine, "change_document", None)
+                                        # Извлекаем только названия документов без ID
+                                        doc_text = _extract_document_names(change_doc) if change_doc else None
+                                        merge_if_needed(current_row, note_col, r2, note_col, doc_text, text_center_format)
 
                                     current_row += 1
 

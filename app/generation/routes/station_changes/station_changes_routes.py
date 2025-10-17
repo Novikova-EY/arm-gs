@@ -75,7 +75,7 @@ def station_changes_list():
         end_year=end_year,
         show_all=show_all,
     )
-    print(f"⏱ get_station_changes_list_data заняла: {time.time() - start_data:.2f} сек")
+    print(f"[TIME] get_station_changes_list_data заняла: {time.time() - start_data:.2f} сек")
 
     # Сохраняем данные в кэш для последующей быстрой выгрузки
     try:
@@ -117,7 +117,7 @@ def station_changes_list():
     has_active_filters = has_any_filters(request.args)
     
     overall = time.time() - start_data
-    print(f"⏱⏱ station_changes_list загрузка заняла: {overall:.2f} сек")
+    print(f"[TIME] station_changes_list загрузка заняла: {overall:.2f} сек")
 
     return render_template("generation/station_changes/station_changes.html", has_active_filters=has_active_filters, **context)
 

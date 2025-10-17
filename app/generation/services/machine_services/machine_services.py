@@ -18,6 +18,7 @@ from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.generation.models.document.document_model import Document
 from app.refdata.models.energy_systems.energy_area_model import EnergyArea
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
@@ -134,6 +135,9 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
 
     _commit_with_retry()
 
+    # Получаем все документы для выпадающего списка
+    all_documents = Document.query.order_by(Document.name).all()
+
     return {
         "start_year": start_year,
         "end_year": end_year,
@@ -146,6 +150,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         "pgu_machines_form": pgu_machines_form,
         "pgu_machines": pgu_machines,
         "year_features": year_features,
+        "all_documents": all_documents,
     }
 
 
@@ -158,7 +163,8 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         if isinstance(value, str):
             if value.strip() in {"\u2014", "-", ""}:
                 normalized[key] = ""
-            elif "," in value:
+            # Не заменяем запятые на точки в поле change_document (проверяем окончание ключа)
+            elif "," in value and not key.endswith("change_document"):
                 normalized[key] = value.replace(",", ".")
 
     main_form = MachineFilterForm(formdata=normalized, prefix="main_")
@@ -224,6 +230,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print("advanced_form.errors:", advanced_form.errors)
         print("pgu_machines_form.errors:", pgu_machines_form.errors)
         flash("Ошибка в заполнении формы. Проверьте поля.", "danger")
+        all_documents = Document.query.order_by(Document.name).all()
         return render_template(
             "generation/stations/machine_details.html",
             start_year=start_year,
@@ -235,6 +242,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             station=station,
             machine=machine,
             year_features=year_features,
+            all_documents=all_documents,
         )
 
     try:
@@ -250,6 +258,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             "id_equipment_group": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
             "machine_name": str,
             "note": lambda x: x or "не указано",
+            "change_document": lambda x: x or "не указано",
             "machine_group": str,
         }
 
@@ -380,6 +389,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         traceback.print_exc()
         flash(f"Ошибка при обновлении данных: {exc}", "danger")
         log_to_db(user, f"Ошибка обновления агрегата №{machine.machine_number} {machine.machine_name} станции {station.name}", details=str(exc))
+        all_documents = Document.query.order_by(Document.name).all()
         return render_template(
             "generation/stations/machine_details.html",
             start_year=start_year,
@@ -391,6 +401,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             station=station,
             machine=machine,
             year_features=year_features,
+            all_documents=all_documents,
         )
 
 
@@ -698,7 +709,7 @@ def autofill_powers_if_possible_decimal(p_ust, p_ogr, p_rasp, year_num=None):
 
     except (InvalidOperation, TypeError) as e:
         if year_num is not None:
-            flash(f"⚠️ {year_num} год: ошибка автозаполнения мощностей ({e})", "warning")
+            flash(f"[WARNING] {year_num} год: ошибка автозаполнения мощностей ({e})", "warning")
         return p_ust, p_ogr, p_rasp
     
 
@@ -822,6 +833,6 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             break
 
     if not found and machine.date_modernization_expected is not None:
-        flash("⚠️ Расчетный год модернизации не найден, но в данных указано значение. Проверьте корректность вручную.", "warning")
+        flash("[WARNING] Расчетный год модернизации не найден, но в данных указано значение. Проверьте корректность вручную.", "warning")
 
 

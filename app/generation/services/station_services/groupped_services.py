@@ -60,7 +60,7 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
         station_ids_seen[station.id] = station
     
     if duplicates:
-        print(f"⚠️ [WARNING] Обнаружены дубликаты станций в списке:")
+        print(f"[WARNING] Обнаружены дубликаты станций в списке:")
         for dup in duplicates:
             print(f"  - {dup}")
     
@@ -115,7 +115,7 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
         
         # Проверяем, не была ли эта станция уже добавлена в эту группу
         if station_key in added_stations:
-            print(f"⚠️ [WARNING] Станция {station.id} ({station.name}) уже добавлена в группу {station_key}, пропускаем")
+            print(f"[WARNING] Станция {station.id} ({station.name}) уже добавлена в группу {station_key}, пропускаем")
             continue
         
         added_stations.add(station_key)

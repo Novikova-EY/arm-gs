@@ -156,6 +156,7 @@ class Machine(db.Model):
     date_relabing_fact = db.Column(db.String(10), nullable=True)
     date_update_fact = db.Column(db.String(10), nullable=True)
     note = db.Column(db.String(512), nullable=True)
+    change_document = db.Column(db.Text, nullable=True)  # Документ-основание для изменения параметров агрегата
     year_modern = db.Column(db.String(10), nullable=True)
     year_demontaz = db.Column(db.String(10), nullable=True)
     resurs_coal = db.Column(db.String(10), nullable=True)

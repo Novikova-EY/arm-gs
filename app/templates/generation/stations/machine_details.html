@@ -20,9 +20,10 @@
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Модуль "Электростанции"</a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции</a>
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
-            Модуль "{{ station.name }}"
+            {{ station.name }}
         </a>
     </div>
 
@@ -167,6 +168,38 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold align-self-start">Документ-основание для изменения параметров агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            <!-- Редактируемая область (визуально как нижний блок) -->
+                                            <div id="change_document_editor"
+                                                 class="document-display-readonly p-2 border rounded mb-2"
+                                                 contenteditable="true"
+                                                 style="background-color: #f8f9fa; min-height: 40px;"></div>
+                                            <!-- Скрытое поле, которое реально отправляется в форму -->
+                                            <input type="hidden"
+                                                   name="{{ main_form.change_document.name }}"
+                                                   id="change_document_hidden"
+                                                   value="{{ main_form.change_document.data or '' }}">
+                                            <select class="form-select" id="document_selector" onchange="insertDocumentLink(this)">
+                                                <option value="">Выберите документ для вставки...</option>
+                                                {% for doc in all_documents %}
+                                                    <option value="{{ doc.id }}" data-name="{{ doc.name }}">{{ doc.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% else %}
+                                            {% if main_form.change_document.data %}
+                                                <div class="document-display-readonly">
+                                                    {{ main_form.change_document.data | render_document_links }}
+                                                </div>
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 col-lg-3">
@@ -190,6 +223,39 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_decompressing_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_decompressing_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_modernization_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемая дата присоединения:</div>
                                     <div class="col-7 text-start">
@@ -220,26 +286,13 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="col-12 col-lg-3">
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_decompressing_expected(class="form-control") }}
+                                            {{ main_form.date_update_fact(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_decompressing_fact(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
+                                            {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -250,26 +303,6 @@
                                             {{ main_form.date_relabing_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_modernization_expected(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_update_fact(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1056,7 +1089,210 @@ document.addEventListener("DOMContentLoaded", function () {
 #machine-logs-table td:nth-child(1),
 #machine-logs-table td:nth-child(2),
 #machine-logs-table td:nth-child(3) { white-space: nowrap; }
+
+/* Стили для поля документов-оснований */
+.change-document-input {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-height: auto;
+    height: auto;
+}
+
+/* Стили для отображения документов-оснований в режиме просмотра */
+.document-display-readonly {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.5;
+}
+
+.document-link {
+    color: #0d6efd;
+    text-decoration: none;
+    border-bottom: 1px dotted #0d6efd;
+    transition: all 0.2s;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.document-link:hover {
+    color: #0a58ca;
+    border-bottom-style: solid;
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Для contenteditable - разрешаем клики по ссылкам */
+[contenteditable="true"] .document-link {
+    cursor: pointer;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Подсветка ссылки при наведении */
+[contenteditable="true"] .document-link:hover {
+    background-color: #e7f3ff;
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
 </style>
+
+<!-- JavaScript для редактирования и отображения документов в одном поле -->
+<script>
+function tokensToHTML(text) {
+    if (!text) return '';
+    // Экранируем и заменяем переводы строк
+    let result = text.replace(/&/g, '&amp;')
+                     .replace(/</g, '&lt;')
+                     .replace(/>/g, '&gt;')
+                     .replace(/"/g, '&quot;')
+                     .replace(/\n/g, '<br>');
+    // Заменяем токены на ссылки
+    const tokenRe = /\[DOC:(\d+):([^\]]+)\]/g;
+    result = result.replace(tokenRe, function(_, id, name){
+        const safeName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        // contenteditable="false" делает ссылку "вырванной" из contenteditable контекста
+        return `<a href="/generation/stations/view_document_file/${id}" class="document-link" contenteditable="false" target="_blank" rel="noopener noreferrer">${safeName}</a>`;
+    });
+    return result;
+}
+
+function htmlToTokens(html) {
+    if (!html) return '';
+    // 1) Ссылки обратно в токены
+    let result = html.replace(/<a [^>]*href=\"\/generation\/stations\/view_document_file\/(\d+)\"[^>]*>([\s\S]*?)<\/a>/gi, function(_, id, inner){
+        const tmp = document.createElement('div');
+        tmp.innerHTML = inner;
+        const name = tmp.textContent;
+        return `[DOC:${id}:${name}]`;
+    });
+    // 2) <br> -> \n
+    result = result.replace(/<br\s*\/?>(?=\s*<)/gi, '\n');
+    result = result.replace(/<br\s*\/?>(?!\n)/gi, '\n');
+    // 3) Блочные теги -> переносы строк
+    result = result.replace(/<\/?div[^>]*>/gi, '\n');
+    result = result.replace(/<\/?p[^>]*>/gi, '\n');
+    // 4) Удаляем остальные теги
+    result = result.replace(/<[^>]+>/g, '');
+    // 5) Декодируем HTML-сущности
+    const tmp = document.createElement('textarea');
+    tmp.innerHTML = result;
+    result = tmp.value;
+    // Упрощаем множественные переносы
+    result = result.replace(/\n{3,}/g, '\n\n');
+    return result.trim();
+}
+
+function renderFromHidden() {
+    const hidden = document.getElementById('change_document_hidden');
+    const editor = document.getElementById('change_document_editor');
+    if (!hidden || !editor) return;
+    editor.innerHTML = tokensToHTML(hidden.value || '');
+}
+
+function syncHiddenFromEditor() {
+    const hidden = document.getElementById('change_document_hidden');
+    const editor = document.getElementById('change_document_editor');
+    if (!hidden || !editor) return;
+    hidden.value = htmlToTokens(editor.innerHTML);
+}
+
+function insertDocumentLink(selectElement) {
+    const docId = selectElement.value;
+    const docName = selectElement.options[selectElement.selectedIndex]?.getAttribute('data-name');
+    if (!docId || !docName) return;
+    const hidden = document.getElementById('change_document_hidden');
+    const editor = document.getElementById('change_document_editor');
+    if (!hidden || !editor) return;
+    // Добавляем токен в конец со справедливым разделителем
+    let text = hidden.value || '';
+    const token = `[DOC:${docId}:${docName}]`;
+    if (text && !text.endsWith('\n') && !text.endsWith(',') && !text.endsWith(' ')) {
+        text += ', ';
+    }
+    text += token;
+    hidden.value = text;
+    renderFromHidden();
+    // Сброс селекта
+    selectElement.selectedIndex = 0;
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    const editor = document.getElementById('change_document_editor');
+    const hidden = document.getElementById('change_document_hidden');
+    
+    console.log('Инициализация обработчиков документов');
+    console.log('Editor:', editor);
+    console.log('Hidden:', hidden);
+    
+    if (editor && hidden) {
+        renderFromHidden();
+        console.log('Контент после рендера:', editor.innerHTML);
+        
+        // Синхронизация при вводе/вставке
+        editor.addEventListener('input', syncHiddenFromEditor);
+        editor.addEventListener('blur', syncHiddenFromEditor);
+        
+        // Обработчик кликов по ссылкам внутри contenteditable - используем mousedown
+        editor.addEventListener('mousedown', function(e){
+            console.log('Mousedown на editor, target:', e.target);
+            const link = e.target.closest('a.document-link');
+            console.log('Найденная ссылка:', link);
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Открываем документ:', link.href);
+                // Открываем ссылку в новом окне
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+                return false;
+            }
+        }, true);
+        
+        // Дополнительно на click
+        editor.addEventListener('click', function(e){
+            console.log('Click на editor, target:', e.target);
+            const link = e.target.closest('a.document-link');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Click: открываем документ:', link.href);
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+                return false;
+            }
+        }, true);
+        
+        // Перед отправкой формы синхронизируем
+        const form = editor.closest('form');
+        if (form) {
+            form.addEventListener('submit', function(){
+                syncHiddenFromEditor();
+            });
+        }
+    }
+    
+    // Универсальный обработчик для всех ссылок document-link на странице
+    document.body.addEventListener('click', function(e){
+        console.log('Body click, target:', e.target);
+        const link = e.target.closest('a.document-link');
+        console.log('Ссылка document-link:', link);
+        if (link) {
+            const isInEditable = link.closest('[contenteditable="true"]');
+            console.log('В contenteditable:', isInEditable);
+            if (!isInEditable) {
+                // Для режима просмотра - ссылки должны работать стандартно
+                console.log('Стандартный переход по ссылке:', link.href);
+            }
+        }
+    }, true);
+});
+</script>
 
 {% endif %}
 {% endblock %}

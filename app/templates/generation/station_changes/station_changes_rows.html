@@ -67,9 +67,15 @@
         </td>
       {% endfor %}
 
-      {# Примечание — только однажды для агрегата #}
+      {# Документ-основание — только однажды для агрегата #}
       {% if power_row == first_power %}
-        <td rowspan="{{ machine.total_rows }}">{{ machine.note or '—' }}</td>
+        <td rowspan="{{ machine.total_rows }}">
+          {% if machine.change_document %}
+            {{ machine.change_document | render_document_links | safe }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
       {% endif %}
 
     </tr>

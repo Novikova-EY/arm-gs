@@ -9,3 +9,5 @@ from app.generation.models.machine.machine_tes_type_model import MachineTesType
 
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+
+from app.generation.models.document.document_model import Document

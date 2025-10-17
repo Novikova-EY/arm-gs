@@ -69,11 +69,11 @@ def upload_and_update_machines():
 
         file = request.files.get("file")
         if not file:
-            print("❌ Файл не получен")
+            print("[ERROR] Файл не получен")
             return jsonify({"error": "Файл не получен"}), 400
 
         df = pd.read_excel(file)
-        print(f"📄 Прочитано строк: {len(df)}")
+        print(f"[FILE] Прочитано строк: {len(df)}")
         df = df.dropna(how="all")
         updated = 0
         skipped = 0

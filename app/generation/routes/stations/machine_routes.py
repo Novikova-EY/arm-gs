@@ -74,7 +74,8 @@ def machine_details(station_id, machine_id):
             end_year=end_year,
             rounding_digits=rounding_digits,
             year_features=result['year_features'],
-            machine_logs=machine_logs
+            machine_logs=machine_logs,
+            all_documents=result['all_documents']
         )
 
 @station_bp.route("/pgu_machine_details/<int:station_id>/<int:machine_id>/<int:pgu_machine_id>", methods=["GET", "POST"])

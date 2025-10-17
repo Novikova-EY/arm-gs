@@ -131,6 +131,11 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
+    change_document = StringField(
+        'Документ-основание для изменения параметров агрегата',
+        validators=[Optional()]
+    )
+
 
 class PGUMachinePowerForm(Form):
     year = IntegerField('Год', validators=[Optional()])

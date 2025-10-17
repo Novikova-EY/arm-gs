@@ -107,7 +107,7 @@ def station_list():
                 show_all=show_all,
                 show_totals=show_totals,
     )
-    print(f"⏱ get_station_list_data заняла: {time.time() - start_data:.2f} сек")
+    print(f"[TIME] get_station_list_data заняла: {time.time() - start_data:.2f} сек")
 
     # Save ready dataset for export (per user and filters)
     try:
@@ -148,7 +148,7 @@ def station_list():
     has_active_filters = has_any_filters(request.args)
     
     overall = time.time() - start_data
-    print(f"⏱⏱ station_list загрузка заняла: {overall:.2f} сек")
+    print(f"[TIME] station_list загрузка заняла: {overall:.2f} сек")
 
     return render_template("generation/stations/stations.html", has_active_filters=has_active_filters, **context)
 

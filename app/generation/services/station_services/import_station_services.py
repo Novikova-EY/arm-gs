@@ -60,7 +60,7 @@ def safe_lookup(model, field, value, cleaner=_clean_name):
         obj = model.query.filter_by(**{field: cleaned}).first()
         return obj.id if obj else None
     except Exception as e:
-        print(f"❌ Ошибка при поиске {model.__name__}.{field}='{value}':", e)
+        print(f"[ERROR] Ошибка при поиске {model.__name__}.{field}='{value}':", e)
         return None
 
 
@@ -665,7 +665,7 @@ def import_station_list_from_excel(file, user):
         if row.isnull().all():
             continue
 
-        print(f"\n🔄 Обрабатываем строку {index}...")
+        print(f"\n[PROCESS] Обрабатываем строку {index}...")
 
         if not (pd.isna(row['regional_district']) and pd.isna(row['station_name'])):
             current_station = handle_station(row, user)
@@ -693,7 +693,7 @@ def import_station_list_from_excel(file, user):
             update_station_power(station, start_year, end_year, user)
 
     db.session.commit()
-    print(f"✅Данные успешно загружены пользователем {user}")
+    print(f"[SUCCESS] Данные успешно загружены пользователем {user}")
     return {"message": f"Данные успешно загружены пользователем {user}"}
 
 
@@ -705,9 +705,9 @@ def import_fuel_tes_station_from_excel(file, user):
     sheet_names = ['Приложение А_ЕЭС', 'Приложение А_ТИТЭС']
 
     for sheet in sheet_names:
-        print(f"\n📄 Обработка листа: {sheet}")
+        print(f"\n[SHEET] Обработка листа: {sheet}")
         if sheet not in xls.sheet_names:
-            print(f"⚠️ Лист '{sheet}' не найден в файле. Пропускаем.")
+            print(f"[WARNING] Лист '{sheet}' не найден в файле. Пропускаем.")
             continue
 
         df = xls.parse(sheet, header=0)
@@ -735,12 +735,12 @@ def import_fuel_tes_station_from_excel(file, user):
                 if gen_company_obj:
                     print(f"Генкомпания найдена: {gen_company_obj.name}")
                 else:
-                    print(f"⚠️ Генкомпания с именем '{gen_company_name}' не найдена.")
+                    print(f"[WARNING] Генкомпания с именем '{gen_company_name}' не найдена.")
                     continue
 
                 fuel_name = _clean_name(row['fuel']) if not pd.isna(row['fuel']) else None
                 if pd.isna(fuel_name) or fuel_name is None:
-                    print("⚠️ Топливо не указано, пропускаем строку.")
+                    print("[WARNING] Топливо не указано, пропускаем строку.")
                     continue
 
                 station = Station.query.join(Machine).filter(
@@ -749,7 +749,7 @@ def import_fuel_tes_station_from_excel(file, user):
                 ).first()
 
                 if station:
-                    print(f"✅ Станция найдена: {station_name}")
+                    print(f"[OK] Станция найдена: {station_name}")
                     if station.machines:
                         updated_machines = 0
                         for machine in station.machines:
@@ -760,15 +760,15 @@ def import_fuel_tes_station_from_excel(file, user):
                         if updated_machines > 0:
                             db.session.commit()
                             log_to_db(user, "Обновление топлива машин", f"Станция: {station_name}, обновлено агрегатов: {updated_machines}")
-                            print(f"🔄 Обновлено топливо для {updated_machines} агрегатов станции '{station_name}'.")
+                            print(f"[UPDATE] Обновлено топливо для {updated_machines} агрегатов станции '{station_name}'.")
                         else:
-                            print(f"ℹ️ Все агрегаты станции '{station_name}' уже имеют актуальное топливо.")
+                            print(f"[INFO] Все агрегаты станции '{station_name}' уже имеют актуальное топливо.")
                     else:
-                        print(f"⚠️ У станции '{station_name}' нет агрегатов.")
+                        print(f"[WARNING] У станции '{station_name}' нет агрегатов.")
                 else:
-                    print(f"❌ Станция '{station_name}' с генкомпанией '{gen_company_name}' не найдена.")
+                    print(f"[ERROR] Станция '{station_name}' с генкомпанией '{gen_company_name}' не найдена.")
             else:
-                print("⏭ Имя и генкомпания отсутствуют, пропускаем строку.")
+                print("[SKIP] Имя и генкомпания отсутствуют, пропускаем строку.")
 
     return {'message': f'Данные по топливу успешно загружены пользователем {user}'}
 
