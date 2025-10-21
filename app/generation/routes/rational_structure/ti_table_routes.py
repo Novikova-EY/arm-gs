@@ -15,7 +15,7 @@ from app.common.services.help_services import (
 def ti_table():
     machines = Machine.query.options(
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
-        joinedload(Machine.station_type),
+        joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.tes_machine_type),
         joinedload(Machine.equipment_group),
         joinedload(Machine.machine_powers),

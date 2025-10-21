@@ -41,6 +41,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def energy_unit_query(
@@ -262,10 +263,10 @@ def update_energy_unit_service(data, user):
                         entity_id=energy_unit_id)
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
                 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "energy_unit"))
                 obj.name = name
 
             # Проверка наличия субъекта РФ
@@ -277,7 +278,9 @@ def update_energy_unit_service(data, user):
                         raise ValueError(f"Субъект РФ с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(RegionalDistrict, obj.id_regional_district) if obj.id_regional_district else None
-                    changes["Субъект РФ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_regional_district", old_name, new_name, "energy_unit"))
                     obj.id_regional_district = new_val
 
             # Проверка наличия региональной энергосистемы
@@ -289,7 +292,9 @@ def update_energy_unit_service(data, user):
                         raise ValueError(f"Субъект РФ с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(RegionalEnergySystem, obj.id_regional_energy_system) if obj.id_regional_energy_system else None
-                    changes["Региональная энергосистема"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_regional_energy_system", old_name, new_name, "energy_unit"))
                     obj.id_regional_energy_system = new_val
 
             # Если есть реальные изменения — лог и добавление в список
@@ -297,7 +302,7 @@ def update_energy_unit_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлен энергоузел: {name}", 
-                    f"Изменения = {changes}",
+                    f"Изменения: {'; '.join(changes)}",
                     entity_type="energy_unit", 
                     entity_id=energy_unit_id)
                 updated_ids.append(energy_unit_id)

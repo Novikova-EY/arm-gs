@@ -67,6 +67,13 @@ class StationFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
+    id_station_type = SelectField(
+        'Тип электростанции',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
     # Список видов топлива
     fuel_types = TextAreaField(
         'Виды топлива',
@@ -210,6 +217,13 @@ class AddStationForm(FlaskForm):
 
     id_regional_district = SelectField(
         'Субъект РФ',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
+    id_station_type = SelectField(
+        'Тип электростанции',
         coerce=int,
         choices=[],
         validators=[Optional()]

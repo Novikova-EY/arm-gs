@@ -31,6 +31,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def energy_system_type_query(
@@ -145,10 +146,10 @@ def update_energy_system_type_service(data, user):
                         entity_id=energy_system_type_id)
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
             
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "energy_system_type"))
                 obj.name = name
             
             # Если есть реальные изменения — лог и добавление в список
@@ -156,7 +157,7 @@ def update_energy_system_type_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена запись части энергосистемы России: {name}", 
-                    f"Изменения = {changes}",
+                    f"Изменения: {'; '.join(changes)}",
                     entity_type="energy_system_type", 
                     entity_id=energy_system_type_id)
                 updated_ids.append(energy_system_type_id)

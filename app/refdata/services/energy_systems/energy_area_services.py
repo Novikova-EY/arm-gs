@@ -38,6 +38,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def energy_area_query(
@@ -269,10 +270,10 @@ def update_energy_area_service(data, user):
                         entity_id=energy_area_id)
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
             
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "energy_area"))
                 obj.name = name
             
             # Проверка наличия субъекта РФ
@@ -284,7 +285,9 @@ def update_energy_area_service(data, user):
                         raise ValueError(f"Субъект РФ с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(RegionalDistrict, obj.id_regional_district) if obj.id_regional_district else None
-                    changes["Субъект РФ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_regional_district", old_name, new_name, "energy_area"))
                     obj.id_regional_district = new_val
             
             # Если есть реальные изменения — лог и добавление в список
@@ -292,7 +295,7 @@ def update_energy_area_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлен энергорайон: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="energy_area", 
                     entity_id=energy_area_id)
                 updated_ids.append(energy_area_id)

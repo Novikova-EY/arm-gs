@@ -164,6 +164,10 @@ def add_station():
     # Подготовка данных для формы
     regional_district_list = get_regional_district_list_full()
     form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
+    
+    # Заполняем список типов станций
+    from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+    form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
 
     if form.validate_on_submit():
         try:

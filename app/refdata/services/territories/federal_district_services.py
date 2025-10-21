@@ -23,6 +23,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def federal_district_query(
@@ -149,18 +150,22 @@ def update_federal_district_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
             
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "federal_district"))
                 obj.name = name
 
             if name_full != (obj.name_full or None):
-                changes["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
+                old_val = obj.name_full or "не указано"
+                new_val = name_full or "не указано"
+                changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
 
             if name_abr != (obj.name_abr or None):
-                changes["Сокращенное наименование"] = f"{_dash(obj.name_abr)} → {_dash(name_abr)}"
+                old_val = obj.name_abr or "не указано"
+                new_val = name_abr or "не указано"
+                changes.append(f"Сокращенное наименование: {old_val} → {new_val}")
                 obj.name_abr = name_abr
 
             # Если есть реальные изменения — лог и добавление в список
@@ -168,7 +173,7 @@ def update_federal_district_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлен федеральный округ: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="federal_district", 
                     entity_id=federal_district_id)  
                 updated_ids.append(federal_district_id)

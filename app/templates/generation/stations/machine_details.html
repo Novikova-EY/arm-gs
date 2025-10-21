@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}№{{ machine.machine_number }} {{ machine.machine_name }} ({{ station.name }}){% endblock %}
+{% block title %}{% if machine and machine.machine_number %}№{{ machine.machine_number }} {{ machine.machine_name }}{% else %}Новый агрегат{% endif %} ({{ station.name }}){% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -48,10 +48,15 @@
         </a>
 
         <!-- Карточка с основной информацией -->
-        <form method="POST" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
+        <form method="POST" action="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id if machine else 0, **request.args) }}">
             {{ main_form.csrf_token }}
             {{ advanced_form.csrf_token }}
             {{ pgu_machines_form.csrf_token }}
+            
+            <!-- Скрытое поле для версии (защита от concurrent updates) -->
+            {% if machine and machine.version is defined %}
+            <input type="hidden" name="version" value="{{ machine.version }}">
+            {% endif %}
             
             <!-- Скрытое поле для ID агрегата -->
             {{ main_form.id_machine }}
@@ -119,17 +124,6 @@
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_energy_area(class="form-select") }}
-                                        {% else %}
-                                            {{ machine.gen_company.name if machine.gen_company else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center mb-2">
-
-                                    <div class="col-5 text-start fw-semibold">Тип электростанции:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_station_type(class="form-select") }}
                                         {% else %}
                                             {{ machine.gen_company.name if machine.gen_company else '—' }}
                                         {% endif %}
@@ -385,7 +379,7 @@
             </div>
 
             {{ pgu_machines_form.hidden_tag() }}
-            {% if machine.id_tes_machine_type == 2 %}
+            {% if machine and machine.id_tes_machine_type == 2 %}
                 <!-- Таблица с агрегатами ПГУ (PGUMachines) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0"></h3>
@@ -537,7 +531,7 @@
             </div>
             
 
-            {% if main_form.id_station_type.data == 4 %}
+            {% if machine.machine_station and machine.machine_station.id_station_type == 4 %}
                 <!-- Таблица "Типы ТЭС" -->
                 <div class="table-responsive">
                     <table class="table table-hover table-striped table-bordered machines-table">
@@ -634,7 +628,7 @@
                     <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
                 
                     <!-- Кнопка "Сбросить" -->
-                    <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" 
+                    <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id if machine else 0, **request.args) }}" 
                     class="btn btn-outline-danger fs-5">
                         Сбросить
                     </a>
@@ -990,11 +984,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     {% if machine_logs and machine_logs|length > 0 %}
                         {% for log in machine_logs %}
                             <tr>
-                                <td data-date="{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}">{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}</td>
-                                <td data-time="{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</td>
-                                <td data-user="{{ log.username|lower }}">{{ log.username }}</td>
-                                <td><div data-action="{{ log.action|lower }}">{{ log.action }}</div></td>
-                                <td>{% if log.details %}<div data-details="{{ log.details|lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                                <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
+                                <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     {% else %}
@@ -1006,6 +1000,23 @@ document.addEventListener("DOMContentLoaded", function () {
             </table>
             </div>
         </div>
+        {% if machine_logs and machine_logs|length > 0 %}
+        <div class="card-footer text-center">
+            <div class="mb-2">
+                <small class="text-muted">
+                    Показано: <span id="machine-logs-shown">{{ machine_logs|length }}</span> из <span id="machine-logs-total">?</span>
+                </small>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="load-more-machine-logs" 
+                    data-station-id="{{ station.id }}"
+                    data-machine-id="{{ machine.id if machine else 0 }}"
+                    data-offset="{{ machine_logs|length }}"
+                    style="display: none;">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                Загрузить еще
+            </button>
+        </div>
+        {% endif %}
     </div>
     <div class="my-3"></div>
  </div>
@@ -1291,6 +1302,78 @@ document.addEventListener('DOMContentLoaded', function(){
             }
         }
     }, true);
+});
+</script>
+
+<script>
+// Загрузка дополнительных логов агрегата
+document.addEventListener('DOMContentLoaded', function() {
+    const loadMoreBtn = document.getElementById('load-more-machine-logs');
+    const logsTable = document.querySelector('#machine-logs-table tbody');
+    const logsShown = document.getElementById('machine-logs-shown');
+    const logsTotal = document.getElementById('machine-logs-total');
+    
+    if (!loadMoreBtn) return;
+    
+    const stationId = loadMoreBtn.dataset.stationId;
+    const machineId = loadMoreBtn.dataset.machineId;
+    let currentOffset = parseInt(loadMoreBtn.dataset.offset) || 0;
+    
+    // Проверяем общее количество логов при загрузке страницы
+    const url = `/generation/stations/machine_logs/${stationId}/${machineId}?offset=0&limit=0`;
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            logsTotal.textContent = data.total;
+            // Показываем кнопку если есть еще логи
+            if (currentOffset < data.total) {
+                loadMoreBtn.style.display = 'inline-block';
+            }
+        })
+        .catch(err => console.error('Ошибка проверки логов:', err));
+    
+    loadMoreBtn.addEventListener('click', function() {
+        const spinner = this.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        this.disabled = true;
+        
+        const loadUrl = `/generation/stations/machine_logs/${stationId}/${machineId}?offset=${currentOffset}&limit=150`;
+        fetch(loadUrl)
+            .then(r => r.json())
+            .then(data => {
+                // Добавляем новые строки в таблицу
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td data-date="${log.date}">${log.date}</td>
+                        <td data-time="${log.time}">${log.time}</td>
+                        <td data-user="${log.username_lower}">${log.username}</td>
+                        <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                        <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
+                    `;
+                    logsTable.appendChild(row);
+                });
+                
+                // Обновляем счетчик
+                currentOffset += data.count;
+                logsShown.textContent = currentOffset;
+                loadMoreBtn.dataset.offset = currentOffset;
+                
+                // Скрываем кнопку если больше нет логов
+                if (!data.has_more) {
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Ошибка загрузки логов:', err);
+                alert('Ошибка загрузки логов. Попробуйте позже.');
+                loadMoreBtn.disabled = false;
+                spinner.style.display = 'none';
+            });
+    });
 });
 </script>
 

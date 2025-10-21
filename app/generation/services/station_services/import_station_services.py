@@ -429,7 +429,10 @@ def update_station_power(station, start_year, end_year, user):
 
 # Вспомогательная функция: запись топлива агрегата по годам
 def assign_machine_fuel(machine, row, start_year, end_year, user):
-    station_type_name = StationType.query.get(machine.id_station_type).name if machine.id_station_type else None
+    # Получаем тип станции из связанной станции
+    station_type_name = None
+    if machine.machine_station and machine.machine_station.id_station_type:
+        station_type_name = StationType.query.get(machine.machine_station.id_station_type).name
 
     fuel_type_mapping = {
         "газ": 1,

@@ -89,9 +89,36 @@ from app.generation.services.station_services.import_station_services import (
     import_fuel_tes_station_from_excel, 
 )
 from app.common.services.cache_services import CacheService
+from app.common.middleware import handle_stale_data
+from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
+
+
+def _format_logs_for_display(logs):
+    """
+    Предварительное форматирование логов для оптимизации рендеринга шаблона.
+    Форматирует даты и применяет lower() в Python вместо Jinja2.
+    
+    Returns: список словарей с предформатированными данными
+    """
+    formatted_logs = []
+    for log in logs:
+        formatted_log = {
+            'date': log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '',
+            'time': log.timestamp.strftime('%H:%M:%S') if log.timestamp else '',
+            'username': log.username or '',
+            'username_lower': (log.username or '').lower(),
+            'action': log.action or '',
+            'action_lower': (log.action or '').lower(),
+            'details': log.details or '',
+            'details_lower': (log.details or '').lower(),
+        }
+        formatted_logs.append(formatted_log)
+    return formatted_logs
+
 
 @station_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
 @login_required
+@handle_stale_data
 def station_details(station_id):
     """Маршрут для отображения сведений об электростанции с логированием изменений."""
 
@@ -107,6 +134,7 @@ def station_details(station_id):
             joinedload(Station.energy_unit),
             joinedload(Station.condition_type),
             joinedload(Station.group),
+            joinedload(Station.station_type),
             selectinload(Station.machines)
                 .selectinload(Machine.machine_powers).joinedload(MachinePower.year),
             selectinload(Station.machines)
@@ -116,8 +144,6 @@ def station_details(station_id):
             selectinload(Station.machines)
                 .joinedload(Machine.gen_company),
             selectinload(Station.machines)
-                .joinedload(Machine.station_type),
-            selectinload(Station.machines)
                 .joinedload(Machine.tes_machine_type)
         )
         .filter_by(id=station_id)
@@ -126,11 +152,19 @@ def station_details(station_id):
     
     if not station:
         abort(404)
-    # Сортировка агрегатов по группе, топливу и числовому номеру (естественная сортировка)
+    
+    # Диагностика для понимания объема данных
+    machines_count = len(station.machines) if station.machines else 0
+    # Подсчитываем мощности
+    powers_count = 0
+    for machine in (station.machines or []):
+        powers_count += len(machine.machine_powers) if hasattr(machine, 'machine_powers') else 0
+    
+    print(f"[STATION DEBUG] ID: {station_id}, Название: {station.name}, Агрегатов: {machines_count}, Мощностей: {powers_count}")
+    
+    # Сортировка агрегатов по станционному номеру (естественная сортировка)
     if station and station.machines:
         def _machine_sort_key(m):
-            group_key = (m.machine_group or '').lower()
-            fuel_key = (m.fuel_so or '').lower()
             num_key = float('inf')
             try:
                 if m.machine_number:
@@ -139,7 +173,7 @@ def station_details(station_id):
                         num_key = int(s)
             except Exception:
                 num_key = float('inf')
-            return (group_key, fuel_key, num_key)
+            return num_key
         try:
             station.machines.sort(key=_machine_sort_key)
         except Exception:
@@ -157,7 +191,7 @@ def station_details(station_id):
     machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
     # Определяем, какая форма была отправлена
     submitted_keys = set(request.form.keys())
-    is_station_form = any(k in submitted_keys for k in {"name", "id_condition_type", "id_station_group", "id_energy_unit", "id_regional_district", "location", "note"})
+    is_station_form = any(k in submitted_keys for k in {"name", "id_condition_type", "id_station_type", "id_station_group", "id_energy_unit", "id_regional_district", "location", "note"})
     # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
     is_machines_form = ("machines_delete[]" in submitted_keys) or any(
         k.startswith(prefix)
@@ -214,12 +248,19 @@ def station_details(station_id):
     form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
     form.id_condition_type.choices = [(ct.id, ct.name) for ct in condition_types]
     form.id_station_group.choices = [(ct.id, ct.name) for ct in station_groups]
+    
+    # Заполняем список типов станций
+    from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+    station_types = StationType.query.order_by(StationType.id).all()
+    form.id_station_type.choices = [(0, '— не указано —')] + [(st.id, st.name) for st in station_types]
+    print(f"[DEBUG] Типы станций загружены: {form.id_station_type.choices}")
+    print(f"[DEBUG] Текущий тип станции: station.id_station_type = {station.id_station_type}")
     form_machines.id_gen_company.choices = [(gc.id, gc.name) for gc in gen_companies]
     
     # Используем кэшированные энергоузлы
     energy_units = form_data['energy_units']
-    form.id_energy_unit.choices = [(eu.id, eu.name) for eu in energy_units]
-    energy_unit_names = [(eu.id, eu.name) for eu in energy_units]
+    form.id_energy_unit.choices = [(0, '— не указано —')] + [(eu.id, eu.name) for eu in energy_units]
+    energy_unit_names = [(0, '— не указано —')] + [(eu.id, eu.name) for eu in energy_units]
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -235,18 +276,40 @@ def station_details(station_id):
             form.id_condition_type.data = 0
         if form.id_energy_unit.data is None:
             form.id_energy_unit.data = 0
+        if form.id_station_type.data is None:
+            form.id_station_type.data = 0
 
     if request.method == "POST":
+        # Отладочный вывод для проверки POST-данных
+        print(f"[DEBUG POST] is_station_form = {is_station_form}")
+        print(f"[DEBUG POST] is_machines_form = {is_machines_form}")
+        print(f"[DEBUG POST] request.form keys = {list(request.form.keys())}")
+        print(f"[DEBUG POST] id_station_type в form = {request.form.get('id_station_type')}")
+        print(f"[DEBUG POST] id_energy_unit в form = {request.form.get('id_energy_unit')}")
 
         # Обработка отправки основной формы станции
         if is_station_form:
+            print(f"[DEBUG POST] form.id_station_type.data (до валидации) = {form.id_station_type.data}")
+            print(f"[DEBUG POST] form.id_energy_unit.data (до валидации) = {form.id_energy_unit.data}")
             if not form.validate():
                 print("Ошибки в form:", form.errors)
             if form.validate_on_submit():
+                print(f"[DEBUG POST] form.id_station_type.data (после валидации) = {form.id_station_type.data}")
+                print(f"[DEBUG POST] form.id_energy_unit.data (после валидации) = {form.id_energy_unit.data}")
                 try:
+                    # Проверка версии из формы для предотвращения concurrent updates
+                    form_version = request.form.get('version', type=int)
+                    if form_version and hasattr(station, 'version') and station.version != form_version:
+                        flash('Данные были изменены другим пользователем. Пожалуйста, обновите страницу.', 'warning')
+                        log_to_db(user, f"Обнаружен конфликт версий при обновлении станции {station.name} (ожидаемая: {form_version}, текущая: {station.version})", entity_type="station", entity_id=station.id)
+                        return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+                    
                     changes = update_station_from_form_service(user, station, form, regional_district_list)
                     if changes:
                         flash("Изменения в электростанции успешно обновлены!", "success")
+                        # Инвалидация кэша после успешного обновления
+                        invalidate_cache('station_full', station_id=station.id)
+                        invalidate_cache_pattern('station_list:*')
                     return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
                 except Exception as e:
                     print(f"Ошибка при обновлении: {str(e)}")
@@ -261,6 +324,11 @@ def station_details(station_id):
                     changes = delete_machines_service(user, station, machine_ids_to_delete)
                     if changes:
                         flash("Выбранные агрегаты и связанные данные были удалены!", "success")
+                        # Инвалидация кэша после удаления агрегатов
+                        for machine_id in machine_ids_to_delete:
+                            invalidate_cache('machine', machine_id=machine_id)
+                        invalidate_cache('station_full', station_id=station.id)
+                        invalidate_cache_pattern('station_list:*')
                 except Exception as e:
                     flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
@@ -269,12 +337,39 @@ def station_details(station_id):
                     changes = update_machines_from_form_service(user, station, form_machines, request.form)
                     if changes:
                         flash("Изменения агрегатов сохранены!", "success")
+                        # Инвалидация кэша после обновления агрегатов
+                        invalidate_cache('station_full', station_id=station.id)
+                        invalidate_cache_pattern('station_list:*')
                     return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
                 except Exception as e:
                     flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
 
     # Timing: measure preparation time right before render
     before_render_at = time.perf_counter()
+    
+    # Подсчет объема данных для диагностики рендеринга
+    machines_count = len(station.machines) if station.machines else 0
+    years_range = end_year - start_year + 1
+    cells_count = machines_count * years_range
+    
+    # Загружаем и форматируем логи для подсчета
+    station_logs_raw = (
+        db.session.query(Log)
+        .filter(
+            or_(
+                Log.action.ilike(f"%станции {station.name}%"),
+                Log.details.ilike(f"%station_id={station.id}%")
+            )
+        )
+        .filter(~Log.action.ilike("%Открыта страница электростанции%"))
+        .order_by(Log.timestamp.desc())
+        .limit(20)  # Уменьшено со 200 до 50 для ускорения рендеринга
+        .all()
+    )
+    station_logs_formatted = _format_logs_for_display(station_logs_raw)
+    logs_count = len(station_logs_formatted)
+    
+    print(f"[RENDER START] Агрегатов: {machines_count}, Лет: {years_range}, Ячеек: {cells_count}, Логов: {logs_count}")
 
     # Render template (measure render time separately)
     html = render_template(
@@ -293,24 +388,16 @@ def station_details(station_id):
         regional_energy_systems_list=regional_energy_system_list,
         union_energy_systems=union_energy_system_list,
         energy_system_types=energy_system_type_list,
-        station_logs=(
-            db.session.query(Log)
-            .filter(
-                or_(
-                    Log.action.ilike(f"%станции {station.name}%"),
-                    Log.details.ilike(f"%station_id={station.id}%")
-                )
-            )
-            .filter(~Log.action.ilike("%Открыта страница электростанции%"))
-            .order_by(Log.timestamp.desc())
-            .limit(200)
-            .all()
-        ),
+        station_logs=station_logs_formatted,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
     )
 
     after_render_at = time.perf_counter()
+    
+    # Диагностика размера результата
+    html_size_kb = len(html) / 1024
+    print(f"[RENDER DONE] Размер HTML: {html_size_kb:.1f} KB, время: {(after_render_at - before_render_at):.2f} сек")
 
     backend_prepare_ms = int((before_render_at - route_started_at) * 1000)
     backend_render_ms = int((after_render_at - before_render_at) * 1000)
@@ -328,8 +415,53 @@ def station_details(station_id):
     response.headers["X-Backend-Timing-Prepare"] = str(backend_prepare_ms)
     response.headers["X-Backend-Timing-Render"] = str(backend_render_ms)
     response.headers["X-Backend-Timing-Total"] = str(backend_total_ms)
+    
+    # Логируем время выполнения с деталями
+    years_count = end_year - start_year + 1
+    print(f"[TIME] station_details (ID: {station_id}) заняла: {backend_total_ms/1000:.2f} сек (подготовка: {backend_prepare_ms}мс, рендер: {backend_render_ms}мс) | Лет: {years_count}")
 
     return response
+
+
+@station_bp.route("/station_logs/<int:station_id>", methods=["GET"])
+@login_required
+def station_logs(station_id):
+    """AJAX endpoint для загрузки всех логов станции."""
+    from flask import jsonify
+    
+    station = Station.query.get_or_404(station_id)
+    
+    # Получаем параметр offset для пагинации
+    offset = request.args.get("offset", 0, type=int)
+    limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
+    
+    logs_query = (
+        db.session.query(Log)
+        .filter(
+            or_(
+                Log.action.ilike(f"%станции {station.name}%"),
+                Log.details.ilike(f"%station_id={station.id}%")
+            )
+        )
+        .filter(~Log.action.ilike("%Открыта страница электростанции%"))
+        .order_by(Log.timestamp.desc())
+    )
+    
+    # Получаем общее количество
+    total_count = logs_query.count()
+    
+    # Применяем offset и limit
+    logs_raw = logs_query.offset(offset).limit(limit).all()
+    logs_formatted = _format_logs_for_display(logs_raw)
+    
+    return jsonify({
+        'logs': logs_formatted,
+        'offset': offset,
+        'limit': limit,
+        'count': len(logs_formatted),
+        'total': total_count,
+        'has_more': (offset + len(logs_formatted)) < total_count
+    })
 
 
 @station_bp.route("/station_details_tbody/<int:station_id>", methods=["GET"])
@@ -340,6 +472,8 @@ def station_details_tbody(station_id):
     Параметры:
     - start_year, end_year, rounding_digits (query params)
     """
+    start_time = time.time()
+    
     start_year = request.args.get("start_year", Config.START_YEAR, type=int)
     end_year = request.args.get("end_year", Config.END_YEAR, type=int)
     rounding_digits = request.args.get("rounding_digits", 0, type=int)
@@ -350,6 +484,10 @@ def station_details_tbody(station_id):
     html = _render_machines_tbody_cached(station_id, start_year, end_year, rounding_digits, cache_bucket)
     resp = make_response(html)
     resp.headers["Cache-Control"] = "public, max-age=120"
+    
+    elapsed = time.time() - start_time
+    print(f"[TIME] station_details_tbody (ID: {station_id}) заняла: {elapsed:.2f} сек")
+    
     return resp
 
 
@@ -360,8 +498,8 @@ def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: in
     station = (
         db.session.query(Station)
         .options(
+            joinedload(Station.station_type),
             selectinload(Station.machines).joinedload(Machine.gen_company),
-            selectinload(Station.machines).joinedload(Machine.station_type),
             selectinload(Station.machines).joinedload(Machine.tes_machine_type),
         )
         .filter_by(id=station_id)
@@ -432,11 +570,9 @@ def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: in
             p.powers_by_year = pgu_powers_by_year.get(p.id, {})
             pgu_by_parent[p.id_parent_machine].append(p)
 
-    # Сортируем агрегаты по группе, топливу и числовому номеру
+    # Сортируем агрегаты по станционному номеру
     if station and station.machines:
         def _machine_sort_key(m):
-            group_key = (m.machine_group or '').lower()
-            fuel_key = (m.fuel_so or '').lower()
             num_key = float('inf')
             try:
                 if m.machine_number:
@@ -445,7 +581,7 @@ def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: in
                         num_key = int(s)
             except Exception:
                 num_key = float('inf')
-            return (group_key, fuel_key, num_key)
+            return num_key
         try:
             station.machines.sort(key=_machine_sort_key)
         except Exception:

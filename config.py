@@ -31,7 +31,17 @@ class Config:
     SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "refdata")
     SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
     DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},public")
-    SQLALCHEMY_ENGINE_OPTIONS = {'pool_recycle': int(os.getenv('SQLALCHEMY_POOL_RECYCLE', 280))}  # Используем значение по умолчанию, если не указано
+    
+    # Оптимизированные настройки пула соединений для параллельной работы
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': int(os.getenv('SQLALCHEMY_POOL_SIZE', 20)),  # Базовый размер пула
+        'max_overflow': int(os.getenv('SQLALCHEMY_MAX_OVERFLOW', 40)),  # Дополнительные соединения при пиковой нагрузке
+        'pool_timeout': int(os.getenv('SQLALCHEMY_POOL_TIMEOUT', 30)),  # Таймаут ожидания свободного соединения
+        'pool_recycle': int(os.getenv('SQLALCHEMY_POOL_RECYCLE', 280)),  # Переиспользование соединений
+        'pool_pre_ping': os.getenv('SQLALCHEMY_POOL_PRE_PING', 'True').lower() == 'true',  # Проверка соединения перед использованием
+        'echo_pool': os.getenv('SQLALCHEMY_ECHO_POOL', 'False').lower() == 'true',  # Логирование пула (для отладки)
+    }
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', '').split(','))
@@ -40,3 +50,11 @@ class Config:
     START_YEAR = 2024
     END_YEAR = 2031
     END_YEAR_SIPR = 2031
+    
+    # Redis configuration для кэширования и сессий
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    CACHE_TYPE = os.getenv('CACHE_TYPE', 'RedisCache')
+    CACHE_REDIS_URL = os.getenv('CACHE_REDIS_URL', REDIS_URL)
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv('CACHE_DEFAULT_TIMEOUT', 300))
+    SESSION_TYPE = 'redis'
+    SESSION_REDIS = None  # Будет установлен в create_app

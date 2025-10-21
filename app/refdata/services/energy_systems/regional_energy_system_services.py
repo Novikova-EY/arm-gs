@@ -33,6 +33,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def regional_energy_system_query(
@@ -179,14 +180,16 @@ def update_regional_energy_system_service(data, user):
                 if q_full.first():
                     raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
                 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "regional_energy_system"))
                 obj.name = name
 
             if name_full != (obj.name_full or None):
-                changes["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
+                old_val = obj.name_full or "не указано"
+                new_val = name_full or "не указано"
+                changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
 
             # Опциональные FK (если ключ присутствует в record)
@@ -198,7 +201,9 @@ def update_regional_energy_system_service(data, user):
                         raise ValueError(f"ОЭС с id={ues} не найдена.")
                     
                     prev_fd = db.session.get(UnionEnergySystem, obj.id_union_energy_system) if obj.id_union_energy_system else None
-                    changes["ОЭС"] = f"{_dash(prev_fd.name if prev_fd else None)} → {_dash(new_ues.name if new_ues else None)}"
+                    old_name = prev_fd.name if prev_fd else "не указано"
+                    new_name = new_ues.name if new_ues else "не указано"
+                    changes.append(format_field_change("id_union_energy_system", old_name, new_name, "regional_energy_system"))
                     obj.id_union_energy_system = ues
 
             # Обновление связей «многие ко многим»
@@ -231,7 +236,7 @@ def update_regional_energy_system_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена региональная энергосистема: {name}", 
-                    f"Изменения = {changes}",
+                    f"Изменения: {'; '.join(changes)}",
                     entity_type="regional_energy_system", 
                     entity_id=regional_energy_system_id)
                 updated_ids.append(regional_energy_system_id)

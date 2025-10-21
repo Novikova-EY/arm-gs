@@ -25,6 +25,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def tes_type_query(
@@ -126,10 +127,10 @@ def update_tes_type_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "tes_type"))
                 obj.name = name
 
             # Если есть реальные изменения — лог и добавление в список
@@ -137,7 +138,7 @@ def update_tes_type_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлен тип ТЭС: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="tes_type", 
                     entity_id=tes_type_id)
                 updated_ids.append(tes_type_id)

@@ -33,6 +33,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def equipment_group_query(
@@ -163,10 +164,10 @@ def update_equipment_group_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "equipment_group"))
                 obj.name = name
 
             # Проверка наличия типа технологии
@@ -178,7 +179,9 @@ def update_equipment_group_service(data, user):
                         raise ValueError(f"Тип технологии с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(TechnologyType, obj.id_technology_type) if obj.id_technology_type else None
-                    changes["Тип технологии"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_technology_type", old_name, new_name, "equipment_group"))
                     obj.id_technology_type = new_val
 
             # Проверка наличия типа доступности технологии
@@ -190,15 +193,17 @@ def update_equipment_group_service(data, user):
                         raise ValueError(f"Тип доступности технологии с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(TechnologyAvailability, obj.id_technology_availability) if obj.id_technology_availability else None
-                    changes["Тип доступности технологии"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_technology_availability", old_name, new_name, "equipment_group"))
                     obj.id_technology_availability = new_val
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
-                    f"Обновлен тип группы оборудования: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Обновлена группа оборудования: {name}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="equipment_group", 
                     entity_id=equipment_group_id)
                 updated_ids.append(equipment_group_id)

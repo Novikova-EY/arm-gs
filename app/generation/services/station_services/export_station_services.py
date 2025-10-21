@@ -415,7 +415,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             "Генерирующая компания": machine.gen_company.name if machine.gen_company else "—",
             "Год ввода": machine.date_exploitation,
             "Тип мощности": "Руст",
-            "Тип станции": machine.station_type.name if machine.station_type else "—",
+            "Тип станции": machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—",
             "Тип ТЭС": machine.tes_types or "—",
             "Тип агрегата ТЭС": machine.tes_machine_type.name if machine.tes_machine_type and machine.tes_machine_type.id != 0 else "—",
             "Примечание": machine.note or "",
@@ -860,6 +860,18 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 for i, m in enumerate(group_machines):
                     m.group_rowspan = count if i == 0 else 0
 
+        # Группировка по виду топлива (fuel_so)
+        fuel_map = defaultdict(list)
+        for m in station.machines:
+            fuel_key = (m.fuel_so or '').strip()
+            fuel_map[fuel_key].append(m)
+
+        for fuel_machines in fuel_map.values():
+            count = len(fuel_machines)
+            if count > 1:
+                for i, m in enumerate(fuel_machines):
+                    m.fuel_rowspan = count if i == 0 else 0
+
     total_stations = len(station_list)
     log_to_db(user, "Найдено станций в БД", f"{total_stations} записей")
 
@@ -1142,7 +1154,7 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
                 # Заменяем первый год на "По состоянию на 01.01.<год>"
                 first_year = all_years[0] + 1  # Берем первый год из списка
-                year_headers = ["По состоянию на 01.01.{}".format(first_year)] + [str(year) for year in all_years[1:]]
+                year_headers = ["По состоянию на 01.01.{}".format(first_year)] + [f"{year} г." for year in all_years[1:]]
 
                 # Вторая строка - годы
                 for idx, year in enumerate(year_headers):

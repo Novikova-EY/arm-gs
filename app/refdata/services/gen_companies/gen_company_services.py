@@ -27,6 +27,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def gen_company_query(
@@ -146,10 +147,10 @@ def update_gen_company_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
             
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "gen_company"))
                 obj.name = name
 
             # Если есть реальные изменения — лог и добавление в список
@@ -157,7 +158,7 @@ def update_gen_company_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена генерирующая компания {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="gen_company", 
                     entity_id=gen_company_id)
                 updated_ids.append(gen_company_id)

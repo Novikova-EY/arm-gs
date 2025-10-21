@@ -60,9 +60,8 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
     current_year = get_current_year()
 
     query = Machine.query.options(
-        joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
-        joinedload(Machine.machine_station),
+        joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
     ).filter(Machine.id_station.in_(station_ids))
 
@@ -160,14 +159,19 @@ def get_filtered_station_ids(
     date_exploitation_filter=None,
 ):
 
-    # 1) Начинаем с запроса Station, при необходимости join(Station.machines)
-    query = db.session.query(Station.id).join(Station.machines)
+    # 1) Начинаем с запроса Station
+    query = db.session.query(Station.id)
+    
+    # Если нужны фильтры по агрегатам, делаем join
+    needs_machine_join = bool(tes_type_filter or tes_machine_type_filter or gen_company_filter or condition_type_filter or date_exploitation_filter)
+    if needs_machine_join:
+        query = query.join(Station.machines)
 
     current_year = get_current_year()
 
     # 2) Применяем фильтры.
     if station_type_filter:
-        query = query.filter(Machine.id_station_type.in_(station_type_filter))
+        query = query.filter(Station.id_station_type.in_(station_type_filter))
     if tes_type_filter:
         query = query.filter(
             exists().where(

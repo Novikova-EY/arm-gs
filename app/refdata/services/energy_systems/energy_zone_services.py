@@ -33,6 +33,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def energy_zone_query(
@@ -155,14 +156,16 @@ def update_energy_zone_service(data, user):
                 if q_full.first():
                     raise ValueError(f"Запись с номером «{number}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "energy_zone"))
                 obj.name = name
 
             if number != (obj.number or ""):
-                changes["Номер"] = f"{_dash(obj.number)} → {number}"
+                old_val = obj.number if obj.number is not None else "не указано"
+                new_val = number if number is not None else "не указано"
+                changes.append(f"Номер: {old_val} → {new_val}")
                 obj.number = number
 
             # Если есть реальные изменения — лог и добавление в список
@@ -170,7 +173,7 @@ def update_energy_zone_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена энергозона: {name}", 
-                    f"Изменения = {changes}",
+                    f"Изменения: {'; '.join(changes)}",
                     entity_type="energy_zone", 
                     entity_id=energy_zone_id)
                 updated_ids.append(energy_zone_id)

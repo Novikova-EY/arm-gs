@@ -255,7 +255,7 @@ def get_station_changes_list(
     # 6. Фильтры по станциям
     if filters.get("station_type_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.machines.any(Machine.id_station_type.in_(filters["station_type_filter"]))
+            Station.id_station_type.in_(filters["station_type_filter"])
         )
 
     if filters.get("station_name_filter"):
@@ -599,11 +599,11 @@ def load_all_machines_with_changes(
 ) -> list[Machine]:
     machines = Machine.query.options(
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
+        joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.gen_company),
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_fuels),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
-        joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
 

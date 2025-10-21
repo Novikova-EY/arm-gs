@@ -33,6 +33,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def synchronous_area_query(
@@ -150,14 +151,16 @@ def update_synchronous_area_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с номером «{number}» уже существует.")
 
-            changes = {}
+            changes = []
                 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "synchronous_area"))
                 obj.name = name
 
             if number != (obj.number or ""):
-                changes["Номер"] = f"{_dash(obj.number)} → {number}"
+                old_val = obj.number if obj.number is not None else "не указано"
+                new_val = number if number is not None else "не указано"
+                changes.append(f"Номер: {old_val} → {new_val}")
                 obj.number = number
 
             # Если есть реальные изменения — лог и добавление в список
@@ -165,7 +168,7 @@ def update_synchronous_area_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена синхронная зона: {name}", 
-                    f"Изменения = {changes}",
+                    f"Изменения: {'; '.join(changes)}",
                     entity_type="synchronous_area", 
                     entity_id=synchronous_area_id)
                 updated_ids.append(synchronous_area_id)

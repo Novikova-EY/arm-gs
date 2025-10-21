@@ -36,6 +36,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def regional_district_query(
@@ -224,18 +225,22 @@ def update_regional_district_service(data, user):
                         entity_id=regional_district_id)
                     raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "regional_district"))
                 obj.name = name
 
             if name_full != (obj.name_full or None):
-                changes["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
+                old_val = obj.name_full or "не указано"
+                new_val = name_full or "не указано"
+                changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
 
             if region_id != obj.region_id:
-                changes["Порядковый номер субъекта РФ"] = f"{_dash(obj.region_id)} → {_dash(region_id)}"
+                old_val = obj.region_id if obj.region_id is not None else "не указано"
+                new_val = region_id if region_id is not None else "не указано"
+                changes.append(f"Порядковый номер субъекта РФ: {old_val} → {new_val}")
                 obj.region_id = region_id
 
             # Проверка наличия ФО
@@ -247,7 +252,9 @@ def update_regional_district_service(data, user):
                         raise ValueError(f"Федеральный округ с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(FederalDistrict, obj.id_federal_district) if obj.id_federal_district else None
-                    changes["Федеральный округ"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_federal_district", old_name, new_name, "regional_district"))
                     obj.id_federal_district = new_val
 
             # Проверка наличия энергозоны
@@ -259,7 +266,9 @@ def update_regional_district_service(data, user):
                         raise ValueError(f"Энергозона с id={new_val} не найден.")
 
                     prev_obj = db.session.get(EnergyZone, obj.id_energy_zone) if obj.id_energy_zone else None
-                    changes["Энергозона"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(f"Энергозона: {old_name} → {new_name}")
                     obj.id_energy_zone = new_val
 
             # Проверка наличия синхронной зоны
@@ -271,7 +280,9 @@ def update_regional_district_service(data, user):
                         raise ValueError(f"Синхронная зона с id={new_val} не найден.")
 
                     prev_obj = db.session.get(SynchronousArea, obj.id_synchronous_area) if obj.id_synchronous_area else None
-                    changes["Синхронная зона"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(f"Синхронная зона: {old_name} → {new_name}")
                     obj.id_synchronous_area = new_val
 
             # Если есть реальные изменения — лог и добавление в список
@@ -279,7 +290,7 @@ def update_regional_district_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлен субъект РФ: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="regional_district", 
                     entity_id=regional_district_id)
                 updated_ids.append(regional_district_id)

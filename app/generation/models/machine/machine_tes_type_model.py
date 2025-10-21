@@ -16,6 +16,7 @@ class MachineTesType(db.Model):
         Index('ix_machine_tes_type_year_number', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )
+    __mapper_args__ = {"confirm_deleted_rows": False}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 

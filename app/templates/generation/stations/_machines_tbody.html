@@ -2,6 +2,11 @@
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
 {% for machine in station.machines %}
+    {# Скрытое поле version для защиты от concurrent updates #}
+    {% if machine.version is defined %}
+    <input type="hidden" name="machine_version_{{ machine.id }}" value="{{ machine.version }}">
+    {% endif %}
+    
     {% set machine_powers_by_year = {} %}
     {% set machine_fuels_by_year = {} %}
 
@@ -43,7 +48,7 @@
         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
         <td class="rowspan-td col-modernization" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
-        <td class="rowspan-td col-energy-unit-type" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
+        <td class="rowspan-td col-energy-unit-type" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—"}}</td>
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
         <td class="rowspan-td" rowspan="3">
             {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
@@ -159,7 +164,7 @@
             <td>{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
             <td>{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
             <td class="col-modernization">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
-            <td class="rowspan-td col-energy-unit-type" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.station_type.name if machine.station_type.name else "—"}}</td>
+            <td class="rowspan-td col-energy-unit-type" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—"}}</td>
             <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
             <td>
                 {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}

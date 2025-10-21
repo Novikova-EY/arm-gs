@@ -17,6 +17,7 @@ class MachineFuel(db.Model):
         Index('ix_machine_fuels_machine_year', 'id_machine', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )
+    __mapper_args__ = {"confirm_deleted_rows": False}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 

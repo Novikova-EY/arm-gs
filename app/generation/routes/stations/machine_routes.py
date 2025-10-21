@@ -25,11 +25,78 @@ from app.common.services.get_services.years.years_get_services import (
 )
 from app.logs.models.log_model import Log
 from sqlalchemy import or_
+from app.common.middleware import handle_stale_data
+from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
+
+
+def _format_logs_for_display(logs):
+    """
+    Предварительное форматирование логов для оптимизации рендеринга шаблона.
+    Форматирует даты и применяет lower() в Python вместо Jinja2.
+    """
+    formatted_logs = []
+    for log in logs:
+        formatted_log = {
+            'date': log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '',
+            'time': log.timestamp.strftime('%H:%M:%S') if log.timestamp else '',
+            'username': log.username or '',
+            'username_lower': (log.username or '').lower(),
+            'action': log.action or '',
+            'action_lower': (log.action or '').lower(),
+            'details': log.details or '',
+            'details_lower': (log.details or '').lower(),
+        }
+        formatted_logs.append(formatted_log)
+    return formatted_logs
+
+
+@station_bp.route("/machine_logs/<int:station_id>/<int:machine_id>", methods=["GET"])
+@login_required
+def machine_logs(station_id, machine_id):
+    """AJAX endpoint для загрузки всех логов агрегата."""
+    from flask import jsonify
+    
+    machine = get_machine_by_id(machine_id)
+    if not machine:
+        return jsonify({'error': 'Machine not found'}), 404
+    
+    # Получаем параметр offset для пагинации
+    offset = request.args.get("offset", 0, type=int)
+    limit = request.args.get("limit", 150, type=int)
+    
+    logs_query = (
+        db.session.query(Log)
+        .filter(
+            or_(
+                (Log.entity_type == 'machine') & (Log.entity_id == machine_id),
+                Log.details.ilike(f"%machine_id={machine_id}%"),
+                Log.details.ilike(f"%агрегата №{machine.machine_number}%")
+            )
+        )
+        .order_by(Log.timestamp.desc())
+    )
+    
+    total_count = logs_query.count()
+    logs_raw = logs_query.offset(offset).limit(limit).all()
+    logs_formatted = _format_logs_for_display(logs_raw)
+    
+    return jsonify({
+        'logs': logs_formatted,
+        'offset': offset,
+        'limit': limit,
+        'count': len(logs_formatted),
+        'total': total_count,
+        'has_more': (offset + len(logs_formatted)) < total_count
+    })
 
 
 @station_bp.route("/machine_details/<int:station_id>/<int:machine_id>", methods=["GET", "POST"])
 @login_required
+@handle_stale_data
 def machine_details(station_id, machine_id):
+    import time
+    start_time = time.time()
+    
     user = session.get('username', 'Неизвестный пользователь')
 
     start_year = request.args.get("start_year", Config.START_YEAR, type=int)
@@ -37,7 +104,7 @@ def machine_details(station_id, machine_id):
     rounding_digits = request.args.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":
-        return handle_machine_post(
+        result = handle_machine_post(
             station_id=station_id,
             machine_id=machine_id,
             form_data=request.form,
@@ -46,22 +113,33 @@ def machine_details(station_id, machine_id):
             end_year=end_year,
             rounding_digits=rounding_digits,
         )
+        elapsed = time.time() - start_time
+        print(f"[TIME] machine_details POST (station: {station_id}, machine: {machine_id}) заняла: {elapsed:.2f} сек")
+        return result
     else:
         result = handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits)
-        machine_logs = (
-            db.session.query(Log)
-            .filter(
-                or_(
-                    Log.action.ilike(f"%агрегат%"),
-                    Log.details.ilike(f"%агрегат%"),
-                    Log.details.ilike(f"%machine_id={machine_id}%"),
-                    Log.details.ilike(f"%агрегата №{result['machine'].machine_number}%")
+        
+        # Для нового агрегата (machine=None) логов еще нет
+        if result['machine'] and result['machine'].machine_number:
+            machine_logs = _format_logs_for_display(
+                db.session.query(Log)
+                .filter(
+                    or_(
+                        (Log.entity_type == 'machine') & (Log.entity_id == machine_id),
+                        Log.details.ilike(f"%machine_id={machine_id}%"),
+                        Log.details.ilike(f"%агрегата №{result['machine'].machine_number}%")
+                    )
                 )
+                .order_by(Log.timestamp.desc())
+                .limit(20)  # Уменьшено со 200 до 50 для ускорения рендеринга
+                .all()
             )
-            .order_by(Log.timestamp.desc())
-            .limit(200)
-            .all()
-        )
+        else:
+            machine_logs = []
+        
+        elapsed = time.time() - start_time
+        print(f"[TIME] machine_details GET (station: {station_id}, machine: {machine_id}) заняла: {elapsed:.2f} сек")
+        
         return render_template(
             "generation/stations/machine_details.html",
             main_form=result['main_form'],
@@ -80,7 +158,11 @@ def machine_details(station_id, machine_id):
 
 @station_bp.route("/pgu_machine_details/<int:station_id>/<int:machine_id>/<int:pgu_machine_id>", methods=["GET", "POST"])
 @login_required
+@handle_stale_data
 def pgu_machine_details(station_id, machine_id, pgu_machine_id):
+    import time
+    start_time = time.time()
+    
     user = session.get('username', 'Неизвестный пользователь')
 
     start_year = request.args.get("start_year", Config.START_YEAR, type=int)
@@ -88,7 +170,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     rounding_digits = request.args.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":
-        return handle_pgu_machine_post(
+        result = handle_pgu_machine_post(
             station_id=station_id,
             machine_id=machine_id,
             pgu_machine_id=pgu_machine_id,
@@ -97,6 +179,9 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
             start_year=start_year,
             end_year=end_year
         )
+        elapsed = time.time() - start_time
+        print(f"[TIME] pgu_machine_details POST (station: {station_id}, machine: {machine_id}, pgu: {pgu_machine_id}) заняла: {elapsed:.2f} сек")
+        return result
 
     else:
         result = handle_pgu_machine_get(
@@ -112,7 +197,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
         try:
             if result.get('pgu_machine') and result['pgu_machine'].id:
                 pm_id = result['pgu_machine'].id
-                pgu_machine_logs = (
+                pgu_machine_logs = _format_logs_for_display(
                     db.session.query(Log)
                     .filter(
                         or_(
@@ -123,11 +208,14 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
                         )
                     )
                     .order_by(Log.timestamp.desc())
-                    .limit(200)
+                    .limit(50)  # Уменьшено со 200 до 50 для ускорения рендеринга
                     .all()
                 )
         except Exception:
             pgu_machine_logs = []
+
+        elapsed = time.time() - start_time
+        print(f"[TIME] pgu_machine_details GET (station: {station_id}, machine: {machine_id}, pgu: {pgu_machine_id}) заняла: {elapsed:.2f} сек")
 
         return render_template(
             "generation/stations/pgu_machine_details.html",

@@ -38,12 +38,11 @@ def get_current_year():
 
 @lru_cache(maxsize=1)
 def get_station_types_list(station):
-    if not hasattr(station, "machines") or not station.machines:
+    if not station:
         return None
-
-    station_type = next((machine.station_type for machine in station.machines if hasattr(machine, "station_type") and machine.station_type), None)
     
-    return station_type
+    # station_type теперь является атрибутом самой станции, а не машин
+    return station.station_type if hasattr(station, "station_type") else None
 
 
 def get_gen_companies():

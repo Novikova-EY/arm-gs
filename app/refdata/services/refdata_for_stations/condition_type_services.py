@@ -24,6 +24,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def condition_type_query(
@@ -121,10 +122,10 @@ def update_condition_type_service(data: list[dict], user: str):
                 if q.first():
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "condition_type"))
                 obj.name = name
 
             # Если есть реальные изменения — лог и добавление в список
@@ -132,7 +133,7 @@ def update_condition_type_service(data: list[dict], user: str):
                 log_to_db(
                     user, 
                     "Обновлен тип состояния", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="condition_type", 
                     entity_id=condition_type_id)
                 updated_ids.append(condition_type_id)

@@ -3,11 +3,13 @@
 from app.extensions import db
 from app.logs.services.logging_service import log_to_db
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from config import SCHEMA_GENERATION
 from sqlalchemy import and_
 from sqlalchemy.orm import selectinload, joinedload
 from decimal import Decimal
 from collections import defaultdict
+import psycopg2.errors
 
 # Модели
 from app.generation.models.station.station_model import Station
@@ -30,6 +32,7 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 # Сервисы
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
@@ -155,6 +158,7 @@ from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
+    quick_fix_seq,
 )
 
 
@@ -212,6 +216,7 @@ def get_stations_list(
     # 3. Фильтры по станции
 
     if filters.get("station_type_filter"):
+        # Тип станции хранится в Station.id_station_type
         station_ids_query = station_ids_query.filter(
             Station.id_station_type.in_(filters["station_type_filter"])
         )
@@ -364,19 +369,16 @@ def get_stations_list(
         if not station_ids:
             return {"stations": [], "total_count": 0}
         
-        # Загрузка станций с предзагрузкой (без SQL сортировки)
-        # Используем selectinload для regional_district, чтобы избежать дублирования станций
-        # из-за множественных regional_energy_systems
+        # ⚡ ОПТИМИЗАЦИЯ: Загружаем только минимум данных для сортировки
+        # Не загружаем machine_powers, machine_fuels, machine_tes_types - они не нужны для сортировки!
+        # Это значительно ускоряет первую загрузку без кэша
         stations = Station.query.options(
-            selectinload(Station.regional_district).selectinload(RegionalDistrict.regional_energy_systems).joinedload(RegionalEnergySystem.union_energy_system).joinedload(UnionEnergySystem.energy_system_type),
-            selectinload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
+            selectinload(Station.regional_district)
+                .selectinload(RegionalDistrict.regional_energy_systems)
+                .joinedload(RegionalEnergySystem.union_energy_system)
+                .joinedload(UnionEnergySystem.energy_system_type),
             joinedload(Station.energy_unit),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_powers),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_fuels),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type)
+            joinedload(Station.station_type)
         ).filter(Station.id.in_(station_ids)).all()
         
         use_cached_sort = False
@@ -389,12 +391,8 @@ def get_stations_list(
          regional_district_id, energy_unit_id, min_station_type_id, station_id)
         Это гарантирует, что все станции одного субъекта будут отображаться вместе.
         """
-        # Определяем минимальный тип станции по агрегатам
-        if station.machines:
-            station_types = [m.id_station_type for m in station.machines if m.id_station_type is not None]
-            min_type = min(station_types) if station_types else float('inf')
-        else:
-            min_type = float('inf')
+        # Определяем тип станции
+        min_type = station.id_station_type if station.id_station_type is not None else float('inf')
         
         # Получаем иерархию через связи
         energy_system_type_id = 0
@@ -501,13 +499,6 @@ def get_stations_list(
         
         stations = stations[start_idx:end_idx]
         
-        # Отладка: показываем уникальные субъекты на странице
-        unique_rd_names = set()
-        for st in stations:
-            if st.regional_district:
-                unique_rd_names.add(st.regional_district.name)
-        print(f"[DEBUG SUBJECTS] Page {page}: Субъекты на странице: {sorted(unique_rd_names)}")
-        
         # Получаем информацию о последней станции страницы для кэша
         if stations:
             last_station = stations[-1]
@@ -570,13 +561,6 @@ def get_stations_list(
                             next_station_info['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
         
         stations = stations[start_idx:end_idx]
-        
-        # Отладка: показываем уникальные субъекты на странице
-        unique_rd_names = set()
-        for st in stations:
-            if st.regional_district:
-                unique_rd_names.add(st.regional_district.name)
-        print(f"[DEBUG SUBJECTS CACHED] Page {page}: Субъекты на странице: {sorted(unique_rd_names)}")
         
         # Получаем информацию о последней станции страницы для кэша
         if stations:
@@ -811,12 +795,8 @@ def get_stations_list_with_pgu_machines(
          regional_district_id, energy_unit_id, min_station_type_id, station_id)
         Это гарантирует, что все станции одного субъекта будут отображаться вместе.
         """
-        # Определяем минимальный тип станции по агрегатам
-        if station.machines:
-            station_types = [m.id_station_type for m in station.machines if m.id_station_type is not None]
-            min_type = min(station_types) if station_types else float('inf')
-        else:
-            min_type = float('inf')
+        # Определяем тип станции
+        min_type = station.id_station_type if station.id_station_type is not None else float('inf')
         
         # Получаем иерархию через связи
         energy_system_type_id = 0
@@ -1104,9 +1084,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 
                 if total_rd_in_res > 1 and rd_with_stations_count > 1:
                     allowed_rd_ids[rd_id] = True
-                    print(f"[DEBUG] [per_page=all] Regional district итог показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями): {rd_id}")
-                else:
-                    print(f"[DEBUG] [per_page=all] Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями): {rd_id}")
         
         return {
             'show_all': True,
@@ -1116,8 +1093,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
     # Проверяем, есть ли еще станции после текущей страницы
     current_position = page * per_page
     has_more_stations = current_position < total_count
-    
-    print(f"[DEBUG] Page: {page}, per_page: {per_page}, total_count: {total_count}, current_position: {current_position}, has_more: {has_more_stations}")
     
     show_totals = {
         'energy_units': {},
@@ -1190,9 +1165,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 
                 if total_rd_in_res > 1 and rd_with_stations_count > 1:
                     show_totals['regional_districts'][rd_id] = True
-                    print(f"[DEBUG] [OK] Regional district итог показывается (РЭС содержит {total_rd_in_res} субъектов, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
-                else:
-                    print(f"[DEBUG] [SKIP] Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
         for res_id in groups_on_page['regional_energy_systems']:
             show_totals['regional_energy_systems'][res_id] = True
         for ues_id in groups_on_page['union_energy_systems']:
@@ -1204,9 +1176,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
         # Используем переданную информацию о следующей станции
         next_station = next_station_info
         
-        print(f"[DEBUG] Last station - EU: {last_energy_unit_id}, RD: {last_regional_district_id}, RES: {last_regional_energy_system_id}")
-        print(f"[DEBUG] Next station: {next_station}")
-        
         if next_station:
             # Находим точки смены групп на странице (группы, которые завершились внутри страницы)
             # Для этого проходим по всем станциям и отслеживаем изменения
@@ -1217,12 +1186,10 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 curr_eu = station.id_energy_unit
                 if prev_eu is not None and prev_eu != curr_eu and prev_eu in groups_on_page['energy_units']:
                     show_totals['energy_units'][prev_eu] = True
-                    print(f"[DEBUG] Energy unit завершается внутри страницы: {prev_eu}")
                 prev_eu = curr_eu
             # Проверяем последний energy unit - завершается ли на следующей странице?
             if last_energy_unit_id and next_station.get('energy_unit_id') != last_energy_unit_id:
                 show_totals['energy_units'][last_energy_unit_id] = True
-                print(f"[DEBUG] Energy unit завершается на границе страниц: {last_energy_unit_id}")
             
             # Regional Districts - находим завершившиеся на странице
             prev_rd = None
@@ -1239,9 +1206,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                         
                         if total_rd_in_res > 1 and rd_with_stations_count > 1:
                             show_totals['regional_districts'][prev_rd] = True
-                            print(f"[DEBUG] [OK] Regional district завершается внутри страницы (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
-                        else:
-                            print(f"[DEBUG] [SKIP] Regional district завершается внутри страницы, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {prev_rd}")
                 prev_rd = curr_rd
             # Проверяем последний regional district
             if last_regional_district_id and next_station.get('regional_district_id') != last_regional_district_id:
@@ -1253,11 +1217,7 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                     total_rd_in_res = res_to_rd_count.get(res_id, 0)
                     rd_with_stations_count = res_to_rd_with_stations_global.get(res_id, 0)
                     
-                    if total_rd_in_res > 1 and rd_with_stations_count > 1:
-                        show_totals['regional_districts'][last_regional_district_id] = True
-                        print(f"[DEBUG] [OK] Regional district завершается на границе страниц (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
-                    else:
-                        print(f"[DEBUG] [SKIP] Regional district завершается на границе страниц, но НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {last_regional_district_id}")
+                    show_totals['regional_districts'][last_regional_district_id] = True
             
             # Regional Energy Systems - находим завершившиеся на странице
             prev_res = None
@@ -1269,12 +1229,10 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                         curr_res = res.id
                 if prev_res is not None and prev_res != curr_res and prev_res in groups_on_page['regional_energy_systems']:
                     show_totals['regional_energy_systems'][prev_res] = True
-                    print(f"[DEBUG] Regional energy system завершается внутри страницы: {prev_res}")
                 prev_res = curr_res
             # Проверяем последнюю regional energy system
             if last_regional_energy_system_id and next_station.get('regional_energy_system_id') != last_regional_energy_system_id:
                 show_totals['regional_energy_systems'][last_regional_energy_system_id] = True
-                print(f"[DEBUG] Regional energy system завершается на границе страниц: {last_regional_energy_system_id}")
             
             # Union Energy Systems - находим завершившиеся на странице
             prev_ues = None
@@ -1286,12 +1244,10 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                         curr_ues = res.union_energy_system.id
                 if prev_ues is not None and prev_ues != curr_ues and prev_ues in groups_on_page['union_energy_systems']:
                     show_totals['union_energy_systems'][prev_ues] = True
-                    print(f"[DEBUG] Union energy system завершается внутри страницы: {prev_ues}")
                 prev_ues = curr_ues
             # Проверяем последнюю union energy system
             if last_union_energy_system_id and next_station.get('union_energy_system_id') != last_union_energy_system_id:
                 show_totals['union_energy_systems'][last_union_energy_system_id] = True
-                print(f"[DEBUG] Union energy system завершается на границе страниц: {last_union_energy_system_id}")
             
             # Energy System Types - находим завершившиеся на странице
             prev_est = None
@@ -1303,14 +1259,11 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                         curr_est = res.union_energy_system.energy_system_type.id
                 if prev_est is not None and prev_est != curr_est and prev_est in groups_on_page['energy_system_types']:
                     show_totals['energy_system_types'][prev_est] = True
-                    print(f"[DEBUG] Energy system type завершается внутри страницы: {prev_est}")
                 prev_est = curr_est
             # Проверяем последний energy system type
             if last_energy_system_type_id and next_station.get('energy_system_type_id') != last_energy_system_type_id:
                 show_totals['energy_system_types'][last_energy_system_type_id] = True
-                print(f"[DEBUG] Energy system type завершается на границе страниц: {last_energy_system_type_id}")
         else:
-            print(f"[DEBUG] Next station is None - показываем итоги для всех групп на странице")
             for eu_id in groups_on_page['energy_units']:
                 show_totals['energy_units'][eu_id] = True
             for rd_id in groups_on_page['regional_districts']:
@@ -1322,11 +1275,7 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                     total_rd_in_res = res_to_rd_count.get(res_id, 0)
                     rd_with_stations_count = res_to_rd_with_stations_global.get(res_id, 0)
                     
-                    if total_rd_in_res > 1 and rd_with_stations_count > 1:
-                        show_totals['regional_districts'][rd_id] = True
-                        print(f"[DEBUG] [OK] Regional district итог показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
-                    else:
-                        print(f"[DEBUG] [SKIP] Regional district итог НЕ показывается (РЭС: {total_rd_in_res} субъектов всего, {rd_with_stations_count} со станциями ГЛОБАЛЬНО): {rd_id}")
+                    show_totals['regional_districts'][rd_id] = True
             for res_id in groups_on_page['regional_energy_systems']:
                 show_totals['regional_energy_systems'][res_id] = True
             for ues_id in groups_on_page['union_energy_systems']:
@@ -1334,7 +1283,6 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
             for est_id in groups_on_page['energy_system_types']:
                 show_totals['energy_system_types'][est_id] = True
     
-    print(f"[DEBUG] show_totals: {show_totals}")
     return show_totals
 
 
@@ -1571,7 +1519,6 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
                         Station.id_regional_district.in_(rd_ids_in_res)
                     ).all()
                     station_ids.update([s.id for s in res_stations])
-                    print(f"[DEBUG] Добавлены станции для РЭС {res_id}: {len(res_stations)} станций из {len(rd_ids_in_res)} субъектов")
     
     # Субъекты РФ - добавляем только если итог по субъекту показывается явно
     for rd_id, should_show in should_show_totals.get('regional_districts', {}).items():
@@ -1588,7 +1535,6 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
             # Получаем все станции этого субъекта
             rd_stations = Station.query.filter_by(id_regional_district=rd_id).all()
             station_ids.update([s.id for s in rd_stations])
-            print(f"[DEBUG] Добавлены станции для субъекта {rd_id}: {len(rd_stations)} станций")
     
     # Объединенные энергосистемы
     for ues_id, should_show in should_show_totals.get('union_energy_systems', {}).items():
@@ -1631,8 +1577,6 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
                         station_ids.update([s.id for s in ues_stations])
             
             ues_station_count_added = len(station_ids) - ues_station_count_before
-            if ues_station_count_added > 0:
-                print(f"[DEBUG] Добавлены станции для ОЭС {ues_id}: +{ues_station_count_added} уникальных станций из {len(res_list)} РЭС")
     
     # Типы энергосистем
     for est_id, should_show in should_show_totals.get('energy_system_types', {}).items():
@@ -1684,14 +1628,11 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
                             station_ids.update([s.id for s in est_stations])
             
             est_station_count_added = len(station_ids) - est_station_count_before
-            if est_station_count_added > 0:
-                print(f"[DEBUG] Добавлены станции для типа энергосистемы {est_id}: +{est_station_count_added} уникальных станций из {len(ues_list)} ОЭС")
     
     # Если нет завершающихся групп, возвращаем хотя бы текущие станции для их итогов
     if not station_ids:
         station_ids = set([s.id for s in stations_on_page])
     
-    print(f"[DEBUG] Итого station_ids для агрегации: {len(station_ids)}")
     return list(station_ids)
 
 
@@ -2417,18 +2358,32 @@ def add_station_service(user, name: str, id_regional_district: int) -> Station:
     name = (name or "").strip()
     if not name:
         raise ValueError("Не указано название станции")
-    try:
-        station = Station(name=name, id_regional_district=id_regional_district)
-        db.session.add(station)
-        _commit_with_retry()
-        clear_aggregation_cache()  # Очищаем кэш после добавления станции
-        rd = db.session.query(RegionalDistrict).get(id_regional_district)
-        rd_name = rd.name if rd else "не указано"
-        log_to_db(user, f"Создана новая станция: {station.name}", entity_type="station", entity_id=station.id, details=f"Субъект РФ: {rd_name}")
-        return station
-    except Exception:
-        db.session.rollback()
-        raise
+    
+    max_attempts = 2
+    for attempt in range(max_attempts):
+        try:
+            station = Station(name=name, id_regional_district=id_regional_district)
+            db.session.add(station)
+            _commit_with_retry()
+            clear_aggregation_cache()  # Очищаем кэш после добавления станции
+            rd = db.session.query(RegionalDistrict).get(id_regional_district)
+            rd_name = rd.name if rd else "не указано"
+            log_to_db(user, f"Создана новая станция: {station.name}", entity_type="station", entity_id=station.id, details=f"Субъект РФ: {rd_name}")
+            return station
+        except IntegrityError as e:
+            db.session.rollback()
+            # Проверяем, является ли это ошибкой UniqueViolation на первичном ключе
+            if isinstance(e.orig, psycopg2.errors.UniqueViolation) and attempt == 0:
+                error_msg = str(e.orig)
+                # Проверяем, что это ошибка именно на первичном ключе stations
+                if "stations_pkey" in error_msg:
+                    # Исправляем последовательность и повторяем попытку
+                    quick_fix_seq(SCHEMA_GENERATION, "stations", "id")
+                    continue
+            raise
+        except Exception:
+            db.session.rollback()
+            raise
 
 
 def update_station_from_form_service(user, station: Station, form, regional_district_list) -> list:
@@ -2448,6 +2403,22 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             if old_value != new_value:
                 changes.append(f"Состояние: {old_value} → {new_value}")
             station.id_condition_type = new_condition_type.id
+
+        # Тип электростанции
+        if form.id_station_type.data and int(form.id_station_type.data) != 0:
+            new_station_type_id = int(form.id_station_type.data)
+            new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
+            if new_station_type:
+                old_value = station.station_type.name if station.station_type else "не указано"
+                new_value = new_station_type.name
+                if old_value != new_value:
+                    changes.append(f"Тип электростанции: {old_value} → {new_value}")
+                station.id_station_type = new_station_type.id
+        else:
+            if station.id_station_type is not None:
+                old_value = station.station_type.name if station.station_type else "не указано"
+                changes.append(f"Тип электростанции: {old_value} → не указано")
+                station.id_station_type = None
 
         # Группа станции
         new_group_id = form.id_station_group.data
@@ -2532,6 +2503,22 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             changes.append(f"Местоположение: {station.location} → {new_location}")
             station.location = new_location
 
+        # Энергоузел
+        if form.id_energy_unit.data and int(form.id_energy_unit.data) != 0:
+            new_energy_unit_id = int(form.id_energy_unit.data)
+            from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+            new_energy_unit = db.session.query(EnergyUnit).filter_by(id=new_energy_unit_id).first()
+            old_value = station.energy_unit.name if station.energy_unit else "не указано"
+            new_value = new_energy_unit.name
+            changes.append(f"Энергоузел: {old_value} → {new_value}")
+            station.id_energy_unit = new_energy_unit.id
+        else:
+            # Если выбрано пустое значение (0) или None, устанавливаем None
+            if station.id_energy_unit is not None:
+                old_value = station.energy_unit.name if station.energy_unit else "не указано"
+                changes.append(f"Энергоузел: {old_value} → не указано")
+                station.id_energy_unit = None
+
         _commit_with_retry()
         clear_aggregation_cache()  # Очищаем кэш после обновления станции
 
@@ -2554,13 +2541,8 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
         affected_station_ids = set()
         for machine in machines_to_delete:
             affected_station_ids.add(machine.id_station)
-            for mp in machine.machine_powers:
-                db.session.delete(mp)
-            for mf in machine.machine_fuels:
-                db.session.delete(mf)
-            for mtt in machine.machine_tes_types:
-                db.session.delete(mtt)
-            changes.append(f"Агрегат {machine.machine_number or '—'} и связанные данные удалены")
+            # Полагаться на каскадные связи ORM: дети удаляются автоматически
+            changes.append(f"Агрегат {machine.machine_number or '—'} удалён")
             db.session.delete(machine)
 
         for station_id in affected_station_ids:
@@ -2584,46 +2566,127 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
 
 
 def update_machines_from_form_service(user, station: Station, form_machines, form_data) -> list:
+    import time
+    start_time = time.perf_counter()
+    
     changes = []
+    conflicts = []  # Список конфликтов версий
+    
     try:
         if not form_machines.validate():
             return changes
 
+        # ОПТИМИЗАЦИЯ 1: Предварительно загружаем все GenCompany одним запросом
+        # Собираем все уникальные id_gen_company из формы
+        gen_company_ids = set()
         for machine in station.machines:
-            fuel_so_key = f"fuel_so_{machine.id}"
             gen_company_key = f"id_gen_company_{machine.id}"
-            new_note_key = f"note_{machine.id}"
+            try:
+                gen_company_id = form_data.get(gen_company_key, type=int) if hasattr(form_data, 'get') else None
+                if gen_company_id is None:
+                    gen_company_id = int(form_data.get(gen_company_key)) if gen_company_key in form_data else None
+                if gen_company_id:
+                    gen_company_ids.add(gen_company_id)
+            except (ValueError, TypeError):
+                pass
+        
+        # Загружаем все GenCompany одним запросом (batch loading)
+        gen_companies_map = {}
+        if gen_company_ids:
+            gen_companies = db.session.query(GenCompany).filter(GenCompany.id.in_(gen_company_ids)).all()
+            gen_companies_map = {gc.id: gc for gc in gen_companies}
+            print(f"[OPTIMIZATION] Предзагружено {len(gen_companies_map)} GenCompany одним запросом")
 
-            new_fuel_so = (form_data.get(fuel_so_key, "") or "").strip()
-            new_gen_company_id = form_data.get(gen_company_key, type=int) if hasattr(form_data, 'get') else None
-            if new_gen_company_id is None:
-                try:
-                    new_gen_company_id = int(form_data.get(gen_company_key)) if gen_company_key in form_data else None
-                except Exception:
-                    new_gen_company_id = None
-            new_note = (form_data.get(new_note_key, "") or "").strip()
+        # ОПТИМИЗАЦИЯ 3: Отключаем autoflush для ускорения массовых изменений
+        with db.session.no_autoflush:
+            for machine in station.machines:
+                fuel_so_key = f"fuel_so_{machine.id}"
+                gen_company_key = f"id_gen_company_{machine.id}"
+                new_note_key = f"note_{machine.id}"
+                version_key = f"machine_version_{machine.id}"
 
-            if machine.fuel_so != new_fuel_so:
-                changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
-                machine.fuel_so = new_fuel_so
+                # Проверка версии для предотвращения concurrent updates
+                form_version = None
+                if hasattr(form_data, 'get'):
+                    form_version = form_data.get(version_key, type=int)
+                else:
+                    try:
+                        form_version = int(form_data.get(version_key)) if version_key in form_data else None
+                    except (ValueError, TypeError):
+                        form_version = None
+                
+                if form_version and hasattr(machine, 'version') and machine.version != form_version:
+                    conflicts.append(f"Агрегат №{machine.machine_number} (ожидаемая версия: {form_version}, текущая: {machine.version})")
+                    log_to_db(
+                        user, 
+                        f"Конфликт версий при обновлении агрегата №{machine.machine_number} на станции {station.name}",
+                        details=f"Ожидаемая: {form_version}, текущая: {machine.version}",
+                        entity_type="machine",
+                        entity_id=machine.id
+                    )
+                    continue  # Пропускаем этот агрегат
+                
+                new_fuel_so = (form_data.get(fuel_so_key, "") or "").strip()
+                new_gen_company_id = form_data.get(gen_company_key, type=int) if hasattr(form_data, 'get') else None
+                if new_gen_company_id is None:
+                    try:
+                        new_gen_company_id = int(form_data.get(gen_company_key)) if gen_company_key in form_data else None
+                    except Exception:
+                        new_gen_company_id = None
+                new_note = (form_data.get(new_note_key, "") or "").strip()
+                
+                # Флаг для отслеживания изменений в этом агрегате
+                machine_changed = False
 
-            if machine.note != new_note:
-                changes.append(f"Агрегат {machine.machine_number}: Примечание {machine.note} → {new_note}")
-                machine.note = new_note
+                if machine.fuel_so != new_fuel_so:
+                    changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
+                    machine.fuel_so = new_fuel_so
+                    machine_changed = True
 
-            if new_gen_company_id:
-                new_gen_company = db.session.query(GenCompany).filter_by(id=new_gen_company_id).first()
-                if new_gen_company:
-                    old_gen_company_name = machine.gen_company.name if machine.gen_company else "не указано"
-                    if machine.gen_company is None or machine.gen_company.id != new_gen_company_id:
-                        changes.append(f"Агрегат {machine.machine_number}: Собственник {old_gen_company_name} → {new_gen_company.name}")
-                        machine.gen_company = new_gen_company
+                if machine.note != new_note:
+                    changes.append(f"Агрегат {machine.machine_number}: Примечание {machine.note} → {new_note}")
+                    machine.note = new_note
+                    machine_changed = True
 
+                # ОПТИМИЗАЦИЯ 2: Используем предзагруженный словарь GenCompany
+                if new_gen_company_id:
+                    new_gen_company = gen_companies_map.get(new_gen_company_id)
+                    if new_gen_company:
+                        old_gen_company_name = machine.gen_company.name if machine.gen_company else "не указано"
+                        if machine.gen_company is None or machine.gen_company.id != new_gen_company_id:
+                            changes.append(f"Агрегат {machine.machine_number}: Собственник {old_gen_company_name} → {new_gen_company.name}")
+                            machine.gen_company = new_gen_company
+                            machine_changed = True
+                
+                # Обновляем версию агрегата для защиты от concurrent updates
+                if machine_changed:
+                    from sqlalchemy.sql import func
+                    from sqlalchemy.orm.attributes import flag_modified
+                    machine.updated_at = func.now()
+                    flag_modified(machine, 'updated_at')
+
+        # Если были конфликты версий, показываем ошибку
+        if conflicts:
+            from flask import flash
+            flash(
+                f"Обнаружены конфликты версий для агрегатов: {', '.join(conflicts)}. "
+                "Данные были изменены другим пользователем. Пожалуйста, обновите страницу.",
+                "danger"
+            )
+            # Не сохраняем изменения при наличии конфликтов
+            db.session.rollback()
+            return []
+        
         _commit_with_retry()
         clear_aggregation_cache()  # Очищаем кэш после обновления агрегатов
 
         if changes:
             log_to_db(user, f"Обновлены агрегаты станции {station.name}", details="; ".join(changes), entity_type="station", entity_id=station.id)
+        
+        # Логируем время выполнения
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+        print(f"[PERFORMANCE] update_machines_from_form_service завершена за {elapsed_ms}мс (агрегатов: {len(station.machines)}, изменений: {len(changes)})")
+        
         return changes
     except Exception:
         db.session.rollback()

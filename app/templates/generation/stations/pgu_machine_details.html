@@ -56,6 +56,11 @@
 
         <form method="POST" action="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=parent_machine.id, pgu_machine_id=pgu_machine_id, **request.args) }}">
             {{ pgu_form.csrf_token }}
+            
+            <!-- Скрытое поле для версии (защита от concurrent updates) -->
+            {% if pgu_machine and pgu_machine.version is defined %}
+            <input type="hidden" name="version" value="{{ pgu_machine.version }}">
+            {% endif %}
 
             <!-- Скрытое поле для ID родительского агрегата -->
             {{ pgu_form.id_machine }}
@@ -467,11 +472,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     {% if logs and logs|length > 0 %}
                         {% for log in logs %}
                             <tr>
-                                <td data-date="{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}">{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}</td>
-                                <td data-time="{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</td>
-                                <td data-user="{{ log.username|lower }}">{{ log.username }}</td>
-                                <td><div data-action="{{ log.action|lower }}">{{ log.action }}</div></td>
-                                <td>{% if log.details %}<div data-details="{{ log.details|lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                                <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
+                                <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     {% else %}

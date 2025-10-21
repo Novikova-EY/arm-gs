@@ -37,7 +37,7 @@
         <td rowspan="{{ machine.total_rows }}">{{ machine.date_exploitation or '—' }}</td>
         <td rowspan="{{ machine.total_rows }}">{{ machine.date_decompressing_expected or '—' }}</td>
         <td rowspan="{{ machine.total_rows }}">{{ machine.date_modernization_expected or '—' }}</td>
-        <td rowspan="{{ machine.total_rows }}">{{ machine.station_type.name if machine.station_type else '—' }}</td>
+        <td rowspan="{{ machine.total_rows }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}</td>
         <td rowspan="{{ machine.total_rows }}">{{ machine.tes_types or '—' }}</td>
         <td rowspan="{{ machine.total_rows }}">
           {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}

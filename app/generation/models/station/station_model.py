@@ -8,14 +8,16 @@ from sqlalchemy.sql import func
 from sqlalchemy.schema import UniqueConstraint, Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.versioned_model import VersionedModelMixin
 
-class Station(db.Model):
+class Station(db.Model, VersionedModelMixin):
     __tablename__ = 'stations'
     __table_args__ = (
         UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
         Index('ix_station_id_regional_district', 'id_regional_district'),
         Index('ix_station_name', 'name'),
-            Index('ix_station_id_station_group', 'id_station_group'),
+        Index('ix_station_id_station_group', 'id_station_group'),
+        Index('ix_station_id_station_type', 'id_station_type'),
         {"schema": SCHEMA_GENERATION},
     )
 
@@ -67,6 +69,15 @@ class Station(db.Model):
     )
     energy_unit = db.relationship('EnergyUnit', back_populates='stations')
 
+    # FK -> StationType
+    id_station_type = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.station_types.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    station_type = db.relationship('StationType', back_populates='stations')
+
     # Children
     station_powers = db.relationship('StationPower', back_populates='station_power', cascade="all, delete-orphan")
     machines = db.relationship('Machine', back_populates='machine_station')
@@ -80,6 +91,9 @@ class Station(db.Model):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # version для оптимистической блокировки (определен в VersionedModelMixin)
+    # version = db.Column(db.Integer, nullable=False, default=1)
 
     # ----- Aggregated helpers (не маппятся в БД) -----
     @property
@@ -113,22 +127,6 @@ class Station(db.Model):
         gen_companies = {machine.gen_company.name for machine in self.machines if machine.gen_company}
         return ", ".join(gen_companies) if gen_companies else None
 
-    @property
-    def station_types(self):
-        if not self.machines:
-            return None
-
-        types = {
-            machine.station_type.name
-            for machine in self.machines
-            if machine.station_type and machine.station_type.id != 0
-        }
-
-        if not types:
-            return "не указано"
-        if len(types) == 1:
-            return next(iter(types))
-        return sorted(types)
 
     def __repr__(self) -> str:
         return f"<Station id={self.id} name={self.name!r}>"

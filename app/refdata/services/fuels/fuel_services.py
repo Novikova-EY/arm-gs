@@ -29,6 +29,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def fuel_query(
@@ -145,10 +146,10 @@ def update_fuel_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "fuel"))
                 obj.name = name
 
             # Проверка наличия вида топлива
@@ -160,15 +161,17 @@ def update_fuel_service(data, user):
                         raise ValueError(f"Вид топлива с id={new_val} не найден.")
                     
                     prev_obj = db.session.get(FuelType, obj.id_fuel_type) if obj.id_fuel_type else None
-                    changes["Вид топлива"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_fuel_type", old_name, new_name, "fuel"))
                     obj.id_fuel_type = new_val
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
                 log_to_db(
                     user, 
-                    f"Обновлен тип топлива: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Обновлено топливо: {name}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="fuel", 
                     entity_id=fuel_id)
                 updated_ids.append(fuel_id)

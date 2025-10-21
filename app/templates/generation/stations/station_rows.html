@@ -54,7 +54,7 @@
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.station_type.name if machine.station_type else '—' }}
+                {{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -194,7 +194,7 @@
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.station_type.name if machine.station_type else '—' }}
+                {{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">

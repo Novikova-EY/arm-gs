@@ -242,8 +242,11 @@
         </div>
 
         <!-- Карточка с основной информацией -->
-        <form method="POST">
+        <form method="POST" id="stationForm">
             {{ form.hidden_tag() }}
+            {% if station.version is defined %}
+            <input type="hidden" name="version" value="{{ station.version }}">
+            {% endif %}
             <div class="container-fluid">
                 <div class="station-info">
                     <div class="mb-4 p-3" style="background: transparent; border: none;">
@@ -289,7 +292,13 @@
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Тип электростанции:</div>
-                                <div class="col-7 text-start">{{ station.station_types if station.station_types else '—' }}</div>
+                                <div class="col-7 text-start" id="id_station_type_span">
+                                    {% if can_edit %}
+                                        {{ form.id_station_type(class="form-select") }}
+                                    {% else %}
+                                        {{ station.station_type.name if station.station_type else '—' }}
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="row g-2 align-items-center mb-0">
                                 <div class="col-5 text-start fw-semibold">Примечание:</div>
@@ -377,12 +386,6 @@
                             </div>
                         </div>
                     </div>
-                    {% if can_edit %}
-                    <div class="d-flex justify-content-end mt-2">
-                        <button type="submit" class="btn btn-outline-primary me-2">Сохранить</button>
-                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-secondary">Сбросить</a>
-                    </div>
-                    {% endif %}
                     <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
                 </div>
             </div>
@@ -402,7 +405,7 @@
         <div class="container-fluid">
             <div class="row g-3">
                 <div class="col-12">
-                    <div class="d-flex justify-content-end align-items-center w-100 mb-2">
+                    <div class="d-flex justify-content-between align-items-center w-100 mb-2">
 
                         <!-- Левая группа кнопок -->
                         <form method="GET" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
@@ -413,14 +416,14 @@
                             {% endfor %}
 
                             <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-                            <select name="start_year" id="start_year" class="form-select">
+                            <select name="start_year" id="start_year" class="form-select" style="width: auto;">
                                 {% for year in range(2021, 2043) %}
                                 <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
                             </select>
 
                             <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-                            <select name="end_year" id="end_year" class="form-select">
+                            <select name="end_year" id="end_year" class="form-select" style="width: auto;">
                                 {% for year in range(2022, 2043) %}
                                 <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
@@ -431,7 +434,7 @@
 
                         
                         <!-- Правая группа: чекбоксы и подсветка -->
-                        <div class="d-flex align-items-center gap-2 ms-auto">
+                        <div class="d-flex align-items-center gap-2">
 
                             <!-- Чекбокс Рогр -->
                             <input type="checkbox" class="btn-check" id="toggleP_Ogr" autocomplete="off">
@@ -470,8 +473,12 @@
             </div>
         </div>
 
-        <form method="POST">
+        <form method="POST" id="machinesForm">
+            {{ form.hidden_tag() }}
             {{ form_machines.hidden_tag() }}
+            {% if station.version is defined %}
+            <input type="hidden" name="version" value="{{ station.version }}">
+            {% endif %}
             <div class="table-responsive">
                 <table class="table table-hover table-striped table-bordered table-responsive machines-table">
                     <thead class="table-success">
@@ -522,6 +529,7 @@
                     <a href="{{ url_for('station_bp.station_details', station_id=station.id) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 {% endif %}
             </div>
+        </form>
         </div>
     </body>
 
@@ -544,15 +552,15 @@
                     {% if station_logs and station_logs|length > 0 %}
                         {% for log in station_logs %}
                             <tr>
-                                <td data-date="{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}">{{ log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '' }}</td>
-                                <td data-time="{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}">{{ log.timestamp.strftime('%H:%M:%S') if log.timestamp else '' }}</td>
-                                <td data-user="{{ log.username|lower }}">{{ log.username }}</td>
+                                <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td>
-                                    <div data-action="{{ log.action|lower }}">{{ log.action }}</div>
+                                    <div data-action="{{ log.action_lower }}">{{ log.action }}</div>
                                 </td>
                                 <td>
                                     {% if log.details %}
-                                        <div data-details="{{ log.details|lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>
+                                        <div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -565,6 +573,22 @@
                 </tbody>
             </table>
         </div>
+        {% if station_logs and station_logs|length > 0 %}
+        <div class="card-footer text-center">
+            <div class="mb-2">
+                <small class="text-muted">
+                    Показано: <span id="station-logs-shown">{{ station_logs|length }}</span> из <span id="station-logs-total">?</span>
+                </small>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="load-more-station-logs" 
+                    data-station-id="{{ station.id }}"
+                    data-offset="{{ station_logs|length }}"
+                    style="display: none;">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                Загрузить еще
+            </button>
+        </div>
+        {% endif %}
     </div>
     <div class="my-3"></div>
 </div>
@@ -1054,6 +1078,118 @@
         newUrl.searchParams.set('rounding_digits', selectedRounding);
         window.history.replaceState({}, '', newUrl.toString());
     });
+</script>
+
+<script>
+// Загрузка дополнительных логов станции
+document.addEventListener('DOMContentLoaded', function() {
+    const loadMoreBtn = document.getElementById('load-more-station-logs');
+    const logsTable = document.querySelector('#station-logs-table tbody');
+    const logsShown = document.getElementById('station-logs-shown');
+    const logsTotal = document.getElementById('station-logs-total');
+    
+    if (!loadMoreBtn) return;
+    
+    const stationId = loadMoreBtn.dataset.stationId;
+    let currentOffset = parseInt(loadMoreBtn.dataset.offset) || 0;
+    
+    // Проверяем общее количество логов при загрузке страницы
+    fetch(`{{ url_for('station_bp.station_logs', station_id=station.id) }}?offset=0&limit=0`)
+        .then(r => r.json())
+        .then(data => {
+            logsTotal.textContent = data.total;
+            // Показываем кнопку если есть еще логи
+            if (currentOffset < data.total) {
+                loadMoreBtn.style.display = 'inline-block';
+            }
+        })
+        .catch(err => console.error('Ошибка проверки логов:', err));
+    
+    loadMoreBtn.addEventListener('click', function() {
+        const spinner = this.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        this.disabled = true;
+        
+        fetch(`{{ url_for('station_bp.station_logs', station_id=station.id) }}?offset=${currentOffset}&limit=150`)
+            .then(r => r.json())
+            .then(data => {
+                // Добавляем новые строки в таблицу
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td data-date="${log.date}">${log.date}</td>
+                        <td data-time="${log.time}">${log.time}</td>
+                        <td data-user="${log.username_lower}">${log.username}</td>
+                        <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                        <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
+                    `;
+                    logsTable.appendChild(row);
+                });
+                
+                // Обновляем счетчик
+                currentOffset += data.count;
+                logsShown.textContent = currentOffset;
+                loadMoreBtn.dataset.offset = currentOffset;
+                
+                // Скрываем кнопку если больше нет логов
+                if (!data.has_more) {
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Ошибка загрузки логов:', err);
+                alert('Ошибка загрузки логов. Попробуйте позже.');
+                loadMoreBtn.disabled = false;
+                spinner.style.display = 'none';
+            });
+    });
+});
+</script>
+
+<script>
+// Объединение данных из обеих форм при отправке
+document.addEventListener('DOMContentLoaded', function() {
+    const stationForm = document.getElementById('stationForm');
+    const machinesForm = document.getElementById('machinesForm');
+    
+    if (stationForm && machinesForm) {
+        console.log('[FORM] Формы найдены, настраиваем объединение данных');
+        
+        // При отправке формы агрегатов копируем данные из формы станции
+        machinesForm.addEventListener('submit', function(e) {
+            console.log('[FORM] Отправка формы, копируем данные из формы станции');
+            
+            // Получаем все поля из формы станции
+            const stationInputs = stationForm.querySelectorAll('input, select, textarea');
+            
+            stationInputs.forEach(function(input) {
+                // Проверяем, есть ли уже такое поле в форме агрегатов
+                const existingField = machinesForm.querySelector(`[name="${input.name}"]`);
+                
+                if (!existingField && input.name && input.name !== 'csrf_token') {
+                    // Создаём скрытое поле с данными из формы станции
+                    const hiddenField = document.createElement('input');
+                    hiddenField.type = 'hidden';
+                    hiddenField.name = input.name;
+                    
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        hiddenField.value = input.checked ? input.value : '';
+                    } else {
+                        hiddenField.value = input.value || '';
+                    }
+                    
+                    console.log(`[FORM] Добавлено поле ${input.name} = ${hiddenField.value}`);
+                    machinesForm.appendChild(hiddenField);
+                }
+            });
+        });
+    } else {
+        console.error('[FORM] Формы не найдены!', {stationForm, machinesForm});
+    }
+});
 </script>
 
 {% endif %}

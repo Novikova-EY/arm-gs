@@ -57,13 +57,6 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
-    id_station_type = SelectField(
-        'Тип электростанции',
-        coerce=int,
-        choices=[],
-        validators=[Optional()]
-    )
-
     id_machine_type = SelectField(
         'Тип агрегата',
         coerce=int,
@@ -250,13 +243,6 @@ class MachineFilterSmallForm(FlaskForm):
     fuel_so = StringField(
         'Топливо (по СО ЕЭС)',
         validators=[Optional(), Length(max=80)]
-    )
-
-    id_station_type = SelectField(
-        'Тип электростанции',
-        coerce=int,
-        choices=[],
-        validators=[Optional()]
     )
 
     id_machine_type = SelectField(

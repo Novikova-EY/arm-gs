@@ -8,10 +8,13 @@ from config import SECRET_KEY, DEBUG
 from flask import Flask, redirect, request, url_for, flash
 from sqlalchemy import event
 from sqlalchemy.engine import URL
-from app.extensions import db, migrate, login_manager
+from app.extensions import db, migrate, login_manager, cache
 from config import Config
 import logging
 from flask_compress import Compress
+import redis
+from flask_session import Session
+from app.common.middleware import ConcurrentUpdateMiddleware
 
 def create_app():
     app = Flask(__name__)
@@ -26,10 +29,26 @@ def create_app():
     # Включаем сжатие ответов (gzip, br, zstd)
     Compress(app)
 
+    # Get database credentials with proper encoding handling
+    db_user = os.getenv("DB_USER")
+    db_pass = os.getenv("DB_PASS")
+    
+    # Ensure password is properly decoded if it contains special characters
+    if db_pass:
+        try:
+            # If password is bytes, decode it properly
+            if isinstance(db_pass, bytes):
+                db_pass = db_pass.decode('utf-8', errors='ignore')
+            # Ensure it's a valid UTF-8 string
+            db_pass = str(db_pass)
+        except Exception as e:
+            app.logger.error(f"Error processing database password: {e}")
+            raise
+    
     db_uri = URL.create(
         "postgresql+psycopg2",
-        username=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
+        username=db_user,
+        password=db_pass,
         host=os.getenv("DB_HOST", "localhost"),
         port=int(os.getenv("DB_PORT", "5432")),
         database=os.getenv("DB_NAME"),
@@ -37,13 +56,43 @@ def create_app():
     )
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
 
+    # Инициализация Redis для кэширования и сессий
+    try:
+        redis_client = redis.from_url(app.config.get('REDIS_URL', 'redis://localhost:6379/0'), 
+                                      socket_connect_timeout=2,
+                                      socket_timeout=2,
+                                      decode_responses=False)
+        redis_client.ping()
+        app.config['SESSION_REDIS'] = redis_client
+        app.logger.info("Redis connection established successfully")
+    except (redis.ConnectionError, redis.TimeoutError, Exception) as e:
+        app.logger.warning(f"Redis connection failed: {e}. Using fallback simple cache.")
+        app.config['CACHE_TYPE'] = 'SimpleCache'
+        app.config['SESSION_TYPE'] = 'filesystem'
+        app.config['SESSION_REDIS'] = None
+    
     # Инициализация расширений
     db.init_app(app)
     migrate.init_app(app, db)
+    
+    # Инициализация кэша (с обработкой ошибок)
+    try:
+        cache.init_app(app)
+    except Exception as e:
+        app.logger.error(f"Cache initialization failed: {e}. Cache disabled.")
+    
+    # Инициализация сессий (с обработкой ошибок)
+    try:
+        Session(app)
+    except Exception as e:
+        app.logger.error(f"Session initialization failed: {e}. Using default sessions.")
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Пожалуйста, войдите, чтобы получить доступ к этой странице."
     login_manager.login_message_category = "warning"
+    
+    # Инициализация middleware для обработки concurrent updates
+    ConcurrentUpdateMiddleware(app)
 
 
     # Слушатель для установки search_path — РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
@@ -130,6 +179,29 @@ def create_app():
 
         # Проброс мапперов
         db.configure_mappers()
+        
+        # Прогрев кэша станций и запуск периодического обновления (в фоновом режиме)
+        try:
+            from app.generation.services.station_services.aggregation_cache import (
+                warmup_station_cache, 
+                start_background_cache_refresh
+            )
+            import threading
+            
+            # Запускаем первоначальный прогрев кэша с app context
+            def warmup_with_context():
+                with app.app_context():
+                    warmup_station_cache()
+            
+            warmup_thread = threading.Thread(target=warmup_with_context, daemon=True)
+            warmup_thread.start()
+            app.logger.info("[CACHE WARMUP] Запущен прогрев кэша в фоновом режиме")
+            
+            # Запускаем периодическое обновление кэша каждые 25 минут (за 5 минут до истечения TTL)
+            start_background_cache_refresh(app, interval_minutes=25)
+            app.logger.info("[CACHE REFRESH] Запущено периодическое обновление кэша")
+        except Exception as e:
+            app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
 
     # Фильтр форматирования чисел
     from app.common.services.help_services import format_decimal_for_display
@@ -215,6 +287,58 @@ def create_app():
     def load_user(user_id):
         from app.auth.models.user_model import User
         return User.query.get(int(user_id))
+    
+    # Error handlers для детального логирования
+    @app.errorhandler(500)
+    def internal_error(error):
+        """Обработчик Internal Server Error."""
+        import traceback
+        app.logger.error('='*60)
+        app.logger.error('Internal Server Error occurred')
+        app.logger.error(f'Error: {error}')
+        app.logger.error('Traceback:')
+        app.logger.error(traceback.format_exc())
+        app.logger.error('='*60)
+        
+        # Откат транзакции БД при ошибке
+        try:
+            db.session.rollback()
+        except Exception as e:
+            app.logger.error(f'Error during rollback: {e}')
+        
+        if app.debug:
+            # В режиме отладки показываем детали
+            return f"<pre>{traceback.format_exc()}</pre>", 500
+        else:
+            # В production показываем общее сообщение
+            return render_template('errors/500.html'), 500
+    
+    @app.errorhandler(Exception)
+    def handle_exception(error):
+        """Обработчик всех необработанных исключений."""
+        import traceback
+        app.logger.error('='*60)
+        app.logger.error(f'Unhandled Exception: {type(error).__name__}')
+        app.logger.error(f'Message: {str(error)}')
+        app.logger.error('Traceback:')
+        app.logger.error(traceback.format_exc())
+        app.logger.error('='*60)
+        
+        # Откат транзакции БД при ошибке
+        try:
+            db.session.rollback()
+        except Exception as e:
+            app.logger.error(f'Error during rollback: {e}')
+        
+        # Если это HTTP exception, пропускаем
+        from werkzeug.exceptions import HTTPException
+        if isinstance(error, HTTPException):
+            return error
+        
+        if app.debug:
+            return f"<pre>{traceback.format_exc()}</pre>", 500
+        else:
+            return "An error occurred. Please try again later.", 500
 
     return app
 

@@ -7,8 +7,9 @@ from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.versioned_model import VersionedModelMixin
 
-class PGUMachine(db.Model):
+class PGUMachine(db.Model, VersionedModelMixin):
     __tablename__ = 'pgu_machines'
     __table_args__ = (
         Index('ix_pgu_machine_id_parent_machine', 'id_parent_machine'),

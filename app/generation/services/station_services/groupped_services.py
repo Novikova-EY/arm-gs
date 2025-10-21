@@ -149,9 +149,8 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
 
 def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_p_rasp=False):
     machines = Machine.query.options(
-        joinedload(Machine.station_type),
         joinedload(Machine.tes_machine_type),
-        joinedload(Machine.machine_station),
+        joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_fuels)

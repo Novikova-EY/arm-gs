@@ -32,6 +32,7 @@ from app.common.services.tranzaction_services import (
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
 def union_energy_system_query(
@@ -199,18 +200,22 @@ def update_union_energy_system_service(data, user):
                         raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
 
 
-            changes = {}
+            changes = []
 
             if name != (obj.name or ""):
-                changes["Наименование"] = f"{_dash(obj.name)} → {name}"
+                changes.append(format_field_change("name", obj.name or "не указано", name, "union_energy_system"))
                 obj.name = name
 
             if name_full != (obj.name_full or None):
-                changes["Полное наименование"] = f"{_dash(obj.name_full)} → {_dash(name_full)}"
+                old_val = obj.name_full or "не указано"
+                new_val = name_full or "не указано"
+                changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
 
             if display_order != obj.display_order:
-                changes["Порядок отображения"] = f"{_dash(obj.display_order)} → {_dash(display_order)}"
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
                 obj.display_order = display_order
 
             # Проверка наличия части энергосистемы
@@ -222,7 +227,9 @@ def update_union_energy_system_service(data, user):
                         raise ValueError(f"Часть энергосистемы России с id={new_val} не найдена.")
                     
                     prev_obj = db.session.get(EnergySystemType, obj.id_energy_system_type) if obj.id_energy_system_type else None
-                    changes["Часть энергосистемы России"] = f"{_dash(prev_obj.name if prev_obj else None)} → {_dash(new_obj.name if new_obj else None)}"
+                    old_name = prev_obj.name if prev_obj else "не указано"
+                    new_name = new_obj.name if new_obj else "не указано"
+                    changes.append(format_field_change("id_energy_system_type", old_name, new_name, "union_energy_system"))
                     obj.id_energy_system_type = new_val
 
             # Если есть реальные изменения — лог и добавление в список
@@ -230,7 +237,7 @@ def update_union_energy_system_service(data, user):
                 log_to_db(
                     user, 
                     f"Обновлена ОЭС: {name}", 
-                    f"Изменения = {changes}", 
+                    f"Изменения: {'; '.join(changes)}", 
                     entity_type="union_energy_system", 
                     entity_id=union_energy_system_id)
                 updated_ids.append(union_energy_system_id)

@@ -8,14 +8,14 @@ from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.versioned_model import VersionedModelMixin
 
-class Machine(db.Model):
+class Machine(db.Model, VersionedModelMixin):
     __tablename__ = 'machines'
     __table_args__ = (
         Index('ix_machine_id_station', 'id_station'),
         Index('ix_machine_id_condition_type', 'id_condition_type'),
         Index('ix_machine_id_tes_machine_type', 'id_tes_machine_type'),
-        Index('ix_machine_id_station_type', 'id_station_type'),
         Index('ix_machine_id_equipment_group', 'id_equipment_group'),
         Index('ix_machine_id_gen_company', 'id_gen_company'),
         Index('ix_machine_id_energy_area', 'id_energy_area'),
@@ -69,15 +69,6 @@ class Machine(db.Model):
     machine_name = db.Column(db.String(255), nullable=False, index=True)
     machine_group = db.Column(db.String(255), nullable=True)
     fuel_so = db.Column(db.String(255), nullable=True)
-
-    # FK -> StationType
-    id_station_type = db.Column(
-        db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.station_types.id', ondelete='RESTRICT'),
-        nullable=True,
-        index=True,
-    )
-    station_type = db.relationship('StationType', back_populates='machines')
 
     # FK -> MachineType
     id_machine_type = db.Column(
@@ -165,6 +156,9 @@ class Machine(db.Model):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # version для оптимистической блокировки (определен в VersionedModelMixin)
+    # version = db.Column(db.Integer, nullable=False, default=1)
 
     # ----- Runtime helpers (не маппятся в БД) -----
     @property
