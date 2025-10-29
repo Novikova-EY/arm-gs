@@ -23,11 +23,21 @@ from app.common.services.get_services.years.years_get_services import (
 )
 
 def extract_filters_from_args(args):
+    # Нормализуем condition_type_filter: парсим int, игнорируем None/0
+    condition_type = args.get("condition_type_filter", type=int)
+    if condition_type in (None, 0):
+        condition_type = None
+
+    # Совместимость: поддержим оба параметра для вида топлива
+    _fuel_type_filter = args.getlist("fuel_type_filter", type=int)
+    if not _fuel_type_filter:
+        _fuel_type_filter = args.getlist("station_fuel_type_filter", type=int)
+
     return {
         "page": args.get("page", 1, type=int),
         "start_year": args.get("start_year", Config.START_YEAR, type=int),
         "end_year": args.get("end_year", Config.END_YEAR, type=int),
-        "condition_type_filter": args.get("condition_type_filter", ""),
+        "condition_type_filter": condition_type,
         "energy_system_type_filter": args.getlist("energy_system_type_filter", type=int),
         "union_energy_system_filter": args.getlist("union_energy_system_filter", type=int),
         "regional_energy_system_filter": args.getlist("regional_energy_system_filter", type=int),
@@ -36,7 +46,7 @@ def extract_filters_from_args(args):
         "gen_company_filter": args.get("gen_company_filter", "").strip(),
         "station_name_filter": args.get("station_name_filter", "").strip(),
         "station_type_filter": args.getlist("station_type_filter", type=int),
-        "fuel_type_filter": args.getlist("fuel_type_filter", type=int),
+        "fuel_type_filter": _fuel_type_filter,
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
         "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
         "date_exploitation_filter": args.getlist("date_exploitation_filter", type=int),
@@ -359,12 +369,29 @@ def get_stations_all(
 
 
 def has_any_filters(args):
+    """
+    Проверяет, применены ли какие-либо фильтры.
+    Возвращает True, если хотя бы один фильтр активен.
+    """
     return any([
+        # Территориальные фильтры
         args.getlist('energy_system_type_filter'),
         args.getlist('union_energy_system_filter'),
         args.getlist('regional_energy_system_filter'),
         args.getlist('federal_district_filter'),
         args.getlist('regional_district_filter'),
+        # Фильтры по названиям
         args.get('station_name_filter'),
         args.get('gen_company_filter'),
+        # Фильтры по типам
+        args.getlist('station_type_filter'),
+        args.getlist('tes_type_filter'),
+        args.getlist('tes_machine_type_filter'),
+        args.getlist('fuel_type_filter'),
+        # Фильтры по датам
+        args.getlist('date_exploitation_filter'),
+        args.getlist('date_decompressing_expected_filter'),
+        args.getlist('date_modernization_expected_filter'),
+        # Фильтр по состоянию
+        args.get('condition_type_filter'),
     ])

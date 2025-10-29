@@ -10,12 +10,21 @@ from sqlalchemy.orm import selectinload, load_only
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_union_energy_system_list_full():
     """Получает полный список ОЭС."""
+    current_version = get_current_version()
+    query = UnionEnergySystem.query
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
     return (
-        UnionEnergySystem.query
+        query
         .order_by(
             (UnionEnergySystem.display_order.is_(None)),
             UnionEnergySystem.display_order.asc(),
@@ -29,18 +38,29 @@ def get_union_energy_system_list_full():
 @lru_cache(maxsize=1)
 def get_union_energy_system_list():
     """Получает список ОЭС (кроме "не указано")."""
-    query = (
-        UnionEnergySystem.query
+    current_version = get_current_version()
+    query = UnionEnergySystem.query
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    return (
+        query
         .filter(UnionEnergySystem.id.isnot(None), UnionEnergySystem.id > 0)
         .order_by(UnionEnergySystem.name.asc())
     )
-    return query
 
 
 def get_union_energy_systems_list() -> List[UnionEnergySystem]:
     """Возвращает список ОЭС с заранее загруженными региональными энергосистемами."""
+    current_version = get_current_version()
+    query = UnionEnergySystem.query
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
     return (
-        UnionEnergySystem.query
+        query
         .options(
             selectinload(UnionEnergySystem.regional_energy_systems)
             .load_only(RegionalEnergySystem.id, RegionalEnergySystem.name)
@@ -53,23 +73,26 @@ def get_union_energy_systems_list() -> List[UnionEnergySystem]:
 @lru_cache(maxsize=1)
 def get_union_energy_systems_map() -> Dict[int, str]:
     """Возвращает отображение {ОЭС.id: ОЭС.name} для всех ОЭС (кэшируется)."""
-    rows = (
-        UnionEnergySystem.query
-        .with_entities(UnionEnergySystem.id, UnionEnergySystem.name)
-        .order_by(UnionEnergySystem.id)
-        .all()
-    )
+    current_version = get_current_version()
+    query = UnionEnergySystem.query.with_entities(UnionEnergySystem.id, UnionEnergySystem.name)
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    rows = query.order_by(UnionEnergySystem.id).all()
     return {id_: name for id_, name in rows}
 
 
 @lru_cache(maxsize=1)
 def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
     """Возвращает отображение {ОЭС.id: [РЭС.id, ...]} (кэшируется)."""
-    pairs = (
-        db.session.query(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
-        .order_by(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
-        .all()
-    )
+    current_version = get_current_version()
+    query = db.session.query(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
+    
+    if current_version:
+        query = query.filter(RegionalEnergySystem.database_version_id == current_version)
+    
+    pairs = query.order_by(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id).all()
     acc: dict[int, list[int]] = defaultdict(list)
     for ues_id, res_id in pairs:
         if ues_id is not None:
@@ -80,11 +103,13 @@ def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
 @lru_cache(maxsize=1)
 def get_res_to_ues_id_map() -> Dict[int, int]:
     """Возвращает отображение {РЭС.id: ОЭС.id} (кэшируется)."""
-    pairs = (
-        db.session.query(RegionalEnergySystem.id, RegionalEnergySystem.id_union_energy_system)
-        .filter(RegionalEnergySystem.id_union_energy_system.isnot(None))
-        .all()
-    )
+    current_version = get_current_version()
+    query = db.session.query(RegionalEnergySystem.id, RegionalEnergySystem.id_union_energy_system)
+    
+    if current_version:
+        query = query.filter(RegionalEnergySystem.database_version_id == current_version)
+    
+    pairs = query.filter(RegionalEnergySystem.id_union_energy_system.isnot(None)).all()
     return {res_id: ues_id for res_id, ues_id in pairs}
 
 
@@ -113,8 +138,14 @@ def get_union_energy_system_name(union_energy_system_ids: Union[str, int, List[i
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = UnionEnergySystem.query.filter(UnionEnergySystem.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = UnionEnergySystem.query.filter(UnionEnergySystem.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

@@ -4,7 +4,7 @@ RegionalDistrict model (Субъект РФ).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
 
 class RegionalDistrict(db.Model):
@@ -20,9 +20,9 @@ class RegionalDistrict(db.Model):
     # Номер порядковый (может быть пустым)
     region_id = db.Column(db.String(3), nullable=True, index=True)
 
-    # Наименование (уникально) и полное наименование (может быть пустым/уникальным)
-    name = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    name_full = db.Column(db.String(80), unique=True, nullable=True)
+    # Наименование и полное наименование (уникальность обеспечивается композитными ограничениями на уровне таблицы)
+    name = db.Column(db.String(80), nullable=False, index=True)
+    name_full = db.Column(db.String(80), nullable=True)
 
     # FK -> Федеральный округ
     id_federal_district = db.Column(
@@ -86,6 +86,20 @@ class RegionalDistrict(db.Model):
     # Таймстемпы базы (UTC)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('database_version_id', 'name', name='uq_refdata_regional_districts_ver_name'),
+        db.UniqueConstraint('database_version_id', 'name_full', name='uq_refdata_regional_districts_ver_name_full'),
+        {"schema": SCHEMA_REFDATA},
+    )
 
     @property
     def regional_energy_system(self):

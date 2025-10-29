@@ -12,13 +12,16 @@ function initializeStationFilters() {
 
     function initializeSelect2(selector, placeholder) {
         if ($(selector).length) {
-            $(selector).select2({
-                placeholder: placeholder,
-                allowClear: true,
-                width: '100%',
-                closeOnSelect: false,
-                minimumResultsForSearch: Infinity
-            });
+            // Проверяем, не инициализирован ли уже Select2
+            if (!$(selector).data('select2')) {
+                $(selector).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false,
+                    minimumResultsForSearch: Infinity
+                });
+            }
         } else {
             console.warn(`❌ Select2: элемент ${selector} не найден`);
         }
@@ -166,34 +169,3 @@ function initializeStationFilters() {
     console.log('FD->RD keys:', Object.keys(window.regional_district_mapping_json || {}));
 
 }
-
-    // Скрипт для автоматической подстановки данных по наименованию субъекта
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById("id_regional_district").addEventListener("change", function() {
-            let district_id = this.value;
-            
-            // Проверка, выбран ли субъект РФ
-            if (!district_id) return;
-    
-            fetch(`/generation/stations/get_energy_system_data/${district_id}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Данные с сервера:", data); // Отладка
-    
-                    // Проверяем, существуют ли элементы перед изменением
-                    if (document.getElementById("federal_district")) {
-                        document.getElementById("federal_district").innerText = data.federal_district || "Нет данных";
-                    }
-                    if (document.getElementById("union_energy_system")) {
-                        document.getElementById("union_energy_system").innerText = data.union_energy_system || "Нет данных";
-                    }
-                    if (document.getElementById("energy_system_type")) {
-                        document.getElementById("energy_system_type").innerText = data.energy_system_type || "Нет данных";
-                    }
-                    if (document.getElementById("regional_energy_system")) {
-                        document.getElementById("regional_energy_system").innerText = data.regional_energy_system || "Нет данных";
-                    }
-                })
-                .catch(error => console.error("Ошибка загрузки данных:", error));
-        });
-    });

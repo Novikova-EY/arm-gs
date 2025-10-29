@@ -6,12 +6,21 @@ from typing import Union, List
 # Модели
 from app.refdata.models.fuels.fuel_model import Fuel
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_fuel_list_full():
-    """Получает полный список типов топлива'."""
+    """Получает полный список типов топлива."""
+    current_version = get_current_version()
+    query = Fuel.query
+    
+    if current_version:
+        query = query.filter(Fuel.database_version_id == current_version)
+    
     return (
-        Fuel.query
+        query
         .order_by(
             (Fuel.id != 0),
             Fuel.name.asc()
@@ -23,12 +32,17 @@ def get_fuel_list_full():
 @lru_cache(maxsize=1)
 def get_fuel_list():
     """Получает список типов топлива (кроме "не указано")."""
-    query = (
-        Fuel.query
+    current_version = get_current_version()
+    query = Fuel.query
+    
+    if current_version:
+        query = query.filter(Fuel.database_version_id == current_version)
+    
+    return (
+        query
         .filter(Fuel.id.isnot(None), Fuel.id > 0)
         .order_by(Fuel.name.asc())
     )
-    return query
 
 
 def get_fuel_name(fuel_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +64,14 @@ def get_fuel_name(fuel_ids: Union[str, int, List[int]]) -> str:
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = Fuel.query.filter(Fuel.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = Fuel.query.filter(Fuel.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(Fuel.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

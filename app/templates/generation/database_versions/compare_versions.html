@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Сравнение версий БД - АРМ ГС{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="bi bi-arrow-left-right"></i>
+                Сравнение версий базы данных
+            </h2>
+            
+            <!-- Форма выбора версий для сравнения -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-filter"></i>
+                        Выберите версии для сравнения
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('station_bp.compare_versions') }}">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label for="version_id_1" class="form-label fw-bold">Версия 1 (базовая):</label>
+                                <select name="version_id_1" id="version_id_1" class="form-select" required>
+                                    <option value="">-- Выберите версию --</option>
+                                    {% for version in versions %}
+                                    <option value="{{ version.id }}">
+                                        v{{ version.version_number }} - {{ version.name }}
+                                        {% if version.is_active %}(Активна){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-2 text-center d-flex align-items-end justify-content-center">
+                                <i class="bi bi-arrow-left-right fs-1 text-primary"></i>
+                            </div>
+                            
+                            <div class="col-md-5">
+                                <label for="version_id_2" class="form-label fw-bold">Версия 2 (сравниваемая):</label>
+                                <select name="version_id_2" id="version_id_2" class="form-select" required>
+                                    <option value="">-- Выберите версию --</option>
+                                    {% for version in versions %}
+                                    <option value="{{ version.id }}">
+                                        v{{ version.version_number }} - {{ version.name }}
+                                        {% if version.is_active %}(Активна){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i>
+                                    Сравнить версии
+                                </button>
+                                <a href="{{ url_for('station_bp.database_versions') }}" class="btn btn-secondary btn-lg ms-2">
+                                    <i class="bi bi-arrow-left"></i>
+                                    Назад к версиям
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Результаты сравнения -->
+            {% if comparison %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clipboard-data"></i>
+                        Результаты сравнения
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Общая информация -->
+                    <div class="row mb-4">
+                        <div class="col-md-5">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    Версия 1 (Базовая)
+                                </div>
+                                <div class="card-body">
+                                    <h4>v{{ comparison.version1.version_number }}</h4>
+                                    <h5>{{ comparison.version1.name }}</h5>
+                                    <p class="text-muted">
+                                        Создана: {{ comparison.version1.created_at.strftime('%d.%m.%Y %H:%M') if comparison.version1.created_at else '-' }}
+                                    </p>
+                                    <hr>
+                                    <p class="mb-1">
+                                        <strong>Всего записей:</strong>
+                                        <span class="badge bg-info fs-6">{{ comparison.version1.stats.total_records }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                            <i class="bi bi-arrow-right fs-1 text-success"></i>
+                        </div>
+                        
+                        <div class="col-md-5">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    Версия 2 (Сравниваемая)
+                                </div>
+                                <div class="card-body">
+                                    <h4>v{{ comparison.version2.version_number }}</h4>
+                                    <h5>{{ comparison.version2.name }}</h5>
+                                    <p class="text-muted">
+                                        Создана: {{ comparison.version2.created_at.strftime('%d.%m.%Y %H:%M') if comparison.version2.created_at else '-' }}
+                                    </p>
+                                    <hr>
+                                    <p class="mb-1">
+                                        <strong>Всего записей:</strong>
+                                        <span class="badge bg-info fs-6">{{ comparison.version2.stats.total_records }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Общая статистика -->
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-graph-up"></i> Общая статистика:</h5>
+                        <ul class="mb-0">
+                            <li><strong>Разница в количестве записей:</strong>
+                                <span class="badge {% if comparison.summary.total_difference > 0 %}bg-success{% elif comparison.summary.total_difference < 0 %}bg-danger{% else %}bg-secondary{% endif %} fs-6">
+                                    {% if comparison.summary.total_difference > 0 %}+{% endif %}{{ comparison.summary.total_difference }}
+                                </span>
+                            </li>
+                            <li><strong>Измененных таблиц:</strong> {{ comparison.summary.tables_changed }} из {{ comparison.summary.tables_total }}</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Экспорт -->
+                    <div class="text-end mb-3">
+                        <a href="{{ url_for('station_bp.export_comparison', version_id_1=comparison.version1.id, version_id_2=comparison.version2.id) }}" 
+                           class="btn btn-success">
+                            <i class="bi bi-file-earmark-excel"></i>
+                            Экспортировать в Excel
+                        </a>
+                    </div>
+                    
+                    <!-- Детальные различия -->
+                    {% if comparison.differences %}
+                    <h5 class="mt-4 mb-3">
+                        <i class="bi bi-table"></i>
+                        Детальные различия по таблицам:
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Таблица</th>
+                                    <th class="text-center">Версия 1</th>
+                                    <th class="text-center">Версия 2</th>
+                                    <th class="text-center">Разница</th>
+                                    <th class="text-center">Изменение (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for table, diff in comparison.differences.items() %}
+                                <tr>
+                                    <td><code>{{ table }}</code></td>
+                                    <td class="text-center">{{ diff.version1_count }}</td>
+                                    <td class="text-center">{{ diff.version2_count }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {% if diff.difference > 0 %}bg-success{% elif diff.difference < 0 %}bg-danger{% else %}bg-secondary{% endif %} fs-6">
+                                            {% if diff.difference > 0 %}+{% endif %}{{ diff.difference }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if diff.change_percent > 0 %}bg-success{% elif diff.change_percent < 0 %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {% if diff.change_percent > 0 %}+{% endif %}{{ diff.change_percent }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        Версии идентичны - различий не обнаружено.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.card-header {
+    font-weight: 600;
+}
+code {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+</style>
+{% endblock %}
+

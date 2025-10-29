@@ -94,6 +94,14 @@ class Station(db.Model, VersionedModelMixin):
     
     # version для оптимистической блокировки (определен в VersionedModelMixin)
     # version = db.Column(db.Integer, nullable=False, default=1)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     # ----- Aggregated helpers (не маппятся в БД) -----
     @property

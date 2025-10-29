@@ -11,7 +11,8 @@ class Document(db.Model):
     __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    # Уникальность обеспечивается constraint documents_kommod_name_version_key (name, database_version_id)
+    name = db.Column(db.String(255), nullable=False, index=True)
 
     # Поля для хранения файла
     file_path = db.Column(db.String(500), nullable=True)  # Путь к файлу в файловой системе
@@ -22,6 +23,14 @@ class Document(db.Model):
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     @property
     def has_file(self):

@@ -87,6 +87,14 @@ class PGUMachine(db.Model, VersionedModelMixin):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return f"<PGUMachine id={self.id} name={self.machine_name!r} parent_id={self.id_parent_machine}>"

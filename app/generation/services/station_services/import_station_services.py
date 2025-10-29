@@ -7,6 +7,9 @@ from app.common.services.help_services import (
     _replace_quotes_sequentially,
     _clean_name,
 )
+from app.common.services.database_version_filter import (
+    set_db_version_on_create,
+)
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.machine.machine_model import Machine
@@ -247,6 +250,7 @@ def handle_machine(row, current_station, user):
             date_relabing_fact=safe_date(row.get('date_relabing_fact')),
             date_update_fact=safe_date(row.get('date_update_fact')),
         )
+        set_db_version_on_create(machine)
         db.session.add(machine)
         db.session.flush()
         log_to_db(user, f"Создание агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Создан агрегат: {machine_number} - {machine_name}")
@@ -283,6 +287,7 @@ def assign_machine_types(machine, row, start_year, end_year, user):
                 id_machine=machine.id,
                 id_tes_type=tes_type_id
             )
+            set_db_version_on_create(new_record)
             db.session.add(new_record)
             log_to_db(
                 user, f"Создание типа ТЭС электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
@@ -315,6 +320,7 @@ def assign_machine_power_p_ust(machine, row, start_year, end_year, user):
                 id_machine=machine.id,
                 p_ust=p_ust,
             )
+            set_db_version_on_create(new_power)
             db.session.add(new_power)
             log_to_db(
                 user, f"Создание мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
@@ -354,6 +360,7 @@ def assign_machine_power_p_rasp(machine, row, start_year, end_year, user):
                 p_rasp=p_rasp,
                 p_ogr=0 - p_rasp
             )
+            set_db_version_on_create(machine_power)
             db.session.add(machine_power)
             log_to_db(
                 user, f"Создание p_rasp электростанции {machine.machine_station.name} ({district_name})",
@@ -421,6 +428,7 @@ def update_station_power(station, start_year, end_year, user):
                 p_ogr=total_p_ogr,
                 p_rasp=total_p_rasp
             )
+            set_db_version_on_create(record)
             db.session.add(record)
             log_to_db(user, f"Создание мощности электростанции ({station.name})",
                       f"Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
@@ -463,6 +471,7 @@ def assign_machine_fuel(machine, row, start_year, end_year, user):
                 id_machine=machine.id,
                 id_fuel=fuel.id
             )
+            set_db_version_on_create(new_fuel)
             db.session.add(new_fuel)
             log_to_db(user, f"Создание топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                       f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {fuel.name}")
@@ -536,6 +545,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
                     id_machine=machine.id,
                     id_fuel=fuel.id
                 )
+                set_db_version_on_create(machine_fuel)
                 db.session.add(machine_fuel)
                 log_to_db(
                     user,
@@ -564,6 +574,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
                     id_machine=machine.id,
                     id_tes_type=tes_type.id
                 )
+                set_db_version_on_create(machine_tes_type)
                 db.session.add(machine_tes_type)
                 log_to_db(
                     user,

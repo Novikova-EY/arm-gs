@@ -29,6 +29,9 @@ from app.common.services.tranzaction_services import (
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import apply_version_filter, set_db_version_on_create
+
 
 def gen_company_query(
     gen_company_filter=None,
@@ -51,6 +54,9 @@ def gen_company_query(
         GenCompany.query
         .filter(GenCompany.id.isnot(None), GenCompany.id > 0)
     )
+    
+    # Применяем фильтрацию по версии БД
+    query = apply_version_filter(query, GenCompany)
 
     # Фильтрация
     if gen_company_filter:

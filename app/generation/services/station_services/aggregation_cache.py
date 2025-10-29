@@ -26,8 +26,13 @@ def get_redis_client():
 
 def get_cache_key(start_year, end_year, station_ids, filters=None):
     """Генерирует ключ кэша на основе параметров запроса."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    
     # Сортируем station_ids для консистентности
     sorted_ids = tuple(sorted(station_ids))
+    
+    # Получаем текущую версию БД
+    current_version = get_current_db_version_id()
     
     # Добавляем фильтры в ключ кэша
     if filters:
@@ -47,7 +52,8 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
     else:
         filters_str = ""
     
-    key_data = f"{start_year}_{end_year}_{sorted_ids}_{filters_str}"
+    # Добавляем версию БД в ключ кэша
+    key_data = f"v{current_version or 'all'}_{start_year}_{end_year}_{sorted_ids}_{filters_str}"
     return hashlib.md5(key_data.encode()).hexdigest()
 
 
@@ -81,13 +87,13 @@ def cache_aggregation(func):
 
 
 def clear_aggregation_cache():
-    """Очищает весь кэш агрегаций (Redis + memory fallback)."""
+    """Очищает весь кэш агрегаций (Redis + memory fallback + LRU кэши)."""
     global _cache, _sorted_stations_cache, _page_positions_cache
     
     redis_client = get_redis_client()
     if redis_client:
         try:
-            # ОПТИМИЗАЦИЯ: Используем SCAN вместо KEYS для избежания блокировки Redis
+            # ИСПРАВЛЕНО: Используем более широкий паттерн для очистки ВСЕХ версий кэша
             keys_to_delete = []
             for pattern in ['stations:sorted:*', 'stations:page:*']:
                 cursor = 0
@@ -112,6 +118,52 @@ def clear_aggregation_cache():
     _sorted_stations_cache = {}
     _page_positions_cache = {}
     print("[🗑 CACHE CLEARED] Кэш агрегаций, отсортированных списков и позиций страниц очищен")
+    
+    # Очищаем LRU кэши для предотвращения DetachedInstanceError
+    try:
+        from app.common.services.get_services.energy_systems.energy_unit_get_services import (
+            get_energy_unit_list_full, get_energy_unit_list
+        )
+        from app.common.services.get_services.stations.station_type_get_services import (
+            get_station_type_list_full, get_station_type_list
+        )
+        from app.common.services.get_services.stations.tes_type_get_services import (
+            get_tes_type_list_full, get_tes_type_list
+        )
+        from app.common.services.get_services.stations.tes_machine_type_get_services import (
+            get_tes_machine_type_list_full, get_tes_machine_type_list
+        )
+        from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
+            get_pgu_tes_machine_type_list_full, get_pgu_tes_machine_type_list
+        )
+        from app.common.services.get_services.fuels.fuel_type_get_services import (
+            get_fuel_type_list_full, get_fuel_type_list
+        )
+        from app.common.services.get_services.refdata_for_stations.condition_type_get_services import (
+            get_condition_type_list_full, get_condition_type_list
+        )
+        
+        # Очищаем все LRU кэши
+        cache_functions = [
+            get_energy_unit_list_full, get_energy_unit_list,
+            get_station_type_list_full, get_station_type_list,
+            get_tes_type_list_full, get_tes_type_list,
+            get_tes_machine_type_list_full, get_tes_machine_type_list,
+            get_pgu_tes_machine_type_list_full, get_pgu_tes_machine_type_list,
+            get_fuel_type_list_full, get_fuel_type_list,
+            get_condition_type_list_full, get_condition_type_list,
+        ]
+        
+        cleared_count = 0
+        for func in cache_functions:
+            if hasattr(func, 'cache_clear'):
+                func.cache_clear()
+                cleared_count += 1
+        
+        print(f"[🗑 LRU CACHE CLEARED] Очищено LRU кэшей: {cleared_count}")
+        
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка при очистке LRU кэшей: {e}")
 
 
 def clear_old_cache_entries():
@@ -163,16 +215,20 @@ def warmup_station_cache(force=False):
         from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
         from app.extensions import db
         from sqlalchemy.orm import selectinload, joinedload
+        from app.common.services.database_version_filter import filter_by_db_version
         
         # Загружаем только ID станций и минимум данных для сортировки
-        stations = Station.query.options(
+        # Применяем фильтрацию по версии БД
+        query = Station.query.options(
             selectinload(Station.regional_district)
                 .selectinload(RegionalDistrict.regional_energy_systems)
                 .joinedload(RegionalEnergySystem.union_energy_system)
                 .joinedload(UnionEnergySystem.energy_system_type),
             joinedload(Station.energy_unit),
             joinedload(Station.station_type)
-        ).all()
+        )
+        query = filter_by_db_version(query, Station)
+        stations = query.all()
         
         print(f"[CACHE WARMUP] Загружено {len(stations)} станций")
         
@@ -284,6 +340,8 @@ _sorted_stations_cache = {}
 
 def get_sorted_stations_cache_key(filters):
     """Генерирует ключ кэша для отсортированного списка станций."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    
     # Берем только фильтры, которые влияют на выборку станций
     # Исключаем start_year, end_year, page - они не влияют на список станций
     relevant_filters = {
@@ -291,10 +349,15 @@ def get_sorted_stations_cache_key(filters):
         for k, v in (filters or {}).items()
         if k not in ['start_year', 'end_year', 'page', 'sort_by', 'sort_dir']
     }
+    
+    # Добавляем текущую версию БД в ключ кэша
+    current_version = get_current_db_version_id()
+    relevant_filters['_db_version'] = current_version
+    
     filter_items = sorted(relevant_filters.items())
     key_data = str(filter_items)
     hash_key = hashlib.md5(key_data.encode()).hexdigest()
-    return f"stations:sorted:{hash_key}"
+    return f"stations:sorted:v{current_version or 'all'}:{hash_key}"
 
 def cache_sorted_stations(filters, sorted_station_ids):
     """Кэширует отсортированный список ID станций в Redis."""

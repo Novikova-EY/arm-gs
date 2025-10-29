@@ -27,6 +27,9 @@ from app.common.services.tranzaction_services import (
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import apply_version_filter, set_db_version_on_create
+
 
 def station_type_query(
         station_type_filter=None, 
@@ -43,6 +46,9 @@ def station_type_query(
 
     # Базовый запрос
     query = StationType.query.filter(StationType.id.isnot(None), StationType.id > 0)
+    
+    # Применяем фильтрацию по версии БД
+    query = apply_version_filter(query, StationType)
 
     # Фильтрация
     if station_type_filter:

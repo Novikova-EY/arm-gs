@@ -11,12 +11,21 @@ from decimal import Decimal
 from collections import defaultdict
 import psycopg2.errors
 
+# Функции для работы с версионированием БД
+from app.common.services.database_version_filter import (
+    filter_by_db_version,
+    set_db_version_on_create,
+    get_current_db_version_id
+)
+
 # Модели
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_power_model import StationPower
 
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.station.station_power_model import StationPower
+from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
@@ -34,6 +43,7 @@ from app.refdata.models.territories.federal_district_model import FederalDistric
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 # Сервисы
+from app.common.services.database_version_services import get_current_version
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
     get_year_feature_dict,
@@ -168,10 +178,17 @@ def get_stations_list(
     rounding_digits=None,
     **filters,
 ):
+    # Совместимость параметров: поддерживаем legacy-ключ station_fuel_type_filter
+    if not filters.get("fuel_type_filter") and filters.get("station_fuel_type_filter"):
+        filters["fuel_type_filter"] = filters.get("station_fuel_type_filter")
+
     current_year = get_current_year()
 
     # 1. Фильтрация агрегатов
     machine_query = db.session.query(Machine.id, Machine.id_station)
+    
+    # Фильтрация по версии БД
+    machine_query = filter_by_db_version(machine_query, Machine)
 
     if filters.get("tes_type_filter"):
         machine_query = machine_query.filter(
@@ -212,6 +229,9 @@ def get_stations_list(
     machine_subquery = machine_query.subquery()
     station_ids_query = db.session.query(machine_subquery.c.id_station).distinct()
     station_ids_query = station_ids_query.join(Station, Station.id == machine_subquery.c.id_station)
+    
+    # Фильтрация станций по версии БД
+    station_ids_query = filter_by_db_version(station_ids_query, Station)
 
     # 3. Фильтры по станции
 
@@ -291,6 +311,9 @@ def get_stations_list(
     # Получаем уникальные ID станций (важно для случаев с multiple regional_energy_systems)
     raw_station_ids = [row[0] for row in station_ids_query.all()]
     all_station_ids = list(set(raw_station_ids))
+    
+    print(f"[DEBUG] Итоговое количество станций: {len(all_station_ids)}")
+    print(f"[DEBUG] Первые 10 ID станций: {all_station_ids[:10]}")
     
     # Проверка на дубликаты в SQL запросе
     if len(raw_station_ids) != len(all_station_ids):
@@ -1677,6 +1700,9 @@ def get_station_list_data(
     next_station_info = station_data.get("next_station_info")
     total_pages = 1 if show_all else max(1, (total_count + per_page_int - 1) // per_page_int)
 
+    print(f"[DEBUG] get_station_list_data: получено {len(stations)} станций из {total_count} общих")
+    print(f"[DEBUG] get_station_list_data: первые 5 станций: {[s.id for s in stations[:5]]}")
+
     # Получаем агрегаты с рассчитанными rowspan (только если не per_page=all для ускорения)
     station_ids = [s.id for s in stations]
     
@@ -1690,6 +1716,16 @@ def get_station_list_data(
 
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
+            
+        # Обеспечиваем, что station_totals содержит данные для всех станций
+        for station in stations:
+            if station.id not in station_totals:
+                station_totals[station.id] = {
+                    'total_rows': 1,  # только заголовок
+                    'machine_count': 0,
+                    'total_pgu_count': 0,
+                    'summary_rows': 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                }
             
         # 🧩 Назначение мощностей агрегатам
         for station in stations:
@@ -1706,6 +1742,17 @@ def get_station_list_data(
             station_machines_map[m.id_station].append(m)
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
+            
+        # Обеспечиваем, что station_totals содержит данные для всех станций
+        for station in stations:
+            if station.id not in station_totals:
+                station_totals[station.id] = {
+                    'total_rows': 1,  # только заголовок
+                    'machine_count': 0,
+                    'total_pgu_count': 0,
+                    'summary_rows': 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                }
+                
         # Назначаем мощности агрегатам
         for station in stations:
             for machine in station.machines:
@@ -1717,7 +1764,9 @@ def get_station_list_data(
     )
 
     # Агрегация по иерархии
+    print(f"[DEBUG] get_station_list_data: вызываем build_hierarchy_structure с {len(stations)} станциями")
     hierarchy_data = build_hierarchy_structure(stations, include_names=True)
+    print(f"[DEBUG] get_station_list_data: build_hierarchy_structure вернул {len(hierarchy_data.get('grouped_stations', {}))} групп")
 
     stations = station_data["stations"]
     station_ids = [s.id for s in stations]
@@ -1781,6 +1830,7 @@ def get_station_list_data(
         "per_page": per_page,
         "should_show_totals": should_show_totals,
         "show_headers": show_headers,
+        "hierarchy_data": hierarchy_data,
     }
 
     # Выполняем агрегации если включено отображение сумм или режим "Все станции"
@@ -1792,30 +1842,85 @@ def get_station_list_data(
     return result
 
 
-def get_station_list_template_context(form, data, rounding_digits, filters, show_all=False):
+def get_station_list_template_context(form, data, rounding_digits, filters, show_all=False, hierarchy_data=None):
     import time
     start_time = time.time()
 
     year_features = get_year_feature_dict()
 
-    energy_system_type_list = get_energy_system_type_list_full()
+    # Получаем энергосистемы заново, чтобы избежать DetachedInstanceError
+    from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+    from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+    from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+    from app.refdata.models.territories.federal_district_model import FederalDistrict
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.gen_companies.gen_company_model import GenCompany
+    from app.common.services.database_version_services import get_current_version
+    from app.common.services.database_version_filter import filter_by_db_version
+    from app.extensions import db
+    
+    # Очищаем LRU кэши для энергосистем (только те, которые имеют кэш)
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import get_energy_system_type_list_full
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import get_union_energy_system_list_full
+    from app.common.services.get_services.gen_companies.gen_company_get_services import get_gen_company_list_full
+    
+    # Очищаем только функции с LRU кэшем
+    cache_functions = [
+        get_energy_system_type_list_full,
+        get_union_energy_system_list_full,
+        get_gen_company_list_full,
+    ]
+    
+    for func in cache_functions:
+        if hasattr(func, 'cache_clear'):
+            func.cache_clear()
+    
+    current_version = get_current_version()
+    
+    # Загружаем энергосистемы заново
+    energy_system_type_query = EnergySystemType.query
+    energy_system_type_query = filter_by_db_version(energy_system_type_query, EnergySystemType)
+    energy_system_type_objects = energy_system_type_query.order_by(EnergySystemType.name.asc()).all()
+    energy_system_type_list = [{"id": est.id, "name": est.name} for est in energy_system_type_objects]
     energy_system_type_names = get_energy_system_type_map()
 
-    regional_energy_system_list = get_regional_energy_systems_dto_list()
+    # Загружаем остальные справочники заново
+    regional_energy_system_query = RegionalEnergySystem.query
+    regional_energy_system_query = filter_by_db_version(regional_energy_system_query, RegionalEnergySystem)
+    regional_energy_system_objects = regional_energy_system_query.order_by(RegionalEnergySystem.name.asc()).all()
+    regional_energy_system_list = [{"id": res.id, "name": res.name} for res in regional_energy_system_objects]
     regional_energy_system_names = get_regional_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
 
-    federal_district_list = get_federal_districts_dto_list()
+    federal_district_query = FederalDistrict.query
+    federal_district_query = filter_by_db_version(federal_district_query, FederalDistrict)
+    federal_district_objects = federal_district_query.order_by(FederalDistrict.name.asc()).all()
+    federal_district_list = [{"id": fd.id, "name": fd.name} for fd in federal_district_objects]
     regional_district_mapping = get_fd_to_rd_ids_map()
 
-    regional_district_list = get_regional_districts_dto_list()
+    regional_district_query = RegionalDistrict.query
+    regional_district_query = filter_by_db_version(regional_district_query, RegionalDistrict)
+    regional_district_objects = regional_district_query.order_by(RegionalDistrict.name.asc()).all()
+    regional_district_list = [{"id": rd.id, "name": rd.name} for rd in regional_district_objects]
     regional_district_names = get_regional_districts_map()
 
-    union_energy_system_list = get_union_energy_system_list_full()
-    union_energy_system_names    = get_union_energy_systems_map()
+    union_energy_system_query = UnionEnergySystem.query
+    union_energy_system_query = filter_by_db_version(union_energy_system_query, UnionEnergySystem)
+    union_energy_system_objects = union_energy_system_query.order_by(UnionEnergySystem.display_order.asc(), UnionEnergySystem.name.asc()).all()
+    union_energy_system_list = [{"id": ues.id, "name": ues.name} for ues in union_energy_system_objects]
+    union_energy_system_names = get_union_energy_systems_map()
 
     # Порядок типов энергосистем по минимальному порядку ОЭС внутри них
-    ues_order_index = {ues.id: idx for idx, ues in enumerate(union_energy_system_list)}
+    # Используем данные из hierarchy_data вместо повторной загрузки из БД
+    ues_order_index = {}
+    if 'union_energy_system_name' in hierarchy_data:
+        # Создаем индекс на основе данных из hierarchy_data
+        for ues_id in hierarchy_data['union_energy_system_name'].keys():
+            ues_order_index[ues_id] = ues_id  # Используем ID как порядок
+    
+    # Если hierarchy_data не содержит UES данных, используем уже загруженные данные
+    if not ues_order_index:
+        ues_order_index = {ues["id"]: idx for idx, ues in enumerate(union_energy_system_list)}
 
     def _min_ues_index(es_group: dict) -> int:
         indices = [ues_order_index.get(ues_id, 10**9) for ues_id in es_group.keys()]
@@ -1826,22 +1931,75 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         key=lambda est_id: _min_ues_index(data["stations_grouped"][est_id])
     )
 
-    energy_units = get_energy_unit_list_full()
+    # Получаем энергоузлы заново, чтобы избежать DetachedInstanceError
+    from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+    from app.common.services.database_version_services import get_current_version
+    from app.extensions import db
+    
+    # Очищаем LRU кэш для энергоузлов
+    from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
+    get_energy_unit_list_full.cache_clear()
+    
+    current_version = get_current_version()
+    query = EnergyUnit.query
+    query = filter_by_db_version(query, EnergyUnit)
+    
+    energy_units = query.order_by(
+        (EnergyUnit.id != 0),
+        EnergyUnit.name.asc()
+    ).all()
+    
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
     
-    station_type_names = get_station_type_list_full()
+    # Получаем типы станций заново, чтобы избежать DetachedInstanceError
+    from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+    
+    station_type_query = StationType.query
+    station_type_query = filter_by_db_version(station_type_query, StationType)
+    station_type_names = station_type_query.order_by(StationType.name.asc()).all()
     station_type_list = {st.id: st.name for st in station_type_names}
 
-    tes_type_names = get_tes_type_list_full()
+    # Получаем остальные справочники заново, чтобы избежать DetachedInstanceError
+    from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+    from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+    from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
+    from app.refdata.models.fuels.fuel_type_model import FuelType
+    
+    # Очищаем LRU кэши для всех справочников
+    from app.common.services.get_services.stations.station_type_get_services import get_station_type_list_full
+    from app.common.services.get_services.stations.tes_type_get_services import get_tes_type_list_full
+    from app.common.services.get_services.stations.tes_machine_type_get_services import get_tes_machine_type_list_full
+    from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import get_pgu_tes_machine_type_list_full
+    from app.common.services.get_services.fuels.fuel_type_get_services import get_fuel_type_list_full
+    
+    get_station_type_list_full.cache_clear()
+    get_tes_type_list_full.cache_clear()
+    get_tes_machine_type_list_full.cache_clear()
+    get_pgu_tes_machine_type_list_full.cache_clear()
+    get_fuel_type_list_full.cache_clear()
+    
+    # Типы ТЭС
+    tes_type_query = TesType.query
+    tes_type_query = filter_by_db_version(tes_type_query, TesType)
+    tes_type_names = tes_type_query.order_by(TesType.name.asc()).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
-    tes_machine_type_names = get_tes_machine_type_list_full()
+    # Типы машин ТЭС
+    tes_machine_type_query = TesMachineType.query
+    tes_machine_type_query = filter_by_db_version(tes_machine_type_query, TesMachineType)
+    tes_machine_type_names = tes_machine_type_query.order_by(TesMachineType.name.asc()).all()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
-    pgu_tes_machine_type_names = get_pgu_tes_machine_type_list_full()
+    # Типы машин ПГУ-ТЭС
+    pgu_tes_machine_type_query = PGUTesMachineType.query
+    pgu_tes_machine_type_query = filter_by_db_version(pgu_tes_machine_type_query, PGUTesMachineType)
+    pgu_tes_machine_type_names = pgu_tes_machine_type_query.order_by(PGUTesMachineType.name.asc()).all()
     pgu_tes_machine_type_list = {pt.id: pt.name for pt in pgu_tes_machine_type_names}
 
-    fuel_type_names = get_fuel_type_list_full()
+    # Типы топлива
+    fuel_type_query = FuelType.query
+    fuel_type_query = filter_by_db_version(fuel_type_query, FuelType)
+    fuel_type_names = fuel_type_query.order_by(FuelType.name.asc()).all()
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()
@@ -1894,7 +2052,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "regional_energy_system_filter": filters.get("regional_energy_system_filter"),
             "federal_district_filter": filters.get("federal_district_filter"),
             "regional_district_filter": filters.get("regional_district_filter"),
-            "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
+            "fuel_type_filter": filters.get("fuel_type_filter"),
             "year_features": year_features,
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,
@@ -1958,13 +2116,18 @@ def extract_station_data_from_form(form):
 
 def get_current_machine_tes_types_map():
     current_year = get_current_year()
+    current_version = get_current_version()
 
-    machine_tes_types = (
+    query = (
         db.session.query(MachineTesType)
         .options(joinedload(MachineTesType.tes_type))
         .filter(MachineTesType.year_number == current_year)
-        .all()
     )
+    
+    if current_version:
+        query = query.filter(MachineTesType.database_version_id == current_version)
+
+    machine_tes_types = query.all()
 
     return {mtt.id_machine: mtt for mtt in machine_tes_types}
 
@@ -2026,35 +2189,51 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
         machine.powers_by_year[mp.year_number]["p_ogr"] = mp.p_ogr
         machine.powers_by_year[mp.year_number]["p_rasp"] = mp.p_rasp
 
-        # Предрасчет справочника топлива по годам для шаблона
-        machine.fuel_type_by_year = {
-            mf.year_number: (mf.fuel.fuel_type.name if mf.fuel and mf.fuel.fuel_type else None)
-            for mf in machine.machine_fuels
-        }
+        # fuel_type_by_year вычисляется автоматически через @property в модели Machine
 
 
 @no_autoflush
 def recalculate_station_power(station, start_year, end_year):
-    """Оптимизированный пересчет мощностей станции."""
+    """
+    Высокопроизводительный пересчет мощностей станции.
+    Использует прямой SQL-запрос вместо ORM для максимальной скорости.
+    """
+    from sqlalchemy import func
+    
+    # Используем SQL для подсчета суммарных мощностей всех агрегатов станции
+    # Это намного быстрее, чем перебор через ORM
+    power_sums = (
+        db.session.query(
+            MachinePower.year_number,
+            func.coalesce(func.sum(MachinePower.p_ust), 0).label('p_ust'),
+            func.coalesce(func.sum(MachinePower.p_ogr), 0).label('p_ogr'),
+            func.coalesce(func.sum(MachinePower.p_rasp), 0).label('p_rasp'),
+        )
+        .join(Machine, MachinePower.id_machine == Machine.id)
+        .filter(Machine.id_station == station.id)
+        .filter(MachinePower.year_number.between(start_year, end_year))
+        .group_by(MachinePower.year_number)
+        .all()
+    )
+    
+    # Преобразуем результат в словарь для быстрого доступа
     power_by_year = {
-        year: {"p_ust": Decimal("0"), "p_ogr": Decimal("0"), "p_rasp": Decimal("0")}
-        for year in range(start_year, end_year + 1)
+        row.year_number: {
+            "p_ust": Decimal(str(row.p_ust or "0")),
+            "p_ogr": Decimal(str(row.p_ogr or "0")),
+            "p_rasp": Decimal(str(row.p_rasp or "0")),
+        }
+        for row in power_sums
     }
-
-    # Оптимизация: используем предзагруженные данные
-    for machine in station.machines:
-        for mp in machine.machine_powers:
-            # Проверяем, что year загружен
-            if hasattr(mp, 'year') and mp.year:
-                year = mp.year.number
-            else:
-                # Fallback для случаев, когда year не загружен
-                continue
-                
-            if start_year <= year <= end_year:
-                power_by_year[year]["p_ust"] += Decimal(str(mp.p_ust or "0"))
-                power_by_year[year]["p_ogr"] += Decimal(str(mp.p_ogr or "0"))
-                power_by_year[year]["p_rasp"] += Decimal(str(mp.p_rasp or "0"))
+    
+    # Добавляем нулевые значения для годов без данных
+    for year in range(start_year, end_year + 1):
+        if year not in power_by_year:
+            power_by_year[year] = {
+                "p_ust": Decimal("0"),
+                "p_ogr": Decimal("0"),
+                "p_rasp": Decimal("0"),
+            }
 
     # Оптимизация: загружаем существующие мощности одним запросом
     existing_spowers = {
@@ -2087,6 +2266,7 @@ def recalculate_station_power(station, start_year, end_year):
                 p_ogr=values["p_ogr"],
                 p_rasp=values["p_rasp"],
             )
+            set_db_version_on_create(sp)
             powers_to_create.append(sp)
 
     # Коммитим только если есть изменения
@@ -2363,6 +2543,8 @@ def add_station_service(user, name: str, id_regional_district: int) -> Station:
     for attempt in range(max_attempts):
         try:
             station = Station(name=name, id_regional_district=id_regional_district)
+            # Автоматически связываем с текущей версией БД
+            set_db_version_on_create(station)
             db.session.add(station)
             _commit_with_retry()
             clear_aggregation_cache()  # Очищаем кэш после добавления станции

@@ -221,7 +221,7 @@
    
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
         <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции РФ</a>
     </div>
     
@@ -473,7 +473,7 @@
             </div>
         </div>
 
-        <form method="POST" id="machinesForm">
+        <form method="POST" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" id="machinesForm">
             {{ form.hidden_tag() }}
             {{ form_machines.hidden_tag() }}
             {% if station.version is defined %}
@@ -638,14 +638,7 @@
 }
 </style>
 
-<!-- Подключаем jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Подключаем Select2 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-
-<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+<!-- jQuery и Select2 уже подключены в base.html -->
 
 <script>
     // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
@@ -1161,6 +1154,67 @@ document.addEventListener('DOMContentLoaded', function() {
         // При отправке формы агрегатов копируем данные из формы станции
         machinesForm.addEventListener('submit', function(e) {
             console.log('[FORM] Отправка формы, копируем данные из формы станции');
+            console.log('[FORM] Все элементы формы machinesForm:', machinesForm.elements);
+            
+            // Проверяем наличие отмеченных чекбоксов для удаления
+            const checkedDeleteBoxes = machinesForm.querySelectorAll('input[name="machines_delete[]"]:checked');
+            const allDeleteBoxes = machinesForm.querySelectorAll('input[name="machines_delete[]"]');
+            
+            console.log('[FORM] Всего чекбоксов удаления в форме:', allDeleteBoxes.length);
+            console.log('[FORM] Найдено отмеченных чекбоксов для удаления:', checkedDeleteBoxes.length);
+            
+            // Детальный лог каждого чекбокса
+            allDeleteBoxes.forEach((box, idx) => {
+                console.log(`[FORM] Чекбокс ${idx}: value=${box.value}, checked=${box.checked}, name=${box.name}`);
+            });
+            
+            if (checkedDeleteBoxes.length > 0) {
+                // Формируем список агрегатов для удаления
+                const machineNames = [];
+                const machineIds = [];
+                
+                checkedDeleteBoxes.forEach(function(checkbox) {
+                    machineIds.push(checkbox.value);
+                    
+                    // Находим ближайшую строку таблицы и извлекаем название агрегата
+                    const row = checkbox.closest('tr');
+                    if (row) {
+                        // Ищем ссылку с названием агрегата в этой же строке или в предыдущих строках
+                        // (так как rowspan может объединять ячейки)
+                        let nameLink = row.querySelector('td a[href*="machine_details"]');
+                        
+                        // Если не нашли в текущей строке, ищем в предыдущих
+                        if (!nameLink) {
+                            let prevRow = row.previousElementSibling;
+                            while (prevRow && !nameLink) {
+                                nameLink = prevRow.querySelector('td a[href*="machine_details"]');
+                                prevRow = prevRow.previousElementSibling;
+                            }
+                        }
+                        
+                        if (nameLink) {
+                            machineNames.push(nameLink.textContent.trim());
+                        } else {
+                            machineNames.push('Агрегат ID: ' + checkbox.value);
+                        }
+                    }
+                });
+                
+                console.log('[FORM] ID агрегатов для удаления:', machineIds);
+                console.log('[FORM] Названия агрегатов для удаления:', machineNames);
+                
+                const confirmMessage = `Вы действительно хотите удалить следующие агрегаты?\n\n${machineNames.join('\n')}\n\nЭто действие нельзя отменить!`;
+                
+                if (!confirm(confirmMessage)) {
+                    e.preventDefault();
+                    console.log('[FORM] Удаление отменено пользователем');
+                    return false;
+                }
+                
+                console.log('[FORM] Удаление подтверждено для агрегатов:', machineNames);
+            } else {
+                console.log('[FORM] Чекбоксы для удаления не отмечены, продолжаем обычное сохранение');
+            }
             
             // Получаем все поля из формы станции
             const stationInputs = stationForm.querySelectorAll('input, select, textarea');

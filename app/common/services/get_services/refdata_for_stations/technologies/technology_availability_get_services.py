@@ -6,12 +6,21 @@ from typing import Union, List
 # Модели
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import TechnologyAvailability
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_technology_availability_list_full():
-    """Получает полный список видов технологий'."""
+    """Получает полный список видов технологий."""
+    current_version = get_current_version()
+    query = TechnologyAvailability.query
+    
+    if current_version:
+        query = query.filter(TechnologyAvailability.database_version_id == current_version)
+    
     return (
-        TechnologyAvailability.query
+        query
         .order_by(
             (TechnologyAvailability.id != 0),
             TechnologyAvailability.name.asc()
@@ -23,12 +32,17 @@ def get_technology_availability_list_full():
 @lru_cache(maxsize=1)
 def get_technology_availability_list():
     """Получает список видов технологий (кроме "не указано")."""
-    query = (
-        TechnologyAvailability.query
+    current_version = get_current_version()
+    query = TechnologyAvailability.query
+    
+    if current_version:
+        query = query.filter(TechnologyAvailability.database_version_id == current_version)
+    
+    return (
+        query
         .filter(TechnologyAvailability.id.isnot(None), TechnologyAvailability.id > 0)
         .order_by(TechnologyAvailability.name.asc())
     )
-    return query
 
 
 def get_technology_availability_name(technology_availability_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +64,14 @@ def get_technology_availability_name(technology_availability_ids: Union[str, int
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = TechnologyAvailability.query.filter(TechnologyAvailability.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = TechnologyAvailability.query.filter(TechnologyAvailability.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(TechnologyAvailability.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

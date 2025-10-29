@@ -11,6 +11,13 @@ import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
+# Функции для работы с версионированием БД
+from app.common.services.database_version_filter import (
+    filter_by_db_version,
+    set_db_version_on_create,
+    get_current_db_version_id
+)
+
 # Модели
 from app.generation.models.document.document_model import Document
 
@@ -45,6 +52,9 @@ def document_query(
 
     # Базовый запрос
     query = Document.query.filter(Document.id.isnot(None), Document.id > 0)
+    
+    # Фильтрация по версии БД
+    query = filter_by_db_version(query, Document)
 
     # Фильтрация
     if document_filter:
@@ -212,6 +222,8 @@ def add_document_service(data, user):
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
                 obj = Document(name=name)
+                # Автоматически связываем с текущей версией БД
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
                 

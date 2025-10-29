@@ -4,6 +4,7 @@ from app.generation.models.machine import machine_tes_type_model
 from app.refdata.models.refdata_for_stations.machine import machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
 from app.refdata.models.refdata_for_stations.station import station_type_model
 from app.refdata.models.refdata_for_stations.technologies import equipment_group_model, technology_availability_model, technology_type_model
+from app.common.models.database_version_model import DatabaseVersion
 from config import SECRET_KEY, DEBUG
 from flask import Flask, redirect, request, url_for, flash
 from sqlalchemy import event
@@ -91,8 +92,17 @@ def create_app():
     login_manager.login_message = "Пожалуйста, войдите, чтобы получить доступ к этой странице."
     login_manager.login_message_category = "warning"
     
+    # Инициализация middleware для управления версиями БД (ПЕРВЫМ!)
+    from app.common.middleware.database_version_middleware import init_database_version_middleware
+    init_database_version_middleware(app)
+    
     # Инициализация middleware для обработки concurrent updates
     ConcurrentUpdateMiddleware(app)
+    
+    # Инициализация автоматических бэкапов по расписанию
+    # ВРЕМЕННО ОТКЛЮЧЕНО из-за отсутствия apscheduler
+    # from app.common.services.scheduled_backup_service import scheduled_backup_service
+    # scheduled_backup_service.init_app(app)
 
 
     # Слушатель для установки search_path — РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
@@ -261,6 +271,25 @@ def create_app():
         # Объединяем все части и возвращаем как безопасный HTML
         return Markup(''.join(parts))
 
+    # Контекст-процессор для текущей версии БД и CSRF токена
+    @app.context_processor
+    def inject_database_version():
+        """Добавляет информацию о текущей версии БД и CSRF токен во все шаблоны."""
+        from flask import g, session
+        from app.common.models.database_version_model import DatabaseVersion
+        
+        current_version = None
+        if hasattr(g, 'current_db_version') and g.current_db_version:
+            current_version = DatabaseVersion.query.get(g.current_db_version)
+        elif not hasattr(g, 'current_db_version'):
+            # Если версия не установлена в middleware, ищем активную
+            current_version = DatabaseVersion.query.filter_by(is_active=True).first()
+        
+        # Получаем CSRF токен
+        csrf_token = session.get('csrf_token', '')
+        
+        return dict(current_db_version=current_version, csrf_token=csrf_token)
+    
     # Регистрация блюпринтов
     from app.auth.routes import auth_bp
     from app.auth.routes import users_bp

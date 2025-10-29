@@ -43,6 +43,14 @@ class PGUMachinePower(db.Model):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return f"<PGUMachinePower id={self.id} pgu_machine_id={self.id_pgu_machine} year={self.year_number} p_ust={self.p_ust}>"

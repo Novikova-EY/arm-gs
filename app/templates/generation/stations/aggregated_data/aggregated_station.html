@@ -2,7 +2,7 @@
 
 <!-- Первая строка: p_ust -->
 <tr class="text-center total-power-row" style="vertical-align: middle;">
-    <td class="total-row-cell" rowspan="{{ station_totals[station.id]['summary_rows'] }}" colspan="11" style="font-weight: bold;">
+    <td class="total-row-cell" rowspan="{{ station_totals.get(station.id, {}).get('summary_rows', 1) }}" colspan="11" style="font-weight: bold;">
         Всего по станции:
     </td>
     <td class="text-center align-middle" style="font-weight: bold;">Руст</td>

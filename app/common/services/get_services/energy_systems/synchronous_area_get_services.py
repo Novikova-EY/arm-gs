@@ -6,12 +6,21 @@ from typing import Union, List
 # Модели
 from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_synchronous_area_list_full():
     """Получает полный список синхронных зон."""
+    current_version = get_current_version()
+    query = SynchronousArea.query
+    
+    if current_version:
+        query = query.filter(SynchronousArea.database_version_id == current_version)
+    
     return (
-        SynchronousArea.query
+        query
         .order_by(
             (SynchronousArea.id != 0),
             SynchronousArea.name.asc()
@@ -23,12 +32,17 @@ def get_synchronous_area_list_full():
 @lru_cache(maxsize=1)
 def get_synchronous_area_list():
     """Получает список синхронных зон (кроме "не указано")."""
-    query = (
-        SynchronousArea.query
+    current_version = get_current_version()
+    query = SynchronousArea.query
+    
+    if current_version:
+        query = query.filter(SynchronousArea.database_version_id == current_version)
+    
+    return (
+        query
         .filter(SynchronousArea.id.isnot(None), SynchronousArea.id > 0)
         .order_by(SynchronousArea.name.asc())
     )
-    return query
 
 
 def get_synchronous_area_name(synchronous_area_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +64,14 @@ def get_synchronous_area_name(synchronous_area_ids: Union[str, int, List[int]]) 
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = SynchronousArea.query.filter(SynchronousArea.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = SynchronousArea.query.filter(SynchronousArea.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(SynchronousArea.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

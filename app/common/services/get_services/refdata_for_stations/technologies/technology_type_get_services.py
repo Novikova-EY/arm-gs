@@ -6,12 +6,21 @@ from typing import Union, List
 # Модели
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import TechnologyType
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_technology_type_list_full():
-    """Получает полный список типов технологий'."""
+    """Получает полный список типов технологий."""
+    current_version = get_current_version()
+    query = TechnologyType.query
+    
+    if current_version:
+        query = query.filter(TechnologyType.database_version_id == current_version)
+    
     return (
-        TechnologyType.query
+        query
         .order_by(
             (TechnologyType.id != 0),
             TechnologyType.name.asc()
@@ -23,12 +32,17 @@ def get_technology_type_list_full():
 @lru_cache(maxsize=1)
 def get_technology_type_list():
     """Получает список типов технологий (кроме "не указано")."""
-    query = (
-        TechnologyType.query
+    current_version = get_current_version()
+    query = TechnologyType.query
+    
+    if current_version:
+        query = query.filter(TechnologyType.database_version_id == current_version)
+    
+    return (
+        query
         .filter(TechnologyType.id.isnot(None), TechnologyType.id > 0)
         .order_by(TechnologyType.name.asc())
     )
-    return query
 
 
 def get_technology_type_name(technology_type_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +64,14 @@ def get_technology_type_name(technology_type_ids: Union[str, int, List[int]]) ->
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = TechnologyType.query.filter(TechnologyType.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = TechnologyType.query.filter(TechnologyType.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(TechnologyType.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

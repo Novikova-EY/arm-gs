@@ -6,10 +6,10 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Модуль "Справочники"</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Модуль "Справочники"</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -345,12 +345,7 @@
     }
     </script>
 
-<!-- Подключаем jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Подключаем Select2 -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<!-- jQuery и Select2 уже подключены в base.html -->
 
 <script src="{{ url_for('static', filename='js/generation/station_changes/station_page_logic.js') }}"></script>
 <script src="{{ url_for('static', filename='js/generation/station_changes/highlight_changes.js') }}"></script>

@@ -16,6 +16,17 @@ from app.refdata.models.energy_systems.regional_energy_system_model import Regio
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.common.services.database_version_filter import filter_by_db_version, get_current_db_version_id
+
+
+def is_current_version(entity) -> bool:
+    """Checks if entity matches current DB version or is common (NULL)."""
+    current_version_id = get_current_db_version_id()
+    if entity is None:
+        return False
+    if not hasattr(entity, 'database_version_id'):
+        return True
+    return (entity.database_version_id is None) or (entity.database_version_id == current_version_id)
 
 
 def get_station_hierarchy_aggregates(start_year, end_year):
@@ -51,6 +62,7 @@ def get_station_hierarchy_aggregates(start_year, end_year):
 
 
 def build_hierarchy_structure(stations: list[Station], include_names=False):
+    
     # Проверка на дубликаты станций
     station_ids_seen = {}
     duplicates = []
@@ -84,17 +96,55 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
     
     # Используем set для отслеживания уже добавленных станций
     added_stations = set()
+    processed_count = 0
+    skipped_count = 0
+    skipped_no_rd_or_res = 0
+    skipped_no_ues = 0
+    skipped_duplicates = 0
 
     for station in stations:
+        processed_count += 1
+        
         # Проверка наличия регионального округа и региональной энергосистемы
-        if not station.regional_district or not station.regional_district.regional_energy_systems:
+        if not station.regional_district:
+            print(f"[DEBUG] Станция {station.id} ({station.name}): нет regional_district")
+            skipped_count += 1
+            skipped_no_rd_or_res += 1
+            continue
+        
+        if not station.regional_district.regional_energy_systems:
+            print(f"[DEBUG] Станция {station.id} ({station.name}): нет regional_energy_systems в regional_district {station.regional_district.id}")
+            skipped_count += 1
+            skipped_no_rd_or_res += 1
             continue
 
-        # Берем только ПЕРВУЮ (основную) региональную энергосистему
-        # Это предотвращает дублирование станций, если субъект принадлежит к нескольким РЭС
-        res = station.regional_district.regional_energy_systems[0]
-        ues = res.union_energy_system
+        # Берем первую РЭС текущей версии, у которой есть ОЭС текущей версии; иначе первую подходящую
+        res_list = [r for r in (station.regional_district.regional_energy_systems or []) if is_current_version(r)]
+        if not res_list:
+            skipped_count += 1
+            skipped_no_rd_or_res += 1
+            continue
+        res = None
+        for r in res_list:
+            u = getattr(r, 'union_energy_system', None)
+            if u and is_current_version(u):
+                res = r
+                break
+        if res is None:
+            # нет РЭС с валидной ОЭС — берём первую по версии, даже если у неё нет ОЭС (будет пропуск)
+            res = res_list[0]
+
+        ues = getattr(res, 'union_energy_system', None)
         if not ues:
+            print(f"[DEBUG] Станция {station.id} ({station.name}): нет union_energy_system в РЭС {res.id}")
+            skipped_count += 1
+            skipped_no_ues += 1
+            continue
+        
+        if not is_current_version(ues):
+            print(f"[DEBUG] Станция {station.id} ({station.name}): union_energy_system {ues.id} не текущей версии (версия БД: {ues.database_version_id})")
+            skipped_count += 1
+            skipped_no_ues += 1
             continue
 
         est_id = ues.id_energy_system_type
@@ -116,6 +166,8 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
         # Проверяем, не была ли эта станция уже добавлена в эту группу
         if station_key in added_stations:
             print(f"[WARNING] Станция {station.id} ({station.name}) уже добавлена в группу {station_key}, пропускаем")
+            skipped_count += 1
+            skipped_duplicates += 1
             continue
         
         added_stations.add(station_key)
@@ -129,6 +181,15 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
             res_names[res_id] = res.name
             rd_names[rd_id] = station.regional_district.name
             eu_names[eu_id] = eu_name
+
+    # Подсчитываем общее количество станций в группировке
+    total_stations_in_groups = 0
+    for est_id, est_group in grouped_data.items():
+        for ues_id, ues_group in est_group.items():
+            for res_id, res_group in ues_group.items():
+                for rd_id, rd_group in res_group.items():
+                    for eu_id, eu_group in rd_group.items():
+                        total_stations_in_groups += len(eu_group)
 
     result = {
         "grouped_stations": grouped_data,
@@ -144,11 +205,35 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
             "energy_unit_name": eu_names,
         })
 
+    # Итоговая сводка для отладки
+    try:
+        print(
+            f"[DEBUG][build_hierarchy_structure] processed={processed_count}, "
+            f"skipped={skipped_count}, grouped_count={total_stations_in_groups}"
+        )
+        print(
+            f"[DEBUG][build_hierarchy_structure] skipped_no_rd_or_res={skipped_no_rd_or_res}, "
+            f"skipped_no_ues={skipped_no_ues}, skipped_duplicates={skipped_duplicates}"
+        )
+    except Exception:
+        pass
+
     return result
 
 
 def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_p_rasp=False):
-    machines = Machine.query.options(
+    # Локальный помощник для фильтрации по текущей версии (чтобы избежать проблем области видимости)
+    def _is_current_version(entity) -> bool:
+        current_version_id = get_current_db_version_id()
+        if entity is None:
+            return False
+        if not hasattr(entity, 'database_version_id'):
+            return True
+        return (entity.database_version_id is None) or (entity.database_version_id == current_version_id)
+    # Базовые агрегаты с фильтром по версии
+    machine_query = Machine.query
+    machine_query = filter_by_db_version(machine_query, Machine)
+    machines = machine_query.options(
         joinedload(Machine.tes_machine_type),
         joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
@@ -159,16 +244,21 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
     ).filter(Machine.id_station.in_(station_ids)).all()
 
     machine_ids = [m.id for m in machines]
-    pgu_machines = PGUMachine.query.filter(PGUMachine.id_parent_machine.in_(machine_ids)).all()
+    pgu_query = PGUMachine.query
+    pgu_query = filter_by_db_version(pgu_query, PGUMachine)
+    pgu_machines = pgu_query.filter(PGUMachine.id_parent_machine.in_(machine_ids)).all()
 
     pgu_machine_ids = [p.id for p in pgu_machines]
-    pgu_powers = PGUMachinePower.query.filter(PGUMachinePower.id_pgu_machine.in_(pgu_machine_ids)).all()
+    pgu_power_query = PGUMachinePower.query
+    pgu_power_query = filter_by_db_version(pgu_power_query, PGUMachinePower)
+    pgu_powers = pgu_power_query.filter(PGUMachinePower.id_pgu_machine.in_(pgu_machine_ids)).all()
 
     pgu_powers_map = defaultdict(dict)
     for power in pgu_powers:
         pgu_powers_map[power.id_pgu_machine][power.year_number] = power.p_ust or 0
 
     pgu_map = defaultdict(list)
+    # Фильтрация по версии после загрузки на всякий случай
     for pgu in pgu_machines:
         pgu.powers_by_year = pgu_powers_map.get(pgu.id, {})
         pgu_map[pgu.id_parent_machine].append(pgu)
@@ -177,7 +267,12 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
     station_totals = {}
 
     for m in machines:
-        m.pgu_machines = pgu_map.get(m.id, [])
+        # фильтрация внутренних коллекций по версии
+        if hasattr(m, 'machine_powers') and m.machine_powers:
+            m.machine_powers = [mp for mp in m.machine_powers if _is_current_version(mp)]
+        if hasattr(m, 'machine_fuels') and m.machine_fuels:
+            m.machine_fuels = [mf for mf in m.machine_fuels if _is_current_version(mf)]
+        m.pgu_machines = [p for p in pgu_map.get(m.id, []) if _is_current_version(p)]
         station_machine_map[m.id_station].append(m)
 
     for station_id, machine_list in station_machine_map.items():

@@ -18,10 +18,10 @@
 
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> Главная страница </a>
-        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"> Модуль "Справочники"</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Модуль "Справочники"</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -33,6 +33,8 @@
 
             <!-- Правая группа: чекбоксы и подсветка -->
             <div class="d-flex align-items-center gap-2 ms-auto">
+
+                
                 <!-- Кнопка добавления электростанции -->
                 <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
                     ➕ Добавить электростанцию
@@ -66,6 +68,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Ввод в <br>экспл.</strong>
+                                {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                 {% for year in range(1950, 2050) %}
@@ -87,6 +90,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Вывод из <br>экспл.</strong>
+                                {% if request.args.getlist('date_decompressing_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                 {% for year in range(1950, 2050) %}
@@ -108,6 +112,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Модерн.</strong>
+                                {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                 {% for year in range(1950, 2050) %}
@@ -129,6 +134,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Тип <br>электро-<br>станции</strong>
+                                {% if request.args.getlist('station_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
                                 {% for station_type in station_type_name %}
@@ -151,6 +157,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Тип <br>ТЭС</strong>
+                                {% if request.args.getlist('tes_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
                                 {% for tes_type in tes_type_names %}
@@ -172,6 +179,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Тип <br>агрегата <br>ТЭС</strong>
+                                {% if request.args.getlist('tes_machine_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
                                 <!-- Типы агрегатов ТЭС -->
@@ -210,6 +218,7 @@
                         <div class="dropdown">
                             <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                 <strong>Основное <br> топливо</strong>
+                                {% if request.args.getlist('fuel_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
                                 {% for fuel_type in fuel_type_names %}
@@ -217,7 +226,7 @@
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="fuel_type_filter"
                                                 value="{{ fuel_type.id }}"
-                                                {% if fuel_type.id|string in _fuel_type_filter|map('string') %}checked{% endif %}>
+                                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
                                             {{ fuel_type.name }}
                                         </label>
                                     </li>
@@ -261,6 +270,8 @@
 
             <!-- Данные таблицы-->
             <tbody>
+              
+                {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
                 {% for es_type_id in sorted_energy_system_type_ids %}
                     {% set es_type_group = stations_grouped[es_type_id] %}
             
@@ -357,6 +368,12 @@
                     {% endif %}
             
                 {% endfor %}
+                {% else %}
+                    {% for station in stations %}
+                        {% include 'generation/stations/station_rows.html' %}
+                        {% include 'generation/stations/aggregated_data/aggregated_station.html' %}
+                    {% endfor %}
+                {% endif %}
             
                 {# Итог по России #}
                 {% set show_totals = (should_show_totals|default({})).get('total') %}
@@ -395,12 +412,103 @@
     } | tojson | safe }}
 </script>
 
-<!-- Подключаем jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- jQuery и Select2 уже подключены в base.html -->
 
-<!-- Подключаем Select2 -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<!-- Функции управления кэшем -->
+<script>
+function clearStationCache() {
+    if (confirm('Вы уверены, что хотите очистить кэш станций? Это может временно замедлить загрузку страницы.')) {
+        fetch('{{ url_for("station_bp.clear_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Показываем уведомление об успехе
+                showNotification('Кэш станций успешно очищен', 'success');
+                // Перезагружаем страницу для обновления данных
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при очистке кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при очистке кэша:', error);
+            showNotification('Ошибка при очистке кэша', 'error');
+        });
+    }
+}
+
+function refreshStationCache() {
+    if (confirm('Вы уверены, что хотите обновить кэш станций? Это может занять некоторое время.')) {
+        // Показываем индикатор загрузки
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        fetch('{{ url_for("station_bp.refresh_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Скрываем индикатор загрузки
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            
+            if (data.success) {
+                showNotification('Кэш станций успешно обновлен', 'success');
+                // Перезагружаем страницу для обновления данных
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при обновлении кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при обновлении кэша:', error);
+            // Скрываем индикатор загрузки
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            showNotification('Ошибка при обновлении кэша', 'error');
+        });
+    }
+}
+
+function showNotification(message, type) {
+    // Создаем уведомление
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Автоматически скрываем через 5 секунд
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>

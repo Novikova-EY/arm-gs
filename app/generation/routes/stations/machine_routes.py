@@ -121,6 +121,7 @@ def machine_details(station_id, machine_id):
         
         # Для нового агрегата (machine=None) логов еще нет
         if result['machine'] and result['machine'].machine_number:
+            # Оптимизированная загрузка логов одним запросом с лимитом
             machine_logs = _format_logs_for_display(
                 db.session.query(Log)
                 .filter(
@@ -131,7 +132,7 @@ def machine_details(station_id, machine_id):
                     )
                 )
                 .order_by(Log.timestamp.desc())
-                .limit(20)  # Уменьшено со 200 до 50 для ускорения рендеринга
+                .limit(20)  # Ограничиваем количество логов для ускорения
                 .all()
             )
         else:
@@ -197,6 +198,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
         try:
             if result.get('pgu_machine') and result['pgu_machine'].id:
                 pm_id = result['pgu_machine'].id
+                # Оптимизированная загрузка ПГУ логов одним запросом с лимитом
                 pgu_machine_logs = _format_logs_for_display(
                     db.session.query(Log)
                     .filter(
@@ -208,7 +210,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
                         )
                     )
                     .order_by(Log.timestamp.desc())
-                    .limit(50)  # Уменьшено со 200 до 50 для ускорения рендеринга
+                    .limit(20)  # Уменьшено с 50 до 20 для ускорения рендеринга
                     .all()
                 )
         except Exception:

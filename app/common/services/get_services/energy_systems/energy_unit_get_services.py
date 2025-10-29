@@ -6,12 +6,21 @@ from functools import lru_cache
 # Модели
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_energy_unit_list_full():
     """Получает полный список энергоузлов."""
+    current_version = get_current_version()
+    query = EnergyUnit.query
+    
+    if current_version:
+        query = query.filter(EnergyUnit.database_version_id == current_version)
+    
     return (
-        EnergyUnit.query
+        query
         .order_by(
             (EnergyUnit.id != 0),
             EnergyUnit.name.asc()
@@ -23,12 +32,17 @@ def get_energy_unit_list_full():
 @lru_cache(maxsize=1)
 def get_energy_unit_list():
     """Получает список энергоузлов (кроме "не указано")."""
-    query = (
-        EnergyUnit.query
+    current_version = get_current_version()
+    query = EnergyUnit.query
+    
+    if current_version:
+        query = query.filter(EnergyUnit.database_version_id == current_version)
+    
+    return (
+        query
         .filter(EnergyUnit.id.isnot(None), EnergyUnit.id > 0)
         .order_by(EnergyUnit.name.asc())
     )
-    return query
 
 
 def get_energy_unit_name(energy_unit_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +64,14 @@ def get_energy_unit_name(energy_unit_ids: Union[str, int, List[int]]) -> str:
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = EnergyUnit.query.filter(EnergyUnit.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = EnergyUnit.query.filter(EnergyUnit.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(EnergyUnit.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

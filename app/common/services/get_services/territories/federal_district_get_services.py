@@ -9,12 +9,21 @@ from typing import Union, List, Dict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_federal_district_list_full():
-    """Получает полный список федеральных округов.."""
+    """Получает полный список федеральных округов."""
+    current_version = get_current_version()
+    query = FederalDistrict.query
+    
+    if current_version:
+        query = query.filter(FederalDistrict.database_version_id == current_version)
+    
     return (
-        FederalDistrict.query
+        query
         .order_by(FederalDistrict.name.asc())
         .all()
     )
@@ -23,17 +32,28 @@ def get_federal_district_list_full():
 @lru_cache(maxsize=1)
 def get_federal_district_list():
     """Получает список федеральных округов (кроме "не указано")."""
-    query = (
-        FederalDistrict.query
+    current_version = get_current_version()
+    query = FederalDistrict.query
+    
+    if current_version:
+        query = query.filter(FederalDistrict.database_version_id == current_version)
+    
+    return (
+        query
         .filter(FederalDistrict.id.isnot(None), FederalDistrict.id > 0)
         .order_by(FederalDistrict.name.asc())
     )
-    return query
 
 def get_federal_districts_list() -> List[FederalDistrict]:
     """Возвращает список FederalDistrict с заранее загруженными субъектами РФ."""
+    current_version = get_current_version()
+    query = FederalDistrict.query
+    
+    if current_version:
+        query = query.filter(FederalDistrict.database_version_id == current_version)
+    
     return (
-        FederalDistrict.query
+        query
         .options(
             selectinload(FederalDistrict.regional_districts)
             .load_only(RegionalDistrict.id, RegionalDistrict.name)
@@ -59,23 +79,26 @@ def get_federal_districts_dto_list() -> List[dict]:
 @lru_cache(maxsize=1)
 def get_federal_districts_map() -> Dict[int, str]:
     """Возвращает отображение {ФО.id: ФО.name} (кэшируется)."""
-    rows = (
-        FederalDistrict.query
-        .with_entities(FederalDistrict.id, FederalDistrict.name)
-        .order_by(FederalDistrict.id)
-        .all()
-    )
+    current_version = get_current_version()
+    query = FederalDistrict.query.with_entities(FederalDistrict.id, FederalDistrict.name)
+    
+    if current_version:
+        query = query.filter(FederalDistrict.database_version_id == current_version)
+    
+    rows = query.order_by(FederalDistrict.id).all()
     return {id_: name for id_, name in rows}
 
 # 4) Карта связей {fd_id: [regional_district_id, ...]} — без загрузки ORM-объектов (кэшируется)
 @lru_cache(maxsize=1)
 def get_fd_to_rd_ids_map() -> Dict[int, List[int]]:
     """Возвращает отображение {ФО.id: [СубъектРФ.id, ...]} (кэшируется)."""
-    rows = (
-        db.session.query(RegionalDistrict.id_federal_district, RegionalDistrict.id)
-        .order_by(RegionalDistrict.id_federal_district, RegionalDistrict.id)
-        .all()
-    )
+    current_version = get_current_version()
+    query = db.session.query(RegionalDistrict.id_federal_district, RegionalDistrict.id)
+    
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    rows = query.order_by(RegionalDistrict.id_federal_district, RegionalDistrict.id).all()
     acc: Dict[int, List[int]] = {}
     for fd_id, rd_id in rows:
         if fd_id is None:
@@ -120,8 +143,14 @@ def get_federal_district_name(federal_district_ids: Union[str, int, List[int]]) 
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = FederalDistrict.query.filter(FederalDistrict.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = FederalDistrict.query.filter(FederalDistrict.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(FederalDistrict.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

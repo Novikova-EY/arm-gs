@@ -159,6 +159,14 @@ class Machine(db.Model, VersionedModelMixin):
     
     # version для оптимистической блокировки (определен в VersionedModelMixin)
     # version = db.Column(db.Integer, nullable=False, default=1)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     # ----- Runtime helpers (не маппятся в БД) -----
     @property
@@ -194,6 +202,18 @@ class Machine(db.Model, VersionedModelMixin):
             if mf.fuel and mf.fuel.fuel_type and mf.fuel.fuel_type.name.lower() != "не указано"
         }
         return ", ".join(sorted(fuel_names)) if fuel_names else None
+
+    @property
+    def fuel_type_by_year(self):
+        """Возвращает словарь {год: тип_топлива} для отображения в таблице"""
+        result = {}
+        for mf in self.machine_fuels:
+            if mf.year_number and mf.fuel and mf.fuel.fuel_type:
+                fuel_type_name = mf.fuel.fuel_type.name
+                # Пропускаем "Не указано"
+                if fuel_type_name and fuel_type_name.lower() != "не указано":
+                    result[mf.year_number] = fuel_type_name
+        return result
 
     def __repr__(self) -> str:
         return f"<Machine id={self.id} name={self.machine_name!r} station_id={self.id_station}>"

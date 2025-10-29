@@ -47,6 +47,14 @@ class StationPower(db.Model):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return f"<StationPower id={self.id} station_id={self.id_station} year={self.year_number} p_ust={self.p_ust}>"

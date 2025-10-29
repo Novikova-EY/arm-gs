@@ -4,14 +4,17 @@ Year model (Год).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 
 class Year(db.Model):
     __tablename__ = 'years'
-    __table_args__ = {"schema": SCHEMA_REFDATA}
+    __table_args__ = {
+        "schema": SCHEMA_REFDATA,
+        "extend_existing": True
+    }
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    number = db.Column(db.Integer, unique=True, nullable=False, index=True)
+    number = db.Column(db.Integer, nullable=False, index=True)
 
     # FK -> YearFeature
     id_year_feature = db.Column(
@@ -22,8 +25,18 @@ class Year(db.Model):
     )
     year_feature = db.relationship('YearFeature', back_populates='years')
 
+    # FK -> DatabaseVersion
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Годы теперь версионируются через database_version_id
 
     # Relations retained as-is
     station_powers = db.relationship('StationPower', back_populates='year')

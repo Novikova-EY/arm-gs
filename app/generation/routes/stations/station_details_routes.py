@@ -9,7 +9,7 @@ import time
 from functools import lru_cache
 from collections import defaultdict
 from app.logs.services.logging_service import log_to_db
-from flask_login import login_required
+from flask_login import login_required, current_user
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
@@ -28,7 +28,9 @@ from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachine
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.common.services.choices_cache_service import choices_cache
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
@@ -160,8 +162,6 @@ def station_details(station_id):
     for machine in (station.machines or []):
         powers_count += len(machine.machine_powers) if hasattr(machine, 'machine_powers') else 0
     
-    print(f"[STATION DEBUG] ID: {station_id}, Название: {station.name}, Агрегатов: {machines_count}, Мощностей: {powers_count}")
-    
     # Сортировка агрегатов по станционному номеру (естественная сортировка)
     if station and station.machines:
         def _machine_sort_key(m):
@@ -189,6 +189,7 @@ def station_details(station_id):
     start_year = request.args.get("start_year", Config.START_YEAR, type=int)
     end_year = request.args.get("end_year", Config.END_YEAR, type=int)
     machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
+    
     # Определяем, какая форма была отправлена
     submitted_keys = set(request.form.keys())
     is_station_form = any(k in submitted_keys for k in {"name", "id_condition_type", "id_station_type", "id_station_group", "id_energy_unit", "id_regional_district", "location", "note"})
@@ -244,22 +245,18 @@ def station_details(station_id):
     regional_district_list = get_regional_district_list_full()
     regional_district_names = get_rd_to_fd_id_map()
 
-    # Заполняем список субъектов РФ
+    # Заполняем список субъектов РФ с фильтрацией по версии БД
     form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
-    form.id_condition_type.choices = [(ct.id, ct.name) for ct in condition_types]
-    form.id_station_group.choices = [(ct.id, ct.name) for ct in station_groups]
+    form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
+    form.id_station_group.choices = choices_cache.get_choices(StationGroup, StationGroup.id)
     
-    # Заполняем список типов станций
-    from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
-    station_types = StationType.query.order_by(StationType.id).all()
-    form.id_station_type.choices = [(0, '— не указано —')] + [(st.id, st.name) for st in station_types]
-    print(f"[DEBUG] Типы станций загружены: {form.id_station_type.choices}")
-    print(f"[DEBUG] Текущий тип станции: station.id_station_type = {station.id_station_type}")
-    form_machines.id_gen_company.choices = [(gc.id, gc.name) for gc in gen_companies]
+    # Заполняем список типов станций с фильтрацией по версии БД
+    form.id_station_type.choices = choices_cache.get_choices_with_default(StationType, StationType.id, '— не указано —')
+    form_machines.id_gen_company.choices = choices_cache.get_choices(GenCompany, GenCompany.id)
     
-    # Используем кэшированные энергоузлы
+    # Используем кэшированные энергоузлы с фильтрацией по версии БД
     energy_units = form_data['energy_units']
-    form.id_energy_unit.choices = [(0, '— не указано —')] + [(eu.id, eu.name) for eu in energy_units]
+    form.id_energy_unit.choices = choices_cache.get_choices_with_default(EnergyUnit, EnergyUnit.id, '— не указано —')
     energy_unit_names = [(0, '— не указано —')] + [(eu.id, eu.name) for eu in energy_units]
 
     try:
@@ -281,21 +278,49 @@ def station_details(station_id):
 
     if request.method == "POST":
         # Отладочный вывод для проверки POST-данных
-        print(f"[DEBUG POST] is_station_form = {is_station_form}")
-        print(f"[DEBUG POST] is_machines_form = {is_machines_form}")
-        print(f"[DEBUG POST] request.form keys = {list(request.form.keys())}")
-        print(f"[DEBUG POST] id_station_type в form = {request.form.get('id_station_type')}")
-        print(f"[DEBUG POST] id_energy_unit в form = {request.form.get('id_energy_unit')}")
 
+        # ВАЖНО: Сначала обрабатываем форму агрегатов (включая удаление),
+        # чтобы избежать конфликта с формой станции
+        if is_machines_form:
+            
+            if not form_machines.validate():
+                print("Ошибки в form_machines:", form_machines.errors)
+
+            if machine_ids_to_delete:
+                try:
+                    changes = delete_machines_service(user, station, machine_ids_to_delete)
+                    if changes:
+                        flash("Выбранные агрегаты и связанные данные были удалены!", "success")
+                        # Инвалидация кэша после удаления агрегатов
+                        for machine_id in machine_ids_to_delete:
+                            invalidate_cache('machine', machine_id=machine_id)
+                        invalidate_cache('station_full', station_id=station.id)
+                        invalidate_cache_pattern('station_list:*')
+                        # Важно: делаем редирект после удаления
+                        return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
+
+            if form_machines.validate_on_submit():
+                try:
+                    changes = update_machines_from_form_service(user, station, form_machines, request.form)
+                    if changes:
+                        flash("Изменения агрегатов сохранены!", "success")
+                        # Инвалидация кэша после обновления агрегатов
+                        invalidate_cache('station_full', station_id=station.id)
+                        invalidate_cache_pattern('station_list:*')
+                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+                except Exception as e:
+                    flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
+        
         # Обработка отправки основной формы станции
-        if is_station_form:
-            print(f"[DEBUG POST] form.id_station_type.data (до валидации) = {form.id_station_type.data}")
-            print(f"[DEBUG POST] form.id_energy_unit.data (до валидации) = {form.id_energy_unit.data}")
+        # ВАЖНО: Обрабатываем только если НЕ было удаления агрегатов
+        elif is_station_form:
             if not form.validate():
                 print("Ошибки в form:", form.errors)
             if form.validate_on_submit():
-                print(f"[DEBUG POST] form.id_station_type.data (после валидации) = {form.id_station_type.data}")
-                print(f"[DEBUG POST] form.id_energy_unit.data (после валидации) = {form.id_energy_unit.data}")
                 try:
                     # Проверка версии из формы для предотвращения concurrent updates
                     form_version = request.form.get('version', type=int)
@@ -314,35 +339,6 @@ def station_details(station_id):
                 except Exception as e:
                     print(f"Ошибка при обновлении: {str(e)}")
                     flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
-        # Обработка отправки формы агрегатов
-        if is_machines_form:
-            if not form_machines.validate():
-                print("Ошибки в form_machines:", form_machines.errors)
-
-            if machine_ids_to_delete:
-                try:
-                    changes = delete_machines_service(user, station, machine_ids_to_delete)
-                    if changes:
-                        flash("Выбранные агрегаты и связанные данные были удалены!", "success")
-                        # Инвалидация кэша после удаления агрегатов
-                        for machine_id in machine_ids_to_delete:
-                            invalidate_cache('machine', machine_id=machine_id)
-                        invalidate_cache('station_full', station_id=station.id)
-                        invalidate_cache_pattern('station_list:*')
-                except Exception as e:
-                    flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
-
-            if form_machines.validate_on_submit():
-                try:
-                    changes = update_machines_from_form_service(user, station, form_machines, request.form)
-                    if changes:
-                        flash("Изменения агрегатов сохранены!", "success")
-                        # Инвалидация кэша после обновления агрегатов
-                        invalidate_cache('station_full', station_id=station.id)
-                        invalidate_cache_pattern('station_list:*')
-                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
-                except Exception as e:
-                    flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
 
     # Timing: measure preparation time right before render
     before_render_at = time.perf_counter()
@@ -480,8 +476,12 @@ def station_details_tbody(station_id):
 
     # Обновляем кэш раз в минуту через bucket
     cache_bucket = int(time.time() // 120)
+    
+    # Проверяем права пользователя
+    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    can_edit = any(role in current_user.role_names for role in edit_roles) if current_user.is_authenticated else False
 
-    html = _render_machines_tbody_cached(station_id, start_year, end_year, rounding_digits, cache_bucket)
+    html = _render_machines_tbody_cached(station_id, start_year, end_year, rounding_digits, can_edit, cache_bucket)
     resp = make_response(html)
     resp.headers["Cache-Control"] = "public, max-age=120"
     
@@ -492,8 +492,17 @@ def station_details_tbody(station_id):
 
 
 @lru_cache(maxsize=128)
-def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: int, rounding_digits: int, cache_bucket: int) -> str:
-    """Кэшируемый рендер tbody (cache_bucket обеспечивает инвалидацию раз в минуту)."""
+def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: int, rounding_digits: int, can_edit: bool, cache_bucket: int) -> str:
+    """Кэшируемый рендер tbody (cache_bucket обеспечивает инвалидацию раз в минуту).
+    
+    Args:
+        station_id: ID станции
+        start_year: начальный год
+        end_year: конечный год
+        rounding_digits: количество знаков после запятой
+        can_edit: имеет ли пользователь права редактирования
+        cache_bucket: bucket для инвалидации кэша
+    """
     # Минимально необходимая предзагрузка
     station = (
         db.session.query(Station)
@@ -615,4 +624,5 @@ def _render_machines_tbody_cached(station_id: int, start_year: int, end_year: in
         rounding_digits=rounding_digits,
         format_decimal=format_decimal_with_rounding,
         gen_company_choices=[(gc.id, gc.name) for gc in db.session.query(GenCompany).order_by(GenCompany.name).all()],
+        can_edit=can_edit,
     )

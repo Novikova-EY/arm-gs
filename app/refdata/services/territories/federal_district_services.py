@@ -25,6 +25,9 @@ from app.common.services.tranzaction_services import (
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import apply_version_filter, set_db_version_on_create
+
 
 def federal_district_query(
     federal_district_filter=None,
@@ -48,6 +51,9 @@ def federal_district_query(
         FederalDistrict.query
         .filter(FederalDistrict.id.isnot(None), FederalDistrict.id > 0)
     )
+    
+    # Применяем фильтрацию по версии БД
+    query = apply_version_filter(query, FederalDistrict)
 
     # Фильтрация
     if federal_district_filter:

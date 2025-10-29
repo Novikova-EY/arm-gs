@@ -9,12 +9,19 @@ from typing import Union, List, Dict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
+# Функции для работы с версионированием БД
+from app.common.services.database_version_filter import filter_by_db_version
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_regional_district_list_full():
     """Получает полный список субъектов РФ."""
+    query = RegionalDistrict.query
+    # Фильтрация по версии БД
+    query = filter_by_db_version(query, RegionalDistrict)
     return (
-        RegionalDistrict.query
+        query
         .order_by(RegionalDistrict.name.asc())
         .all()
     )
@@ -23,18 +30,29 @@ def get_regional_district_list_full():
 @lru_cache(maxsize=1)
 def get_regional_district_list():
     """Получает список субъектов РФ (кроме "не указано")."""
-    query = (
-        RegionalDistrict.query
+    current_version = get_current_version()
+    query = RegionalDistrict.query
+    
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    return (
+        query
         .filter(RegionalDistrict.id.isnot(None), RegionalDistrict.id > 0)
         .order_by(RegionalDistrict.name.asc())
     )
-    return query
 
 
 def get_regional_districts_list() -> List[RegionalDistrict]:
     """Возвращает список ORM-объектов субъектов РФ с заранее загруженными ФО."""
+    current_version = get_current_version()
+    query = RegionalDistrict.query
+    
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    
     return (
-        RegionalDistrict.query
+        query
         .options(
             selectinload(RegionalDistrict.federal_district)
             .load_only(FederalDistrict.id, FederalDistrict.name)
@@ -61,12 +79,13 @@ def get_regional_districts_dto_list() -> List[dict]:
 @lru_cache(maxsize=1)
 def get_regional_districts_map() -> Dict[int, str]:
     """Возвращает отображение {Субъект.id: Субъект.name} (кэшируется)."""
-    rows = (
-        RegionalDistrict.query
-        .with_entities(RegionalDistrict.id, RegionalDistrict.name)
-        .order_by(RegionalDistrict.id)
-        .all()
-    )
+    current_version = get_current_version()
+    query = RegionalDistrict.query.with_entities(RegionalDistrict.id, RegionalDistrict.name)
+    
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    rows = query.order_by(RegionalDistrict.id).all()
     return {id_: name for id_, name in rows}
 
 
@@ -107,8 +126,14 @@ def get_regional_district_name(regional_district_ids: Union[str, int, List[int]]
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = RegionalDistrict.query.filter(RegionalDistrict.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = RegionalDistrict.query.filter(RegionalDistrict.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID

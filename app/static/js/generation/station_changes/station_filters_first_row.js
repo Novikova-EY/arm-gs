@@ -12,13 +12,16 @@ function initializeStationFilters() {
 
     function initializeSelect2(selector, placeholder) {
         if ($(selector).length) {
-            $(selector).select2({
-                placeholder: placeholder,
-                allowClear: true,
-                width: '100%',
-                closeOnSelect: false,
-                minimumResultsForSearch: Infinity
-            });
+            // Проверяем, не инициализирован ли уже Select2
+            if (!$(selector).data('select2')) {
+                $(selector).select2({
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    closeOnSelect: false,
+                    minimumResultsForSearch: Infinity
+                });
+            }
         } else {
             console.warn(`❌ Select2: элемент ${selector} не найден`);
         }

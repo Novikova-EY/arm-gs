@@ -15,11 +15,7 @@ from app.refdata.forms.fuels.fuel_forms import (
     AddFuelForm,
 )
 
-# Сервисы
-from app.common.services.get_services.fuels.fuel_type_get_services import (
-    get_fuel_type_list_full, 
-    get_fuel_type_name,
-)
+from app.common.services.choices_cache_service import choices_cache
 from app.refdata.services.fuels.fuel_services import (
     fuel_query,
     get_fuel_list,
@@ -137,8 +133,9 @@ def fuel_list():
                               sort_dir)
 
     # Подготовка данных для формы
-    fuel_types = get_fuel_type_list_full()
-    form.fuel_type.choices = [(t.id, t.name) for t in fuel_types]
+    # Заполняем список типов топлива с фильтрацией по версии БД
+    from app.refdata.models.fuels.fuel_type_model import FuelType
+    form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
 
     return render_template(
         "refdata/fuels/fuel/fuel.html",
@@ -175,9 +172,8 @@ def add_fuel():
     fuel_filter         = request.args.get("fuel_filter", "").strip()
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
 
-    # Подготовка данных для формы
-    fuel_type_list = get_fuel_type_list_full()
-    form.fuel_type.choices = [(ft.id, ft.name) for ft in fuel_type_list]
+    # Подготовка данных для формы с фильтрацией по версии БД
+    form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
 
     # Обработка формы
     if request.method == "POST" and form.validate_on_submit():

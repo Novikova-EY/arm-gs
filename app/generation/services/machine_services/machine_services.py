@@ -21,7 +21,6 @@ from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.document.document_model import Document
 from app.refdata.models.energy_systems.energy_area_model import EnergyArea
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
-from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.refdata_for_stations.machine.machine_type_model import MachineType
@@ -45,17 +44,34 @@ from app.common.services.help_services import (
 from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
 )
+from app.common.services.choices_cache_service import choices_cache
+from app.common.services.database_version_filter import set_db_version_on_create, filter_by_db_version
+from app.common.services.cache_services import CacheService
 
 @no_autoflush
 def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits):
-    station = get_station_by_id(station_id)
+    # Оптимизированная загрузка станции с связанными данными
+    station = Station.query.options(
+        db.joinedload(Station.regional_district)
+    ).get_or_404(station_id)
     
     # Проверяем, создается ли новый агрегат
     if machine_id == 0:
         machine = None
     else:
-        machine = get_machine_by_id(machine_id)
+        # Оптимизированная загрузка агрегата с связанными данными
+        machine = Machine.query.options(
+            db.joinedload(Machine.machine_powers),
+            db.joinedload(Machine.machine_fuels),
+            db.joinedload(Machine.machine_tes_types),
+            db.joinedload(Machine.condition_type),
+            db.joinedload(Machine.gen_company),
+            db.joinedload(Machine.machine_type),
+            db.joinedload(Machine.tes_machine_type),
+            db.joinedload(Machine.equipment_group)
+        ).get_or_404(machine_id)
 
+    # Оптимизированная загрузка годов одним запросом
     years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
     year_dict = {y.number: y for y in years}
     year_features = get_year_feature_dict()
@@ -74,14 +90,18 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     advanced_form = EditMachineForm(prefix="adv_")
 
     _fill_main_form_choices(main_form)
-    _fill_advanced_form_choices(advanced_form)
+    # _fill_advanced_form_choices(advanced_form) - убрано, так как choices устанавливаются ниже
 
     pgu_machines_form = PGUMachineFilterForm(prefix="pgu_")
     # Для нового агрегата ПГУ машин нет
     if machine is None:
         pgu_machines = []
     else:
-        pgu_machines_query = PGUMachine.query.filter_by(id_parent_machine=machine.id)
+        # Оптимизированная загрузка ПГУ агрегатов
+        pgu_machines_query = PGUMachine.query.options(
+            db.joinedload(PGUMachine.condition_type),
+            db.joinedload(PGUMachine.tes_machine_type)
+        ).filter_by(id_parent_machine=machine.id)
 
         # Применяем фильтры, если они выбраны:
         if pgu_machines_form.id_condition_type.data and pgu_machines_form.id_condition_type.data != 0:
@@ -104,8 +124,8 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     if main_form.id_tes_machine_type.data is None:
         main_form.id_tes_machine_type.data = 0
 
-    tes_type_choices = [(tt.id, tt.name) for tt in TesType.query.order_by(TesType.id).all()]
-    fuel_choices = [(f.id, f.name) for f in Fuel.query.order_by(Fuel.id).all()]
+    tes_type_choices = choices_cache.get_choices(TesType, TesType.id)
+    fuel_choices = choices_cache.get_choices(Fuel, Fuel.id)
 
     # Для существующего агрегата создаем/дополняем записи, если они отсутствуют
     if machine is not None:
@@ -114,16 +134,19 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
 
             if year_num not in machine_powers:
                 mp = MachinePower(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mp)
                 db.session.add(mp)
                 machine_powers[year_num] = mp
 
             if year_num not in machine_tes_types:
                 mt = MachineTesType(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mt)
                 db.session.add(mt)
                 machine_tes_types[year_num] = mt
 
             if year_num not in machine_fuels:
                 mf = MachineFuel(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mf)
                 db.session.add(mf)
                 machine_fuels[year_num] = mf
 
@@ -152,19 +175,26 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
 
         tes_entry = advanced_form.tes_types.append_entry()
         tes_entry.year.data = year_num
-        tes_entry.tes_type.choices = tes_type_choices
         tes_entry.tes_type.data = id_tes_type
 
         fuel_entry = advanced_form.fuels.append_entry()
         fuel_entry.year.data = year_num
-        fuel_entry.fuel_type.choices = fuel_choices
         fuel_entry.fuel_type.data = id_fuel
+
+    # Устанавливаем choices для всех записей после создания всех entries
+    print(f"[DEBUG] Количество tes_types entries: {len(advanced_form.tes_types.entries)}")
+    print(f"[DEBUG] Количество fuels entries: {len(advanced_form.fuels.entries)}")
+    
+    # Заполняем choices для всех entries через единую функцию
+    _fill_advanced_form_choices(advanced_form)
 
     if machine is not None:
         _commit_with_retry()
 
-    # Получаем все документы для выпадающего списка
-    all_documents = Document.query.order_by(Document.name).all()
+    # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
+    all_documents = choices_cache.get_choices(Document, Document.name)
+    # Преобразуем обратно в объекты для совместимости с шаблоном
+    all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
 
     return {
         "start_year": start_year,
@@ -226,7 +256,15 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                                     rounding_digits=rounding_digits))
 
     _fill_main_form_choices(main_form)
-    _fill_advanced_form_choices(advanced_form)
+    # Проверяем, нужно ли заполнять advanced_form choices
+    print(f"[DEBUG] handle_machine_post: tes_types entries: {len(advanced_form.tes_types.entries)}")
+    print(f"[DEBUG] handle_machine_post: fuels entries: {len(advanced_form.fuels.entries)}")
+    
+    if not advanced_form.tes_types.entries or not advanced_form.fuels.entries:
+        print("[DEBUG] Вызываем _fill_advanced_form_choices из handle_machine_post")
+        _fill_advanced_form_choices(advanced_form)
+    else:
+        print("[DEBUG] Пропускаем _fill_advanced_form_choices - entries уже существуют")
     _fill_pgu_machines_form_choices(pgu_machines_form, machine_id=machine.id if machine else 0)
 
     pgu_ids_to_delete = request.form.getlist("pgu_machines_delete[]", type=int)
@@ -279,8 +317,13 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print("main_form.errors:", main_form.errors)
         print("advanced_form.errors:", advanced_form.errors)
         print("pgu_machines_form.errors:", pgu_machines_form.errors)
+        print(f"[DEBUG] Ошибка валидации: tes_types entries: {len(advanced_form.tes_types.entries)}")
+        print(f"[DEBUG] Ошибка валидации: fuels entries: {len(advanced_form.fuels.entries)}")
         flash("Ошибка в заполнении формы. Проверьте поля.", "danger")
-        all_documents = Document.query.order_by(Document.name).all()
+        # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
+        all_documents = choices_cache.get_choices(Document, Document.name)
+        # Преобразуем обратно в объекты для совместимости с шаблоном
+        all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
         return render_template(
             "generation/stations/machine_details.html",
             start_year=start_year,
@@ -310,16 +353,23 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     machine_number=machine_number,
                     machine_name=machine_name
                 )
+                set_db_version_on_create(machine)
                 db.session.add(machine)
                 db.session.flush()  # Получаем ID для новой записи
             
+            # Получаем кэшированные справочники для логирования
+            condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
+            gen_companies = dict(choices_cache.get_choices(GenCompany, GenCompany.id))
+            machine_types = dict(choices_cache.get_choices(MachineType, MachineType.id))
+            tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
+            equipment_groups = dict(choices_cache.get_choices(EquipmentGroup, EquipmentGroup.id))
+            
             field_map = {
-            "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
-            "id_gen_company": lambda x: GenCompany.query.get(x).name if x else "не указано",
-            "id_station_type": lambda x: StationType.query.get(x).name if x else "не указано",
-            "id_machine_type": lambda x: MachineType.query.get(x).name if x else "не указано",
-            "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x else "не указано",
-            "id_equipment_group": lambda x: EquipmentGroup.query.get(x).name if x else "не указано",
+            "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
+            "id_gen_company": lambda x: gen_companies.get(x, "не указано") if x else "не указано",
+            "id_machine_type": lambda x: machine_types.get(x, "не указано") if x else "не указано",
+            "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
+            "id_equipment_group": lambda x: equipment_groups.get(x, "не указано") if x else "не указано",
             "machine_number": str,
             "machine_name": str,
             "note": lambda x: x or "не указано",
@@ -328,7 +378,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         }
 
         # Список полей, которые являются внешними ключами и должны конвертировать 0 в None
-        fk_fields = {'id_condition_type', 'id_gen_company', 'id_station_type', 'id_machine_type', 
+        fk_fields = {'id_condition_type', 'id_gen_company', 'id_machine_type', 
                      'id_tes_machine_type', 'id_equipment_group'}
         
         for fld, to_str in field_map.items():
@@ -416,16 +466,19 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             
             if year_num not in powers_map:
                 mp = MachinePower(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mp)
                 db.session.add(mp)
                 powers_map[year_num] = mp
             
             if year_num not in tes_map:
                 mt = MachineTesType(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mt)
                 db.session.add(mt)
                 tes_map[year_num] = mt
             
             if year_num not in fuel_map:
                 mf = MachineFuel(id_machine=machine.id, year=y_obj, year_number=year_num)
+                set_db_version_on_create(mf)
                 db.session.add(mf)
                 fuel_map[year_num] = mf
 
@@ -509,32 +562,37 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     new_fuel = None
 
             # Обрабатываем типы ТЭС и топливо только для ТЭС станций
-            if getattr(machine, 'id_station_type', None) == 4:
+            # Используем объект station, который уже загружен выше
+            if station.id_station_type == 4:
+                # Получаем кэшированные справочники для ТЭС
+                tes_types = dict(choices_cache.get_choices(TesType, TesType.id))
+                fuels = dict(choices_cache.get_choices(Fuel, Fuel.id))
+                
                 if is_new:
                     # Для нового агрегата просто устанавливаем значения
                     mt.id_tes_type = new_tt
                     if new_tt is not None:
-                        new_tes_name = TesType.query.get(new_tt).name
+                        new_tes_name = tes_types.get(new_tt, f"[{new_tt}]")
                         changes.append(f"Тип ТЭС: {year_num} год - {new_tes_name}")
                     
                     mf.id_fuel = new_fuel
                     if new_fuel is not None:
-                        new_fuel_name = Fuel.query.get(new_fuel).name
+                        new_fuel_name = fuels.get(new_fuel, f"[{new_fuel}]")
                         changes.append(f"Топливо: {year_num} год - {new_fuel_name}")
                     
                     related_entities_changed = True
                 else:
                     # Для существующего агрегата проверяем изменения
                     if mt.id_tes_type != new_tt and new_tt is not None:
-                        old_tes_name = TesType.query.get(mt.id_tes_type).name if mt.id_tes_type else "не указано"
-                        new_tes_name = TesType.query.get(new_tt).name if new_tt else "не указано"
+                        old_tes_name = tes_types.get(mt.id_tes_type, "не указано") if mt.id_tes_type else "не указано"
+                        new_tes_name = tes_types.get(new_tt, "не указано") if new_tt else "не указано"
                         changes.append(f"Тип ТЭС: {year_num} год - {old_tes_name} → {new_tes_name}")
                         mt.id_tes_type = new_tt
                         related_entities_changed = True
 
                     if mf.id_fuel != new_fuel and new_fuel is not None:
-                        old_fuel_name = Fuel.query.get(mf.id_fuel).name if mf.id_fuel else "не указано"
-                        new_fuel_name = Fuel.query.get(new_fuel).name if new_fuel else "не указано"
+                        old_fuel_name = fuels.get(mf.id_fuel, "не указано") if mf.id_fuel else "не указано"
+                        new_fuel_name = fuels.get(new_fuel, "не указано") if new_fuel else "не указано"
                         changes.append(f"Топливо: {year_num} год - {old_fuel_name} → {new_fuel_name}")
                         mf.id_fuel = new_fuel
                         related_entities_changed = True
@@ -548,15 +606,20 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         if is_pgu_action and pgu_machines_form.id_pgu_machine.data:
             pgu_machine = PGUMachine.query.get(pgu_machines_form.id_pgu_machine.data)
             if pgu_machine:
+                # Получаем кэшированные справочники для ПГУ
+                condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
+                tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
+                machines = dict(choices_cache.get_choices(Machine, Machine.machine_name))
+                
                 # Список полей внешних ключей ПГУ, которые должны конвертировать 0 в None
                 pgu_fk_fields_inline = {'id_condition_type', 'id_tes_machine_type'}
                 
                 for fld, to_str in {
-                    "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
-                    "id_parent_machine": lambda x: Machine.query.get(x).machine_name if x else "не указано",
+                    "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
+                    "id_parent_machine": lambda x: machines.get(x, "не указано") if x else "не указано",
                     "machine_number": str,
                     "machine_name": str,
-                    "id_tes_machine_type": lambda x: TesMachineType.query.get(x).name if x else "не указано",
+                    "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
                     "note": lambda x: x or "не указано",
                 }.items():
                     old_val = getattr(pgu_machine, fld)
@@ -585,7 +648,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                         setattr(pgu_machine, fld, new_val)
 
         # Вызываем важные функции для всех агрегатов, а не только для ПГУ
-        autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year)
+        autofill_tes_and_fuel_chain(machine, station, advanced_form, changes, start_year, end_year)
         recalculate_station_power(station, start_year, end_year)
         recalculate_machine_years_by_p_ust(machine, changes, year_features)
 
@@ -597,6 +660,8 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             invalidate_cache('machine', machine_id=machine.id)
             invalidate_cache('station_full', station_id=station.id)
             invalidate_cache_pattern('station_list:*')
+            # Очищаем кэш choices при изменении данных
+            clear_machine_choices_cache()
 
         if pgu_changes:
             log_to_db(user, f"Изменения по ПГУ агрегату {pgu_machine.machine_name} станции {station.name}", details="; ".join(pgu_changes))
@@ -626,7 +691,12 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         else:
             machine_info = f"№{machine.machine_number} {machine.machine_name}" if machine else "неизвестный агрегат"
             log_to_db(user, f"Ошибка обновления агрегата {machine_info} станции {station.name}", details=str(exc), entity_type="machine", entity_id=machine.id if machine else None)
-        all_documents = Document.query.order_by(Document.name).all()
+        print(f"[DEBUG] Ошибка в handle_machine_post: tes_types entries: {len(advanced_form.tes_types.entries)}")
+        print(f"[DEBUG] Ошибка в handle_machine_post: fuels entries: {len(advanced_form.fuels.entries)}")
+        # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
+        all_documents = choices_cache.get_choices(Document, Document.name)
+        # Преобразуем обратно в объекты для совместимости с шаблоном
+        all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
         return render_template(
             "generation/stations/machine_details.html",
             start_year=start_year,
@@ -710,6 +780,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         with db.session.no_autoflush:
             if is_new:
                 pgu_machine = PGUMachine(id_parent_machine=machine_id)
+                set_db_version_on_create(pgu_machine)
                 db.session.add(pgu_machine)
                 db.session.flush()  # Получаем ID для новой записи
             else:
@@ -731,11 +802,15 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
             from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
             
+            # Получаем кэшированные справочники для ПГУ
+            condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
+            pgu_tes_machine_types = dict(choices_cache.get_choices(PGUTesMachineType, PGUTesMachineType.id))
+            
             field_map = {
-            "id_condition_type": lambda x: ConditionType.query.get(x).name if x else "не указано",
+            "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
             "machine_number": str,
             "machine_name": str,
-            "id_pgu_tes_machine_type": lambda x: PGUTesMachineType.query.get(x).name if x else "не указано",
+            "id_pgu_tes_machine_type": lambda x: pgu_tes_machine_types.get(x, "не указано") if x else "не указано",
             "note": lambda x: x or "не указано",
         }
 
@@ -816,7 +891,9 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                     if not is_same_decimal(old_p_ust, p_ust):
                         changes.append(f"p_ust: {year} год - {format_decimal_for_display(old_p_ust)} → {format_decimal_for_display(p_ust)}")
                 
-                db.session.add(PGUMachinePower(id_pgu_machine=pgu_machine.id, year_number=year, p_ust=p_ust))
+                pgu_power = PGUMachinePower(id_pgu_machine=pgu_machine.id, year_number=year, p_ust=p_ust)
+                set_db_version_on_create(pgu_power)
+                db.session.add(pgu_power)
 
         _commit_with_retry()
         
@@ -825,6 +902,8 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         invalidate_cache('machine', machine_id=parent_machine.id)
         invalidate_cache('station_full', station_id=station.id)
         invalidate_cache_pattern('station_list:*')
+        # Очищаем кэш choices при изменении данных
+        clear_machine_choices_cache()
 
         # Логирование
         if is_new:
@@ -867,52 +946,112 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         )
     
 
-def _fill_main_form_choices(form):
-    form.id_gen_company.choices = [(0, "не указано")] + [(g.id, g.name) for g in GenCompany.query.order_by(GenCompany.id).all()]
-    form.id_energy_area.choices = [(ea.id, ea.name) for ea in EnergyArea.query.order_by(EnergyArea.id).all()]
-    form.id_machine_type.choices = [(mt.id, mt.name) for mt in MachineType.query.order_by(MachineType.id).all()]
-    form.id_tes_machine_type.choices = [(tmt.id, tmt.name) for tmt in TesMachineType.query.order_by(TesMachineType.id).all()]
-    form.id_equipment_group.choices = [(eg.id, eg.name) for eg in EquipmentGroup.query.order_by(EquipmentGroup.id).all()]
+_choices_cache = {}
+
+def _get_cached_choices_from_cache_service(model_class, order_by_field, cache_key):
+    """Получает choices из CacheService для унификации кэширования с фильтрацией по версии"""
+    if model_class == ConditionType:
+        # Для ConditionType используем CacheService, но нужно добавить фильтрацию по версии
+        items = CacheService.get_condition_types_cached()
+        # Применяем фильтрацию по версии к результатам CacheService
+        query = model_class.query.filter(model_class.id.in_([item.id for item in items]))
+        query = filter_by_db_version(query, model_class)
+        items = query.all()
+    elif model_class == GenCompany:
+        # Для GenCompany используем CacheService, но нужно добавить фильтрацию по версии
+        items = CacheService.get_gen_companies_cached()
+        # Применяем фильтрацию по версии к результатам CacheService
+        query = model_class.query.filter(model_class.id.in_([item.id for item in items]))
+        query = filter_by_db_version(query, model_class)
+        items = query.all()
+    else:
+        # Для остальных моделей используем прямой запрос с фильтрацией по версии
+        query = model_class.query.order_by(order_by_field)
+        query = filter_by_db_version(query, model_class)
+        items = query.all()
     
-    form.id_condition_type.choices = [
-        (c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()
-    ]
+    return [(item.id, item.name) for item in items]
+
+def _get_cached_choices(model_class, order_by_field, cache_key):
+    """Получает choices из кэша или выполняет запрос к БД с фильтрацией по версии"""
+    if cache_key not in _choices_cache:
+        print(f"[CACHE] Загружаем {cache_key} из БД (с фильтрацией по версии)")
+        query = model_class.query.order_by(order_by_field)
+        query = filter_by_db_version(query, model_class)
+        _choices_cache[cache_key] = [(item.id, item.name) for item in query.all()]
+    else:
+        print(f"[CACHE] Используем кэшированные {cache_key}: {len(_choices_cache[cache_key])} записей")
+    return _choices_cache[cache_key]
+
+def _get_cached_documents():
+    """Оптимизированная загрузка документов - только id и name с фильтрацией по версии"""
+    if 'documents' not in _choices_cache:
+        print(f"[CACHE] Загружаем documents из БД (только id, name, с фильтрацией по версии)")
+        # Загружаем только необходимые поля для выпадающего списка с фильтрацией по версии
+        query = db.session.query(Document.id, Document.name).order_by(Document.name)
+        query = filter_by_db_version(query, Document)
+        documents_data = query.all()
+        _choices_cache['documents'] = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in documents_data]
+    else:
+        print(f"[CACHE] Используем кэшированные documents: {len(_choices_cache['documents'])} записей")
+    return _choices_cache['documents']
+
+def _clear_choices_cache():
+    """Очищает кэш choices (вызывать при изменении справочных данных)"""
+    global _choices_cache
+    _choices_cache.clear()
+
+def clear_machine_choices_cache():
+    """Публичная функция для очистки кэша choices из других модулей"""
+    _clear_choices_cache()
+    # Также очищаем CacheService для унификации
+    CacheService.clear_cache()
+
+def _fill_main_form_choices(form):
+    """Заполняет choices для основной формы с использованием унифицированного кэширования"""
+    form.id_gen_company.choices = choices_cache.get_choices_with_default(GenCompany, GenCompany.id, "не указано")
+    form.id_energy_area.choices = choices_cache.get_choices(EnergyArea, EnergyArea.id)
+    form.id_machine_type.choices = choices_cache.get_choices(MachineType, MachineType.id)
+    form.id_tes_machine_type.choices = choices_cache.get_choices(TesMachineType, TesMachineType.id)
+    form.id_equipment_group.choices = choices_cache.get_choices(EquipmentGroup, EquipmentGroup.id)
+    
+    form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     if form.id_condition_type.data is None:
         form.id_condition_type.data = 0
 
 
 def _fill_advanced_form_choices(form):
-    tes_types = TesType.query.order_by(TesType.id).all()
-    fuel_types = Fuel.query.order_by(Fuel.id).all()
+    """Заполняет choices для расширенной формы с использованием кэширования"""
+    tes_choices = choices_cache.get_choices(TesType, TesType.id)
+    fuel_choices = choices_cache.get_choices(Fuel, Fuel.id)
 
-    tes_choices = [(tt.id, tt.name) for tt in tes_types]
-    fuel_choices = [(f.id, f.name) for f in fuel_types]
+    print(f"[DEBUG] _fill_advanced_form_choices: tes_types entries: {len(form.tes_types.entries)}")
+    print(f"[DEBUG] _fill_advanced_form_choices: fuels entries: {len(form.fuels.entries)}")
 
-    for entry in form.tes_types:
-        entry.tes_type.choices = tes_choices
+    # Устанавливаем choices только если они еще не установлены или пусты
+    for i, entry in enumerate(form.tes_types):
+        print(f"[DEBUG] tes_entry {i}: year={entry.year.data}, tes_type.data={entry.tes_type.data}, choices уже установлены: {hasattr(entry.tes_type, 'choices') and entry.tes_type.choices}")
+        if not hasattr(entry.tes_type, 'choices') or not entry.tes_type.choices:
+            entry.tes_type.choices = tes_choices
         if entry.tes_type.data is None:
             entry.tes_type.data = 0 
 
-    for entry in form.fuels:
-        entry.fuel_type.choices = fuel_choices
+    for i, entry in enumerate(form.fuels):
+        print(f"[DEBUG] fuel_entry {i}: year={entry.year.data}, fuel_type.data={entry.fuel_type.data}, choices уже установлены: {hasattr(entry.fuel_type, 'choices') and entry.fuel_type.choices}")
+        if not hasattr(entry.fuel_type, 'choices') or not entry.fuel_type.choices:
+            entry.fuel_type.choices = fuel_choices
         if entry.fuel_type.data is None:
             entry.fuel_type.data = 0
 
 
 def _fill_pgu_machines_form_choices(form, machine_id):
-    form.id_parent_machine.choices = [
-        (m.id, m.machine_name) for m in Machine.query.order_by(Machine.machine_name).all()
-    ]
-
-    form.id_condition_type.choices = [
-        (c.id, c.name) for c in ConditionType.query.order_by(ConditionType.id).all()
-    ]
+    """Заполняет choices для формы ПГУ с использованием унифицированного кэширования"""
+    form.id_parent_machine.choices = choices_cache.get_choices(Machine, Machine.machine_name)
+    form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
+    form.id_pgu_tes_machine_type.choices = choices_cache.get_choices(PGUTesMachineType, PGUTesMachineType.id)
+    
     if form.id_condition_type.data is None:
         form.id_condition_type.data = 0
-
-    form.id_pgu_tes_machine_type.choices = [
-        (t.id, t.name) for t in PGUTesMachineType.query.order_by(PGUTesMachineType.id).all()
-    ]
     if form.id_pgu_tes_machine_type.data is None:
         form.id_pgu_tes_machine_type.data = 0
 
@@ -985,7 +1124,7 @@ def autofill_powers_if_possible_decimal(p_ust, p_ogr, p_rasp, year_num=None, ski
         return p_ust, p_ogr, p_rasp
     
 
-def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end_year):
+def autofill_tes_and_fuel_chain(machine, station, advanced_form, changes, start_year, end_year):
     """
     Автоматически заполняет тип ТЭС и топливо по принципу цепной передачи:
     - если p_ust > 0 и текущий тип == 0, а предыдущий ≠0 → копируем
@@ -996,7 +1135,8 @@ def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end
     # Логика типов ТЭС и топлива актуальна только для станций типа ТЭС (id_station_type == 4)
     # Для ГЭС/СЭС/ВЭС и прочих типов — ничего не делаем и не логируем
     try:
-        if getattr(machine, 'id_station_type', None) != 4:
+        # Используем переданный объект station
+        if station.id_station_type != 4:
             return
     except Exception:
         # В случае отсутствия атрибута/ошибок — безопасно выходим
@@ -1009,8 +1149,8 @@ def autofill_tes_and_fuel_chain(machine, advanced_form, changes, start_year, end
     tes_map = {mt.year.number: mt for mt in machine.machine_tes_types}
     fuel_map = {mf.year.number: mf for mf in machine.machine_fuels}
 
-    fuel_names = {f.id: f.name for f in Fuel.query.all()}
-    tes_names = {t.id: t.name for t in TesType.query.all()}
+    fuel_names = dict(choices_cache.get_choices(Fuel, Fuel.id))
+    tes_names = dict(choices_cache.get_choices(TesType, TesType.id))
 
     for i, year_num in enumerate(range(start_year, end_year + 1)):
         if year_num not in powers_map or year_num not in tes_map or year_num not in fuel_map:

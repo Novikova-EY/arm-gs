@@ -5,6 +5,7 @@ from app.extensions import db
 from flask import (
     render_template, request, redirect, url_for, flash, session, jsonify, current_app
 )
+from sqlalchemy.orm import joinedload
 from collections import defaultdict
 
 from flask_login import login_required 
@@ -17,7 +18,7 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.generation.models.station.station_model import Station
-from sqlalchemy.orm import joinedload
+from app.common.services.choices_cache_service import choices_cache
 
 # Формы
 from app.generation.forms.station_forms import(
@@ -50,7 +51,7 @@ from app.logs.services.logging_service import log_to_db
 
 
 @station_bp.route("/station_list", methods=["GET", "POST"])
-@login_required
+@login_required  # Временно отключено для отладки
 def station_list():
     """Маршрут для отображения списка всех электростанций."""
     import time
@@ -58,7 +59,7 @@ def station_list():
     start_data = time.time()
 
     user = session.get('username', 'Неизвестный пользователь')
-    log_to_db(user, "Открыта страница электростанций")
+    # log_to_db(user, "Открыта страница электростанций")  # Временно отключено для отладки
 
     # Создание формы
     form = StationFilterForm()
@@ -95,6 +96,10 @@ def station_list():
     if rounding_digits is None or rounding_digits < 0:
         rounding_digits = 1
 
+    print(f"[DEBUG] [STATION_ROUTE] Начало загрузки данных станций")
+    print(f"[DEBUG] [STATION_ROUTE] Фильтры: {filters}")
+    print(f"[DEBUG] [STATION_ROUTE] per_page: {per_page}, page: {page}")
+    
     data = get_station_list_data(
                 filters=filters,
                 per_page=per_page,
@@ -107,6 +112,8 @@ def station_list():
                 show_all=show_all,
                 show_totals=show_totals,
     )
+    print(f"[DEBUG] [STATION_ROUTE] Получено станций: {len(data.get('stations', []))}")
+    print(f"[DEBUG] [STATION_ROUTE] Общее количество: {data.get('total_count', 0)}")
     print(f"[TIME] get_station_list_data заняла: {time.time() - start_data:.2f} сек")
 
     # Save ready dataset for export (per user and filters)
@@ -143,6 +150,7 @@ def station_list():
                 rounding_digits,
                 {**filters, "start_year": start_year, "end_year": end_year},
                 show_all=show_all,
+                hierarchy_data=data.get("hierarchy_data"),
     )
 
     has_active_filters = has_any_filters(request.args)
@@ -161,13 +169,13 @@ def add_station():
 
     form = AddStationForm()
 
-    # Подготовка данных для формы
+    # Подготовка данных для формы с фильтрацией по версии БД
     regional_district_list = get_regional_district_list_full()
     form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
     
-    # Заполняем список типов станций
+    # Заполняем список типов станций с фильтрацией по версии БД
     from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
-    form.id_station_type.choices = [(st.id, st.name) for st in StationType.query.order_by(StationType.id).all()]
+    form.id_station_type.choices = choices_cache.get_choices(StationType, StationType.id)
 
     if form.validate_on_submit():
         try:
@@ -249,3 +257,59 @@ def get_energy_system_data(regional_district_id):
     except Exception as e:
         current_app.logger.error(f"Ошибка при получении данных энергосистемы для субъекта {regional_district_id}: {str(e)}")
         return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+
+@station_bp.route('/clear_cache', methods=['POST'])
+@login_required
+def clear_station_cache():
+    """Очищает кэш станций."""
+    try:
+        from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
+        
+        # Очищаем кэш агрегаций и отсортированных списков станций
+        clear_aggregation_cache()
+        
+        flash('Кэш станций успешно очищен', 'success')
+        current_app.logger.info("Кэш станций очищен пользователем")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Кэш станций успешно очищен'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Ошибка при очистке кэша станций: {str(e)}")
+        flash('Ошибка при очистке кэша', 'error')
+        
+        return jsonify({
+            'success': False,
+            'message': 'Ошибка при очистке кэша'
+        }), 500
+
+
+@station_bp.route('/refresh_cache', methods=['POST'])
+@login_required
+def refresh_station_cache():
+    """Принудительно обновляет кэш станций."""
+    try:
+        from app.generation.services.station_services.aggregation_cache import warmup_station_cache
+        
+        # Принудительно обновляем кэш
+        warmup_station_cache(force=True)
+        
+        flash('Кэш станций успешно обновлен', 'success')
+        current_app.logger.info("Кэш станций принудительно обновлен пользователем")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Кэш станций успешно обновлен'
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Ошибка при обновлении кэша станций: {str(e)}")
+        flash('Ошибка при обновлении кэша', 'error')
+        
+        return jsonify({
+            'success': False,
+            'message': 'Ошибка при обновлении кэша'
+        }), 500

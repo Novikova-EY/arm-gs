@@ -15,11 +15,7 @@ from app.refdata.forms.territories.regional_district_forms import (
     AddRegionalDistrictForm,
 )
 
-# Сервисы
-from app.common.services.get_services.territories.federal_district_get_services import (
-    get_federal_district_list_full,
-    get_federal_district_name,
-)
+from app.common.services.choices_cache_service import choices_cache
 from app.common.services.get_services.energy_systems.energy_zone_get_services import (
     get_energy_zone_list_full,
 )
@@ -182,16 +178,18 @@ def regional_district_list():
                                 sort_dir=sort_dir,
                                 )
 
-    # Подготовка данных для формы
-    federal_districts = get_federal_district_list_full()
-    form.federal_district.choices = [(fd.id, fd.name) for fd in federal_districts]
+    # Подготовка данных для формы с фильтрацией по версии БД
+    from app.refdata.models.territories.federal_district_model import FederalDistrict
+    form.federal_district.choices = choices_cache.get_choices(FederalDistrict, FederalDistrict.id)
 
-    # Энергозоны — для формы (пары) и для таблицы (тройки)
+    # Энергозоны — для формы (пары) и для таблицы (тройки) с фильтрацией по версии БД
+    from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
     energy_zones = get_energy_zone_list_full()
     form.energy_zone.choices = [(ez.id, f"{ez.number} ({ez.name})") for ez in energy_zones]
     energy_zone_list = [(ez.id, ez.number, ez.name) for ez in energy_zones]
 
-    # Синхронные зоны — обычно (id, name); если у вас есть number — добавьте его
+    # Синхронные зоны с фильтрацией по версии БД
+    from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
     synchronous_areas = get_synchronous_area_list_full()
     form.synchronous_area.choices = [(sa.id, f"{sa.number} ({sa.name})") for sa in synchronous_areas]
     synchronous_area_list = [(sa.id, sa.number, sa.name) for sa in synchronous_areas]
@@ -235,9 +233,8 @@ def add_regional_district():
     energy_zone_filter          = request.args.get("energy_zone_filter", "").strip()
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
     
-    # Подготовка данных для формы
-    federal_district_list = get_federal_district_list_full()
-    form.federal_district.choices = [(t.id, t.name) for t in federal_district_list]
+    # Подготовка данных для формы с фильтрацией по версии БД
+    form.federal_district.choices = choices_cache.get_choices(FederalDistrict, FederalDistrict.id)
 
     # Обработка формы
     if request.method == "POST":

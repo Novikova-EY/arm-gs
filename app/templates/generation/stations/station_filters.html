@@ -5,11 +5,11 @@
         <!-- Левая группа кнопок -->
         <div class="d-flex gap-2">
             <button id="filtersToggleBtn"
-                    class="btn btn-outline-secondary text-dark"
+                    class="btn {% if has_active_filters %}btn-warning{% else %}btn-outline-secondary{% endif %} text-dark{% if not has_active_filters %} collapsed{% endif %}"
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#filtersCollapse"
-                    aria-expanded="false"
+                    aria-expanded="{{ 'true' if has_active_filters else 'false' }}"
                     aria-controls="filtersCollapse">
                 🔍 Фильтры / Поиск
             </button>

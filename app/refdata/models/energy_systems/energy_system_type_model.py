@@ -5,7 +5,7 @@ EnergySystemType (Тип энергосистемы).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 
 class EnergySystemType(db.Model):
     __tablename__ = "energy_system_types"
@@ -16,6 +16,14 @@ class EnergySystemType(db.Model):
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     # двусторонняя связь c UnionEnergySystem
     union_energy_systems = db.relationship(

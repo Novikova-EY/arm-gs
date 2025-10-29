@@ -3,12 +3,21 @@ from functools import lru_cache
 # Модели
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 
+# Сервисы
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_station_type_list_full():
-    """Получает полный список типов электростанций'."""
+    """Получает полный список типов электростанций."""
+    current_version = get_current_version()
+    query = StationType.query
+    
+    if current_version:
+        query = query.filter(StationType.database_version_id == current_version)
+    
     return (
-        StationType.query
+        query
         .order_by(
             (StationType.id != 0),
             StationType.name.asc()

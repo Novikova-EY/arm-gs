@@ -50,6 +50,14 @@ class MachineTesType(db.Model):
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Поле для связи с версией БД
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return f"<MachineTesType id={self.id} machine_id={self.id_machine} year={self.year_number} tes_type_id={self.id_tes_type}>"

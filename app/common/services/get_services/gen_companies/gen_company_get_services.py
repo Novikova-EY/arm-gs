@@ -6,12 +6,19 @@ from typing import Union, List
 # Модели
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 
+# Функции для работы с версионированием БД
+from app.common.services.database_version_filter import filter_by_db_version
+from app.common.services.database_version_services import get_current_version
+
 
 @lru_cache(maxsize=1)
 def get_gen_company_list_full():
     """Получает полный список генерирующих компаний'."""
+    query = GenCompany.query
+    # Фильтрация по версии БД
+    query = filter_by_db_version(query, GenCompany)
     return (
-        GenCompany.query
+        query
         .order_by(
             (GenCompany.id != 0),
             GenCompany.name.asc()
@@ -23,12 +30,17 @@ def get_gen_company_list_full():
 @lru_cache(maxsize=1)
 def get_gen_company_list():
     """Получает список генерирующих компаний (кроме "не указано")."""
-    query = (
-        GenCompany.query
+    current_version = get_current_version()
+    query = GenCompany.query
+    
+    if current_version:
+        query = query.filter(GenCompany.database_version_id == current_version)
+    
+    return (
+        query
         .filter(GenCompany.id.isnot(None), GenCompany.id > 0)
         .order_by(GenCompany.name.asc())
     )
-    return query
 
 
 def get_gen_company_name(gen_company_ids: Union[str, int, List[int]]) -> str:
@@ -50,8 +62,14 @@ def get_gen_company_name(gen_company_ids: Union[str, int, List[int]]) -> str:
     if not ids:
         return "Не указано"
 
-    # Берем имена из базы
-    objs = GenCompany.query.filter(GenCompany.id.in_(ids)).all()
+    # Берем имена из базы с фильтром по версии
+    current_version = get_current_version()
+    query = GenCompany.query.filter(GenCompany.id.in_(ids))
+    
+    if current_version:
+        query = query.filter(GenCompany.database_version_id == current_version)
+    
+    objs = query.all()
     id_to_name = {o.id: o.name for o in objs}
 
     # Возвращаем строку в порядке входных ID
