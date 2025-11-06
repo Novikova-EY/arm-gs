@@ -35,8 +35,12 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
 from sqlalchemy.orm import selectinload, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from app.logs.models.log_model import Log
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
+MOSCOW = ZoneInfo("Europe/Moscow")
 
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
     get_energy_system_type_list_full,
@@ -102,17 +106,72 @@ def _format_logs_for_display(logs):
     
     Returns: список словарей с предформатированными данными
     """
+    if not logs:
+        return []
+    
+    # Получаем все уникальные версии БД одним запросом для оптимизации
+    from app.common.models.database_version_model import DatabaseVersion
+    version_ids = {log.database_version_id for log in logs if log.database_version_id}
+    versions_map = {}
+    if version_ids:
+        # Используем оптимизированный запрос с загрузкой только нужных полей
+        try:
+            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.name).filter(
+                DatabaseVersion.id.in_(version_ids)
+            ).all()
+            versions_map = {v.id: v.name for v in versions}
+        except Exception:
+            # Если ошибка - просто показываем ID версии вместо названия
+            versions_map = {vid: str(vid) for vid in version_ids}
+    
+    def _suppress_noop_changes(details_text: str) -> str:
+        if not details_text:
+            return ''
+        def _norm(s: str) -> str:
+            if s is None:
+                return ''
+            s2 = s.replace('\u00A0', ' ').replace('\xa0', ' ').strip().lower()
+            while '  ' in s2:
+                s2 = s2.replace('  ', ' ')
+            return s2
+        parts = [p.strip() for p in details_text.split(';')]
+        filtered = []
+        for p in parts:
+            if not p:
+                continue
+            if '→' in p:
+                left, right = p.split('→', 1)
+                if _norm(left) == _norm(right):
+                    # пропускаем "X → X" и "не указано → не указано"
+                    continue
+                left_value = left.rsplit('-', 1)[-1].strip() if '-' in left else left
+                right_value = right
+                if _norm(left_value) == _norm(right_value):
+                    # пропускаем "X → X" и "не указано → не указано"
+                    continue
+            filtered.append(p)
+        return '; '.join(filtered)
+
     formatted_logs = []
     for log in logs:
+        details_clean = _suppress_noop_changes(log.details or '')
+        ts = log.timestamp
+        if ts is not None:
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            ts_msk = ts.astimezone(MOSCOW)
+        else:
+            ts_msk = None
         formatted_log = {
-            'date': log.timestamp.strftime('%Y-%m-%d') if log.timestamp else '',
-            'time': log.timestamp.strftime('%H:%M:%S') if log.timestamp else '',
+            'date': ts_msk.strftime('%Y-%m-%d') if ts_msk else '',
+            'time': ts_msk.strftime('%H:%M:%S') if ts_msk else '',
             'username': log.username or '',
             'username_lower': (log.username or '').lower(),
             'action': log.action or '',
             'action_lower': (log.action or '').lower(),
-            'details': log.details or '',
-            'details_lower': (log.details or '').lower(),
+            'details': details_clean,
+            'details_lower': details_clean.lower(),
+            'database_version': versions_map.get(log.database_version_id, '—') if log.database_version_id else '—',
         }
         formatted_logs.append(formatted_log)
     return formatted_logs
@@ -138,7 +197,7 @@ def station_details(station_id):
             joinedload(Station.group),
             joinedload(Station.station_type),
             selectinload(Station.machines)
-                .selectinload(Machine.machine_powers).joinedload(MachinePower.year),
+                .selectinload(Machine.machine_powers),
             selectinload(Station.machines)
                 .selectinload(Machine.machine_fuels).joinedload(MachineFuel.fuel).joinedload(Fuel.fuel_type),
             selectinload(Station.machines)
@@ -179,8 +238,11 @@ def station_details(station_id):
         except Exception:
             pass
 
-    regional_district_name = station.regional_district.name if station and station.regional_district else "не указано"
-    log_to_db(user, f"Открыта страница электростанции {station.name} ({regional_district_name})", entity_type="station", entity_id=station.id)
+    # Отложенное логирование открытия страницы - только для GET запросов
+    # Выполняется после основной логики, чтобы не блокировать обработку
+    if request.method == "GET":
+        regional_district_name = station.regional_district.name if station and station.regional_district else "не указано"
+        log_to_db(user, f"Открыта страница электростанции {station.name} ({regional_district_name})", entity_type="station", entity_id=station.id)
 
     form = StationFilterForm()
     form_machines = MachineFilterSmallForm()
@@ -192,6 +254,7 @@ def station_details(station_id):
     
     # Определяем, какая форма была отправлена
     submitted_keys = set(request.form.keys())
+    print(f"[DEBUG] Отправленные поля формы: {submitted_keys}")
     is_station_form = any(k in submitted_keys for k in {"name", "id_condition_type", "id_station_type", "id_station_group", "id_energy_unit", "id_regional_district", "location", "note"})
     # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
     is_machines_form = ("machines_delete[]" in submitted_keys) or any(
@@ -199,6 +262,7 @@ def station_details(station_id):
         for k in submitted_keys
         for prefix in ("fuel_so_", "id_gen_company_", "note_")
     )
+    print(f"[DEBUG] is_station_form = {is_station_form}, is_machines_form = {is_machines_form}")
 
     # Используем кэшированные справочники для оптимизации
     form_data = CacheService.get_station_details_form_data()
@@ -246,18 +310,18 @@ def station_details(station_id):
     regional_district_names = get_rd_to_fd_id_map()
 
     # Заполняем список субъектов РФ с фильтрацией по версии БД
-    form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
+    # regional_district_list теперь содержит кортежи (id, name) вместо ORM-объектов
+    form.id_regional_district.choices = regional_district_list
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     form.id_station_group.choices = choices_cache.get_choices(StationGroup, StationGroup.id)
     
     # Заполняем список типов станций с фильтрацией по версии БД
-    form.id_station_type.choices = choices_cache.get_choices_with_default(StationType, StationType.id, '— не указано —')
+    form.id_station_type.choices = choices_cache.get_choices(StationType, StationType.id)
     form_machines.id_gen_company.choices = choices_cache.get_choices(GenCompany, GenCompany.id)
     
     # Используем кэшированные энергоузлы с фильтрацией по версии БД
     energy_units = form_data['energy_units']
-    form.id_energy_unit.choices = choices_cache.get_choices_with_default(EnergyUnit, EnergyUnit.id, '— не указано —')
-    energy_unit_names = [(0, '— не указано —')] + [(eu.id, eu.name) for eu in energy_units]
+    form.id_energy_unit.choices = choices_cache.get_choices(EnergyUnit, EnergyUnit.id)
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -271,14 +335,10 @@ def station_details(station_id):
         form.process(obj=station)
         if form.id_condition_type.data is None:
             form.id_condition_type.data = 0
-        if form.id_energy_unit.data is None:
-            form.id_energy_unit.data = 0
-        if form.id_station_type.data is None:
-            form.id_station_type.data = 0
+        # Для energy_unit и station_type оставляем None как есть, 
+        # так как теперь coerce возвращает None для пустых значений
 
     if request.method == "POST":
-        # Отладочный вывод для проверки POST-данных
-
         # ВАЖНО: Сначала обрабатываем форму агрегатов (включая удаление),
         # чтобы избежать конфликта с формой станции
         if is_machines_form:
@@ -311,15 +371,40 @@ def station_details(station_id):
                         # Инвалидация кэша после обновления агрегатов
                         invalidate_cache('station_full', station_id=station.id)
                         invalidate_cache_pattern('station_list:*')
+                    # Дополнительно: если вместе с формой агрегатов пришли поля станции (например, id_energy_unit), сохраняем их тоже
+                    try:
+                        if any(k in submitted_keys for k in {"name", "id_condition_type", "id_station_type", "id_station_group", "id_energy_unit", "id_regional_district", "location", "note"}):
+                            # Привязываем POST-данные к форме станции и валидируем
+                            form.process(formdata=request.form)
+                            if not form.validate():
+                                print("Ошибки в form (в составе machinesForm):", form.errors)
+                            else:
+                                station_changes = update_station_from_form_service(user, station, form, regional_district_list)
+                                if station_changes:
+                                    flash("Изменения в электростанции успешно обновлены!", "success")
+                                    invalidate_cache('station_full', station_id=station.id)
+                                    invalidate_cache_pattern('station_list:*')
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        flash(f"Ошибка при обновлении полей станции: {e}", "danger")
                     return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
+                    # При ошибке продолжаем выполнение для показа формы с ошибками
         
         # Обработка отправки основной формы станции
         # ВАЖНО: Обрабатываем только если НЕ было удаления агрегатов
         elif is_station_form:
+            print(f"[DEBUG] Форма станции отправлена. id_energy_unit.data = {form.id_energy_unit.data}, id_station_type.data = {form.id_station_type.data}")
+            print(f"[DEBUG] Валидация формы: validate() = {form.validate()}, validate_on_submit() = {form.validate_on_submit()}")
             if not form.validate():
                 print("Ошибки в form:", form.errors)
+                print(f"[DEBUG] Данные формы: {form.data}")
+                print(f"[DEBUG] CSRF токен: {form.csrf_token.data}")
+                print(f"[DEBUG] CSRF токен из request: {request.form.get('csrf_token')}")
             if form.validate_on_submit():
                 try:
                     # Проверка версии из формы для предотвращения concurrent updates
@@ -348,21 +433,25 @@ def station_details(station_id):
     years_range = end_year - start_year + 1
     cells_count = machines_count * years_range
     
-    # Загружаем и форматируем логи для подсчета
-    station_logs_raw = (
-        db.session.query(Log)
-        .filter(
-            or_(
-                Log.action.ilike(f"%станции {station.name}%"),
-                Log.details.ilike(f"%station_id={station.id}%")
-            )
+    # Загружаем и форматируем логи ТОЛЬКО для GET запросов (для POST не нужны, т.к. идет редирект)
+    station_logs_formatted = []
+    if request.method == "GET":
+        logs_filter = or_(
+            and_(Log.entity_type == "station", Log.entity_id == station.id),
+            Log.details.ilike(f"%station_id={station.id}%"),
+            Log.action.ilike(f"%станции%{station.name}%")
         )
-        .filter(~Log.action.ilike("%Открыта страница электростанции%"))
-        .order_by(Log.timestamp.desc())
-        .limit(20)  # Уменьшено со 200 до 50 для ускорения рендеринга
-        .all()
-    )
-    station_logs_formatted = _format_logs_for_display(station_logs_raw)
+
+        station_logs_raw = (
+            db.session.query(Log)
+            .filter(logs_filter)
+            .filter(~Log.action.ilike("%Открыта страница электростанции%"))
+            .order_by(Log.timestamp.desc())
+            .limit(20)  # Ограничиваем количество для ускорения
+            .all()
+        )
+        station_logs_formatted = _format_logs_for_display(station_logs_raw)
+    
     logs_count = len(station_logs_formatted)
     
     print(f"[RENDER START] Агрегатов: {machines_count}, Лет: {years_range}, Ячеек: {cells_count}, Логов: {logs_count}")
@@ -376,7 +465,6 @@ def station_details(station_id):
         rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year, 
-        energy_unit_names=energy_unit_names,
         current_year=current_year,
         machine_tes_types_map=machine_tes_types_map,
         federal_districts=federal_district_list,
@@ -431,14 +519,15 @@ def station_logs(station_id):
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
     
+    logs_filter = or_(
+        and_(Log.entity_type == "station", Log.entity_id == station.id),
+        Log.details.ilike(f"%station_id={station.id}%"),
+        Log.action.ilike(f"%станции%{station.name}%")
+    )
+
     logs_query = (
         db.session.query(Log)
-        .filter(
-            or_(
-                Log.action.ilike(f"%станции {station.name}%"),
-                Log.details.ilike(f"%station_id={station.id}%")
-            )
-        )
+        .filter(logs_filter)
         .filter(~Log.action.ilike("%Открыта страница электростанции%"))
         .order_by(Log.timestamp.desc())
     )

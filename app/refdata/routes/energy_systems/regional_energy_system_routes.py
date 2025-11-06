@@ -214,7 +214,7 @@ def add_regional_energy_system():
     form.union_energy_system.choices = [(ues.id, ues.name) for ues in union_energy_system_list]
 
     regional_district_list = get_regional_district_list_full()
-    form.regional_districts.choices = [(rd.id, rd.name) for rd in regional_district_list]
+    form.regional_districts.choices = regional_district_list
 
     # Обработка формы
     if request.method == "POST":

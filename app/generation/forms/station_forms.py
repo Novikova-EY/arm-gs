@@ -62,14 +62,14 @@ class StationFilterForm(FlaskForm):
 
     id_energy_unit = SelectField(
         'Энергоузел электростанции',
-        coerce=int,
+        coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),
         choices=[],        
         validators=[Optional()]
     )
 
     id_station_type = SelectField(
         'Тип электростанции',
-        coerce=int,
+        coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),
         choices=[],
         validators=[Optional()]
     )

@@ -28,7 +28,7 @@ class MachinePower(db.Model):
         nullable=True,
         index=True,
     )
-    year = db.relationship('Year', back_populates='machine_powers')
+    year = db.relationship('Year', back_populates='machine_powers', lazy='noload')
 
     # FK -> Machine
     id_machine = db.Column(

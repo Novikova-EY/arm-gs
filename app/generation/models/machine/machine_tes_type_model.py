@@ -27,7 +27,7 @@ class MachineTesType(db.Model):
         nullable=True,
         index=True,
     )
-    year = db.relationship('Year', back_populates='machine_tes_types')
+    year = db.relationship('Year', back_populates='machine_tes_types', lazy='noload')
 
     # FK -> Machine
     id_machine = db.Column(

@@ -6,7 +6,7 @@ from app.refdata.models.refdata_for_stations.station import station_type_model
 from app.refdata.models.refdata_for_stations.technologies import equipment_group_model, technology_availability_model, technology_type_model
 from app.common.models.database_version_model import DatabaseVersion
 from config import SECRET_KEY, DEBUG
-from flask import Flask, redirect, request, url_for, flash
+from flask import Flask, redirect, request, url_for, flash, g
 from sqlalchemy import event
 from sqlalchemy.engine import URL
 from app.extensions import db, migrate, login_manager, cache
@@ -28,7 +28,17 @@ def create_app():
     app.config['SQLALCHEMY_ECHO'] = False
     app.logger.setLevel(logging.DEBUG)
     # Включаем сжатие ответов (gzip, br, zstd)
-    Compress(app)
+    compress = Compress(app)
+
+    # Обработчик для отключения сжатия для определенных маршрутов
+    @app.after_request
+    def disable_compression_for_files(response):
+        # Проверяем флаг отключения сжатия
+        if hasattr(g, 'no_compress') and g.no_compress:
+            # Удаляем заголовки сжатия
+            response.headers.pop('Content-Encoding', None)
+            response.headers.pop('Vary', None)
+        return response
 
     # Get database credentials with proper encoding handling
     db_user = os.getenv("DB_USER")
@@ -300,6 +310,7 @@ def create_app():
     from app.generation.routes.station_changes import station_changes_bp
     from app.start.routes import start_bp
     from app.logs.routes import logs_bp
+    from app.exports.routes import exports_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -310,6 +321,7 @@ def create_app():
     app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
+    app.register_blueprint(exports_bp, url_prefix="")
 
     # Загрузка пользователя для Flask-Login
     @login_manager.user_loader

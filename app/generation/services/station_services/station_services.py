@@ -17,6 +17,7 @@ from app.common.services.database_version_filter import (
     set_db_version_on_create,
     get_current_db_version_id
 )
+from app.common.services.choices_cache_service import choices_cache
 
 # Модели
 from app.generation.models.station.station_model import Station
@@ -1239,8 +1240,8 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 if res_id:
                     total_rd_in_res = res_to_rd_count.get(res_id, 0)
                     rd_with_stations_count = res_to_rd_with_stations_global.get(res_id, 0)
-                    
-                    show_totals['regional_districts'][last_regional_district_id] = True
+                    if total_rd_in_res > 1 and rd_with_stations_count > 1:
+                        show_totals['regional_districts'][last_regional_district_id] = True
             
             # Regional Energy Systems - находим завершившиеся на странице
             prev_res = None
@@ -1297,8 +1298,8 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 if res_id:
                     total_rd_in_res = res_to_rd_count.get(res_id, 0)
                     rd_with_stations_count = res_to_rd_with_stations_global.get(res_id, 0)
-                    
-                    show_totals['regional_districts'][rd_id] = True
+                    if total_rd_in_res > 1 and rd_with_stations_count > 1:
+                        show_totals['regional_districts'][rd_id] = True
             for res_id in groups_on_page['regional_energy_systems']:
                 show_totals['regional_energy_systems'][res_id] = True
             for ues_id in groups_on_page['union_energy_systems']:
@@ -1480,8 +1481,11 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
     Применяет территориальные фильтры для корректного расчета агрегатов.
     """
     if should_show_totals.get('show_all'):
-        # Для per_page='all' возвращаем ID текущих станций
-        return [s.id for s in stations_on_page]
+        # Для per_page='all' все станции уже переданы в stations_on_page
+        # Используем их ID напрямую, без дополнительного запроса к БД
+        station_ids = [s.id for s in stations_on_page]
+        print(f"[DEBUG] get_station_ids_for_aggregation: show_all=True, используем {len(station_ids)} станций из stations_on_page")
+        return station_ids
     
     # Для постраничного режима нужно получить ВСЕ станции из завершившихся групп
     # Это требуется для корректного подсчета агрегатов
@@ -1793,8 +1797,12 @@ def get_station_list_data(
             print(f"[HEADERS] prev_page_last_info = {prev_page_last_info}")
         
         # Для вычисления агрегаций загружаем необходимые station_ids
+        print(f"[DEBUG] get_station_list_data: вызываем get_station_ids_for_aggregation, should_show_totals={should_show_totals}")
         aggregation_station_ids = get_station_ids_for_aggregation(stations, should_show_totals, filters)
+        print(f"[DEBUG] get_station_list_data: получено {len(aggregation_station_ids)} station_ids для агрегации")
+        print(f"[DEBUG] get_station_list_data: вызываем get_full_aggregation_rows для {len(aggregation_station_ids)} станций")
         rows = get_full_aggregation_rows(start_year, end_year, aggregation_station_ids, filters)
+        print(f"[DEBUG] get_station_list_data: получено {len(rows)} rows для агрегации")
     else:
         # В постраничном режиме без сумм - не показываем итоги
         should_show_totals = {
@@ -1831,12 +1839,15 @@ def get_station_list_data(
         "should_show_totals": should_show_totals,
         "show_headers": show_headers,
         "hierarchy_data": hierarchy_data,
+        "rows": rows,  # Добавляем rows для экспорта
     }
 
     # Выполняем агрегации если включено отображение сумм или режим "Все станции"
     if show_totals or show_all:
         # Выполняем все агрегации за один проход по данным
+        print(f"[DEBUG] get_station_list_data: вызываем aggregate_all_at_once для {len(rows)} rows")
         all_aggregations = aggregate_all_at_once(rows)
+        print(f"[DEBUG] get_station_list_data: aggregate_all_at_once завершена, получено {len(all_aggregations)} агрегаций")
         result.update(all_aggregations)
 
     return result
@@ -2492,41 +2503,75 @@ def build_energy_system_type_aggregates(data):
 
 def build_total_energy_system_type_aggregates(data):
 
+    current_version_id = get_current_db_version_id()
+
+    # Извлекаем данные для текущей версии (или ближайшего подходящего ключа)
+    def extract_total_data(agg_dict, preferred_key=current_version_id):
+        """Возвращает данные для нужной версии или исходный словарь (если уже плоский)."""
+        if not agg_dict:
+            return {}
+
+        try:
+            items = dict(agg_dict)
+        except TypeError:
+            # На случай, если agg_dict уже итератор или объект без явной конвертации
+            items = agg_dict
+
+        if not items:
+            return {}
+
+        # Если значения не являются словарями (т.е. agg_dict уже {year: value}), возвращаем как есть
+        first_value = next(iter(items.values()))
+        if not isinstance(first_value, dict):
+            return items
+
+        candidate_keys = []
+        if preferred_key is not None:
+            candidate_keys.extend([preferred_key, str(preferred_key)])
+        candidate_keys.extend([1, "1"])
+
+        for key in candidate_keys:
+            if key in items:
+                return items[key]
+
+        # Если ничего не нашли, возвращаем первое доступное значение как fallback
+        return first_value
+
     return {
         # Итоги по России (общие итоги - это уже aggregate_power_by_total_energy_system_types)
-        "total_yearly_p_ust": data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_ust"],
-        "total_yearly_p_ogr": data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_ogr"],
-        "total_yearly_p_rasp": data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_rasp"],
+        "total_energy_system_types_yearly_p_ust": extract_total_data(data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_yearly_p_ogr": extract_total_data(data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_yearly_p_rasp": extract_total_data(data["aggregate_power_by_total_energy_system_types"]["aggregated"]["p_rasp"]),
 
-        # По типам станций
-        "total_energy_system_types_by_station_types_yearly_p_ust": data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_station_types_yearly_p_ogr": data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_station_types_yearly_p_rasp": data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_rasp"],
+        # По типам станций - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_station_types_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_station_types_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_station_types_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_station_types"]["aggregated"]["p_rasp"]),
 
-        # По типам станций и топливу
-        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ust": data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ogr": data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_station_types_with_fuel_yearly_p_rasp": data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_rasp"],
+        # По типам станций и топливу - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_station_types_with_fuel_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_station_types_with_fuel"]["aggregated"]["p_rasp"]),
 
-        # По типам ТЭС
-        "total_energy_system_types_by_tes_types_yearly_p_ust": data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_tes_types_yearly_p_ogr": data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_tes_types_yearly_p_rasp": data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_rasp"],
+        # По типам ТЭС - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_tes_types_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_tes_types_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_tes_types_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types"]["aggregated"]["p_rasp"]),
 
-        # По типам ТЭС и топливу
-        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust": data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ogr": data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_rasp": data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_rasp"],
+        # По типам ТЭС и топливу - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_tes_types_with_fuel_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_tes_types_with_fuel"]["aggregated"]["p_rasp"]),
 
-        # По типам машин ТЭС
-        "total_energy_system_types_by_tes_machine_types_yearly_p_ust": data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_tes_machine_types_yearly_p_ogr": data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_tes_machine_types_yearly_p_rasp": data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_rasp"],
+        # По типам машин ТЭС - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_tes_machine_types_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_tes_machine_types_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_tes_machine_types_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types"]["aggregated"]["p_rasp"]),
 
-        # По типам машин ТЭС и топливу
-        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ust"],
-        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ogr"],
-        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"],
+        # По типам машин ТЭС и топливу - извлекаем данные для актуальной версии
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ust"]),
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_ogr"]),
+        "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": extract_total_data(data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"]),
     }
 
 
@@ -2587,7 +2632,7 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             station.id_condition_type = new_condition_type.id
 
         # Тип электростанции
-        if form.id_station_type.data and int(form.id_station_type.data) != 0:
+        if not choices_cache.is_empty_value(form.id_station_type.data):
             new_station_type_id = int(form.id_station_type.data)
             new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
             if new_station_type:
@@ -2686,20 +2731,28 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             station.location = new_location
 
         # Энергоузел
-        if form.id_energy_unit.data and int(form.id_energy_unit.data) != 0:
+        print(f"[DEBUG] Обработка энергоузла: form.id_energy_unit.data = {form.id_energy_unit.data}, is_empty_value = {choices_cache.is_empty_value(form.id_energy_unit.data)}")
+        if not choices_cache.is_empty_value(form.id_energy_unit.data):
             new_energy_unit_id = int(form.id_energy_unit.data)
             from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
             new_energy_unit = db.session.query(EnergyUnit).filter_by(id=new_energy_unit_id).first()
-            old_value = station.energy_unit.name if station.energy_unit else "не указано"
-            new_value = new_energy_unit.name
-            changes.append(f"Энергоузел: {old_value} → {new_value}")
-            station.id_energy_unit = new_energy_unit.id
+            if new_energy_unit:
+                old_value = station.energy_unit.name if station.energy_unit else "не указано"
+                new_value = new_energy_unit.name
+                changes.append(f"Энергоузел: {old_value} → {new_value}")
+                station.id_energy_unit = new_energy_unit.id
+                print(f"[DEBUG] Энергоузел обновлен: {old_value} → {new_value}")
+            else:
+                print(f"[DEBUG] Энергоузел с ID {new_energy_unit_id} не найден в БД")
         else:
             # Если выбрано пустое значение (0) или None, устанавливаем None
             if station.id_energy_unit is not None:
                 old_value = station.energy_unit.name if station.energy_unit else "не указано"
                 changes.append(f"Энергоузел: {old_value} → не указано")
                 station.id_energy_unit = None
+                print(f"[DEBUG] Энергоузел сброшен: {old_value} → не указано")
+            else:
+                print(f"[DEBUG] Энергоузел уже пустой, изменений нет")
 
         _commit_with_retry()
         clear_aggregation_cache()  # Очищаем кэш после обновления станции

@@ -57,6 +57,11 @@ def filter_by_db_version(query, model_class):
     current_version_id = get_current_db_version_id()
     model_name = model_class.__name__
     
+    # Логи НЕ должны фильтроваться по версии БД, так как они хранят историю изменений
+    if model_name == 'Log':
+        print(f"[DEBUG] Пропускаем фильтрацию для {model_name}: логи должны отображаться все")
+        return query
+    
     print(f"[DEBUG] filter_by_db_version для {model_name}: current_version_id = {current_version_id}")
     
     if current_version_id is not None and hasattr(model_class, 'database_version_id'):

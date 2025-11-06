@@ -174,7 +174,7 @@ def energy_area_list():
     
     # Подготовка данных для формы
     regional_district_list = get_regional_district_list_full()
-    form.regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
+    form.regional_district.choices = regional_district_list
 
     regional_energy_system_list = get_regional_energy_system_list_full()
     form.regional_energy_system.choices = [(res.id, res.name) for res in regional_energy_system_list]

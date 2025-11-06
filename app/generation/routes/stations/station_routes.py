@@ -171,7 +171,7 @@ def add_station():
 
     # Подготовка данных для формы с фильтрацией по версии БД
     regional_district_list = get_regional_district_list_full()
-    form.id_regional_district.choices = [(rd.id, rd.name) for rd in regional_district_list]
+    form.id_regional_district.choices = regional_district_list
     
     # Заполняем список типов станций с фильтрацией по версии БД
     from app.refdata.models.refdata_for_stations.station.station_type_model import StationType

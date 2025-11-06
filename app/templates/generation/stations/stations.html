@@ -299,17 +299,19 @@
             
                             {% for rd_id, rd_group in res_group.items() %}
             
-                                {% if rd_id != 0 %}
+                                {% if rd_name|lower != 'не указано' %}
                                     {# Заголовок субъекта РФ - показываем только для per_page=all или если это первое вхождение #}
                                     {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
+                                        {% set eu_name = energy_unit_names.get(eu_id, '— не указано —') if eu_id != 0 else '— не указано —' %}
             
-                                        {% if eu_id != 0 %}
+                                        {% if eu_name|lower != 'не указано' %}
                                             {# Заголовок энергоузла - показываем только для per_page=all или если это первое вхождение #}
                                             {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                                {% set current_eu_id = eu_id %}
                                                 {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
                                             {% endif %}
                                         {% endif %}
@@ -320,7 +322,7 @@
                                         {% endfor %}
             
                                         {# Итог по энергоузлу #}
-                                        {% if eu_id != 0 %}
+                                        {% if eu_name|lower != 'не указано' %}
                                         {% set show_eu_totals = (should_show_totals|default({})).get('energy_units', {}).get(eu_id) %}
                                         {% if show_eu_totals %}
                                                 {% set current_eu_id = eu_id %}

@@ -1,6 +1,7 @@
 <!-- Итоговые значения по типам ТЭС энергоузла -->
 {% for tes_type_id, tes_name in tes_type_list.items() %}
-    {% if tes_type_id != 0 %}
+    {# Пропускаем тип ТЭС с именем "не указано" #}
+    {% if tes_name|lower != 'не указано' %}
         {% set has_tes = regional_districts_by_tes_types_yearly_p_ust
                         .get(current_rd_id, {})
                         .get(tes_type_id) %}

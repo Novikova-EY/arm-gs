@@ -16,6 +16,7 @@ from app.refdata.models.energy_systems.regional_energy_system_model import Regio
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.years.year_model import Year
 from app.common.services.database_version_filter import filter_by_db_version, get_current_db_version_id
 
 
@@ -242,6 +243,35 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
             .selectinload(MachineFuel.fuel)
             .selectinload(Fuel.fuel_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
+
+    # Загружаем годы и устанавливаем их вручную
+    year_numbers = set()
+    for machine in machines:
+        for mp in machine.machine_powers:
+            if mp.year_number:
+                year_numbers.add(mp.year_number)
+        for mf in machine.machine_fuels:
+            if mf.year_number:
+                year_numbers.add(mf.year_number)
+        for mt in machine.machine_tes_types:
+            if mt.year_number:
+                year_numbers.add(mt.year_number)
+    
+    if year_numbers:
+        years = Year.query.filter(Year.number.in_(year_numbers)).all()
+        year_dict = {y.number: y for y in years}
+        
+        # Устанавливаем year вручную
+        for machine in machines:
+            for mp in machine.machine_powers:
+                if mp.year_number and mp.year_number in year_dict:
+                    mp.year = year_dict[mp.year_number]
+            for mf in machine.machine_fuels:
+                if mf.year_number and mf.year_number in year_dict:
+                    mf.year = year_dict[mf.year_number]
+            for mt in machine.machine_tes_types:
+                if mt.year_number and mt.year_number in year_dict:
+                    mt.year = year_dict[mt.year_number]
 
     machine_ids = [m.id for m in machines]
     pgu_query = PGUMachine.query

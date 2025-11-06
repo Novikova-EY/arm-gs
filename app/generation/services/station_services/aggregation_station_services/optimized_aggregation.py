@@ -197,6 +197,7 @@ def aggregate_all_at_once(rows):
         tes_machine = row.tes_machine_type_id
         fuel = row.fuel_type_id
         year = row.year
+        db_version = getattr(row, 'database_version_id', 1)  # Используем database_version_id строки
         
         p_ust_val = row.p_ust or Decimal(0)
         p_ogr_val = row.p_ogr or Decimal(0)
@@ -347,34 +348,34 @@ def aggregate_all_at_once(rows):
         est_tes_machine_fuel_p_ogr[est][tes_type][tes_machine][fuel][year] += p_ogr_val
         est_tes_machine_fuel_p_rasp[est][tes_type][tes_machine][fuel][year] += p_rasp_val
         
-        # Total Energy System Types агрегации (для всей системы = 1)
-        test_p_ust[1][year] += p_ust_val
-        test_p_ogr[1][year] += p_ogr_val
-        test_p_rasp[1][year] += p_rasp_val
+        # Total Energy System Types агрегации (для всей системы с ключом database_version_id)
+        test_p_ust[db_version][year] += p_ust_val
+        test_p_ogr[db_version][year] += p_ogr_val
+        test_p_rasp[db_version][year] += p_rasp_val
         
-        test_st_p_ust[1][st][year] += p_ust_val
-        test_st_p_ogr[1][st][year] += p_ogr_val
-        test_st_p_rasp[1][st][year] += p_rasp_val
+        test_st_p_ust[db_version][st][year] += p_ust_val
+        test_st_p_ogr[db_version][st][year] += p_ogr_val
+        test_st_p_rasp[db_version][st][year] += p_rasp_val
         
-        test_st_fuel_p_ust[1][st][fuel][year] += p_ust_val
-        test_st_fuel_p_ogr[1][st][fuel][year] += p_ogr_val
-        test_st_fuel_p_rasp[1][st][fuel][year] += p_rasp_val
+        test_st_fuel_p_ust[db_version][st][fuel][year] += p_ust_val
+        test_st_fuel_p_ogr[db_version][st][fuel][year] += p_ogr_val
+        test_st_fuel_p_rasp[db_version][st][fuel][year] += p_rasp_val
         
-        test_tes_p_ust[1][tes_type][year] += p_ust_val
-        test_tes_p_ogr[1][tes_type][year] += p_ogr_val
-        test_tes_p_rasp[1][tes_type][year] += p_rasp_val
+        test_tes_p_ust[db_version][tes_type][year] += p_ust_val
+        test_tes_p_ogr[db_version][tes_type][year] += p_ogr_val
+        test_tes_p_rasp[db_version][tes_type][year] += p_rasp_val
         
-        test_tes_fuel_p_ust[1][tes_type][fuel][year] += p_ust_val
-        test_tes_fuel_p_ogr[1][tes_type][fuel][year] += p_ogr_val
-        test_tes_fuel_p_rasp[1][tes_type][fuel][year] += p_rasp_val
+        test_tes_fuel_p_ust[db_version][tes_type][fuel][year] += p_ust_val
+        test_tes_fuel_p_ogr[db_version][tes_type][fuel][year] += p_ogr_val
+        test_tes_fuel_p_rasp[db_version][tes_type][fuel][year] += p_rasp_val
         
-        test_tes_machine_p_ust[1][tes_type][tes_machine][year] += p_ust_val
-        test_tes_machine_p_ogr[1][tes_type][tes_machine][year] += p_ogr_val
-        test_tes_machine_p_rasp[1][tes_type][tes_machine][year] += p_rasp_val
+        test_tes_machine_p_ust[db_version][tes_type][tes_machine][year] += p_ust_val
+        test_tes_machine_p_ogr[db_version][tes_type][tes_machine][year] += p_ogr_val
+        test_tes_machine_p_rasp[db_version][tes_type][tes_machine][year] += p_rasp_val
         
-        test_tes_machine_fuel_p_ust[1][tes_type][tes_machine][fuel][year] += p_ust_val
-        test_tes_machine_fuel_p_ogr[1][tes_type][tes_machine][fuel][year] += p_ogr_val
-        test_tes_machine_fuel_p_rasp[1][tes_type][tes_machine][fuel][year] += p_rasp_val
+        test_tes_machine_fuel_p_ust[db_version][tes_type][tes_machine][fuel][year] += p_ust_val
+        test_tes_machine_fuel_p_ogr[db_version][tes_type][tes_machine][fuel][year] += p_ogr_val
+        test_tes_machine_fuel_p_rasp[db_version][tes_type][tes_machine][fuel][year] += p_rasp_val
     
     # Возвращаем все агрегации в формате, совместимом с существующим кодом
     return {

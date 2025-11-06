@@ -20,11 +20,15 @@ def get_regional_district_list_full():
     query = RegionalDistrict.query
     # Фильтрация по версии БД
     query = filter_by_db_version(query, RegionalDistrict)
-    return (
+    # Извлекаем только нужные поля, чтобы избежать DetachedInstanceError
+    # Преобразуем Row объекты в обычные кортежи для совместимости с WTForms
+    rows = (
         query
+        .with_entities(RegionalDistrict.id, RegionalDistrict.name)
         .order_by(RegionalDistrict.name.asc())
         .all()
     )
+    return [(row.id, row.name) for row in rows]
 
 
 @lru_cache(maxsize=1)

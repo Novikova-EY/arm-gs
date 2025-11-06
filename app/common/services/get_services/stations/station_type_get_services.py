@@ -24,3 +24,20 @@ def get_station_type_list_full():
         )
         .all()
     )
+
+
+@lru_cache(maxsize=1)
+def get_station_type_list():
+    """Получает список типов электростанций (кроме "не указано")."""
+    current_version = get_current_version()
+    query = StationType.query
+    
+    if current_version:
+        query = query.filter(StationType.database_version_id == current_version)
+    
+    return (
+        query
+        .filter(StationType.id.isnot(None), StationType.id > 0)
+        .order_by(StationType.name.asc())
+        .all()
+    )

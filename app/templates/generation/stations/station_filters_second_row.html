@@ -8,9 +8,14 @@
             <div class="d-flex gap-2">
 
                 <!-- Экспорт в Excel -->
-                <button id="exportExcelFull" class="btn btn-outline-success" style="white-space: nowrap;">
-                    Экспорт списка отображаемых станций
-                </button>
+                <form method="GET" action="{{ url_for('station_bp.export_station_full_routes') }}" id="exportExcelFormFull">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button" id="exportExcelFull" class="btn btn-outline-success" style="white-space: nowrap;">
+                        Экспорт списка отображаемых станций
+                    </button>
+                </form>
 
                 <!-- СиПР -->
                 <form method="GET" action="{{ url_for('station_bp.export_station_sipr_ees_application_2_routes') }}" id="exportSiprForm">

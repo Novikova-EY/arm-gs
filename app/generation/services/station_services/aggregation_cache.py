@@ -120,50 +120,77 @@ def clear_aggregation_cache():
     print("[🗑 CACHE CLEARED] Кэш агрегаций, отсортированных списков и позиций страниц очищен")
     
     # Очищаем LRU кэши для предотвращения DetachedInstanceError
+    cache_functions = []
+    
+    # Импортируем функции по отдельности для лучшей диагностики ошибок
     try:
         from app.common.services.get_services.energy_systems.energy_unit_get_services import (
             get_energy_unit_list_full, get_energy_unit_list
         )
+        cache_functions.extend([get_energy_unit_list_full, get_energy_unit_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта energy_unit_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.stations.station_type_get_services import (
             get_station_type_list_full, get_station_type_list
         )
+        cache_functions.extend([get_station_type_list_full, get_station_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта station_type_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.stations.tes_type_get_services import (
             get_tes_type_list_full, get_tes_type_list
         )
+        cache_functions.extend([get_tes_type_list_full, get_tes_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта tes_type_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.stations.tes_machine_type_get_services import (
             get_tes_machine_type_list_full, get_tes_machine_type_list
         )
+        cache_functions.extend([get_tes_machine_type_list_full, get_tes_machine_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта tes_machine_type_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
             get_pgu_tes_machine_type_list_full, get_pgu_tes_machine_type_list
         )
+        cache_functions.extend([get_pgu_tes_machine_type_list_full, get_pgu_tes_machine_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта pgu_tes_machine_type_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.fuels.fuel_type_get_services import (
             get_fuel_type_list_full, get_fuel_type_list
         )
+        cache_functions.extend([get_fuel_type_list_full, get_fuel_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта fuel_type_get_services: {e}")
+    
+    try:
         from app.common.services.get_services.refdata_for_stations.condition_type_get_services import (
             get_condition_type_list_full, get_condition_type_list
         )
-        
-        # Очищаем все LRU кэши
-        cache_functions = [
-            get_energy_unit_list_full, get_energy_unit_list,
-            get_station_type_list_full, get_station_type_list,
-            get_tes_type_list_full, get_tes_type_list,
-            get_tes_machine_type_list_full, get_tes_machine_type_list,
-            get_pgu_tes_machine_type_list_full, get_pgu_tes_machine_type_list,
-            get_fuel_type_list_full, get_fuel_type_list,
-            get_condition_type_list_full, get_condition_type_list,
-        ]
-        
+        cache_functions.extend([get_condition_type_list_full, get_condition_type_list])
+    except Exception as e:
+        print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта condition_type_get_services: {e}")
+    
+    # Очищаем все LRU кэши
+    if cache_functions:
         cleared_count = 0
         for func in cache_functions:
-            if hasattr(func, 'cache_clear'):
-                func.cache_clear()
-                cleared_count += 1
+            try:
+                if hasattr(func, 'cache_clear'):
+                    func.cache_clear()
+                    cleared_count += 1
+            except Exception as e:
+                print(f"[LRU CACHE CLEAR ERROR] Ошибка при очистке кэша функции {func.__name__}: {e}")
         
         print(f"[🗑 LRU CACHE CLEARED] Очищено LRU кэшей: {cleared_count}")
-        
-    except Exception as e:
-        print(f"[LRU CACHE CLEAR ERROR] Ошибка при очистке LRU кэшей: {e}")
 
 
 def clear_old_cache_entries():

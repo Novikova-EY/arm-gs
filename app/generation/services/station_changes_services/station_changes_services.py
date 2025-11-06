@@ -1026,25 +1026,39 @@ def build_energy_unit_aggregates(data):
 
     return {
         # Основная агрегация
-        "energy_units_yearly_p_ust": data["aggregate_changes_by_energy_units"]["aggregated"]["p_ust"],
+        "energy_units_yearly_p_ust": data["aggregate_changes_by_energy_units"]["aggregated"].get("p_ust", {}),
+        "energy_units_yearly_p_ogr": data["aggregate_changes_by_energy_units"]["aggregated"].get("p_ogr", {}),
+        "energy_units_yearly_p_rasp": data["aggregate_changes_by_energy_units"]["aggregated"].get("p_rasp", {}),
 
         # По типам станций
-        "energy_units_by_station_types_yearly_p_ust": data["aggregate_changes_energy_units_by_station_types"]["aggregated"]["p_ust"],
+        "energy_units_by_station_types_yearly_p_ust": data["aggregate_changes_energy_units_by_station_types"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_station_types_yearly_p_ogr": data["aggregate_changes_energy_units_by_station_types"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_station_types_yearly_p_rasp": data["aggregate_changes_energy_units_by_station_types"]["aggregated"].get("p_rasp", {}),
 
         # По типам станций и топливу
-        "energy_units_by_station_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_station_type_with_fuel"]["aggregated"]["p_ust"],
+        "energy_units_by_station_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_station_type_with_fuel"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_station_types_with_fuel_yearly_p_ogr": data["aggregate_changes_energy_units_by_station_type_with_fuel"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_station_types_with_fuel_yearly_p_rasp": data["aggregate_changes_energy_units_by_station_type_with_fuel"]["aggregated"].get("p_rasp", {}),
 
         # По типам ТЭС
-        "energy_units_by_tes_types_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_types"]["aggregated"]["p_ust"],
+        "energy_units_by_tes_types_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_types"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_tes_types_yearly_p_ogr": data["aggregate_changes_energy_units_by_tes_types"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_tes_types_yearly_p_rasp": data["aggregate_changes_energy_units_by_tes_types"]["aggregated"].get("p_rasp", {}),
 
         # По типам ТЭС и топливу
-        "energy_units_by_tes_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_types_with_fuel"]["aggregated"]["p_ust"],
+        "energy_units_by_tes_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_types_with_fuel"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_tes_types_with_fuel_yearly_p_ogr": data["aggregate_changes_energy_units_by_tes_types_with_fuel"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_tes_types_with_fuel_yearly_p_rasp": data["aggregate_changes_energy_units_by_tes_types_with_fuel"]["aggregated"].get("p_rasp", {}),
 
         # По типам машин ТЭС
-        "energy_units_by_tes_machine_types_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_machine_types"]["aggregated"]["p_ust"],
+        "energy_units_by_tes_machine_types_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_machine_types"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_tes_machine_types_yearly_p_ogr": data["aggregate_changes_energy_units_by_tes_machine_types"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_tes_machine_types_yearly_p_rasp": data["aggregate_changes_energy_units_by_tes_machine_types"]["aggregated"].get("p_rasp", {}),
 
         # По типам машин ТЭС и топливу
-        "energy_units_by_tes_machine_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_machine_types_with_fuel"]["aggregated"]["p_ust"],
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_ust": data["aggregate_changes_energy_units_by_tes_machine_types_with_fuel"]["aggregated"].get("p_ust", {}),
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_ogr": data["aggregate_changes_energy_units_by_tes_machine_types_with_fuel"]["aggregated"].get("p_ogr", {}),
+        "energy_units_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_changes_energy_units_by_tes_machine_types_with_fuel"]["aggregated"].get("p_rasp", {}),
     }
 
 

@@ -36,6 +36,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             func.sum(MachinePower.p_ust).label("p_ust"),
             func.sum(MachinePower.p_ogr).label("p_ogr"),
             func.sum(MachinePower.p_rasp).label("p_rasp"),
+            Station.database_version_id.label("database_version_id"),
         )
         .select_from(MachinePower)
         .join(Machine, Machine.id == MachinePower.id_machine)
@@ -108,7 +109,8 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         TesType.id,
         TesMachineType.id,
         FuelType.id,
-        MachinePower.year_number
+        MachinePower.year_number,
+        Station.database_version_id
     ).all()
     
     return rows

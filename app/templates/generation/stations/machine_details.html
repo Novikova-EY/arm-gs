@@ -530,8 +530,7 @@
                 </table>
             </div>
             
-
-            {% if station.id_station_type == 4 %}
+            {% if station.station_type.name|lower == 'тэс' %}
                 <!-- Таблица "Типы ТЭС" -->
                 <div class="table-responsive">
                     <table class="table table-hover table-striped table-bordered machines-table">
@@ -976,6 +975,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
                         <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
                         <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
+                        <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
                         <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
                     </tr>
                 </thead>
@@ -987,12 +987,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <td data-time="{{ log.time }}">{{ log.time }}</td>
                                 <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
                                 <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
                             </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
+                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -1041,9 +1042,12 @@ document.addEventListener("DOMContentLoaded", function () {
             else if (key === 'action'){
                 a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
                 b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
+            } else if (key === 'database_version'){
+                a = val(r1.cells[4], 'database-version');
+                b = val(r2.cells[4], 'database-version');
             } else if (key === 'details'){
-                a = val(r1.cells[4].querySelector('[data-details]')||r1.cells[4], 'details');
-                b = val(r2.cells[4].querySelector('[data-details]')||r2.cells[4], 'details');
+                a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
+                b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
             }
             if (a<b) return sortState.asc ? -1 : 1;
             if (a>b) return sortState.asc ? 1 : -1;
@@ -1058,7 +1062,7 @@ document.addEventListener("DOMContentLoaded", function () {
         sortBy(th.dataset.key);
     });
     const filterRow = document.createElement('tr');
-    ['date','time','user','action','details'].forEach((key)=>{
+    ['date','time','user','action','database_version','details'].forEach((key)=>{
         const td = document.createElement('td');
         const input = document.createElement('input');
         input.className = 'form-control form-control-sm';
@@ -1070,8 +1074,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 const dTime = val(tr.cells[1], 'time');
                 const dUser = val(tr.cells[2], 'user');
                 const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
-                const dDetails = val(tr.cells[4].querySelector('[data-details]')||tr.cells[4], 'details');
-                const data = [dDate, dTime, dUser, dAction, dDetails];
+                const dDatabaseVersion = val(tr.cells[4], 'database-version');
+                const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
+                const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
                 const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
                 tr.style.display = ok ? '' : 'none';
             }
@@ -1089,10 +1094,12 @@ document.addEventListener("DOMContentLoaded", function () {
 #machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) { width: 140px !important; }
 #machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) { width: 120px !important; }
 #machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) { width: 300px !important; }
-/* Последние две — поровну */
-#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) { width: 50% !important; }
-#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(5) { width: 50% !important; }
-#machine-logs-table td:nth-child(4) div, #machine-logs-table td:nth-child(5) div { white-space: pre-wrap; }
+/* Действие, Версия БД и Информация — поровну */
+#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) { width: 33.33% !important; }
+#machine-logs-table th.log-col-database-version, #machine-logs-table td:nth-child(5) { width: 150px !important; }
+#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(6) { width: 33.33% !important; }
+#machine-logs-table td:nth-child(4) div, #machine-logs-table td:nth-child(6) div { white-space: pre-wrap; }
+#machine-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
 
 /* Переопределяем глобальные ограничения таблиц выше в файле */
 #machine-logs-table th, #machine-logs-table td { max-width: none !important; overflow-wrap: normal; }
@@ -1348,6 +1355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td data-time="${log.time}">${log.time}</td>
                         <td data-user="${log.username_lower}">${log.username}</td>
                         <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
                         <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
                     `;
                     logsTable.appendChild(row);

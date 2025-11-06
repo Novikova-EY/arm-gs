@@ -8,26 +8,54 @@
     <h1 class="display-4"></h1>
 </div>
    
-<div class="container">
+<div class="container-fluid">
     <!-- Строка 1 -->
     <div class="container-fluid">
         <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
+    
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-primary fs-4 w-100 py-4">Генерация</a>
+                        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Генерация
+                        </a>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
+    
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Балансы ЭЭ и ЭМ</a>
+                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">
+                            Балансы ЭЭ и ЭМ
+                        </a>
                     </div>
                 </div>
             </div>
+    
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">
+                            Топливо
+                        </a>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">
+                            Экология
+                        </a>
+                    </div>
+                </div>
+            </div>
+    
         </div>
     </div>
+    
 
     <!-- Разделительная линия -->
     <hr class="my-5 border border-secondary opacity-50">
@@ -35,63 +63,35 @@
     <!-- Строка 2 -->
     <div class="container-fluid">
         <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
+
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Спрос</a>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
+
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Электроемкость</a>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Разделительная линия -->
-    <hr class="my-5 border border-secondary opacity-50">
-
-    <!-- Строка 3 -->
-    <div class="container-fluid">
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Нагрузки</a>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
+
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Графики нагрузки</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Разделительная линия -->
-    <hr class="my-5 border border-secondary opacity-50">
-
-    <!-- Строка 4 -->
-    <div class="container-fluid">
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Топливо</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Экология</a>
                     </div>
                 </div>
             </div>
@@ -104,14 +104,14 @@
     <!-- Строка 5 -->
     <div class="container-fluid">
         <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Долгосрочный прогноз потребления</a>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('rational_structure_bp.ti_table') }}" class="btn btn-primary fs-4 w-100 py-4">Рациональная структура</a>
@@ -127,7 +127,7 @@
     <div class="container-fluid">
         <div class="row justify-content-center">
             <!-- Справочники -->
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-primary fs-4 w-100 py-4">Справочники</a>
@@ -144,7 +144,7 @@
         <div class="container-fluid">
             <div class="row justify-content-center">
                 <!-- Пользователи -->
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-6 col-lg-3">
                     <div class="card shadow-sm w-100">
                         <div class="card-body text-center">
                             <a href="{{ url_for('users_bp.list_users') }}" class="btn btn-primary fs-4 w-100 py-4">
@@ -153,8 +153,18 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('station_bp.database_versions') }}" class="btn btn-success fs-4 w-100 py-4">Управление версиями базы данных</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+
     {% endif %}
 </div>
 

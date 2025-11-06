@@ -6,7 +6,7 @@ Log model (Аудит действий).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_LOGS
+from config import SCHEMA_LOGS, SCHEMA_GENERATION
 
 class Log(db.Model):
     __tablename__ = 'logs'
@@ -27,6 +27,14 @@ class Log(db.Model):
     # Привязка к сущности (например, entity_type='station', entity_id=123)
     entity_type = db.Column(db.String(50), nullable=True, index=True)
     entity_id = db.Column(db.Integer, nullable=True, index=True)
+
+    # Версия базы данных на момент создания записи
+    database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return f"<Log id={self.id} ts={self.timestamp} user={self.username!r} action={self.action!r}>"

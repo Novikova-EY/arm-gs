@@ -14,14 +14,19 @@ class ChoicesCacheService:
     
     _cache = {}
     
+    # Специальные константы для "пустых" значений
+    EMPTY_VALUE_ID = 0
+    EMPTY_VALUE_TEXT = "— не указано —"
+    
     @classmethod
-    def get_choices(cls, model_class, order_by_field, cache_key: str = None) -> List[Tuple[int, str]]:
+    def get_choices(cls, model_class, order_by_field, name_field=None, cache_key: str = None) -> List[Tuple[int, str]]:
         """
         Получает choices для модели с фильтрацией по версии БД.
         
         Args:
             model_class: Класс модели SQLAlchemy
             order_by_field: Поле для сортировки
+            name_field: Поле для имени (если не указано, используется 'name' или 'machine_name')
             cache_key: Ключ кэша (если не указан, используется имя модели)
             
         Returns:
@@ -29,33 +34,47 @@ class ChoicesCacheService:
         """
         if cache_key is None:
             cache_key = model_class.__name__.lower()
+        
+        # Определяем поле для имени
+        if name_field is None:
+            # Проверяем, какое поле существует в модели
+            if hasattr(model_class, 'machine_name'):
+                name_field = 'machine_name'
+            elif hasattr(model_class, 'name'):
+                name_field = 'name'
+            else:
+                name_field = 'name'  # По умолчанию
             
         if cache_key not in cls._cache:
             print(f"[CHOICES_CACHE] Загружаем {cache_key} из БД (с фильтрацией по версии)")
             query = model_class.query.order_by(order_by_field)
             query = filter_by_db_version(query, model_class)
-            cls._cache[cache_key] = [(item.id, item.name) for item in query.all()]
+            cls._cache[cache_key] = [(item.id, getattr(item, name_field)) for item in query.all()]
         else:
             print(f"[CHOICES_CACHE] Используем кэшированные {cache_key}: {len(cls._cache[cache_key])} записей")
             
         return cls._cache[cache_key]
     
     @classmethod
-    def get_choices_with_default(cls, model_class, order_by_field, default_text: str = "не указано", cache_key: str = None) -> List[Tuple[int, str]]:
+    def get_choices_with_default(cls, model_class, order_by_field, default_text: str = None, cache_key: str = None) -> List[Tuple[int, str]]:
         """
         Получает choices с добавлением значения по умолчанию.
+        Использует специальный ID=0 для "пустого" значения, чтобы избежать конфликтов с версионированием.
         
         Args:
             model_class: Класс модели SQLAlchemy
             order_by_field: Поле для сортировки
-            default_text: Текст для значения по умолчанию
+            default_text: Текст для значения по умолчанию (если None, используется константа)
             cache_key: Ключ кэша
             
         Returns:
             List[Tuple[int, str]]: Список кортежей с добавленным значением по умолчанию
         """
+        if default_text is None:
+            default_text = cls.EMPTY_VALUE_TEXT
+            
         choices = cls.get_choices(model_class, order_by_field, cache_key)
-        return [(0, default_text)] + choices
+        return [(cls.EMPTY_VALUE_ID, default_text)] + choices
     
     @classmethod
     def get_choices_for_select(cls, model_class, order_by_field, cache_key: str = None) -> List[Tuple[int, str]]:
@@ -96,6 +115,34 @@ class ChoicesCacheService:
             cache_key: Ключ кэша для инвалидации
         """
         cls.clear_cache(cache_key)
+    
+    @classmethod
+    def is_empty_value(cls, value) -> bool:
+        """
+        Проверяет, является ли значение "пустым" (None, 0, или пустая строка).
+        
+        Args:
+            value: Значение для проверки
+            
+        Returns:
+            bool: True если значение считается "пустым"
+        """
+        return value is None or value == 0 or value == '' or value == cls.EMPTY_VALUE_ID
+    
+    @classmethod
+    def normalize_empty_value(cls, value):
+        """
+        Нормализует "пустое" значение к стандартному виду.
+        
+        Args:
+            value: Значение для нормализации
+            
+        Returns:
+            int: 0 для пустых значений, иначе исходное значение
+        """
+        if cls.is_empty_value(value):
+            return cls.EMPTY_VALUE_ID
+        return value
 
 
 # Глобальный экземпляр для удобства использования

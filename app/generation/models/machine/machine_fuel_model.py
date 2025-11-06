@@ -28,7 +28,7 @@ class MachineFuel(db.Model):
         nullable=True,
         index=True,
     )
-    year = db.relationship('Year', back_populates='machine_fuels')
+    year = db.relationship('Year', back_populates='machine_fuels', lazy='noload')
 
     # FK -> Machine
     id_machine = db.Column(

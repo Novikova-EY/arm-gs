@@ -1,5 +1,5 @@
 <!-- Итоговые значения по всем ВИЭ -->
-{% if (energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get(5) or energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get(6)) %}
+{% if (energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get("ВЭС") or energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get("СЭС")) %}
 <!-- Первая строка: p_ust -->
     <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
         <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
@@ -9,11 +9,11 @@
         {% for y in range(start_year, end_year + 1) %}
             {% set ves = energy_system_types_by_station_types_yearly_p_ust
                         .get(current_es_type_id, {})
-                        .get(5, {})
+                        .get("ВЭС", {})
                         .get(y) %}
             {% set ses = energy_system_types_by_station_types_yearly_p_ust
                         .get(current_es_type_id, {})
-                        .get(6, {})
+                        .get("СЭС", {})
                         .get(y) %}
             {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
@@ -30,11 +30,11 @@
             {% for y in range(start_year, end_year + 1) %}
             {% set v1 = energy_system_types_by_station_types_yearly_p_ogr
                         .get(current_es_type_id, {})
-                        .get(5, {})
+                        .get("ВЭС", {})
                         .get(y) %}
             {% set v2 = energy_system_types_by_station_types_yearly_p_ogr
                         .get(current_es_type_id, {})
-                        .get(6, {})
+                        .get("СЭС", {})
                         .get(y) %}
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
@@ -51,11 +51,11 @@
         {% for y in range(start_year, end_year + 1) %}
             {% set v1 = energy_system_types_by_station_types_yearly_p_rasp
                         .get(current_es_type_id, {})
-                        .get(5, {})
+                        .get("ВЭС", {})
                         .get(y) %}
             {% set v2 = energy_system_types_by_station_types_yearly_p_rasp
                         .get(current_es_type_id, {})
-                        .get(6, {})
+                        .get("СЭС", {})
                         .get(y) %}
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">

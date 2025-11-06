@@ -3,16 +3,27 @@ from config import Config
 from zipfile import ZipFile
 from io import BytesIO
 from datetime import datetime, date
-from flask import request, send_file
-from app.logs.services.logging_service import log_to_db
 from flask import (
-    request, redirect, url_for, flash, session, current_app, send_file
+    request, redirect, url_for, flash, session, current_app, send_file, g
 )
+from app.logs.services.logging_service import log_to_db
+from functools import wraps
+
+
+def no_compress(f):
+    """Декоратор для отключения сжатия Flask-Compress для конкретного маршрута."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Устанавливаем флаг для отключения сжатия
+        g.no_compress = True
+        return f(*args, **kwargs)
+    return decorated_function
 from app.generation.services.station_services.station_services import (
     get_station_list_data
 )
 from app.generation.services.station_services.filters_services import (
-    extract_filters_from_args
+    extract_filters_from_args,
+    get_filtered_station_ids
 )
 from app.generation.services.station_services.export_station_services import (
     export_station_sipr_ees_application_2_service, 
@@ -22,6 +33,7 @@ from app.generation.services.station_services.export_cache import (
     build_export_key,
     get_export_payload,
 )
+import pandas as pd
 
 
 @station_bp.route('/export_station_sipr_ees_application_2', methods=['GET'])
@@ -87,6 +99,7 @@ def export_station_sipr_ees_application_2_routes():
 
 
 @station_bp.route('/export_station_full', methods=['GET'])
+@no_compress
 def export_station_full_routes():
     filters = extract_filters_from_args(request.args)
     start_year = int(request.args.get("start_year", Config.START_YEAR))
@@ -109,56 +122,125 @@ def export_station_full_routes():
     except (ValueError, TypeError):
         rounding_digits = 1
 
-    # Try get precomputed dataset from export cache (from station_list render)
-    user = session.get('username', 'anonymous')
-    cache_key = build_export_key(filters, rounding_digits, start_year, end_year, show_p_ogr, show_p_rasp)
-    cached = get_export_payload(user, cache_key)
-    if cached:
-        data = cached.get("data") or {}
-    else:
-        data = get_station_list_data(
-            filters=filters,
-            per_page=per_page,  # 'all' включает show_all и отключает пагинацию
-            page=1,
-            rounding_digits=rounding_digits,
-            start_year=start_year,
-            end_year=end_year,
-            show_p_ogr=show_p_ogr,
-            show_p_rasp=show_p_rasp,
-            show_all=True,
-            show_totals=True,  # Нужно для расчёта агрегатов и итогов
-        )
+    # Фильтруем None-значения для url_for
+    filters_for_redirect = {k: v for k, v in filters.items() if v}
 
-    rows = data.get("rows", [])
+    # Отладочный вывод параметров экспорта
+    print(f"[EXPORT] Начало экспорта. Параметры:")
+    print(f"  - Фильтры: {filters}")
+    print(f"  - show_p_ogr: {show_p_ogr}")
+    print(f"  - show_p_rasp: {show_p_rasp}")
+    print(f"  - hide_aggregates: {hide_aggregates}")
+    print(f"  - show_totals: {show_totals}")
+    print(f"  - start_year: {start_year}, end_year: {end_year}")
+    print(f"  - rounding_digits: {rounding_digits}")
 
-    excel_file = generate_excel_export_with_all_totals(
-        data=data,
-        rows=rows,
-        start_year=start_year,
-        end_year=end_year,
-        rounding_digits=rounding_digits,
-        show_p_ogr=show_p_ogr,
-        show_p_rasp=show_p_rasp,
-        hide_aggregates=hide_aggregates,
-        show_totals=show_totals,
-    )
+    try:
+        # Try get precomputed dataset from export cache (from station_list render)
+        user = session.get('username', 'anonymous')
+        cache_key = build_export_key(filters, rounding_digits, start_year, end_year, show_p_ogr, show_p_rasp)
+        cached = get_export_payload(user, cache_key)
+        
+        if cached:
+            print(f"[EXPORT] Используется кэшированные данные")
+            data = cached.get("data") or {}
+        else:
+            print(f"[EXPORT] Получение данных из БД...")
+            data = get_station_list_data(
+                filters=filters,
+                per_page=per_page,  # 'all' включает show_all и отключает пагинацию
+                page=1,
+                rounding_digits=rounding_digits,
+                start_year=start_year,
+                end_year=end_year,
+                show_p_ogr=show_p_ogr,
+                show_p_rasp=show_p_rasp,
+                show_all=True,
+                show_totals=show_totals,  # Используем параметр из запроса
+            )
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"stations_export_{timestamp}.xlsx"
+        rows = data.get("rows", [])
+        stations_count = len(data.get('stations', []))
+        print(f"[EXPORT] Получено строк данных: {len(rows)}")
+        print(f"[EXPORT] Количество станций в data: {stations_count}")
 
-    return send_file(
-        excel_file,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        as_attachment=True,
-        download_name=filename
-    )
+        # Проверка наличия данных
+        if not rows and not data.get("stations"):
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(url_for("station_bp.station_list", **filters_for_redirect))
 
-from io import BytesIO
-import pandas as pd
-from app.logs.services.logging_service import log_to_db
-from app.generation.services.station_services.filters_services import (
-        get_filtered_station_ids
-)
+        # Проверка на слишком большое количество данных (более 2000 станций)
+        if stations_count > 2000:
+            flash(f"Экспорт слишком большого количества данных ({stations_count} станций). Пожалуйста, примените фильтры для уменьшения объема данных.", "warning")
+            return redirect(url_for("station_bp.station_list", **filters_for_redirect))
+
+        print(f"[EXPORT] Начинаем генерацию Excel файла...")
+        try:
+            import time
+            excel_start_time = time.time()
+            excel_file = generate_excel_export_with_all_totals(
+                data=data,
+                rows=rows,
+                start_year=start_year,
+                end_year=end_year,
+                rounding_digits=rounding_digits,
+                show_p_ogr=show_p_ogr,
+                show_p_rasp=show_p_rasp,
+                hide_aggregates=hide_aggregates,
+                show_totals=show_totals,
+            )
+            excel_generation_time = time.time() - excel_start_time
+            print(f"[EXPORT] Excel файл успешно сгенерирован за {excel_generation_time:.2f} секунд")
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"[EXPORT] Ошибка при генерации Excel: {e}\n{error_details}")
+            current_app.logger.error(f"Ошибка генерации Excel: {e}\n{error_details}")
+            raise
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"stations_export_{timestamp}.xlsx"
+
+        # Проверяем, что файл не пустой и содержит данные
+        excel_file.seek(0, 2)  # Переходим в конец файла
+        file_size = excel_file.tell()
+        excel_file.seek(0)  # Возвращаемся в начало
+
+        print(f"[EXPORT] Размер файла: {file_size} байт")
+
+        if file_size == 0:
+            flash("Ошибка: сгенерированный файл пустой.", "danger")
+            return redirect(url_for("station_bp.station_list", **filters_for_redirect))
+
+        print(f"[EXPORT] Отправка файла '{filename}' размером {file_size} байт")
+
+        try:
+            response = send_file(
+                excel_file,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                as_attachment=True,
+                download_name=filename
+            )
+            print(f"[EXPORT] Функция send_file выполнена успешно")
+            print(f"[EXPORT] Response headers: {dict(response.headers)}")
+            return response
+        except Exception as send_error:
+            print(f"[EXPORT] Ошибка в send_file: {send_error}")
+            print(f"[EXPORT] Тип ошибки: {type(send_error)}")
+            import traceback
+            print(f"[EXPORT] Traceback: {traceback.format_exc()}")
+            current_app.logger.error(f"Ошибка отправки файла: {send_error}")
+            raise
+
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Ошибка экспорта: {e}\n{error_details}")
+        print(f"❌ ОШИБКА ЭКСПОРТА: {e}")
+        print(f"Traceback:\n{error_details}")
+        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
+        return redirect(url_for("station_bp.station_list", **filters_for_redirect))
+
 
 def export_station_list_to_excel(user, filters=None):
     """Экспортирует данные электростанций в Excel и возвращает бинарный поток."""

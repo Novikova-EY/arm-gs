@@ -11,14 +11,14 @@
     {% set machine_fuels_by_year = {} %}
 
     {% for mp in machine.machine_powers %}
-        {% if mp.year and start_year <= mp.year.number <= end_year %}
-            {% set _ = machine_powers_by_year.update({mp.year.number: mp}) %}
+        {% if mp.year_number and start_year <= mp.year_number <= end_year %}
+            {% set _ = machine_powers_by_year.update({mp.year_number: mp}) %}
         {% endif %}
     {% endfor %}
 
     {% for mf in machine.machine_fuels %}
-        {% if mf.year and start_year <= mf.year.number <= end_year %}
-            {% set _ = machine_fuels_by_year.update({mf.year.number: mf}) %}
+        {% if mf.year_number and start_year <= mf.year_number <= end_year %}
+            {% set _ = machine_fuels_by_year.update({mf.year_number: mf}) %}
         {% endif %}
     {% endfor %}
 
@@ -36,9 +36,8 @@
         <td class="rowspan-td col-owner" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% if can_edit %}
                 <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
-                    <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
                     {% for gid, gname in gen_company_choices %}
-                        <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% endif %}>{{ gname }}</option>
+                        <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% elif not machine.gen_company and gname|lower == 'не указано' %}selected{% endif %}>{{ gname }}</option>
                     {% endfor %}
                 </select>
             {% else %}
@@ -48,7 +47,7 @@
         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
         <td class="rowspan-td col-modernization" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
-        <td class="rowspan-td col-energy-unit-type" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—"}}</td>
+        
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
         <td class="rowspan-td" rowspan="3">
             {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
@@ -152,9 +151,8 @@
             <td class="rowspan-td col-owner" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {% if can_edit %}
                     <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
-                        <option value="0" {% if not machine.gen_company %}selected{% endif %}>не указано</option>
                         {% for gid, gname in gen_company_choices %}
-                            <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% endif %}>{{ gname }}</option>
+                            <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% elif not machine.gen_company and gname|lower == 'не указано' %}selected{% endif %}>{{ gname }}</option>
                         {% endfor %}
                     </select>
                 {% else %}
@@ -164,7 +162,7 @@
             <td>{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
             <td>{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
             <td class="col-modernization">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
-            <td class="rowspan-td col-energy-unit-type" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—"}}</td>
+            
             <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
             <td>
                 {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
@@ -305,7 +303,7 @@
 
 <!-- Итоги по станции -->
 <tr class="text-center total-power-row" style="vertical-align: middle; font-size: 1.2rem;">
-    <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+    <td class="total-row-cell" rowspan="3" colspan="10" style="font-weight: bold;">
         Всего по станции:
     </td>
     <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
@@ -320,7 +318,7 @@
     </td>
     {% endfor %}
 
-    <td class="total-row-cell" rowspan="3" colspan = "{{ 3 + (end_year - start_year) * 2 }} "></td>
+    <td class="total-row-cell" rowspan="3" colspan = "{{ end_year - start_year + 2 }} "></td>
 </tr>
 
 <tr class="text-center p-ogr-row" style="font-size: 1.2rem;">

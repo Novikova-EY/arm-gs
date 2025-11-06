@@ -24,3 +24,9 @@ def get_tes_machine_type_list_full():
         )
         .all()
     )
+
+
+@lru_cache(maxsize=1)
+def get_tes_machine_type_list():
+    """Получает список типов агрегатов ТЭС для использования в кэше."""
+    return get_tes_machine_type_list_full()

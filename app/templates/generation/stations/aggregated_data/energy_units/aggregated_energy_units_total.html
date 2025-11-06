@@ -3,13 +3,13 @@
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
         <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
-            {{ energy_unit_names[eu_id] }}, всего
+            {{ energy_unit_names.get(current_eu_id, '— не указано —') }}, всего
         </td>
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ energy_units_yearly_p_ust
-                    .get(eu_id, {})
+                    .get(current_eu_id, {})
                     .get(year, 0) | format_decimal or '—' }}
             </td>
         {% endfor %}
@@ -23,7 +23,7 @@
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ energy_units_yearly_p_ogr
-                    .get(eu_id, {})
+                    .get(current_eu_id, {})
                     .get(year, 0) | format_decimal or '—' }}
             </td>
         {% endfor %}
@@ -37,7 +37,7 @@
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ energy_units_yearly_p_rasp
-                    .get(eu_id, {})
+                    .get(current_eu_id, {})
                     .get(year, 0) | format_decimal or '—' }}
             </td>
         {% endfor %}

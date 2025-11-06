@@ -116,17 +116,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Показываем/скрываем строки p_ogr-row
             if (showPOgr) {
-                $('.p-ogr-row').show();
+                $('.p-ogr-row:not(.station-ogr-row)').show();
             } else {
-                $('.p-ogr-row').hide();
+                $('.p-ogr-row:not(.station-ogr-row)').hide();
             }
 
             // Показываем/скрываем строки p_rasp-row
             if (showPRasp) {
-                $('.p-rasp-row').show();
+                $('.p-rasp-row:not(.station-rasp-row)').show();
             } else {
-                $('.p-rasp-row').hide();
+                $('.p-rasp-row:not(.station-rasp-row)').hide();
             }
+
+            // Итоговые строки по станции подчиняются соответствующим переключателям
+            document.querySelectorAll('.station-ogr-row').forEach(row => {
+                row.style.display = showPOgr ? '' : 'none';
+            });
+            document.querySelectorAll('.station-rasp-row').forEach(row => {
+                row.style.display = showPRasp ? '' : 'none';
+            });
 
             // Количество отображаемых строк на агрегат (1..3)
             let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
@@ -273,28 +281,50 @@ document.addEventListener("DOMContentLoaded", () => {
             const showPOgr = document.getElementById('toggleP_Ogr')?.checked || false;
             const showPRasp = document.getElementById('toggleP_Rasp')?.checked || false;
             
-            // Скрываем/показываем строки с агрегатами
-            document.querySelectorAll('.machine-row').forEach(row => {
-                row.style.display = isHidden ? 'none' : '';
-            });
+            // Скрываем/показываем базовые строки агрегатов (Руст) — используем jQuery, чтобы корректно ставился table-row
+            if (typeof $ !== 'undefined') {
+                $('.machine-row').css('display', isHidden ? 'none' : 'table-row');
+            } else {
+                document.querySelectorAll('.machine-row').forEach(row => {
+                    row.style.display = isHidden ? 'none' : 'table-row';
+                });
+            }
 
-            // Также скрываем/показываем строки p-ogr и p-rasp для агрегатов
+            // Также скрываем/показываем дополнительные строки p-ogr и p-rasp для агрегатов
             // Учитываем состояние соответствующих чекбоксов
-            document.querySelectorAll('.p-ogr-row:not(.station-ogr-row)').forEach(row => {
+            if (typeof $ !== 'undefined') {
+                const ogrRows = $('.p-ogr-row').not('.station-ogr-row');
                 if (isHidden) {
-                    row.style.display = 'none';
+                    ogrRows.hide();
                 } else {
-                    row.style.display = showPOgr ? '' : 'none';
+                    showPOgr ? ogrRows.show() : ogrRows.hide();
                 }
-            });
+            } else {
+                document.querySelectorAll('.p-ogr-row:not(.station-ogr-row)').forEach(row => {
+                    if (isHidden) {
+                        row.style.display = 'none';
+                    } else {
+                        row.style.display = showPOgr ? 'table-row' : 'none';
+                    }
+                });
+            }
             
-            document.querySelectorAll('.p-rasp-row:not(.station-rasp-row)').forEach(row => {
+            if (typeof $ !== 'undefined') {
+                const raspRows = $('.p-rasp-row').not('.station-rasp-row');
                 if (isHidden) {
-                    row.style.display = 'none';
+                    raspRows.hide();
                 } else {
-                    row.style.display = showPRasp ? '' : 'none';
+                    showPRasp ? raspRows.show() : raspRows.hide();
                 }
-            });
+            } else {
+                document.querySelectorAll('.p-rasp-row:not(.station-rasp-row)').forEach(row => {
+                    if (isHidden) {
+                        row.style.display = 'none';
+                    } else {
+                        row.style.display = showPRasp ? 'table-row' : 'none';
+                    }
+                });
+            }
 
             // НЕ скрываем первую строку с названием станции
             // Она остаётся всегда видимой
@@ -312,10 +342,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Обработчик изменения состояния чекбокса
-        hideAggregatesCheckbox.addEventListener('change', toggleAggregates);
+        hideAggregatesCheckbox.addEventListener('change', () => {
+            toggleAggregates();
+            // Пересчитать rowspan и восстановить видимость итогов по переключателям Рогр/Ррасп
+            window.applyPowerRowsUpdate?.();
+        });
 
         // Инициализация при загрузке страницы
         toggleAggregates();
+        // Первичный пересчёт для корректного отображения итогов
+        window.applyPowerRowsUpdate?.();
 
         // Экспортируем функцию для использования в других обработчиках
         window.applyHideAggregatesUpdate = toggleAggregates;

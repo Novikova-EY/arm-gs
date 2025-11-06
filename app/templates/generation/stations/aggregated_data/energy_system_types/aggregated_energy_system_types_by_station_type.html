@@ -5,7 +5,7 @@
         .get(station_type_id) %}
         
     {% if has_st %}
-        {% if station_type_id not in [5, 6] %}
+        {% if st_name not in ['ВЭС', 'СЭС'] %}
             <!-- Первая строка: p_ust -->
             <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
                 <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
@@ -56,7 +56,7 @@
         
         {% endif %}
             
-        {% if station_type_id in [4, 7, 8] %}
+        {% if st_name in ['ТЭС'] %}
                 
             {#– {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_by_station_type_with_fuel.html' %} -#}
             
@@ -64,7 +64,7 @@
         
         {% endif %}
                 
-        {% if station_type_id in [5, 6] %}
+        {% if st_name in ['ВЭС', 'СЭС'] %}
                         
         {% endif %}
         

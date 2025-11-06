@@ -75,18 +75,29 @@ def log_to_db(
         if details is not None and not isinstance(details, str):
             details = str(details)
 
+        # Получаем текущую версию БД
+        database_version_id = None
+        try:
+            from app.common.services.database_version_filter import get_current_db_version_id
+            database_version_id = get_current_db_version_id()
+        except Exception:
+            # Если не удалось получить версию, продолжаем без нее
+            pass
+
         rec = Log(
             username=username,
             action=safe_action,
             details=details,
             entity_type=safe_entity_type,
             entity_id=entity_id,
+            database_version_id=database_version_id,
         )
 
         session = _make_independent_session()
+        # Если создать независимую сессию не удалось — тихо выходим,
+        # чтобы не коммитить основной db.session и не инвалидировать объекты
         if session is None:
-            # как крайний случай — пишем в текущую сессию, чтобы не потерять событие
-            session = db.session
+            return
 
         session.add(rec)
         session.commit()

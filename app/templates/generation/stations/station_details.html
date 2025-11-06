@@ -242,7 +242,7 @@
         </div>
 
         <!-- Карточка с основной информацией -->
-        <form method="POST" id="stationForm">
+        <form method="POST" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" id="stationForm">
             {{ form.hidden_tag() }}
             {% if station.version is defined %}
             <input type="hidden" name="version" value="{{ station.version }}">
@@ -490,7 +490,6 @@
                             <th rowspan="2" style="width: 80px;">Год ввода</th>
                             <th rowspan="2" style="width: 80px;">Год вывода</th>
                             <th rowspan="2" class="col-modernization">Модерни<br>зация</th>
-                            <th rowspan="2" class="col-energy-unit-type">Тип<br>энерго<br>блока</th>
                             <th rowspan="2" style="width: 80px;">Тип ТЭС</th>
                             <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
                             <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
@@ -513,7 +512,7 @@
                     </thead>
                     <tbody id="machines-tbody">
                         <tr>
-                            <td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
+                            <td colspan="{{ 13 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
                                 <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
                                 Загрузка агрегатов...
                             </td>
@@ -545,6 +544,7 @@
                         <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
                         <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
                         <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
+                        <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
                         <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
                     </tr>
                 </thead>
@@ -558,6 +558,7 @@
                                 <td>
                                     <div data-action="{{ log.action_lower }}">{{ log.action }}</div>
                                 </td>
+                                <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
                                 <td>
                                     {% if log.details %}
                                         <div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>
@@ -567,7 +568,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="3" class="text-center text-muted p-3">Нет записей</td>
+                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -619,22 +620,32 @@
 #machine-logs-table td:nth-child(2),
 #machine-logs-table td:nth-child(3) { white-space: nowrap; }
 
-/* Последние два — поровну от оставшегося пространства */
+/* Последние три — поровну от оставшегося пространства */
 #station-logs-table th.log-col-action, #station-logs-table td:nth-child(4),
 #machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) {
-  width: 50% !important;
+  width: 33.33% !important;
 }
-#station-logs-table th.log-col-details, #station-logs-table td:nth-child(5),
-#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(5) {
-  width: 50% !important;
+#station-logs-table th.log-col-database-version, #station-logs-table td:nth-child(5),
+#machine-logs-table th.log-col-database-version, #machine-logs-table td:nth-child(5) {
+  width: 150px !important;
+}
+#station-logs-table th.log-col-details, #station-logs-table td:nth-child(6),
+#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(6) {
+  width: 33.33% !important;
 }
 
 /* Детали можно переносить */
 #station-logs-table td:nth-child(4) div,
-#station-logs-table td:nth-child(5) div,
+#station-logs-table td:nth-child(6) div,
 #machine-logs-table td:nth-child(4) div,
-#machine-logs-table td:nth-child(5) div {
+#machine-logs-table td:nth-child(6) div {
   white-space: pre-wrap;
+}
+#station-logs-table td:nth-child(5),
+#machine-logs-table td:nth-child(5) {
+  white-space: normal;        /* разрешаем перенос */
+  overflow-wrap: anywhere;    /* переносим длинные слова/идентификаторы */
+  word-break: break-word;     /* на случай длинных токенов без пробелов */
 }
 </style>
 
@@ -685,9 +696,12 @@
                 else if (key === 'action'){
                     a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
                     b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
+                } else if (key === 'database_version'){
+                    a = val(r1.cells[4], 'database-version');
+                    b = val(r2.cells[4], 'database-version');
                 } else if (key === 'details'){
-                    a = val(r1.cells[4].querySelector('[data-details]')||r1.cells[4], 'details');
-                    b = val(r2.cells[4].querySelector('[data-details]')||r2.cells[4], 'details');
+                    a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
+                    b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
                 }
                 if (a<b) return sortState.asc ? -1 : 1;
                 if (a>b) return sortState.asc ? 1 : -1;
@@ -705,7 +719,7 @@
 
         // Добавляем строку фильтров
         const filterRow = document.createElement('tr');
-        ['date','time','user','action','details'].forEach((key, idx)=>{
+        ['date','time','user','action','database_version','details'].forEach((key, idx)=>{
             const td = document.createElement('td');
             const input = document.createElement('input');
             input.className = 'form-control form-control-sm';
@@ -717,8 +731,9 @@
                     const dTime = val(tr.cells[1], 'time');
                     const dUser = val(tr.cells[2], 'user');
                     const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
-                    const dDetails = val(tr.cells[4].querySelector('[data-details]')||tr.cells[4], 'details');
-                    const data = [dDate, dTime, dUser, dAction, dDetails];
+                    const dDatabaseVersion = val(tr.cells[4], 'database-version');
+                    const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
+                    const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
                     const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
                     tr.style.display = ok ? '' : 'none';
                 }
@@ -911,9 +926,7 @@
                             tbody.appendChild(frag);
                             if (idx === chunkSize) {
                                 // Первый фрагмент вставлен — обновим rowspan/раскладку
-                                if (typeof window.updateRows === 'function') {
-                                    window.updateRows();
-                                }
+                                if (typeof window.updateRows === 'function') { window.updateRows(); }
                             }
                             if (idx < rows.length) {
                                 requestAnimationFrame(appendChunk);
@@ -925,9 +938,7 @@
                                 const m = performance.getEntriesByName && performance.getEntriesByName('tbody-fetch').pop();
                                 if (m) console.log('tbody fetch+insert:', Math.round(m.duration), 'ms');
                                 // Финальный пересчет строк/rowspan после полной вставки
-                                if (typeof window.updateRows === 'function') {
-                                    window.updateRows();
-                                }
+                                if (typeof window.updateRows === 'function') { window.updateRows(); }
                             }
                         }
                         performance.mark && performance.mark('tbody-insert-start');
@@ -936,6 +947,69 @@
                     .catch(err => console.error('Ошибка загрузки агрегатов:', err));
             });
         } catch (e) { /* игнорируем */ }
+    })();
+
+    // Переключение отображения строк p_ogr / p_rasp и корректировка rowspan
+    (function(){
+        const togglePOgr = document.getElementById('toggleP_Ogr');
+        const togglePRasp = document.getElementById('toggleP_Rasp');
+        const labelPOgr = document.querySelector('label[for="toggleP_Ogr"]');
+        const labelPRasp = document.querySelector('label[for="toggleP_Rasp"]');
+
+        // На этой странице по умолчанию Рогр скрыт всегда при первичной загрузке
+        // Игнорируем сохранённое состояние и принудительно выключаем чекбокс
+        try {
+            if (togglePOgr) {
+                togglePOgr.checked = false;
+                localStorage.setItem('toggleP_Ogr', 'false');
+            }
+            if (togglePRasp) {
+                const savedRasp = localStorage.getItem('toggleP_Rasp');
+                togglePRasp.checked = savedRasp === 'false' ? false : true;
+            }
+        } catch(_) {}
+
+        window.updateRows = function(){
+            const showOgr = !!(document.getElementById('toggleP_Ogr')?.checked);
+            const showRasp = !!(document.getElementById('toggleP_Rasp')?.checked);
+
+            // Показ/скрытие строк
+            document.querySelectorAll('.p-ogr-row').forEach(tr => { tr.style.display = showOgr ? '' : 'none'; });
+            document.querySelectorAll('.p-rasp-row').forEach(tr => { tr.style.display = showRasp ? '' : 'none'; });
+
+            // Обновляем стили кнопок
+            if (labelPOgr && togglePOgr) {
+                labelPOgr.classList.toggle('btn-primary', showOgr);
+                labelPOgr.classList.toggle('btn-outline-primary', !showOgr);
+            }
+            if (labelPRasp && togglePRasp) {
+                labelPRasp.classList.toggle('btn-primary', showRasp);
+                labelPRasp.classList.toggle('btn-outline-primary', !showRasp);
+            }
+
+            // Корректируем rowspan у ячеек, которые тянут строки
+            const extra = (showOgr ? 1 : 0) + (showRasp ? 1 : 0);
+            document.querySelectorAll('.rowspan-td').forEach(td => {
+                const base = parseInt(td.getAttribute('data-machine-base-rowspan')) || 1;
+                td.rowSpan = base + extra;
+            });
+            document.querySelectorAll('.total-row-cell').forEach(td => {
+                td.rowSpan = 1 + extra;
+            });
+        };
+
+        // Сохраняем состояние переключателей
+        togglePOgr?.addEventListener('change', () => {
+            try { localStorage.setItem('toggleP_Ogr', String(togglePOgr.checked)); } catch(_) {}
+            window.updateRows();
+        });
+        togglePRasp?.addEventListener('change', () => {
+            try { localStorage.setItem('toggleP_Rasp', String(togglePRasp.checked)); } catch(_) {}
+            window.updateRows();
+        });
+
+        // Первичная инициализация
+        document.addEventListener('DOMContentLoaded', () => { window.updateRows?.(); });
     })();
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -1114,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td data-time="${log.time}">${log.time}</td>
                         <td data-user="${log.username_lower}">${log.username}</td>
                         <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
                         <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
                     `;
                     logsTable.appendChild(row);
@@ -1237,6 +1312,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     console.log(`[FORM] Добавлено поле ${input.name} = ${hiddenField.value}`);
                     machinesForm.appendChild(hiddenField);
+                }
+            });
+        });
+        
+        // Обработчик для формы станции
+        stationForm.addEventListener('submit', function(e) {
+            console.log('[FORM] Отправка формы станции');
+            console.log('[FORM] Все элементы формы stationForm:', Array.from(stationForm.elements).map(el => ({name: el.name, value: el.value})));
+            
+            // Проверяем, что все поля формы присутствуют
+            const formData = new FormData(stationForm);
+            console.log('[FORM] Данные формы станции:', Array.from(formData.entries()));
+            
+            // Убеждаемся, что все select элементы правильно отправляются
+            const selectElements = stationForm.querySelectorAll('select');
+            selectElements.forEach(function(select) {
+                console.log(`[FORM] Select ${select.name}: выбранное значение = ${select.value}`);
+                if (select.value === '' || select.value === null) {
+                    // Если значение пустое, создаем скрытое поле с пустым значением
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = select.name;
+                    hidden.value = '';
+                    stationForm.appendChild(hidden);
                 }
             });
         });

@@ -24,3 +24,20 @@ def get_tes_type_list_full():
         )
         .all()
     )
+
+
+@lru_cache(maxsize=1)
+def get_tes_type_list():
+    """Получает список типов ТЭС (кроме "не указано")."""
+    current_version = get_current_version()
+    query = TesType.query
+    
+    if current_version:
+        query = query.filter(TesType.database_version_id == current_version)
+    
+    return (
+        query
+        .filter(TesType.id.isnot(None), TesType.id > 0)
+        .order_by(TesType.name.asc())
+        .all()
+    )

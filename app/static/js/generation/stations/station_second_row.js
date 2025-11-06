@@ -30,7 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    wireOpenInNewTab('exportExcelFormFull');
+    // НЕ перехватываем exportExcelFormFull - он обрабатывается в station_page_logic.js
+    // wireOpenInNewTab('exportExcelFormFull');
     wireOpenInNewTab('exportExcelSiprForm');
 });
 

@@ -1,5 +1,5 @@
 <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
     <td colspan="{{ 15 + 2 * (end_year - start_year) }}">
-        {{ energy_unit_names[eu_id] }}
+        {{ energy_unit_names.get(current_eu_id, '— не указано —') }}
     </td>
 </tr>

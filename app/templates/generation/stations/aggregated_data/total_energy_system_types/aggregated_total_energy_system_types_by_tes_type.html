@@ -1,6 +1,6 @@
 <!-- Итоговые значения по типам ТЭС энергоузла -->
 {% for tes_type_id, tes_name in tes_type_list.items() %}
-    {% if tes_type_id != 0 %}
+    {% if tes_name|lower != 'не указано' %}
         {% set has_tes = total_energy_system_types_by_tes_types_yearly_p_ust
                         .get(tes_type_id) %}
 
