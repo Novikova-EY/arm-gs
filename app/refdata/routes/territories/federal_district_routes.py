@@ -226,7 +226,7 @@ def add_federal_district():
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового федерального округа", str(e, entity_type="federal_district"))
+            log_to_db(user, "Неизвестная ошибка добавления нового федерального округа", str(e), entity_type="federal_district")
 
     # Рендеринг формы
     return render_template(

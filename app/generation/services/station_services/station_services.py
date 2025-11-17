@@ -2079,7 +2079,23 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         data.get('aggregate_power_by_energy_system_types'),
         data.get('aggregate_power_by_total_energy_system_types'),
     ])
-    
+
+    # Fallback: если агрегатов нет (например, страница без флага "с суммами"),
+    # рассчитаем их на лету для корректного отображения разделов (включая ПГУ).
+    if not has_aggregations:
+        try:
+            start_year = int(filters.get("start_year")) if filters.get("start_year") is not None else get_current_year()
+            end_year = int(filters.get("end_year")) if filters.get("end_year") is not None else get_current_year()
+            station_ids = context.get("station_ids", [])
+            print(f"[DEBUG] Fallback агрегирование: station_ids={len(station_ids)}, years={start_year}-{end_year}")
+            rows = get_full_aggregation_rows(start_year, end_year, station_ids, filters)
+            all_aggregations = aggregate_all_at_once(rows)
+            data.update(all_aggregations)
+            has_aggregations = True
+            print(f"[DEBUG] Fallback агрегирование выполнено: агрегатов={len(all_aggregations)}")
+        except Exception as e:
+            print(f"[WARNING] Fallback агрегирование не удалось: {e}")
+
     if has_aggregations:
         # Генерация агрегатов по уровням (когда включено отображение сумм)
         energy_unit_aggregates = build_energy_unit_aggregates(data)
@@ -2096,6 +2112,29 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         context.update(union_energy_system_aggregates)
         context.update(energy_system_type_aggregates)
         context.update(total_energy_system_type_aggregates)
+
+        # DEBUG: проверяем наличие данных по ПГУ в energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust
+        try:
+            pgu_tm_ids = [tm_id for tm_id, name in (context.get("tes_machine_type_list") or {}).items() if name and "пгу" in str(name).lower()]
+            est_tmt_fuel = context.get("energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust", {})
+            if pgu_tm_ids and est_tmt_fuel:
+                found = False
+                for est_id, est_data in est_tmt_fuel.items():
+                    for tes_type_id, tm_map in est_data.items():
+                        for tm_id in pgu_tm_ids:
+                            if tm_id in tm_map:
+                                sample_fuels = list(tm_map[tm_id].keys())[:3]
+                                print(f"[DEBUG] EST/TES/PGU найдено: est={est_id}, tes_type={tes_type_id}, tm_id={tm_id}, fuels={sample_fuels}")
+                                found = True
+                                break
+                        if found:
+                            break
+                    if found:
+                        break
+                if not found:
+                    print("[DEBUG] Данных для ПГУ в energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust не найдено")
+        except Exception as _e:
+            print(f"[DEBUG] Ошибка отладочного вывода ПГУ: {_e}")
 
     print(f"[TIME] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
     return context

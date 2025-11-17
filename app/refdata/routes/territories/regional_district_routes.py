@@ -285,12 +285,12 @@ def add_regional_district():
         except ValueError as e:
              # Логирование и отображение ошибок валидации
             flash(str(e), "danger")
-            log_to_db(user, "Ошибка добавления нового субъекта РФ", str(e, entity_type="regional_district"))
+            log_to_db(user, "Ошибка добавления нового субъекта РФ", str(e), entity_type="regional_district")
         except Exception as e:
             # Логирование и отображение других ошибок
             current_app.logger.error(f"Ошибка добавления записи: {e}")
             flash("Произошла ошибка при добавлении записи. Попробуйте позже.", "danger")
-            log_to_db(user, "Неизвестная ошибка добавления нового субъекта РФ", str(e, entity_type="regional_district"))
+            log_to_db(user, "Неизвестная ошибка добавления нового субъекта РФ", str(e), entity_type="regional_district")
 
     # Рендеринг формы
     return render_template(

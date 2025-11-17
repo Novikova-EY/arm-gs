@@ -71,6 +71,14 @@
                                 {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" name="date_exploitation_filter"
+                                            value=""
+                                            {% if '' in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
+                                        не указано
+                                    </label>
+                                </li>
                                 {% for year in range(1950, 2050) %}
                                     <li>
                                         <label class="dropdown-item">
@@ -93,6 +101,14 @@
                                 {% if request.args.getlist('date_decompressing_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" name="date_decompressing_expected_filter"
+                                            value=""
+                                            {% if '' in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
+                                        не указано
+                                    </label>
+                                </li>
                                 {% for year in range(1950, 2050) %}
                                     <li>
                                         <label class="dropdown-item">
@@ -115,6 +131,14 @@
                                 {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" name="date_modernization_expected_filter"
+                                            value=""
+                                            {% if '' in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
+                                        не указано
+                                    </label>
+                                </li>
                                 {% for year in range(1950, 2050) %}
                                     <li>
                                         <label class="dropdown-item">
@@ -137,7 +161,18 @@
                                 {% if request.args.getlist('station_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
-                                {% for station_type in station_type_name %}
+                                {% for station_type in station_type_name if station_type.name|lower == 'не указано' %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="station_type_filter"
+                                                value="{{ station_type.id }}"
+                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                                            >
+                                            {{ station_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                                {% for station_type in station_type_name if station_type.name|lower != 'не указано' %}
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="station_type_filter"
@@ -160,7 +195,17 @@
                                 {% if request.args.getlist('tes_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
-                                {% for tes_type in tes_type_names %}
+                                {% for tes_type in tes_type_names if tes_type.name|lower == 'не указано' %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="tes_type_filter"
+                                                value="{{ tes_type.id }}"
+                                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                                            {{ tes_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                                {% for tes_type in tes_type_names if tes_type.name|lower != 'не указано' %}
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="tes_type_filter"
@@ -182,8 +227,18 @@
                                 {% if request.args.getlist('tes_machine_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
+                                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower == 'не указано' %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="tes_machine_type_filter"
+                                                value="{{ tes_machine_type.id }}"
+                                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                            {{ tes_machine_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
                                 <!-- Типы агрегатов ТЭС -->
-                                {% for tes_machine_type in tes_machine_type_names %}
+                                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower != 'не указано' %}
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="tes_machine_type_filter"
@@ -221,7 +276,17 @@
                                 {% if request.args.getlist('fuel_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                             </button>
                             <ul class="dropdown-menu w-100">
-                                {% for fuel_type in fuel_type_names %}
+                                {% for fuel_type in fuel_type_names if fuel_type.name|lower == 'не указано' %}
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="fuel_type_filter"
+                                                value="{{ fuel_type.id }}"
+                                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
+                                            {{ fuel_type.name }}
+                                        </label>
+                                    </li>
+                                {% endfor %}
+                                {% for fuel_type in fuel_type_names if fuel_type.name|lower != 'не указано' %}
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="fuel_type_filter"

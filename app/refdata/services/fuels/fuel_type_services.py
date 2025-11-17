@@ -213,6 +213,7 @@ def add_fuel_type_service(data, user):
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
                 obj = FuelType(name=name)
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
 

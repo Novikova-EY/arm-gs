@@ -1,5 +1,20 @@
 <!-- Итоговые значения по всем ВИЭ -->
-{% if (energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get("ВЭС") or energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get("СЭС")) %}
+{# Определяем ID типов станций по названиям 'ВЭС' и 'СЭС' динамически #}
+{% set via_station_type_ids = [] %}
+{% for st_id, st_name in station_type_list.items() %}
+    {% if st_name in ['ВЭС', 'СЭС'] %}
+        {% set _ = via_station_type_ids.append(st_id) %}
+    {% endif %}
+{% endfor %}
+
+{% if via_station_type_ids %}
+    {% set check_data = [] %}
+    {% for st_id in via_station_type_ids %}
+        {% if energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get(st_id) %}
+            {% set _ = check_data.append(1) %}
+        {% endif %}
+    {% endfor %}
+    {% if check_data %}
 <!-- Первая строка: p_ust -->
     <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
         <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
@@ -7,14 +22,16 @@
         </td>
         <td class="fw-bold">Руст</td>
         {% for y in range(start_year, end_year + 1) %}
-            {% set ves = energy_system_types_by_station_types_yearly_p_ust
-                        .get(current_es_type_id, {})
-                        .get("ВЭС", {})
-                        .get(y) %}
-            {% set ses = energy_system_types_by_station_types_yearly_p_ust
-                        .get(current_es_type_id, {})
-                        .get("СЭС", {})
-                        .get(y) %}
+            {% set ves = 0 %}
+            {% set ses = 0 %}
+            {% for st_id in via_station_type_ids %}
+                {% set name = station_type_list.get(st_id) %}
+                {% if name == 'ВЭС' %}
+                    {% set ves = energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% elif name == 'СЭС' %}
+                    {% set ses = energy_system_types_by_station_types_yearly_p_ust.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% endif %}
+            {% endfor %}
             {% set val = (ves | float if ves is not none else 0) + (ses | float if ses is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ val | format_decimal or '—'}}
@@ -28,14 +45,16 @@
     <tr class="table-light text-center p-ogr-row">
         <td class="fw-bold">Рогр</td>
             {% for y in range(start_year, end_year + 1) %}
-            {% set v1 = energy_system_types_by_station_types_yearly_p_ogr
-                        .get(current_es_type_id, {})
-                        .get("ВЭС", {})
-                        .get(y) %}
-            {% set v2 = energy_system_types_by_station_types_yearly_p_ogr
-                        .get(current_es_type_id, {})
-                        .get("СЭС", {})
-                        .get(y) %}
+            {% set v1 = 0 %}
+            {% set v2 = 0 %}
+            {% for st_id in via_station_type_ids %}
+                {% set name = station_type_list.get(st_id) %}
+                {% if name == 'ВЭС' %}
+                    {% set v1 = energy_system_types_by_station_types_yearly_p_ogr.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% elif name == 'СЭС' %}
+                    {% set v2 = energy_system_types_by_station_types_yearly_p_ogr.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% endif %}
+            {% endfor %}
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ val | format_decimal or '—'}}
@@ -49,14 +68,16 @@
     <tr class="table-light text-center p-rasp-row">
         <td class="fw-bold">Ррасп</td>
         {% for y in range(start_year, end_year + 1) %}
-            {% set v1 = energy_system_types_by_station_types_yearly_p_rasp
-                        .get(current_es_type_id, {})
-                        .get("ВЭС", {})
-                        .get(y) %}
-            {% set v2 = energy_system_types_by_station_types_yearly_p_rasp
-                        .get(current_es_type_id, {})
-                        .get("СЭС", {})
-                        .get(y) %}
+            {% set v1 = 0 %}
+            {% set v2 = 0 %}
+            {% for st_id in via_station_type_ids %}
+                {% set name = station_type_list.get(st_id) %}
+                {% if name == 'ВЭС' %}
+                    {% set v1 = energy_system_types_by_station_types_yearly_p_rasp.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% elif name == 'СЭС' %}
+                    {% set v2 = energy_system_types_by_station_types_yearly_p_rasp.get(current_es_type_id, {}).get(st_id, {}).get(y) or 0 %}
+                {% endif %}
+            {% endfor %}
             {% set val = (v1 | float if v1 is not none else 0) + (v2 | float if v2 is not none else 0) %}
             <td class="power-column" style="font-weight: bold;">
                 {{ val | format_decimal or '—'}}
@@ -68,7 +89,7 @@
 
 
     {#-- Отдельно по ВЭС и СЭС --#}
-    {% for station_type_id in [5, 6] %}
+    {% for station_type_id in via_station_type_ids %}
         {% set has_data = energy_system_types_by_station_types_yearly_p_ust
                         .get(current_es_type_id, {})
                         .get(station_type_id) %}
@@ -86,7 +107,11 @@
                                 .get(station_type_id, {})
                                 .get(y, 0) %}
                     <td class="power-column">
-                        {{ val | format_decimal or '—'}}
+                        {% if val is none or val == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ val | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -101,7 +126,11 @@
                                 .get(station_type_id, {})
                                 .get(y, 0) %}
                     <td class="power-column">
-                        {{ val | format_decimal or '—'}}
+                        {% if val is none or val == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ val | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -117,7 +146,11 @@
                                 .get(station_type_id, {})
                                 .get(y, 0) %}
                     <td class="power-column">
-                        {{ val | format_decimal or '—'}}
+                        {% if val is none or val == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ val | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -125,7 +158,7 @@
             </tr>
         {% endif %}
     {% endfor %}
-
+    {% endif %}
 {% endif %}
 
  

@@ -1,4 +1,4 @@
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, literal
 from app.extensions import db
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
@@ -21,6 +21,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     if filters is None:
         filters = {}
     
+    # Обычные агрегаты (машины)
     query = (
         db.session.query(
             EnergySystemType.id.label("energy_system_type_id"),
@@ -36,7 +37,6 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             func.sum(MachinePower.p_ust).label("p_ust"),
             func.sum(MachinePower.p_ogr).label("p_ogr"),
             func.sum(MachinePower.p_rasp).label("p_rasp"),
-            Station.database_version_id.label("database_version_id"),
         )
         .select_from(MachinePower)
         .join(Machine, Machine.id == MachinePower.id_machine)
@@ -99,7 +99,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             GenCompany.name.ilike(f"%{filters['gen_company_filter']}%")
         )
     
-    rows = query.group_by(
+    rows_regular = query.group_by(
         EnergySystemType.id,
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
@@ -109,8 +109,96 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         TesType.id,
         TesMachineType.id,
         FuelType.id,
-        MachinePower.year_number,
-        Station.database_version_id
+        MachinePower.year_number
     ).all()
-    
-    return rows
+
+    # ПГУ агрегаты (компоненты ПГУ)
+    # Берём мощности из PGUMachinePower и маппим измерения через родительскую машину/станцию.
+    from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+    from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+
+    pgu_query = (
+        db.session.query(
+            EnergySystemType.id.label("energy_system_type_id"),
+            UnionEnergySystem.id.label("union_energy_system_id"),
+            RegionalEnergySystem.id.label("regional_energy_system_id"),
+            RegionalDistrict.id.label("regional_district_id"),
+            Station.id_energy_unit.label("energy_unit_id"),
+            Station.id_station_type.label("station_type_id"),
+            TesType.id.label("tes_type_id"),
+            # Тип агрегата ТЭС для ПГУ берём из PGUMachine.id_tes_machine_type (как общий тип ПГУ)
+            TesMachineType.id.label("tes_machine_type_id"),
+            FuelType.id.label("fuel_type_id"),
+            PGUMachinePower.year_number.label("year"),
+            func.sum(PGUMachinePower.p_ust).label("p_ust"),
+            # У ПГУ-компонентов нет p_ogr/p_rasp — считаем 0
+            func.sum(literal(0)).label("p_ogr"),
+            func.sum(literal(0)).label("p_rasp"),
+        )
+        .select_from(PGUMachinePower)
+        .join(PGUMachine, PGUMachine.id == PGUMachinePower.id_pgu_machine)
+        # Родительская обычная машина, чтобы дотянуться до станции и связей
+        .join(Machine, Machine.id == PGUMachine.id_parent_machine)
+        .join(Station, Station.id == Machine.id_station)
+        # Тип ТЭС по году берём из MachineTesType для родительской машины и того же года
+        .outerjoin(MachineTesType, and_(
+            MachineTesType.id_machine == Machine.id,
+            MachineTesType.year_number == PGUMachinePower.year_number
+        ))
+        .outerjoin(TesType, TesType.id == MachineTesType.id_tes_type)
+        # Тип агрегата ТЭС для ПГУ хранится прямо в PGUMachine.id_tes_machine_type
+        .outerjoin(TesMachineType, TesMachineType.id == PGUMachine.id_tes_machine_type)
+        # Топливо берём из MachineFuel родительской машины по году
+        .outerjoin(MachineFuel, and_(
+            MachineFuel.id_machine == Machine.id,
+            MachineFuel.year_number == PGUMachinePower.year_number
+        ))
+        .outerjoin(Fuel, Fuel.id == MachineFuel.id_fuel)
+        .outerjoin(FuelType, FuelType.id == Fuel.id_fuel_type)
+        .join(Station.regional_district)
+        .join(RegionalDistrict.regional_energy_systems)
+        .join(RegionalEnergySystem.union_energy_system)
+        .join(UnionEnergySystem.energy_system_type)
+        .filter(
+            Station.id.in_(station_ids),
+            PGUMachinePower.year_number.between(start_year, end_year)
+        )
+    )
+
+    # Те же фильтры, что и для обычных агрегатов
+    if filters.get("tes_type_filter"):
+        pgu_query = pgu_query.filter(TesType.id.in_(filters["tes_type_filter"]))
+
+    if filters.get("tes_machine_type_filter"):
+        pgu_query = pgu_query.filter(TesMachineType.id.in_(filters["tes_machine_type_filter"]))
+
+    if filters.get("fuel_type_filter"):
+        pgu_query = pgu_query.filter(FuelType.id.in_(filters["fuel_type_filter"]))
+
+    if filters.get("condition_type_filter"):
+        pgu_query = pgu_query.filter(PGUMachine.id_condition_type == filters["condition_type_filter"])  # для ПГУ
+
+    if filters.get("date_exploitation_filter"):
+        pgu_query = pgu_query.filter(PGUMachine.date_exploitation.in_(filters["date_exploitation_filter"]))
+
+    if filters.get("date_decompressing_expected_filter"):
+        pgu_query = pgu_query.filter(PGUMachine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
+
+    if filters.get("date_modernization_expected_filter"):
+        pgu_query = pgu_query.filter(PGUMachine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
+
+    rows_pgu = pgu_query.group_by(
+        EnergySystemType.id,
+        UnionEnergySystem.id,
+        RegionalEnergySystem.id,
+        RegionalDistrict.id,
+        Station.id_energy_unit,
+        Station.id_station_type,
+        TesType.id,
+        TesMachineType.id,
+        FuelType.id,
+        PGUMachinePower.year_number
+    ).all()
+
+    # Объединяем обычные машины и ПГУ-компоненты
+    return rows_regular + rows_pgu

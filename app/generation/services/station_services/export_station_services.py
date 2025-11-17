@@ -942,6 +942,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
                         for fuel_type_id, fuel_years in fuel_dict.items():
+                            if fuel_type_id is None:
+                                continue
                             fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
                             row_ft = {
                                     "Электростанция": f"            {fuel_type_name}",

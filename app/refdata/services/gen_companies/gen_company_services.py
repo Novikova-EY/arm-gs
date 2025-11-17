@@ -244,6 +244,7 @@ def add_gen_company_service(data, user):
                 obj = GenCompany(
                     name=name,
                 )
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 

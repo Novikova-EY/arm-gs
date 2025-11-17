@@ -31,6 +31,9 @@ from app.common.services.tranzaction_services import (
     quick_fix_seq,
 )
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import set_db_version_on_create
+
 # Логирование
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
@@ -295,6 +298,7 @@ def add_equipment_group_service(data, user):
                     id_technology_type=technology_type_id,
                     id_technology_availability=technology_availability_id
                 )
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
 

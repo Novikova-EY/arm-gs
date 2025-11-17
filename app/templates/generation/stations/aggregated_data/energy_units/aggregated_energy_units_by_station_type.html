@@ -14,10 +14,12 @@
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_units_by_station_types_yearly_p_ust
-                            .get(current_eu_id, {})
-                            .get(station_type_id, {})
-                            .get(y, '—') | format_decimal or '—' }}
+                        {% set p_ust_value = energy_units_by_station_types_yearly_p_ust.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
+                        {% if p_ust_value is none or p_ust_value == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ p_ust_value | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -29,10 +31,12 @@
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_units_by_station_types_yearly_p_ogr
-                            .get(current_eu_id, {})
-                            .get(station_type_id, {})
-                            .get(y, '—') | format_decimal or '—' }}
+                        {% set p_ogr_value = energy_units_by_station_types_yearly_p_ogr.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
+                        {% if p_ogr_value is none or p_ogr_value == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ p_ogr_value | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -44,10 +48,12 @@
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {{ energy_units_by_station_types_yearly_p_rasp
-                            .get(current_eu_id, {})
-                            .get(station_type_id, {})
-                            .get(y, '—') | format_decimal or '—' }}
+                        {% set p_rasp_value = energy_units_by_station_types_yearly_p_rasp.get(current_eu_id, {}).get(station_type_id, {}).get(y, 0) %}
+                        {% if p_rasp_value is none or p_rasp_value == 0 %}
+                            &mdash;
+                        {% else %}
+                            {{ p_rasp_value | format_decimal }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
@@ -65,6 +71,8 @@
         {% endif %}
                 
         {% if st_name in ['ВЭС', 'СЭС'] %}
+            
+            {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_by_via.html' %}
                         
         {% endif %}
         
@@ -72,4 +80,3 @@
        
 {% endfor %}
         
-{% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_by_via.html' %}

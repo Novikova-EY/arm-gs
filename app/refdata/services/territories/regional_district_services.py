@@ -34,6 +34,9 @@ from app.common.services.tranzaction_services import (
     no_autoflush,
 )
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import set_db_version_on_create
+
 # Логирование
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
@@ -369,6 +372,7 @@ def add_regional_district_service(data, user):
                     name_full=name_full or None,
                     id_federal_district=federal_district_id,
                 )
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
@@ -565,6 +569,7 @@ def import_regional_district_service(file, user):
                     name_full=name_full,
                     id_federal_district=id_federal_district
                 )
+                set_db_version_on_create(new_record)
                 db.session.add(new_record)
                 added_count += 1
 

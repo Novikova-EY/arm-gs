@@ -14,8 +14,13 @@
             <!-- Тип энергосистемы -->
             <div class="filter-item" style="width: 15%;">
                 <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" multiple>
-                    <option></option>
-                    {% for energy_system_type in energy_system_type_list %}
+                    {% for energy_system_type in energy_system_type_list if energy_system_type.name|lower == 'не указано' %}
+                        <option value="{{ energy_system_type.id }}" 
+                            {% if energy_system_type.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>
+                            {{ energy_system_type.name }}
+                        </option>
+                    {% endfor %}
+                    {% for energy_system_type in energy_system_type_list if energy_system_type.name|lower != 'не указано' %}
                         <option value="{{ energy_system_type.id }}" 
                             {% if energy_system_type.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>
                             {{ energy_system_type.name }}
@@ -27,8 +32,13 @@
             <!-- ОЭС -->
             <div class="filter-item" style="width: 15%;">
                 <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" multiple>
-                    <option></option>
-                    {% for union_energy_system in union_energy_system_list %}
+                    {% for union_energy_system in union_energy_system_list if union_energy_system.name|lower == 'не указано' %}
+                        <option value="{{ union_energy_system.id }}" 
+                            {% if union_energy_system.id|string in union_energy_system_filter|map('string') %}selected{% endif %}>
+                            {{ union_energy_system.name }}
+                        </option>
+                    {% endfor %}
+                    {% for union_energy_system in union_energy_system_list if union_energy_system.name|lower != 'не указано' %}
                         <option value="{{ union_energy_system.id }}" 
                             {% if union_energy_system.id|string in union_energy_system_filter|map('string') %}selected{% endif %}>
                             {{ union_energy_system.name }}
@@ -40,8 +50,13 @@
             <!-- Региональная ЭС -->
             <div class="filter-item" style="width: 15%;">
                 <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" multiple>
-                    <option></option>
-                    {% for regional_energy_system in regional_energy_system_list %}
+                    {% for regional_energy_system in regional_energy_system_list if regional_energy_system.name|lower == 'не указано' %}
+                        <option value="{{ regional_energy_system.id }}" 
+                            {% if regional_energy_system.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>
+                            {{ regional_energy_system.name }}
+                        </option>
+                    {% endfor %}
+                    {% for regional_energy_system in regional_energy_system_list if regional_energy_system.name|lower != 'не указано' %}
                         <option value="{{ regional_energy_system.id }}" 
                             {% if regional_energy_system.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>
                             {{ regional_energy_system.name }}
@@ -53,8 +68,13 @@
             <!-- Федеральный округ -->
             <div class="filter-item" style="width: 15%;">
                 <select id="federal_district" name="federal_district_filter" class="form-select select2" multiple>
-                    <option></option>
-                    {% for federal_district in federal_district_list %}
+                    {% for federal_district in federal_district_list if federal_district.name|lower == 'не указано' %}
+                        <option value="{{ federal_district.id }}" 
+                            {% if federal_district.id|string in federal_district_filter|map('string') %}selected{% endif %}>
+                            {{ federal_district.name }}
+                        </option>
+                    {% endfor %}
+                    {% for federal_district in federal_district_list if federal_district.name|lower != 'не указано' %}
                         <option value="{{ federal_district.id }}" 
                             {% if federal_district.id|string in federal_district_filter|map('string') %}selected{% endif %}>
                             {{ federal_district.name }}
@@ -66,8 +86,13 @@
             <!-- Субъект РФ -->
             <div class="filter-item" style="width: 15%;">
                 <select id="regional_district" name="regional_district_filter" class="form-select select2" multiple>
-                    <option></option>
-                    {% for regional_district in regional_district_list %}
+                    {% for regional_district in regional_district_list if regional_district.name|lower == 'не указано' %}
+                        <option value="{{ regional_district.id }}" 
+                            {% if regional_district.id|string in regional_district_filter|map('string') %}selected{% endif %}>
+                            {{ regional_district.name }}
+                        </option>
+                    {% endfor %}
+                    {% for regional_district in regional_district_list if regional_district.name|lower != 'не указано' %}
                         <option value="{{ regional_district.id }}" 
                             {% if regional_district.id|string in regional_district_filter|map('string') %}selected{% endif %}>
                             {{ regional_district.name }}

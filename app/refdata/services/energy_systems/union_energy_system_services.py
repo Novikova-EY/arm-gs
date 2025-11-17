@@ -346,6 +346,7 @@ def add_union_energy_system_service(data, user):
                     name_full=name_full or None,
                     id_energy_system_type=energy_system_type_id,
                 )
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
@@ -544,6 +545,7 @@ def import_union_energy_system_service(file, user):
                     name_full=name_full,
                     id_energy_system_type=id_energy_system_type
                 )
+                set_db_version_on_create(new_record)
                 db.session.add(new_record)
                 added_count += 1
 

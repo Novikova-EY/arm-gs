@@ -27,6 +27,9 @@ from app.common.services.tranzaction_services import (
     quick_fix_seq,
 )
 
+# Фильтрация по версиям
+from app.common.services.database_version_filter import set_db_version_on_create
+
 # Логирование
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
@@ -255,6 +258,7 @@ def add_fuel_service(data, user):
                     name=name,
                     id_fuel_type=fuel_type_id,
                 )
+                set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
