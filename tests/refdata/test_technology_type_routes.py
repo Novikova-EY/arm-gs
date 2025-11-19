@@ -44,3 +44,4 @@ def test_export_technology_type_ok(client):
 
 
 
+

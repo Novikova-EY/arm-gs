@@ -8,7 +8,7 @@
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Модуль "Справочники"</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i>Справочники</a>
     </div>
 
     <h1 class="text-center mb-4">Список субъектов РФ</h1>
@@ -460,9 +460,9 @@
                                 <td>
                                     <select name="federal_districts[]" class="form-select">
                                         {% for federal_district_item in federal_district_list %}
-                                        <option value="{{ federal_district_item.0 }}" 
-                                            {% if federal_district_item.0 == item.id_federal_district %}selected{% endif %}>
-                                            {{ federal_district_item.1 }}
+                                        <option value="{{ federal_district_item[0] }}" 
+                                            {% if federal_district_item[0] == item.id_federal_district %}selected{% endif %}>
+                                            {{ federal_district_item[1] }}
                                         </option>
                                         {% endfor %}
                                     </select>

@@ -45,3 +45,4 @@ def test_update_energy_unit_service_not_found_raises():
 
 
 
+

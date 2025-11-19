@@ -234,6 +234,7 @@ def add_regional_district():
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
     
     # Подготовка данных для формы с фильтрацией по версии БД
+    from app.refdata.models.territories.federal_district_model import FederalDistrict
     form.federal_district.choices = choices_cache.get_choices(FederalDistrict, FederalDistrict.id)
 
     # Обработка формы
