@@ -172,13 +172,13 @@ parent_version = db.relationship('DatabaseVersion', remote_side=[id])
 ### Таблица database_versions
 
 ```sql
-CREATE TABLE generation.database_versions (
+CREATE TABLE refdata.database_versions (
     id                 SERIAL PRIMARY KEY,
     version_number     INTEGER NOT NULL UNIQUE,
     name               VARCHAR(255) NOT NULL UNIQUE,
     description        TEXT,
     is_active          BOOLEAN DEFAULT FALSE,
-    parent_version_id  INTEGER REFERENCES generation.database_versions(id),
+    parent_version_id  INTEGER REFERENCES refdata.database_versions(id),
     created_at         TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at         TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     snapshot_path      VARCHAR(500),
@@ -186,7 +186,7 @@ CREATE TABLE generation.database_versions (
 );
 
 CREATE INDEX idx_database_versions_parent_version_id 
-    ON generation.database_versions(parent_version_id);
+    ON refdata.database_versions(parent_version_id);
 ```
 
 ### Запросы
@@ -198,8 +198,8 @@ SELECT
     v1.name,
     v2.version_number AS parent_version,
     v2.name AS parent_name
-FROM generation.database_versions v1
-LEFT JOIN generation.database_versions v2 
+FROM refdata.database_versions v1
+LEFT JOIN refdata.database_versions v2 
     ON v1.parent_version_id = v2.id
 ORDER BY v1.version_number;
 ```
@@ -209,8 +209,8 @@ ORDER BY v1.version_number;
 SELECT 
     child.version_number,
     child.name
-FROM generation.database_versions parent
-JOIN generation.database_versions child 
+FROM refdata.database_versions parent
+JOIN refdata.database_versions child 
     ON child.parent_version_id = parent.id
 WHERE parent.version_number = 6;
 ```
@@ -232,18 +232,18 @@ psql -U postgres -d arm_gs -f migrations/versions/add_parent_version_id_to_datab
 **SQL для ручного применения:**
 ```sql
 -- Добавить колонку
-ALTER TABLE generation.database_versions
+ALTER TABLE refdata.database_versions
 ADD COLUMN parent_version_id INTEGER;
 
 -- Создать индекс
 CREATE INDEX ix_generation_database_versions_parent_version_id
-ON generation.database_versions(parent_version_id);
+ON refdata.database_versions(parent_version_id);
 
 -- Создать внешний ключ
-ALTER TABLE generation.database_versions
+ALTER TABLE refdata.database_versions
 ADD CONSTRAINT fk_database_versions_parent_version_id
 FOREIGN KEY (parent_version_id)
-REFERENCES generation.database_versions(id)
+REFERENCES refdata.database_versions(id)
 ON DELETE SET NULL;
 ```
 
@@ -304,7 +304,7 @@ grep "Копирование данных" logs/app.log
 ### 3. Связанные данные
 
 - Копируются только таблицы из схемы `generation`
-- **Справочники (refdata) НЕ копируются** - они общие для всех версий
+- ** Справочники (refdata) НЕ копируются** - они общие для всех версий
 - **Связи (foreign keys) сохраняются** как есть
 
 ### 4. Производительность

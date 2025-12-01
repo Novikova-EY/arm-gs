@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый тип топлива{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип топлива</h2>
+
+      <form action="{{ url_for('refdata_bp.add_fuel') }}" method="POST">
+        {{ form.hidden_tag() }}
+
+        <!-- Скрытые поля возврата -->
+        <input type="hidden" name="page"                value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"            value="{{ per_page }}">
+        <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+        <input type="hidden" name="fuel_filter"         value="{{ fuel_filter }}">
+        <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Тип топлива</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="fuel_type" class="form-label">Вид топлива</label>
+            {{ form.fuel_type(class="form-select", id="fuel_type") }}
+            {% if form.fuel_type.errors %}
+                <div class="text-danger">{{ form.fuel_type.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            <a href="{{ url_for('refdata_bp.fuel_list',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                fuel_filter=fuel_filter,
+                                fuel_type_filter=fuel_type_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}

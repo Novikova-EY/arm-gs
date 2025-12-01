@@ -45,3 +45,4 @@ def test_export_technology_availability_ok(client):
 
 
 
+

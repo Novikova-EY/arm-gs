@@ -314,7 +314,7 @@ ls -lh backups/*/
 psql -U postgres -d arm_gs -c "SELECT pg_size_pretty(pg_database_size('arm_gs'));"
 
 # Проверка версий
-psql -U postgres -d arm_gs -c "SELECT * FROM generation.database_versions;"
+psql -U postgres -d arm_gs -c "SELECT * FROM refdata.database_versions;"
 ```
 
 ---

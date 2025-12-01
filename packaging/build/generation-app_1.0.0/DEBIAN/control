@@ -1,0 +1,15 @@
+Package: generation-app
+Version: 1.0.0
+Section: web
+Priority: optional
+Architecture: amd64
+Maintainer: DevOps Team <ops@example.com>
+Depends: python3 (>= 3.10), python3-venv, python3-pip, python3-distutils, python3-wheel, python3-dev, adduser, systemd, build-essential, libpq-dev, libffi-dev, postgresql (>= 13), redis-server (>= 5)
+Description: Flask-приложение управления данными генерации
+ Приложение Flask для справочников и генерации, разворачиваемое под Gunicorn.
+ Пакет создаёт системный сервис, виртуальное окружение и структуру каталогов
+ для запуска на серверах Astra Linux (Debian-based).
+
+
+
+

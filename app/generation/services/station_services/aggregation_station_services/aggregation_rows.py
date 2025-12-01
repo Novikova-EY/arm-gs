@@ -1,4 +1,4 @@
-from sqlalchemy import func, and_, literal
+from sqlalchemy import func, and_, literal, case
 from app.extensions import db
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
@@ -14,12 +14,24 @@ from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model impo
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.generation.services.station_services.aggregation_cache import cache_aggregation
+from app.generation.services.station_services.help_services import get_unknown_tes_type_id
+from app.common.services.database_version_filter import filter_by_db_version
 
 
 @cache_aggregation
 def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     if filters is None:
         filters = {}
+
+    unknown_tes_type_id = get_unknown_tes_type_id()
+    unknown_literal = literal(unknown_tes_type_id)
+    tes_type_base_expr = case(
+        (TesType.id == 0, unknown_literal),
+        else_=func.coalesce(TesType.id, unknown_literal),
+    )
+
+    def _labeled_tes_type_expr():
+        return tes_type_base_expr.label("tes_type_id")
     
     # Обычные агрегаты (машины)
     query = (
@@ -30,7 +42,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             RegionalDistrict.id.label("regional_district_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
-            TesType.id.label("tes_type_id"),
+            _labeled_tes_type_expr(),
             TesMachineType.id.label("tes_machine_type_id"),
             FuelType.id.label("fuel_type_id"),
             MachinePower.year_number.label("year"),
@@ -62,6 +74,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             MachinePower.year_number.between(start_year, end_year)
         )
     )
+
+    # Фильтрация по текущей версии БД для всех сущностей иерархии
+    query = filter_by_db_version(query, Station)
+    query = filter_by_db_version(query, RegionalDistrict)
+    query = filter_by_db_version(query, RegionalEnergySystem)
+    query = filter_by_db_version(query, UnionEnergySystem)
+    query = filter_by_db_version(query, EnergySystemType)
     
     # Применяем фильтры по машинам
     if filters.get("tes_type_filter"):
@@ -106,7 +125,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         RegionalDistrict.id,
         Station.id_energy_unit,
         Station.id_station_type,
-        TesType.id,
+        tes_type_base_expr,
         TesMachineType.id,
         FuelType.id,
         MachinePower.year_number
@@ -125,7 +144,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             RegionalDistrict.id.label("regional_district_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
-            TesType.id.label("tes_type_id"),
+            _labeled_tes_type_expr(),
             # Тип агрегата ТЭС для ПГУ берём из PGUMachine.id_tes_machine_type (как общий тип ПГУ)
             TesMachineType.id.label("tes_machine_type_id"),
             FuelType.id.label("fuel_type_id"),
@@ -165,6 +184,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         )
     )
 
+    # Фильтрация по текущей версии БД для ПГУ-агрегатов
+    pgu_query = filter_by_db_version(pgu_query, Station)
+    pgu_query = filter_by_db_version(pgu_query, RegionalDistrict)
+    pgu_query = filter_by_db_version(pgu_query, RegionalEnergySystem)
+    pgu_query = filter_by_db_version(pgu_query, UnionEnergySystem)
+    pgu_query = filter_by_db_version(pgu_query, EnergySystemType)
+
     # Те же фильтры, что и для обычных агрегатов
     if filters.get("tes_type_filter"):
         pgu_query = pgu_query.filter(TesType.id.in_(filters["tes_type_filter"]))
@@ -194,7 +220,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         RegionalDistrict.id,
         Station.id_energy_unit,
         Station.id_station_type,
-        TesType.id,
+        tes_type_base_expr,
         TesMachineType.id,
         FuelType.id,
         PGUMachinePower.year_number

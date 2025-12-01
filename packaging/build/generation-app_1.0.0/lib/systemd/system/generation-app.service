@@ -1,0 +1,25 @@
+[Unit]
+Description=Generation Flask application (Gunicorn)
+After=network.target network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=generation-app
+Group=generation-app
+WorkingDirectory=/opt/generation-app/app
+EnvironmentFile=/etc/generation-app/app.env
+ExecStart=/opt/generation-app/venv/bin/gunicorn --config /opt/generation-app/app/gunicorn_config.py run:app
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=180
+LimitNOFILE=65535
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
+

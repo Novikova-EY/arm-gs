@@ -1,0 +1,80 @@
+<!-- Одна строка с двумя кнопками управления -->
+<div class="col-12 mb-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+        <!-- Левая группа кнопок -->
+        <div class="d-flex gap-2">
+            <button id="filtersToggleBtn"
+                    class="btn {% if has_active_filters %}btn-warning{% else %}btn-outline-secondary{% endif %} text-dark{% if not has_active_filters %} collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#filtersCollapse"
+                    aria-expanded="{{ 'true' if has_active_filters else 'false' }}"
+                    aria-controls="filtersCollapse">
+                🔍 Фильтры / Поиск
+            </button>
+
+            <button id="importExportToggleBtn"
+                    class="btn btn-outline-secondary text-dark"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#importExportCollapse"
+                    aria-expanded="false"
+                    aria-controls="importExportCollapse">
+                📁 Импорт / Экспорт
+            </button>
+        </div>
+
+        <!-- Правая группа ВНУТРИ формы -->
+        <form method="get" action="{{ url_for('station_bp.station_list') }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+
+            <!-- Скрытые фильтры -->
+            {% for key, value in request.args.items() %}
+                {% if key not in ['show_p_ogr', 'show_p_rasp'] %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+
+            <!-- Чекбокс Рогр -->
+            <input type="checkbox" class="btn-check" id="toggleP_Ogr" name="show_p_ogr" value="1" {% if show_p_ogr %}checked{% endif %}>
+            <label for="toggleP_Ogr" class="btn {% if show_p_ogr %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                Рогр
+            </label>
+
+            <!-- Чекбокс Ррасп -->
+            <input type="checkbox" class="btn-check" id="toggleP_Rasp" name="show_p_rasp" value="1" {% if show_p_rasp %}checked{% endif %}>
+            <label for="toggleP_Rasp" class="btn {% if show_p_rasp %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                Ррасп
+            </label>
+
+            <!-- Подсветка -->
+            <button id="highlightChangesBtn" class="btn btn-outline-secondary text-dark" type="button" style="min-width: 250px;">
+                ✨ Подсветить изменения
+            </button>
+
+            <!-- Округление -->
+            <div class="d-flex align-items-center gap-1">
+                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<!-- Блок фильтров -->
+{% include 'generation/stations/station_filters_first_row.html' %}
+
+<!-- Блок импорта/экспорта -->
+{% include 'generation/stations/station_filters_second_row.html' %}
+
+<!-- Третья строка фильтров -->
+{% include 'generation/stations/station_filters_third_row.html' %}
+

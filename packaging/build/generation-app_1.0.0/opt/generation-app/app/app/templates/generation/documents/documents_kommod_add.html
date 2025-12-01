@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый нормативный документ{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить нормативный документ</h2>
+
+      <form action="{{ url_for('station_bp.add_document_kommod') }}" method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <!-- Скрытые поля возврата -->
+        <input type="hidden" name="page"                value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"            value="{{ per_page }}">
+        <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+        <input type="hidden" name="document_filter"     value="{{ document_filter }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Название документа</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="file" class="form-label">Файл документа (необязательно)</label>
+            {{ form.file(class="form-control", id="file", accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.7z") }}
+            {% if form.file.errors %}
+                <div class="text-danger">{{ form.file.errors|join(', ') }}</div>
+            {% endif %}
+            <small class="form-text text-muted">
+                Допустимые форматы: PDF, DOC, DOCX, XLS, XLSX, TXT, ZIP, RAR, 7Z. Максимальный размер: 50 МБ.
+            </small>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            <a href="{{ url_for('station_bp.documents_kommod',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                document_filter=document_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}
+

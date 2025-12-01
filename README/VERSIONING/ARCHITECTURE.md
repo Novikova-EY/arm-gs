@@ -62,7 +62,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                    База данных PostgreSQL                        │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  generation.database_versions                            │  │
+│  │  refdata.database_versions                            │  │
 │  │  • id (PK)                                              │  │
 │  │  • version_number (UNIQUE)                              │  │
 │  │  • name (UNIQUE)                                        │  │
@@ -372,7 +372,7 @@ except Exception as e:
 #### Таблица `database_versions`
 
 ```sql
-CREATE TABLE generation.database_versions (
+CREATE TABLE refdata.database_versions (
     id                  SERIAL PRIMARY KEY,
     version_number      INTEGER NOT NULL UNIQUE,
     name                VARCHAR(255) NOT NULL UNIQUE,
@@ -386,9 +386,9 @@ CREATE TABLE generation.database_versions (
 
 -- Индексы
 CREATE INDEX idx_database_versions_version_number 
-    ON generation.database_versions(version_number);
+    ON refdata.database_versions(version_number);
 CREATE INDEX idx_database_versions_is_active 
-    ON generation.database_versions(is_active);
+    ON refdata.database_versions(is_active);
 ```
 
 #### Поле в таблицах данных
@@ -402,7 +402,7 @@ ADD COLUMN database_version_id INTEGER;
 ALTER TABLE generation.stations
 ADD CONSTRAINT fk_stations_database_version
 FOREIGN KEY (database_version_id)
-REFERENCES generation.database_versions(id)
+REFERENCES refdata.database_versions(id)
 ON DELETE SET NULL;
 
 -- Индекс
@@ -414,7 +414,7 @@ ON generation.stations(database_version_id);
 
 #### Получение активной версии
 ```sql
-SELECT * FROM generation.database_versions
+SELECT * FROM refdata.database_versions
 WHERE is_active = TRUE
 LIMIT 1;
 ```
@@ -435,7 +435,7 @@ SELECT
     dv.version_number,
     dv.name,
     COUNT(s.id) as station_count
-FROM generation.database_versions dv
+FROM refdata.database_versions dv
 LEFT JOIN generation.stations s ON s.database_version_id = dv.id
 GROUP BY dv.id, dv.version_number, dv.name
 ORDER BY dv.version_number;
@@ -560,7 +560,7 @@ BACKUP_SCHEDULE = {
 ```sql
 -- Индекс на is_active для быстрого поиска активной версии
 CREATE INDEX idx_database_versions_is_active 
-    ON generation.database_versions(is_active);
+    ON refdata.database_versions(is_active);
 
 -- Индекс на database_version_id в каждой таблице
 CREATE INDEX idx_stations_database_version_id

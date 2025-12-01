@@ -106,11 +106,11 @@ backups/
 ### Просмотр версий
 ```sql
 -- Все версии
-SELECT * FROM generation.database_versions
+SELECT * FROM refdata.database_versions
 ORDER BY version_number;
 
 -- Активная версия
-SELECT * FROM generation.database_versions
+SELECT * FROM refdata.database_versions
 WHERE is_active = true;
 ```
 
@@ -128,10 +128,10 @@ ORDER BY database_version_id;
 ### Ручная активация
 ```sql
 -- Деактивировать все
-UPDATE generation.database_versions SET is_active = false;
+UPDATE refdata.database_versions SET is_active = false;
 
 -- Активировать версию 3
-UPDATE generation.database_versions
+UPDATE refdata.database_versions
 SET is_active = true WHERE version_number = 3;
 ```
 

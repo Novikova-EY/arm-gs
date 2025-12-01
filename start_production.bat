@@ -4,6 +4,9 @@ REM Скрипт запуска приложения в production-режиме 
 REM Активация виртуального окружения
 call venv\Scripts\activate.bat
 
+REM Установка production окружения
+set FLASK_ENV=production
+
 REM Установка переменных окружения для оптимальной работы
 if not defined WAITRESS_HOST set WAITRESS_HOST=0.0.0.0
 if not defined WAITRESS_PORT set WAITRESS_PORT=8000
@@ -13,6 +16,7 @@ if not defined WAITRESS_CONNECTION_LIMIT set WAITRESS_CONNECTION_LIMIT=1000
 REM Запуск Waitress
 echo ============================================================
 echo Starting application with Waitress (Windows)
+echo Environment: PRODUCTION
 echo ============================================================
 echo Host: %WAITRESS_HOST%
 echo Port: %WAITRESS_PORT%

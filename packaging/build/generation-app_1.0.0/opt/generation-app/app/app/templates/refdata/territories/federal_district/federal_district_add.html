@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый ФО{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить ФО</h2>
+
+      <!-- Форма ввода данных -->
+      <form action="{{ url_for('refdata_bp.add_federal_district') }}" method="POST">
+        {{ form.hidden_tag() }}
+        
+        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+        <input type="hidden" name="page"                    value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"                value="{{ per_page }}">
+        <input type="hidden" name="sort_by"                 value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                value="{{ sort_dir }}">
+        <input type="hidden" name="federal_district_filter"  value="{{ federal_district_filter }}">
+
+        <!-- Название -->
+        <div class="mb-3">
+            <label for="name" class="form-label">Наименование ФО</label>
+            {{ form.name(class="form-control", id="name") }}
+            
+            <label for="name" class="form-label">Полное наименование ФО</label>
+            {{ form.name_full(class="form-control", id="name_full") }}
+            
+            <label for="name" class="form-label">Сокращенное наименование ФО</label>
+            {{ form.name_abr(class="form-control", id="name_abr") }}
+            {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Кнопки сохранения записи и возвращения назад -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+
+            <a href="{{ url_for('refdata_bp.federal_district_list', 
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                federal_district_filter=federal_district_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>
+        </div>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

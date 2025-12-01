@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить новый субъект РФ{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+        <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить субъект РФ</h2>
+
+        <!-- Форма ввода данных -->
+        <form action="{{ url_for('refdata_bp.add_regional_district') }}" method="POST">
+            {{ form.hidden_tag() }}
+
+        <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
+        <input type="hidden" name="page"                        value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"                    value="{{ per_page }}">
+        <input type="hidden" name="sort_by"                     value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                    value="{{ sort_dir }}">
+        <input type="hidden" name="regional_district_filter"    value="{{ regional_district_filter }}">
+        <input type="hidden" name="federal_district_filter"     value="{{ federal_district_filter }}">
+
+        <!-- Наименование субъекта РФ -->
+        <div class="mb-3">
+            <label for="name" class="form-label">Наименование субъекта РФ</label>
+            {{ form.name(class="form-control", id="name") }}
+            
+            <!-- Ошибки валидации -->
+            {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Полное наименование субъекта РФ -->
+        <div class="mb-3">
+            <label for="name_full" class="form-label">Полное наименование субъекта РФ</label>
+            {{ form.name_full(class="form-control", id="name_full") }}
+            
+            <!-- Ошибки валидации -->
+            {% if form.name.errors %}
+                <div class="text-danger">
+                    {{ form.name.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Наименование ФО -->
+        <div class="mb-3">
+            <label for="federal_district" class="form-label">Наименование ФО</label>
+            {{ form.federal_district(class="form-select", id="federal_district") }}
+            
+            <!-- Ошибки валидации -->
+            {% if form.federal_district.errors %}
+                <div class="text-danger">
+                    {{ form.federal_district.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Кнопки сохранения записи и возвращения назад -->
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            
+            <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                regional_district_filter=regional_district_filter,
+                                federal_district_filter=federal_district_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        Отмена
+            </a>>
+        </div>
+    </form>
+  </div>
+{% endif %}
+{% endblock %}

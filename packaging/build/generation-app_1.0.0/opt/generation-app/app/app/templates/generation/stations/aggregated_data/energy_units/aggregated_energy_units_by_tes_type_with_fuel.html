@@ -1,0 +1,63 @@
+<!-- Разбивка по типам ТЭС и видам топлива -->
+{% for fuel_type_id, fuel_type_name in fuel_type_list.items() %}
+    {% set has_fuels = energy_units_by_tes_types_with_fuel_yearly_p_ust
+                        .get(eu_id, {})
+                        .get(tes_type_id, {})
+                        .get(fuel_type_id, {}) %}
+
+    {% if has_fuels %}
+        <!-- Первая строка: Руст -->
+         <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
+            <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 9cm;">
+                {{ fuel_type_name }}
+            </td>
+            <td class="fw-bold">Руст</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_ust_value = energy_units_by_tes_types_with_fuel_yearly_p_ust.get(eu_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_ust_value is none or p_ust_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ust_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+            <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+            </td>
+        </tr>
+
+        <!-- Вторая строка: p_ogr -->
+        <tr class="table-success text-center p-ogr-row">
+            <td class="fw-bold">Рогр</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_ogr_value = energy_units_by_tes_types_with_fuel_yearly_p_ogr.get(eu_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_ogr_value is none or p_ogr_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ogr_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+            <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+            </td>
+        </tr>
+
+        <!-- Третья строка: Ррасп -->
+        <tr class="table-success text-center p-rasp-row">
+            <td class="fw-bold">Ррасп</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_rasp_value = energy_units_by_tes_types_with_fuel_yearly_p_rasp.get(eu_id, {}).get(tes_type_id, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_rasp_value is none or p_rasp_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_rasp_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+            <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+            </td>
+        </tr>
+    {% endif %}
+{% endfor %}

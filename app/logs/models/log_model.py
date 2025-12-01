@@ -6,7 +6,7 @@ Log model (Аудит действий).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_LOGS, SCHEMA_GENERATION
+from config import SCHEMA_LOGS, SCHEMA_REFDATA
 
 class Log(db.Model):
     __tablename__ = 'logs'
@@ -31,7 +31,7 @@ class Log(db.Model):
     # Версия базы данных на момент создания записи
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_GENERATION}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

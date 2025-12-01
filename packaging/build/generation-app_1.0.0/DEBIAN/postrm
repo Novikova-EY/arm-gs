@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+APP_USER="generation-app"
+APP_HOME="/opt/generation-app"
+SERVICE="generation-app.service"
+
+case "$1" in
+    purge)
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl stop "$SERVICE" >/dev/null 2>&1 || true
+            systemctl disable "$SERVICE" >/dev/null 2>&1 || true
+        fi
+        if id -u "$APP_USER" >/dev/null 2>&1; then
+            deluser --system "$APP_USER" >/dev/null 2>&1 || true
+        fi
+        rm -rf "$APP_HOME"
+        rm -f /etc/systemd/system/"$SERVICE"
+        rm -f /etc/generation-app/app.env
+        ;;
+esac
+
+exit 0
+
+
+
+
+

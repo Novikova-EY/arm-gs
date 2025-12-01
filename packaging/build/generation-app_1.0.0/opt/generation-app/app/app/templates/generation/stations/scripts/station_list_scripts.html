@@ -1,0 +1,222 @@
+<script>
+    const isAllMode = "{{ request.args.get('per_page') }}" === "all";
+</script>
+
+<!-- Удалены inline-константы, данные теперь передаются через #filters-data в stations.html -->
+
+<!-- Скрипт подключения при раскрытии блока с фильтрами-->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const collapseEl = document.getElementById("filtersCollapse");
+    const buttonEl = document.getElementById("filtersToggleBtn");
+
+    if (!collapseEl || !buttonEl) return;
+
+    const hasActiveFilters = JSON.parse(`{{ has_active_filters | tojson }}`);
+
+    function highlightButton() {
+        buttonEl.classList.remove("btn-outline-secondary");
+        buttonEl.classList.add("btn-primary", "text-white");
+    }
+
+    function resetButton() {
+        buttonEl.classList.remove("btn-primary", "text-white");
+        buttonEl.classList.add("btn-outline-secondary");
+    }
+
+    function loadFiltersScript() {
+        if (window.stationFiltersInitialized) return;
+        const script = document.createElement("script");
+        script.src = "{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}";
+        script.onload = () => {
+            if (typeof initializeStationFilters === "function") {
+                initializeStationFilters();
+            }
+        };
+        document.head.appendChild(script);
+    }
+
+    const collapse = new bootstrap.Collapse(collapseEl, {
+        toggle: false  // <--- не раскрывать автоматически
+    });
+
+    // 🔹 Если есть активные фильтры — открываем и подсвечиваем
+    if (hasActiveFilters) {
+        collapse.show();
+        highlightButton();
+        loadFiltersScript();
+    }
+
+    // 🔹 При ручном открытии — подсветка и подгрузка
+    collapseEl.addEventListener("show.bs.collapse", () => {
+        highlightButton();
+        loadFiltersScript();
+    });
+
+    // 🔹 При закрытии — убираем подсветку
+    collapseEl.addEventListener("hide.bs.collapse", () => {
+        resetButton();
+    });
+});
+</script>
+
+<!-- Скрипт при раскрытии блока импорта/экспорта -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const collapse = document.getElementById("importExportCollapse");
+    const button = document.getElementById("importExportToggleBtn"); // Добавьте этот id к вашей кнопке
+    if (!collapse || !button) return;
+
+    function loadImportExportScript() {
+        if (window.importExportScriptLoaded) return;
+        window.importExportScriptLoaded = true;
+        const script = document.createElement("script");
+        script.src = "/static/js/generation/stations/station_second_row.js";
+        document.head.appendChild(script);
+    }
+
+    function highlightButton() {
+        button.classList.remove("btn-outline-secondary");
+        button.classList.add("btn-primary", "text-white");
+    }
+
+    function resetButton() {
+        button.classList.remove("btn-primary", "text-white");
+        button.classList.add("btn-outline-secondary");
+    }
+
+    if (collapse.classList.contains("show")) {
+        bootstrap.Collapse.getOrCreateInstance(collapse);
+        highlightButton(); // ← Подсвечиваем при открытом по умолчанию
+        loadImportExportScript();
+    }
+
+    collapse.addEventListener("show.bs.collapse", function () {
+        highlightButton(); // ← Подсвечиваем при открытии
+        loadImportExportScript();
+    });
+
+    collapse.addEventListener("hide.bs.collapse", function () {
+        resetButton(); // ← Сбрасываем подсветку при закрытии
+    });
+});
+</script>
+
+<!-- Скрипт подсвечивания изменяющихся значений -->
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+
+<!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
+<script>
+    document.getElementById('rounding_digits').addEventListener('change', function() {
+        const selectedRounding = this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', selectedRounding);
+        url.searchParams.set('page', 1); // Чтобы всегда начинать с первой страницы при новом округлении
+        window.location.href = url.toString();
+    });
+</script>
+
+<!-- Перемещено в station_page_logic.js: логика p_ogr/p_rasp и rowspan -->
+
+<!-- Скрипт для поиска по фильтрам в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Найдем все чекбоксы в выпадающих фильтрах
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', updateFilters);
+        });
+
+        function updateFilters() {
+            let form = document.createElement("form");
+            form.method = "GET";
+            form.action = "{{ url_for('station_bp.station_list') }}";
+
+            // Список параметров, которые НЕ нужно добавлять
+            let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];
+
+            // Jinja2 передает параметры в JSON-объекте
+            let params = JSON.parse('{{ request.args.to_dict() | tojson | safe }}');
+
+            // Добавляем другие параметры запроса (кроме исключенных)
+            for (let key in params) {
+                if (!excludeKeys.includes(key)) {
+                    let input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = key;
+                    input.value = params[key];
+                    form.appendChild(input);
+                }
+            }
+
+            // Добавление выбранных значений в форму
+            document.querySelectorAll('.dropdown-menu input[type="checkbox"]:checked').forEach(checkbox => {
+                let input = document.createElement("input");
+                input.type = "hidden";
+                input.name = checkbox.name;
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+</script>
+
+<!-- Скрипт для сброса предыдущих значений при поиске по фильтрам в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', function() {
+                let params = new URLSearchParams(window.location.search);
+                let filterName = this.name;
+
+                // 🔹 Удаляем ВСЕ старые значения этого фильтра
+                params.delete(filterName);
+
+                // 🔹 Добавляем в URL только отмеченные чекбоксы
+                document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                    params.append(filterName, cb.value);
+                });
+
+                // 🔹 Перенаправляем на новый URL (без дубликатов)
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        });
+    });
+</script>
+
+<!-- Перемещено в station_page_logic.js: синхронизация высоты .fuel-cell -->
+
+<!-- Скрипт для переключения между режимами "все станции" и "постранично" -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const checkbox = document.getElementById("per_page_switch");
+    const selectBlock = document.getElementById("per_page_select_block"); // оборачивающий div или сам select
+
+    function updateVisibility() {
+        const params = new URLSearchParams(window.location.search);
+        if (checkbox.checked) {
+            params.set("per_page", "all");
+            if (selectBlock) selectBlock.classList.add("d-none");
+        } else {
+            params.set("per_page", "10"); // или значение по умолчанию
+            if (selectBlock) selectBlock.classList.remove("d-none");
+        }
+        window.location.href = window.location.pathname + "?" + params.toString();
+    }
+
+    if (checkbox) {
+        checkbox.addEventListener("change", updateVisibility);
+
+        // При загрузке страницы сразу скрываем/показываем, если нужно
+        if (selectBlock) {
+            if (checkbox.checked) {
+                selectBlock.classList.add("d-none");
+            } else {
+                selectBlock.classList.remove("d-none");
+            }
+        }
+    }
+});
+</script>

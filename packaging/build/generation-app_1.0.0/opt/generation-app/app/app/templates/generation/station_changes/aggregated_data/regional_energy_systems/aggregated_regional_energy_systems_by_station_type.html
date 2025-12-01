@@ -1,0 +1,67 @@
+<!-- Итоговые значения по типам электростанций -->
+{% for station_type_id, st_name in station_type_list.items() %}
+    {% set has_st = regional_energy_systems_by_station_types_yearly_p_ust
+                    .get(current_res_id, {})
+                    .get(station_type_id) %}
+
+    {% if has_st %}
+        {% if st_name not in ['ВЭС', 'СЭС'] %}
+            <!-- Первая строка: p_ust -->
+            <tr class="table-info text-center total-power-row" style="vertical-align: middle;">
+                <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+                    {{ st_name }}
+                </td>
+                <td class="fw-bold">Руст</td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column" style="font-weight: bold;">
+                        {{ regional_energy_systems_by_station_types_yearly_p_ust
+                            .get(current_res_id, {})
+                            .get(station_type_id, {})
+                            .get(y, '—') | format_decimal or '—' }}
+                    </td>
+                {% endfor %}
+                <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                </td>
+            </tr>     
+        {% endif %}
+
+        {# Дополнительные строки: разбивка по мероприятиям #}
+        {% set by_events = regional_energy_systems_by_station_types_with_events_yearly_p_ust
+                            .get(current_res_id, {})
+                            .get(station_type_id, {}) %}
+        {% if by_events %}
+            {% for event_code, event_label in event_types %}
+                {% set yearly = by_events.get(event_code, {}) %}
+                {% if yearly %}
+                    <tr class="table-info text-center total-power-row" style="vertical-align: middle;">
+                        <td class="total-row-cell" style="font-weight: bold; padding-left: 2cm;">
+                            {{ event_label }}
+                        </td>
+                        {% for y in range(start_year, end_year + 1) %}
+                            <td class="power-column">
+                                {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                            </td>
+                        {% endfor %}
+                        <td></td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+            
+        {% if st_name in ['ТЭС'] %}
+                
+            {#– {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_station_type_with_fuel.html' %} -#}
+            
+            {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_tes_type.html' %}
+        
+        {% endif %}
+                
+        {% if st_name in ['ВЭС', 'СЭС'] %}
+                        
+        {% endif %}
+        
+    {% endif %}
+       
+{% endfor %}
+        
+{% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_via.html' %}

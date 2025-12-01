@@ -392,7 +392,7 @@ python copy_version_data.py
 - ✅ Документы (documents)
 
 **Не копируются:**
-- ❌ Справочники (refdata) - они общие для всех версий
+- ❌  Справочники (refdata) - они общие для всех версий
 - ❌ История изменений (логи)
 - ❌ Файлы и загрузки
 
@@ -1157,11 +1157,11 @@ LIMIT 10;
 
 ```sql
 -- Все версии
-SELECT * FROM generation.database_versions
+SELECT * FROM refdata.database_versions
 ORDER BY version_number;
 
 -- Активная версия
-SELECT * FROM generation.database_versions
+SELECT * FROM refdata.database_versions
 WHERE is_active = true;
 ```
 
@@ -1200,11 +1200,11 @@ ORDER BY table_name, database_version_id;
 
 ```sql
 -- Деактивировать все версии
-UPDATE generation.database_versions
+UPDATE refdata.database_versions
 SET is_active = false;
 
 -- Активировать версию 3
-UPDATE generation.database_versions
+UPDATE refdata.database_versions
 SET is_active = true
 WHERE version_number = 3;
 ```
