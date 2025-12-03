@@ -5,9 +5,12 @@ TechnologyAvailability model (Доступность технологии).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
-class TechnologyAvailability(db.Model):
-    __tablename__ = 'technology_availabilities'
+
+class TechnologyAvailability(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_technology_availabilities'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -20,7 +23,7 @@ class TechnologyAvailability(db.Model):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

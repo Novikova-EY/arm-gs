@@ -6,9 +6,12 @@ from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
-class RegionalDistrict(db.Model):
-    __tablename__ = 'regional_districts'
+
+class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_regional_districts'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     # Идентификатор субъекта РФ
@@ -27,7 +30,7 @@ class RegionalDistrict(db.Model):
     # FK -> Федеральный округ
     id_federal_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.federal_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_federal_districts.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )
@@ -60,7 +63,7 @@ class RegionalDistrict(db.Model):
     # FK -> Энергозона (EnergyZone)
     id_energy_zone = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.energy_zones.id", ondelete="SET NULL", onupdate="CASCADE"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_energy_zones.id", ondelete="SET NULL", onupdate="CASCADE"),
         nullable=True,
         index=True,
     )
@@ -73,7 +76,7 @@ class RegionalDistrict(db.Model):
     # FK -> Синхронная зона (SynchronousArea)
     id_synchronous_area = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),
         nullable=True,
         index=True
     )
@@ -90,7 +93,7 @@ class RegionalDistrict(db.Model):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

@@ -31,7 +31,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> ConditionType
     id_condition_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.condition_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_condition_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -40,7 +40,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> GenCompany
     id_gen_company = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gen_companies.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_companies.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -58,7 +58,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> EnergyArea
     id_energy_area = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.energy_areas.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_energy_areas.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -73,7 +73,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> MachineType
     id_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -82,7 +82,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.tes_machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_tes_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -91,7 +91,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> TechnologyAvailability  
     id_technology_availability = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.technology_availabilities.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_availabilities.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -100,7 +100,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> TechnologyType 
     id_technology_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.technology_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -109,7 +109,7 @@ class Machine(db.Model, VersionedModelMixin):
     # FK -> EquipmentGroup
     id_equipment_group = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.equipment_groups.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_equipment_groups.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -163,7 +163,7 @@ class Machine(db.Model, VersionedModelMixin):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

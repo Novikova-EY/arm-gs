@@ -17,7 +17,20 @@ def log_to_db(username, action, details=None):
         db.session.add(log_entry)
         db.session.commit()
     except Exception as e:
+        # ВАЖНО:
+        # Если при коммите лога возникает ошибка (например, нет прав на последовательность logs_id_seq),
+        # сессия SQLAlchemy переходит в состояние "failed transaction".
+        # Без отката любая последующая операция с этой сессией приведёт к PendingRollbackError
+        # (что мы и наблюдаем в логах приложения).
+        #
+        # Поэтому при любой ошибке записи лога обязательно делаем rollback,
+        # чтобы не ломать основной рабочий поток приложения.
         print(f"Ошибка записи лога: {e}")
+        try:
+            db.session.rollback()
+        except Exception:
+            # если даже rollback не удался, просто игнорируем — это только подсистема логирования
+            pass
 
 # Создание Blueprint для маршрутов авторизации
 
@@ -93,7 +106,13 @@ def register():
         ).scalar_one_or_none()
 
         if guest_role is None:
-            guest_role = Role(name='Пользователь-гость')
+            # В модели Role поле name_full является обязательным и уникальным,
+            # поэтому при создании роли обязательно заполняем и его,
+            # иначе возможна IntegrityError (NOT NULL / UNIQUE constraint).
+            guest_role = Role(
+                name='Пользователь-гость',
+                name_full='Пользователь-гость',
+            )
             db.session.add(guest_role)
             db.session.flush()  # получим guest_role.id
 

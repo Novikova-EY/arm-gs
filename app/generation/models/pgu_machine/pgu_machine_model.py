@@ -24,7 +24,7 @@ class PGUMachine(db.Model, VersionedModelMixin):
     # FK -> ConditionType
     id_condition_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.condition_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_condition_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -45,7 +45,7 @@ class PGUMachine(db.Model, VersionedModelMixin):
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.tes_machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_tes_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -54,7 +54,7 @@ class PGUMachine(db.Model, VersionedModelMixin):
     # FK -> PGUTesMachineType (ГТ/ПТ)
     id_pgu_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.pgu_tes_machine_types.id'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_pgu_tes_machine_types.id'),
         nullable=True,
         index=True,
     )
@@ -91,7 +91,7 @@ class PGUMachine(db.Model, VersionedModelMixin):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

@@ -61,6 +61,12 @@ from app.common.services.get_services.stations.tes_machine_type_get_services imp
 from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import (
     get_pgu_tes_machine_type_list_full,
 )
+from app.common.services.database_version_filter import (
+    get_current_db_version_id,
+    filter_by_explicit_db_version,
+)
+from app.generation.models.station.station_power_model import StationPower
+from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_energy_units import (
     aggregate_power_by_energy_units,
     aggregate_energy_units_by_station_types,
@@ -1276,10 +1282,28 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
     query = get_stations_all(**filters)
     station_list = query.all()
 
+    # Всегда работаем в контексте активной версии БД
+    current_version_id = get_current_db_version_id()
+
     from collections import defaultdict
 
 
     for station in station_list:
+        # Фильтрация агрегатов по активной версии БД
+        if hasattr(station, "machines"):
+            # Сначала пробуем взять агрегаты именно для активной версии
+            version_machines = [
+                m for m in station.machines
+                if getattr(m, "database_version_id", None) == current_version_id
+            ]
+            # Если для активной версии агрегатов нет, аккуратно fallback-им к базовой (NULL)
+            if not version_machines and current_version_id is not None:
+                version_machines = [
+                    m for m in station.machines
+                    if getattr(m, "database_version_id", None) is None
+                ]
+            station.machines = version_machines
+
         # Фильтрация агрегатов по дате вывода
         station.machines = [
             m for m in station.machines
@@ -1397,14 +1421,24 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 
                 processed_stations += 1
                 
+                # Мощности станции с учетом активной версии БД
+                power_query = (
+                    StationPower.query
+                    .filter_by(id_station=station.id)
+                    .filter(StationPower.year_number.in_(all_years))
+                )
+                power_query = filter_by_explicit_db_version(
+                    power_query,
+                    StationPower,
+                    current_version_id,
+                )
                 power_data = {
                     sp.year_number: {
                         "p_ust": sp.p_ust,
                         "p_ogr": sp.p_ogr,
-                        "p_rasp": sp.p_rasp
+                        "p_rasp": sp.p_rasp,
                     }
-                    for sp in station.station_powers
-                    if sp.year_number in all_years
+                    for sp in power_query.all()
                 }
 
                 # Добавляем строку с названием электростанции
@@ -1439,10 +1473,22 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
                 # Добавляем строки с установленной мощностью по машинам электростанции
                 for machine in station.machines:
-                    machine_power_data = {}
-                    for mp in machine.machine_powers:
-                        if mp.year and mp.p_ust is not None:
-                            machine_power_data[mp.year.number] = mp.p_ust
+                    # Мощности агрегатов с учетом активной версии БД
+                    mp_query = (
+                        MachinePower.query
+                        .filter_by(id_machine=machine.id)
+                        .filter(MachinePower.year_number.in_(all_years))
+                    )
+                    mp_query = filter_by_explicit_db_version(
+                        mp_query,
+                        MachinePower,
+                        current_version_id,
+                    )
+                    machine_power_data = {
+                        mp.year_number: mp.p_ust
+                        for mp in mp_query.all()
+                        if mp.p_ust is not None
+                    }
 
                     note_parts = []
                     if machine.date_decompressing_expected:

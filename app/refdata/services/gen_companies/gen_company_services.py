@@ -262,7 +262,7 @@ def add_gen_company_service(data, user):
 
     except IntegrityError:
         db.session.rollback()
-        quick_fix_seq(SCHEMA_REFDATA, "gen_companies")
+        quick_fix_seq(SCHEMA_REFDATA, "gs_companies")
         _do_insert()
         _commit_with_retry()
         return None

@@ -86,20 +86,25 @@ sudo systemctl status redis-server
 
 ---
 
-## 5. Сборка deb-пакета
+## 2. Сборка `.deb`
+1. Собираем Docker-образ
 
-Выполняется в окружении, где лежит исходный код (можно в отдельном CI или на рабочем месте разработчика под Linux).
+```bash
+cd C:\fproject
+docker build -t arm-gs-deb .
+```
+Точка в конце — это «контекст сборки» = текущий каталог (C:\fproject).
 
-1. Установите зависимости (см. раздел 2).
-2. Запустите скрипт сборки:
-   ```bash
-   cd /path/to/fproject
-   python3 scripts/build_deb.py --version 1.0.0
-   ```
-   - Если `--version` не указан, берётся `git describe` или текущая дата.
-   - Скрипт создаст staging-директорию в `packaging/build` и финальный пакет `packaging/generation-app_<version>_amd64.deb`.
+2. Запускаем сборку .deb из Docker
 
----
+```bash
+docker run --rm -v "C:\fproject:/app" arm-gs-deb --version 1.0.1
+```
+
+-v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
+Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
+arm-gs-deb — имя образа, который ты собрала.
+--version 1.0.1 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
@@ -132,71 +137,57 @@ sudo dpkg -i generation-app_1.0.0_amd64.deb || sudo apt -f install
 
 ---
 
-## 8. Конфигурация окружения
-
-После установки появится файл `/etc/generation-app/app.env` (создаётся из шаблона, если его не было). Отредактируйте его под своё окружение:
-
-```bash
-sudo nano /etc/generation-app/app.env
-```
-
-Минимальный набор параметров:
-
-```ini
-SECRET_KEY=<random>
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_NAME=gs_gen
-DB_USER=generation
-DB_PASS=ваш_пароль
-SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
-REDIS_URL=redis://127.0.0.1:6379/0
-```
-
-**Важно:** Пароль базы данных (`DB_PASS` и `DB_PASSWORD`) можно изменить в любое время после установки пакета. Просто отредактируйте файл `/etc/generation-app/app.env` и перезапустите сервис. Изменения в конфигурации не требуют пересборки deb-пакета.
-
-После правок обязательно перезапустите сервис:
-
-```bash
-sudo systemctl restart generation-app
-```
-
----
-
-## 9. Миграции БД и проверка
-
-1. Выполните миграции (если используются Alembic/Flask-Migrate):
-   ```bash
-   sudo -u generation-app -s
-   
-   cd /opt/generation-app/app
-   
-   DB_USER=generation \
-   DB_PASS='R7fP9wQk' \
-   DB_NAME='gs_gen' \
-   DB_HOST=localhost \
-   DB_PORT=5432 \
-   FLASK_APP=run.py \
-     /opt/generation-app/venv/bin/flask db upgrade
-   ```
-   Убедитесь, что переменные окружения из `/etc/generation-app/app.env` доступны (systemd unit подхватывает их автоматически, но для ручной команды можно экспортировать через `set -a; source /etc/generation-app/app.env; ...`).
-
-2. Проверьте сервис:
-   ```bash
-   sudo systemctl status generation-app
-   sudo journalctl -u generation-app -f
-   curl -I http://127.0.0.1:8000/health
-   ```
-
----
-
 ## 10. Обновление и откат
 
-- Для обновления соберите новый пакет с версией `1.0.1`, скопируйте его на сервер и выполните `sudo dpkg -i generation-app_1.0.1_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.1`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.0_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 
 ---
+
+✅ 1. Проверяем, есть ли сервис
+
+Выполни:
+```bash
+systemctl status generation-app
+```
+
+Если он есть, ты увидишь:
+активен или не активен
+ошибки, если они есть
+логи последних запусков
+
+✅ 2. Запуск вручную
+```bash
+sudo systemctl start generation-app
+```
+
+⚙️ 3. Включить автозапуск (один раз)
+```bash
+sudo systemctl enable generation-app
+```
+
+📜 4. Смотреть логи приложения
+
+Самое важное — потому что если что-то не так, нам надо увидеть ошибки:
+
+```bash
+journalctl -u generation-app -f
+```
+
+(будет показывать логи в реальном времени)
+
+🌐 5. Проверяем, слушает ли оно порт
+
+Например, если у тебя Flask через Gunicorn работает на 8000:
+
+```bash
+sudo ss -tulpn | grep 8000
+```
+или если через nginx на порту 80:
+```bash
+sudo ss -tulpn | grep :80
+```
 
 ## 11. Частые проблемы
 
@@ -205,5 +196,3 @@ sudo systemctl restart generation-app
 - **Приложение не стартует** — смотрите логи `journalctl -u generation-app -b` и убедитесь, что `app.env` содержит корректный DSN и секреты.
 - **Ошибка подключения к БД** — убедитесь, что PostgreSQL запущен (`sudo systemctl status postgresql`), база данных создана, и параметры в `/etc/generation-app/app.env` соответствуют реальным.
 - **Ошибка подключения к Redis** — проверьте, что Redis запущен (`sudo systemctl status redis-server`) и слушает на `127.0.0.1:6379`.
-
-

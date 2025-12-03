@@ -665,7 +665,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         ('refdata', 'fuel_categories'),
         ('refdata', 'fuel_types'),
         ('refdata', 'fuels'),
-        ('refdata', 'gen_companies'),
+        ('refdata', 'gs_companies'),
         ('generation', 'station_groups'),
         ('generation', 'documents_kommod')
     ]
@@ -959,7 +959,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
                     {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
                     {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
-                    {'fk': 'id_gen_company', 'ref_table': 'refdata.gen_companies'},
+                    {'fk': 'id_gen_company', 'ref_table': 'refdata.gs_companies'},
                     {'fk': 'id_energy_area', 'ref_table': 'refdata.energy_areas'},
                     {'fk': 'id_technology_availability', 'ref_table': 'refdata.technology_availabilities'},
                     {'fk': 'id_technology_type', 'ref_table': 'refdata.technology_types'},
@@ -1345,7 +1345,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         'pgu_tes_machine_types', 'condition_types', 'technology_types',
         'technology_availabilities', 'equipment_groups', 'energy_system_types',
         'union_energy_systems', 'synchronous_areas', 'energy_zones', 
-        'federal_districts', 'gen_companies', 'fuel_categories', 'fuel_types', 'fuels'
+        'federal_districts', 'gs_companies', 'fuel_categories', 'fuel_types', 'fuels'
     ]
     
     # Копируем независимые таблицы refdata
@@ -1508,7 +1508,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
                 {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
                 {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
-                {'fk': 'id_gen_company', 'ref_table': 'refdata.gen_companies'},
+                {'fk': 'id_gen_company', 'ref_table': 'refdata.gs_companies'},
                 {'fk': 'id_energy_area', 'ref_table': 'refdata.energy_areas'},
                 {'fk': 'id_technology_availability', 'ref_table': 'refdata.technology_availabilities'},
                 {'fk': 'id_technology_type', 'ref_table': 'refdata.technology_types'},
@@ -1859,7 +1859,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         'federal_districts',
         'regional_districts',
         # Генерирующие компании
-        'gen_companies',
+        'gs_companies',
         # Топливо
         'fuel_categories',
         'fuel_types',
@@ -3109,7 +3109,7 @@ def _delete_version_data_staged(version_id, user):
         ('refdata', 'fuel_categories'),
         ('refdata', 'fuel_types'),
         ('refdata', 'fuels'),
-        ('refdata', 'gen_companies'),
+        ('refdata', 'gs_companies'),
         ('refdata', 'year_features'),  # Годы features теперь версионируются
         ('refdata', 'years'),  # Годы теперь версионируются
         ('generation', 'station_groups'),
@@ -3369,7 +3369,7 @@ def _delete_version_data(version_id, user):
         'federal_districts',
         'regional_districts',
         # Генерирующие компании
-        'gen_companies',
+        'gs_companies',
         # Топливо
         'fuel_categories',
         'fuel_types',

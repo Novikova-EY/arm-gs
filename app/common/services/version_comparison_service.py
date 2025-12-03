@@ -40,7 +40,7 @@ def get_version_statistics(version_id):
         (SCHEMA_GENERATION, 'boilers'),
         (SCHEMA_GENERATION, 'documents'),
         # Refdata tables
-        (SCHEMA_REFDATA, 'gen_companies'),
+        (SCHEMA_REFDATA, 'gs_companies'),
         (SCHEMA_REFDATA, 'fuels'),
         (SCHEMA_REFDATA, 'fuel_types'),
         (SCHEMA_REFDATA, 'regional_districts'),

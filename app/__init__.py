@@ -208,27 +208,37 @@ def create_app():
         db.configure_mappers()
         
         # Прогрев кэша станций и запуск периодического обновления (в фоновом режиме)
-        try:
-            from app.generation.services.station_services.aggregation_cache import (
-                warmup_station_cache, 
-                start_background_cache_refresh
-            )
-            import threading
-            
-            # Запускаем первоначальный прогрев кэша с app context
-            def warmup_with_context():
-                with app.app_context():
-                    warmup_station_cache()
-            
-            warmup_thread = threading.Thread(target=warmup_with_context, daemon=True)
-            warmup_thread.start()
-            app.logger.info("[CACHE WARMUP] Запущен прогрев кэша в фоновом режиме")
-            
-            # Запускаем периодическое обновление кэша каждые 25 минут (за 5 минут до истечения TTL)
-            start_background_cache_refresh(app, interval_minutes=25)
-            app.logger.info("[CACHE REFRESH] Запущено периодическое обновление кэша")
-        except Exception as e:
-            app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
+        # Пропускаем прогрев кэша при запуске миграций
+        import sys
+        skip_cache_warmup = (
+            'db' in sys.argv or 
+            'migrate' in sys.argv or
+            'alembic' in sys.argv or
+            os.getenv('SKIP_CACHE_WARMUP', 'false').lower() == 'true'
+        )
+        
+        if not skip_cache_warmup:
+            try:
+                from app.generation.services.station_services.aggregation_cache import (
+                    warmup_station_cache, 
+                    start_background_cache_refresh
+                )
+                import threading
+                
+                # Запускаем первоначальный прогрев кэша с app context
+                def warmup_with_context():
+                    with app.app_context():
+                        warmup_station_cache()
+                
+                warmup_thread = threading.Thread(target=warmup_with_context, daemon=True)
+                warmup_thread.start()
+                app.logger.info("[CACHE WARMUP] Запущен прогрев кэша в фоновом режиме")
+                
+                # Запускаем периодическое обновление кэша каждые 25 минут (за 5 минут до истечения TTL)
+                start_background_cache_refresh(app, interval_minutes=25)
+                app.logger.info("[CACHE REFRESH] Запущено периодическое обновление кэша")
+            except Exception as e:
+                app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
 
     # Фильтр форматирования чисел
     from app.common.services.help_services import format_decimal_for_display

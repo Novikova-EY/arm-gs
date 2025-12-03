@@ -7,7 +7,7 @@ from app.extensions import db
 from config import SCHEMA_REFDATA
 
 class DatabaseVersion(db.Model):
-    __tablename__ = 'database_versions'
+    __tablename__ = 'gs_database_versions'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -19,7 +19,7 @@ class DatabaseVersion(db.Model):
     # Родительская версия (на основе какой версии создана)
     parent_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

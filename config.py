@@ -12,9 +12,11 @@ DB_DRIVER = os.getenv("DB_DRIVER", "psycopg2")
 SECRET_KEY = os.getenv('SECRET_KEY', 'cVX84FQ5P0!mXnUwZ@sRek#bLgdpN9Yz')
 SCHEMA_AUTH = os.getenv("SCHEMA_AUTH", "auth")
 SCHEMA_LOGS = os.getenv("SCHEMA_LOGS", "logs")
-SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "refdata")
+# После миграции 7e4b6c9f1a23 схема refdata была переименована в gs_sys.
+# Поэтому значение по умолчанию изменено на gs_sys.
+SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
 SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
-DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", "auth,logs,refdata,generation")
+DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", "auth,logs,gs_sys,generation")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
@@ -28,9 +30,13 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
     SCHEMA_AUTH = os.getenv("SCHEMA_AUTH", "auth")
     SCHEMA_LOGS = os.getenv("SCHEMA_LOGS", "logs")
-    SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "refdata")
+    # Значение по умолчанию соответствует новой схеме gs_sys
+    SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
     SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
-    DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},public")
+    DB_SEARCH_PATH = os.getenv(
+        "DB_SEARCH_PATH",
+        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},public",
+    )
     
     # Оптимизированные настройки пула соединений для параллельной работы
     SQLALCHEMY_ENGINE_OPTIONS = {

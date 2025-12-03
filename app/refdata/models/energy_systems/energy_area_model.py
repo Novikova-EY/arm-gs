@@ -5,10 +5,12 @@ EnergyArea model (Энергорайон).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
 
-class EnergyArea(db.Model):
-    __tablename__ = 'energy_areas'
+class EnergyArea(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_energy_areas'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -17,7 +19,7 @@ class EnergyArea(db.Model):
     # FK -> RegionalDistrict (обязательный)
     id_regional_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.regional_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_districts.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -29,7 +31,7 @@ class EnergyArea(db.Model):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

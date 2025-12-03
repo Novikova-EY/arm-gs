@@ -5,9 +5,12 @@ Year model (Год).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
-class Year(db.Model):
-    __tablename__ = 'years'
+
+class Year(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_years'
     __table_args__ = {
         "schema": SCHEMA_REFDATA,
         "extend_existing": True
@@ -19,7 +22,7 @@ class Year(db.Model):
     # FK -> YearFeature
     id_year_feature = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.year_features.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_year_features.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )
@@ -28,7 +31,7 @@ class Year(db.Model):
     # FK -> DatabaseVersion
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

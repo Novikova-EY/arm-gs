@@ -5,9 +5,12 @@ EnergyUnit model (Энергоузел).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
-class EnergyUnit(db.Model):
-    __tablename__ = 'energy_units'
+
+class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_energy_units'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -16,7 +19,7 @@ class EnergyUnit(db.Model):
     # FK -> RegionalDistrict
     id_regional_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.regional_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_districts.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -28,7 +31,7 @@ class EnergyUnit(db.Model):
     # FK -> RegionalEnergySystem
     id_regional_energy_system = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.regional_energy_systems.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_energy_systems.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -43,7 +46,7 @@ class EnergyUnit(db.Model):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

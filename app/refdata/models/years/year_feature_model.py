@@ -5,9 +5,12 @@ YearFeature model (Признак года).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
+from app.common.models.audit_mixin import AuditMixin
+from app.common.models.versioned_model import VersionedModelMixin
 
-class YearFeature(db.Model):
-    __tablename__ = 'year_features'
+
+class YearFeature(db.Model, AuditMixin, VersionedModelMixin):
+    __tablename__ = 'gs_year_features'
     __table_args__ = {
         "schema": SCHEMA_REFDATA,
         "extend_existing": True
@@ -22,7 +25,7 @@ class YearFeature(db.Model):
     # Поле для связи с версией БД
     database_version_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

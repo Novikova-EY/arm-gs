@@ -8,12 +8,12 @@ from app.extensions import db
 from config import SCHEMA_REFDATA
 
 regional_district_regional_energy_system = db.Table(
-    'regional_district_regional_energy_system',
+    'gs_regional_district_regional_energy_system',
     db.Column('regional_district_id', db.Integer,
-              db.ForeignKey(f'{SCHEMA_REFDATA}.regional_districts.id', ondelete='RESTRICT'),
+              db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_districts.id', ondelete='RESTRICT'),
               primary_key=True, index=True),
     db.Column('regional_energy_system_id', db.Integer,
-              db.ForeignKey(f'{SCHEMA_REFDATA}.regional_energy_systems.id', ondelete='RESTRICT'),
+              db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_energy_systems.id', ondelete='RESTRICT'),
               primary_key=True, index=True),
     schema=SCHEMA_REFDATA
 )

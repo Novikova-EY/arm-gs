@@ -15,6 +15,7 @@ from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesTy
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.generation.services.station_services.aggregation_cache import cache_aggregation
 from app.generation.services.station_services.help_services import get_unknown_tes_type_id
+from app.common.services.database_version_filter import filter_by_db_version
 
 
 @cache_aggregation
@@ -73,6 +74,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             MachinePower.year_number.between(start_year, end_year)
         )
     )
+
+    # Фильтрация по текущей версии БД для всех сущностей иерархии
+    query = filter_by_db_version(query, Station)
+    query = filter_by_db_version(query, RegionalDistrict)
+    query = filter_by_db_version(query, RegionalEnergySystem)
+    query = filter_by_db_version(query, UnionEnergySystem)
+    query = filter_by_db_version(query, EnergySystemType)
     
     # Применяем фильтры по машинам
     if filters.get("tes_type_filter"):
@@ -175,6 +183,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             PGUMachinePower.year_number.between(start_year, end_year)
         )
     )
+
+    # Фильтрация по текущей версии БД для ПГУ-агрегатов
+    pgu_query = filter_by_db_version(pgu_query, Station)
+    pgu_query = filter_by_db_version(pgu_query, RegionalDistrict)
+    pgu_query = filter_by_db_version(pgu_query, RegionalEnergySystem)
+    pgu_query = filter_by_db_version(pgu_query, UnionEnergySystem)
+    pgu_query = filter_by_db_version(pgu_query, EnergySystemType)
 
     # Те же фильтры, что и для обычных агрегатов
     if filters.get("tes_type_filter"):
