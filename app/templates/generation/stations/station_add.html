@@ -37,6 +37,9 @@
                                 {{ form.id_regional_district(class="form-select d-inline-block w-auto fs-5") }}
                             </span>
                         </p>
+                        <p class="fs-5"><strong>Тип электростанции:</strong> 
+                            {{ form.id_station_type(class="form-select d-inline-block w-auto fs-5") }}
+                        </p>
                         <!-- Кнопка "Сохранить" -->
                         <button type="submit" class="btn btn-outline-primary">Создать станцию</button>
 
@@ -46,6 +49,62 @@
         </div>
     </form>
 </div>
+
+<script>
+// Инициализация Select2 для полей формы при загрузке страницы
+(function() {
+    function initSelect2Fields() {
+        var $ = window.jQuery || window.$;
+        if (typeof $ === 'undefined' || !$.fn.select2) {
+            // Если jQuery или Select2 еще не загружены, ждем
+            setTimeout(initSelect2Fields, 100);
+            return;
+        }
+        
+        // Инициализируем Select2 для поля "Субъект РФ"
+        var $regionalDistrict = $('#id_regional_district');
+        if ($regionalDistrict.length && !$regionalDistrict.data('select2')) {
+            $regionalDistrict.select2({
+                placeholder: "Выберите субъект РФ (начните вводить для поиска)",
+                allowClear: true,
+                width: 'resolve',
+                minimumResultsForSearch: 0,
+                matcher: function(params, data) {
+                    // Поиск по совпадению внутри строки (case-insensitive)
+                    if (!params.term || params.term.trim() === '') {
+                        return data;
+                    }
+                    var term = params.term.toLowerCase().trim();
+                    var text = data.text ? data.text.toLowerCase() : '';
+                    // Ищем подстроку в любом месте текста
+                    if (text.indexOf(term) !== -1) {
+                        return data;
+                    }
+                    return null;
+                },
+                language: {
+                    noResults: function() {
+                        return "Ничего не найдено";
+                    },
+                    searching: function() {
+                        return "Поиск...";
+                    }
+                }
+            });
+        }
+        
+        // Поле "Тип электростанции" остается обычным выпадающим списком без select2
+    }
+    
+    // Запускаем инициализацию при загрузке DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSelect2Fields);
+    } else {
+        // DOM уже загружен
+        initSelect2Fields();
+    }
+})();
+</script>
 
 {% endif %}
 {% endblock %}

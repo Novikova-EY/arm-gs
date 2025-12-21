@@ -26,7 +26,7 @@ from app.generation.services.station_services.filters_services import (
     get_filtered_station_ids
 )
 from app.generation.services.station_services.export_station_services import (
-    export_station_sipr_ees_application_2_service, 
+    export_station_sipr_ees_application_A_service, 
     generate_excel_export_with_all_totals,
 )
 from app.generation.services.station_services.export_cache import (
@@ -36,8 +36,8 @@ from app.generation.services.station_services.export_cache import (
 import pandas as pd
 
 
-@station_bp.route('/export_station_sipr_ees_application_2', methods=['GET'])
-def export_station_sipr_ees_application_2_routes():
+@station_bp.route('/export_station_sipr_ees_application_A', methods=['GET'])
+def export_station_sipr_ees_application_A_routes():
     """Маршрут для экспорта данных в Excel."""
     user = session.get('username', 'Неизвестный пользователь')
     
@@ -56,7 +56,7 @@ def export_station_sipr_ees_application_2_routes():
 
     try:
         # Получение данных для экспорта
-        excel_files = export_station_sipr_ees_application_2_service(user, filters)
+        excel_files = export_station_sipr_ees_application_A_service(user, filters)
 
         # Проверка наличия данных
         if not excel_files:

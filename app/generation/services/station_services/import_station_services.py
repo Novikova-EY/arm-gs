@@ -26,7 +26,7 @@ from app.refdata.models.refdata_for_stations.machine.machine_type_model import M
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
-from app.generation.services.station_services.help_services import get_unknown_tes_type_id
+from app.common.services.get_services.stations.tes_type_get_services import get_unknown_tes_type_id
 
 
 FUEL_COLUMN_PATTERNS = (
@@ -524,7 +524,12 @@ def update_machine_power_ogr(machine, start_year, end_year, user):
             val = (power.p_ust or 0) - (power.p_rasp or 0)
             power.p_ogr = to_decimal(val) if not pd.isna(val) else Decimal(0)
 
-            if old_ogr != power.p_ogr:
+            # Нормализуем значения для сравнения: None и 0 считаются одинаковыми
+            old_ogr_normalized = Decimal(0) if old_ogr is None or old_ogr == 0 else old_ogr
+            new_ogr_normalized = Decimal(0) if power.p_ogr is None or power.p_ogr == 0 else power.p_ogr
+
+            # Логируем только если значения действительно изменились
+            if old_ogr_normalized != new_ogr_normalized:
                 log_to_db(
                     user, f"Пересчет ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}))",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}"
@@ -559,13 +564,21 @@ def update_station_power(station, start_year, end_year, user):
         updates = []
 
         if record:
-            if record.p_ust != total_p_ust:
+            # Нормализуем значения для сравнения: None и 0 считаются одинаковыми
+            record_p_ust_normalized = record.p_ust if record.p_ust is not None else Decimal(0)
+            record_p_ogr_normalized = record.p_ogr if record.p_ogr is not None else Decimal(0)
+            record_p_rasp_normalized = record.p_rasp if record.p_rasp is not None else Decimal(0)
+            total_p_ust_normalized = total_p_ust if total_p_ust is not None else Decimal(0)
+            total_p_ogr_normalized = total_p_ogr if total_p_ogr is not None else Decimal(0)
+            total_p_rasp_normalized = total_p_rasp if total_p_rasp is not None else Decimal(0)
+            
+            if record_p_ust_normalized != total_p_ust_normalized:
                 updates.append(f"p_ust {record.p_ust} → {total_p_ust}")
                 record.p_ust = total_p_ust
-            if record.p_ogr != total_p_ogr:
+            if record_p_ogr_normalized != total_p_ogr_normalized:
                 updates.append(f"p_ogr {record.p_ogr} → {total_p_ogr}")
                 record.p_ogr = total_p_ogr
-            if record.p_rasp != total_p_rasp:
+            if record_p_rasp_normalized != total_p_rasp_normalized:
                 updates.append(f"p_rasp {record.p_rasp} → {total_p_rasp}")
                 record.p_rasp = total_p_rasp
 

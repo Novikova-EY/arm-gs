@@ -10,6 +10,7 @@ from flask import current_app
 # Модели
 from app.refdata.models.years.year_model import Year
 from app.refdata.models.years.year_feature_model import YearFeature
+from app.refdata.models.years.year_service_model import YearService
 from app.common.models.database_version_model import DatabaseVersion
 
 # Сервисы
@@ -162,20 +163,34 @@ def copy_year_data_from_version(source_version_id, target_version_id, user):
                     "source_version_id": source_version_id,
                     "target_version_id": target_version_id,
                     "old_feature_id": old_id,
-                    "new_feature_id": new_id
-                }
+                    "new_feature_id": new_id,
+                },
             )
-        
+
+        # Копируем YearService (период СиПР) для указанной версии
+        source_service = (
+            YearService.query.filter_by(database_version_id=source_version_id).first()
+        )
+        if source_service:
+            new_service = YearService(
+                year_sipr_start=source_service.year_sipr_start,
+                year_sipr_end=source_service.year_sipr_end,
+                date_sipr_start=source_service.date_sipr_start,
+                date_sipr_end=source_service.date_sipr_end,
+                database_version_id=target_version_id,
+            )
+            db.session.add(new_service)
+
         db.session.commit()
-        
+
         log_to_db(
             user,
             f"Успешно скопированы данные годов из версии {source_version_id} в версию {target_version_id}",
-            f"Скопировано: {len(feature_id_mapping)} признаков годов и соответствующих годов",
+            f"Скопировано: {len(feature_id_mapping)} признаков годов, соответствующие годы и запись YearService (если была в исходной версии)",
             entity_type="database_version",
-            entity_id=target_version_id
+            entity_id=target_version_id,
         )
-        
+
         return True
         
     except Exception as e:

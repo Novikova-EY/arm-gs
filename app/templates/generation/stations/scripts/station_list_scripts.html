@@ -121,9 +121,19 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Скрипт для поиска по фильтрам в шапке таблицы -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        // Найдем все чекбоксы в выпадающих фильтрах
+        // Фильтры, которые должны применяться сразу при клике по чекбоксу
+        const instantFilters = [
+            "station_type_filter",
+            "tes_type_filter",
+            "tes_machine_type_filter",
+            "fuel_type_filter"
+        ];
+
+        // Найдем все чекбоксы в выпадающих фильтрах и повесим обработчик
         document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
-            input.addEventListener('change', updateFilters);
+            if (instantFilters.includes(input.name)) {
+                input.addEventListener('change', updateFilters);
+            }
         });
 
         function updateFilters() {
@@ -148,8 +158,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            // Добавление выбранных значений в форму
+            // Добавление выбранных значений в форму (только для моментальных фильтров)
             document.querySelectorAll('.dropdown-menu input[type="checkbox"]:checked').forEach(checkbox => {
+                if (!instantFilters.includes(checkbox.name)) {
+                    return;
+                }
                 let input = document.createElement("input");
                 input.type = "hidden";
                 input.name = checkbox.name;
@@ -166,21 +179,81 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Скрипт для сброса предыдущих значений при поиске по фильтрам в шапке таблицы -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
-            input.addEventListener('change', function() {
-                let params = new URLSearchParams(window.location.search);
-                let filterName = this.name;
+        // Те же моментальные фильтры, что и выше
+        const instantFilters = [
+            "station_type_filter",
+            "tes_type_filter",
+            "tes_machine_type_filter",
+            "fuel_type_filter"
+        ];
 
-                // 🔹 Удаляем ВСЕ старые значения этого фильтра
+        // Для моментальных фильтров обновляем URL сразу при изменении чекбокса
+        document.querySelectorAll('.dropdown-menu input[type="checkbox"]').forEach(input => {
+            if (instantFilters.includes(input.name)) {
+                input.addEventListener('change', function() {
+                    let params = new URLSearchParams(window.location.search);
+                    let filterName = this.name;
+
+                    // 🔹 Удаляем ВСЕ старые значения этого фильтра
+                    params.delete(filterName);
+
+                    // 🔹 Добавляем в URL только отмеченные чекбоксы
+                    document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                        params.append(filterName, cb.value);
+                    });
+
+                    // 🔹 Перенаправляем на новый URL (без дубликатов)
+                    window.location.href = window.location.pathname + "?" + params.toString();
+                });
+            }
+        });
+
+        // Для годовых фильтров (ввод/вывод/модерн.) применяем значения только по кнопке "Ок"
+        document.querySelectorAll('.filter-apply-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) {
+                    return;
+                }
+
+                // Текущие параметры URL
+                const params = new URLSearchParams(window.location.search);
+
+                // Удаляем все старые значения этого фильтра
                 params.delete(filterName);
 
-                // 🔹 Добавляем в URL только отмеченные чекбоксы
+                // Добавляем только отмеченные значения соответствующего фильтра
                 document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
                     params.append(filterName, cb.value);
                 });
 
-                // 🔹 Перенаправляем на новый URL (без дубликатов)
-                window.location.href = window.location.pathname + "?" + params.toString();
+                // При изменении фильтра возвращаемся на первую страницу
+                params.set('page', '1');
+
+                // Переход по новому URL
+                const newUrl = window.location.pathname + "?" + params.toString();
+                window.location.href = newUrl;
+            });
+        });
+
+        // Кнопка "Сбросить" внутри выпадающего списка — просто снимает галочки, без перезагрузки
+        document.querySelectorAll('.filter-reset-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) {
+                    return;
+                }
+
+                // Снимаем все галочки только у соответствующего фильтра
+                document.querySelectorAll(`input[name="${filterName}"]`).forEach(cb => {
+                    cb.checked = false;
+                });
             });
         });
     });

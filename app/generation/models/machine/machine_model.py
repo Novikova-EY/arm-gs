@@ -135,8 +135,9 @@ class Machine(db.Model, VersionedModelMixin):
         foreign_keys='MachineTesType.id_machine',
     )
 
-    # Даты/годы (оставлены типы как в исходнике)
+    # Даты/годы
     date_exploitation = db.Column(db.Integer, nullable=True)
+    date_exploitation_expected = db.Column(db.Integer, nullable=True)
     date_commission_fact = db.Column(db.String(10), nullable=True)
     date_joining_expected = db.Column(db.String(10), nullable=True)
     date_joining_fact = db.Column(db.String(10), nullable=True)
@@ -146,8 +147,11 @@ class Machine(db.Model, VersionedModelMixin):
     date_modernization_expected = db.Column(db.Integer, nullable=True)
     date_relabing_fact = db.Column(db.String(10), nullable=True)
     date_update_fact = db.Column(db.String(10), nullable=True)
+
     note = db.Column(db.String(512), nullable=True)
-    change_document = db.Column(db.Text, nullable=True)  # Документ-основание для изменения параметров агрегата
+
+    # Документ-основание для изменения параметров агрегата
+    change_document = db.Column(db.Text, nullable=True)  
     year_modern = db.Column(db.String(10), nullable=True)
     year_demontaz = db.Column(db.String(10), nullable=True)
     resurs_coal = db.Column(db.String(10), nullable=True)

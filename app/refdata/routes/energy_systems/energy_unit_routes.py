@@ -26,6 +26,7 @@ from app.common.services.get_services.energy_systems.union_energy_system_get_ser
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
     get_regional_district_name,
+    get_regional_districts_list,
 )
 from app.refdata.services.energy_systems.energy_unit_services import (
     energy_unit_query, 
@@ -178,8 +179,12 @@ def energy_unit_list():
                                 )
     
     # Подготовка данных для формы
-    regional_district_list = get_regional_district_list_full()
-    form.regional_district.choices = regional_district_list
+    # choices для WTForms (format: [(id, name), ...])
+    regional_district_choices = get_regional_district_list_full()
+    form.regional_district.choices = regional_district_choices
+
+    # Полный список ORM‑объектов для шаблона (нужны .id и .name)
+    regional_district_list = get_regional_districts_list()
 
     regional_energy_system_list = get_regional_energy_system_list_full()
     form.regional_energy_system.choices = [(res.id, res.name) for res in regional_energy_system_list]

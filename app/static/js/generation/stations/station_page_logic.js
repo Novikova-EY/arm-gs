@@ -61,10 +61,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // === 2. Обработка фильтров в dropdown
     function setupDropdownCheckboxFilters() {
+        // Список фильтров, которые требуют подтверждения (ОК/Отмена)
+        const dateFilters = ['date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
+        
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
             menu.addEventListener('change', e => {
                 if (e.target.matches('input[type="checkbox"]')) {
                     const filterName = e.target.name;
+                    // Для дат-фильтров не применяем автоматически
+                    if (dateFilters.includes(filterName)) {
+                        return;
+                    }
+                    // Для остальных фильтров применяем как раньше
                     const params = new URLSearchParams(window.location.search);
                     params.delete(filterName);
                     document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
@@ -73,6 +81,106 @@ document.addEventListener("DOMContentLoaded", () => {
                     window.location.href = window.location.pathname + "?" + params.toString();
                 }
             });
+        });
+    }
+    
+    // === 2.1. Обработка фильтров с подтверждением (ОК/Отмена) для дат
+    function setupDateFilterDropdowns() {
+        const dateFilters = ['date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
+        
+        // Сохраняем исходное состояние чекбоксов при открытии dropdown
+        document.querySelectorAll('.date-filter-dropdown').forEach(menu => {
+            const filterName = menu.getAttribute('data-filter-name');
+            if (!dateFilters.includes(filterName)) return;
+            
+            let originalState = {};
+            
+            // Находим кнопку, которая открывает dropdown
+            const dropdownButton = menu.previousElementSibling;
+            if (!dropdownButton) return;
+            
+            // Сохраняем состояние при показе dropdown (используем событие Bootstrap)
+            dropdownButton.addEventListener('shown.bs.dropdown', () => {
+                // Сохраняем текущее состояние всех чекбоксов
+                menu.querySelectorAll(`input[name="${filterName}"]`).forEach(cb => {
+                    originalState[cb.value] = cb.checked;
+                });
+            });
+            
+            // Обработчик кнопки ОК
+            const okButton = menu.querySelector('.date-filter-ok');
+            if (okButton) {
+                okButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete(filterName);
+                    
+                    // Добавляем только выбранные чекбоксы
+                    menu.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                        params.append(filterName, cb.value);
+                    });
+                    
+                    params.set('page', '1'); // Сбрасываем на первую страницу
+                    
+                    // Закрываем dropdown
+                    const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownButton);
+                    if (dropdownInstance) {
+                        dropdownInstance.hide();
+                    }
+                    
+                    // Применяем фильтр
+                    window.location.href = window.location.pathname + "?" + params.toString();
+                });
+            }
+            
+            // Обработчик кнопки Отмена - восстанавливаем исходное состояние
+            const cancelButton = menu.querySelector('.date-filter-cancel');
+            if (cancelButton) {
+                cancelButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Восстанавливаем исходное состояние чекбоксов
+                    menu.querySelectorAll(`input[name="${filterName}"]`).forEach(cb => {
+                        cb.checked = originalState[cb.value] || false;
+                    });
+                    
+                    // Закрываем dropdown
+                    const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownButton);
+                    if (dropdownInstance) {
+                        dropdownInstance.hide();
+                    }
+                });
+            }
+            
+            // Обработчик "Все" - сбрасывает все галочки и применяет фильтр
+            const clearItem = menu.querySelector('.clear-filter-item');
+            if (clearItem) {
+                clearItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Снимаем все галочки
+                    menu.querySelectorAll(`input[name="${filterName}"]`).forEach(cb => {
+                        cb.checked = false;
+                    });
+                    
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete(filterName);
+                    params.set('page', '1');
+                    
+                    // Закрываем dropdown
+                    const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownButton);
+                    if (dropdownInstance) {
+                        dropdownInstance.hide();
+                    }
+                    
+                    // Применяем фильтр (пустой, т.е. сбрасываем)
+                    window.location.href = window.location.pathname + "?" + params.toString();
+                });
+            }
         });
     }
     
@@ -474,6 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
         false // ← никогда не раскрывать импорт/экспорт автоматически
     );
     setupDropdownCheckboxFilters();
+    setupDateFilterDropdowns();
     setupMachinePowerRows();
     setupPerPageToggle();
     setupHideAggregatesToggle();

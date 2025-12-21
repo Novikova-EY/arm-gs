@@ -41,6 +41,17 @@
             {% endif %}
         </div>
 
+        <!-- Наименование (в родительном падеже) -->
+        <div class="mb-3">
+            <strong for="name_rp" class="form-label">Наименование (в родительном падеже)</strong>
+            {{ form.name_rp(class="form-control", id="name_rp") }}
+            {% if form.name_rp.errors %}
+                <div class="text-danger">
+                    {{ form.name_rp.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
         <!-- Выбор ОЭС -->
         <div class="mb-3">
             <strong for="union_energy_system" class="form-label">ОЭС</strong>

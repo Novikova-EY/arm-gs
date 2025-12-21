@@ -97,7 +97,8 @@ def fuel_list():
                 fuel_data.append({
                     "fuel_id": int(fuel_id) if fuel_id else None,
                     "name": fuel_name.strip(),
-                    "id_fuel_type": int(fuel_type) if fuel_type else None
+                    # Ключ должен соответствовать ожидаемому в update_fuel_service ("fuel_type_id")
+                    "fuel_type_id": int(fuel_type) if fuel_type else None,
                 })
             
             # Проверка на дублирующиеся IDs

@@ -4,10 +4,14 @@ from app.extensions import db
 from sqlalchemy.orm import selectinload
 from functools import lru_cache
 from typing import Union, List, Dict
+from collections import defaultdict
 
 # Модели
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 
 # Функции для работы с версионированием БД
 from app.common.services.database_version_filter import filter_by_db_version
@@ -109,6 +113,86 @@ def get_rd_to_fd_id_map() -> Dict[int, int]:
 def invalidate_regional_district_lookups_cache() -> None:
     get_regional_districts_map.cache_clear()
     get_rd_to_fd_id_map.cache_clear()
+    get_rd_to_res_ids_map.cache_clear()
+    get_rd_to_ues_ids_map.cache_clear()
+    get_rd_to_est_ids_map.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def get_rd_to_res_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {СубъектРФ.id: [РЭС.id, ...]} через M2M (кэшируется)."""
+    query = db.session.query(
+        regional_district_regional_energy_system.c.regional_district_id,
+        regional_district_regional_energy_system.c.regional_energy_system_id
+    )
+    
+    rows = query.all()
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for rd_id, res_id in rows:
+        acc[rd_id].append(res_id)
+    return dict(acc)
+
+
+@lru_cache(maxsize=1)
+def get_rd_to_ues_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {СубъектРФ.id: [ОЭС.id, ...]} через РЭС (кэшируется)."""
+    current_version = get_current_version()
+    rd_to_res = get_rd_to_res_ids_map()
+    
+    # Получаем связь РЭС -> ОЭС
+    res_to_ues_query = db.session.query(
+        RegionalEnergySystem.id,
+        RegionalEnergySystem.id_union_energy_system
+    )
+    
+    if current_version:
+        res_to_ues_query = res_to_ues_query.filter(RegionalEnergySystem.database_version_id == current_version)
+    
+    res_to_ues_rows = res_to_ues_query.filter(
+        RegionalEnergySystem.id_union_energy_system.isnot(None)
+    ).all()
+    res_to_ues = {res_id: ues_id for res_id, ues_id in res_to_ues_rows}
+    
+    # Строим rd -> ues
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for rd_id, res_ids in rd_to_res.items():
+        for res_id in res_ids:
+            if res_id in res_to_ues:
+                acc[rd_id].append(res_to_ues[res_id])
+    
+    # Убираем дубликаты
+    return {k: list(set(v)) for k, v in acc.items()}
+
+
+@lru_cache(maxsize=1)
+def get_rd_to_est_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {СубъектРФ.id: [ТипЭС.id, ...]} через ОЭС (кэшируется)."""
+    current_version = get_current_version()
+    rd_to_ues = get_rd_to_ues_ids_map()
+    
+    # Получаем связь ОЭС -> Тип ЭС
+    ues_to_est_query = db.session.query(
+        UnionEnergySystem.id,
+        UnionEnergySystem.id_energy_system_type
+    )
+    
+    if current_version:
+        ues_to_est_query = ues_to_est_query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    ues_to_est_rows = ues_to_est_query.filter(
+        UnionEnergySystem.id_energy_system_type.isnot(None)
+    ).all()
+    ues_to_est = {ues_id: est_id for ues_id, est_id in ues_to_est_rows}
+    
+    # Строим rd -> est
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for rd_id, ues_ids in rd_to_ues.items():
+        for ues_id in ues_ids:
+            if ues_id in ues_to_est:
+                acc[rd_id].append(ues_to_est[ues_id])
+    
+    # Убираем дубликаты
+    return {k: list(set(v)) for k, v in acc.items()}
 
 
 def get_regional_district_name(regional_district_ids: Union[str, int, List[int]]) -> str:

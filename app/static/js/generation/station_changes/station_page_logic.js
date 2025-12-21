@@ -188,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupCollapseToggle(
         "filtersCollapse",
         "filtersToggleBtn",
-        "/static/js/generation/stations/station_filters_first_row.js",
+        "/static/js/generation/station_changes/station_filters_first_row.js",
         "stationFiltersInitialized",
         window.initialState.hasActiveFilters // ← только для фильтров
     );

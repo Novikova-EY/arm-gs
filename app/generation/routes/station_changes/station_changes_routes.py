@@ -79,6 +79,9 @@ def station_changes_list():
 
     # Сохраняем данные в кэш для последующей быстрой выгрузки
     try:
+        from app.common.services.database_version_filter import get_current_db_version_id
+        current_db_version_id = get_current_db_version_id()
+        
         export_key = build_export_key(
             {**filters},
             rounding_digits,
@@ -87,6 +90,10 @@ def station_changes_list():
             False,  # show_p_ogr для station_changes не используется
             False,  # show_p_rasp для station_changes не используется
         )
+        # Добавляем database_version_id в данные для проверки при экспорте
+        if isinstance(data, dict):
+            data["database_version_id"] = current_db_version_id
+        
         export_payload = {
             "data": data,
             "params": {
@@ -94,6 +101,7 @@ def station_changes_list():
                 "start_year": start_year,
                 "end_year": end_year,
                 "show_totals": show_totals,
+                "database_version_id": current_db_version_id,
             },
         }
         set_export_payload(session.get('username') or 'anonymous', export_key, export_payload)
@@ -147,6 +155,9 @@ def station_changes_list_export():
     show_totals = request.args.get("show_totals", "0") == "1"
 
     # Пытаемся использовать кэш, чтобы не пересчитывать и не вешать страницу
+    from app.common.services.database_version_filter import get_current_db_version_id
+    current_db_version_id = get_current_db_version_id()
+    
     cache_key = build_export_key(
         {**filters},
         rounding_digits,
@@ -156,23 +167,31 @@ def station_changes_list_export():
         False,
     )
     cached = get_export_payload(session.get('username') or 'anonymous', cache_key)
+    # Проверяем, что версия БД в кэше совпадает с текущей
+    use_cache = False
     if cached:
         cached_data = cached.get("data") or {}
         params = cached.get("params") or {}
-        rounding_digits = params.get("rounding_digits", rounding_digits)
-        start_year = params.get("start_year", start_year)
-        end_year = params.get("end_year", end_year)
-        show_totals = params.get("show_totals", show_totals)
-        filename, output = export_station_changes_to_excel(
-            user=user,
-            filters=filters,
-            rounding_digits=rounding_digits,
-            start_year=start_year,
-            end_year=end_year,
-            show_totals=show_totals,
-            data=cached_data,
-        )
-    else:
+        cached_version_id = params.get("database_version_id")
+        
+        # Если версия БД совпадает, используем кэш
+        if cached_version_id == current_db_version_id:
+            use_cache = True
+            rounding_digits = params.get("rounding_digits", rounding_digits)
+            start_year = params.get("start_year", start_year)
+            end_year = params.get("end_year", end_year)
+            show_totals = params.get("show_totals", show_totals)
+            filename, output = export_station_changes_to_excel(
+                user=user,
+                filters=filters,
+                rounding_digits=rounding_digits,
+                start_year=start_year,
+                end_year=end_year,
+                show_totals=show_totals,
+                data=cached_data,
+            )
+    
+    if not use_cache:
         filename, output = export_station_changes_to_excel(
             user=user,
             filters=filters,

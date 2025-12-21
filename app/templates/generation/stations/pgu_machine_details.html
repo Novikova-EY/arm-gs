@@ -437,14 +437,76 @@ document.addEventListener("DOMContentLoaded", function () {
     // Чекбоксы (для единообразия UI)
     const togglePOgr = document.getElementById("toggleP_Ogr");
     const togglePRasp = document.getElementById("toggleP_Rasp");
+
     if (togglePOgr) {
-        togglePOgr.checked = localStorage.getItem("toggleP_Ogr") === "true";
+        const storedOgr = localStorage.getItem("toggleP_Ogr");
+        togglePOgr.checked = storedOgr === null ? true : storedOgr === "true";
         togglePOgr.addEventListener("change", () => localStorage.setItem("toggleP_Ogr", togglePOgr.checked));
     }
     if (togglePRasp) {
-        togglePRasp.checked = localStorage.getItem("toggleP_Rasp") === "true";
+        const storedRasp = localStorage.getItem("toggleP_Rasp");
+        togglePRasp.checked = storedRasp === null ? true : storedRasp === "true";
         togglePRasp.addEventListener("change", () => localStorage.setItem("toggleP_Rasp", togglePRasp.checked));
     }
+
+    // --- Автозаполнение мощностей по строке и flash-сообщение ---
+    function showPguPowerFlashMessage() {
+        // Контейнер, как в base.html для flash-сообщений
+        let wrapper = document.getElementById("flash-wrapper");
+        if (!wrapper) {
+            wrapper = document.createElement("div");
+            wrapper.id = "flash-wrapper";
+            wrapper.className = "position-fixed top-0 start-50 translate-middle-x mt-5 z-3";
+            wrapper.style.maxWidth = "1500px";
+            wrapper.style.width = "90%";
+            document.body.appendChild(wrapper);
+        }
+
+        const alert = document.createElement("div");
+        alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
+        alert.setAttribute("role", "alert");
+        alert.textContent = "Значение мощности применено ко всем последующим годам в этой строке.";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "btn-close";
+        closeBtn.setAttribute("data-bs-dismiss", "alert");
+        closeBtn.setAttribute("aria-label", "Закрыть");
+        closeBtn.addEventListener("click", function () {
+            alert.remove();
+        });
+
+        alert.appendChild(closeBtn);
+        wrapper.appendChild(alert);
+
+        setTimeout(function () {
+            alert.classList.remove("show");
+            alert.classList.add("fade");
+            setTimeout(function () {
+                alert.remove();
+            }, 200);
+        }, 5000);
+    }
+
+    function attachPguPowerAutoFill() {
+        const powerRows = document.querySelectorAll(".machines-table .total-power-row");
+        powerRows.forEach(function (row) {
+            const inputs = Array.from(row.querySelectorAll('input[type="text"], input.form-control'));
+            if (!inputs.length) return;
+
+            inputs.forEach(function (input, index) {
+                input.addEventListener("change", function () {
+                    const value = this.value;
+                    for (let i = index + 1; i < inputs.length; i++) {
+                        inputs[i].value = value;
+                    }
+                    showPguPowerFlashMessage();
+                });
+            });
+        });
+    }
+
+    attachPguPowerAutoFill();
 });
 </script>
 

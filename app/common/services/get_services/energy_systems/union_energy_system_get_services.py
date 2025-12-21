@@ -117,6 +117,83 @@ def invalidate_ues_lookups_cache() -> None:
     get_union_energy_systems_map.cache_clear()
     get_ues_to_res_ids_map.cache_clear()
     get_res_to_ues_id_map.cache_clear()
+    get_ues_to_est_id_map.cache_clear()
+    get_ues_to_rd_ids_map.cache_clear()
+    get_ues_to_fd_ids_map.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def get_ues_to_est_id_map() -> Dict[int, int]:
+    """Возвращает отображение {ОЭС.id: ТипЭС.id} (кэшируется)."""
+    current_version = get_current_version()
+    query = db.session.query(UnionEnergySystem.id, UnionEnergySystem.id_energy_system_type)
+    
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    rows = query.filter(UnionEnergySystem.id_energy_system_type.isnot(None)).all()
+    return {ues_id: est_id for ues_id, est_id in rows}
+
+
+@lru_cache(maxsize=1)
+def get_ues_to_rd_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {ОЭС.id: [СубъектРФ.id, ...]} через РЭС (кэшируется)."""
+    current_version = get_current_version()
+    ues_to_res = get_ues_to_res_ids_map()
+    
+    # Получаем связь РЭС -> Субъект РФ через M2M таблицу
+    from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+    res_to_rd_query = db.session.query(
+        regional_district_regional_energy_system.c.regional_energy_system_id,
+        regional_district_regional_energy_system.c.regional_district_id
+    )
+    
+    res_to_rd_rows = res_to_rd_query.all()
+    res_to_rd = defaultdict(list)
+    for res_id, rd_id in res_to_rd_rows:
+        res_to_rd[res_id].append(rd_id)
+    
+    # Строим ues -> rd
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for ues_id, res_ids in ues_to_res.items():
+        for res_id in res_ids:
+            if res_id in res_to_rd:
+                acc[ues_id].extend(res_to_rd[res_id])
+    
+    # Убираем дубликаты
+    return {k: list(set(v)) for k, v in acc.items()}
+
+
+@lru_cache(maxsize=1)
+def get_ues_to_fd_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {ОЭС.id: [ФО.id, ...]} через Субъект РФ (кэшируется)."""
+    current_version = get_current_version()
+    ues_to_rd = get_ues_to_rd_ids_map()
+    
+    # Получаем связь Субъект РФ -> ФО
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    rd_to_fd_query = db.session.query(
+        RegionalDistrict.id,
+        RegionalDistrict.id_federal_district
+    )
+    
+    if current_version:
+        rd_to_fd_query = rd_to_fd_query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    rd_to_fd_rows = rd_to_fd_query.filter(
+        RegionalDistrict.id_federal_district.isnot(None)
+    ).all()
+    rd_to_fd = {rd_id: fd_id for rd_id, fd_id in rd_to_fd_rows}
+    
+    # Строим ues -> fd
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for ues_id, rd_ids in ues_to_rd.items():
+        for rd_id in rd_ids:
+            if rd_id in rd_to_fd:
+                acc[ues_id].append(rd_to_fd[rd_id])
+    
+    # Убираем дубликаты
+    return {k: list(set(v)) for k, v in acc.items()}
 
     
 def get_union_energy_system_name(union_energy_system_ids: Union[str, int, List[int]]) -> str:

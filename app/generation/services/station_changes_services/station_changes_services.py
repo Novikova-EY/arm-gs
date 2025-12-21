@@ -387,6 +387,33 @@ def get_station_changes_list(
         )
     ).all()
 
+    # Фильтруем связанные данные по версии БД после загрузки
+    # (selectinload загружает все связанные записи, нужно отфильтровать вручную)
+    for m in filtered_machines:
+        # Фильтруем machine_powers по версии БД
+        if hasattr(m, 'machine_powers') and m.machine_powers:
+            m.machine_powers = [
+                mp for mp in m.machine_powers
+                if getattr(mp, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mp, 'database_version_id', None) is None)
+            ]
+        
+        # Фильтруем machine_fuels по версии БД
+        if hasattr(m, 'machine_fuels') and m.machine_fuels:
+            m.machine_fuels = [
+                mf for mf in m.machine_fuels
+                if getattr(mf, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mf, 'database_version_id', None) is None)
+            ]
+        
+        # Фильтруем machine_tes_types по версии БД
+        if hasattr(m, 'machine_tes_types') and m.machine_tes_types:
+            m.machine_tes_types = [
+                mtt for mtt in m.machine_tes_types
+                if getattr(mtt, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mtt, 'database_version_id', None) is None)
+            ]
+
     station_machines_map = defaultdict(list)
     for m in filtered_machines:
         station_machines_map[m.id_station].append(m)
@@ -642,6 +669,33 @@ def load_all_machines_with_changes(
     machines_query = filter_by_explicit_db_version(machines_query, Machine, current_db_version_id)
     machines = machines_query.filter(Machine.id_station.in_(station_ids)).all()
 
+    # Фильтруем связанные данные по версии БД после загрузки
+    # (selectinload загружает все связанные записи, нужно отфильтровать вручную)
+    for m in machines:
+        # Фильтруем machine_powers по версии БД
+        if hasattr(m, 'machine_powers') and m.machine_powers:
+            m.machine_powers = [
+                mp for mp in m.machine_powers
+                if getattr(mp, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mp, 'database_version_id', None) is None)
+            ]
+        
+        # Фильтруем machine_fuels по версии БД
+        if hasattr(m, 'machine_fuels') and m.machine_fuels:
+            m.machine_fuels = [
+                mf for mf in m.machine_fuels
+                if getattr(mf, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mf, 'database_version_id', None) is None)
+            ]
+        
+        # Фильтруем machine_tes_types по версии БД
+        if hasattr(m, 'machine_tes_types') and m.machine_tes_types:
+            m.machine_tes_types = [
+                mtt for mtt in m.machine_tes_types
+                if getattr(mtt, 'database_version_id', None) == current_db_version_id
+                or (current_db_version_id is None and getattr(mtt, 'database_version_id', None) is None)
+            ]
+
     # Назначаем данные по годам
     for m in machines:
         assign_machine_powers_changes_by_year(m, start_year, end_year, rounding_digits)
@@ -834,12 +888,14 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
             # Добавляем станцию в иерархию
             grouped_data[est_id][ues_id][res_id][rd_id][eu_id].append(station)
 
-            # 🏷 Сохраняем имена, если требуется
+            # 🏷 Сохраняем имена для сортировки (всегда) и для отображения (если include_names=True)
+            # Имена нужны для сортировки субъектов РФ по алфавиту
+            rd_names[rd_id] = station.regional_district.name if station.regional_district else ""
+            
             if include_names:
                 est_names[est_id] = ues.energy_system_type.name if ues.energy_system_type else f"id={est_id}"
                 ues_names[ues_id] = ues.name
                 res_names[res_id] = res.name
-                rd_names[rd_id] = station.regional_district.name
                 eu_names[eu_id] = eu_name
 
     # Упорядочиваем уровень ОЭС по display_order (None и неизвестные — в конец)
@@ -852,14 +908,42 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
         # На случай непредвиденной ошибки — не ломаем отображение
         ues_order_index = {}
 
+    # Сортируем типы энергосистем по минимальному display_order ОЭС внутри них
+    def _min_ues_index(es_group):
+        indices = [ues_order_index.get(ues_id, 10**9) for ues_id in es_group.keys()]
+        return min(indices) if indices else 10**9
+
+    sorted_est_items = sorted(
+        grouped_data.items(),
+        key=lambda kv: _min_ues_index(kv[1])
+    )
+
     sorted_grouped_data = OrderedDict()
-    for est_id, ues_group in grouped_data.items():
+    for est_id, ues_group in sorted_est_items:
         # Сортируем ключи ОЭС внутри каждого типа энергосистемы по индексам из ues_order_index
         sorted_ues_items = sorted(
             ues_group.items(),
             key=lambda kv: ues_order_index.get(kv[0], 10**9)
         )
-        sorted_grouped_data[est_id] = OrderedDict(sorted_ues_items)
+        sorted_ues_dict = OrderedDict()
+        for ues_id, res_group in sorted_ues_items:
+            # Сортируем РЭС внутри каждого ОЭС
+            sorted_res_items = sorted(res_group.items())
+            sorted_res_dict = OrderedDict()
+            for res_id, rd_group in sorted_res_items:
+                # Сортируем субъекты РФ по алфавиту (по name)
+                sorted_rd_items = sorted(
+                    rd_group.items(),
+                    key=lambda kv: (rd_names.get(kv[0], "").lower(), kv[0])
+                )
+                sorted_rd_dict = OrderedDict()
+                for rd_id, eu_group in sorted_rd_items:
+                    # Сортируем энергоузлы
+                    sorted_eu_items = sorted(eu_group.items())
+                    sorted_rd_dict[rd_id] = OrderedDict(sorted_eu_items)
+                sorted_res_dict[res_id] = sorted_rd_dict
+            sorted_ues_dict[ues_id] = sorted_res_dict
+        sorted_grouped_data[est_id] = sorted_ues_dict
 
     grouped_data = sorted_grouped_data
 
@@ -923,6 +1007,55 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     ]
     union_energy_system_names = get_union_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
+    
+    # Получаем все маппинги для взаимоувязанных фильтров
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+        get_est_to_ues_ids_map,
+        get_est_to_res_ids_map,
+        get_est_to_rd_ids_map,
+        get_est_to_fd_ids_map,
+    )
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+        get_ues_to_est_id_map,
+        get_ues_to_rd_ids_map,
+        get_ues_to_fd_ids_map,
+    )
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+        get_res_to_est_id_map,
+        get_res_to_rd_ids_map,
+        get_res_to_fd_ids_map,
+        get_res_to_ues_id_map,
+    )
+    from app.common.services.get_services.territories.regional_district_get_services import (
+        get_rd_to_res_ids_map,
+        get_rd_to_ues_ids_map,
+        get_rd_to_est_ids_map,
+        get_rd_to_fd_id_map,
+    )
+    from app.common.services.get_services.territories.federal_district_get_services import (
+        get_fd_to_res_ids_map,
+        get_fd_to_ues_ids_map,
+        get_fd_to_est_ids_map,
+    )
+    
+    est_to_ues_mapping = get_est_to_ues_ids_map()
+    est_to_res_mapping = get_est_to_res_ids_map()
+    est_to_rd_mapping = get_est_to_rd_ids_map()
+    est_to_fd_mapping = get_est_to_fd_ids_map()
+    ues_to_est_mapping = get_ues_to_est_id_map()
+    ues_to_rd_mapping = get_ues_to_rd_ids_map()
+    ues_to_fd_mapping = get_ues_to_fd_ids_map()
+    res_to_est_mapping = get_res_to_est_id_map()
+    res_to_rd_mapping = get_res_to_rd_ids_map()
+    res_to_fd_mapping = get_res_to_fd_ids_map()
+    res_to_ues_mapping_one = get_res_to_ues_id_map()  # один-к-одному
+    rd_to_res_mapping = get_rd_to_res_ids_map()
+    rd_to_ues_mapping = get_rd_to_ues_ids_map()
+    rd_to_est_mapping = get_rd_to_est_ids_map()
+    rd_to_fd_mapping_one = get_rd_to_fd_id_map()  # один-к-одному
+    fd_to_res_mapping = get_fd_to_res_ids_map()
+    fd_to_ues_mapping = get_fd_to_ues_ids_map()
+    fd_to_est_mapping = get_fd_to_est_ids_map()
 
     regional_energy_system_query = RegionalEnergySystem.query
     regional_energy_system_query = filter_by_db_version(regional_energy_system_query, RegionalEnergySystem)
@@ -1047,6 +1180,25 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         "regional_district_list": regional_district_list,
         "regional_district_names": regional_district_names,
         "regional_district_mapping": regional_district_mapping,
+        # Новые маппинги для взаимоувязанных фильтров
+        "est_to_ues_mapping": est_to_ues_mapping,
+        "est_to_res_mapping": est_to_res_mapping,
+        "est_to_rd_mapping": est_to_rd_mapping,
+        "est_to_fd_mapping": est_to_fd_mapping,
+        "ues_to_est_mapping": ues_to_est_mapping,
+        "ues_to_rd_mapping": ues_to_rd_mapping,
+        "ues_to_fd_mapping": ues_to_fd_mapping,
+        "res_to_est_mapping": res_to_est_mapping,
+        "res_to_rd_mapping": res_to_rd_mapping,
+        "res_to_fd_mapping": res_to_fd_mapping,
+        "res_to_ues_mapping_one": res_to_ues_mapping_one,  # один-к-одному
+        "rd_to_res_mapping": rd_to_res_mapping,
+        "rd_to_ues_mapping": rd_to_ues_mapping,
+        "rd_to_est_mapping": rd_to_est_mapping,
+        "rd_to_fd_mapping_one": rd_to_fd_mapping_one,  # один-к-одному
+        "fd_to_res_mapping": fd_to_res_mapping,
+        "fd_to_ues_mapping": fd_to_ues_mapping,
+        "fd_to_est_mapping": fd_to_est_mapping,
         "station_type_name": station_type_names,
         "station_type_list": station_type_list,
         "tes_type_names": tes_type_names,

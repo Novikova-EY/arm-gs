@@ -106,34 +106,46 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
     for station in stations:
         processed_count += 1
         
-        # Проверка наличия регионального округа и региональной энергосистемы
+        # Проверка наличия регионального округа
         if not station.regional_district:
             print(f"[DEBUG] Станция {station.id} ({station.name}): нет regional_district")
             skipped_count += 1
             skipped_no_rd_or_res += 1
             continue
-        
-        if not station.regional_district.regional_energy_systems:
-            print(f"[DEBUG] Станция {station.id} ({station.name}): нет regional_energy_systems в regional_district {station.regional_district.id}")
-            skipped_count += 1
-            skipped_no_rd_or_res += 1
-            continue
 
-        # Берем первую РЭС текущей версии, у которой есть ОЭС текущей версии; иначе первую подходящую
-        res_list = [r for r in (station.regional_district.regional_energy_systems or []) if is_current_version(r)]
-        if not res_list:
-            skipped_count += 1
-            skipped_no_rd_or_res += 1
-            continue
+        # ----- Определяем РЭС и ОЭС -----
         res = None
-        for r in res_list:
-            u = getattr(r, 'union_energy_system', None)
-            if u and is_current_version(u):
-                res = r
-                break
+
+        # 1) Приоритет: прямая связь станции с РЭС (Station.id_regional_energy_system)
+        if getattr(station, "id_regional_energy_system", None):
+            direct_res = getattr(station, "regional_energy_system_obj", None)
+            if direct_res and is_current_version(direct_res):
+                res = direct_res
+
+        # 2) Fallback: через субъект РФ (старое поведение)
         if res is None:
-            # нет РЭС с валидной ОЭС — берём первую по версии, даже если у неё нет ОЭС (будет пропуск)
-            res = res_list[0]
+            rd_res_list = [
+                r for r in (station.regional_district.regional_energy_systems or [])
+                if is_current_version(r)
+            ]
+            if not rd_res_list:
+                print(
+                    f"[DEBUG] Станция {station.id} ({station.name}): "
+                    f"нет regional_energy_systems в regional_district {station.regional_district.id}"
+                )
+                skipped_count += 1
+                skipped_no_rd_or_res += 1
+                continue
+
+            # Берем первую РЭС текущей версии, у которой есть ОЭС текущей версии; иначе первую подходящую
+            for r in rd_res_list:
+                u = getattr(r, "union_energy_system", None)
+                if u and is_current_version(u):
+                    res = r
+                    break
+            if res is None:
+                # нет РЭС с валидной ОЭС — берём первую по версии, даже если у неё нет ОЭС (будет пропуск)
+                res = rd_res_list[0]
 
         ues = getattr(res, 'union_energy_system', None)
         if not ues:

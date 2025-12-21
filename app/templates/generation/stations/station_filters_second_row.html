@@ -18,12 +18,12 @@
                 </form>
 
                 <!-- СиПР -->
-                <form method="GET" action="{{ url_for('station_bp.export_station_sipr_ees_application_2_routes') }}" id="exportSiprForm">
+                <form method="GET" action="{{ url_for('station_bp.export_station_sipr_ees_application_A_routes') }}" id="exportSiprForm">
                     {% for key, value in request.args.items() %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button" id="exportExcelSipr" class="btn btn-outline-success" style="white-space: nowrap;">
-                        Экспорт по форме Приложения 2 СиПРа
+                        Экспорт по форме Приложения А СиПРа
                     </button>
                 </form>
             </div>

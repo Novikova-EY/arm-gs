@@ -185,6 +185,35 @@ def aggregate_all_at_once(rows):
     test_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     test_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     
+    # Synchronous Areas
+    sa_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    sa_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    sa_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+    
+    sa_st_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    sa_st_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    sa_st_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    
+    sa_st_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_st_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_st_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    
+    sa_tes_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    sa_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    sa_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    
+    sa_tes_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_tes_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_tes_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    
+    sa_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    sa_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    
+    sa_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    sa_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    sa_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    
     # Один проход по всем данным
     for row in rows:
         eu = row.energy_unit_id
@@ -192,6 +221,7 @@ def aggregate_all_at_once(rows):
         res = row.regional_energy_system_id
         ues = row.union_energy_system_id
         est = row.energy_system_type_id
+        sa = getattr(row, 'synchronous_area_id', None)  # Синхронная зона может быть None
         st = row.station_type_id
         tes_type = row.tes_type_id
         tes_machine = row.tes_machine_type_id
@@ -376,6 +406,36 @@ def aggregate_all_at_once(rows):
         test_tes_machine_fuel_p_ust[db_version][tes_type][tes_machine][fuel][year] += p_ust_val
         test_tes_machine_fuel_p_ogr[db_version][tes_type][tes_machine][fuel][year] += p_ogr_val
         test_tes_machine_fuel_p_rasp[db_version][tes_type][tes_machine][fuel][year] += p_rasp_val
+        
+        # Synchronous Areas агрегации (только если synchronous_area_id не None)
+        if sa is not None:
+            sa_p_ust[sa][year] += p_ust_val
+            sa_p_ogr[sa][year] += p_ogr_val
+            sa_p_rasp[sa][year] += p_rasp_val
+            
+            sa_st_p_ust[sa][st][year] += p_ust_val
+            sa_st_p_ogr[sa][st][year] += p_ogr_val
+            sa_st_p_rasp[sa][st][year] += p_rasp_val
+            
+            sa_st_fuel_p_ust[sa][st][fuel][year] += p_ust_val
+            sa_st_fuel_p_ogr[sa][st][fuel][year] += p_ogr_val
+            sa_st_fuel_p_rasp[sa][st][fuel][year] += p_rasp_val
+            
+            sa_tes_p_ust[sa][tes_type][year] += p_ust_val
+            sa_tes_p_ogr[sa][tes_type][year] += p_ogr_val
+            sa_tes_p_rasp[sa][tes_type][year] += p_rasp_val
+            
+            sa_tes_fuel_p_ust[sa][tes_type][fuel][year] += p_ust_val
+            sa_tes_fuel_p_ogr[sa][tes_type][fuel][year] += p_ogr_val
+            sa_tes_fuel_p_rasp[sa][tes_type][fuel][year] += p_rasp_val
+            
+            sa_tes_machine_p_ust[sa][tes_type][tes_machine][year] += p_ust_val
+            sa_tes_machine_p_ogr[sa][tes_type][tes_machine][year] += p_ogr_val
+            sa_tes_machine_p_rasp[sa][tes_type][tes_machine][year] += p_rasp_val
+            
+            sa_tes_machine_fuel_p_ust[sa][tes_type][tes_machine][fuel][year] += p_ust_val
+            sa_tes_machine_fuel_p_ogr[sa][tes_type][tes_machine][fuel][year] += p_ogr_val
+            sa_tes_machine_fuel_p_rasp[sa][tes_type][tes_machine][fuel][year] += p_rasp_val
     
     # Возвращаем все агрегации в формате, совместимом с существующим кодом
     return {
@@ -515,6 +575,29 @@ def aggregate_all_at_once(rows):
         },
         "aggregate_total_energy_system_types_by_tes_machine_types_with_fuel": {
             "aggregated": {"p_ust": test_tes_machine_fuel_p_ust, "p_ogr": test_tes_machine_fuel_p_ogr, "p_rasp": test_tes_machine_fuel_p_rasp}
+        },
+        
+        # Synchronous Areas
+        "aggregate_power_by_synchronous_areas": {
+            "aggregated": {"p_ust": sa_p_ust, "p_ogr": sa_p_ogr, "p_rasp": sa_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_station_types": {
+            "aggregated": {"p_ust": sa_st_p_ust, "p_ogr": sa_st_p_ogr, "p_rasp": sa_st_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_station_types_with_fuel": {
+            "aggregated": {"p_ust": sa_st_fuel_p_ust, "p_ogr": sa_st_fuel_p_ogr, "p_rasp": sa_st_fuel_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_tes_types": {
+            "aggregated": {"p_ust": sa_tes_p_ust, "p_ogr": sa_tes_p_ogr, "p_rasp": sa_tes_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_tes_types_with_fuel": {
+            "aggregated": {"p_ust": sa_tes_fuel_p_ust, "p_ogr": sa_tes_fuel_p_ogr, "p_rasp": sa_tes_fuel_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_tes_machine_types": {
+            "aggregated": {"p_ust": sa_tes_machine_p_ust, "p_ogr": sa_tes_machine_p_ogr, "p_rasp": sa_tes_machine_p_rasp}
+        },
+        "aggregate_synchronous_areas_by_tes_machine_types_with_fuel": {
+            "aggregated": {"p_ust": sa_tes_machine_fuel_p_ust, "p_ogr": sa_tes_machine_fuel_p_ogr, "p_rasp": sa_tes_machine_fuel_p_rasp}
         },
     }
 

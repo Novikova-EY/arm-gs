@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+
+{% block title %}Итоговые суммы (ЕЭС, ТИТЭС, Россия){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Справочники</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Заголовок -->
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Итоговые суммы (ЕЭС, ТИТЭС, Россия)</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Упрощенная строка управления: год начала/конца, Рогр, Ррасп, подсветить изменения и округл -->
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Левая группа: Год начала и Год конца -->
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" action="{{ url_for('generation_bp.totals_summary') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                    {% for key, value in request.args.items() %}
+                        {% if key != "start_year" and key != "end_year" %}
+                            {% if key == "aggregation_type" %}
+                                {% for agg_type in request.args.getlist("aggregation_type") %}
+                                    <input type="hidden" name="{{ key }}" value="{{ agg_type }}">
+                                {% endfor %}
+                            {% else %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select">
+                        {% for year in range(2021, 2043) %}
+                        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select">
+                        {% for year in range(2022, 2043) %}
+                        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="btn btn-outline-success">Применить</button>
+
+                    <div class="filter-item">
+                        <a href="{{ url_for('generation_bp.totals_summary') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                    </div>
+                    
+                    <div class="filter-item">
+                        <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-primary w-100" style="white-space: nowrap;">Выгрузить в эксель</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Правая группа: Кнопки агрегации, Рогр, Ррасп, подсветить изменения и округл -->
+            <form method="get" action="{{ url_for('generation_bp.totals_summary') }}" id="totalsFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <!-- Сохраняем параметры годов -->
+                <input type="hidden" name="start_year" value="{{ start_year }}">
+                <input type="hidden" name="end_year" value="{{ end_year }}">
+
+                <!-- Кнопки выбора типа агрегации: ЕЭС, ТИТЭС, Россия (можно комбинировать) -->
+                <input type="checkbox" class="btn-check" id="aggregationEES" name="aggregation_type" value="ees" {% if 'ees' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationEES" class="btn {% if 'ees' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                    ЕЭС
+                </label>
+
+                <input type="checkbox" class="btn-check" id="aggregationTITES" name="aggregation_type" value="tites" {% if 'tites' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationTITES" class="btn {% if 'tites' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                    ТИТЭС
+                </label>
+
+                <input type="checkbox" class="btn-check" id="aggregationRussia" name="aggregation_type" value="russia" {% if 'russia' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationRussia" class="btn {% if 'russia' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                    Россия
+                </label>
+
+                <!-- Кнопки для синхронных зон -->
+                {% if sorted_synchronous_area_ids %}
+                    {% for sa_id in sorted_synchronous_area_ids %}
+                        {% set sa_name = synchronous_area_names[sa_id] %}
+                        {% set sa_checkbox_id = 'aggregationSyncArea' + sa_id|string %}
+                        {% set sa_value = 'sync_area_' + sa_id|string %}
+                        {% set is_checked = sa_value in aggregation_types %}
+                        <input type="checkbox" class="btn-check sync-area-checkbox" id="{{ sa_checkbox_id }}" name="aggregation_type" value="{{ sa_value }}" {% if is_checked %}checked{% endif %}>
+                        <label for="{{ sa_checkbox_id }}" class="btn {% if is_checked %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center sync-area-label" style="min-width: auto; white-space: nowrap;">
+                            {{ sa_name }}
+                        </label>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Чекбокс Рогр -->
+                <input type="checkbox" class="btn-check" id="toggleP_Ogr" name="show_p_ogr" value="1" {% if show_p_ogr %}checked{% endif %}>
+                <label for="toggleP_Ogr" class="btn {% if show_p_ogr %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                    Рогр
+                </label>
+
+                <!-- Чекбокс Ррасп -->
+                <input type="checkbox" class="btn-check" id="toggleP_Rasp" name="show_p_rasp" value="1" {% if show_p_rasp %}checked{% endif %}>
+                <label for="toggleP_Rasp" class="btn {% if show_p_rasp %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                    Ррасп
+                </label>
+
+                <!-- Подсветка -->
+                <button id="highlightChangesBtn" class="btn btn-outline-secondary text-dark" type="button" style="min-width: 250px;">
+                    ✨ Подсветить изменения
+                </button>
+
+                <!-- Округление -->
+                <div class="d-flex align-items-center gap-1">
+                    <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                    <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Таблица с данными -->
+    <style>
+        /* Фиксированная шапка таблицы */
+        .table-responsive {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .table-responsive table {
+            margin-bottom: 0;
+        }
+        
+        .table-responsive thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .table-responsive thead tr:first-child th {
+            position: sticky;
+            top: 0;
+            background-color: #d1e7dd; /* Цвет table-success */
+            z-index: 11;
+        }
+        
+        .table-responsive thead tr:nth-child(2) th {
+            position: sticky;
+            background-color: #d1e7dd; /* Цвет table-success */
+            z-index: 11;
+        }
+        
+        /* Для правильного отображения границ при прокрутке */
+        .table-responsive thead th {
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered table-responsive">
+
+            <!-- Шапка таблицы с данными -->
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th style="width: 300px;"></th>
+                    <th style="width: 80px; text-align: center;">Тип мощ-ти</th>
+                    <!-- Столбцы для годов с start_year по end_year -->
+                    {% for year in range(start_year, end_year + 1) %}
+                    <th style="width: 50px; text-align: center;">
+                        {{ year }}
+                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                            {% if year_features[year] is defined %}
+                                {{ year_features[year] }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы - только итоговые суммы -->
+            <tbody>
+                {% if sorted_energy_system_type_ids %}
+                    {% for es_type_id in sorted_energy_system_type_ids %}
+                        {# Итог по типу энергосистемы (ЕЭС, ТИТЭС) #}
+                        {% set show_es_totals = (should_show_totals|default({})).get('energy_system_types', {}).get(es_type_id) %}
+                        {% if show_es_totals %}
+                            {% set current_es_type_id = es_type_id %}
+                            {% include 'generation/stations_total_summary/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                {# Итог по России #}
+                {% set show_totals = (should_show_totals|default({})).get('total') %}
+                {% if show_totals %}
+                    {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
+                {% endif %}
+
+                {# Итоги по синхронным зонам #}
+                {% if sorted_synchronous_area_ids %}
+                    {% for sa_id in sorted_synchronous_area_ids %}
+                        {% set show_sa_totals = (should_show_totals|default({})).get('synchronous_areas', {}).get(sa_id) %}
+                        {% if show_sa_totals %}
+                            {% set current_sa_id = sa_id %}
+                            {% include 'generation/stations_total_summary/aggregated_data/synchronous_areas/aggregated_synchronous_areas_total.html' %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+            
+        </table>
+    </div>
+</div>
+{% endif %} 
+
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+
+<!-- Обработчик для автоматической отправки формы при изменении -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Функция для обновления стилей кнопок агрегации
+    function updateAggregationButtons() {
+        const aggregationCheckboxes = {
+            'aggregationEES': 'ees',
+            'aggregationTITES': 'tites',
+            'aggregationRussia': 'russia'
+        };
+        
+        for (const [checkboxId, value] of Object.entries(aggregationCheckboxes)) {
+            const checkbox = document.getElementById(checkboxId);
+            const label = checkbox?.nextElementSibling;
+            if (checkbox && label) {
+                if (checkbox.checked) {
+                    label.classList.remove('btn-outline-primary');
+                    label.classList.add('btn-primary');
+                } else {
+                    label.classList.remove('btn-primary');
+                    label.classList.add('btn-outline-primary');
+                }
+            }
+        }
+        
+        // Обновляем стили кнопок синхронных зон
+        document.querySelectorAll('.sync-area-checkbox').forEach(function(checkbox) {
+            const label = checkbox?.nextElementSibling;
+            if (checkbox && label) {
+                if (checkbox.checked) {
+                    label.classList.remove('btn-outline-primary');
+                    label.classList.add('btn-primary');
+                } else {
+                    label.classList.remove('btn-primary');
+                    label.classList.add('btn-outline-primary');
+                }
+            }
+        });
+    }
+    
+    // Функция для обновления видимости строк Рогр и Ррасп
+    function updateRowsVisibility() {
+        const showPOgr = document.getElementById('toggleP_Ogr')?.checked || false;
+        const showPRasp = document.getElementById('toggleP_Rasp')?.checked || false;
+        
+        // Показываем/скрываем строки Рогр
+        document.querySelectorAll('.p-ogr-row').forEach(function(row) {
+            row.style.display = showPOgr ? '' : 'none';
+        });
+        
+        // Показываем/скрываем строки Ррасп
+        document.querySelectorAll('.p-rasp-row').forEach(function(row) {
+            row.style.display = showPRasp ? '' : 'none';
+        });
+        
+        // Обновляем rowspan для ячеек с итогами
+        const rowspanCount = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+        document.querySelectorAll('.total-row-cell').forEach(function(cell) {
+            cell.setAttribute('rowspan', rowspanCount);
+        });
+    }
+    
+    // Инициализация при загрузке
+    updateRowsVisibility();
+    updateAggregationButtons();
+    
+    // Автоматическая отправка формы при изменении чекбоксов и селекта
+    const totalsForm = document.getElementById('totalsFilterForm');
+    if (totalsForm) {
+        const checkboxes = totalsForm.querySelectorAll('input[type="checkbox"]');
+        const select = totalsForm.querySelector('#rounding_digits');
+        
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                // Обновляем стили кнопок агрегации
+                updateAggregationButtons();
+                // Обновляем видимость перед отправкой
+                updateRowsVisibility();
+                totalsForm.submit();
+            });
+        });
+        
+        if (select) {
+            select.addEventListener('change', function() {
+                totalsForm.submit();
+            });
+        }
+    }
+
+    // Обработчик для подсветки изменений
+    const highlightBtn = document.getElementById('highlightChangesBtn');
+    if (highlightBtn) {
+        highlightBtn.addEventListener('click', function() {
+            // Здесь будет логика подсветки изменений
+            // Используется тот же скрипт, что и на странице станций
+            if (typeof highlightChanges === 'function') {
+                highlightChanges();
+            }
+        });
+    }
+    
+    // Обработчик для экспорта в Excel (открытие в новом окне)
+    const exportButton = document.getElementById('exportTotalsSummaryExcel');
+    if (exportButton) {
+        exportButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Визуальная индикация
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            this.disabled = true;
+            
+            // Формируем URL с текущими параметрами из формы и URL
+            const currentUrl = new URL(window.location.href);
+            const params = new URLSearchParams(currentUrl.search);
+            
+            // Получаем параметры из формы выбора годов
+            const yearForm = document.getElementById('yearForm');
+            if (yearForm) {
+                const startYearSelect = yearForm.querySelector('#start_year');
+                const endYearSelect = yearForm.querySelector('#end_year');
+                if (startYearSelect) {
+                    params.set('start_year', startYearSelect.value);
+                }
+                if (endYearSelect) {
+                    params.set('end_year', endYearSelect.value);
+                }
+            }
+            
+            // Получаем параметры из формы фильтров
+            const totalsFilterForm = document.getElementById('totalsFilterForm');
+            if (totalsFilterForm) {
+                const showPOgrCheckbox = totalsFilterForm.querySelector('#toggleP_Ogr');
+                const showPRaspCheckbox = totalsFilterForm.querySelector('#toggleP_Rasp');
+                const roundingSelect = totalsFilterForm.querySelector('#rounding_digits');
+                const aggregationTypeCheckboxes = totalsFilterForm.querySelectorAll('input[name="aggregation_type"]:checked');
+                
+                if (showPOgrCheckbox) {
+                    params.set('show_p_ogr', showPOgrCheckbox.checked ? '1' : '0');
+                }
+                if (showPRaspCheckbox) {
+                    params.set('show_p_rasp', showPRaspCheckbox.checked ? '1' : '0');
+                }
+                if (roundingSelect) {
+                    params.set('rounding_digits', roundingSelect.value);
+                }
+                // Удаляем все старые параметры aggregation_type
+                params.delete('aggregation_type');
+                // Добавляем все выбранные типы агрегации
+                aggregationTypeCheckboxes.forEach(function(checkbox) {
+                    params.append('aggregation_type', checkbox.value);
+                });
+            }
+            
+            // Убеждаемся, что все нужные параметры переданы (fallback на значения из шаблона)
+            if (!params.has('start_year')) {
+                params.set('start_year', '{{ start_year }}');
+            }
+            if (!params.has('end_year')) {
+                params.set('end_year', '{{ end_year }}');
+            }
+            if (!params.has('show_p_ogr')) {
+                params.set('show_p_ogr', '{{ 1 if show_p_ogr else 0 }}');
+            }
+            if (!params.has('show_p_rasp')) {
+                params.set('show_p_rasp', '{{ 1 if show_p_rasp else 0 }}');
+            }
+            if (!params.has('rounding_digits')) {
+                params.set('rounding_digits', '{{ rounding_digits }}');
+            }
+            // Если нет выбранных типов агрегации, добавляем ЕЭС по умолчанию
+            if (!params.has('aggregation_type')) {
+                params.append('aggregation_type', 'ees');
+            }
+            
+            // Формируем URL для экспорта
+            const exportUrl = '{{ url_for("generation_bp.totals_summary_export") }}?' + params.toString();
+            
+            // Открываем в новом окне - файл скачается, окно закроется автоматически
+            window.open(exportUrl, '_blank', 'noopener');
+            
+            // Возвращаем состояние кнопки
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 1000);
+        });
+    }
+});
+</script>
+
+{% endblock %}
+
+

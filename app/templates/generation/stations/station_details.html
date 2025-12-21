@@ -321,25 +321,31 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Часть энергосистемы России:</div>
                                 <div class="col-7 text-start" id="energy_system_type">
-                                    {% if station.regional_district.regional_energy_systems %}
-                                        {{ station.regional_district.regional_energy_systems[0].union_energy_system.energy_system_type.name }}
+                                    {% if station.regional_energy_system_obj and station.regional_energy_system_obj.union_energy_system and station.regional_energy_system_obj.union_energy_system.energy_system_type %}
+                                        {{ station.regional_energy_system_obj.union_energy_system.energy_system_type.name }}
                                     {% else %} Нет данных {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">ОЭС:</div>
                                 <div class="col-7 text-start" id="union_energy_system">
-                                    {% if station.regional_district.regional_energy_systems %}
-                                        {{ station.regional_district.regional_energy_systems[0].union_energy_system.name }}
+                                    {% if station.regional_energy_system_obj and station.regional_energy_system_obj.union_energy_system %}
+                                        {{ station.regional_energy_system_obj.union_energy_system.name }}
                                     {% else %} Нет данных {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Региональная энергосистема:</div>
                                 <div class="col-7 text-start" id="regional_energy_system">
-                                    {% if station.regional_district.regional_energy_systems %}
-                                        {{ station.regional_district.regional_energy_systems[0].name }}
-                                    {% else %} Нет данных {% endif %}
+                                    {% if can_edit %}
+                                        {{ form.id_regional_energy_system(class="form-select") }}
+                                    {% else %}
+                                        {% if station.regional_energy_system_obj %}
+                                            {{ station.regional_energy_system_obj.name }}
+                                        {% else %}
+                                            Нет данных
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
@@ -355,7 +361,9 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Федеральный округ:</div>
                                 <div class="col-7 text-start" id="federal_district">
-                                    {{ station.regional_district.federal_district.name }}
+                                    {% if station.regional_district and station.regional_district.federal_district %}
+                                        {{ station.regional_district.federal_district.name }}
+                                    {% else %} Нет данных {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
@@ -1018,10 +1026,12 @@
 
     document.addEventListener("DOMContentLoaded", function() {
         const districtSelect = document.getElementById("id_regional_district");
-        
+        const resSelect = document.querySelector('select[name="id_regional_energy_system"]');
+        const resAutoMap = {{ res_auto_map|tojson|safe }};
+
         if (districtSelect) {
             districtSelect.addEventListener("change", function() {
-            let district_id = this.value;
+                let district_id = this.value;
             
                 if (!district_id || district_id === "0") {
                     clearEnergySystemFields();
@@ -1040,7 +1050,7 @@
                         }
                         return response.json();
                     })
-                .then(data => {
+                    .then(data => {
                         // Обновляем элементы только если они существуют
                         updateEnergySystemFields(data);
                         hideLoadingIndicator();
@@ -1054,67 +1064,84 @@
         }
         
         function updateEnergySystemFields(data) {
-            const elements = {
-                "federal_district": data.federal_district || "Нет данных",
-                "union_energy_system": data.union_energy_system || "Нет данных", 
-                "energy_system_type": data.energy_system_type || "Нет данных",
-                "regional_energy_system": data.regional_energy_system || "Нет данных"
-            };
-            
-            Object.entries(elements).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerText = value;
-                    // Добавляем анимацию обновления
-                    element.style.transition = "background-color 0.3s ease";
-                    element.style.backgroundColor = "#d4edda";
-                    setTimeout(() => {
-                        element.style.backgroundColor = "";
-                    }, 1000);
-                }
-            });
+            // Согласно новой логике:
+            // - Федеральный округ определяется по субъекту РФ
+            // - Региональная энергосистема / ОЭС / Часть энергосистемы берутся из id_regional_energy_system станции
+            const element = document.getElementById("federal_district");
+            const value = (data && data.federal_district) ? data.federal_district : "Нет данных";
+            if (element) {
+                element.innerText = value;
+                element.style.transition = "background-color 0.3s ease";
+                element.style.backgroundColor = "#d4edda";
+                setTimeout(() => {
+                    element.style.backgroundColor = "";
+                }, 1000);
+            }
         }
         
         function clearEnergySystemFields() {
-            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
-            elements.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerText = "Нет данных";
-                }
-            });
+            // При очистке субъекта обнуляем только федеральный округ
+            const element = document.getElementById("federal_district");
+            if (element) {
+                element.innerText = "Нет данных";
+            }
         }
         
         function showLoadingIndicator() {
-            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
-            elements.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerText = "Загрузка...";
-                    element.style.color = "#6c757d";
-                }
-            });
+            const element = document.getElementById("federal_district");
+            if (element) {
+                element.innerText = "Загрузка...";
+                element.style.color = "#6c757d";
+            }
         }
         
         function hideLoadingIndicator() {
-            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
-            elements.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.style.color = "";
-                }
-            });
+            const element = document.getElementById("federal_district");
+            if (element) {
+                element.style.color = "";
+            }
         }
         
         function showErrorMessage(message) {
-            const elements = ["federal_district", "union_energy_system", "energy_system_type", "regional_energy_system"];
-            elements.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerText = "Ошибка загрузки";
-                    element.style.color = "#dc3545";
-                }
+            const element = document.getElementById("federal_district");
+            if (element) {
+                element.innerText = "Ошибка загрузки";
+                element.style.color = "#dc3545";
+            }
+        }
+
+        // Автоподстановка ОЭС и части энергосистемы по выбранной РЭС
+        function updateEnergySystemFromRes() {
+            const uesElement = document.getElementById("union_energy_system");
+            const estElement = document.getElementById("energy_system_type");
+            if (!uesElement || !estElement || !resSelect) {
+                return;
+            }
+            const value = resSelect.value;
+            const id = parseInt(value || "0", 10);
+            const info = resAutoMap[String(id)];
+
+            const uesValue = info && info.union_energy_system ? info.union_energy_system : "Нет данных";
+            const estValue = info && info.energy_system_type ? info.energy_system_type : "Нет данных";
+
+            uesElement.innerText = uesValue;
+            estElement.innerText = estValue;
+
+            // Подсветка обновлённых значений зелёным, как у федерального округа
+            [uesElement, estElement].forEach((el) => {
+                if (!el) return;
+                el.style.transition = "background-color 0.3s ease";
+                el.style.backgroundColor = "#d4edda";
+                setTimeout(() => {
+                    el.style.backgroundColor = "";
+                }, 1000);
             });
+        }
+
+        if (resSelect) {
+            resSelect.addEventListener("change", updateEnergySystemFromRes);
+            // Первичная синхронизация при загрузке
+            updateEnergySystemFromRes();
         }
     });
 </script>

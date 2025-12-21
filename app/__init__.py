@@ -1,4 +1,7 @@
 import os
+import json
+import datetime as dt
+from pathlib import Path
 from app.generation.models.boiler import boiler_model
 from app.generation.models.machine import machine_tes_type_model
 from app.refdata.models.refdata_for_stations.machine import machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
@@ -18,15 +21,69 @@ from flask_session import Session
 from app.common.middleware import ConcurrentUpdateMiddleware
 
 def create_app():
+    # #region agent log
+    log_path = Path(__file__).resolve().parents[1] / ".cursor" / "debug.log"
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "sessionId": "debug-session",
+                "runId": "pre-fix",
+                "hypothesisId": "B",
+                "location": "app/__init__.py:20",
+                "message": "Создание приложения - начало",
+                "data": {"DEBUG_env": os.getenv("DEBUG"), "FLASK_ENV": os.getenv("FLASK_ENV")},
+                "timestamp": int(dt.datetime.now().timestamp() * 1000)
+            }, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     app = Flask(__name__)
     app.config.from_object(Config) 
     app.secret_key = SECRET_KEY
     app.debug = app.config.get("DEBUG", False)
-    # Обновление шаблонов без перезапуска (особенно важно в разработке)
-    app.config['TEMPLATES_AUTO_RELOAD'] = True
-    app.jinja_env.auto_reload = True
+    # #region agent log
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "sessionId": "debug-session",
+                "runId": "pre-fix",
+                "hypothesisId": "B",
+                "location": "app/__init__.py:24",
+                "message": "DEBUG режим установлен",
+                "data": {"app_debug": app.debug, "config_debug": app.config.get("DEBUG")},
+                "timestamp": int(dt.datetime.now().timestamp() * 1000)
+            }, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    # Обновление шаблонов без перезапуска (только в режиме разработки)
+    app.config['TEMPLATES_AUTO_RELOAD'] = app.debug
+    app.jinja_env.auto_reload = app.debug
     app.config['SQLALCHEMY_ECHO'] = False
-    app.logger.setLevel(logging.DEBUG)
+    # Уровень логирования зависит от режима DEBUG
+    if app.debug:
+        app.logger.setLevel(logging.DEBUG)
+    else:
+        app.logger.setLevel(logging.INFO)
+    # #region agent log
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "sessionId": "debug-session",
+                "runId": "pre-fix",
+                "hypothesisId": "B",
+                "location": "app/__init__.py:35",
+                "message": "Настройки приложения установлены",
+                "data": {
+                    "templates_auto_reload": app.config.get('TEMPLATES_AUTO_RELOAD'),
+                    "jinja_auto_reload": app.jinja_env.auto_reload,
+                    "logger_level": app.logger.level
+                },
+                "timestamp": int(dt.datetime.now().timestamp() * 1000)
+            }, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    # #endregion
     # Включаем сжатие ответов (gzip, br, zstd)
     compress = Compress(app)
 
@@ -72,11 +129,20 @@ def create_app():
 
     # Инициализация Redis для кэширования и сессий
     try:
-        # Отдельный Redis‑клиент для сессий с более щадящими таймаутами
+        # Отдельный Redis‑клиент для сессий с более щадящими таймаутами и ретраями
         redis_client = redis.from_url(
             app.config.get("REDIS_URL", "redis://localhost:6379/0"),
-            socket_connect_timeout=5,  # больше времени на установление соединения
-            socket_timeout=5,          # больше времени на операции записи/чтения
+            # Даём больше времени на установление соединения
+            socket_connect_timeout=10,
+            # Увеличенный таймаут на операции чтения/записи,
+            # чтобы кратковременные задержки сети не приводили к ошибкам
+            socket_timeout=30,
+            # Автоматически повторяем операции при таймауте сокета
+            retry_on_timeout=True,
+            # Периодические health‑check'и, чтобы соединения не "застаивались"
+            health_check_interval=30,
+            # Держим соединения живыми на уровне TCP
+            socket_keepalive=True,
             decode_responses=False,
         )
         redis_client.ping()
@@ -202,6 +268,9 @@ def create_app():
         )
         from app.generation.models.document import (
             document_model,
+        )
+        from app.refdata.models.fuels import (
+            station_equpment_group_model,
         )
 
         # Проброс мапперов
@@ -331,7 +400,6 @@ def create_app():
     from app.generation.routes.station_changes import station_changes_bp
     from app.start.routes import start_bp
     from app.logs.routes import logs_bp
-    from app.exports.routes import exports_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -342,7 +410,12 @@ def create_app():
     app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
-    app.register_blueprint(exports_bp, url_prefix="")
+
+    # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
+    @app.route('/.well-known/appspecific/com.chrome.devtools.json')
+    def chrome_devtools_config():
+        """Обработчик для Chrome DevTools - возвращает пустой ответ."""
+        return '', 204  # 204 No Content
 
     # Загрузка пользователя для Flask-Login
     @login_manager.user_loader

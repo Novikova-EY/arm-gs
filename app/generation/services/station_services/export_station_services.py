@@ -1274,8 +1274,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
     return output
 
-# Выгрузка в эксель по форме Приложения 2 к СиПР ЭЭС (по субъектам)
-def export_station_sipr_ees_application_2_service(user, filters=None):
+# Выгрузка в эксель по форме Приложения А к СиПР ЭЭС (по субъектам)
+def export_station_sipr_ees_application_A_service(user, filters=None):
     log_to_db(user, "Начата выгрузка таблицы электростанций из базы данных")
     log_to_db(user, "Параметры экспорта", f"Фильтры: {filters}")
 
@@ -1386,16 +1386,38 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
             # Добавляем строку с названием региональной энергосистемы
             first_station = stations[0]
-            regional_system_name = (
-                first_station.regional_district.regional_energy_system.name_full.replace("Электроэнергетическая система", "Энергосистема")
-                if first_station.regional_district and first_station.regional_district.regional_energy_system
-                else "Неизвестно"
-            )
+            if first_station.regional_district and first_station.regional_district.regional_energy_system:
+                regional_energy_system = first_station.regional_district.regional_energy_system
+                name_full = regional_energy_system.name_full
+                
+                # Проверяем тип энергосистемы: если ТИТЭС, оставляем "Электроэнергетическая система", иначе заменяем на "Энергосистема"
+                is_tites = False
+                if regional_energy_system.union_energy_system and regional_energy_system.union_energy_system.energy_system_type:
+                    energy_system_type_name = regional_energy_system.union_energy_system.energy_system_type.name
+                    if energy_system_type_name and "титэс" in energy_system_type_name.lower():
+                        is_tites = True
+                
+                if is_tites:
+                    # Для ТИТЭС оставляем "Электроэнергетическая система"
+                    regional_system_name = name_full
+                else:
+                    # Для остальных заменяем на "Энергосистема"
+                    regional_system_name = name_full.replace("Электроэнергетическая система", "Энергосистема")
+            else:
+                regional_system_name = "Неизвестно"
 
-            if (first_station.regional_district and 
-                first_station.regional_district.regional_energy_system and 
-                first_station.regional_district.regional_energy_system.regional_district_count > 1):
-                region_label = f"{regional_system_name}, территория {district_name}"
+            if (
+                first_station.regional_district
+                and first_station.regional_district.regional_energy_system
+                and first_station.regional_district.regional_energy_system.regional_district_count > 1
+            ):
+                # name_rp — наименование субъекта в родительном падеже (нужно для формулировки "территория ...")
+                territory_name = (
+                    first_station.regional_district.name_rp
+                    or first_station.regional_district.name_full
+                    or first_station.regional_district.name
+                )
+                region_label = f"{regional_system_name}, территория {territory_name}"
             else:
                 region_label = regional_system_name
 
@@ -1405,7 +1427,8 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 "Станционный номер": "",
                 "Тип генерирующего оборудования": "",
                 "Вид топлива": "",
-                **{year: "" for year in all_years},
+                # Для колонок годов сразу используем None, чтобы они интерпретировались как пустые числовые ячейки
+                **{year: None for year in all_years},
                 "Примечание": "",
                 "_group_rowspan": "",
                 "_fuel_rowspan": "",
@@ -1415,140 +1438,369 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
             # Определяем наличие групп по агрегатам станции
 
-            for station in stations:
-                has_groups = any(m.machine_group for m in station.machines)
-                has_groups_text = "Да" if has_groups else "Нет"
-                
-                processed_stations += 1
-                
-                # Мощности станции с учетом активной версии БД
-                power_query = (
-                    StationPower.query
-                    .filter_by(id_station=station.id)
-                    .filter(StationPower.year_number.in_(all_years))
-                )
-                power_query = filter_by_explicit_db_version(
-                    power_query,
-                    StationPower,
-                    current_version_id,
-                )
-                power_data = {
-                    sp.year_number: {
-                        "p_ust": sp.p_ust,
-                        "p_ogr": sp.p_ogr,
-                        "p_rasp": sp.p_rasp,
-                    }
-                    for sp in power_query.all()
-                }
-
-                # Добавляем строку с названием электростанции
-                data.append({
-                    "Электростанция": station.name,
-                    "Генерирующая компания": station.gen_companies,
-                    "Станционный номер": "",
-                    "Тип генерирующего оборудования": "",
-                    "Вид топлива": "",
-                    **{year: "" for year in all_years},
-                    "Примечание": "",
-                    "_group_rowspan": "",
-                    "_fuel_rowspan": "",
-                    "_total_machines": "",
-                    "Есть группы": "",
-                })
-
-                def extract_year(date_input):
-                    """Возвращает год из строки или числа."""
-                    if not date_input:
-                        return None
-                    if isinstance(date_input, int):
-                        return date_input
+            def extract_year(date_input):
+                """Возвращает год из строки или числа."""
+                if not date_input:
+                    return None
+                if isinstance(date_input, int):
+                    return date_input
+                try:
+                    return datetime.strptime(date_input, "%Y-%m-%d").year
+                except Exception:
                     try:
-                        return datetime.strptime(date_input, "%Y-%m-%d").year
+                        return int(str(date_input)[:4])
                     except Exception:
-                        try:
-                            return int(str(date_input)[:4])
-                        except Exception:
-                            return None
+                        return None
 
+            # Группируем станции по энергоузлам
+            from collections import defaultdict
+            stations_by_energy_unit = defaultdict(list)
+            for station in stations:
+                energy_unit_id = station.id_energy_unit if station.energy_unit else None
+                stations_by_energy_unit[energy_unit_id].append(station)
 
-                # Добавляем строки с установленной мощностью по машинам электростанции
+            # Функция для определения порядка типа станции
+            def get_station_type_order(station):
+                """Возвращает порядковый номер типа станции для сортировки."""
+                if not station.station_type or not station.station_type.name:
+                    return 99  # Станции без типа в конец
+                station_type_name = station.station_type.name.lower()
+                if "аэс" in station_type_name:
+                    return 0
+                elif "гэс" in station_type_name and "гаэс" not in station_type_name:
+                    return 1
+                elif "гаэс" in station_type_name:
+                    return 2
+                elif "тэс" in station_type_name:
+                    return 3
+                elif "вэс" in station_type_name:
+                    return 4
+                elif "сэс" in station_type_name or "солнечная" in station_type_name:
+                    return 5
+                else:
+                    return 99  # Остальные типы в конец
+
+            # Функция для получения суммарной мощности станции на последний год
+            def get_station_total_power_last_year(station, last_year, current_version_id):
+                """Возвращает суммарную установленную мощность станции на последний год."""
+                total_power = 0
                 for machine in station.machines:
-                    # Мощности агрегатов с учетом активной версии БД
                     mp_query = (
                         MachinePower.query
                         .filter_by(id_machine=machine.id)
-                        .filter(MachinePower.year_number.in_(all_years))
+                        .filter(MachinePower.year_number == last_year)
                     )
                     mp_query = filter_by_explicit_db_version(
                         mp_query,
                         MachinePower,
                         current_version_id,
                     )
-                    machine_power_data = {
-                        mp.year_number: mp.p_ust
-                        for mp in mp_query.all()
-                        if mp.p_ust is not None
+                    machine_power = mp_query.first()
+                    if machine_power and machine_power.p_ust:
+                        total_power += machine_power.p_ust
+                return total_power
+
+            # Обрабатываем станции, сгруппированные по энергоузлам
+            for energy_unit_id, stations_group in stations_by_energy_unit.items():
+                # Сортируем станции: сначала по типу, затем по мощности на последний год
+                last_year = all_years[-1]  # Последний год периода
+                stations_group.sort(key=lambda s: (
+                    get_station_type_order(s),
+                    -get_station_total_power_last_year(s, last_year, current_version_id)  # Отрицательное значение для сортировки по убыванию
+                ))
+                # Добавляем строку с названием энергоузла, если он указан
+                if energy_unit_id is not None and stations_group and stations_group[0].energy_unit:
+                    eu = stations_group[0].energy_unit
+                    # Безопасно получаем читаемое имя энергоузла:
+                    # сначала пытаемся взять name_full (если есть), затем name.
+                    energy_unit_name = getattr(eu, "name_full", None) or getattr(eu, "name", None)
+
+                    # Проверяем, что название энергоузла валидное (не "не указано" и не техническая подпись)
+                    if energy_unit_name:
+                        energy_unit_name_str = str(energy_unit_name).strip()
+                        energy_unit_name_lower = energy_unit_name_str.lower()
+                        
+                        # Пропускаем, если название содержит "не указано"/"не указан" или является технической подписью
+                        if (energy_unit_name_lower and 
+                            "не указано" not in energy_unit_name_lower and 
+                            "не указан" not in energy_unit_name_lower and
+                            not energy_unit_name_str.startswith("id=")):
+                            data.append({
+                                "Электростанция": energy_unit_name,
+                                "Генерирующая компания": "",
+                                "Станционный номер": "",
+                                "Тип генерирующего оборудования": "",
+                                "Вид топлива": "",
+                                # Для колонок годов используем None, чтобы они интерпретировались как пустые числовые ячейки
+                                **{year: None for year in all_years},
+                                "Примечание": "",
+                                "_group_rowspan": "",
+                                "_fuel_rowspan": "",
+                                "_total_machines": "",
+                                "Есть группы": "",
+                            })
+
+                # Обрабатываем каждую станцию внутри текущего энергоузла
+                for station in stations_group:
+                    has_groups = any(m.machine_group for m in station.machines)
+                    has_groups_text = "Да" if has_groups else "Нет"
+                    
+                    processed_stations += 1
+                    
+                    # Мощности станции с учетом активной версии БД
+                    power_query = (
+                        StationPower.query
+                        .filter_by(id_station=station.id)
+                        .filter(StationPower.year_number.in_(all_years))
+                    )
+                    power_query = filter_by_explicit_db_version(
+                        power_query,
+                        StationPower,
+                        current_version_id,
+                    )
+                    power_data = {
+                        sp.year_number: {
+                            "p_ust": sp.p_ust,
+                            "p_ogr": sp.p_ogr,
+                            "p_rasp": sp.p_rasp,
+                        }
+                        for sp in power_query.all()
                     }
 
-                    note_parts = []
-                    if machine.date_decompressing_expected:
-                        year = extract_year(machine.date_decompressing_expected)
-                        if year:
-                            note_parts.append(f"Вывод из эксплуатации в {year} г.")
+                    # Предварительно проверяем, есть ли у станции агрегаты с ненулевой мощностью
+                    # Собираем мощности всех агрегатов для предварительной проверки
+                    preliminary_station_total = {year: 0 for year in all_years}
+                    for machine in station.machines:
+                        mp_query = (
+                            MachinePower.query
+                            .filter_by(id_machine=machine.id)
+                            .filter(MachinePower.year_number.in_(all_years))
+                        )
+                        mp_query = filter_by_explicit_db_version(
+                            mp_query,
+                            MachinePower,
+                            current_version_id,
+                        )
+                        machine_power_data = {
+                            mp.year_number: mp.p_ust
+                            for mp in mp_query.all()
+                            if mp.p_ust is not None
+                        }
+                        for year in all_years:
+                            preliminary_station_total[year] += (machine_power_data.get(year) or 0)
 
-                    if machine.date_modernization_expected:
-                        year = extract_year(machine.date_modernization_expected)
-                        if year:
-                            note_parts.append(f"Модернизация в {year} г.")
+                    # Если суммарная установленная мощность станции по всем годам равна нулю
+                    # (рассчитанная из агрегатов), станцию полностью не отображаем в Приложении А.
+                    has_nonzero_power = any(
+                        (preliminary_station_total.get(year) or 0) != 0
+                        for year in all_years
+                    )
+                    if not has_nonzero_power:
+                        continue
 
-                    full_note = ". ".join(note_parts)
-                    if machine.note:
-                        if full_note:
-                            full_note = f"{full_note}. {machine.note}"
+                    # Добавляем строку с названием электростанции
+                    data.append({
+                        "Электростанция": station.name,
+                        "Генерирующая компания": station.gen_companies,
+                        "Станционный номер": "",
+                        "Тип генерирующего оборудования": "",
+                        "Вид топлива": "",
+                        **{year: "" for year in all_years},
+                        "Примечание": "",
+                        "_group_rowspan": "",
+                        "_fuel_rowspan": "",
+                        "_total_machines": "",
+                        "Есть группы": "",
+                    })
+
+                    # Добавляем строки с установленной мощностью по машинам электростанции
+                    # Собираем мощности всех агрегатов для расчета итоговой суммы
+                    station_total_p_ust_from_machines = {year: 0 for year in all_years}
+                    
+                    for machine in station.machines:
+                        # Мощности агрегатов с учетом активной версии БД
+                        mp_query = (
+                            MachinePower.query
+                            .filter_by(id_machine=machine.id)
+                            .filter(MachinePower.year_number.in_(all_years))
+                        )
+                        mp_query = filter_by_explicit_db_version(
+                            mp_query,
+                            MachinePower,
+                            current_version_id,
+                        )
+                        machine_power_data = {
+                            mp.year_number: mp.p_ust
+                            for mp in mp_query.all()
+                            if mp.p_ust is not None
+                        }
+
+                        # Проверяем, есть ли у агрегата ненулевая мощность хотя бы в одном году
+                        machine_total_power = sum(
+                            (machine_power_data.get(year) or 0) for year in all_years
+                        )
+                        
+                        # Если у агрегата мощность = 0 во всех годах, пропускаем его
+                        if machine_total_power == 0:
+                            continue
+
+                        # Накапливаем мощность станции из агрегатов
+                        for year in all_years:
+                            station_total_p_ust_from_machines[year] += (machine_power_data.get(year) or 0)
+
+                        note_parts = []
+
+                        # Ввод в эксплуатацию: сначала берём фактическую дату ввода, если есть,
+                        # иначе плановый год ввода (date_exploitation).
+                        # Показываем только если год попадает в диапазон отображаемых данных.
+                        if getattr(machine, "date_commission_fact", None):
+                            year = extract_year(machine.date_commission_fact)
+                            if year and year in all_years:
+                                note_parts.append(f"Ввод в эксплуатацию в {year} г.")
+                        elif getattr(machine, "date_exploitation", None):
+                            year = extract_year(machine.date_exploitation)
+                            if year and year in all_years:
+                                note_parts.append(f"Ввод в эксплуатацию в {year} г.")
+
+                        # Вывод из эксплуатации: приоритет фактической дате, затем плановой.
+                        # Показываем только если год попадает в диапазон отображаемых данных.
+                        if getattr(machine, "date_decompressing_fact", None):
+                            year = extract_year(machine.date_decompressing_fact)
+                            if year and year in all_years:
+                                note_parts.append(f"Вывод из эксплуатации в {year} г.")
+                        elif getattr(machine, "date_decompressing_expected", None):
+                            year = extract_year(machine.date_decompressing_expected)
+                            if year and year in all_years:
+                                note_parts.append(f"Вывод из эксплуатации в {year} г.")
+
+                        # Модернизация (плановая)
+                        # Показываем только если год попадает в диапазон отображаемых данных.
+                        if getattr(machine, "date_modernization_expected", None):
+                            year = extract_year(machine.date_modernization_expected)
+                            if year and year in all_years:
+                                note_parts.append(f"Модернизация в {year} г.")
+
+                        full_note = ". ".join(note_parts)
+
+                        row = {
+                            "Электростанция": machine.machine_group,
+                            "Генерирующая компания": "",
+                            "Станционный номер": machine.machine_number,
+                            "Тип генерирующего оборудования": machine.machine_name,
+                            "Вид топлива": machine.fuel_so if getattr(machine, 'fuel_so', 0) else "–",
+                            **{
+                                year: round(machine_power_data.get(year), 1)
+                                if machine_power_data.get(year) is not None and machine_power_data.get(year) != 0
+                                else None
+                                for year in all_years
+                            },
+                            "Примечание": full_note or "",
+                                
+                            # Скрытые поля для Excel
+                            "_group_rowspan": machine.group_rowspan or 0,
+                            "_fuel_rowspan": machine.fuel_rowspan or 0,
+                            "_total_machines": len(station.machines),
+                            "Есть группы": has_groups_text,
+                        }
+
+                        data.append(row)
+
+                    # Добавляем строку "Установленная мощность, всего" по станции.
+                    # Сумма считается из агрегатов, которые реально попали в таблицу.
+                    # Если в каком-то году суммарная мощность равна нулю или отсутствует,
+                    # ячейка должна быть пустой.
+                    total_year_values = {}
+                    for year in all_years:
+                        p_ust = station_total_p_ust_from_machines.get(year, 0)
+                        if p_ust is None or p_ust == 0:
+                            total_year_values[year] = None
                         else:
-                            full_note = machine.note
+                            total_year_values[year] = round(p_ust, 1)
 
-                    row = {
-                        "Электростанция": machine.machine_group,
+                    total_row = {
+                        "Электростанция": "Установленная мощность, всего",
                         "Генерирующая компания": "",
-                        "Станционный номер": machine.machine_number,
-                        "Тип генерирующего оборудования": machine.machine_name,
-                        "Вид топлива": machine.fuel_so if getattr(machine, 'fuel_so', 0) else "–",
-                        **{
-                            year: f"{machine_power_data.get(year):.1f}".replace('.', ',')
-                            if machine_power_data.get(year)
-                            else ""
-                            for year in all_years
-                        },
-                        "Примечание": full_note or "",
-                            
-                        # Скрытые поля для Excel
-                        "_group_rowspan": machine.group_rowspan or 0,
-                        "_fuel_rowspan": machine.fuel_rowspan or 0,
-                        "_total_machines": len(station.machines),
-                        "Есть группы": has_groups_text,
+                        "Станционный номер": "–",
+                        "Тип генерирующего оборудования": "–",
+                        "Вид топлива": "–",
+                        **total_year_values,
+                        "Примечание": "",
+                        "_group_rowspan": "",
+                        "_fuel_rowspan": "",
+                        "_total_machines": "",
+                        "Есть группы": "",
                     }
-
-                    data.append(row)
-
-                # Добавляем строку "Установленная мощность, всего" по станции
-                total_row = {
-                    "Электростанция": "Установленная мощность, всего",
+                    data.append(total_row)
+            
+            # Проверяем, есть ли СЭС в станциях субъекта
+            has_ses = False
+            for station in stations:
+                if station.station_type and station.station_type.name:
+                    station_type_name_lower = station.station_type.name.lower()
+                    if "сэс" in station_type_name_lower or "солнечная" in station_type_name_lower:
+                        has_ses = True
+                        break
+            
+            # Если есть СЭС, добавляем строку с примечанием
+            if has_ses:
+                note_text = "          Примечание – 1) В соответствии с Правилами оптового рынка электрической энергии и мощности, утвержденными постановлением Правительства Российской Федерации от 27.12.2010 № 1172, поставщики мощности по договорам о предоставлении мощности квалифицированных генерирующих объектов, функционирующих на основе использования возобновляемых источников энергии, заключенным по результатам отбора проектов, вправе изменить планируемое местонахождение генерирующего объекта. В соответствии с постановлением Правительства Российской Федерации от 20.05.2022 № 912 поставщик мощности по указанным договорам вправе до наступления даты начала поставки мощности осуществить отсрочку начала периода поставки мощности."
+                data.append({
+                    "Электростанция": note_text,
                     "Генерирующая компания": "",
-                    "Станционный номер": "–",
-                    "Тип генерирующего оборудования": "–",
-                    "Вид топлива": "–",
-                    **{year: f"{power_data.get(year, {}).get('p_ust', 0):.1f}".replace('.', ',') for year in all_years},
+                    "Станционный номер": "",
+                    "Тип генерирующего оборудования": "",
+                    "Вид топлива": "",
+                    **{year: None for year in all_years},
                     "Примечание": "",
                     "_group_rowspan": "",
                     "_fuel_rowspan": "",
                     "_total_machines": "",
                     "Есть группы": "",
-                }
-                data.append(total_row)
+                })
             
             df = pd.DataFrame(data)
-            df = df.fillna("")
+            # Заполняем пустые значения только для текстовых колонок.
+            # Для числовых колонок (годы) оставляем None/NaN, чтобы они оставались числовыми в Excel.
+            text_columns = [
+                "Электростанция",
+                "Генерирующая компания",
+                "Станционный номер",
+                "Тип генерирующего оборудования",
+                "Вид топлива",
+                "Примечание",
+                "_group_rowspan",
+                "_fuel_rowspan",
+                "_total_machines",
+                "Есть группы",
+            ]
+            for col in text_columns:
+                if col in df.columns:
+                    df[col] = df[col].fillna("")
+
+            # Явно приводим колонки годов к числовому типу, чтобы Excel видел их как числа.
+            for year in all_years:
+                if year in df.columns:
+                    df[year] = pd.to_numeric(df[year], errors="coerce")
+
+            # Находим и сохраняем строку с примечанием, если она есть
+            note_row_data = None
+            note_text = None
+            note_row_df_index = None
+            for idx, row in df.iterrows():
+                station_name_raw = str(row.get("Электростанция", "") or "")
+                station_name = station_name_raw.strip()
+
+                # ✅ ловим любые варианты пробелов/тире
+                if "Примечание" in station_name and "1)" in station_name:
+                    note_row_data = row.to_dict()
+                    note_text = station_name_raw  # сохраняем как есть (с отступами)
+                    note_row_df_index = idx
+                    break
+            
+            # Удаляем строку с примечанием из DataFrame, если она есть
+            if note_row_df_index is not None:
+                df = df.drop(index=note_row_df_index)
+                df = df.reset_index(drop=True)  # Сбрасываем индексы для правильной последовательности
 
             # Отдельная копия — без служебных колонок — для экспорта
             df_export = df.drop(
@@ -1609,6 +1861,17 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                     'border': 1                      # Границы ячейки
                 })
 
+                # Формат для числовых ячеек мощностей: 1 знак после запятой
+                power_number_format = workbook.add_format({
+                    'font_name': 'Times New Roman',
+                    'font_size': 10,
+                    'align': 'center',
+                    'valign': 'vcenter',
+                    'text_wrap': True,
+                    'border': 1,
+                    'num_format': '0.0',  # один знак после запятой
+                })
+
                 # Заголовки
                 worksheet.merge_range(
                     "A1:N1", 
@@ -1639,7 +1902,31 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
                 # Объединяем и форматируем остальные столбцы
                 for col_num in range(1, num_cols):  # Начинаем с 1, чтобы не дублировать первый столбец
-                    worksheet.merge_range(4, col_num, 5, col_num, col_names[col_num], text_center_format)
+                    col_name = col_names[col_num]
+                    # Для "Тип генерирующего оборудования" добавляем верхний индекс "1)"
+                    if col_name == "Тип генерирующего оборудования":
+                        # Создаем форматы для rich_string
+                        superscript_format = workbook.add_format({
+                            'font_name': 'Times New Roman',
+                            'font_size': 10,
+                            'font_script': 1,  # 1 = superscript
+                        })
+                        header_format = workbook.add_format({
+                            'font_name': 'Times New Roman',
+                            'font_size': 10,
+                            'align': 'center',
+                            'valign': 'vcenter',
+                            'text_wrap': True,
+                            'border': 1
+                        })
+                        # Объединяем ячейки
+                        worksheet.merge_range(4, col_num, 5, col_num, "", header_format)
+                        # Записываем текст с верхним индексом в объединенную ячейку
+                        worksheet.write_rich_string(4, col_num, 
+                            header_format, "Тип генерирующего оборудования",
+                            superscript_format, "1)")
+                    else:
+                        worksheet.merge_range(4, col_num, 5, col_num, col_name, text_center_format)
 
                 # Первая строка над мощностями
                 worksheet.merge_range(4, num_cols, 4, num_cols + len(all_years) - 1, "Установленная мощность (МВт)", text_center_format)
@@ -1655,12 +1942,12 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
 
                 # Устанавливаем особую ширину для первого года
                 first_year_col_idx = num_cols  # Столбец первого года
-                worksheet.set_column(first_year_col_idx, first_year_col_idx, 12.86, text_center_format)
+                worksheet.set_column(first_year_col_idx, first_year_col_idx, 12.86, power_number_format)
 
                 # Устанавливаем стандартную ширину для остальных годов
                 for idx in range(1, len(all_years)):  # Пропускаем первый год
                     col_num = num_cols + idx
-                    worksheet.set_column(col_num, col_num, 8, text_center_format)
+                    worksheet.set_column(col_num, col_num, 8, power_number_format)
 
                 # Добавляем "Примечание" в 1 строке
                 worksheet.merge_range(4, num_cols + len(all_years), 5, num_cols + len(all_years), "Примечание", text_center_format)
@@ -1707,7 +1994,8 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                     regional_row_idx + 6, 
                     end_col,  # +6 из-за заголовков
                     region_label, 
-                    text_format)
+                    text_format
+                )
 
                 # Определяем последнюю заполненную строку
                 last_row = len(df) + 6  # +5 из-за заголовков
@@ -1716,22 +2004,37 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                 last_col = len(df.columns)
 
                 start_excel_row = 6  # Потому что DataFrame начинается с строки 6 в Excel
-                for i, row in df.iterrows():
-                    excel_row = i + start_excel_row
+                
+                # Используем enumerate для последовательного индекса, так как DataFrame может иметь не последовательные индексы
+                for row_idx, (i, row) in enumerate(df.iterrows()):
+                    excel_row = row_idx + start_excel_row  # Используем row_idx (последовательный), а не i (индекс DataFrame)
                     
                     group_rowspan = int(row["_group_rowspan"] or 0)
                     total_machines = int(row["_total_machines"] or 0)
                     has_groups = row.get("Есть группы", "") == "Да"
 
-                    if has_groups and 1 <= group_rowspan <= total_machines:
-                        worksheet.merge_range(
-                            excel_row,
-                            station_col_idx,
-                            excel_row + group_rowspan - 1,
-                            station_col_idx,
-                            row["Электростанция"],
-                            text_format_group
-                        )
+                    # Отображаем название группы агрегатов с отступом:
+                    # - если в группе несколько агрегатов, объединяем ячейки по вертикали;
+                    # - если агрегат в группе один, просто применяем формат с отступом.
+                    if has_groups:
+                        if 1 <= group_rowspan <= total_machines:
+                            # Группа из нескольких агрегатов
+                            worksheet.merge_range(
+                                excel_row,
+                                station_col_idx,
+                                excel_row + group_rowspan - 1,
+                                station_col_idx,
+                                row["Электростанция"],
+                                text_format_group
+                            )
+                        elif group_rowspan == 0 and row["Электростанция"]:
+                            # Одиночный агрегат с указанной группой
+                            worksheet.write(
+                                excel_row,
+                                station_col_idx,
+                                row["Электростанция"],
+                                text_format_group
+                            )
 
                     # Объединение "Вид топлива"
                     fuel_rowspan = int(row["_fuel_rowspan"] or 0)
@@ -1745,17 +2048,51 @@ def export_station_sipr_ees_application_2_service(user, filters=None):
                             row["Вид топлива"],
                             text_center_format
                         )
-                        
+                
+                # Добавляем строку с примечанием в самый конец, после всех данных
+                note_row_index = None
+
+                if note_text is not None:
+                    # ✅ ВАЖНО: df_export уже записан на лист с startrow=6,
+                    # поэтому строка примечания должна идти СРАЗУ ПОСЛЕ него
+                    note_row_index = start_excel_row + len(df_export)  # <-- вместо len(df)
+
+                    # Последний столбец таблицы (колонка "Примечание")
+                    end_col_idx = num_cols + len(all_years)  # это ровно столбец "Примечание"
+
+                    note_format = workbook.add_format({
+                        'font_name': 'Times New Roman',
+                        'font_size': 13,
+                        'align': 'center',
+                        'valign': 'vcenter',
+                        'text_wrap': True,
+                        'border': 1,
+                    })
+
+                    worksheet.merge_range(
+                        note_row_index, 0,
+                        note_row_index, end_col_idx,
+                        note_text.replace("1)", "¹)", 1),
+                        note_format
+                    )
+                    
+                    worksheet.set_row(note_row_index, 85.5)
+
                 # Создаем пустой стиль (без границ, выравнивания и других атрибутов)
                 empty_format = workbook.add_format()
 
+                # НЕ затираем строку примечания
+                clear_from_row = (note_row_index + 1) if note_row_index is not None else (len(df) + start_excel_row)
+
                 # Снимаем форматирование с пустых строк после таблицы
-                for row_num in range(last_row, 1000):  # 1000 - большое число, можно сделать динамическим
+                for row_num in range(clear_from_row, 1000):
                     worksheet.set_row(row_num, None, empty_format)
 
                 # Снимаем форматирование с пустых столбцов после таблицы
-                for col_num in range(last_col + 1, 50):  # 50 - запасное число столбцов
+                for col_num in range(last_col + 1, 50):
                     worksheet.set_column(col_num, col_num, None, empty_format)
+
+
 
             df = df.drop(
                 columns=["_group_rowspan", "_fuel_rowspan", "_total_machines", "Есть группы"],

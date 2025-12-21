@@ -73,6 +73,7 @@ def regional_energy_system_list():
         regional_energy_system_ids          = request.form.getlist("regional_energy_system_ids[]")
         regional_energy_system_names        = request.form.getlist("regional_energy_system_names[]")
         regional_energy_system_full_names   = request.form.getlist("regional_energy_system_full_names[]")
+        regional_energy_system_rp_names     = request.form.getlist("regional_energy_system_rp_names[]")
         regional_energy_system_delete       = request.form.getlist("regional_energy_system_delete[]")
         union_energy_system_ids             = request.form.getlist("union_energy_system[]")
         
@@ -91,11 +92,24 @@ def regional_energy_system_list():
                                     sort_by=sort_by, 
                                     sort_dir=sort_dir))
     
-        # Группируем субъектов по энергосистемам
-        regional_districts_mapping = defaultdict(list)
+        # Группируем субъектов по энергосистемам.
+        # Важно: чекбоксы отправляются только если есть выбранные значения.
+        # Чтобы не обнулять связи при сохранении "только текста", обновляем связи
+        # ТОЛЬКО если пользователь реально менял чекбоксы (marker == "1").
+        regional_districts_mapping = defaultdict(lambda: None)  # None => связи не трогать
         for res_id in regional_energy_system_ids:
-            selected = request.form.getlist(f"regional_districts_{res_id}[]")
-            regional_districts_mapping[int(res_id)] = [int(x) for x in selected if x.isdigit()]
+            try:
+                rid = int(res_id)
+            except (TypeError, ValueError):
+                continue
+
+            changed = (request.form.get(f"regional_districts_changed_{rid}", "0") == "1")
+            if not changed:
+                regional_districts_mapping[rid] = None
+                continue
+
+            selected = request.form.getlist(f"regional_districts_{rid}[]")
+            regional_districts_mapping[rid] = [int(x) for x in selected if x.isdigit()]
            
         # Обновление данных в базе
         try:
@@ -111,14 +125,19 @@ def regional_energy_system_list():
             
             # Формирование данных для обновления
             regional_energy_system_data = []
-            for regional_energy_system_id, regional_energy_system_name, regional_energy_system_name_full, union_energy_system_id in zip(regional_energy_system_ids, regional_energy_system_names, regional_energy_system_full_names, union_energy_system_ids):
+            for regional_energy_system_id, regional_energy_system_name, regional_energy_system_name_full, regional_energy_system_rp_name, union_energy_system_id in zip(regional_energy_system_ids, regional_energy_system_names, regional_energy_system_full_names, regional_energy_system_rp_names, union_energy_system_ids):
                 try:
+                    # Получаем список субъектов для этой энергосистемы
+                    # Если ключа нет в mapping, значит список не был изменен, передаем None
+                    district_ids = regional_districts_mapping.get(int(regional_energy_system_id))
+                    
                     regional_energy_system_data.append({
                         "regional_energy_system_id": int(regional_energy_system_id) if regional_energy_system_id else None,
                         "name": regional_energy_system_name.strip(),
                         "name_full": regional_energy_system_name_full.strip(),
+                        "name_rp": regional_energy_system_rp_name.strip(),
                         "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
-                        "regional_district_ids": regional_districts_mapping.get(int(regional_energy_system_id), [])
+                        "regional_district_ids": district_ids  # None означает, что список не был изменен
                     })
                 except ValueError as e:
                     raise ValueError(
@@ -126,6 +145,7 @@ def regional_energy_system_list():
                             f"Ошибка обработки данных: id={regional_energy_system_id},"
                             f"Наименование: {regional_energy_system_name},"
                             f"Полное наименование: {regional_energy_system_name_full},"
+                            f"Наименование (в родительном падеже): {regional_energy_system_rp_name},"
                             f"ОЭС: {get_union_energy_system_name(union_energy_system_id)}."
                             f"Ошибка: {str(e)}"
                         )
@@ -222,6 +242,7 @@ def add_regional_energy_system():
             payload = [{
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
+                "name_rp": (form.name_rp.data or "").strip(),
                 "union_energy_system_id": form.union_energy_system.data,
                 "regional_districts": form.regional_districts.data
             }]

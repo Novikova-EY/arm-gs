@@ -60,6 +60,14 @@ class StationFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
+    # ID региональной энергосистемы
+    id_regional_energy_system = SelectField(
+        'Региональная энергосистема',
+        coerce=int,
+        choices=[],
+        validators=[Optional()]
+    )
+
     id_energy_unit = SelectField(
         'Энергоузел электростанции',
         coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),

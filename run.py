@@ -31,7 +31,6 @@ if __name__ == "__main__":
     if debug_mode:
         print("=" * 60)
         print("ВНИМАНИЕ: Приложение запущено в режиме DEBUG!")
-        print("Это небезопасно для production окружения.")
         print("=" * 60)
     
     app.run(

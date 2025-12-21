@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
         <!-- Левая группа кнопок -->
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             <button id="filtersToggleBtn"
                     class="btn {% if has_active_filters %}btn-warning{% else %}btn-outline-secondary{% endif %} text-dark{% if not has_active_filters %} collapsed{% endif %}"
                     type="button"
@@ -23,6 +23,11 @@
                     aria-controls="importExportCollapse">
                 📁 Импорт / Экспорт
             </button>
+        </div>
+
+        <!-- Центр: Найдено станций -->
+        <div class="flex-grow-1 d-flex justify-content-center align-items-center">
+            <p class="mb-0 fw-bold">Найдено станций: {{ total_count }}</p>
         </div>
 
         <!-- Правая группа ВНУТРИ формы -->

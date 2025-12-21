@@ -216,6 +216,7 @@ def add_station():
                 user=user,
                 name=form.name.data,
                 id_regional_district=form.id_regional_district.data,
+                id_station_type=form.id_station_type.data,
             )
             flash("Новая станция успешно создана!", "success")
             return redirect(url_for("station_bp.station_details", station_id=new_station.id))

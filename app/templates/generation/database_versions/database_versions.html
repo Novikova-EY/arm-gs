@@ -225,14 +225,18 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Загрузить" -->
+                        <!-- Шапка таблицы. Столбец "Загрузить" (доступен и виден только admin) -->
+                        {% if current_user.is_admin %}
                         <th class="text-center align-middle">Загрузить</th>
+                        {% endif %}
 
-                        <!-- Шапка таблицы. Столбец "Сохранить" -->
+                        <!-- Шапка таблицы. Столбец "Сохранить" (доступен и виден только admin) -->
+                        {% if current_user.is_admin %}
                         <th class="text-center align-middle">Сохранить</th>
+                        {% endif %}
 
-                        <!-- Шапка таблицы. Столбец "Активная" -->
-                        <th class="text-center align-middle">Активная</th>
+                        <!-- Шапка таблицы. Столбец выбора версии пользователем -->
+                        <th class="text-center align-middle">Текущая версия</th>
 
                         <!-- Шапка таблицы. Столбец "Удалить" -->
                         <th class="text-center align-middle">Удалить</th>
@@ -289,7 +293,8 @@
                                 {{ version.updated_at.strftime('%Y-%m-%d %H:%M:%S') if version.updated_at else '-' }}
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Загрузить" -->
+                            <!-- Строки таблицы. Столбец "Загрузить" (только для admin, для остальных не отображается) -->
+                            {% if current_user.is_admin %}
                             <td class="text-center align-middle">
                                 <button type="submit"
                                         class="btn btn-sm btn-info"
@@ -299,8 +304,10 @@
                                     📥 Загрузить
                                 </button>
                             </td>
+                            {% endif %}
 
-                            <!-- Строки таблицы. Столбец "Сохранить" -->
+                            <!-- Строки таблицы. Столбец "Сохранить" (только для admin, для остальных не отображается) -->
+                            {% if current_user.is_admin %}
                             <td class="text-center align-middle">
                                 <button type="submit"
                                         class="btn btn-sm btn-primary"
@@ -310,19 +317,23 @@
                                     💾 Сохранить
                                 </button>
                             </td>
+                            {% endif %}
 
-                            <!-- Строки таблицы. Столбец "Активная" -->
+                            <!-- Строки таблицы. Столбец выбора версии пользователем -->
                             <td class="text-center align-middle">
-                                {% if version.is_active %}
-                                    <span class="badge bg-success">Активна</span>
-                                {% else %}
-                                    <button type="submit"
-                                            class="btn btn-sm btn-outline-success"
-                                            formaction="{{ url_for('station_bp.set_active_version_route', version_id=version.id) }}"
-                                            formmethod="post">
-                                        Активировать
-                                    </button>
-                                {% endif %}
+                                <div class="d-flex flex-column gap-1">
+                                    {% if current_db_version and current_db_version.id == version.id %}
+                                        <span class="badge bg-primary">Текущая версия</span>
+                                    {% else %}
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-primary"
+                                                formaction="{{ url_for('station_bp.set_session_version_route_v2', version_id=version.id) }}"
+                                                formmethod="post"
+                                                title="Использовать эту версию">
+                                            Выбрать
+                                        </button>
+                                    {% endif %}
+                                </div>
                             </td>
 
                             <!-- Строки таблицы. Столбец "Удалить" -->
@@ -366,7 +377,7 @@
                         <th class="text-center align-middle">Создана на основе</th>
                         <th class="text-center align-middle">Создал / Дата создания</th>
                         <th class="text-center align-middle">Дата обновления</th>
-                        <th class="text-center align-middle">Активная</th>
+                        <th class="text-center align-middle">Текущая версия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -392,11 +403,21 @@
                         </td>
                         <td class="text-center">{{ version.updated_at.strftime('%Y-%m-%d %H:%M:%S') if version.updated_at else '-' }}</td>
                         <td class="text-center">
-                            {% if version.is_active %}
-                                <span class="badge bg-success">Активна</span>
-                            {% else %}
-                                —
-                            {% endif %}
+                            <div class="d-flex flex-column gap-1 align-items-center">
+                                {% if current_db_version and current_db_version.id == version.id %}
+                                    <span class="badge bg-primary">Текущая версия</span>
+                                {% else %}
+                                    <form method="post"
+                                          action="{{ url_for('station_bp.set_session_version_route_v2', version_id=version.id) }}"
+                                          style="display:inline;">
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-primary"
+                                                title="Использовать эту версию">
+                                            Выбрать
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}

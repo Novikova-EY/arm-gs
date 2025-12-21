@@ -24,6 +24,13 @@ class RegionalEnergySystemFilterForm(FlaskForm):
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )
+    name_rp = StringField(
+        "Наименование (в родительном падеже)",
+        validators=[
+            DataRequired(message="Поле «Наименование (в родительном падеже)» обязательно."),
+            Length(min=3, max=255, message="Длина от 3 до 255 символов."),
+        ],
+    )
     union_energy_system = SelectField(
         "ОЭС",
         choices=[],
@@ -74,6 +81,13 @@ class AddRegionalEnergySystemForm(FlaskForm):
         "Полное наименование",
         validators=[
             DataRequired(message="Поле «Полное наименование» обязательно."),
+            Length(min=3, max=255, message="Длина от 3 до 255 символов."),
+        ],
+    )
+    name_rp = StringField(
+        "Наименование (в родительном падеже)",
+        validators=[
+            DataRequired(message="Поле «Наименование (в родительном падеже)» обязательно."),
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )

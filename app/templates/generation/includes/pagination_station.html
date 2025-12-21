@@ -1,7 +1,7 @@
 <!-- Пагинация -->
 
-    <nav aria-label="Навигация по страницам">
-        <ul class="pagination justify-content-center">
+    <nav aria-label="Навигация по страницам" class="mb-0">
+        <ul class="pagination justify-content-center mb-0">
             <!-- Первая страница -->
             <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
                 <a class="page-link" href="{{ url_for('station_bp.station_list', page=1, start_year=start_year, end_year=end_year, condition_type_filter=condition_type_filter, gen_company_filter=gen_company_filter, station_name_filter=station_name_filter, station_type_filter=station_type_filter, machine_type_filter=machine_type_filter, tes_type_filter=tes_type_filter, tes_machine_type_filter=tes_machine_type_filter, energy_system_type_filter=energy_system_type_filter, union_energy_system_filter=union_energy_system_filter, regional_energy_system_filter=regional_energy_system_filter, federal_district_filter=federal_district_filter, regional_district_filter=regional_district_filter, fuel_type_filter=fuel_type_filter, per_page=per_page, sort_by=sort_by, sort_dir=sort_dir, show_totals=request.args.get('show_totals'), show_p_ogr=request.args.get('show_p_ogr'), show_p_rasp=request.args.get('show_p_rasp'), rounding_digits=rounding_digits) }}" aria-label="Первая">

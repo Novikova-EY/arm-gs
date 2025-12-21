@@ -3,10 +3,14 @@
 from functools import lru_cache
 from sqlalchemy.orm import selectinload
 from typing import Union, List, Dict
+from collections import defaultdict
+from app.extensions import db
 
 # Модели
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
 # Сервисы
 from app.common.services.database_version_services import get_current_version
@@ -14,7 +18,7 @@ from app.common.services.database_version_services import get_current_version
 
 @lru_cache(maxsize=1)
 def get_regional_energy_system_list_full():
-    """Получает полный список региональных энергосистем."""
+    """Получает полный список региональных энергосистем с загруженными связями."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query
     
@@ -23,6 +27,10 @@ def get_regional_energy_system_list_full():
     
     return (
         query
+        .options(
+            selectinload(RegionalEnergySystem.union_energy_system)
+            .selectinload(UnionEnergySystem.energy_system_type)
+        )
         .order_by(
             (RegionalEnergySystem.id != 0),
             RegionalEnergySystem.name.asc()
@@ -129,6 +137,84 @@ def invalidate_res_lookups_cache() -> None:
     get_regional_energy_systems_map.cache_clear()
     get_res_to_ues_id_map.cache_clear()
     get_ues_to_res_ids_map.cache_clear()
+    get_res_to_est_id_map.cache_clear()
+    get_res_to_rd_ids_map.cache_clear()
+    get_res_to_fd_ids_map.cache_clear()
+
+
+@lru_cache(maxsize=1)
+def get_res_to_est_id_map() -> Dict[int, int]:
+    """Возвращает отображение {РЭС.id: ТипЭС.id} через ОЭС (кэшируется)."""
+    current_version = get_current_version()
+    res_to_ues = get_res_to_ues_id_map()
+    
+    # Получаем связь ОЭС -> Тип ЭС
+    ues_to_est_query = db.session.query(
+        UnionEnergySystem.id,
+        UnionEnergySystem.id_energy_system_type
+    )
+    
+    if current_version:
+        ues_to_est_query = ues_to_est_query.filter(UnionEnergySystem.database_version_id == current_version)
+    
+    ues_to_est_rows = ues_to_est_query.filter(
+        UnionEnergySystem.id_energy_system_type.isnot(None)
+    ).all()
+    ues_to_est = {ues_id: est_id for ues_id, est_id in ues_to_est_rows}
+    
+    # Строим res -> est
+    res_to_est = {}
+    for res_id, ues_id in res_to_ues.items():
+        if ues_id in ues_to_est:
+            res_to_est[res_id] = ues_to_est[ues_id]
+    
+    return res_to_est
+
+
+@lru_cache(maxsize=1)
+def get_res_to_rd_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {РЭС.id: [СубъектРФ.id, ...]} через M2M (кэшируется)."""
+    query = db.session.query(
+        regional_district_regional_energy_system.c.regional_energy_system_id,
+        regional_district_regional_energy_system.c.regional_district_id
+    )
+    
+    rows = query.all()
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for res_id, rd_id in rows:
+        acc[res_id].append(rd_id)
+    return dict(acc)
+
+
+@lru_cache(maxsize=1)
+def get_res_to_fd_ids_map() -> Dict[int, List[int]]:
+    """Возвращает отображение {РЭС.id: [ФО.id, ...]} через Субъект РФ (кэшируется)."""
+    current_version = get_current_version()
+    res_to_rd = get_res_to_rd_ids_map()
+    
+    # Получаем связь Субъект РФ -> ФО
+    rd_to_fd_query = db.session.query(
+        RegionalDistrict.id,
+        RegionalDistrict.id_federal_district
+    )
+    
+    if current_version:
+        rd_to_fd_query = rd_to_fd_query.filter(RegionalDistrict.database_version_id == current_version)
+    
+    rd_to_fd_rows = rd_to_fd_query.filter(
+        RegionalDistrict.id_federal_district.isnot(None)
+    ).all()
+    rd_to_fd = {rd_id: fd_id for rd_id, fd_id in rd_to_fd_rows}
+    
+    # Строим res -> fd
+    acc: Dict[int, List[int]] = defaultdict(list)
+    for res_id, rd_ids in res_to_rd.items():
+        for rd_id in rd_ids:
+            if rd_id in rd_to_fd:
+                acc[res_id].append(rd_to_fd[rd_id])
+    
+    # Убираем дубликаты
+    return {k: list(set(v)) for k, v in acc.items()}
 
 
 def get_regional_energy_system_name(regional_energy_system_ids: Union[str, int, List[int]]) -> str:

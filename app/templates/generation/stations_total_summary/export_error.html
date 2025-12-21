@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка экспорта</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .error-container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .error-icon {
+            font-size: 48px;
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">❌</div>
+        <h3>Ошибка экспорта</h3>
+        <p>{{ error_message }}</p>
+        <button onclick="window.close()" style="padding: 10px 20px; margin-top: 20px; cursor: pointer;">Закрыть окно</button>
+    </div>
+    <script>
+        // Автоматически закрываем окно через 5 секунд
+        setTimeout(function() {
+            try {
+                window.close();
+            } catch (e) {
+                // Игнорируем ошибки при закрытии
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+

@@ -4,7 +4,7 @@
 Используется для связи данных с конкретной версией базы данных.
 """
 from sqlalchemy import Column, Integer, ForeignKey, Index
-from config import SCHEMA_GENERATION
+from config import SCHEMA_REFDATA
 
 
 class DatabaseVersionMixin:
@@ -24,7 +24,7 @@ class DatabaseVersionMixin:
     # Поле для связи с версией БД
     database_version_id = Column(
         Integer,
-        ForeignKey(f"{SCHEMA_REFDATA}.database_versions.id", ondelete="SET NULL"),
+        ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )

@@ -60,6 +60,19 @@ class Station(db.Model, VersionedModelMixin):
     )
     regional_district = db.relationship('RegionalDistrict', back_populates='stations')
 
+    # FK -> RegionalEnergySystem (прямая связь станции с РЭС)
+    id_regional_energy_system = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_energy_systems.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    # Отдельное имя атрибута, чтобы не конфликтовать с агрегированным свойством regional_energy_system ниже
+    regional_energy_system_obj = db.relationship(
+        'RegionalEnergySystem',
+        foreign_keys=[id_regional_energy_system],
+    )
+
     # FK -> EnergyUnit
     id_energy_unit = db.Column(
         db.Integer,
@@ -82,6 +95,13 @@ class Station(db.Model, VersionedModelMixin):
     station_powers = db.relationship('StationPower', back_populates='station_power', cascade="all, delete-orphan")
     machines = db.relationship('Machine', back_populates='machine_station')
     boilers = db.relationship('Boiler', back_populates='boiler_station')
+    
+    # FK -> StationEquipmentGroup
+    station_equipment_groups = db.relationship(
+        'StationEquipmentGroup',
+        back_populates='station',
+        cascade="all, delete-orphan",
+    )
 
     # Прочее
     kto = db.Column(db.String(80), unique=True, nullable=True)
@@ -106,14 +126,36 @@ class Station(db.Model, VersionedModelMixin):
     # ----- Aggregated helpers (не маппятся в БД) -----
     @property
     def regional_energy_system(self):
+        """
+        Агрегированное текстовое поле с названием(ями) РЭС.
+        Приоритет: прямая связь id_regional_energy_system, затем связь через субъект РФ.
+        """
+        # 1) Если у станции явно указана РЭС — используем её
+        if self.regional_energy_system_obj:
+            return self.regional_energy_system_obj.name
+
+        # 2) Fallback: множ. связь через субъект РФ (старое поведение)
         if self.regional_district and self.regional_district.regional_energy_systems:
             return ", ".join(res.name for res in self.regional_district.regional_energy_systems)
         return None
 
     @property
     def union_energy_system(self):
+        """
+        Агрегированное текстовое поле ОЭС.
+        Приоритет: прямая связь РЭС у станции, затем связь через субъект РФ.
+        """
+        # 1) Если у станции явно указана РЭС с ОЭС — используем её
+        if self.regional_energy_system_obj and self.regional_energy_system_obj.union_energy_system:
+            return self.regional_energy_system_obj.union_energy_system.name
+
+        # 2) Fallback: собираем по всем РЭС субъекта
         if self.regional_district and self.regional_district.regional_energy_systems:
-            union_systems = {res.union_energy_system.name for res in self.regional_district.regional_energy_systems if res.union_energy_system}
+            union_systems = {
+                res.union_energy_system.name
+                for res in self.regional_district.regional_energy_systems
+                if res.union_energy_system
+            }
             return ", ".join(union_systems) if union_systems else None
         return None
 
@@ -123,8 +165,25 @@ class Station(db.Model, VersionedModelMixin):
 
     @property
     def energy_system_type(self):
+        """
+        Агрегированное текстовое поле «Часть энергосистемы России».
+        Приоритет: прямая связь РЭС у станции, затем связь через субъект РФ.
+        """
+        # 1) Если у станции явно указана РЭС с типом энергосистемы — используем её
+        if (
+            self.regional_energy_system_obj
+            and self.regional_energy_system_obj.union_energy_system
+            and self.regional_energy_system_obj.union_energy_system.energy_system_type
+        ):
+            return self.regional_energy_system_obj.union_energy_system.energy_system_type.name
+
+        # 2) Fallback: собираем по всем РЭС субъекта
         if self.regional_district and self.regional_district.regional_energy_systems:
-            types = {res.union_energy_system.energy_system_type.name for res in self.regional_district.regional_energy_systems if res.union_energy_system and res.union_energy_system.energy_system_type}
+            types = {
+                res.union_energy_system.energy_system_type.name
+                for res in self.regional_district.regional_energy_systems
+                if res.union_energy_system and res.union_energy_system.energy_system_type
+            }
             return ", ".join(types) if types else None
         return None
 

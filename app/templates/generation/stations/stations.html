@@ -65,238 +65,354 @@
 
                     <!-- Год ввода в эксплуатацию -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Ввод в <br>экспл.</strong>
-                                {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                <li>
-                                    <label class="dropdown-item">
-                                        <input type="checkbox" name="date_exploitation_filter"
-                                            value=""
-                                            {% if '' in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
-                                        не указано
-                                    </label>
-                                </li>
-                                {% for year in range(1950, 2050) %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Ввод в <br>экспл.</strong>
+                                    {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="date_exploitation_filter"
-                                                value="{{ year }}"
-                                                {% if year|string in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
-                                            {{ year }}
+                                                value=""
+                                                {% if '' in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
+                                            не указано
                                         </label>
                                     </li>
-                                {% endfor %}
-                            </ul>
+                                    {% for year in range(1950, end_year + 1) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="date_exploitation_filter"
+                                                    value="{{ year }}"
+                                                    {% if year|string in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
+                                                {{ year }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
+                                                data-filter-name="date_exploitation_filter">
+                                            Сбросить
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary filter-apply-btn"
+                                                data-filter-name="date_exploitation_filter">
+                                            Ок
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('date_exploitation_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="date_exploitation_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </th>
 
                     <!-- Год вывода из эксплуатацию -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Вывод из <br>экспл.</strong>
-                                {% if request.args.getlist('date_decompressing_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                <li>
-                                    <label class="dropdown-item">
-                                        <input type="checkbox" name="date_decompressing_expected_filter"
-                                            value=""
-                                            {% if '' in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
-                                        не указано
-                                    </label>
-                                </li>
-                                {% for year in range(1950, 2050) %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Вывод из <br>экспл.</strong>
+                                    {% if request.args.getlist('date_decompressing_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="date_decompressing_expected_filter"
-                                                value="{{ year }}"
-                                                {% if year|string in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
-                                            {{ year }}
+                                                value=""
+                                                {% if '' in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
+                                            не указано
                                         </label>
                                     </li>
-                                {% endfor %}
-                            </ul>
+                                    {% for year in range(1950, end_year + 1) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="date_decompressing_expected_filter"
+                                                    value="{{ year }}"
+                                                    {% if year|string in request.args.getlist('date_decompressing_expected_filter') %}checked{% endif %}>
+                                                {{ year }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
+                                                data-filter-name="date_decompressing_expected_filter">
+                                            Сбросить
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary filter-apply-btn"
+                                                data-filter-name="date_decompressing_expected_filter">
+                                            Ок
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('date_decompressing_expected_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="date_decompressing_expected_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </th>
 
                     <!-- Год модернизации -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Модерн.</strong>
-                                {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                <li>
-                                    <label class="dropdown-item">
-                                        <input type="checkbox" name="date_modernization_expected_filter"
-                                            value=""
-                                            {% if '' in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
-                                        не указано
-                                    </label>
-                                </li>
-                                {% for year in range(1950, 2050) %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Модерн.</strong>
+                                    {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
                                     <li>
                                         <label class="dropdown-item">
                                             <input type="checkbox" name="date_modernization_expected_filter"
-                                                value="{{ year }}"
-                                                {% if year|string in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
-                                            {{ year }}
+                                                value=""
+                                                {% if '' in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
+                                            не указано
                                         </label>
                                     </li>
-                                {% endfor %}
-                            </ul>
+                                    {% for year in range(1950, end_year + 1) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="date_modernization_expected_filter"
+                                                    value="{{ year }}"
+                                                    {% if year|string in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
+                                                {{ year }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
+                                                data-filter-name="date_modernization_expected_filter">
+                                            Сбросить
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary filter-apply-btn"
+                                                data-filter-name="date_modernization_expected_filter">
+                                            Ок
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('date_modernization_expected_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="date_modernization_expected_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </th>
                     
                     <!-- Тип электростанции -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Тип <br>электро-<br>станции</strong>
-                                {% if request.args.getlist('station_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Тип <br>электро-<br>станции</strong>
+                                    {% if request.args.getlist('station_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for station_type in station_type_name if station_type.name|lower == 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="station_type_filter"
+                                                    value="{{ station_type.id }}"
+                                                    {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                                                >
+                                                {{ station_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    {% for station_type in station_type_name if station_type.name|lower != 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="station_type_filter"
+                                                    value="{{ station_type.id }}"
+                                                    {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                                                >
+                                                {{ station_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('station_type_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="station_type_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
                             </button>
-                            <ul class="dropdown-menu w-100">
-                                {% for station_type in station_type_name if station_type.name|lower == 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="station_type_filter"
-                                                value="{{ station_type.id }}"
-                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
-                                            >
-                                            {{ station_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                                {% for station_type in station_type_name if station_type.name|lower != 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="station_type_filter"
-                                                value="{{ station_type.id }}"
-                                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
-                                            >
-                                            {{ station_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                            </ul>
+                            {% endif %}
                         </div>
                     </th>
 
                     <!-- Тип ТЭС -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Тип <br>ТЭС</strong>
-                                {% if request.args.getlist('tes_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Тип <br>ТЭС</strong>
+                                    {% if request.args.getlist('tes_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for tes_type in tes_type_names if tes_type.name|lower == 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="tes_type_filter"
+                                                    value="{{ tes_type.id }}"
+                                                    {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                                                {{ tes_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    {% for tes_type in tes_type_names if tes_type.name|lower != 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="tes_type_filter"
+                                                    value="{{ tes_type.id }}"
+                                                    {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                                                {{ tes_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('tes_type_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="tes_type_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
                             </button>
-                            <ul class="dropdown-menu w-100">
-                                {% for tes_type in tes_type_names if tes_type.name|lower == 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="tes_type_filter"
-                                                value="{{ tes_type.id }}"
-                                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
-                                            {{ tes_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                                {% for tes_type in tes_type_names if tes_type.name|lower != 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="tes_type_filter"
-                                                value="{{ tes_type.id }}"
-                                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
-                                            {{ tes_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                            </ul>
+                            {% endif %}
                         </div>
                     </th>
 
                     <!-- Тип агрегата ТЭС и ПГУ -->
                     <th style="width: 80px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Тип <br>агрегата <br>ТЭС</strong>
-                                {% if request.args.getlist('tes_machine_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu w-100">
-                                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower == 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="tes_machine_type_filter"
-                                                value="{{ tes_machine_type.id }}"
-                                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
-                                            {{ tes_machine_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                                <!-- Типы агрегатов ТЭС -->
-                                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower != 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="tes_machine_type_filter"
-                                                value="{{ tes_machine_type.id }}"
-                                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
-                                            {{ tes_machine_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                                    
-                                {% if 1 == 0 %}
-                                    <li><hr class="dropdown-divider"></li>
-
-                                    <!-- Типы агрегатов ПГУ -->
-                                    {% for pgu_tes_machine_type in pgu_tes_machine_type_names %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Тип <br>агрегата <br>ТЭС</strong>
+                                    {% if request.args.getlist('tes_machine_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower == 'не указано' %}
                                         <li>
                                             <label class="dropdown-item">
-                                                <input type="checkbox" name="pgu_tes_machine_type_filter"
-                                                    value="{{ pgu_tes_machine_type.id }}"
-                                                    {% if pgu_tes_machine_type.id|string in pgu_tes_machine_type_filter|map('string') %}checked{% endif %}>
-                                                {{ pgu_tes_machine_type.name }}
+                                                <input type="checkbox" name="tes_machine_type_filter"
+                                                    value="{{ tes_machine_type.id }}"
+                                                    {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                {{ tes_machine_type.name }}
                                             </label>
                                         </li>
                                     {% endfor %}
-                                {% endif %}
-                            </ul>
+                                    <!-- Типы агрегатов ТЭС -->
+                                    {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower != 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="tes_machine_type_filter"
+                                                    value="{{ tes_machine_type.id }}"
+                                                    {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                {{ tes_machine_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                        
+                                    {% if 1 == 0 %}
+                                        <li><hr class="dropdown-divider"></li>
+
+                                        <!-- Типы агрегатов ПГУ -->
+                                        {% for pgu_tes_machine_type in pgu_tes_machine_type_names %}
+                                            <li>
+                                                <label class="dropdown-item">
+                                                    <input type="checkbox" name="pgu_tes_machine_type_filter"
+                                                        value="{{ pgu_tes_machine_type.id }}"
+                                                        {% if pgu_tes_machine_type.id|string in pgu_tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                    {{ pgu_tes_machine_type.name }}
+                                                </label>
+                                            </li>
+                                        {% endfor %}
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('tes_machine_type_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="tes_machine_type_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
                         </div>
                     </th>
                     
                     <!-- Столбец фильтра по топливу -->
                     <th style="width: 50px; text-align: center;">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                <strong>Основное <br> топливо</strong>
-                                {% if request.args.getlist('fuel_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Основное <br> топливо</strong>
+                                    {% if request.args.getlist('fuel_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for fuel_type in fuel_type_names if fuel_type.name|lower == 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="fuel_type_filter"
+                                                    value="{{ fuel_type.id }}"
+                                                    {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
+                                                {{ fuel_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    {% for fuel_type in fuel_type_names if fuel_type.name|lower != 'не указано' %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="fuel_type_filter"
+                                                    value="{{ fuel_type.id }}"
+                                                    {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
+                                                {{ fuel_type.name }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('fuel_type_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="fuel_type_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
                             </button>
-                            <ul class="dropdown-menu w-100">
-                                {% for fuel_type in fuel_type_names if fuel_type.name|lower == 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="fuel_type_filter"
-                                                value="{{ fuel_type.id }}"
-                                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
-                                            {{ fuel_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                                {% for fuel_type in fuel_type_names if fuel_type.name|lower != 'не указано' %}
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="fuel_type_filter"
-                                                value="{{ fuel_type.id }}"
-                                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
-                                            {{ fuel_type.name }}
-                                        </label>
-                                    </li>
-                                {% endfor %}
-                            </ul>
+                            {% endif %}
                         </div>
                     </th>
 
@@ -363,42 +479,52 @@
                             {% endif %}
             
                             {% for rd_id, rd_group in res_group.items() %}
-            
+
                                 {% if rd_name|lower != 'не указано' %}
-                                    {# Заголовок субъекта РФ - показываем только для per_page=all или если это первое вхождение #}
-                                    {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                    {# Флаг показа итогов по субъекту (используем и для заголовка в режиме per_page=all) #}
+                                    {% set show_rd_totals = (should_show_totals|default({})).get('regional_districts', {}).get(rd_id) %}
+                                    {# Заголовок субъекта РФ:
+                                       - при per_page=all показываем только если должны быть итоги по субъекту
+                                       - при постраничном режиме — по старой логике первых вхождений #}
+                                    {% if (per_page == 'all' and show_rd_totals) or (per_page != 'all' and show_headers and rd_id in show_headers.get('regional_districts', [])) %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
                                     {% endif %}
             
                                     {% for eu_id, eu_group in rd_group.items() %}
-                                        {% set eu_name = energy_unit_names.get(eu_id, '— не указано —') if eu_id != 0 else '— не указано —' %}
+                                        {% set eu_name = energy_unit_names.get(eu_id) %}
+
+                                        {# В режиме per_page=all полностью пропускаем строки только с энергоузлом "не указано" #}
+                                        {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                        {% if not skip_eu %}
             
-                                        {% if eu_name|lower != 'не указано' %}
-                                            {# Заголовок энергоузла - показываем только для per_page=all или если это первое вхождение #}
-                                            {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
-                                                {% set current_eu_id = eu_id %}
-                                                {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
+                                            {% if eu_name|lower != 'не указано' %}
+                                                {# Заголовок энергоузла - показываем только для per_page=all или если это первое вхождение #}
+                                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                                    {% set current_eu_id = eu_id %}
+                                                    {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
+                                                {% endif %}
                                             {% endif %}
                                         {% endif %}
-
+            
                                         {% for station in eu_group %}
                                             {% include 'generation/stations/station_rows.html' %}
                                             {% include 'generation/stations/aggregated_data/aggregated_station.html' %}
                                         {% endfor %}
             
-                                        {# Итог по энергоузлу #}
-                                        {% if eu_name|lower != 'не указано' %}
-                                        {% set show_eu_totals = (should_show_totals|default({})).get('energy_units', {}).get(eu_id) %}
-                                        {% if show_eu_totals %}
-                                                {% set current_eu_id = eu_id %}
-                                                {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                        {% if not skip_eu %}
+                                            {# Итог по энергоузлу #}
+                                            {% if eu_name|lower != 'не указано' %}
+                                                {% set show_eu_totals = (should_show_totals|default({})).get('energy_units', {}).get(eu_id) %}
+                                                {% if show_eu_totals %}
+                                                    {% set current_eu_id = eu_id %}
+                                                    {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_total.html' %}
+                                                {% endif %}
                                             {% endif %}
                                         {% endif %}
             
                                     {% endfor %}
             
                                     {# Итог по субъекту РФ #}
-                                    {% set show_rd_totals = (should_show_totals|default({})).get('regional_districts', {}).get(rd_id) %}
                                     {% if show_rd_totals %}
                                         {% set current_rd_id = rd_id %}
                                         {% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_total.html' %}
@@ -470,12 +596,38 @@
 <!-- Данные фильтров (для первой строки) -->
 <script id="filters-data" type="application/json">
     {{ {
-        'union_energy_system_filter': union_energy_system_filter,
-        'federal_district_filter': federal_district_filter,
-        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
         'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
         'regional_district_mapping': regional_district_mapping,
-        'regional_district_list': regional_district_list
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
     } | tojson | safe }}
 </script>
 
@@ -579,6 +731,7 @@ function showNotification(message, type) {
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+{% include 'generation/stations/scripts/station_list_scripts.html' %}
 
 <!-- Скрываем индикатор загрузки после полной загрузки -->
 <script>
@@ -589,6 +742,37 @@ function showNotification(message, type) {
                 overlay.style.display = 'none';
             }
         }, 500);
+    });
+</script>
+
+<!-- Скрипт для сброса отдельных фильтров в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Обработка кликов по кнопкам сброса фильтров
+        document.querySelectorAll('.filter-clear-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Предотвращаем всплытие события
+                
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+                
+                // Получаем текущие параметры URL
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                // Удаляем все значения этого фильтра
+                urlParams.delete(filterName);
+                
+                // Сбрасываем страницу на первую при изменении фильтров
+                urlParams.set('page', '1');
+                
+                // Формируем новый URL
+                const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                
+                // Перенаправляем на новый URL
+                window.location.href = newUrl;
+            });
+        });
     });
 </script>
 

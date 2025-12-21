@@ -53,7 +53,7 @@ def regional_energy_system_query(
     sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
     desc = (sort_dir == "desc")
     sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name", "name_full", "union_energy_system"}
+    allowed_sort = {"id", "name", "name_full", "name_rp", "union_energy_system"}
     if sort_by not in allowed_sort:
         sort_by = "id"
 
@@ -84,6 +84,9 @@ def regional_energy_system_query(
     
     elif sort_by == "name_full":
         query = query.order_by(RegionalEnergySystem.name_full.desc() if sort_dir == "desc" else RegionalEnergySystem.name_full.asc())
+    
+    elif sort_by == "name_rp":
+        query = query.order_by(RegionalEnergySystem.name_rp.desc() if sort_dir == "desc" else RegionalEnergySystem.name_rp.asc())
     
     elif sort_by == "union_energy_system":
         query = (query
@@ -148,6 +151,7 @@ def update_regional_energy_system_service(data, user):
             regional_energy_system_id = record.get("regional_energy_system_id")
             name = record.get("name")
             name_full = record.get("name_full")
+            name_rp = record.get("name_rp")
             union_energy_system_id = record.get("union_energy_system_id")
             regional_district_ids = record.get("regional_district_ids", None)
 
@@ -170,6 +174,11 @@ def update_regional_energy_system_service(data, user):
                     entity_type="regional_energy_system", 
                     entity_id=regional_energy_system_id)
                 raise ValueError(f"Запись с ID «{regional_energy_system_id}» не найдена.")
+
+            # Если у записи по каким-то причинам не проставлена версия БД,
+            # аккуратно проставляем текущую, иначе она не будет отображаться
+            # при активной версии (apply_version_filter скрывает NULL).
+            set_db_version_on_create(obj)
             
             # Проверка уникальности name
             if name != (obj.name or ""):
@@ -199,6 +208,12 @@ def update_regional_energy_system_service(data, user):
                 changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
 
+            if name_rp != (obj.name_rp or None):
+                old_val = obj.name_rp or "не указано"
+                new_val = name_rp or "не указано"
+                changes.append(f"Наименование (в родительном падеже): {old_val} → {new_val}")
+                obj.name_rp = name_rp
+
             # Опциональные FK (если ключ присутствует в record)
             if "union_energy_system_id" in record:
                 ues = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
@@ -214,29 +229,22 @@ def update_regional_energy_system_service(data, user):
                     obj.id_union_energy_system = ues
 
             # Обновление связей «многие ко многим»
-            if regional_energy_system_id:
-                # Обновление существующей записи
-                regional_energy_system = RegionalEnergySystem.query.get(regional_energy_system_id)
-                if regional_energy_system:
-                    regional_energy_system.name = name
-                    regional_energy_system.name_full = name_full
-                    regional_energy_system.id_union_energy_system = union_energy_system_id
+            if regional_district_ids is not None:
+                # Обновление связей «многие ко многим»
+                existing_districts = {district.id for district in obj.regional_districts}
+                new_districts = set(regional_district_ids) if regional_district_ids else set()
 
-                    # Обновление связей «многие ко многим»
-                    existing_districts = {district.id for district in regional_energy_system.regional_districts}
-                    new_districts = set(regional_district_ids)
+                # Добавить новые связи
+                for district_id in new_districts - existing_districts:
+                    district = RegionalDistrict.query.get(district_id)
+                    if district:
+                        obj.regional_districts.append(district)
 
-                    # Добавить новые связи
-                    for district_id in new_districts - existing_districts:
-                        district = RegionalDistrict.query.get(district_id)
-                        if district:
-                            regional_energy_system.regional_districts.append(district)
-
-                    # Удалить устаревшие связи
-                    for district_id in existing_districts - new_districts:
-                        district = RegionalDistrict.query.get(district_id)
-                        if district:
-                            regional_energy_system.regional_districts.remove(district)
+                # Удалить устаревшие связи
+                for district_id in existing_districts - new_districts:
+                    district = RegionalDistrict.query.get(district_id)
+                    if district:
+                        obj.regional_districts.remove(district)
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -301,17 +309,18 @@ def add_regional_energy_system_service(data, user):
             for record in data:
                 name = (record.get("name") or "").strip()
                 name_full = (record.get("name_full") or "").strip()
+                name_rp = (record.get("name_rp") or "").strip()
                 union_energy_system_id = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
                 regional_district_ids = record.get("regional_districts", [])
 
                 # Проверка на наличие необходимых данных
-                if not name or not name_full or not union_energy_system_id:
+                if not name or not name_full or not name_rp or not union_energy_system_id:
                     log_to_db(
                         user, 
                         "Ошибка валидации",
                         f"Запись: {record}", 
                         entity_type="regional_energy_system")
-                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'union_energy_system_id'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'union_energy_system_id'. Данные: {record}")
 
                 # Проверяем существование ОЭС
                 obj = db.session.get(UnionEnergySystem, union_energy_system_id)
@@ -336,8 +345,12 @@ def add_regional_energy_system_service(data, user):
                 obj = RegionalEnergySystem(
                     name=name,
                     name_full=name_full or None,
+                    name_rp=name_rp or None,
                     id_union_energy_system=union_energy_system_id,
                 )
+                # Обязательно проставляем database_version_id,
+                # иначе запись не будет видна при активной версии БД.
+                set_db_version_on_create(obj)
 
                 # Обновление связей «многие ко многим»
                 existing_districts = {district.id for district in obj.regional_districts}
@@ -364,6 +377,7 @@ def add_regional_energy_system_service(data, user):
                     (
                         f"Наименование: {name}; "
                         f"Полное наименование: {_dash(name_full)}; "
+                        f"Наименование (в родительном падеже): {_dash(name_rp)}; "
                         f"Часть энергосистемы России: {get_union_energy_system_name(union_energy_system_id)} "
                     ),
                     entity_type="regional_energy_system", 
@@ -608,6 +622,7 @@ def export_regional_energy_system_service(
         "№": idx,
         "Региональная энергосистема": _dash(o.name),
         "Региональная энергосистема (полное название)": _dash(o.name_full),
+        "Наименование (в родительном падеже)": _dash(o.name_rp),
         "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указана",
         "Субъекты РФ": ", ".join([district.name_full for district in o.regional_districts]) if o.regional_districts else "Не указаны"
         })

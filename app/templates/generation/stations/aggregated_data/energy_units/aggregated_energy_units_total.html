@@ -1,9 +1,13 @@
 
 <!-- Итоговые значения по энергоузлу -->
+    {% set eu_total_name = energy_unit_names.get(current_eu_id) %}
+    {% if eu_total_name %}
+    {# Высота объединённой ячейки зависит от видимости строк p_ogr / p_rasp #}
+    {% set eu_rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0) %}
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
-            {{ energy_unit_names.get(current_eu_id, '— не указано —') }}, всего
+        <td class="total-row_cell" rowspan="{{ eu_rowspan }}" colspan="11" style="font-weight: bold;">
+            {{ eu_total_name }}, всего
         </td>
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
@@ -21,7 +25,7 @@
     </tr>
 
     <!-- Вторая строка: p_ogr -->
-    <tr class="table-success text-center p-ogr-row">
+    <tr class="table-success text-center p-ogr-row"{% if not show_p_ogr %} style="display: none;"{% endif %}>
         <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
@@ -38,7 +42,7 @@
     </tr>
 
     <!-- Третья строка: p_rasp -->
-    <tr class="table-success text-center p-rasp-row">
+    <tr class="table-success text-center p-rasp-row"{% if not show_p_rasp %} style="display: none;"{% endif %}>
         <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
         {% for year in range(start_year, end_year + 1) %}
             <td class="power-column" style="font-weight: bold;">
@@ -53,6 +57,7 @@
         <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
         </td>
     </tr>
+    {% endif %}
 
     {% include 'generation/stations/aggregated_data/energy_units/aggregated_energy_units_by_station_type.html' %}
 

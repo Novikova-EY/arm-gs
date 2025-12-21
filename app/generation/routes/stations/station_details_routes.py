@@ -240,8 +240,14 @@ def station_details(station_id):
         return (
             db.session.query(Station)
             .options(
+                # Территориальная привязка
                 joinedload(Station.regional_district).joinedload(RegionalDistrict.regional_energy_systems),
                 joinedload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
+                # Прямая связь станции с РЭС + ОЭС + тип энергосистемы
+                joinedload(Station.regional_energy_system_obj)
+                    .joinedload(RegionalEnergySystem.union_energy_system)
+                    .joinedload(UnionEnergySystem.energy_system_type),
+                # Остальные связи станции
                 joinedload(Station.energy_unit),
                 joinedload(Station.condition_type),
                 joinedload(Station.group),
@@ -367,6 +373,20 @@ def station_details(station_id):
     regional_energy_system_list = get_regional_energy_system_list_full()
     regional_energy_system_names = get_regional_energy_systems_map()
 
+    # Карта для автоподстановки ОЭС и типа энергосистемы по выбранной РЭС
+    res_auto_map = {}
+    for res in regional_energy_system_list:
+        ues_name = res.union_energy_system.name if res.union_energy_system else "Нет данных"
+        est_name = (
+            res.union_energy_system.energy_system_type.name
+            if res.union_energy_system and res.union_energy_system.energy_system_type
+            else "Нет данных"
+        )
+        res_auto_map[res.id] = {
+            "union_energy_system": ues_name,
+            "energy_system_type": est_name,
+        }
+
     federal_district_list = get_federal_district_list_full()
     regional_district_mapping = get_fd_to_rd_ids_map()
 
@@ -376,6 +396,11 @@ def station_details(station_id):
     # Заполняем список субъектов РФ с фильтрацией по версии БД
     # regional_district_list теперь содержит кортежи (id, name) вместо ORM-объектов
     form.id_regional_district.choices = regional_district_list
+    # Список региональных энергосистем для выпадающего списка (id, name)
+    form.id_regional_energy_system.choices = [
+        (0, "не указано"),
+        *[(res.id, res.name) for res in regional_energy_system_list],
+    ]
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     form.id_station_group.choices = choices_cache.get_choices(StationGroup, StationGroup.id)
     
@@ -492,6 +517,7 @@ def station_details(station_id):
                 except Exception as e:
                     print(f"Ошибка при обновлении: {str(e)}")
                     flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
+                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
     # Timing: measure preparation time right before render
     before_render_at = time.perf_counter()
@@ -561,6 +587,7 @@ def station_details(station_id):
         initial_machines_tbody_html=initial_machines_tbody_html,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
+        res_auto_map=res_auto_map,
     )
 
     after_render_at = time.perf_counter()

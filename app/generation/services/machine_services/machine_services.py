@@ -1279,27 +1279,53 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     if not nonzero:
         return
 
+    # Первый год с ненулевой мощностью — фактический год ввода (если ещё не задан)
     new_expl_year = nonzero[0][0]
 
-    new_decomp_year = None
-    for idx, (year, power) in enumerate(years_by_ust):
-        if not is_positive_power(power):
-            continue
-        if all_future_zero_powers(years_by_ust, idx):
-            new_decomp_year = year
+    # Новые значения по заданным правилам
+    new_expected_expl_year = None       # Ожидаемый год ввода в эксплуатацию
+    new_decomp_year = None              # Ожидаемый год вывода из эксплуатации
+    new_modern_year = None              # Ожидаемый год модернизации
 
+    # Проходим по соседним годам N и N+1
+    for i in range(len(years_by_ust) - 1):
+        year_n, p_n = years_by_ust[i]
+        year_n1, p_n1 = years_by_ust[i + 1]
 
-    # --- Год ввода: не задаем, если уже есть ---
+        n_pos = is_positive_power(p_n)
+        n1_pos = is_positive_power(p_n1)
+
+        # 1) Если Руст года N ≠ 0, а года N+1 == 0 → ожидаемый год вывода = N
+        if n_pos and not n1_pos and new_decomp_year is None:
+            new_decomp_year = year_n
+
+        # 2) Если Руст года N == 0, а года N+1 ≠ 0 → ожидаемый год ввода = N+1
+        if (not n_pos) and n1_pos and new_expected_expl_year is None:
+            new_expected_expl_year = year_n1
+
+        # 3) Если Руст года N ≠ 0 и года N+1 ≠ 0, но они не равны →
+        #    ожидаемый год модернизации = N+1
+        if n_pos and n1_pos and p_n1 != p_n and new_modern_year is None:
+            new_modern_year = year_n1
+
+    # --- Фактический год ввода: не задаем, если уже есть ---
     if machine.date_exploitation is None:
         machine.date_exploitation = new_expl_year
         changes.append(f"Год ввода: — → {new_expl_year}")
         flash(f"🧠 Год ввода автоматически определен: {new_expl_year}", "info")
 
-    # --- Год вывода ---
+    # --- Ожидаемый год ввода ---
+    if new_expected_expl_year is not None:
+        if machine.date_exploitation_expected != new_expected_expl_year:
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → {new_expected_expl_year}")
+            flash(f"🧠 Ожидаемый год ввода автоматически определен: {new_expected_expl_year}", "info")
+            machine.date_exploitation_expected = new_expected_expl_year
+
+    # --- Ожидаемый год вывода ---
     if new_decomp_year is not None and new_decomp_year < Config.END_YEAR:
         if machine.date_decompressing_expected != new_decomp_year:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → {new_decomp_year}")
-            flash(f"🧠 Год вывода автоматически определен: {new_decomp_year}", "info")
+            flash(f"🧠 Ожидаемый год вывода автоматически определен: {new_decomp_year}", "info")
             machine.date_decompressing_expected = new_decomp_year
     elif new_decomp_year is None:
         # Не удалось определить год вывода автоматически — не трогаем существующее значение
@@ -1310,26 +1336,19 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
             flash(f"🧠 Год вывода удален: агрегат продолжает работать", "info")
             machine.date_decompressing_expected = None
 
-    # Модернизация по плану
-    nonzero_plan_years = [
-        (y, p) for y, p in years_by_ust
-        if year_features.get(y) and getattr(year_features[y], "name", None) == "план" and p and p > 0
-    ]
-
-    found = False
-
-    for i in range(1, len(nonzero_plan_years)):
-        prev_y, prev_p = nonzero_plan_years[i - 1]
-        curr_y, curr_p = nonzero_plan_years[i]
-        if prev_p != curr_p:
-            if machine.date_modernization_expected != curr_y:
-                changes.append(f"Год модернизации: {machine.date_modernization_expected} → {curr_y}")
-                flash(f"🧠 Год модернизации автоматически определен: {curr_y}", "info")
-                machine.date_modernization_expected = curr_y
-            found = True
-            break
-
-    if not found and machine.date_modernization_expected is not None:
-        flash("[WARNING] Расчетный год модернизации не найден, но в данных указано значение. Проверьте корректность вручную.", "warning")
+    # --- Ожидаемый год модернизации ---
+    if new_modern_year is not None:
+        if machine.date_modernization_expected != new_modern_year:
+            changes.append(f"Год модернизации: {machine.date_modernization_expected} → {new_modern_year}")
+            flash(f"🧠 Ожидаемый год модернизации автоматически определен: {new_modern_year}", "info")
+            machine.date_modernization_expected = new_modern_year
+    elif machine.date_modernization_expected is not None:
+        # Если формально год модернизации не определяется по правилам,
+        # но в данных он указан, оставляем как есть, только предупреждаем
+        flash(
+            "[WARNING] Расчетный год модернизации не найден по текущим данным о мощности, "
+            "но в агрегате указано значение. Проверьте корректность вручную.",
+            "warning",
+        )
 
 

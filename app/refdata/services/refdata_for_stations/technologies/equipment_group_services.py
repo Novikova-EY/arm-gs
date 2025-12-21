@@ -57,6 +57,10 @@ def equipment_group_query(
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
 
+    # Безопасная конвертация ID-фильтров
+    technology_type_id = _to_int_or_none(technology_type_filter)
+    technology_availability_id = _to_int_or_none(technology_availability_filter)
+
     # Базовый запрос
     query = EquipmentGroup.query.filter(EquipmentGroup.id.isnot(None), EquipmentGroup.id > 0)
     query = apply_version_filter(query, EquipmentGroup)
@@ -74,14 +78,30 @@ def equipment_group_query(
     # Фильтрация
     if equipment_group_filter:
         query = query.filter(EquipmentGroup.name.ilike(f"%{equipment_group_filter}%"))
-    
-    if technology_type_filter:
-        query = query.join(TechnologyType, EquipmentGroup.id_technology_type == TechnologyType.id, isouter=True)
+
+    # Фильтр по типу технологии:
+    # - если передан ID (из выпадающего списка) — фильтруем по EquipmentGroup.id_technology_type
+    # - если передана строка (ручной ввод) — фильтруем по имени типа технологии
+    if technology_type_id is not None:
+        query = query.filter(EquipmentGroup.id_technology_type == technology_type_id)
+    elif technology_type_filter:
+        query = query.join(
+            TechnologyType,
+            EquipmentGroup.id_technology_type == TechnologyType.id,
+            isouter=True,
+        )
         query = query.filter(TechnologyType.name.ilike(f"%{technology_type_filter}%"))
         joined_tech_type = True
-    
-    if technology_availability_filter:
-        query = query.join(TechnologyAvailability, EquipmentGroup.id_technology_availability == TechnologyAvailability.id, isouter=True)
+
+    # Фильтр по доступности технологии (аналогично типу технологии)
+    if technology_availability_id is not None:
+        query = query.filter(EquipmentGroup.id_technology_availability == technology_availability_id)
+    elif technology_availability_filter:
+        query = query.join(
+            TechnologyAvailability,
+            EquipmentGroup.id_technology_availability == TechnologyAvailability.id,
+            isouter=True,
+        )
         query = query.filter(TechnologyAvailability.name.ilike(f"%{technology_availability_filter}%"))
         joined_tech_avail = True
 

@@ -90,15 +90,15 @@ sudo systemctl status redis-server
 1. Собираем Docker-образ
 
 ```bash
-cd C:\fproject
+cd C:\arm_gs
 docker build -t arm-gs-deb .
 ```
-Точка в конце — это «контекст сборки» = текущий каталог (C:\fproject).
+Точка в конце — это «контекст сборки» = текущий каталог (C:\arm_gs).
 
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\fproject:/app" arm-gs-deb --version 1.0.1
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.1
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
@@ -111,7 +111,7 @@ arm-gs-deb — имя образа, который ты собрала.
 Используйте любой удобный способ (scp, rsync, artifact registry):
 
 ```bash
-scp C:\fproject\packaging\generation-app_1.0.0_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.1_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 ```
 ---
 
@@ -121,7 +121,7 @@ scp C:\fproject\packaging\generation-app_1.0.0_amd64.deb novikova-eyu@10.31.205.
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.0_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.1_amd64.deb || sudo apt -f install
 ```
 
 **Что происходит при установке:**

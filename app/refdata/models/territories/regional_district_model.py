@@ -23,9 +23,12 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin):
     # Номер порядковый (может быть пустым)
     region_id = db.Column(db.String(3), nullable=True, index=True)
 
-    # Наименование и полное наименование (уникальность обеспечивается композитными ограничениями на уровне таблицы)
+    # Наименование сокращенное
     name = db.Column(db.String(80), nullable=False, index=True)
-    name_full = db.Column(db.String(80), nullable=True)
+    # Полное наименование
+    name_full = db.Column(db.String(255), nullable=False)
+    # Полное наименование в родительном падеже
+    name_rp = db.Column(db.String(255), nullable=False)
 
     # FK -> Федеральный округ
     id_federal_district = db.Column(

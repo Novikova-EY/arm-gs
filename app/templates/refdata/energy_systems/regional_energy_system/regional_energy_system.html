@@ -178,6 +178,27 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Наименование (в родительном падеже)" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.regional_energy_system_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            regional_energy_system_filter=regional_energy_system_filter,
+                                            union_energy_system_filter=union_energy_system_filter, 
+                                            sort_by='name_rp', 
+                                            sort_dir='asc' if sort_by != 'name_rp' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Наименование <br> (в родительном падеже)
+                                    {% if sort_by == 'name_rp' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Субъекты РФ" -->
                             <th colspan="2" class="text-center align-middle">Субъекты РФ</th>
 
@@ -269,7 +290,7 @@
                                         oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ regional_energy_system.name }}</textarea>
                                 </td>
                                 
-                                <!-- Строки таблицы. Столбец "Региональная энергосистема" -->
+                                <!-- Строки таблицы. Столбец "Региональная энергосистема (полное название)" -->
                                 <td>
                                     <textarea 
                                         name="regional_energy_system_full_names[]" 
@@ -278,20 +299,39 @@
                                         rows="1"
                                         oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ regional_energy_system.name_full }}</textarea>
                                 </td> 
+
+                                <!-- Строки таблицы. Столбец "Наименование (в родительном падеже)" -->
+                                <td>
+                                    <textarea 
+                                        name="regional_energy_system_rp_names[]" 
+                                        class="form-control" 
+                                        style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
+                                        rows="1"
+                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ regional_energy_system.name_rp }}</textarea>
+                                </td> 
                                         
                                 <!-- Строки таблицы. Столбец "Перечень субъектов РФ, к которым относится региональная энергосистема" -->
                                 <td>
                                     <div id="selected-regional-districts-{{ regional_energy_system.id }}">
-                                        <span class="form-control" style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;">
-                                            {% for regional_district in regional_energy_system.regional_districts %}
-                                                {{ regional_district.name }}<br>
-                                            {% endfor %}
-                                        </span>
+                                        <div class="form-control" style="overflow-wrap: break-word; white-space: normal; border: none; width: 100%; background: transparent; height: auto;">
+                                            {% if regional_energy_system.regional_districts %}
+                                                {% for regional_district in regional_energy_system.regional_districts %}
+                                                    {{ regional_district.name }}<br>
+                                                {% endfor %}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </td>
                                         
                                 <!-- Строки таблицы. Столбец "Выпадающий список субъектов РФ, к которым относится региональная энергосистема" -->
                                 <td>
+                                    {# Маркер: обновлять связи субъектов только если пользователь реально менял чекбоксы #}
+                                    <input type="hidden"
+                                           name="regional_districts_changed_{{ regional_energy_system.id }}"
+                                           id="regional_districts_changed_{{ regional_energy_system.id }}"
+                                           value="0">
                                     <div class="dropdown">
                                         <button 
                                             class="btn btn-secondary dropdown-toggle" 
@@ -301,17 +341,19 @@
                                             Изменить
                                         </button>
                                         <ul class="dropdown-menu" style="min-width: 300px; width: auto; max-width: 100%;">
+                                            {# get_regional_district_list_full() возвращает список кортежей (id, name) #}
                                             {% for regional_district in regional_districts_list %}                               
                                             <li>
                                                 <div class="form-check">
                                                     <input 
                                                         type="checkbox" 
                                                         name="regional_districts_{{ regional_energy_system.id }}[]" 
-                                                        value="{{ regional_district.id }}" 
-                                                        {% if regional_district.id in regional_energy_system.regional_districts|map(attribute='id') %}checked{% endif %}
+                                                        value="{{ regional_district[0] }}" 
+                                                        {% if regional_district[0] in regional_energy_system.regional_districts|map(attribute='id') %}checked{% endif %}
+                                                        data-res-id="{{ regional_energy_system.id }}"
                                                     >
-                                                    <label class="form-check-label" for="regional_district_{{ regional_district.id }}">
-                                                        {{ regional_district.name }}
+                                                    <label class="form-check-label" for="regional_district_{{ regional_district[0] }}">
+                                                        {{ regional_district[1] }}
                                                     </label>
                                                 </div>
                                             </li>
@@ -338,7 +380,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -408,6 +450,27 @@
                                             class="text-black">
                                     Региональная энергосистема <br> (полное название)
                                     {% if sort_by == 'name_full' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Наименование (в родительном падеже)" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.regional_energy_system_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            regional_energy_system_filter=regional_energy_system_filter,
+                                            union_energy_system_filter=union_energy_system_filter, 
+                                            sort_by='name_rp', 
+                                            sort_dir='asc' if sort_by != 'name_rp' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Наименование <br> (в родительном падеже)
+                                    {% if sort_by == 'name_rp' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
                                         {% else %}
@@ -500,18 +563,27 @@
                                     {{ regional_energy_system.name }}
                                 </td>
                                 
-                                <!-- Строки таблицы. Столбец "Региональная энергосистема" -->
+                                <!-- Строки таблицы. Столбец "Региональная энергосистема (полное название)" -->
                                 <td>
                                     {{ regional_energy_system.name_full }}
+                                </td> 
+
+                                <!-- Строки таблицы. Столбец "Наименование (в родительном падеже)" -->
+                                <td>
+                                    {{ regional_energy_system.name_rp }}
                                 </td> 
 
                                 <!-- Строки таблицы. Столбец "Выпадающий список субъектов РФ, к которым относится региональная энергосистема" -->
                                 <td>
                                     <div class="form-control" style="background: transparent; border: none;">
-                                        {% for regional_district in regional_energy_system.regional_districts %}
-                                            {{ regional_district.name }}<br>
-                                            <input type="hidden" name="regional_districts_{{ regional_energy_system.id }}[]" value="{{ regional_district.id }}">
-                                        {% endfor %}
+                                        {% if regional_energy_system.regional_districts %}
+                                            {% for regional_district in regional_energy_system.regional_districts %}
+                                                {{ regional_district.name }}<br>
+                                                <input type="hidden" name="regional_districts_{{ regional_energy_system.id }}[]" value="{{ regional_district.id }}">
+                                            {% endfor %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
                                     </div>
                                 </td>
 
@@ -528,7 +600,7 @@
                                 </td>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -545,6 +617,20 @@
 
 <!-- Скрипт подстройки высоты строк под содержимое ячеек -->
 <script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+<script>
+// Помечаем, что список субъектов у конкретной РЭС был изменен (чтобы не обнулять связи при сохранении "только текста")
+document.addEventListener('change', function (e) {
+    const t = e.target;
+    if (!t) return;
+    if (t.matches('input[type="checkbox"][name^="regional_districts_"][name$="[]"]')) {
+        const resId = t.getAttribute('data-res-id');
+        if (!resId) return;
+        const marker = document.getElementById(`regional_districts_changed_${resId}`);
+        if (marker) marker.value = "1";
+    }
+});
+</script>
 
 {% endif %}
 {% endblock %}

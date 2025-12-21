@@ -18,9 +18,12 @@ class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # Короткое и полное наименование
+    # Короткое наименование
     name = db.Column(db.String(255), nullable=False, index=True)
+    # Полное наименование
     name_full = db.Column(db.String(255), nullable=False)
+    # Полное наименование в родительном падеже
+    name_rp = db.Column(db.String(255), nullable=False)
 
     # FK -> UnionEnergySystem
     id_union_energy_system = db.Column(

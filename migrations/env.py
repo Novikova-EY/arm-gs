@@ -74,6 +74,7 @@ def import_all_models():
         "app.refdata.models.energy_unit_model",
         "app.refdata.models.year_feature_model",
         "app.refdata.models.year_model",
+        "app.refdata.models.year_service_model",
         "app.refdata.models.regional_district_regional_energy_system_model",
     ]
     for m in modules:

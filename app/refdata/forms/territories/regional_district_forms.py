@@ -24,6 +24,13 @@ class RegionalDistrictFilterForm(FlaskForm):
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
+    name_rp = StringField(
+        "Наименование (в родительном падеже)",
+        validators=[
+            DataRequired(message="Поле «Наименование (в родительном падеже)» обязательно."),
+            Length(min=2, max=255, message="Длина от 2 до 255 символов."),
+        ],
+    )
     federal_district = SelectField(
         "Федеральный округ",
         choices=[],
@@ -92,6 +99,13 @@ class AddRegionalDistrictForm(FlaskForm):
         "Полное наименование субъекта РФ",
         validators=[
             DataRequired(message="Поле «Полное наименование субъекта РФ» обязательно."),
+            Length(min=3, max=255, message="Длина от 3 до 255 символов."),
+        ],
+    )
+    name_rp = StringField(
+        "Наименование (в родительном падеже)",
+        validators=[
+            DataRequired(message="Поле «Наименование (в родительном падеже)» обязательно."),
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )

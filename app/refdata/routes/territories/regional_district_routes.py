@@ -74,6 +74,7 @@ def regional_district_list():
         regional_district_ids           = request.form.getlist("regional_district_ids[]")
         regional_district_names         = request.form.getlist("regional_district_names[]")
         regional_district_full_names    = request.form.getlist("regional_district_full_names[]")
+        regional_district_rp_names      = request.form.getlist("regional_district_rp_names[]")
         regional_district_delete        = request.form.getlist("regional_district_delete[]")
         federal_district_ids            = request.form.getlist("federal_districts[]")
         energy_zone_ids                 = request.form.getlist("energy_zones[]")
@@ -113,8 +114,8 @@ def regional_district_list():
             
             # Формирование данных для обновления
             regional_district_data = []
-            for regional_district_id, regional_district_name, regional_district_full_name, federal_district_id, energy_zone_id, synchronous_area_id, region_id in zip(
-                regional_district_ids, regional_district_names, regional_district_full_names, federal_district_ids, energy_zone_ids, synchronous_area_ids, region_ids
+            for regional_district_id, regional_district_name, regional_district_full_name, regional_district_rp_name, federal_district_id, energy_zone_id, synchronous_area_id, region_id in zip(
+                regional_district_ids, regional_district_names, regional_district_full_names, regional_district_rp_names, federal_district_ids, energy_zone_ids, synchronous_area_ids, region_ids
             ):
                 try:
                     regional_district_data.append({
@@ -122,8 +123,10 @@ def regional_district_list():
                         "region_id": (region_id or "").strip() or None,
                         "name": regional_district_name.strip(),
                         "name_full": regional_district_full_name.strip(),
+                        "name_rp": regional_district_rp_name.strip(),
                         "federal_district_id": int(federal_district_id) if federal_district_id else None,
-                        "id_energy_zone": int(energy_zone_id) if energy_zone_id else None,
+                        # Ключ должен совпадать с ожидаемым в update_regional_district_service
+                        "energy_zone_id": int(energy_zone_id) if energy_zone_id else None,
                         "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
                     })
                 except ValueError as e:
@@ -253,6 +256,7 @@ def add_regional_district():
             payload = [{
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
+                "name_rp": (form.name_rp.data or "").strip(),
                 "federal_district_id": form.federal_district.data,
             }]
 

@@ -38,9 +38,22 @@
             {{ form.name_full(class="form-control", id="name_full") }}
             
             <!-- Ошибки валидации -->
-            {% if form.name.errors %}
+            {% if form.name_full.errors %}
                 <div class="text-danger">
-                    {{ form.name.errors|join(', ') }}
+                    {{ form.name_full.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Наименование (в родительном падеже) -->
+        <div class="mb-3">
+            <label for="name_rp" class="form-label">Наименование (в родительном падеже)</label>
+            {{ form.name_rp(class="form-control", id="name_rp") }}
+            
+            <!-- Ошибки валидации -->
+            {% if form.name_rp.errors %}
+                <div class="text-danger">
+                    {{ form.name_rp.errors|join(', ') }}
                 </div>
             {% endif %}
         </div>

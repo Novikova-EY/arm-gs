@@ -70,8 +70,8 @@
         <input type="hidden" name="page"                    value="{{ pagination.page if pagination else 1 }}">
         <input type="hidden" name="sort_by"                 value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"                value="{{ sort_dir }}">
-        <input type="hidden" name="technology_type_filter"    value="{{ technology_type_filter }}">
-        <input type="hidden" name="technology_availability_filter"    value="{{ technology_availability_filter }}">
+        <input type="hidden" name="technology_type_filter"    value="{{ technology_type_filter or '' }}">
+        <input type="hidden" name="technology_availability_filter"    value="{{ technology_availability_filter or '' }}">
     </form>
 
     <!-- Таблица данных -->
@@ -255,7 +255,7 @@
                                                     <a href="{{ url_for('refdata_bp.equipment_group_list', 
                                                                 page=pagination.page, 
                                                                 equipment_group_filter=equipment_group_filter,
-                                                                technology_type_filter='',
+                                                                technology_type_filter=technology_type_filter,
                                                                 technology_availability_filter='',
                                                                 per_page=per_page,
                                                                 sort_by=sort_by,
@@ -264,12 +264,12 @@
                                                         Все типы технологий
                                                     </a>
                                                 </li>
-                                                {% for id, name in technology_types %}
+                                                {% for id, name in technology_availabilities %}
                                                     <li>
                                                         <a href="{{ url_for('refdata_bp.equipment_group_list', 
                                                             page=pagination.page, 
                                                             equipment_group_filter=equipment_group_filter,
-                                                            technology_type_filter=id,
+                                                            technology_type_filter=technology_type_filter,
                                                             technology_availability_filter=id,
                                                             per_page=per_page,
                                                             sort_by=sort_by,
@@ -459,7 +459,7 @@
                             <th class="text-center align-middle">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="mx-auto">
-                                        <a href="{{ url_for('refdata_bp.fuel_list', 
+                                        <a href="{{ url_for('refdata_bp.equipment_group_list', 
                                                     page=pagination.page, 
                                                     equipment_group_filter=equipment_group_filter,
                                                     technology_type_filter=technology_type_filter,
@@ -492,7 +492,7 @@
                                                 <a href="{{ url_for('refdata_bp.equipment_group_list', 
                                                             page=pagination.page, 
                                                             equipment_group_filter=equipment_group_filter,
-                                                            technology_type_filter='',
+                                                            technology_type_filter=technology_type_filter,
                                                             technology_availability_filter='',
                                                             per_page=per_page,
                                                             sort_by=sort_by,
@@ -501,12 +501,12 @@
                                                     Все типы технологий
                                                 </a>
                                             </li>
-                                            {% for id, name in technology_types %}
+                                            {% for id, name in technology_availabilities %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.equipment_group_list', 
                                                         page=pagination.page, 
                                                         equipment_group_filter=equipment_group_filter,
-                                                        technology_type_filter=id,
+                                                        technology_type_filter=technology_type_filter,
                                                         technology_availability_filter=id,
                                                         per_page=per_page,
                                                         sort_by=sort_by,

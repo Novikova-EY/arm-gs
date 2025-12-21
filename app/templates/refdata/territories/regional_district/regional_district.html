@@ -214,18 +214,41 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Наименование (в родительном падеже)" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            regional_district_filter=regional_district_filter, 
+                                            federal_district_filter=federal_district_filter, 
+                                            energy_zone_filter=energy_zone_filter, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='name_rp', 
+                                            sort_dir='asc' if sort_by != 'name_rp' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Наименование <br> (в родительном падеже)
+                                    {% if sort_by == 'name_rp' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "ФО" -->
                             <th class="align-middle text-center">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="mx-auto">
-                                        <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                        <a href="{{ url_for('refdata_bp.regional_district_list',
                                                     page=pagination.page, 
                                                     per_page=per_page,
                                                     regional_district_filter=regional_district_filter,
                                                     federal_district_filter=federal_district_filter,  
                                                     energy_zone_filter=energy_zone_filter, 
                                                     synchronous_area_filter=synchronous_area_filter, 
-                                                    sort_by='federal_district', 
+                                                    sort_by='federal_district',
                                                     sort_dir='asc' if sort_by != 'federal_district' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="link-dark">
                                         Наименование <br> ФО
@@ -456,6 +479,11 @@
                                     <input type="text" name="regional_district_full_names[]" class="form-control" value="{{ item.name_full }}">
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Наименование (в родительном падеже)" -->
+                                <td>
+                                    <input type="text" name="regional_district_rp_names[]" class="form-control" value="{{ item.name_rp }}">
+                                </td>
+
                                 <!-- Строки таблицы. Столбец "ФО" -->
                                 <td>
                                     <select name="federal_districts[]" class="form-select">
@@ -497,7 +525,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="9" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -605,18 +633,41 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Наименование (в родительном падеже)" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            regional_district_filter=regional_district_filter, 
+                                            federal_district_filter=federal_district_filter, 
+                                            energy_zone_filter=energy_zone_filter, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='name_rp', 
+                                            sort_dir='asc' if sort_by != 'name_rp' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Наименование <br> (в родительном падеже)
+                                    {% if sort_by == 'name_rp' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "ФО" -->
                             <th class="align-middle text-center">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="mx-auto">
-                                        <a href="{{ url_for('refdata_bp.regional_district_list', 
+                                        <a href="{{ url_for('refdata_bp.regional_district_list',
                                                     page=pagination.page, 
                                                     per_page=per_page,
                                                     regional_district_filter=regional_district_filter,
                                                     federal_district_filter=federal_district_filter,  
                                                     energy_zone_filter=energy_zone_filter, 
                                                     synchronous_area_filter=synchronous_area_filter, 
-                                                    sort_by='federal_district', 
+                                                    sort_by='federal_district',
                                                     sort_dir='asc' if sort_by != 'federal_district' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="link-dark">
                                         Наименование <br> ФО
@@ -838,6 +889,11 @@
                                     {{ regional_district.name_full }}
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Наименование (в родительном падеже)" -->
+                                <td>
+                                    {{ regional_district.name_rp }}
+                                </td>
+
                             <!-- Строки таблицы. Столбец "ФО" -->
                                 <td>
                                     {{ regional_district.federal_district.name }}
@@ -858,7 +914,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="9" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>

@@ -56,7 +56,7 @@ def regional_district_query(
     """ Базовый запрос для выборки субъектов РФ с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name", "federal_district", "energy_zone", "synchronous_area", "region_id"}
+    allowed_sort_by = {"id","name", "name_full", "name_rp", "federal_district", "energy_zone", "synchronous_area", "region_id"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -111,6 +111,16 @@ def regional_district_query(
         except AttributeError:
             q = q.order_by(nullslast(order), RegionalDistrict.id.asc())    
     
+    elif sort_by == "name_full":
+        col = RegionalDistrict.name_full
+        order = col.asc() if sort_dir == "asc" else col.desc()
+        q = q.order_by(order, RegionalDistrict.id.asc())
+
+    elif sort_by == "name_rp":
+        col = RegionalDistrict.name_rp
+        order = col.asc() if sort_dir == "asc" else col.desc()
+        q = q.order_by(order, RegionalDistrict.id.asc())
+
     elif sort_by == "region_id":
         col = cast(RegionalDistrict.region_id, Integer)
         if sort_dir == "asc":
@@ -183,6 +193,7 @@ def update_regional_district_service(data, user):
             region_id = _to_int_or_none(record.get("region_id"), keep_zero=False)
             name = (record.get("name") or "").strip()
             name_full = (record.get("name_full") or "").strip() or None
+            name_rp = (record.get("name_rp") or "").strip() or None
 
             # Проверки на валидность данных
             if not name:
@@ -243,6 +254,12 @@ def update_regional_district_service(data, user):
                 new_val = name_full or "не указано"
                 changes.append(f"Полное наименование: {old_val} → {new_val}")
                 obj.name_full = name_full
+
+            if name_rp != (obj.name_rp or None):
+                old_val = obj.name_rp or "не указано"
+                new_val = name_rp or "не указано"
+                changes.append(f"Наименование (в родительном падеже): {old_val} → {new_val}")
+                obj.name_rp = name_rp
 
             if region_id != obj.region_id:
                 old_val = obj.region_id if obj.region_id is not None else "не указано"
@@ -340,16 +357,17 @@ def add_regional_district_service(data, user):
             for record in data:
                 name = (record.get("name") or "").strip()
                 name_full = (record.get("name_full") or "").strip()
+                name_rp = (record.get("name_rp") or "").strip()
                 federal_district_id = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
 
                 # Проверка на наличие необходимых данных
-                if not name or not name_full or federal_district_id is None:
+                if not name or not name_full or not name_rp or federal_district_id is None:
                     log_to_db(
                         user, 
                         "Ошибка валидации", 
                         f"Запись: {record}", 
                         entity_type="regional_district")
-                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full' и 'federal_district_id'. Данные: {record}")
+                    raise ValueError(f"Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'federal_district_id'. Данные: {record}")
 
                 # Проверяем существование федерального округа
                 obj = db.session.get(FederalDistrict, federal_district_id)
@@ -374,6 +392,7 @@ def add_regional_district_service(data, user):
                 obj = RegionalDistrict(
                     name=name,
                     name_full=name_full or None,
+                    name_rp=name_rp or None,
                     id_federal_district=federal_district_id,
                 )
                 set_db_version_on_create(obj)
@@ -386,6 +405,7 @@ def add_regional_district_service(data, user):
                     (
                         f"Наименование: {name};"
                         f"Полное наименование: {_dash(name_full)};"
+                        f"Наименование (в родительном падеже): {_dash(name_rp)};"
                         f"Федеральный округ: {get_federal_district_name(federal_district_id)}",
                     ),
                     entity_type="regional_district", 
@@ -658,6 +678,7 @@ def export_regional_district_service(
             "Порядковый номер субъекта РФ": _dash(o.region_id),
             "Наименование субъекта РФ": _dash(o.name),
             "Полное наименование субъекта РФ": _dash(o.name_full),
+            "Наименование (в родительном падеже)": _dash(o.name_rp),
             "Федеральный округ": getattr(o.federal_district, "name", "Не указан") or "Не указан",
             "Энергозона номер": _dash(ez_num),
             "Энергозона наименование": _dash(ez_name) or "Не указана",

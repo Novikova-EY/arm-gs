@@ -71,6 +71,26 @@ def export_station_changes_to_excel(
     """
     current_db_version_id = get_current_db_version_id()
 
+    # Сбрасываем кэши справочников, чтобы загрузить актуальные данные для текущей версии БД
+    from app.common.services.get_services.stations.station_type_get_services import (
+        get_station_type_list_full,
+    )
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+        get_union_energy_system_list_full,
+    )
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+        get_energy_system_type_list_full,
+    )
+    
+    cache_functions = [
+        get_station_type_list_full,
+        get_union_energy_system_list_full,
+        get_energy_system_type_list_full,
+    ]
+    for func in cache_functions:
+        if hasattr(func, "cache_clear"):
+            func.cache_clear()
+
     # Загружаем все данные без пагинации, чтобы экспортировать всё отображаемое
     if (
         data is None
@@ -443,8 +463,35 @@ def export_station_changes_to_excel(
                             .get("p_ust", {})
                             .get(rd_id, {})
                         )
-                        rd_label = regional_district_names.get(rd_id, f"Субъект {rd_id}")
-                        write_combined_totals_block(rd_label, rd_events_map, rd_by_station_map)
+                        # Проверяем, есть ли данные для вывода итогов
+                        # Проверяем rd_events_map: есть ли хотя бы одно ненулевое значение
+                        has_events_data = False
+                        if rd_events_map:
+                            for event_map in rd_events_map.values():
+                                if isinstance(event_map, dict) and any(
+                                    val is not None and val != 0 for val in event_map.values()
+                                ):
+                                    has_events_data = True
+                                    break
+                        
+                        # Проверяем rd_by_station_map: есть ли хотя бы одно ненулевое значение
+                        has_station_data = False
+                        if rd_by_station_map:
+                            for st_map in rd_by_station_map.values():
+                                if isinstance(st_map, dict):
+                                    for event_map in st_map.values():
+                                        if isinstance(event_map, dict) and any(
+                                            val is not None and val != 0 for val in event_map.values()
+                                        ):
+                                            has_station_data = True
+                                            break
+                                    if has_station_data:
+                                        break
+                        
+                        # Выводим итоги только если есть данные
+                        if has_events_data or has_station_data:
+                            rd_label = regional_district_names.get(rd_id, f"Субъект {rd_id}")
+                            write_combined_totals_block(rd_label, rd_events_map, rd_by_station_map)
 
             # Итоги по ОЭС
             if show_totals:

@@ -19,7 +19,21 @@ SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
 DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", "auth,logs,gs_sys,generation")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+# DEBUG определяется по FLASK_ENV или явной переменной DEBUG
+# По умолчанию False (production режим)
+_flask_env = os.getenv("FLASK_ENV", "").lower()
+_explicit_debug = os.getenv("DEBUG", "").lower()
+if _explicit_debug in ("true", "1", "yes"):
+    DEBUG = True
+elif _explicit_debug in ("false", "0", "no", ""):
+    DEBUG = False
+elif _flask_env == "development":
+    DEBUG = True
+elif _flask_env == "production":
+    DEBUG = False
+else:
+    # По умолчанию production (безопаснее)
+    DEBUG = False
 START_YEAR_SIPR = 2026
 START_YEAR = 2024
 END_YEAR = 2031
@@ -51,7 +65,21 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', '').split(','))
-    DEBUG=os.getenv("DEBUG", "False").lower() == "true"
+    # DEBUG определяется по FLASK_ENV или явной переменной DEBUG
+    # По умолчанию False (production режим)
+    _flask_env = os.getenv("FLASK_ENV", "").lower()
+    _explicit_debug = os.getenv("DEBUG", "").lower()
+    if _explicit_debug in ("true", "1", "yes"):
+        DEBUG = True
+    elif _explicit_debug in ("false", "0", "no", ""):
+        DEBUG = False
+    elif _flask_env == "development":
+        DEBUG = True
+    elif _flask_env == "production":
+        DEBUG = False
+    else:
+        # По умолчанию production (безопаснее)
+        DEBUG = False
     START_YEAR_SIPR = 2026
     START_YEAR = 2024
     END_YEAR = 2031

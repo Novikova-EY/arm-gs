@@ -110,7 +110,7 @@
                                     <div class="col-5 text-start fw-semibold">Организация-собственник:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_gen_company(class="form-select") }}
+                                            {{ main_form.id_gen_company(class="form-select", id="id_gen_company") }}
                                         {% else %}
                                             {% if machine and machine.gen_company %}
                                                 {{ machine.gen_company.name }}
@@ -217,13 +217,14 @@
                                         {% endif %}
                                     </div>
                                 </div>
+
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_commission_fact(class="form-control") }}
+                                            {{ main_form.date_exploitation_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
+                                            {{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -237,16 +238,7 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_decompressing_fact(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
+
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
                                     <div class="col-7 text-start">
@@ -257,9 +249,6 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемая дата присоединения:</div>
                                     <div class="col-7 text-start">
@@ -270,6 +259,32 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
+                                
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_commission_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_decompressing_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
                                     <div class="col-7 text-start">
@@ -290,7 +305,7 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="row g-2 align-items-center">
+                                <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
@@ -352,7 +367,7 @@
                         <div class="d-flex align-items-center gap-2 ms-auto">
 
                             <!-- Чекбокс Рогр -->
-                            <input type="checkbox" class="btn-check" id="toggleP_Ogr" autocomplete="off">
+                            <input type="checkbox" class="btn-check" id="toggleP_Ogr" autocomplete="off" checked>
                             <label for="toggleP_Ogr" class="btn btn-outline-primary px-3 text-center" style="min-width: 80px;">
                                 Рогр
                             </label>
@@ -499,7 +514,7 @@
                             {% endfor %}
                         </tr>
                         
-                        <tr class="text-center align-middle p-ogr-row">
+                        <tr class="text-center align-middle p-ogr-row" style="display: table-row;">
                             <!-- "p_ogr" -->
                             <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
                             {% for p in advanced_form.powers %}
@@ -651,6 +666,176 @@
 
 <!-- jQuery и Select2 уже подключены в base.html -->
 
+<script>
+(function() {
+    function initGenCompanySelect() {
+        var $ = window.jQuery || window.$;
+        if (typeof $ === 'undefined' || !$.fn.select2) {
+            return false;
+        }
+        
+        const $genCompanySelect = $('#id_gen_company');
+        if (!$genCompanySelect.length) {
+            return false;
+        }
+        
+        if ($genCompanySelect.data('select2')) {
+            return true; // Уже инициализирован
+        }
+        
+        // Инициализируем Select2
+        $genCompanySelect.select2({
+            placeholder: "Выберите компанию (начните вводить для поиска)",
+            allowClear: true,
+            width: '100%',
+            minimumResultsForSearch: 0,
+            matcher: function(params, data) {
+                // Поиск по совпадению внутри строки (case-insensitive)
+                if (!params.term || params.term.trim() === '') {
+                    return data;
+                }
+                var term = params.term.toLowerCase().trim();
+                var text = data.text ? data.text.toLowerCase() : '';
+                // Ищем подстроку в любом месте текста
+                if (text.indexOf(term) !== -1) {
+                    return data;
+                }
+                return null;
+            },
+            language: {
+                noResults: function() {
+                    return "Ничего не найдено";
+                },
+                searching: function() {
+                    return "Поиск...";
+                }
+            }
+        });
+        
+        // Обработчик для автоматического выбора первого результата при нажатии Enter (как в Excel)
+        $genCompanySelect.on('select2:open', function() {
+            var $search = $('.select2-container--open .select2-search__field');
+            if ($search.length) {
+                $search.off('keyup.select2-excel').on('keyup.select2-excel', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        var $results = $('.select2-results__option--highlighted, .select2-results__option:first');
+                        if ($results.length) {
+                            var value = $results.first().data('id');
+                            if (value !== undefined) {
+                                $genCompanySelect.val(value).trigger('change');
+                                $genCompanySelect.trigger('select2:close');
+                            }
+                        }
+                    }
+                });
+                
+                // Автоматически фокусируемся на поле поиска при открытии
+                setTimeout(function() {
+                    $search.focus();
+                }, 10);
+            }
+        });
+        
+        return true;
+    }
+    
+    // Инициализация при загрузке страницы
+    function tryInit() {
+        var $ = window.jQuery || window.$;
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(document).ready(function() {
+                // Инициализируем сразу при загрузке страницы
+                setTimeout(function() {
+                    initGenCompanySelect();
+                }, 100);
+                
+                // Также инициализируем для динамически добавленных элементов (fallback)
+                $(document).on('focus click', '#id_gen_company', function () {
+                    const $el = $(this);
+                    if ($el.data('select2')) return;
+                    
+                    $el.select2({
+                        placeholder: "Выберите компанию (начните вводить для поиска)",
+                        allowClear: true,
+                        width: '100%',
+                        minimumResultsForSearch: 0,
+                        matcher: function(params, data) {
+                            if (!params.term || params.term.trim() === '') {
+                                return data;
+                            }
+                            var term = params.term.toLowerCase().trim();
+                            var text = data.text ? data.text.toLowerCase() : '';
+                            if (text.indexOf(term) !== -1) {
+                                return data;
+                            }
+                            return null;
+                        },
+                        language: {
+                            noResults: function() {
+                                return "Ничего не найдено";
+                            },
+                            searching: function() {
+                                return "Поиск...";
+                            }
+                        }
+                    });
+                    
+                    // Обработчик Enter для динамически добавленных элементов
+                    $el.on('select2:open', function() {
+                        var $search = $('.select2-container--open .select2-search__field');
+                        if ($search.length) {
+                            $search.off('keyup.select2-excel').on('keyup.select2-excel', function(e) {
+                                if (e.key === 'Enter' || e.keyCode === 13) {
+                                    var $results = $('.select2-results__option--highlighted, .select2-results__option:first');
+                                    if ($results.length) {
+                                        var value = $results.first().data('id');
+                                        if (value !== undefined) {
+                                            $el.val(value).trigger('change');
+                                            $el.trigger('select2:close');
+                                        }
+                                    }
+                                }
+                            });
+                            setTimeout(function() {
+                                $search.focus();
+                            }, 10);
+                        }
+                    });
+                });
+            });
+            return true;
+        }
+        return false;
+    }
+    
+    // Пробуем сразу
+    if (!tryInit()) {
+        // Если не получилось, ждем загрузки jQuery и Select2
+        var attempts = 0;
+        var checkInterval = setInterval(function() {
+            attempts++;
+            if (tryInit() || attempts > 100) {
+                clearInterval(checkInterval);
+            }
+        }, 50);
+    }
+    
+    // Дополнительная инициализация при загрузке DOM (на случай если ready уже прошел)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                initGenCompanySelect();
+            }, 200);
+        });
+    } else {
+        // DOM уже загружен
+        setTimeout(function() {
+            initGenCompanySelect();
+        }, 200);
+    }
+})();
+</script>
+
 <!-- CSS для адаптивной высоты строк -->
 <style>
     /* Увеличенный шрифт на странице агрегата */
@@ -669,6 +854,60 @@
     .machine-details-page .card.mb-3.border-0.shadow-none .col-7.text-start .form-select {
         font-size: 1.15rem;
         line-height: 1.4;
+    }
+    
+    /* Стили для Select2 в поле "Организация-собственник" - выравнивание слева и ободок как у form-select */
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] {
+        width: 100% !important;
+        text-align: left;
+    }
+    
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection--single {
+        height: calc(1.5em + 0.75rem + 2px) !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 0.375rem !important;
+        background-color: #fff !important;
+        text-align: left !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+        position: relative;
+    }
+    
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__rendered,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__rendered {
+        text-align: left !important;
+        padding-left: 0 !important;
+        padding-right: 50px !important;
+        width: 100% !important;
+    }
+    
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__arrow,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__arrow {
+        right: 0.75rem !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    /* Крестик очистки справа рядом со стрелкой */
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__clear,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__clear {
+        right: 2.5rem !important;
+        margin-right: 0 !important;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        font-size: 1.2em !important;
+        line-height: 1 !important;
+    }
+    
+    .machine-details-page .col-7.text-start #id_gen_company + .select2-container:focus-within .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"]:focus-within .select2-selection--single {
+        border-color: #80bdff !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
     }
 
     /* Крупнее шрифт во всех ячейках строк таблиц: Мощность, Тип ТЭС, Топливо */
@@ -829,8 +1068,24 @@ document.addEventListener("DOMContentLoaded", function () {
             roundingSelect.value = localStorage.getItem("rounding_digits");
         }
     }
-    document.getElementById("toggleP_Ogr").checked = localStorage.getItem("toggleP_Ogr") === "true";
-    document.getElementById("toggleP_Rasp").checked = localStorage.getItem("toggleP_Rasp") === "true";
+
+    // Чекбоксы: по умолчанию оба включены, если в localStorage ещё нет значений
+    const toggleOgrEl = document.getElementById("toggleP_Ogr");
+    const toggleRaspEl = document.getElementById("toggleP_Rasp");
+
+    if (toggleOgrEl) {
+        // Рогр по умолчанию всегда включен
+        toggleOgrEl.checked = true;
+        // Используем jQuery для установки значения и обновления стиля
+        $('#toggleP_Ogr').prop('checked', true);
+        const $ogrLabel = $('label[for="toggleP_Ogr"]');
+        $ogrLabel.addClass('btn-primary').removeClass('btn-outline-primary');
+    }
+
+    if (toggleRaspEl) {
+        const storedRasp = localStorage.getItem("toggleP_Rasp");
+        toggleRaspEl.checked = storedRasp === null ? true : storedRasp === "true";
+    }
 
     // --- Функция сохранения настроек ---
     function saveSettings() {
@@ -873,8 +1128,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const showOgr = document.getElementById("toggleP_Ogr").checked;
         const showRasp = document.getElementById("toggleP_Rasp").checked;
 
-        $(".p-ogr-row").toggle(showOgr);
-        $(".p-rasp-row").toggle(showRasp);
+        if (showOgr) {
+            $(".p-ogr-row").show();
+        } else {
+            $(".p-ogr-row").hide();
+        }
+        if (showRasp) {
+            $(".p-rasp-row").show();
+        } else {
+            $(".p-rasp-row").hide();
+        }
 
         // Обновляем стили кнопок
         const $ogrLabel = $('label[for="toggleP_Ogr"]');
@@ -898,6 +1161,473 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     updateRows();
+
+    // --- Автозаполнение мощностей по строке и flash-сообщение ---
+    function showPowerFlashMessage() {
+        // Контейнер, как в base.html для flash-сообщений
+        let wrapper = document.getElementById("flash-wrapper");
+        if (!wrapper) {
+            wrapper = document.createElement("div");
+            wrapper.id = "flash-wrapper";
+            wrapper.className = "position-fixed top-0 start-50 translate-middle-x mt-5 z-3";
+            wrapper.style.maxWidth = "1500px";
+            wrapper.style.width = "90%";
+            document.body.appendChild(wrapper);
+        }
+
+        const alert = document.createElement("div");
+        alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
+        alert.setAttribute("role", "alert");
+        alert.textContent = "Значение мощности применено ко всем последующим годам в этой строке.";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "btn-close";
+        closeBtn.setAttribute("data-bs-dismiss", "alert");
+        closeBtn.setAttribute("aria-label", "Закрыть");
+        closeBtn.addEventListener("click", function () {
+            alert.remove();
+        });
+
+        alert.appendChild(closeBtn);
+        wrapper.appendChild(alert);
+
+        setTimeout(function () {
+            alert.classList.remove("show");
+            alert.classList.add("fade");
+            setTimeout(function () {
+                alert.remove();
+            }, 200);
+        }, 5000);
+    }
+
+    function attachPowerAutoFill() {
+        const powerRows = document.querySelectorAll(
+            ".machines-table .total-power-row, " +
+            ".machines-table .p-ogr-row, " +
+            ".machines-table .p-rasp-row"
+        );
+
+        powerRows.forEach(function (row) {
+            const inputs = Array.from(row.querySelectorAll('input[type="text"]'));
+            if (!inputs.length) return;
+
+            const isRustRow = row.classList.contains("total-power-row");
+            let raspRowInputs = [];
+
+            if (isRustRow) {
+                const raspRow = document.querySelector(".p-rasp-row");
+                if (raspRow) {
+                    raspRowInputs = Array.from(raspRow.querySelectorAll('input[type="text"]'));
+                }
+            }
+
+            inputs.forEach(function (input, index) {
+                input.addEventListener("change", function () {
+                    const value = this.value;
+
+                    // Продление значения по текущей строке (со следующего года до конца периода)
+                    for (let i = index + 1; i < inputs.length; i++) {
+                        inputs[i].value = value;
+                    }
+
+                    // Дополнительная логика: при заполнении Руст заполняем Ррасп = Руст
+                    // и продлеваем это значение до конца периода
+                    if (isRustRow && raspRowInputs.length) {
+                        for (let i = index; i < raspRowInputs.length; i++) {
+                            raspRowInputs[i].value = value;
+                        }
+                    }
+
+                    showPowerFlashMessage();
+                });
+            });
+        });
+    }
+
+    // --- Автоматический расчёт Рогр как Руст - Ррасп ---
+    function parsePowerValue(raw) {
+        if (raw === null || raw === undefined) return null;
+        const cleaned = raw.toString().replace(/\s+/g, "").replace(",", ".");
+        if (cleaned === "") return null;
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? null : num;
+    }
+
+    function formatPowerValue(template, value) {
+        if (value === null || value === undefined || isNaN(value)) return "";
+        // Если в шаблоне использовалась запятая, сохраняем её
+        const str = String(value);
+        if (template && template.indexOf(",") !== -1) {
+            return str.replace(".", ",");
+        }
+        return str;
+    }
+
+    function showOgrCalcFlashMessage() {
+        let wrapper = document.getElementById("flash-wrapper");
+        if (!wrapper) {
+            wrapper = document.createElement("div");
+            wrapper.id = "flash-wrapper";
+            wrapper.className = "position-fixed top-0 start-50 translate-middle-x mt-5 z-3";
+            wrapper.style.maxWidth = "1500px";
+            wrapper.style.width = "90%";
+            document.body.appendChild(wrapper);
+        }
+
+        const alert = document.createElement("div");
+        alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
+        alert.setAttribute("role", "alert");
+        alert.textContent = "Рогр автоматически пересчитан как Руст минус Ррасп.";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "btn-close";
+        closeBtn.setAttribute("data-bs-dismiss", "alert");
+        closeBtn.setAttribute("aria-label", "Закрыть");
+        closeBtn.addEventListener("click", function () {
+            alert.remove();
+        });
+
+        alert.appendChild(closeBtn);
+        wrapper.appendChild(alert);
+
+        setTimeout(function () {
+            alert.classList.remove("show");
+            alert.classList.add("fade");
+            setTimeout(function () {
+                alert.remove();
+            }, 200);
+        }, 5000);
+    }
+
+    // Пересчёт Рогр как Руст - Ррасп (по всем годам)
+    function recalcOgrByColumns(showFlash) {
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        const ogrInputs  = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
+        const raspInputs = Array.from(document.querySelectorAll(".p-rasp-row .power-column input[type=\"text\"]"));
+
+        const len = Math.min(rustInputs.length, ogrInputs.length, raspInputs.length);
+        for (let i = 0; i < len; i++) {
+            const rustRaw = rustInputs[i].value;
+            const raspRaw = raspInputs[i].value;
+            const rust = parsePowerValue(rustRaw);
+            const rasp = parsePowerValue(raspRaw);
+            if (rust === null || rasp === null) {
+                continue;
+            }
+            const ogr = rust - rasp;
+            ogrInputs[i].value = formatPowerValue(rustRaw, ogr);
+        }
+
+        if (showFlash) {
+            showOgrCalcFlashMessage();
+        }
+    }
+
+    // Пересчёт Ррасп как Руст - Рогр (по всем годам)
+    function recalcRaspByColumns(showFlash) {
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        const ogrInputs  = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
+        const raspInputs = Array.from(document.querySelectorAll(".p-rasp-row .power-column input[type=\"text\"]"));
+
+        const len = Math.min(rustInputs.length, ogrInputs.length, raspInputs.length);
+        for (let i = 0; i < len; i++) {
+            const rustRaw = rustInputs[i].value;
+            const ogrRaw  = ogrInputs[i].value;
+            const rust = parsePowerValue(rustRaw);
+            const ogr  = parsePowerValue(ogrRaw);
+            if (rust === null || ogr === null) {
+                continue;
+            }
+            const rasp = rust - ogr;
+            raspInputs[i].value = formatPowerValue(rustRaw, rasp);
+        }
+
+        if (showFlash) {
+            // Переиспользуем тот же тип флеша, но с другим текстом
+            let wrapper = document.getElementById("flash-wrapper");
+            if (!wrapper) {
+                wrapper = document.createElement("div");
+                wrapper.id = "flash-wrapper";
+                wrapper.className = "position-fixed top-0 start-50 translate-middle-x mt-5 z-3";
+                wrapper.style.maxWidth = "1500px";
+                wrapper.style.width = "90%";
+                document.body.appendChild(wrapper);
+            }
+
+            const alert = document.createElement("div");
+            alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
+            alert.setAttribute("role", "alert");
+            alert.textContent = "Ррасп автоматически пересчитан как Руст минус Рогр.";
+
+            const closeBtn = document.createElement("button");
+            closeBtn.type = "button";
+            closeBtn.className = "btn-close";
+            closeBtn.setAttribute("data-bs-dismiss", "alert");
+            closeBtn.setAttribute("aria-label", "Закрыть");
+            closeBtn.addEventListener("click", function () {
+                alert.remove();
+            });
+
+            alert.appendChild(closeBtn);
+            wrapper.appendChild(alert);
+
+            setTimeout(function () {
+                alert.classList.remove("show");
+                alert.classList.add("fade");
+                setTimeout(function () {
+                    alert.remove();
+                }, 200);
+            }, 5000);
+        }
+    }
+
+    function attachOgrAutoCalc() {
+        const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
+        rustInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                recalcOgrByColumns(true);
+            });
+        });
+
+        const raspInputs = document.querySelectorAll(".p-rasp-row .power-column input[type=\"text\"]");
+        raspInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                recalcOgrByColumns(true);
+            });
+        });
+
+        const ogrInputs = document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]");
+        ogrInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                // При ручном вводе Рогр пересчитываем Ррасп = Руст - Рогр
+                recalcRaspByColumns(true);
+            });
+        });
+    }
+
+    // --- Автозаполнение дат на основе мощностей Руст ---
+    function autoFillDatesFromPowers() {
+        // Получаем все поля p_ust
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        
+        if (rustInputs.length === 0) {
+            return;
+        }
+        
+        // Получаем годы из скрытых полей или из start_year/end_year
+        let yearInputs = Array.from(document.querySelectorAll(".total-power-row input[type=\"hidden\"][name*=\"year\"]"));
+        
+        // Если скрытых полей нет или их количество не совпадает, используем start_year
+        if (yearInputs.length === 0 || yearInputs.length !== rustInputs.length) {
+            const startYearEl = document.getElementById("start_year");
+            if (startYearEl) {
+                const startYear = parseInt(startYearEl.value);
+                if (!isNaN(startYear)) {
+                    yearInputs = [];
+                    for (let i = 0; i < rustInputs.length; i++) {
+                        yearInputs.push({ value: String(startYear + i) });
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        
+        // Собираем массив {year, power} для всех годов
+        const powersByYear = [];
+        for (let i = 0; i < rustInputs.length && i < yearInputs.length; i++) {
+            const year = parseInt(yearInputs[i].value);
+            if (isNaN(year)) continue;
+            const powerValue = parsePowerValue(rustInputs[i].value);
+            const power = (powerValue !== null && powerValue !== undefined && !isNaN(powerValue) && powerValue > 0) ? powerValue : 0;
+            powersByYear.push({ year: year, power: power });
+        }
+        
+        // Получаем поля дат
+        const dateExploitationExpectedField = document.querySelector('input[name*="date_exploitation_expected"]');
+        const dateDecompressingExpectedField = document.querySelector('input[name*="date_decompressing_expected"]');
+        const dateModernizationExpectedField = document.querySelector('input[name*="date_modernization_expected"]');
+        const dateExploitationField = document.querySelector('input[name*="date_exploitation"]');
+        
+        // Логика 1: Ожидаемый год вывода из эксплуатации
+        // Если p_ust[N] != 0 и p_ust[N+1] == 0, то date_decompressing_expected = N
+        let decompYear = null;
+        for (let i = 0; i < powersByYear.length - 1; i++) {
+            const current = powersByYear[i];
+            const next = powersByYear[i + 1];
+            if (current.power > 0 && next.power === 0) {
+                decompYear = current.year;
+                break; // Берем первый такой случай
+            }
+        }
+        if (decompYear !== null && dateDecompressingExpectedField) {
+            dateDecompressingExpectedField.value = decompYear;
+        }
+        
+        // Логика 2: Ожидаемый год ввода в эксплуатацию
+        // Если p_ust[N] == 0 и p_ust[N+1] != 0, то date_exploitation_expected = N+1
+        let explExpectedYear = null;
+        for (let i = 0; i < powersByYear.length - 1; i++) {
+            const current = powersByYear[i];
+            const next = powersByYear[i + 1];
+            if (current.power === 0 && next.power > 0) {
+                explExpectedYear = next.year;
+                break; // Берем первый такой случай
+            }
+        }
+        if (explExpectedYear !== null && dateExploitationExpectedField) {
+            dateExploitationExpectedField.value = explExpectedYear;
+        }
+        
+        // Логика 3: Ожидаемый год модернизации
+        // Если p_ust[N] != 0 и p_ust[N+1] != 0 и p_ust[N+1] != p_ust[N], то date_modernization_expected = N+1
+        let modernYear = null;
+        for (let i = 0; i < powersByYear.length - 1; i++) {
+            const current = powersByYear[i];
+            const next = powersByYear[i + 1];
+            if (current.power > 0 && next.power > 0 && Math.abs(current.power - next.power) > 0.001) {
+                modernYear = next.year;
+                break; // Берем первый такой случай
+            }
+        }
+        if (modernYear !== null && dateModernizationExpectedField) {
+            dateModernizationExpectedField.value = modernYear;
+        }
+        
+        // Дополнительно: Год ввода в эксплуатацию (если не задан)
+        // Первый год с ненулевой мощностью
+        if (dateExploitationField && (!dateExploitationField.value || dateExploitationField.value.trim() === '')) {
+            for (let i = 0; i < powersByYear.length; i++) {
+                if (powersByYear[i].power > 0) {
+                    dateExploitationField.value = powersByYear[i].year;
+                    break;
+                }
+            }
+        }
+    }
+    
+    function attachDatesAutoFill() {
+        // Привязываем автозаполнение дат к изменению полей мощности
+        const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
+        rustInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                autoFillDatesFromPowers();
+            });
+        });
+        
+        // Также вызываем при загрузке страницы для начального заполнения
+        autoFillDatesFromPowers();
+    }
+    
+    // --- Автоматическая установка типа ТЭС и топлива в "не указано" при Руст = 0 ---
+    function autoSetTesAndFuelToEmpty() {
+        // Получаем все поля Руст
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        
+        if (rustInputs.length === 0) {
+            return;
+        }
+        
+        // Получаем все поля типа ТЭС и топлива из таблиц машин
+        // Ищем все select в таблицах с классом machines-table (они уже в правильном порядке в DOM)
+        const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
+        const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
+        
+        // Проверяем каждое поле Руст
+        rustInputs.forEach(function (rustInput, index) {
+            const powerValue = parsePowerValue(rustInput.value);
+            const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
+            
+            // Если Руст = 0, устанавливаем тип ТЭС и топливо в "не указано" (значение 0)
+            if (isZero) {
+                // Устанавливаем тип ТЭС в 0 (не указано)
+                if (index < tesTypeSelects.length && tesTypeSelects[index]) {
+                    tesTypeSelects[index].value = "0";
+                    // Триггерим событие change для Select2, если используется
+                    const event = new Event('change', { bubbles: true });
+                    tesTypeSelects[index].dispatchEvent(event);
+                    // Если используется Select2, обновляем его
+                    if (window.jQuery && window.jQuery(tesTypeSelects[index]).data('select2')) {
+                        window.jQuery(tesTypeSelects[index]).trigger('change');
+                    }
+                }
+                
+                // Устанавливаем топливо в 0 (не указано)
+                if (index < fuelTypeSelects.length && fuelTypeSelects[index]) {
+                    fuelTypeSelects[index].value = "0";
+                    // Триггерим событие change для Select2, если используется
+                    const event = new Event('change', { bubbles: true });
+                    fuelTypeSelects[index].dispatchEvent(event);
+                    // Если используется Select2, обновляем его
+                    if (window.jQuery && window.jQuery(fuelTypeSelects[index]).data('select2')) {
+                        window.jQuery(fuelTypeSelects[index]).trigger('change');
+                    }
+                }
+            }
+        });
+    }
+    
+    function attachTesAndFuelAutoEmpty() {
+        // Привязываем автозаполнение типа ТЭС и топлива к изменению полей мощности
+        const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
+        rustInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                autoSetTesAndFuelToEmpty();
+            });
+        });
+        
+        // Также вызываем при загрузке страницы
+        autoSetTesAndFuelToEmpty();
+    }
+    
+    // --- Автозаполнение типа ТЭС и топлива (продление значения по строке) ---
+    function attachTesAndFuelAutoFill() {
+        // Получаем все select для типа ТЭС и топлива
+        const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
+        const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
+        
+        // Автозаполнение для типа ТЭС
+        tesTypeSelects.forEach(function (select, index) {
+            select.addEventListener("change", function () {
+                const value = this.value;
+                
+                // Продление значения по текущей строке (со следующего года до конца периода)
+                for (let i = index + 1; i < tesTypeSelects.length; i++) {
+                    tesTypeSelects[i].value = value;
+                    // Обновляем Select2, если используется
+                    if (window.jQuery && window.jQuery(tesTypeSelects[i]).data('select2')) {
+                        window.jQuery(tesTypeSelects[i]).trigger('change');
+                    }
+                }
+            });
+        });
+        
+        // Автозаполнение для топлива
+        fuelTypeSelects.forEach(function (select, index) {
+            select.addEventListener("change", function () {
+                const value = this.value;
+                
+                // Продление значения по текущей строке (со следующего года до конца периода)
+                for (let i = index + 1; i < fuelTypeSelects.length; i++) {
+                    fuelTypeSelects[i].value = value;
+                    // Обновляем Select2, если используется
+                    if (window.jQuery && window.jQuery(fuelTypeSelects[i]).data('select2')) {
+                        window.jQuery(fuelTypeSelects[i]).trigger('change');
+                    }
+                }
+            });
+        });
+    }
+
+    attachPowerAutoFill();
+    attachOgrAutoCalc();
+    attachDatesAutoFill();
+    attachTesAndFuelAutoEmpty();
+    attachTesAndFuelAutoFill();
 });
 </script>
 

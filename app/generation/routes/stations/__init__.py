@@ -9,5 +9,4 @@ from .import_stations_routes import *
 from .machine_routes import *
 from .station_details_routes import *
 from .document_routes import *
-from app.generation.routes.database_versions_routes import *
 

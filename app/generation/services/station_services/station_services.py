@@ -276,32 +276,24 @@ def get_stations_list(
 
     if filters.get("regional_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(filters["regional_energy_system_filter"])
-                )
-            )
+            Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
         )
 
     if filters.get("union_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(
-                        filters["union_energy_system_filter"]
-                    )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.id_union_energy_system.in_(
+                    filters["union_energy_system_filter"]
                 )
             )
         )
 
     if filters.get("energy_system_type_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.energy_system_type.has(
+                        EnergySystemType.id.in_(filters["energy_system_type_filter"])
                     )
                 )
             )
@@ -419,6 +411,7 @@ def get_stations_list(
         (energy_system_type_id, union_energy_system_id, regional_energy_system_id, 
          regional_district_id, energy_unit_id, min_station_type_id, station_id)
         Это гарантирует, что все станции одного субъекта будут отображаться вместе.
+        Использует прямую связь id_regional_energy_system для определения РЭС.
         """
         # Определяем тип станции
         min_type = station.id_station_type if station.id_station_type is not None else float('inf')
@@ -431,7 +424,21 @@ def get_stations_list(
         regional_district_name = ""
         energy_unit_id = station.id_energy_unit or 0
         
-        if station.regional_district:
+        # 1) Приоритет: прямая связь станции с РЭС (Station.id_regional_energy_system)
+        if station.id_regional_energy_system and station.regional_energy_system_obj:
+            res = station.regional_energy_system_obj
+            regional_energy_system_id = res.id
+            if res.union_energy_system:
+                # display_order: чем меньше, тем раньше
+                union_energy_system_order = (
+                    res.union_energy_system.display_order
+                    if res.union_energy_system.display_order is not None else float('inf')
+                )
+                if res.union_energy_system.energy_system_type:
+                    energy_system_type_id = res.union_energy_system.energy_system_type.id
+        
+        # 2) Fallback: через субъект РФ (старое поведение)
+        if regional_energy_system_id == 0 and station.regional_district:
             # Субъекты сортируются ПО АЛФАВИТУ (по name)
             regional_district_name = (station.regional_district.name or "").lower()
             
@@ -447,6 +454,8 @@ def get_stations_list(
                         )
                         if res.union_energy_system.energy_system_type:
                             energy_system_type_id = res.union_energy_system.energy_system_type.id
+        elif station.regional_district:
+            regional_district_name = (station.regional_district.name or "").lower()
         
         return (
             energy_system_type_id,
@@ -833,6 +842,7 @@ def get_stations_list_with_pgu_machines(
         (energy_system_type_id, union_energy_system_id, regional_energy_system_id, 
          regional_district_id, energy_unit_id, min_station_type_id, station_id)
         Это гарантирует, что все станции одного субъекта будут отображаться вместе.
+        Использует прямую связь id_regional_energy_system для определения РЭС.
         """
         # Определяем тип станции
         min_type = station.id_station_type if station.id_station_type is not None else float('inf')
@@ -844,7 +854,17 @@ def get_stations_list_with_pgu_machines(
         regional_district_id = station.id_regional_district or 0
         energy_unit_id = station.id_energy_unit or 0
         
-        if station.regional_district and station.regional_district.regional_energy_systems:
+        # 1) Приоритет: прямая связь станции с РЭС (Station.id_regional_energy_system)
+        if station.id_regional_energy_system and station.regional_energy_system_obj:
+            res = station.regional_energy_system_obj
+            regional_energy_system_id = res.id
+            if res.union_energy_system:
+                union_energy_system_id = res.union_energy_system.id
+                if res.union_energy_system.energy_system_type:
+                    energy_system_type_id = res.union_energy_system.energy_system_type.id
+        
+        # 2) Fallback: через субъект РФ (старое поведение)
+        if regional_energy_system_id == 0 and station.regional_district and station.regional_district.regional_energy_systems:
             res = station.regional_district.regional_energy_systems[0]
             if res:
                 regional_energy_system_id = res.id
@@ -1035,14 +1055,12 @@ def get_regional_districts_with_stations_per_res(filters=None):
     """
     from collections import defaultdict
     
-    # Получаем все станции с учетом фильтров
+    # Получаем все станции с учетом фильтров, используя прямую связь id_regional_energy_system
     query = db.session.query(
         Station.id_regional_district,
-        RegionalEnergySystem.id.label('res_id')
-    ).join(
-        Station.regional_district
-    ).join(
-        RegionalDistrict.regional_energy_systems
+        Station.id_regional_energy_system.label('res_id')
+    ).filter(
+        Station.id_regional_energy_system.isnot(None)
     ).distinct()
     
     # Применяем территориальные фильтры
@@ -1058,18 +1076,22 @@ def get_regional_districts_with_stations_per_res(filters=None):
             )
         
         if filters.get("regional_energy_system_filter"):
-            query = query.filter(RegionalEnergySystem.id.in_(filters["regional_energy_system_filter"]))
+            query = query.filter(Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"]))
         
         if filters.get("union_energy_system_filter"):
             query = query.filter(
-                RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"])
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"])
+                )
             )
         
         if filters.get("energy_system_type_filter"):
             query = query.filter(
-                RegionalEnergySystem.union_energy_system.has(
-                    UnionEnergySystem.energy_system_type.has(
-                        EnergySystemType.id.in_(filters["energy_system_type_filter"])
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
+                        )
                     )
                 )
             )
@@ -1099,19 +1121,59 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
     res_to_rd_with_stations_global = get_regional_districts_with_stations_per_res(filters)
     
     if not stations_on_page or per_page is None:
-        # Для per_page='all' показываем все итоги, но учитываем правило для regional_districts
-        # Создаем маппинг rd_to_res для всех станций
+        """
+        Режим per_page='all':
+        - Показываем итоги по всем уровням (ОЭС, РЭС, типы энергосистем, энергоузлы, Россия),
+          а по субъектам РФ — только если в РЭС >1 субъекта по БД и >1 субъекта имеют станции.
+        """
+        from app.extensions import db  # локальный импорт, чтобы избежать циклических зависимостей
+        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+
+        # Создаем маппинг rd_to_res для всех станций (через субъект или прямую РЭС)
         rd_to_res = {}
         all_rd_ids = set()
-        
+
+        # Наборы для всех уровней агрегации
+        energy_unit_ids = set()
+        regional_energy_system_ids = set()
+        union_energy_system_ids = set()
+        energy_system_type_ids = set()
+
         for station in stations_on_page:
+            # Энергоузел
+            if station.id_energy_unit:
+                energy_unit_ids.add(station.id_energy_unit)
+
+            # Субъект РФ
             if station.id_regional_district:
                 all_rd_ids.add(station.id_regional_district)
-                if station.regional_district and station.regional_district.regional_energy_systems:
-                    res = station.regional_district.regional_energy_systems[0]
-                    if res:
-                        rd_to_res[station.id_regional_district] = res.id
-        
+
+            # Определяем РЭС с приоритетом прямой связи станции (id_regional_energy_system),
+            # затем — через субъект РФ (как ранее)
+            selected_res = None
+            if getattr(station, "id_regional_energy_system", None):
+                # Пытаемся использовать уже загруженный объект, чтобы не делать лишний запрос
+                selected_res = getattr(station, "regional_energy_system_obj", None)
+                if selected_res is None:
+                    selected_res = db.session.get(RegionalEnergySystem, station.id_regional_energy_system)
+            else:
+                rd = station.regional_district
+                if rd and rd.regional_energy_systems:
+                    selected_res = rd.regional_energy_systems[0]
+            
+            # Для субъектов всегда фиксируем их РЭС (независимо от того, прямая связь или через субъект)
+            if selected_res and station.id_regional_district:
+                rd_to_res[station.id_regional_district] = selected_res.id
+
+            if selected_res:
+                regional_energy_system_ids.add(selected_res.id)
+
+                ues = selected_res.union_energy_system
+                if ues:
+                    union_energy_system_ids.add(ues.id)
+                    if ues.energy_system_type:
+                        energy_system_type_ids.add(ues.energy_system_type.id)
+
         # Определяем, какие regional_districts показывать
         # Показываем только если в РЭС >1 субъекта по БД И >1 субъекта имеют станции
         allowed_rd_ids = {}
@@ -1120,14 +1182,24 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
             if res_id:
                 total_rd_in_res = res_to_rd_count.get(res_id, 0)
                 rd_with_stations_count = res_to_rd_with_stations_global.get(res_id, 0)
-                
+
                 if total_rd_in_res > 1 and rd_with_stations_count > 1:
                     allowed_rd_ids[rd_id] = True
-        
+
         return {
             'show_all': True,
-            'regional_districts': allowed_rd_ids,  # Только РД из РЭС с >1 субъектом И >1 субъектом со станциями
-            'total': True
+            # Энергоузлы: показываем для всех, которые присутствуют в выборке
+            'energy_units': {eu_id: True for eu_id in energy_unit_ids},
+            # Субъекты РФ с особым правилом по РЭС
+            'regional_districts': allowed_rd_ids,
+            # Региональные энергосистемы (РЭС) из текущей выборки
+            'regional_energy_systems': {res_id: True for res_id in regional_energy_system_ids},
+            # Объединенные энергосистемы (ОЭС)
+            'union_energy_systems': {ues_id: True for ues_id in union_energy_system_ids},
+            # Типы энергосистем
+            'energy_system_types': {est_id: True for est_id in energy_system_type_ids},
+            # Итог по России
+            'total': True,
         }
     
     # Проверяем, есть ли еще станции после текущей страницы
@@ -1426,32 +1498,24 @@ def get_next_station_info(current_page, per_page, filters):
         
         if filters.get("regional_energy_system_filter"):
             station_ids_query = station_ids_query.filter(
-                Station.regional_district.has(
-                    RegionalDistrict.regional_energy_systems.any(
-                        RegionalEnergySystem.id.in_(filters["regional_energy_system_filter"])
-                    )
-                )
+                Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
             )
         
         if filters.get("union_energy_system_filter"):
             station_ids_query = station_ids_query.filter(
-                Station.regional_district.has(
-                    RegionalDistrict.regional_energy_systems.any(
-                        RegionalEnergySystem.id_union_energy_system.in_(
-                            filters["union_energy_system_filter"]
-                        )
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(
+                        filters["union_energy_system_filter"]
                     )
                 )
             )
         
         if filters.get("energy_system_type_filter"):
             station_ids_query = station_ids_query.filter(
-                Station.regional_district.has(
-                    RegionalDistrict.regional_energy_systems.any(
-                        RegionalEnergySystem.union_energy_system.has(
-                            UnionEnergySystem.energy_system_type.has(
-                                EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                            )
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
                         )
                     )
                 )
@@ -1672,30 +1736,22 @@ def get_filtered_station_ids(filters):
 
     if filters.get("regional_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(filters["regional_energy_system_filter"])
-                )
-            )
+            Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
         )
 
     if filters.get("union_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"])
-                )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"])
             )
         )
 
     if filters.get("energy_system_type_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.energy_system_type.has(
+                        EnergySystemType.id.in_(filters["energy_system_type_filter"])
                     )
                 )
             )
@@ -2037,14 +2093,26 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     from app.extensions import db
     
     # Очищаем LRU кэши для энергосистем (только те, которые имеют кэш)
-    from app.common.services.get_services.energy_systems.energy_system_type_get_services import get_energy_system_type_list_full
-    from app.common.services.get_services.energy_systems.union_energy_system_get_services import get_union_energy_system_list_full
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import get_energy_system_type_list_full, get_energy_system_type_map
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import get_union_energy_system_list_full, get_union_energy_systems_map, get_ues_to_res_ids_map
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import get_regional_energy_system_list_full, get_regional_energy_systems_map
+    from app.common.services.get_services.territories.federal_district_get_services import get_federal_district_list_full, get_fd_to_rd_ids_map
+    from app.common.services.get_services.territories.regional_district_get_services import get_regional_district_list_full, get_regional_districts_map
     from app.common.services.get_services.gen_companies.gen_company_get_services import get_gen_company_list_full
     
     # Очищаем только функции с LRU кэшем
     cache_functions = [
         get_energy_system_type_list_full,
+        get_energy_system_type_map,
         get_union_energy_system_list_full,
+        get_union_energy_systems_map,
+        get_regional_energy_system_list_full,
+        get_regional_energy_systems_map,
+        get_federal_district_list_full,
+        get_regional_district_list_full,
+        get_regional_districts_map,
+        get_ues_to_res_ids_map,
+        get_fd_to_rd_ids_map,
         get_gen_company_list_full,
     ]
     
@@ -2054,43 +2122,76 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     
     current_version = get_current_version()
     
-    # Загружаем энергосистемы заново
-    energy_system_type_query = EnergySystemType.query
-    energy_system_type_query = filter_by_db_version(energy_system_type_query, EnergySystemType)
-    energy_system_type_objects = energy_system_type_query.order_by(EnergySystemType.id.asc()).all()
+    # Загружаем энергосистемы заново (с фильтрацией по версии БД через кэшированные функции)
+    energy_system_type_objects = get_energy_system_type_list_full()
     energy_system_type_list = [{"id": est.id, "name": est.name} for est in energy_system_type_objects]
     energy_system_type_names = get_energy_system_type_map()
 
-    # Загружаем остальные справочники заново
-    regional_energy_system_query = RegionalEnergySystem.query
-    regional_energy_system_query = filter_by_db_version(regional_energy_system_query, RegionalEnergySystem)
-    regional_energy_system_objects = regional_energy_system_query.order_by(RegionalEnergySystem.id.asc()).all()
+    # Загружаем остальные справочники заново (с фильтрацией по версии БД через кэшированные функции)
+    union_energy_system_objects = get_union_energy_system_list_full()
+    union_energy_system_list = [{"id": ues.id, "name": ues.name} for ues in union_energy_system_objects]
+    union_energy_system_names = get_union_energy_systems_map()
+    
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import get_regional_energy_system_list_full
+    regional_energy_system_objects = get_regional_energy_system_list_full()
     regional_energy_system_list = [{"id": res.id, "name": res.name} for res in regional_energy_system_objects]
     regional_energy_system_names = get_regional_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
+    ues_to_res_mapping = regional_energy_system_mapping  # это get_ues_to_res_ids_map()
 
-    federal_district_query = FederalDistrict.query
-    federal_district_query = filter_by_db_version(federal_district_query, FederalDistrict)
-    federal_district_objects = federal_district_query.order_by(FederalDistrict.id.asc()).all()
+    from app.common.services.get_services.territories.federal_district_get_services import get_federal_district_list_full
+    federal_district_objects = get_federal_district_list_full()
     federal_district_list = [{"id": fd.id, "name": fd.name} for fd in federal_district_objects]
-    regional_district_mapping = get_fd_to_rd_ids_map()
-
-    regional_district_query = RegionalDistrict.query
-    regional_district_query = filter_by_db_version(regional_district_query, RegionalDistrict)
-    regional_district_objects = regional_district_query.order_by(RegionalDistrict.id.asc()).all()
-    regional_district_list = [{"id": rd.id, "name": rd.name} for rd in regional_district_objects]
+    
+    from app.common.services.get_services.territories.regional_district_get_services import (
+        get_regional_district_list_full, get_regional_districts_map,
+        get_rd_to_fd_id_map, get_rd_to_res_ids_map, get_rd_to_ues_ids_map, get_rd_to_est_ids_map
+    )
+    from app.common.services.get_services.territories.federal_district_get_services import (
+        get_fd_to_rd_ids_map, get_fd_to_res_ids_map, get_fd_to_ues_ids_map, get_fd_to_est_ids_map
+    )
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+        get_est_to_ues_ids_map, get_est_to_res_ids_map, get_est_to_rd_ids_map, get_est_to_fd_ids_map
+    )
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+        get_ues_to_est_id_map, get_ues_to_rd_ids_map, get_ues_to_fd_ids_map
+    )
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+        get_res_to_ues_id_map, get_res_to_est_id_map, get_res_to_rd_ids_map, get_res_to_fd_ids_map
+    )
+    
+    regional_district_tuples = get_regional_district_list_full()
+    # get_regional_district_list_full() возвращает список кортежей (id, name)
+    regional_district_list = [{"id": rd_id, "name": rd_name} for rd_id, rd_name in regional_district_tuples]
     regional_district_names = get_regional_districts_map()
-
-    union_energy_system_query = UnionEnergySystem.query
-    union_energy_system_query = filter_by_db_version(union_energy_system_query, UnionEnergySystem)
-    union_energy_system_objects = union_energy_system_query.order_by(UnionEnergySystem.display_order.asc(), UnionEnergySystem.name.asc()).all()
-    union_energy_system_list = [{"id": ues.id, "name": ues.name} for ues in union_energy_system_objects]
-    union_energy_system_names = get_union_energy_systems_map()
+    regional_district_mapping = get_fd_to_rd_ids_map()
+    
+    # Получаем все маппинги для JavaScript фильтрации
+    est_to_ues_mapping = get_est_to_ues_ids_map()
+    est_to_res_mapping = get_est_to_res_ids_map()
+    est_to_rd_mapping = get_est_to_rd_ids_map()
+    est_to_fd_mapping = get_est_to_fd_ids_map()
+    ues_to_est_mapping = get_ues_to_est_id_map()
+    ues_to_res_mapping = regional_energy_system_mapping  # это get_ues_to_res_ids_map()
+    ues_to_rd_mapping = get_ues_to_rd_ids_map()
+    ues_to_fd_mapping = get_ues_to_fd_ids_map()
+    res_to_est_mapping = get_res_to_est_id_map()
+    res_to_ues_mapping_one = get_res_to_ues_id_map()
+    res_to_rd_mapping = get_res_to_rd_ids_map()
+    res_to_fd_mapping = get_res_to_fd_ids_map()
+    rd_to_fd_mapping_one = get_rd_to_fd_id_map()
+    rd_to_res_mapping = get_rd_to_res_ids_map()
+    rd_to_ues_mapping = get_rd_to_ues_ids_map()
+    rd_to_est_mapping = get_rd_to_est_ids_map()
+    fd_to_rd_mapping = regional_district_mapping  # это get_fd_to_rd_ids_map()
+    fd_to_res_mapping = get_fd_to_res_ids_map()
+    fd_to_ues_mapping = get_fd_to_ues_ids_map()
+    fd_to_est_mapping = get_fd_to_est_ids_map()
 
     # Порядок типов энергосистем по минимальному порядку ОЭС внутри них
     # Используем данные из hierarchy_data вместо повторной загрузки из БД
     ues_order_index = {}
-    if 'union_energy_system_name' in hierarchy_data:
+    if hierarchy_data and 'union_energy_system_name' in hierarchy_data:
         # Создаем индекс на основе данных из hierarchy_data
         for ues_id in hierarchy_data['union_energy_system_name'].keys():
             ues_order_index[ues_id] = ues_id  # Используем ID как порядок
@@ -2103,10 +2204,15 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         indices = [ues_order_index.get(ues_id, 10**9) for ues_id in es_group.keys()]
         return min(indices) if indices else 10**9
 
-    sorted_energy_system_type_ids = sorted(
-        data["stations_grouped"].keys(),
-        key=lambda est_id: _min_ues_index(data["stations_grouped"][est_id])
-    )
+    # Проверяем наличие stations_grouped в data
+    stations_grouped = data.get("stations_grouped", {})
+    if stations_grouped:
+        sorted_energy_system_type_ids = sorted(
+            stations_grouped.keys(),
+            key=lambda est_id: _min_ues_index(stations_grouped[est_id])
+        )
+    else:
+        sorted_energy_system_type_ids = []
 
     # Получаем энергоузлы заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
@@ -2126,7 +2232,12 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         EnergyUnit.id.asc()
     ).all()
     
-    energy_unit_names = {eu.id: eu.name for eu in energy_units}
+    # Словарь имён энергоузлов сразу с ключами-числами и строками,
+    # т.к. в шаблонах и агрегаторах eu_id может приходить как int или str.
+    energy_unit_names = {}
+    for eu in energy_units:
+        energy_unit_names[eu.id] = eu.name
+        energy_unit_names[str(eu.id)] = eu.name
     
     # Получаем типы станций заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
@@ -2207,6 +2318,27 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "regional_district_list": regional_district_list,
             "regional_district_names": regional_district_names,
             "regional_district_mapping": regional_district_mapping,
+            # Маппинги для JavaScript фильтрации
+            "est_to_ues_mapping": est_to_ues_mapping,
+            "est_to_res_mapping": est_to_res_mapping,
+            "est_to_rd_mapping": est_to_rd_mapping,
+            "est_to_fd_mapping": est_to_fd_mapping,
+            "ues_to_est_mapping": ues_to_est_mapping,
+            "ues_to_res_mapping": ues_to_res_mapping,
+            "ues_to_rd_mapping": ues_to_rd_mapping,
+            "ues_to_fd_mapping": ues_to_fd_mapping,
+            "res_to_est_mapping": res_to_est_mapping,
+            "res_to_ues_mapping_one": res_to_ues_mapping_one,
+            "res_to_rd_mapping": res_to_rd_mapping,
+            "res_to_fd_mapping": res_to_fd_mapping,
+            "rd_to_fd_mapping_one": rd_to_fd_mapping_one,
+            "rd_to_res_mapping": rd_to_res_mapping,
+            "rd_to_ues_mapping": rd_to_ues_mapping,
+            "rd_to_est_mapping": rd_to_est_mapping,
+            "fd_to_rd_mapping": fd_to_rd_mapping,
+            "fd_to_res_mapping": fd_to_res_mapping,
+            "fd_to_ues_mapping": fd_to_ues_mapping,
+            "fd_to_est_mapping": fd_to_est_mapping,
             "station_type_name": station_type_names,
             "station_type_list": station_type_list,
             "tes_type_names": tes_type_names,
@@ -2868,62 +3000,74 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
         # Субъект РФ
         if station.id_regional_district != form.id_regional_district.data:
             old_value = station.regional_district.name if station.regional_district else "не указано"
-            new_value = next((d[1] if isinstance(d, tuple) else d["name"] for d in regional_district_list if (d[0] if isinstance(d, tuple) else d["id"]) == form.id_regional_district.data), "не указано")
+            new_value = next(
+                (d[1] if isinstance(d, tuple) else d["name"]
+                 for d in regional_district_list
+                 if (d[0] if isinstance(d, tuple) else d["id"]) == form.id_regional_district.data),
+                "не указано",
+            )
             changes.append(f"Субъект РФ: {old_value} → {new_value}")
             station.id_regional_district = form.id_regional_district.data
 
-            # Обновление связанных энергосистем для нового субъекта
+            # Обновление федерального округа (как производного от субъекта)
             new_regional_district_obj = (
                 db.session.query(RegionalDistrict)
                 .options(
                     joinedload(RegionalDistrict.federal_district),
-                    joinedload(RegionalDistrict.regional_energy_systems)
-                        .joinedload(UnionEnergySystem.energy_system_type)
+                    joinedload(RegionalDistrict.regional_energy_systems),
                 )
                 .filter_by(id=form.id_regional_district.data)
                 .first()
             )
             if new_regional_district_obj:
-                old_federal_district = station.regional_district.federal_district.name if station.regional_district and station.regional_district.federal_district else "не указано"
-                new_federal_district = new_regional_district_obj.federal_district.name if new_regional_district_obj.federal_district else "не указано"
+                old_federal_district = (
+                    station.regional_district.federal_district.name
+                    if station.regional_district and station.regional_district.federal_district
+                    else "не указано"
+                )
+                new_federal_district = (
+                    new_regional_district_obj.federal_district.name
+                    if new_regional_district_obj.federal_district
+                    else "не указано"
+                )
                 if old_federal_district != new_federal_district:
                     changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
 
-                old_energy_systems = station.regional_district.regional_energy_systems if station.regional_district else []
-                new_energy_systems = new_regional_district_obj.regional_energy_systems
-                if old_energy_systems != new_energy_systems:
-                    old_res_name = old_energy_systems[0].name if old_energy_systems else "не указано"
-                    new_res_name = new_energy_systems[0].name if new_energy_systems else "не указано"
-                    if old_res_name != new_res_name:
-                        changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
-
-                    old_ues_name = (
-                        old_energy_systems[0].union_energy_system.name 
-                        if old_energy_systems and old_energy_systems[0].union_energy_system 
-                        else "не указано"
-                    )
-                    new_ues_name = (
-                        new_energy_systems[0].union_energy_system.name 
-                        if new_energy_systems and new_energy_systems[0].union_energy_system 
-                        else "не указано"
-                    )
-                    if old_ues_name != new_ues_name:
-                        changes.append(f"ОЭС: {old_ues_name} → {new_ues_name}")
-
-                    old_est_name = (
-                        old_energy_systems[0].union_energy_system.energy_system_type.name 
-                        if old_energy_systems and old_energy_systems[0].union_energy_system and old_energy_systems[0].union_energy_system.energy_system_type 
-                        else "не указано"
-                    )
-                    new_est_name = (
-                        new_energy_systems[0].union_energy_system.energy_system_type.name 
-                        if new_energy_systems and new_energy_systems[0].union_energy_system and new_energy_systems[0].union_energy_system.energy_system_type 
-                        else "не указано"
-                    )
-                    if old_est_name != new_est_name:
-                        changes.append(f"Часть энергосистемы России: {old_est_name} → {new_est_name}")
-
                 station.regional_district = new_regional_district_obj
+                
+                # Проверка соответствия Субъекта РФ и Региональной энергосистемы
+                # Определяем, какая РЭС должна быть проверена (новая из формы или текущая)
+                res_id_to_check = form.id_regional_energy_system.data
+                if res_id_to_check == 0:
+                    res_id_to_check = station.id_regional_energy_system
+                
+                if res_id_to_check:
+                    # Проверяем, входит ли новый субъект РФ в указанную региональную энергосистему
+                    res_ids_for_district = {res.id for res in new_regional_district_obj.regional_energy_systems}
+                    if res_id_to_check not in res_ids_for_district:
+                        res_obj = db.session.get(RegionalEnergySystem, res_id_to_check)
+                        res_name = res_obj.name if res_obj else "не указано"
+                        raise ValueError(
+                            f"Субъект РФ '{new_value}' не входит в указанную региональную энергосистему '{res_name}'. "
+                            f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
+                        )
+
+        # Региональная энергосистема (прямая связь через id_regional_energy_system)
+        new_res_id = form.id_regional_energy_system.data
+        if new_res_id == 0:
+            new_res_id = None
+        if station.id_regional_energy_system != new_res_id:
+            from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+            old_res_obj = (
+                db.session.get(RegionalEnergySystem, station.id_regional_energy_system)
+                if station.id_regional_energy_system
+                else None
+            )
+            new_res_obj = db.session.get(RegionalEnergySystem, new_res_id) if new_res_id else None
+            old_res_name = old_res_obj.name if old_res_obj else "не указано"
+            new_res_name = new_res_obj.name if new_res_obj else "не указано"
+            changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
+            station.id_regional_energy_system = new_res_id
 
         # Местоположение
         new_location = form.location.data.strip() if form.location.data.strip() else None

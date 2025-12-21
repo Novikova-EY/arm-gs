@@ -26,8 +26,22 @@ copy_app_sources() {
         "${PROJECT_ROOT}/" "${dst}/"
 }
 
-copy_static_files() {
+copy_packaging_files() {
     rsync -a "${PROJECT_ROOT}/packaging/deb/" "${STAGING}/"
+}
+
+copy_static_files() {
+    local static_src="${PROJECT_ROOT}/app/static"
+    local static_dest="${STAGING}/usr/share/generation-app/static"
+    
+    if [ ! -d "${static_src}" ]; then
+        echo "[!] Предупреждение: ${static_src} не найден, пропускаем копирование статики"
+        return
+    fi
+    
+    mkdir -p "${static_dest}"
+    rsync -a "${static_src}/" "${static_dest}/"
+    echo "[+] Статические файлы скопированы в ${static_dest}"
 }
 
 patch_control_file() {
@@ -48,6 +62,7 @@ build_package() {
 }
 
 copy_app_sources
+copy_packaging_files
 copy_static_files
 patch_control_file
 set_permissions

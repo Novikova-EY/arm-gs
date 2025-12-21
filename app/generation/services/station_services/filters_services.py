@@ -3,7 +3,7 @@ from app.extensions import db
 from collections import defaultdict
 from sqlalchemy import or_, extract, and_, func
 from sqlalchemy.sql import exists
-from sqlalchemy.orm import contains_eager, joinedload
+from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
@@ -205,12 +205,10 @@ def get_filtered_station_ids(
     # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(energy_system_type_filter)
-                        )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.energy_system_type.has(
+                        EnergySystemType.id.in_(energy_system_type_filter)
                     )
                 )
             )
@@ -222,10 +220,8 @@ def get_filtered_station_ids(
             union_energy_system_filter = [union_energy_system_filter]
 
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
             )
         )
 
@@ -235,11 +231,7 @@ def get_filtered_station_ids(
             regional_energy_system_filter = [regional_energy_system_filter]
 
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
-                )
-            )
+            Station.id_regional_energy_system.in_(regional_energy_system_filter)
         )
 
     # Фильтрация по ФО
@@ -293,17 +285,25 @@ def get_stations_all(
     """
     query = db.session.query(Station).distinct().join(Station.machines)
 
-    query = query.options(contains_eager(Station.machines))
+    # Важно: т.к. мы join-им machines и используем contains_eager, то любые joinedload по другим связям
+    # приведут к раздуванию результата. Для связанных справочников используем selectinload.
+    query = query.options(
+        contains_eager(Station.machines),
+        selectinload(Station.regional_district)
+            .selectinload(RegionalDistrict.regional_energy_systems)
+            .selectinload(RegionalEnergySystem.union_energy_system)
+            .selectinload(UnionEnergySystem.energy_system_type),
+        selectinload(Station.energy_unit),
+        selectinload(Station.station_type),
+    )
 
     # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(energy_system_type_filter)
-                        )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.energy_system_type.has(
+                        EnergySystemType.id.in_(energy_system_type_filter)
                     )
                 )
             )
@@ -315,10 +315,8 @@ def get_stations_all(
             union_energy_system_filter = [union_energy_system_filter]
 
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                )
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
             )
         )
 
@@ -328,11 +326,7 @@ def get_stations_all(
             regional_energy_system_filter = [regional_energy_system_filter]
 
         query = query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id.in_(regional_energy_system_filter)
-                )
-            )
+            Station.id_regional_energy_system.in_(regional_energy_system_filter)
         )
 
     # Фильтрация по федеральному округу

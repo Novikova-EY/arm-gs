@@ -36,109 +36,233 @@ function initializeStationFilters() {
         initializeSelect2('#regional_district', 'Субъект РФ');
     }, 100);
 
-    const selectedUnionValues = (window.union_energy_system_filter_json ?? []);
-    const selectedFederalValues = (window.federal_district_filter_json ?? []);
-    const regionalEnergySystemsMapping = (window.regional_energy_system_mapping_json ?? {});
-    const allRegionalSystems = (window.regional_energy_system_list_json ?? []);
-    const regionalDistrictsMapping = (window.regional_district_mapping_json ?? {});
-    const allRegionalDistricts = (window.regional_district_list_json ?? []);
-
-    function updateRegionalEnergySystemOptions(selectedUnionIDs) {
-        let options = '<option></option>';
-        const prevSelected = ($('#regional_energy_system').val() || []).map(String);
-        const newSelected = [];
-
-        // Если ОЭС не выбраны — показываем все РЭС
-        if (!selectedUnionIDs || selectedUnionIDs.length === 0) {
-            allRegionalSystems.forEach(system => {
-                const selected = prevSelected.includes(String(system.id));
-                // ВНИМАНИЕ: имя поля — name или name_full? Поставьте то, что реально есть в DTO
-                options += `<option value="${system.id}" ${selected ? "selected" : ""}>${system.name || system.name_full}</option>`;
-                if (selected) newSelected.push(String(system.id));
-            });
-            $('#regional_energy_system').html(options).val(newSelected).trigger('change');
-            return;
+    function parseMaybeJSON(value, fallback) {
+        if (value == null) return fallback;
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try { return JSON.parse(trimmed); } catch (e) { return fallback; }
+            }
+            return fallback;
         }
+        return value;
+    }
 
-        // Иначе — только те, что входят в выбранные ОЭС
+    // Источник данных: JSON-блок на странице
+    let filtersData = null;
+    const filtersEl = document.getElementById('filters-data');
+    if (filtersEl && filtersEl.textContent) {
+        try { filtersData = JSON.parse(filtersEl.textContent); } catch (e) { filtersData = null; }
+    }
+
+    // Получаем все данные из filtersData
+    const allEnergySystemTypes = filtersData?.energy_system_type_list || [];
+    const allUnionEnergySystems = filtersData?.union_energy_system_list || [];
+    const allRegionalEnergySystems = filtersData?.regional_energy_system_list || [];
+    const allFederalDistricts = filtersData?.federal_district_list || [];
+    const allRegionalDistricts = filtersData?.regional_district_list || [];
+
+    // Получаем все маппинги
+    const estToUes = filtersData?.est_to_ues_mapping || {};
+    const estToRes = filtersData?.est_to_res_mapping || {};
+    const estToRd = filtersData?.est_to_rd_mapping || {};
+    const estToFd = filtersData?.est_to_fd_mapping || {};
+    const uesToEst = filtersData?.ues_to_est_mapping || {};
+    const uesToRes = filtersData?.regional_energy_system_mapping || {}; // старое название
+    const uesToRd = filtersData?.ues_to_rd_mapping || {};
+    const uesToFd = filtersData?.ues_to_fd_mapping || {};
+    const resToEst = filtersData?.res_to_est_mapping || {};
+    const resToRd = filtersData?.res_to_rd_mapping || {};
+    const resToFd = filtersData?.res_to_fd_mapping || {};
+    const resToUesOne = filtersData?.res_to_ues_mapping_one || {}; // один-к-одному
+    const rdToRes = filtersData?.rd_to_res_mapping || {};
+    const rdToUes = filtersData?.rd_to_ues_mapping || {};
+    const rdToEst = filtersData?.rd_to_est_mapping || {};
+    const rdToFdOne = filtersData?.rd_to_fd_mapping_one || {}; // один-к-одному
+    const fdToRes = filtersData?.fd_to_res_mapping || {};
+    const fdToUes = filtersData?.fd_to_ues_mapping || {};
+    const fdToEst = filtersData?.fd_to_est_mapping || {};
+    const fdToRd = filtersData?.regional_district_mapping || {}; // старое название
+
+    // Получаем текущие выбранные значения
+    const selectedEst = parseMaybeJSON(filtersData?.energy_system_type_filter, []);
+    const selectedUes = parseMaybeJSON(filtersData?.union_energy_system_filter, []);
+    const selectedRes = parseMaybeJSON(filtersData?.regional_energy_system_filter, []);
+    const selectedFd = parseMaybeJSON(filtersData?.federal_district_filter, []);
+    const selectedRd = parseMaybeJSON(filtersData?.regional_district_filter, []);
+
+    // Флаг для предотвращения рекурсии
+    let isUpdating = false;
+
+    // Функция для получения разрешенных ID на основе выбранных фильтров (один-ко-многим)
+    function getAllowedIds(selectedIds, mapping) {
+        if (!selectedIds || selectedIds.length === 0) return null;
         const allowed = new Set();
-        selectedUnionIDs.forEach(unionID => {
-            const ids = regionalEnergySystemsMapping[unionID] || regionalEnergySystemsMapping[String(unionID)] || [];
-            ids.forEach(id => allowed.add(Number(id))); // на всякий случай приводим к числу
+        selectedIds.forEach(id => {
+            const ids = mapping[String(id)] || mapping[Number(id)] || [];
+            if (Array.isArray(ids)) {
+                ids.forEach(allowedId => allowed.add(Number(allowedId)));
+            } else if (ids !== null && ids !== undefined) {
+                // Для один-к-одному маппингов
+                allowed.add(Number(ids));
+            }
         });
+        return allowed.size > 0 ? allowed : null;
+    }
 
-        allRegionalSystems.forEach(system => {
-            if (allowed.has(Number(system.id))) {
-                const selected = prevSelected.includes(String(system.id));
-                options += `<option value="${system.id}" ${selected ? "selected" : ""}>${system.name || system.name_full}</option>`;
-                if (selected) newSelected.push(String(system.id));
+    // Функция для получения разрешенных ID из один-к-одному маппинга
+    function getAllowedIdsFromOneToOne(selectedIds, mapping) {
+        if (!selectedIds || selectedIds.length === 0) return null;
+        const allowed = new Set();
+        selectedIds.forEach(id => {
+            const mappedId = mapping[String(id)] || mapping[Number(id)];
+            if (mappedId !== null && mappedId !== undefined) {
+                allowed.add(Number(mappedId));
+            }
+        });
+        return allowed.size > 0 ? allowed : null;
+    }
+
+    // Функция для объединения нескольких наборов разрешенных ID
+    function combineAllowedIds(...allowedSets) {
+        const nonNull = allowedSets.filter(s => s !== null);
+        if (nonNull.length === 0) return null;
+        if (nonNull.length === 1) return nonNull[0];
+        
+        // Пересечение всех наборов
+        let result = new Set(nonNull[0]);
+        for (let i = 1; i < nonNull.length; i++) {
+            result = new Set([...result].filter(x => nonNull[i].has(x)));
+        }
+        return result.size > 0 ? result : null;
+    }
+
+    // Функция для обновления опций в select
+    function updateSelectOptions(selector, allItems, allowedIds, prevSelected, skipTrigger = false) {
+        let options = '<option></option>';
+        const newSelected = [];
+        const prevSelectedSet = new Set((prevSelected || []).map(String));
+
+        allItems.forEach(item => {
+            const itemId = Number(item.id);
+            const isAllowed = allowedIds === null || allowedIds.has(itemId);
+            const wasSelected = prevSelectedSet.has(String(itemId));
+
+            if (isAllowed) {
+                const selected = wasSelected ? "selected" : "";
+                options += `<option value="${itemId}" ${selected}>${item.name}</option>`;
+                if (wasSelected) newSelected.push(String(itemId));
             }
         });
 
-        $('#regional_energy_system').html(options).val(newSelected).trigger('change');
-    }
-
-    function updateRegionalDistrictOptions(selectedFederalIDs) {
-        let options = '<option></option>';
-        const prevSelected = ($('#regional_district').val() || []).map(String);
-        const newSelected = [];
-
-        // Если ФО не выбраны — показываем все субъекты
-        if (!selectedFederalIDs || selectedFederalIDs.length === 0) {
-            allRegionalDistricts.forEach(district => {
-                const selected = prevSelected.includes(String(district.id));
-                options += `<option value="${district.id}" ${selected ? "selected" : ""}>${district.name}</option>`;
-                if (selected) newSelected.push(String(district.id));
-            });
-            $('#regional_district').html(options).val(newSelected).trigger('change');
-            return;
+        $(selector).html(options).val(newSelected);
+        if (!skipTrigger) {
+            // Обновляем Select2 без триггера события change
+            $(selector).trigger('change.select2');
         }
-
-        // Иначе — только те, что входят в выбранные ФО
-        const allowed = new Set();
-        selectedFederalIDs.forEach(fdID => {
-            const ids = regionalDistrictsMapping[fdID] || regionalDistrictsMapping[String(fdID)] || [];
-            ids.forEach(id => allowed.add(Number(id)));
-        });
-
-        allRegionalDistricts.forEach(district => {
-            if (allowed.has(Number(district.id))) {
-                const selected = prevSelected.includes(String(district.id));
-                options += `<option value="${district.id}" ${selected ? "selected" : ""}>${district.name}</option>`;
-                if (selected) newSelected.push(String(district.id));
-            }
-        });
-
-        $('#regional_district').html(options).val(newSelected).trigger('change');
     }
 
-    $('#union_energy_system').on('change', function () {
-        updateRegionalEnergySystemOptions($(this).val() || []);
-    });
+    // Функция для обновления всех фильтров на основе текущих выборов
+    function updateAllFilters() {
+        // Предотвращаем рекурсию
+        if (isUpdating) return;
+        isUpdating = true;
 
-    $('#federal_district').on('change', function () {
-        updateRegionalDistrictOptions($(this).val() || []);
-    });
+        try {
+            const currentEst = ($('#energy_system_type').val() || []).map(Number);
+            const currentUes = ($('#union_energy_system').val() || []).map(Number);
+            const currentRes = ($('#regional_energy_system').val() || []).map(Number);
+            const currentFd = ($('#federal_district').val() || []).map(Number);
+            const currentRd = ($('#regional_district').val() || []).map(Number);
 
-    $('#union_energy_system').on('select2:clear', function () {
-        $('#regional_energy_system').val([]).empty().append('<option></option>').trigger('change.select2');
-    });
+            // Вычисляем разрешенные ID для каждого фильтра
+            // Тип энергосистемы: фильтруется по выбранным ОЭС, РЭС, субъектам РФ, ФО
+            const estAllowedFromUes = getAllowedIdsFromOneToOne(currentUes, uesToEst);
+            const estAllowedFromRes = getAllowedIdsFromOneToOne(currentRes, resToEst);
+            const estAllowedFromRd = getAllowedIds(currentRd, rdToEst);
+            const estAllowedFromFd = getAllowedIds(currentFd, fdToEst);
+            const estAllowed = combineAllowedIds(estAllowedFromUes, estAllowedFromRes, estAllowedFromRd, estAllowedFromFd);
 
-    $('#federal_district').on('select2:clear', function () {
-        $('#regional_district').val([]).empty().append('<option></option>').trigger('change.select2');
-    });
+            // ОЭС: фильтруется по типу ЭС, РЭС, субъекту РФ, ФО
+            const uesAllowedFromEst = getAllowedIds(currentEst, estToUes);
+            const uesAllowedFromRes = getAllowedIdsFromOneToOne(currentRes, resToUesOne);
+            const uesAllowedFromRd = getAllowedIds(currentRd, rdToUes);
+            const uesAllowedFromFd = getAllowedIds(currentFd, fdToUes);
+            const uesAllowed = combineAllowedIds(uesAllowedFromEst, uesAllowedFromRes, uesAllowedFromRd, uesAllowedFromFd);
 
-    if ((selectedUnionValues ?? []).length === 0) {
-        updateRegionalEnergySystemOptions([]);
-    } else {
-        updateRegionalEnergySystemOptions((selectedUnionValues || []).map(String));
-        $('#union_energy_system').val((selectedUnionValues || []).map(String)).trigger('change');
+            // РЭС: фильтруется по типу ЭС, ОЭС, субъекту РФ, ФО
+            const resAllowedFromEst = getAllowedIds(currentEst, estToRes);
+            const resAllowedFromUes = getAllowedIds(currentUes, uesToRes);
+            const resAllowedFromRd = getAllowedIds(currentRd, rdToRes);
+            const resAllowedFromFd = getAllowedIds(currentFd, fdToRes);
+            const resAllowed = combineAllowedIds(resAllowedFromEst, resAllowedFromUes, resAllowedFromRd, resAllowedFromFd);
+
+            // Федеральный округ: фильтруется по типу ЭС, ОЭС, РЭС, субъекту РФ
+            const fdAllowedFromEst = getAllowedIds(currentEst, estToFd);
+            const fdAllowedFromUes = getAllowedIds(currentUes, uesToFd);
+            const fdAllowedFromRes = getAllowedIds(currentRes, resToFd);
+            const fdAllowedFromRd = getAllowedIdsFromOneToOne(currentRd, rdToFdOne);
+            const fdAllowed = combineAllowedIds(fdAllowedFromEst, fdAllowedFromUes, fdAllowedFromRes, fdAllowedFromRd);
+
+            // Субъект РФ: фильтруется по типу ЭС, ОЭС, РЭС, ФО
+            const rdAllowedFromEst = getAllowedIds(currentEst, estToRd);
+            const rdAllowedFromUes = getAllowedIds(currentUes, uesToRd);
+            const rdAllowedFromRes = getAllowedIds(currentRes, resToRd);
+            const rdAllowedFromFd = getAllowedIds(currentFd, fdToRd);
+            const rdAllowed = combineAllowedIds(rdAllowedFromEst, rdAllowedFromUes, rdAllowedFromRes, rdAllowedFromFd);
+
+            // Обновляем все select'ы без триггера события change (чтобы избежать рекурсии)
+            updateSelectOptions('#energy_system_type', allEnergySystemTypes, estAllowed, currentEst, true);
+            updateSelectOptions('#union_energy_system', allUnionEnergySystems, uesAllowed, currentUes, true);
+            updateSelectOptions('#regional_energy_system', allRegionalEnergySystems, resAllowed, currentRes, true);
+            updateSelectOptions('#federal_district', allFederalDistricts, fdAllowed, currentFd, true);
+            updateSelectOptions('#regional_district', allRegionalDistricts, rdAllowed, currentRd, true);
+        } finally {
+            isUpdating = false;
+        }
     }
 
-    if ((selectedFederalValues ?? []).length === 0) {
-        updateRegionalDistrictOptions([]);
-    } else {
-        updateRegionalDistrictOptions((selectedFederalValues || []).map(String));
-        $('#federal_district').val((selectedFederalValues || []).map(String)).trigger('change');
+
+    // Обработчики изменений для каждого фильтра
+    $('#energy_system_type').on('change', function() {
+        updateAllFilters();
+    });
+
+    $('#union_energy_system').on('change', function() {
+        updateAllFilters();
+    });
+
+    $('#regional_energy_system').on('change', function() {
+        updateAllFilters();
+    });
+
+    $('#federal_district').on('change', function() {
+        updateAllFilters();
+    });
+
+    $('#regional_district').on('change', function() {
+        updateAllFilters();
+    });
+
+    // Инициализация при загрузке страницы
+    if (selectedEst.length > 0) {
+        $('#energy_system_type').val(selectedEst.map(String)).trigger('change');
     }
+    if (selectedUes.length > 0) {
+        $('#union_energy_system').val(selectedUes.map(String)).trigger('change');
+    }
+    if (selectedRes.length > 0) {
+        $('#regional_energy_system').val(selectedRes.map(String)).trigger('change');
+    }
+    if (selectedFd.length > 0) {
+        $('#federal_district').val(selectedFd.map(String)).trigger('change');
+    }
+    if (selectedRd.length > 0) {
+        $('#regional_district').val(selectedRd.map(String)).trigger('change');
+    }
+
+    // Вызываем updateAllFilters для первоначальной настройки
+    setTimeout(() => {
+        updateAllFilters();
+    }, 200);
 }

@@ -27,3 +27,8 @@ from .refdata_for_stations.machines.tes_machine_type_routes import *
 from .refdata_for_stations.machines.tes_type_routes import *
 from .refdata_for_stations.stations.station_type_routes import *
 
+# Управление годами и версиями БД
+from .years.year_management_routes import year_management_bp
+from .database_versions_routes import *  # добавляем маршруты /generation/database_versions на blueprint station_bp
+refdata_bp.register_blueprint(year_management_bp)
+

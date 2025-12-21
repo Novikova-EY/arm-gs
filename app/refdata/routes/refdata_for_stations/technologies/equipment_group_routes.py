@@ -35,6 +35,23 @@ from app.refdata.services.refdata_for_stations.technologies.equipment_group_serv
 from app.logs.services.logging_service import log_to_db
 
 
+def _normalize_filter(value):
+    """
+    Приводит строковые фильтры к нормальному виду:
+    - None, пустая строка и строка 'None' -> None
+    - остальные значения возвращаются как строка без пробелов по краям
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        v = value.strip()
+    else:
+        v = str(value).strip()
+    if v == "" or v.lower() == "none":
+        return None
+    return v
+
+
 @refdata_bp.route("/equipment_group", methods=["GET", "POST"])
 @login_required
 def equipment_group_list():
@@ -54,9 +71,9 @@ def equipment_group_list():
     per_page                        = request.args.get("per_page", 20, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
-    equipment_group_filter          = request.args.get("equipment_group_filter")
-    technology_type_filter          = request.args.get("technology_type_filter")
-    technology_availability_filter  = request.args.get("technology_availability_filter")
+    equipment_group_filter          = _normalize_filter(request.args.get("equipment_group_filter"))
+    technology_type_filter          = _normalize_filter(request.args.get("technology_type_filter"))
+    technology_availability_filter  = _normalize_filter(request.args.get("technology_availability_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
@@ -64,9 +81,9 @@ def equipment_group_list():
         per_page                        = request.form.get("per_page", 20, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
-        equipment_group_filter          = request.form.get("equipment_group_filter")
-        technology_type_filter          = request.form.get("technology_type_filter")
-        technology_availability_filter  = request.form.get("technology_availability_filter")
+        equipment_group_filter          = _normalize_filter(request.form.get("equipment_group_filter"))
+        technology_type_filter          = _normalize_filter(request.form.get("technology_type_filter"))
+        technology_availability_filter  = _normalize_filter(request.form.get("technology_availability_filter"))
         
         # Получение данных из формы
         equipment_group_ids             = request.form.getlist("equipment_group_ids[]")
