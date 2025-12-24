@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить год{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4">Добавить год</h2>
+
+      <form action="{{ url_for('refdata_bp.add_year') }}" method="POST">
+        {{ form.hidden_tag() }}
+
+        <input type="hidden" name="page" value="{{ page }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        <input type="hidden" name="year_filter" value="{{ year_filter }}">
+
+        <div class="mb-3">
+            <label for="number" class="form-label">Год</label>
+            {{ form.number(class="form-control", id="number") }}
+            {% if form.number.errors %}
+                <div class="text-danger">{{ form.number.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="year_feature" class="form-label">Признак года</label>
+            {{ form.year_feature(class="form-select", id="year_feature") }}
+            {% if form.year_feature.errors %}
+                <div class="text-danger">{{ form.year_feature.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            <a href="{{ url_for('refdata_bp.years_list',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                year_filter=year_filter) }}"
+               class="btn btn-secondary">
+                Отмена
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}
+
+

@@ -20,7 +20,9 @@ class MachineFilterForm(FlaskForm):
         'Организация-собственник',
         coerce=int,
         choices=[],
-        validators=[Optional()]
+        # По умолчанию в choices показывается "не указано",
+        # но перед сохранением пользователь обязан выбрать реальную организацию.
+        validators=[DataRequired(message="Укажите организацию-собственника")]
     )
 
     id_station = SelectField(
@@ -79,7 +81,7 @@ class MachineFilterForm(FlaskForm):
     )
 
     date_exploitation = StringField(
-        'Год ввода в эксплуатацию',
+        'Фактический год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_exploitation_expected = StringField(
@@ -186,7 +188,7 @@ class PGUMachineFilterForm(FlaskForm):
     powers = FieldList(FormField(PGUMachinePowerForm), min_entries=0)
 
     date_exploitation = StringField(
-        'Год ввода в эксплуатацию',
+        'Фактический год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_commission_fact = StringField(

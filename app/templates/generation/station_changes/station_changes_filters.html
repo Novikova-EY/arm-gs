@@ -3,13 +3,13 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
         <!-- Левая группа кнопок -->
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             <button id="filtersToggleBtn"
-                    class="btn btn-outline-secondary text-dark"
+                    class="btn {% if has_active_filters %}btn-warning{% else %}btn-outline-secondary{% endif %} text-dark{% if not has_active_filters %} collapsed{% endif %}"
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#filtersCollapse"
-                    aria-expanded="false"
+                    aria-expanded="{{ 'true' if has_active_filters else 'false' }}"
                     aria-controls="filtersCollapse">
                 🔍 Фильтры / Поиск
             </button>
@@ -25,15 +25,28 @@
             </button>
         </div>
 
-        <!-- Правая группа ВНУТРИ формы -->
-        <form method="get" action="{{ url_for('station_changes_bp.station_changes_list') }}" id="stationChangesFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        <!-- Центр: Найдено станций -->
+        <div class="flex-grow-1 d-flex justify-content-center align-items-center">
+            <p class="mb-0 fw-bold">Найдено станций: {{ total_count }}</p>
+        </div>
 
-            <!-- Скрытые фильтры для сохранения параметров при изменении округления -->
+        <!-- Правая группа ВНУТРИ формы -->
+        <form method="get"
+              action="{{ url_for('station_changes_bp.station_changes_list') }}"
+              id="stationFilterForm"
+              class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+
+            <!-- Скрытые фильтры: сохраняем параметры при сабмите/переключателях -->
             {% for key, value in request.args.items() %}
-                {% if key not in ['rounding_digits'] %}
+                {% if key not in ['rounding_digits', 'show_p_ogr', 'show_p_rasp'] %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
+
+            <!-- Подсветка -->
+            <button id="highlightChangesBtn" class="btn btn-outline-secondary text-dark" type="button" style="min-width: 250px;">
+                ✨ Подсветить изменения
+            </button>
 
             <!-- Округление -->
             <div class="d-flex align-items-center gap-1">

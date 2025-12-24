@@ -40,23 +40,32 @@ import pandas as pd
 def export_station_sipr_ees_application_A_routes():
     """Маршрут для экспорта данных в Excel."""
     user = session.get('username', 'Неизвестный пользователь')
-    
-    filters = {
-        key: request.args.get(key)
-        for key in [
-            'energy_system_type_filter', 'union_energy_system_filter', 
-            'regional_energy_system_filter', 'federal_district_filter', 
-            'regional_district_filter'
-        ]
+    # Для Select2 multiple параметры приходят как строки и могут повторяться.
+    # На сервисный слой передаем НОРМАЛИЗОВАННЫЕ списки int, чтобы .in_() работал корректно.
+    filters_for_service = {
+        "energy_system_type_filter": request.args.getlist("energy_system_type_filter", type=int),
+        "union_energy_system_filter": request.args.getlist("union_energy_system_filter", type=int),
+        "regional_energy_system_filter": request.args.getlist("regional_energy_system_filter", type=int),
+        "federal_district_filter": request.args.getlist("federal_district_filter", type=int),
+        "regional_district_filter": request.args.getlist("regional_district_filter", type=int),
     }
+    filters_for_service = {k: v for k, v in filters_for_service.items() if v}
 
-    # Фильтруем None-значения, чтобы `url_for()` не получил их
-    filters = {k: v for k, v in filters.items() if v}
+    # Для редиректов (в случае ошибки) сохраняем исходные query-параметры (включая множественные).
+    args_multi = request.args.to_dict(flat=False)
+    redirect_args = {}
+    for key, values in args_multi.items():
+        if not values:
+            continue
+        if len(values) == 1:
+            redirect_args[key] = values[0]
+        else:
+            redirect_args[key] = values
 
 
     try:
         # Получение данных для экспорта
-        excel_files = export_station_sipr_ees_application_A_service(user, filters)
+        excel_files = export_station_sipr_ees_application_A_service(user, filters_for_service)
 
         # Проверка наличия данных
         if not excel_files:
@@ -95,7 +104,7 @@ def export_station_sipr_ees_application_A_routes():
         print(f"Ошибка экспорта: {e}")
         print(f"Полный traceback:\n{error_details}")
         flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
-        return redirect(url_for("station_bp.station_list", **filters))
+        return redirect(url_for("station_bp.station_list", **redirect_args))
 
 
 @station_bp.route('/export_station_full', methods=['GET'])

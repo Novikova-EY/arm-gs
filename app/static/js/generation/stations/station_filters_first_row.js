@@ -137,6 +137,18 @@ function initializeStationFilters() {
         return result.size > 0 ? result : null;
     }
 
+    // Если разрешен ровно один id — возвращаем его, иначе null.
+    // Служебный id=0 ("не указано") автоподставлять не будем.
+    function getSingleAllowedId(allowedIds) {
+        if (!allowedIds || !(allowedIds instanceof Set)) return null;
+        if (allowedIds.size !== 1) return null;
+        const only = [...allowedIds][0];
+        const num = Number(only);
+        if (!Number.isFinite(num)) return null;
+        if (num === 0) return null;
+        return num;
+    }
+
     // Функция для обновления опций в select
     function updateSelectOptions(selector, allItems, allowedIds, prevSelected, skipTrigger = false) {
         let options = '<option></option>';
@@ -217,6 +229,60 @@ function initializeStationFilters() {
             updateSelectOptions('#regional_energy_system', allRegionalEnergySystems, resAllowed, currentRes, true);
             updateSelectOptions('#federal_district', allFederalDistricts, fdAllowed, currentFd, true);
             updateSelectOptions('#regional_district', allRegionalDistricts, rdAllowed, currentRd, true);
+
+            // Автоподстановка: если поле пустое и доступен ровно один вариант — выбираем его.
+            // Делаем это без триггера 'change' (только обновляем Select2), затем пересчитаем фильтры ещё раз.
+            let didAutoSelect = false;
+
+            const singleEst = getSingleAllowedId(estAllowed);
+            if (singleEst !== null) {
+                const v = ($('#energy_system_type').val() || []).map(Number);
+                if (v.length === 0) {
+                    $('#energy_system_type').val([String(singleEst)]).trigger('change.select2');
+                    didAutoSelect = true;
+                }
+            }
+
+            const singleUes = getSingleAllowedId(uesAllowed);
+            if (singleUes !== null) {
+                const v = ($('#union_energy_system').val() || []).map(Number);
+                if (v.length === 0) {
+                    $('#union_energy_system').val([String(singleUes)]).trigger('change.select2');
+                    didAutoSelect = true;
+                }
+            }
+
+            const singleRes = getSingleAllowedId(resAllowed);
+            if (singleRes !== null) {
+                const v = ($('#regional_energy_system').val() || []).map(Number);
+                if (v.length === 0) {
+                    $('#regional_energy_system').val([String(singleRes)]).trigger('change.select2');
+                    didAutoSelect = true;
+                }
+            }
+
+            const singleFd = getSingleAllowedId(fdAllowed);
+            if (singleFd !== null) {
+                const v = ($('#federal_district').val() || []).map(Number);
+                if (v.length === 0) {
+                    $('#federal_district').val([String(singleFd)]).trigger('change.select2');
+                    didAutoSelect = true;
+                }
+            }
+
+            const singleRd = getSingleAllowedId(rdAllowed);
+            if (singleRd !== null) {
+                const v = ($('#regional_district').val() || []).map(Number);
+                if (v.length === 0) {
+                    $('#regional_district').val([String(singleRd)]).trigger('change.select2');
+                    didAutoSelect = true;
+                }
+            }
+
+            if (didAutoSelect) {
+                // На следующем тике пересчитаем ограничения с учётом автоподстановок.
+                setTimeout(() => updateAllFilters(), 0);
+            }
         } finally {
             isUpdating = false;
         }
@@ -233,6 +299,64 @@ function initializeStationFilters() {
     });
 
     $('#regional_energy_system').on('change', function() {
+        // "Как в Excel": РЭС однозначно определяет ФО, ОЭС и тип энергосистемы.
+        // Если выбрана ровно одна РЭС — синхронизируем связанные поля автоматически.
+        if (isUpdating) return;
+        const currentRes = ($('#regional_energy_system').val() || []).map(Number);
+        if (currentRes.length === 1) {
+            const resId = currentRes[0];
+
+            // ФО (РЭС -> [ФО])
+            const mappedFd = resToFd[String(resId)] || resToFd[Number(resId)] || [];
+            const fdArr = Array.isArray(mappedFd) ? mappedFd : [mappedFd];
+            const fdUnique = [...new Set(fdArr.filter(x => x !== null && x !== undefined).map(Number))];
+
+            // ОЭС (РЭС -> ОЭС) one-to-one
+            const mappedUes = resToUesOne[String(resId)] || resToUesOne[Number(resId)];
+            const uesUnique = (mappedUes !== null && mappedUes !== undefined) ? [Number(mappedUes)] : [];
+
+            // Тип ЭС (РЭС -> ТипЭС) one-to-one
+            const mappedEst = resToEst[String(resId)] || resToEst[Number(resId)];
+            const estUnique = (mappedEst !== null && mappedEst !== undefined) ? [Number(mappedEst)] : [];
+
+            // Выставляем связанные поля ОДНИМ проходом, без триггера 'change'
+            // (чтобы не плодить каскадные события и не пропускать ФО).
+            let didSync = false;
+            isUpdating = true;
+            try {
+                if (estUnique.length === 1) {
+                    const currentEst = ($('#energy_system_type').val() || []).map(Number);
+                    if (currentEst.length !== 1 || currentEst[0] !== estUnique[0]) {
+                        $('#energy_system_type').val([String(estUnique[0])]).trigger('change.select2');
+                        didSync = true;
+                    }
+                }
+
+                if (uesUnique.length === 1) {
+                    const currentUes = ($('#union_energy_system').val() || []).map(Number);
+                    if (currentUes.length !== 1 || currentUes[0] !== uesUnique[0]) {
+                        $('#union_energy_system').val([String(uesUnique[0])]).trigger('change.select2');
+                        didSync = true;
+                    }
+                }
+
+                if (fdUnique.length === 1) {
+                    const currentFd = ($('#federal_district').val() || []).map(Number);
+                    if (currentFd.length !== 1 || currentFd[0] !== fdUnique[0]) {
+                        $('#federal_district').val([String(fdUnique[0])]).trigger('change.select2');
+                        didSync = true;
+                    }
+                }
+            } finally {
+                isUpdating = false;
+            }
+
+            if (didSync) {
+                updateAllFilters();
+                return;
+            }
+        }
+
         updateAllFilters();
     });
 

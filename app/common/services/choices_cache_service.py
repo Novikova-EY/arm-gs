@@ -19,7 +19,7 @@ class ChoicesCacheService:
     
     # Специальные константы для "пустых" значений
     EMPTY_VALUE_ID = 0
-    EMPTY_VALUE_TEXT = "— не указано —"
+    EMPTY_VALUE_TEXT = "не указано"
     
     @classmethod
     def _build_versioned_cache_key(cls, base_key: str) -> str:

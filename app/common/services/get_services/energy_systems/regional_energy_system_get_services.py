@@ -174,11 +174,29 @@ def get_res_to_est_id_map() -> Dict[int, int]:
 @lru_cache(maxsize=1)
 def get_res_to_rd_ids_map() -> Dict[int, List[int]]:
     """Возвращает отображение {РЭС.id: [СубъектРФ.id, ...]} через M2M (кэшируется)."""
-    query = db.session.query(
-        regional_district_regional_energy_system.c.regional_energy_system_id,
-        regional_district_regional_energy_system.c.regional_district_id
+    current_version = get_current_version()
+    query = (
+        db.session.query(
+            regional_district_regional_energy_system.c.regional_energy_system_id,
+            regional_district_regional_energy_system.c.regional_district_id,
+        )
+        .join(
+            RegionalEnergySystem,
+            RegionalEnergySystem.id == regional_district_regional_energy_system.c.regional_energy_system_id,
+        )
+        .join(
+            RegionalDistrict,
+            RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id,
+        )
     )
-    
+
+    # Важно: M2M-таблица не версионируется, поэтому фильтруем по версии через join'ы.
+    if current_version:
+        query = query.filter(
+            RegionalEnergySystem.database_version_id == current_version,
+            RegionalDistrict.database_version_id == current_version,
+        )
+
     rows = query.all()
     acc: Dict[int, List[int]] = defaultdict(list)
     for res_id, rd_id in rows:

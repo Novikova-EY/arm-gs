@@ -23,6 +23,7 @@ from app.common.services.get_services.stations.station_type_get_services import 
     get_station_type_list_full,
 )
 from app.common.services.get_services.years.years_get_services import (
+    get_current_year,
     get_year_feature_dict,
 )
 
@@ -55,6 +56,28 @@ def _extract_document_names(text: str) -> str:
     
     # Если токенов нет, возвращаем исходный текст (на случай, если это обычный текст)
     return text
+
+
+def _get_sum_years_and_header(start_year: int, end_year: int, current_year: int | None) -> tuple[list[int], str]:
+    """Возвращает список лет для суммирования и заголовок столбца суммы.
+
+    Требование: сумма должна учитывать все годы из диапазона, кроме текущего года.
+    Пример: для 2025–2031 (текущий 2025) суммируем 2026–2031.
+    """
+    years = list(range(start_year, end_year + 1))
+
+    # Если текущий год не определён или не входит в диапазон — суммируем всё как есть.
+    if current_year is None or current_year < start_year or current_year > end_year:
+        return years, f"{start_year}–{end_year} гг."
+
+    sum_years = [y for y in years if y != current_year]
+
+    # Если текущий год — первый в диапазоне, делаем заголовок как в форме СиПР (со следующего года).
+    if current_year == start_year and start_year + 1 <= end_year:
+        return sum_years, f"{start_year + 1}–{end_year} гг."
+
+    # Иначе оставляем исходный диапазон, но явно помечаем исключение текущего года.
+    return sum_years, f"{start_year}–{end_year} гг.\n(без {current_year} г.)"
 
 
 def export_station_changes_to_excel(
@@ -176,8 +199,10 @@ def export_station_changes_to_excel(
         else:
             year_headers.append(f"{y} г.")
     
-    # Заголовок для столбца с суммой всех годов
-    all_years_header = f"{start_year}–{end_year} гг."
+    # Заголовок и список лет для суммирования:
+    # по форме СиПР суммируются все годы, кроме текущего.
+    current_year = get_current_year()
+    sum_years, all_years_header = _get_sum_years_and_header(start_year, end_year, current_year)
     note_header = "Документ-основание"
 
     # Индексы колонок согласно static_headers
@@ -267,6 +292,14 @@ def export_station_changes_to_excel(
     except Exception:
         union_energy_system_names = {}
 
+    # Энергоузлы (для спец-логики ОЭС "ТИТЭС Сибири")
+    try:
+        from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
+        energy_unit_list = get_energy_unit_list_full() or []
+        energy_unit_names = {eu.id: eu.name for eu in energy_unit_list if getattr(eu, "id", None) is not None}
+    except Exception:
+        energy_unit_names = {}
+
     try:
         regional_district_names = get_regional_districts_map()
     except Exception:
@@ -340,7 +373,7 @@ def export_station_changes_to_excel(
                 val = years_map_total.get(y)
                 display_val = val if val and val != 0 else None
                 worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                if val is not None:
+                if val is not None and y in sum_years:
                     row_sum += val
             worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
             worksheet.write(current_row, note_col, "", text_center_format)
@@ -361,40 +394,45 @@ def export_station_changes_to_excel(
                     val = years_map_st.get(y)
                     display_val = val if val and val != 0 else None
                     worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                    if val is not None:
+                    if val is not None and y in sum_years:
                         row_sum += val
                 worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
                 worksheet.write(current_row, note_col, "", text_center_format)
                 current_row += 1
 
-    # Обход иерархии как в шаблоне
-    for es_type_id, ues_group in stations_grouped.items():
-        for ues_id, res_group in ues_group.items():
-            for res_id, rd_group in res_group.items():
-                for rd_id, eu_group in rd_group.items():
-                    for eu_id, stations in eu_group.items():
+    # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
+    for es_type_id, es_group in stations_grouped.items():
+        for sa_id, sa_group in es_group.items():
+            for ues_id, rd_group in sa_group.items():
+                for res_id, res_group in rd_group.items():
+                    for rd_id, stations in res_group.items():
                         for station in stations:
-                            # Каждая виртуальная станция содержит machines с выставленными rowspan'ами
-                            for machine in getattr(station, "machines", []):
-                                if not getattr(machine, "powers_by_year", None):
-                                    continue
-                                first_row_for_machine = current_row
+                                # Каждая виртуальная станция содержит machines с выставленными rowspan'ами
+                                for machine in getattr(station, "machines", []):
+                                    if not getattr(machine, "powers_by_year", None):
+                                        continue
+                                    first_row_for_machine = current_row
 
                                 for idx_power, power_row in enumerate(machine.powers_by_year):
                                     # Субъект РФ (region_rowspan применяется один раз)
                                     if idx_power == 0 and getattr(machine, "region_rowspan", 0) > 0:
                                         r2 = first_row_for_machine + machine.region_rowspan - 1
-                                        value = (
-                                            station.regional_district.name_full
-                                            if getattr(station, "regional_district", None)
-                                            and getattr(station.regional_district, "name_full", None)
-                                            else (
-                                                station.regional_district.name
+                                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                                        if "титэс сибири" in str(ues_label).lower():
+                                            eu_id = getattr(station, "id_energy_unit", None) or 0
+                                            value = energy_unit_names.get(eu_id, "Без энергоузла" if not eu_id else f"Энергоузел {eu_id}")
+                                        else:
+                                            value = (
+                                                station.regional_district.name_full
                                                 if getattr(station, "regional_district", None)
-                                                and getattr(station.regional_district, "name", None)
-                                                else "Без субъекта"
+                                                and getattr(station.regional_district, "name_full", None)
+                                                else (
+                                                    station.regional_district.name
+                                                    if getattr(station, "regional_district", None)
+                                                    and getattr(station.regional_district, "name", None)
+                                                    else "Без субъекта"
+                                                )
                                             )
-                                        )
                                         merge_if_needed(current_row, 0, r2, 0, value, text_center_format)
 
                                     # Генкомпания
@@ -416,7 +454,12 @@ def export_station_changes_to_excel(
                                         # Тип генерирующего оборудования
                                         merge_if_needed(current_row, machine_name_col, r2, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
                                         # Тип станции
-                                        station_type_name = getattr(getattr(machine, "station_type", None), "name", None) or "—"
+                                        station_type_obj = getattr(station, "station_type", None)
+                                        station_type_name = getattr(station_type_obj, "name", None)
+                                        if not station_type_name:
+                                            st_id = getattr(station, "id_station_type", None)
+                                            station_type_name = station_type_names.get(st_id) if st_id else None
+                                        station_type_name = station_type_name or "—"
                                         merge_if_needed(current_row, station_type_col, r2, station_type_col, station_type_name, text_center_format)
 
                                     # Топливо (по СО ЕЭС) — объединение на fuel_rowspan
@@ -490,8 +533,26 @@ def export_station_changes_to_excel(
                         
                         # Выводим итоги только если есть данные
                         if has_events_data or has_station_data:
-                            rd_label = regional_district_names.get(rd_id, f"Субъект {rd_id}")
-                            write_combined_totals_block(rd_label, rd_events_map, rd_by_station_map)
+                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                            is_tites_siberia = "титэс сибири" in str(ues_label).lower()
+                            if is_tites_siberia:
+                                eu_events_map = (
+                                    data.get("aggregate_changes_by_energy_units_events", {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                eu_by_station_map = (
+                                    data.get("aggregate_changes_energy_units_by_station_types_with_events", {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                eu_label = energy_unit_names.get(rd_id, f"Энергоузел {rd_id}")
+                                write_combined_totals_block(eu_label, eu_events_map, eu_by_station_map)
+                            else:
+                                rd_label = regional_district_names.get(rd_id, f"Субъект {rd_id}")
+                                write_combined_totals_block(rd_label, rd_events_map, rd_by_station_map)
 
             # Итоги по ОЭС
             if show_totals:

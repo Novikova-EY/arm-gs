@@ -1,0 +1,41 @@
+{# Подстроки по типам станций для "итога по энергоузлу как по субъекту" (event-based) #}
+{% for station_type_id, st_name in station_type_list.items() %}
+    {% if station_type_id != 0 %}
+        {% set station_data = energy_units_by_station_types_with_events_yearly_p_ust
+                                .get(current_energy_unit_id, {})
+                                .get(station_type_id, {}) %}
+        {% set yearly_data = station_data.get(current_event_type) if station_data else None %}
+
+        {% if yearly_data %}
+            <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+                <td class="total-row-cell" style="font-weight: bold;">
+                    {{ st_name }}
+                </td>
+                <td colspan="4"></td>
+                <td></td>
+                {% for y in range(start_year, end_year + 1) %}
+                    <td class="power-column">
+                        {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                    </td>
+                {% endfor %}
+                <td class="power-column fw-bold">
+                    {% if plan_years %}
+                        {% set ns_total = namespace(v=0) %}
+                        {% for y in plan_years %}
+                            {% set val = yearly_data.get(y) %}
+                            {% if val is not none %}
+                                {% set ns_total.v = ns_total.v + val %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td></td>
+            </tr>
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+

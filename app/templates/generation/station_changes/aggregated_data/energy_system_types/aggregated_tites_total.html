@@ -1,0 +1,44 @@
+<!-- Итоговые значения по технологически изолированным территориальным электроэнергетическим системам (сумма по всем типам энергосистем, содержащим 'ТИТЭС') -->
+{% set ns = namespace(printed=false) %}
+{% for event_type, event_label in event_types %}
+    {% set event_data = tites_yearly_p_ust.get(event_type, {}) %}
+
+    {% if event_data %}
+        <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
+            {% if not ns.printed %}
+                <td class="total-row-cell" rowspan="{{ tites_total_rowspan or 1 }}" colspan="8" style="font-weight: bold;">
+                    Итого по технологически изолированным территориальным электроэнергетическим системам
+                </td>
+                {% set ns.printed = true %}
+            {% endif %}
+            <td class="text-center fw-bold">Всего</td>
+            <td class="text-center align-middle" colspan="4"></td>
+            <td class="text-center align-middle">{{ event_label }}</td>
+            {% for year in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ event_data.get(year, '—') | format_decimal if event_data }}
+                </td>
+            {% endfor %}
+            <td class="power-column fw-bold">
+                {% if plan_years %}
+                    {% set ns_total = namespace(v=0) %}
+                    {% for y in plan_years %}
+                        {% set val = event_data.get(y) %}
+                        {% if val is not none %}
+                            {% set ns_total.v = ns_total.v + val %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td></td>
+        </tr>
+    {% endif %}
+
+    {% set current_event_type = event_type %}
+    {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_tites_total_by_station_type.html' %}
+{% endfor %}
+
+

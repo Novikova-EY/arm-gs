@@ -19,21 +19,28 @@ SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
 DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", "auth,logs,gs_sys,generation")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
-# DEBUG определяется по FLASK_ENV или явной переменной DEBUG
-# По умолчанию False (production режим)
-_flask_env = os.getenv("FLASK_ENV", "").lower()
-_explicit_debug = os.getenv("DEBUG", "").lower()
-if _explicit_debug in ("true", "1", "yes"):
-    DEBUG = True
-elif _explicit_debug in ("false", "0", "no", ""):
-    DEBUG = False
-elif _flask_env == "development":
-    DEBUG = True
-elif _flask_env == "production":
-    DEBUG = False
-else:
+# DEBUG определяется по FLASK_ENV или явной переменной DEBUG.
+# Важно: пустое/не заданное DEBUG НЕ должно принудительно выключать debug —
+# тогда dev-режим (FLASK_ENV=development) сможет включать автообновление шаблонов.
+def _resolve_debug() -> bool:
+    flask_env = (os.getenv("FLASK_ENV") or "").lower()
+    explicit_raw = os.getenv("DEBUG")
+
+    if explicit_raw is not None:
+        explicit = explicit_raw.strip().lower()
+        if explicit in ("true", "1", "yes"):
+            return True
+        if explicit in ("false", "0", "no"):
+            return False
+        # если переменная есть, но пустая/невалидная — считаем как "не задано"
+
+    if flask_env == "development":
+        return True
+
     # По умолчанию production (безопаснее)
-    DEBUG = False
+    return False
+
+DEBUG = _resolve_debug()
 START_YEAR_SIPR = 2026
 START_YEAR = 2024
 END_YEAR = 2031
@@ -65,21 +72,8 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', '').split(','))
-    # DEBUG определяется по FLASK_ENV или явной переменной DEBUG
-    # По умолчанию False (production режим)
-    _flask_env = os.getenv("FLASK_ENV", "").lower()
-    _explicit_debug = os.getenv("DEBUG", "").lower()
-    if _explicit_debug in ("true", "1", "yes"):
-        DEBUG = True
-    elif _explicit_debug in ("false", "0", "no", ""):
-        DEBUG = False
-    elif _flask_env == "development":
-        DEBUG = True
-    elif _flask_env == "production":
-        DEBUG = False
-    else:
-        # По умолчанию production (безопаснее)
-        DEBUG = False
+    # DEBUG берём из вычисленного значения выше (см. _resolve_debug()).
+    DEBUG = DEBUG
     START_YEAR_SIPR = 2026
     START_YEAR = 2024
     END_YEAR = 2031

@@ -4,7 +4,7 @@ from flask import current_app
 
 from app.logs.services.logging_service import log_to_db
 from flask_login import login_required
-from flask import send_file, render_template, request, session, flash, redirect, url_for
+from flask import send_file, render_template, request, session, flash, redirect, url_for, g
 from app.generation.services.station_services.filters_services import (
     has_any_filters,
     extract_filters_from_args, 
@@ -77,11 +77,18 @@ def station_changes_list():
     )
     print(f"[TIME] get_station_changes_list_data заняла: {time.time() - start_data:.2f} сек")
 
-    # Сохраняем данные в кэш для последующей быстрой выгрузки
+    # Текущая версия БД (выбранная в сессии) — фиксируем в контексте страницы,
+    # чтобы выгрузки из этой вкладки не "перепрыгивали" на версию,
+    # которую пользователь мог выбрать в другой вкладке позже.
+    current_db_version_id = None
     try:
         from app.common.services.database_version_filter import get_current_db_version_id
         current_db_version_id = get_current_db_version_id()
-        
+    except Exception as _e:
+        current_app.logger.warning(f"[DB_VERSION] station_changes: failed to resolve current db version: {_e}")
+
+    # Сохраняем данные в кэш для последующей быстрой выгрузки
+    try:
         export_key = build_export_key(
             {**filters},
             rounding_digits,
@@ -121,6 +128,8 @@ def station_changes_list():
 
     # Прокидываем флаг отображения итогов в шаблон
     context["show_totals"] = show_totals
+    # Прокидываем версию БД в шаблон для фиксации выгрузок на версии, отображенной на странице
+    context["database_version_id"] = current_db_version_id
 
     has_active_filters = has_any_filters(request.args)
     
@@ -140,6 +149,19 @@ def report_sipr_pril_2_export():
 @login_required
 def station_changes_list_export():
     user = session.get('username', 'Неизвестный пользователь')
+
+    # Если выгрузка вызвана из конкретной вкладки со "своей" версией БД,
+    # принимаем database_version_id из query params и используем его только в рамках текущего запроса
+    explicit_version_raw = request.args.get("database_version_id")
+    if explicit_version_raw is not None:
+        try:
+            if explicit_version_raw == "" or explicit_version_raw.lower() in ("none", "null"):
+                g.current_db_version = None
+            else:
+                g.current_db_version = int(explicit_version_raw)
+        except Exception:
+            # Если параметр некорректен — просто игнорируем и используем версию из middleware/сессии
+            pass
 
     # Параметры из запроса
     filters = extract_filters_from_args(request.args)

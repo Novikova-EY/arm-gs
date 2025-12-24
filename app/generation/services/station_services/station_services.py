@@ -5,7 +5,7 @@ from app.logs.services.logging_service import log_to_db
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from config import SCHEMA_GENERATION
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import selectinload, joinedload
 from decimal import Decimal
 from collections import defaultdict
@@ -212,7 +212,10 @@ def get_stations_list(
 
     if filters.get("date_exploitation_filter"):
         machine_query = machine_query.filter(
-            Machine.date_exploitation.in_(filters["date_exploitation_filter"])
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
         )
 
     if filters.get("date_decompressing_expected_filter"):
@@ -699,7 +702,10 @@ def get_stations_list_with_pgu_machines(
 
     if filters.get("date_exploitation_filter"):
         machine_query = machine_query.filter(
-            Machine.date_exploitation.in_(filters["date_exploitation_filter"])
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
         )
 
     if filters.get("date_decompressing_expected_filter"):
@@ -1439,7 +1445,10 @@ def get_next_station_info(current_page, per_page, filters):
         
         if filters.get("date_exploitation_filter"):
             machine_query = machine_query.filter(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"])
+                or_(
+                    Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                    Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+                )
             )
         
         if filters.get("date_decompressing_expected_filter"):
@@ -1677,7 +1686,10 @@ def get_filtered_station_ids(filters):
 
     if filters.get("date_exploitation_filter"):
         machine_query = machine_query.filter(
-            Machine.date_exploitation.in_(filters["date_exploitation_filter"])
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
         )
 
     if filters.get("date_decompressing_expected_filter"):
@@ -2912,15 +2924,29 @@ def build_total_energy_system_type_aggregates(data):
 # Мутации по станциям/агрегатам
 # -------------------------------
 
-def add_station_service(user, name: str, id_regional_district: int) -> Station:
+def add_station_service(
+    user,
+    name: str,
+    id_regional_district: int,
+    id_station_type=None,
+) -> Station:
     name = (name or "").strip()
     if not name:
         raise ValueError("Не указано название станции")
+
+    # SelectField часто возвращает строку; "0"/"" трактуем как "не указано"
+    station_type_id = None
+    if id_station_type not in (None, "", 0, "0"):
+        station_type_id = int(id_station_type)
     
     max_attempts = 2
     for attempt in range(max_attempts):
         try:
-            station = Station(name=name, id_regional_district=id_regional_district)
+            station = Station(
+                name=name,
+                id_regional_district=id_regional_district,
+                id_station_type=station_type_id,
+            )
             # Автоматически связываем с текущей версией БД
             set_db_version_on_create(station)
             db.session.add(station)

@@ -135,23 +135,45 @@ class Machine(db.Model, VersionedModelMixin):
         foreign_keys='MachineTesType.id_machine',
     )
 
-    # Даты/годы
+    # фактический год ввода в эксплуатацию
     date_exploitation = db.Column(db.Integer, nullable=True)
+
+    # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
+
+    # фактическая дата ввода в работу
     date_commission_fact = db.Column(db.String(10), nullable=True)
-    date_joining_expected = db.Column(db.String(10), nullable=True)
-    date_joining_fact = db.Column(db.String(10), nullable=True)
-    date_detatchment_fact = db.Column(db.String(10), nullable=True)
-    date_decompressing_expected = db.Column(db.Integer, nullable=True)
+    
+    # фактическая дата вывода из эксплуатации
     date_decompressing_fact = db.Column(db.String(10), nullable=True)
+    
+    # ожидаемый год вывода из эксплуатации
+    date_decompressing_expected = db.Column(db.Integer, nullable=True)
+
+    # фактическая дата присоединения
+    date_joining_fact = db.Column(db.String(10), nullable=True)
+    
+    # ожидаемая дата присоединения
+    date_joining_expected = db.Column(db.String(10), nullable=True)
+
+    # фактическая дата отсоединения
+    date_detatchment_fact = db.Column(db.String(10), nullable=True)
+
+    # ожидаемый год модернизации
     date_modernization_expected = db.Column(db.Integer, nullable=True)
+    
+    # фактическая дата перемаркировки
     date_relabing_fact = db.Column(db.String(10), nullable=True)
+    
+    # фактическая дата уточнения
     date_update_fact = db.Column(db.String(10), nullable=True)
 
+    # примечание
     note = db.Column(db.String(512), nullable=True)
 
     # Документ-основание для изменения параметров агрегата
     change_document = db.Column(db.Text, nullable=True)  
+
     year_modern = db.Column(db.String(10), nullable=True)
     year_demontaz = db.Column(db.String(10), nullable=True)
     resurs_coal = db.Column(db.String(10), nullable=True)
@@ -238,6 +260,27 @@ class Machine(db.Model, VersionedModelMixin):
                     result[mf.year_number] = fuel_type_name
 
         return result
+
+    @property
+    def id_regional_energy_system(self):
+        """
+        Вычисляемый id РЭС для агрегата.
+        Берём со станции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
+
+        ВАЖНО: это НЕ колонка БД, а runtime-helper для группировки/отображения.
+        """
+        st = getattr(self, "machine_station", None)
+        if not st:
+            return None
+        direct = getattr(st, "id_regional_energy_system", None)
+        if direct:
+            return direct
+        rd = getattr(st, "regional_district", None)
+        ress = getattr(rd, "regional_energy_systems", None) if rd else None
+        if ress:
+            first = ress[0]
+            return getattr(first, "id", None)
+        return None
 
     def __repr__(self) -> str:
         return f"<Machine id={self.id} name={self.machine_name!r} station_id={self.id_station}>"

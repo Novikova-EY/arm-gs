@@ -21,6 +21,20 @@
                     {{ event_data.get(year, '—') | format_decimal if event_data }}
                 </td>
             {% endfor %}
+            <td class="power-column fw-bold">
+                {% if plan_years %}
+                    {% set ns_total = namespace(v=0) %}
+                    {% for y in plan_years %}
+                        {% set val = event_data.get(y) %}
+                        {% if val is not none %}
+                            {% set ns_total.v = ns_total.v + val %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
             <td></td>
         </tr>
     {% endif %}

@@ -20,6 +20,23 @@
                             .get(y, '—') | format_decimal or '—' }}
                     </td>
                 {% endfor %}
+                <td class="power-column fw-bold">
+                    {% if plan_years %}
+                        {% set ns_total = namespace(v=0) %}
+                        {% for y in plan_years %}
+                            {% set val = regional_energy_systems_by_station_types_yearly_p_ust
+                                .get(current_res_id, {})
+                                .get(station_type_id, {})
+                                .get(y) %}
+                            {% if val is not none %}
+                                {% set ns_total.v = ns_total.v + val %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
                 </td>
             </tr>     
@@ -42,6 +59,20 @@
                                 {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
                             </td>
                         {% endfor %}
+                        <td class="power-column fw-bold">
+                            {% if plan_years %}
+                                {% set ns_total = namespace(v=0) %}
+                                {% for y in plan_years %}
+                                    {% set val = yearly.get(y) %}
+                                    {% if val is not none %}
+                                        {% set ns_total.v = ns_total.v + val %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td></td>
                     </tr>
                 {% endif %}

@@ -101,12 +101,15 @@ def get_regional_districts_map() -> Dict[int, str]:
 @lru_cache(maxsize=1)
 def get_rd_to_fd_id_map() -> Dict[int, int]:
     """Возвращает отображение {Субъект.id: ФО.id} (кэшируется)."""
-    rows = (
+    current_version = get_current_version()
+    query = (
         RegionalDistrict.query
         .with_entities(RegionalDistrict.id, RegionalDistrict.id_federal_district)
         .filter(RegionalDistrict.id_federal_district.isnot(None))
-        .all()
     )
+    if current_version:
+        query = query.filter(RegionalDistrict.database_version_id == current_version)
+    rows = query.all()
     return {rd_id: fd_id for rd_id, fd_id in rows}
 
 # 5) Инвалидатор кэшей — вызывать после CRUD по субъектам/их привязке к ФО
@@ -121,11 +124,29 @@ def invalidate_regional_district_lookups_cache() -> None:
 @lru_cache(maxsize=1)
 def get_rd_to_res_ids_map() -> Dict[int, List[int]]:
     """Возвращает отображение {СубъектРФ.id: [РЭС.id, ...]} через M2M (кэшируется)."""
-    query = db.session.query(
-        regional_district_regional_energy_system.c.regional_district_id,
-        regional_district_regional_energy_system.c.regional_energy_system_id
+    current_version = get_current_version()
+    query = (
+        db.session.query(
+            regional_district_regional_energy_system.c.regional_district_id,
+            regional_district_regional_energy_system.c.regional_energy_system_id,
+        )
+        .join(
+            RegionalDistrict,
+            RegionalDistrict.id == regional_district_regional_energy_system.c.regional_district_id,
+        )
+        .join(
+            RegionalEnergySystem,
+            RegionalEnergySystem.id == regional_district_regional_energy_system.c.regional_energy_system_id,
+        )
     )
-    
+
+    # Важно: M2M-таблица не версионируется, поэтому фильтруем по версии через join'ы.
+    if current_version:
+        query = query.filter(
+            RegionalDistrict.database_version_id == current_version,
+            RegionalEnergySystem.database_version_id == current_version,
+        )
+
     rows = query.all()
     acc: Dict[int, List[int]] = defaultdict(list)
     for rd_id, res_id in rows:

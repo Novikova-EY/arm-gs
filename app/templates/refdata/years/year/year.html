@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Годы{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container mt-2">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"><i class="bi bi-house"></i> Главная страница</a>
+        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Справочники</a>
+    </div>
+
+    <h1 class="text-center mb-4">Справочник «Годы»</h1>
+
+    {% if not version_id %}
+        <div class="alert alert-warning">
+            Текущая версия БД не установлена. Отображение/редактирование справочника ограничено.
+        </div>
+    {% endif %}
+
+    <form method="GET" action="{{ url_for('refdata_bp.years_list') }}" class="mb-3" id="filterForm">
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.year_filter(class="form-control", value=year_filter, placeholder="Поиск по году или признаку") }}
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary fw-bold" onclick="this.form.page.value=1">
+                        Поиск
+                    </button>
+                    <a href="{{ url_for('refdata_bp.years_list') }}" class="btn btn-outline-secondary fw-bold" data-no-preloader>
+                        Сбросить
+                    </a>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4 text-lg-end">
+                <select name="per_page" class="form-select d-inline-block w-auto" onchange="this.form.page.value=1; this.form.submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+        </div>
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    {% if current_user.has_admin %}
+        <form method="POST" action="{{ url_for('refdata_bp.years_list') }}">
+            {{ form.csrf_token }}
+
+            <input type="hidden" name="page" value="{{ pagination.page }}">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            <input type="hidden" name="year_filter" value="{{ year_filter }}">
+
+            <div class="d-flex justify-content-between mt-3 mb-3">
+                <button type="submit" class="btn btn-success" {% if not version_id %}disabled{% endif %}>
+                    Сохранить изменения
+                </button>
+                <a href="{{ url_for('refdata_bp.add_year',
+                                    page=pagination.page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    year_filter=year_filter) }}"
+                   class="btn btn-primary {% if not version_id %}disabled{% endif %}">
+                    Добавить новую запись
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.years_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            year_filter=year_filter,
+                                            sort_by='number',
+                                            sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}"
+                                   class="text-black">
+                                    №
+                                    {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="text-center align-middle">Год</th>
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.years_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            year_filter=year_filter,
+                                            sort_by='year_feature',
+                                            sort_dir='asc' if sort_by != 'year_feature' or sort_dir == 'desc' else 'desc') }}"
+                                   class="text-black">
+                                    Признак года
+                                    {% if sort_by == 'year_feature' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="text-center align-middle">Удалить</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for y in year_list %}
+                            <tr>
+                                <td class="text-center align-middle">
+                                    {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                    <input type="hidden" name="year_ids[]" value="{{ y.id }}">
+                                </td>
+                                <td>
+                                    <input type="number" name="year_numbers[]" class="form-control" value="{{ y.number }}" min="1900" max="2200" {% if not version_id %}disabled{% endif %}>
+                                </td>
+                                <td>
+                                    <select name="year_features[]" class="form-select" {% if not version_id %}disabled{% endif %}>
+                                        {% for fid, fname in year_features %}
+                                            <option value="{{ fid }}" {% if fid == y.id_year_feature %}selected{% endif %}>
+                                                {{ fname }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <input type="checkbox" name="year_delete[]" value="{{ y.id }}" class="form-check-input" {% if not version_id %}disabled{% endif %}>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+                <thead class="table-success">
+                    <tr>
+                        <th class="text-center align-middle">№</th>
+                        <th class="text-center align-middle">Год</th>
+                        <th class="text-center align-middle">Признак года</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for y in year_list %}
+                        <tr class="align-middle">
+                            <td class="text-center">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                            </td>
+                            <td class="text-center">{{ y.number }}</td>
+                            <td class="text-center">{{ y.year_feature.name if y.year_feature else 'не указано' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div>
+        {% include 'refdata/years/year/year_pagination.html' %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+

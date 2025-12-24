@@ -36,25 +36,89 @@ def get_fuel_type_id(machine, year):
 
 
 def get_res_id(machine):
-    rd = getattr(machine.machine_station, "regional_district", None)
-    if rd and rd.regional_energy_systems:
-        return rd.regional_energy_systems[0].id
+    """
+    Определяем РЭС для агрегата.
+    Приоритет:
+    1) Прямая РЭС станции (Station.id_regional_energy_system / regional_energy_system_obj)
+    2) Fallback: первая РЭС из связей субъекта РФ (старое поведение)
+    """
+    st = getattr(machine, "machine_station", None)
+    if not st:
+        return None
+    direct_id = getattr(st, "id_regional_energy_system", None)
+    if direct_id:
+        return direct_id
+    direct_obj = getattr(st, "regional_energy_system_obj", None)
+    if direct_obj and getattr(direct_obj, "id", None):
+        return direct_obj.id
+    rd = getattr(st, "regional_district", None)
+    if rd and getattr(rd, "regional_energy_systems", None):
+        res_list = rd.regional_energy_systems or []
+        if res_list:
+            return getattr(res_list[0], "id", None)
     return None
 
 
 def get_ues_id(machine):
-    res_list = getattr(machine.machine_station.regional_district, "regional_energy_systems", [])
-    for res in res_list:
-        if res.union_energy_system:
-            return res.union_energy_system.id
+    """
+    Определяем ОЭС для агрегата.
+    Приоритет: ОЭС прямой РЭС станции, иначе fallback по субъекту РФ (старое поведение).
+    """
+    st = getattr(machine, "machine_station", None)
+    if not st:
+        return None
+    direct_obj = getattr(st, "regional_energy_system_obj", None)
+    if direct_obj and getattr(direct_obj, "union_energy_system", None):
+        return getattr(direct_obj.union_energy_system, "id", None)
+
+    # Если есть прямой id РЭС, попытаемся найти объект через субъект (без доп. запросов)
+    res_id = getattr(st, "id_regional_energy_system", None)
+    rd = getattr(st, "regional_district", None)
+    res_list = getattr(rd, "regional_energy_systems", None) if rd else None
+    if res_id and res_list:
+        for res in res_list:
+            if getattr(res, "id", None) == res_id and getattr(res, "union_energy_system", None):
+                return getattr(res.union_energy_system, "id", None)
+
+    # Fallback: первая подходящая ОЭС из списка РЭС субъекта
+    for res in (res_list or []):
+        if getattr(res, "union_energy_system", None):
+            return getattr(res.union_energy_system, "id", None)
     return None
 
 
 def get_energy_system_type_id(machine):
-    res_list = getattr(machine.machine_station.regional_district, "regional_energy_systems", [])
-    for res in res_list:
-        if res.union_energy_system and res.union_energy_system.energy_system_type:
-            return res.union_energy_system.energy_system_type.id
+    """
+    Определяем тип энергосистемы.
+    Приоритет: тип энергосистемы прямой РЭС станции, иначе fallback по субъекту РФ.
+    """
+    st = getattr(machine, "machine_station", None)
+    if not st:
+        return None
+    direct_obj = getattr(st, "regional_energy_system_obj", None)
+    if (
+        direct_obj
+        and getattr(direct_obj, "union_energy_system", None)
+        and getattr(direct_obj.union_energy_system, "energy_system_type", None)
+    ):
+        return getattr(direct_obj.union_energy_system.energy_system_type, "id", None)
+
+    res_id = getattr(st, "id_regional_energy_system", None)
+    rd = getattr(st, "regional_district", None)
+    res_list = getattr(rd, "regional_energy_systems", None) if rd else None
+    if res_id and res_list:
+        for res in res_list:
+            if getattr(res, "id", None) == res_id:
+                ues = getattr(res, "union_energy_system", None)
+                est = getattr(ues, "energy_system_type", None) if ues else None
+                if est:
+                    return getattr(est, "id", None)
+
+    for res in (res_list or []):
+        ues = getattr(res, "union_energy_system", None)
+        est = getattr(ues, "energy_system_type", None) if ues else None
+        if est:
+            return getattr(est, "id", None)
     return None
 
 

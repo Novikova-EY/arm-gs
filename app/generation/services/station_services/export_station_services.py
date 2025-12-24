@@ -1,6 +1,6 @@
 import pandas as pd
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, date
 from config import Config
 from openpyxl import load_workbook
 from openpyxl.styles import Font
@@ -1288,6 +1288,44 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
     from collections import defaultdict
 
 
+    # По состоянию на 01.01.<START_YEAR_SIPR - 1> (например, при START_YEAR_SIPR=2026 это 01.01.2025):
+    # агрегаты/станции с фактической датой вывода ПОЗЖЕ этой даты должны попадать в выборку.
+    as_of_date = date(int(Config.START_YEAR_SIPR) - 1, 1, 1)
+
+    def _parse_date_value(value):
+        """
+        Парсит дату из разных форматов в date.
+        Поддерживаем как минимум:
+        - YYYY-MM-DD (ISO)
+        - DD.MM.YYYY (пользовательский формат)
+        - YYYY (год)
+        """
+        if not value:
+            return None
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+
+        s = str(value).strip()
+        if not s:
+            return None
+
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except Exception:
+                continue
+
+        # Иногда может прийти просто год
+        if s.isdigit() and len(s) == 4:
+            try:
+                return date(int(s), 1, 1)
+            except Exception:
+                return None
+
+        return None
+
     for station in station_list:
         # Фильтрация агрегатов по активной версии БД
         if hasattr(station, "machines"):
@@ -1296,20 +1334,33 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 m for m in station.machines
                 if getattr(m, "database_version_id", None) == current_version_id
             ]
-            # Если для активной версии агрегатов нет, аккуратно fallback-им к базовой (NULL)
-            if not version_machines and current_version_id is not None:
-                version_machines = [
-                    m for m in station.machines
-                    if getattr(m, "database_version_id", None) is None
-                ]
             station.machines = version_machines
 
-        # Фильтрация агрегатов по дате вывода
-        station.machines = [
-            m for m in station.machines
-            if m.date_decompressing_expected is None
-            or (m.date_decompressing_expected >= Config.START_YEAR_SIPR)
-        ]
+        # Фильтрация агрегатов по выводу из эксплуатации (по состоянию на 01.01.<START_YEAR_SIPR - 1>)
+        #
+        # Правило:
+        # - если фактическая дата вывода указана и она <= as_of_date → агрегат исключаем;
+        # - если фактическая дата вывода указана и она > as_of_date → агрегат ВКЛЮЧАЕМ
+        #   (даже если плановый год вывода раньше START_YEAR_SIPR);
+        # - если фактической даты нет → используем прежний фильтр по плановому году вывода.
+        filtered_machines = []
+        for m in (station.machines or []):
+            fact_dt = _parse_date_value(getattr(m, "date_decompressing_fact", None))
+            if fact_dt is not None:
+                if fact_dt > as_of_date:
+                    filtered_machines.append(m)
+                continue
+
+            expected_year = getattr(m, "date_decompressing_expected", None)
+            try:
+                expected_year_int = int(expected_year) if expected_year is not None else None
+            except Exception:
+                expected_year_int = None
+
+            if expected_year_int is None or expected_year_int >= int(Config.START_YEAR_SIPR):
+                filtered_machines.append(m)
+
+        station.machines = filtered_machines
 
         total_machines = len(station.machines)
 
@@ -1412,10 +1463,22 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 and first_station.regional_district.regional_energy_system.regional_district_count > 1
             ):
                 # name_rp — наименование субъекта в родительном падеже (нужно для формулировки "территория ...")
+                # В данных иногда встречается "Не указано" — считаем это пустым значением и делаем fallback.
+                rd = first_station.regional_district
+                raw_name_rp = (rd.name_rp or "").strip() if rd else ""
+                is_placeholder = raw_name_rp.lower() in {
+                    "не указано",
+                    "не указана",
+                    "не указан",
+                    "не указано.",
+                    "не указана.",
+                    "не указан.",
+                }
                 territory_name = (
-                    first_station.regional_district.name_rp
-                    or first_station.regional_district.name_full
-                    or first_station.regional_district.name
+                    (raw_name_rp if raw_name_rp and not is_placeholder else None)
+                    or (rd.name_full if rd and rd.name_full else None)
+                    or (rd.name if rd and rd.name else None)
+                    or "Не указано"
                 )
                 region_label = f"{regional_system_name}, территория {territory_name}"
             else:
@@ -1427,7 +1490,6 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 "Станционный номер": "",
                 "Тип генерирующего оборудования": "",
                 "Вид топлива": "",
-                # Для колонок годов сразу используем None, чтобы они интерпретировались как пустые числовые ячейки
                 **{year: None for year in all_years},
                 "Примечание": "",
                 "_group_rowspan": "",
@@ -1439,7 +1501,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             # Определяем наличие групп по агрегатам станции
 
             def extract_year(date_input):
-                """Возвращает год из строки или числа."""
+                """Возвращает год из строки или числа (YYYY-MM-DD / DD.MM.YYYY / YYYY)."""
                 if not date_input:
                     return None
                 if isinstance(date_input, int):
@@ -1447,6 +1509,10 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 try:
                     return datetime.strptime(date_input, "%Y-%m-%d").year
                 except Exception:
+                    try:
+                        return datetime.strptime(date_input, "%d.%m.%Y").year
+                    except Exception:
+                        pass
                     try:
                         return int(str(date_input)[:4])
                     except Exception:

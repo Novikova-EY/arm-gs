@@ -1,0 +1,59 @@
+<!-- Итоговые значения по синхронной зоне -->
+{% set ns = namespace(printed=false) %}
+{% for event_type, event_label in event_types %}
+    {% set event_data = synchronous_areas_yearly_p_ust
+        .get(current_sa_id, {})
+        .get(event_type, {}) %}
+
+    {% if event_data %}
+        <tr class="table-info text-center total-power-row" style="vertical-align: middle;">
+            {% if not ns.printed %}
+                <td class="total-row-cell"
+                    rowspan="{{ synchronous_area_rowspans[current_sa_id] or 1 }}"
+                    colspan="8"
+                    style="font-weight: bold;">
+                    {% set _sa_name = synchronous_area_names.get(current_sa_id, 'Синхронная зона') %}
+                    {% set _sa_l = (_sa_name|string)|lower %}
+                    {% if 'калининград' in _sa_l %}
+                        Итого по синхронной зоне Калининградской области
+                    {% elif ('перва' in _sa_l) or ('1' in _sa_l) %}
+                        Итого по 1-й синхронной зоне ЕЭС России
+                    {% elif ('втор' in _sa_l) or ('2' in _sa_l) %}
+                        Итого по 2-й синхронной зоне ЕЭС России
+                    {% else %}
+                        Итого по {{ _sa_name }}
+                    {% endif %}
+                </td>
+                {% set ns.printed = true %}
+            {% endif %}
+            <td class="text-center fw-bold">Всего</td>
+            <td class="text-center align-middle" colspan="4"></td>
+            <td class="text-center align-middle">{{ event_label }}</td>
+            {% for year in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {{ event_data.get(year, '—') | format_decimal if event_data }}
+                </td>
+            {% endfor %}
+            <td class="power-column fw-bold">
+                {% if plan_years %}
+                    {% set ns_total = namespace(v=0) %}
+                    {% for y in plan_years %}
+                        {% set val = event_data.get(y) %}
+                        {% if val is not none %}
+                            {% set ns_total.v = ns_total.v + val %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td></td>
+        </tr>
+    {% endif %}
+
+    {# Подстроки по типам станций для текущего мероприятия #}
+    {% include 'generation/station_changes/aggregated_data/synchronous_areas/aggregated_synchronous_areas_by_station_type.html' %}
+{% endfor %}
+
+

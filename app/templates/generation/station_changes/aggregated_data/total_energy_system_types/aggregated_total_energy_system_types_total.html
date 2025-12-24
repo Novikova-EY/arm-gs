@@ -8,7 +8,7 @@
         <tr class="table-danger text-center total-power-row" style="vertical-align: middle;">
             {% if not ns.printed %}
                 <td class="total-row-cell" rowspan="{{ total_energy_system_type_rowspans or 1 }}" colspan="8" style="font-weight: bold;">
-                    Россия, всего
+                    Итого<br>по электроэнергетическим системам России
                 </td>
                 {% set ns.printed = true %}
             {% endif %}
@@ -20,6 +20,20 @@
                     {{ event_data.get(year, '—') | format_decimal if event_data }}
                 </td>
             {% endfor %}
+            <td class="power-column fw-bold">
+                {% if plan_years %}
+                    {% set ns_total = namespace(v=0) %}
+                    {% for y in plan_years %}
+                        {% set val = event_data.get(y) %}
+                        {% if val is not none %}
+                            {% set ns_total.v = ns_total.v + val %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if ns_total.v != 0 %}{{ ns_total.v | format_decimal }}{% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
             <td></td>
         </tr>
     {% endif %}

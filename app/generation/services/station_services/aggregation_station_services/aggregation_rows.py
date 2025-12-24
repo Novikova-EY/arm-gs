@@ -1,4 +1,4 @@
-from sqlalchemy import func, and_, literal, case
+from sqlalchemy import func, and_, literal, case, or_
 from app.extensions import db
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
@@ -161,8 +161,18 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_via_district = query_via_district.filter(Machine.id_condition_type == filters["condition_type_filter"])
 
     if filters.get("date_exploitation_filter"):
-        query_direct = query_direct.filter(Machine.date_exploitation.in_(filters["date_exploitation_filter"]))
-        query_via_district = query_via_district.filter(Machine.date_exploitation.in_(filters["date_exploitation_filter"]))
+        query_direct = query_direct.filter(
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
+        )
+        query_via_district = query_via_district.filter(
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
+        )
 
     if filters.get("date_decompressing_expected_filter"):
         query_direct = query_direct.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))

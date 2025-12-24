@@ -118,12 +118,12 @@
                                                     <span class="text-muted small">ID {{ machine.gen_company.id }}</span>
                                                 {% endif %}
                                             {% elif fallback_gen_company and fallback_gen_company.applied %}
-                                                {{ fallback_gen_company.name or '— не указано —' }}
+                                                {{ fallback_gen_company.name or 'не указано' }}
                                                 {% if fallback_gen_company.id %}
                                                     <span class="text-muted small">ID {{ fallback_gen_company.id }}</span>
                                                 {% endif %}
                                             {% else %}
-                                                — не указано —
+                                                не указано
                                             {% endif %}
                                         {% endif %}
                                     </div>
@@ -1522,105 +1522,145 @@ document.addEventListener("DOMContentLoaded", function () {
         // Также вызываем при загрузке страницы для начального заполнения
         autoFillDatesFromPowers();
     }
-    
+
+    // ============================
+    // Тип ТЭС / Топливо (ТЭС-станции)
+    // ============================
+    function isEmptySelectValue(val) {
+        return val === null || val === undefined || String(val).trim() === "" || String(val) === "0";
+    }
+
+    function setSelectValue(selectEl, value) {
+        if (!selectEl) return;
+        // Помечаем как программное изменение, чтобы обработчики "продления" не зацикливались
+        selectEl.dataset.autofilling = "1";
+        selectEl.value = String(value);
+
+        // Сначала обновляем Select2 (если есть), затем обычный change
+        if (window.jQuery && window.jQuery(selectEl).data("select2")) {
+            window.jQuery(selectEl).trigger("change");
+        }
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        delete selectEl.dataset.autofilling;
+    }
+
     // --- Автоматическая установка типа ТЭС и топлива в "не указано" при Руст = 0 ---
     function autoSetTesAndFuelToEmpty() {
-        // Получаем все поля Руст
         const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
-        
-        if (rustInputs.length === 0) {
-            return;
-        }
-        
-        // Получаем все поля типа ТЭС и топлива из таблиц машин
-        // Ищем все select в таблицах с классом machines-table (они уже в правильном порядке в DOM)
+        if (!rustInputs.length) return;
+
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
-        
-        // Проверяем каждое поле Руст
+        if (!tesTypeSelects.length && !fuelTypeSelects.length) return;
+
         rustInputs.forEach(function (rustInput, index) {
             const powerValue = parsePowerValue(rustInput.value);
             const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
-            
-            // Если Руст = 0, устанавливаем тип ТЭС и топливо в "не указано" (значение 0)
-            if (isZero) {
-                // Устанавливаем тип ТЭС в 0 (не указано)
-                if (index < tesTypeSelects.length && tesTypeSelects[index]) {
-                    tesTypeSelects[index].value = "0";
-                    // Триггерим событие change для Select2, если используется
-                    const event = new Event('change', { bubbles: true });
-                    tesTypeSelects[index].dispatchEvent(event);
-                    // Если используется Select2, обновляем его
-                    if (window.jQuery && window.jQuery(tesTypeSelects[index]).data('select2')) {
-                        window.jQuery(tesTypeSelects[index]).trigger('change');
-                    }
-                }
-                
-                // Устанавливаем топливо в 0 (не указано)
-                if (index < fuelTypeSelects.length && fuelTypeSelects[index]) {
-                    fuelTypeSelects[index].value = "0";
-                    // Триггерим событие change для Select2, если используется
-                    const event = new Event('change', { bubbles: true });
-                    fuelTypeSelects[index].dispatchEvent(event);
-                    // Если используется Select2, обновляем его
-                    if (window.jQuery && window.jQuery(fuelTypeSelects[index]).data('select2')) {
-                        window.jQuery(fuelTypeSelects[index]).trigger('change');
-                    }
-                }
-            }
+            if (!isZero) return;
+
+            if (tesTypeSelects[index]) setSelectValue(tesTypeSelects[index], 0);
+            if (fuelTypeSelects[index]) setSelectValue(fuelTypeSelects[index], 0);
         });
     }
-    
+
     function attachTesAndFuelAutoEmpty() {
-        // Привязываем автозаполнение типа ТЭС и топлива к изменению полей мощности
         const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
         rustInputs.forEach(function (input) {
+            // Реагируем сразу при вводе
+            input.addEventListener("input", function () {
+                autoSetTesAndFuelToEmpty();
+            });
             input.addEventListener("change", function () {
                 autoSetTesAndFuelToEmpty();
             });
         });
-        
-        // Также вызываем при загрузке страницы
         autoSetTesAndFuelToEmpty();
     }
-    
-    // --- Автозаполнение типа ТЭС и топлива (продление значения по строке) ---
+
+    // --- Продление значения select по строке (как Excel) ---
     function attachTesAndFuelAutoFill() {
-        // Получаем все select для типа ТЭС и топлива
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
-        
-        // Автозаполнение для типа ТЭС
+
         tesTypeSelects.forEach(function (select, index) {
-            select.addEventListener("change", function () {
+            select.addEventListener("change", function (event) {
+                if (this.dataset && this.dataset.autofilling === "1") return;
+                if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
-                
-                // Продление значения по текущей строке (со следующего года до конца периода)
                 for (let i = index + 1; i < tesTypeSelects.length; i++) {
-                    tesTypeSelects[i].value = value;
-                    // Обновляем Select2, если используется
-                    if (window.jQuery && window.jQuery(tesTypeSelects[i]).data('select2')) {
-                        window.jQuery(tesTypeSelects[i]).trigger('change');
-                    }
+                    if (tesTypeSelects[i].dataset && tesTypeSelects[i].dataset.userSet === "1") continue;
+                    setSelectValue(tesTypeSelects[i], value);
                 }
             });
         });
-        
-        // Автозаполнение для топлива
+
         fuelTypeSelects.forEach(function (select, index) {
-            select.addEventListener("change", function () {
+            select.addEventListener("change", function (event) {
+                if (this.dataset && this.dataset.autofilling === "1") return;
+                if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
-                
-                // Продление значения по текущей строке (со следующего года до конца периода)
                 for (let i = index + 1; i < fuelTypeSelects.length; i++) {
-                    fuelTypeSelects[i].value = value;
-                    // Обновляем Select2, если используется
-                    if (window.jQuery && window.jQuery(fuelTypeSelects[i]).data('select2')) {
-                        window.jQuery(fuelTypeSelects[i]).trigger('change');
-                    }
+                    if (fuelTypeSelects[i].dataset && fuelTypeSelects[i].dataset.userSet === "1") continue;
+                    setSelectValue(fuelTypeSelects[i], value);
                 }
             });
         });
+    }
+
+    // --- Автопредзаполнение типа ТЭС/топлива при вводе Руст (цепочкой по годам) ---
+    function autoPrefillTesAndFuelFromRust() {
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        if (!rustInputs.length) return;
+
+        const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
+        const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
+        if (!tesTypeSelects.length && !fuelTypeSelects.length) return;
+
+        let prevTes = null;
+        let prevFuel = null;
+
+        for (let i = 0; i < rustInputs.length; i++) {
+            const powerValue = parsePowerValue(rustInputs[i].value);
+            const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
+
+            const tesSel = tesTypeSelects[i];
+            const fuelSel = fuelTypeSelects[i];
+
+            if (isZero) {
+                prevTes = "0";
+                prevFuel = "0";
+                continue;
+            }
+
+            if (tesSel) {
+                const userSet = tesSel.dataset && tesSel.dataset.userSet === "1";
+                if (!userSet && isEmptySelectValue(tesSel.value) && prevTes && !isEmptySelectValue(prevTes)) {
+                    setSelectValue(tesSel, prevTes);
+                }
+                if (!isEmptySelectValue(tesSel.value)) prevTes = tesSel.value;
+            }
+
+            if (fuelSel) {
+                const userSet = fuelSel.dataset && fuelSel.dataset.userSet === "1";
+                if (!userSet && isEmptySelectValue(fuelSel.value) && prevFuel && !isEmptySelectValue(prevFuel)) {
+                    setSelectValue(fuelSel, prevFuel);
+                }
+                if (!isEmptySelectValue(fuelSel.value)) prevFuel = fuelSel.value;
+            }
+        }
+    }
+
+    function attachTesAndFuelPrefillFromRust() {
+        const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
+        rustInputs.forEach(function (input) {
+            input.addEventListener("input", function () {
+                autoPrefillTesAndFuelFromRust();
+            });
+            input.addEventListener("change", function () {
+                autoPrefillTesAndFuelFromRust();
+            });
+        });
+        autoPrefillTesAndFuelFromRust();
     }
 
     attachPowerAutoFill();
@@ -1628,6 +1668,7 @@ document.addEventListener("DOMContentLoaded", function () {
     attachDatesAutoFill();
     attachTesAndFuelAutoEmpty();
     attachTesAndFuelAutoFill();
+    attachTesAndFuelPrefillFromRust();
 });
 </script>
 

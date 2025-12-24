@@ -13,6 +13,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentUrl = new URL(window.location.href);
             const params = new URLSearchParams(currentUrl.search);
 
+            // Фиксируем версию БД, с которой была отрисована эта вкладка, чтобы выгрузка
+            // не зависела от того, что пользователь мог позже переключить версию в другой вкладке.
+            if (!params.has("database_version_id") && window.initialState && window.initialState.dbVersionId !== undefined) {
+                const v = window.initialState.dbVersionId;
+                if (v === null) {
+                    params.set("database_version_id", "null");
+                } else if (v !== undefined) {
+                    params.set("database_version_id", String(v));
+                }
+            }
+
             // Формируем URL для экспорта
             const exportUrl = '/generation/station_changes/station_changes_list/export?' + params.toString();
 
@@ -90,17 +101,89 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // === 2. Обработка фильтров в dropdown
     function setupDropdownCheckboxFilters() {
+        // Фильтры-датчики (год), которые применяем только по кнопке "Ок"
+        const dateFilters = [
+            'date_exploitation_filter',
+            'date_decompressing_expected_filter',
+            'date_modernization_expected_filter'
+        ];
+
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
             menu.addEventListener('change', e => {
                 if (e.target.matches('input[type="checkbox"]')) {
                     const filterName = e.target.name;
+                    // Для годовых фильтров не применяем автоматически
+                    if (dateFilters.includes(filterName)) {
+                        return;
+                    }
                     const params = new URLSearchParams(window.location.search);
                     params.delete(filterName);
                     document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
                         params.append(filterName, cb.value);
                     });
+                    // При изменении фильтра возвращаемся на первую страницу
+                    params.set('page', '1');
                     window.location.href = window.location.pathname + "?" + params.toString();
                 }
+            });
+        });
+    }
+
+    // === 2.1. Кнопки "Ок" / "Сбросить" для годовых фильтров в шапке таблицы
+    function setupHeaderDateFilterButtons() {
+        // Кнопка "Ок" — применяем значения фильтра и перегружаем страницу
+        document.querySelectorAll('.filter-apply-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+
+                const params = new URLSearchParams(window.location.search);
+                params.delete(filterName);
+
+                document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
+                    params.append(filterName, cb.value);
+                });
+
+                params.set('page', '1');
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        });
+
+        // Кнопка "Сбросить" — просто снимает галочки (без перезагрузки)
+        document.querySelectorAll('.filter-reset-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+
+                document.querySelectorAll(`input[name="${filterName}"]`).forEach(cb => {
+                    cb.checked = false;
+                });
+            });
+        });
+    }
+
+    // === 2.2. Кнопка "X" рядом с фильтром в шапке таблицы — сброс выбранного фильтра
+    function setupHeaderFilterClearButtons() {
+        document.querySelectorAll('.filter-clear-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+
+                const params = new URLSearchParams(window.location.search);
+                params.delete(filterName);
+                params.set('page', '1');
+
+                const newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+                window.location.href = newUrl;
             });
         });
     }
@@ -201,6 +284,8 @@ document.addEventListener("DOMContentLoaded", () => {
         false // ← никогда не раскрывать импорт/экспорт автоматически
     );
     setupDropdownCheckboxFilters();
+    setupHeaderDateFilterButtons();
+    setupHeaderFilterClearButtons();
     setupMachinePowerRows();
     setupPerPageToggle();
     setupRoundingDigits();

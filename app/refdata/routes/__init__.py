@@ -29,6 +29,7 @@ from .refdata_for_stations.stations.station_type_routes import *
 
 # Управление годами и версиями БД
 from .years.year_management_routes import year_management_bp
+from .years.year_routes import *
 from .database_versions_routes import *  # добавляем маршруты /generation/database_versions на blueprint station_bp
 refdata_bp.register_blueprint(year_management_bp)
 

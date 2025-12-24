@@ -106,7 +106,12 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
 
     # Фильтрация по датам (ввода, вывода, модернизации)
     if filters.get("date_exploitation_filter"):
-        query = query.filter(Machine.date_exploitation.in_(filters["date_exploitation_filter"]))
+        query = query.filter(
+            or_(
+                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
+                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+            )
+        )
 
     if filters.get("date_decompressing_expected_filter"):
         query = query.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
@@ -299,6 +304,8 @@ def get_stations_all(
 
     # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
+        if not isinstance(energy_system_type_filter, list):
+            energy_system_type_filter = [energy_system_type_filter]
         query = query.filter(
             Station.regional_energy_system_obj.has(
                 RegionalEnergySystem.union_energy_system.has(

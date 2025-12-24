@@ -1016,7 +1016,9 @@ def clear_machine_choices_cache():
 
 def _fill_main_form_choices(form):
     """Заполняет choices для основной формы с использованием унифицированного кэширования"""
-    form.id_gen_company.choices = choices_cache.get_choices(GenCompany, GenCompany.id)
+    # Добавляем дефолтное значение "не указано", чтобы оно отображалось в select
+    # и могло выступать "пустым" значением до обязательного выбора пользователем.
+    form.id_gen_company.choices = choices_cache.get_choices_with_default(GenCompany, GenCompany.id)
     form.id_energy_area.choices = choices_cache.get_choices(EnergyArea, EnergyArea.id)
     form.id_machine_type.choices = choices_cache.get_choices(MachineType, MachineType.id)
     form.id_tes_machine_type.choices = choices_cache.get_choices(TesMachineType, TesMachineType.id)
@@ -1279,9 +1281,6 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     if not nonzero:
         return
 
-    # Первый год с ненулевой мощностью — фактический год ввода (если ещё не задан)
-    new_expl_year = nonzero[0][0]
-
     # Новые значения по заданным правилам
     new_expected_expl_year = None       # Ожидаемый год ввода в эксплуатацию
     new_decomp_year = None              # Ожидаемый год вывода из эксплуатации
@@ -1308,11 +1307,9 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
         if n_pos and n1_pos and p_n1 != p_n and new_modern_year is None:
             new_modern_year = year_n1
 
-    # --- Фактический год ввода: не задаем, если уже есть ---
-    if machine.date_exploitation is None:
-        machine.date_exploitation = new_expl_year
-        changes.append(f"Год ввода: — → {new_expl_year}")
-        flash(f"🧠 Год ввода автоматически определен: {new_expl_year}", "info")
+    # --- Фактический год ввода ---
+    # По требованиям UI/бизнес-логики НЕ рассчитываем автоматически.
+    # Поле `date_exploitation` заполняется пользователем вручную.
 
     # --- Ожидаемый год ввода ---
     if new_expected_expl_year is not None:
