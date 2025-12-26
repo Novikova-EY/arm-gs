@@ -1462,11 +1462,11 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 and first_station.regional_district.regional_energy_system
                 and first_station.regional_district.regional_energy_system.regional_district_count > 1
             ):
-                # name_rp — наименование субъекта в родительном падеже (нужно для формулировки "территория ...")
+                # name_dp — наименование субъекта в родительном падеже (нужно для формулировки "территория ...")
                 # В данных иногда встречается "Не указано" — считаем это пустым значением и делаем fallback.
                 rd = first_station.regional_district
-                raw_name_rp = (rd.name_rp or "").strip() if rd else ""
-                is_placeholder = raw_name_rp.lower() in {
+                raw_name_dp = (rd.name_dp or "").strip() if rd else ""
+                is_placeholder = raw_name_dp.lower() in {
                     "не указано",
                     "не указана",
                     "не указан",
@@ -1475,7 +1475,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     "не указан.",
                 }
                 territory_name = (
-                    (raw_name_rp if raw_name_rp and not is_placeholder else None)
+                    (raw_name_dp if raw_name_dp and not is_placeholder else None)
                     or (rd.name_full if rd and rd.name_full else None)
                     or (rd.name if rd and rd.name else None)
                     or "Не указано"
@@ -1541,7 +1541,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     return 3
                 elif "вэс" in station_type_name:
                     return 4
-                elif "сэс" in station_type_name or "солнечная" in station_type_name:
+                elif "сэс" in station_type_name:
                     return 5
                 else:
                     return 99  # Остальные типы в конец

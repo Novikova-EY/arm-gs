@@ -10,7 +10,12 @@
             {% if not ns.printed %}
                 <td class="total-row-cell" rowspan="{{ regional_district_rowspans[current_rd_id] or 1 }}" colspan="8" style="font-weight: bold;">
                     {% set _rp = (regional_district_names_rp.get(current_rd_id) if regional_district_names_rp is defined else none) %}
-                    Итого по {{ _rp if _rp else regional_district_names.get(current_rd_id, 'Субъект') }}
+                    {% set _dp = (regional_district_names_dp.get(current_rd_id) if regional_district_names_dp is defined else none) %}
+                    {% if _dp %}
+                        Итого по {{ _dp }}
+                    {% else %}
+                        Итого по {{ _rp if _rp else regional_district_names.get(current_rd_id, 'Субъект') }}
+                    {% endif %}
                 </td>
                 {% set ns.printed = true %}
             {% endif %}

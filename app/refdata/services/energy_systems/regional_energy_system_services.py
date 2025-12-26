@@ -174,11 +174,6 @@ def update_regional_energy_system_service(data, user):
                     entity_type="regional_energy_system", 
                     entity_id=regional_energy_system_id)
                 raise ValueError(f"Запись с ID «{regional_energy_system_id}» не найдена.")
-
-            # Если у записи по каким-то причинам не проставлена версия БД,
-            # аккуратно проставляем текущую, иначе она не будет отображаться
-            # при активной версии (apply_version_filter скрывает NULL).
-            set_db_version_on_create(obj)
             
             # Проверка уникальности name
             if name != (obj.name or ""):
@@ -229,22 +224,30 @@ def update_regional_energy_system_service(data, user):
                     obj.id_union_energy_system = ues
 
             # Обновление связей «многие ко многим»
-            if regional_district_ids is not None:
-                # Обновление связей «многие ко многим»
-                existing_districts = {district.id for district in obj.regional_districts}
-                new_districts = set(regional_district_ids) if regional_district_ids else set()
+            if regional_energy_system_id:
+                # Обновление существующей записи
+                regional_energy_system = RegionalEnergySystem.query.get(regional_energy_system_id)
+                if regional_energy_system:
+                    regional_energy_system.name = name
+                    regional_energy_system.name_full = name_full
+                    regional_energy_system.name_rp = name_rp
+                    regional_energy_system.id_union_energy_system = union_energy_system_id
 
-                # Добавить новые связи
-                for district_id in new_districts - existing_districts:
-                    district = RegionalDistrict.query.get(district_id)
-                    if district:
-                        obj.regional_districts.append(district)
+                    # Обновление связей «многие ко многим»
+                    existing_districts = {district.id for district in regional_energy_system.regional_districts}
+                    new_districts = set(regional_district_ids)
 
-                # Удалить устаревшие связи
-                for district_id in existing_districts - new_districts:
-                    district = RegionalDistrict.query.get(district_id)
-                    if district:
-                        obj.regional_districts.remove(district)
+                    # Добавить новые связи
+                    for district_id in new_districts - existing_districts:
+                        district = RegionalDistrict.query.get(district_id)
+                        if district:
+                            regional_energy_system.regional_districts.append(district)
+
+                    # Удалить устаревшие связи
+                    for district_id in existing_districts - new_districts:
+                        district = RegionalDistrict.query.get(district_id)
+                        if district:
+                            regional_energy_system.regional_districts.remove(district)
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -348,9 +351,6 @@ def add_regional_energy_system_service(data, user):
                     name_rp=name_rp or None,
                     id_union_energy_system=union_energy_system_id,
                 )
-                # Обязательно проставляем database_version_id,
-                # иначе запись не будет видна при активной версии БД.
-                set_db_version_on_create(obj)
 
                 # Обновление связей «многие ко многим»
                 existing_districts = {district.id for district in obj.regional_districts}

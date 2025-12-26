@@ -11,6 +11,11 @@ from flask import current_app
 _cache = {}
 _cache_timeout = timedelta(minutes=30)  # Кэш на 30 минут
 
+# Версия ключей кэша агрегаций.
+# Инкрементируйте при изменении структуры строк/запросов агрегации, чтобы избежать
+# использования старых закэшированных результатов с несовместимыми полями.
+AGGREGATION_CACHE_KEY_VERSION = 2
+
 # Отдельный Redis‑клиент для кэша (не тот, что используется Flask‑Session)
 _redis_client = None
 
@@ -73,7 +78,7 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
         filters_str = ""
     
     # Добавляем версию БД в ключ кэша
-    key_data = f"v{current_version or 'all'}_{start_year}_{end_year}_{sorted_ids}_{filters_str}"
+    key_data = f"agg{AGGREGATION_CACHE_KEY_VERSION}_v{current_version or 'all'}_{start_year}_{end_year}_{sorted_ids}_{filters_str}"
     return hashlib.md5(key_data.encode()).hexdigest()
 
 

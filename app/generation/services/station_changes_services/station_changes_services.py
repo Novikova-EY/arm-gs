@@ -1415,22 +1415,53 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
     try:
         ues_sorted_list = get_union_energy_system_list_full()
         ues_order_index = {ues.id: idx for idx, ues in enumerate(ues_sorted_list)}
+        ues_name_by_id = {ues.id: (getattr(ues, "name", "") or "") for ues in ues_sorted_list}
     except Exception:
         ues_order_index = {}
+        ues_name_by_id = {}
+
+    def _is_second_sync_area(_sa_id: int) -> bool:
+        """True если это 2-я синхронная зона (по number/name, как в сортировке)."""
+        sa = sa_by_id.get(_sa_id)
+        if not sa:
+            return False
+        name = (getattr(sa, "name", "") or "").strip().lower()
+        number = (getattr(sa, "number", "") or "").strip().lower()
+        if number.isdigit():
+            try:
+                return int(number) == 2
+            except Exception:
+                return False
+        # fallback по имени
+        if "втор" in name:
+            return True
+        # если в имени явно встречается "2"
+        return "2" in name
 
     def _est_sort_key(est_id: int, est_name: str):
         n = (est_name or "").strip().lower()
         if "еэс" in n:
             return (0, 0, n)
+        # ТИТЭС: внутри группы ТИТЭС хотим, чтобы «ТИТЭС Сибири» шла ПОСЛЕДНЕЙ,
+        # чтобы блоки Норильска/Таймыра/Туруханского района оказывались прямо перед общим итогом по ТИТЭС.
         if "титэс" in n or "титэс" in n.replace(" ", ""):
-            return (1, 0, n)
+            is_siberia = "сибири" in n.replace(" ", "")
+            return (1, 1 if is_siberia else 0, n)
         return (2, 0, n)
 
     for station in stations:
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
-        rd_id = station.id_regional_district
+        # Важно: rd_id должен совпадать по типу/значению с ключами агрегатов (они строятся по regional_district.id).
+        # На практике station.id_regional_district может прийти как None/строка в отдельных наборах данных,
+        # из-за чего на странице/в экспортах "теряются" итоги по субъекту (пример: Санкт‑Петербург).
+        rd_id_raw = getattr(station, "id_regional_district", None)
+        rd_obj_id = getattr(getattr(station, "regional_district", None), "id", None)
+        try:
+            rd_id = int(rd_id_raw or rd_obj_id or 0)
+        except Exception:
+            rd_id = int(rd_obj_id or 0) if rd_obj_id is not None else 0
         sa_id = getattr(station.regional_district, "id_synchronous_area", None) or 0
 
         rd_names[rd_id] = station.regional_district.name if station.regional_district else ""
@@ -1484,7 +1515,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
                 # для сортировки на этом уровне используем имена энергоузлов
                 rd_names[int(eu_id)] = eu_names.get(int(eu_id), "")
             else:
-                grouped_data[est_id][second_level_id][int(ues_id)][int(res_id)][rd_id].append(station)
+                grouped_data[est_id][second_level_id][int(ues_id)][int(res_id)][int(rd_id)].append(station)
 
             if include_names:
                 est_names[est_id] = ues.energy_system_type.name if ues.energy_system_type else f"id={est_id}"
@@ -1509,7 +1540,22 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
         sorted_sa_dict = OrderedDict()
 
         for sa_id, ues_group in sorted_second_items:
-            sorted_ues_items = sorted(ues_group.items(), key=lambda kv: ues_order_index.get(kv[0], 10**9))
+            # Внутри 2-й синхронной зоны требуется специфический порядок:
+            # сначала блоки, относящиеся к «ТИТЭС Востока», затем к «ТИТЭС Сибири» (Норильск),
+            # затем остальные ОЭС в стандартном порядке display_order.
+            def _ues_sort_key(kv):
+                _ues_id = kv[0]
+                base = ues_order_index.get(_ues_id, 10**9)
+                if not _is_second_sync_area(sa_id):
+                    return (2, base)
+                n = (ues_name_by_id.get(_ues_id, "") or "").lower().replace(" ", "")
+                if "титэсвостока" in n:
+                    return (0, base)
+                if "титэссибири" in n:
+                    return (1, base)
+                return (2, base)
+
+            sorted_ues_items = sorted(ues_group.items(), key=_ues_sort_key)
             sorted_ues_dict = OrderedDict()
 
             for ues_id, res_group in sorted_ues_items:
@@ -1676,8 +1722,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         for rd in regional_district_objects
     ]
     regional_district_names = get_regional_districts_map()
-    # Родительный падеж для итоговых строк "Итого по ..."
-    regional_district_names_rp = {rd.id: getattr(rd, "name_rp", None) for rd in regional_district_objects if getattr(rd, "id", None) is not None}
+    # Дательный падеж для итоговых строк "Итого по ..."
+    regional_district_names_dp = {rd.id: getattr(rd, "name_dp", None) for rd in regional_district_objects if getattr(rd, "id", None) is not None}
 
     energy_unit_query = EnergyUnit.query
     energy_unit_query = filter_by_db_version(energy_unit_query, EnergyUnit)
@@ -1788,7 +1834,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         "federal_district_list": federal_district_list,
         "regional_district_list": regional_district_list,
         "regional_district_names": regional_district_names,
-        "regional_district_names_rp": regional_district_names_rp,
+        "regional_district_names_dp": regional_district_names_dp,
         "regional_district_mapping": regional_district_mapping,
         # Новые маппинги для взаимоувязанных фильтров
         "est_to_ues_mapping": est_to_ues_mapping,

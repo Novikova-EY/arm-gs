@@ -61,7 +61,7 @@
                     </div>
                     
                     <div class="filter-item">
-                        <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-primary w-100" style="white-space: nowrap;">Выгрузить в эксель</button>
+                        <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-primary w-100" style="white-space: nowrap;">Выгрузить</button>
                     </div>
                 </form>
             </div>
@@ -197,6 +197,17 @@
 
             <!-- Данные таблицы - только итоговые суммы -->
             <tbody>
+                {# Итоги по синхронным зонам #}
+                {% if sorted_synchronous_area_ids %}
+                    {% for sa_id in sorted_synchronous_area_ids %}
+                        {% set show_sa_totals = (should_show_totals|default({})).get('synchronous_areas', {}).get(sa_id) %}
+                        {% if show_sa_totals %}
+                            {% set current_sa_id = sa_id %}
+                            {% include 'generation/stations_total_summary/aggregated_data/synchronous_areas/aggregated_synchronous_areas_total.html' %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
                 {% if sorted_energy_system_type_ids %}
                     {% for es_type_id in sorted_energy_system_type_ids %}
                         {# Итог по типу энергосистемы (ЕЭС, ТИТЭС) #}
@@ -212,17 +223,6 @@
                 {% set show_totals = (should_show_totals|default({})).get('total') %}
                 {% if show_totals %}
                     {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
-                {% endif %}
-
-                {# Итоги по синхронным зонам #}
-                {% if sorted_synchronous_area_ids %}
-                    {% for sa_id in sorted_synchronous_area_ids %}
-                        {% set show_sa_totals = (should_show_totals|default({})).get('synchronous_areas', {}).get(sa_id) %}
-                        {% if show_sa_totals %}
-                            {% set current_sa_id = sa_id %}
-                            {% include 'generation/stations_total_summary/aggregated_data/synchronous_areas/aggregated_synchronous_areas_total.html' %}
-                        {% endif %}
-                    {% endfor %}
                 {% endif %}
             </tbody>
             

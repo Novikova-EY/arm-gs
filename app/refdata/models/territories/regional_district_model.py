@@ -25,10 +25,15 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin):
 
     # Наименование сокращенное
     name = db.Column(db.String(80), nullable=False, index=True)
+    
     # Полное наименование
     name_full = db.Column(db.String(255), nullable=False)
+    
     # Полное наименование в родительном падеже
     name_rp = db.Column(db.String(255), nullable=False)
+
+    # Полное наименование в дательном падеже
+    name_dp = db.Column(db.String(255), nullable=False)
 
     # FK -> Федеральный округ
     id_federal_district = db.Column(

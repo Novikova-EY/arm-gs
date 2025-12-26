@@ -9,7 +9,7 @@
         <tr class="table-primary text-center total-power-row" style="vertical-align: middle;">
             {% if not ns.printed %}
                 <td class="total-row-cell" rowspan="{{ union_energy_system_rowspans[current_ues_id] or 1 }}" colspan="8" style="font-weight: bold;">
-                    {{ union_energy_system_names[current_ues_id] }}, всего
+                    {{ union_energy_system_names[current_ues_id] }}
                 </td>
                 {% set ns.printed = true %}
             {% endif %}

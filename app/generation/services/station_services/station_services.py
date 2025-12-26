@@ -210,6 +210,37 @@ def get_stations_list(
             Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
         )
 
+    # Проверка топлива: показываем только агрегаты, у которых заполнено "Основное топливо"
+    # (есть хотя бы один MachineFuel с FuelType != "не указано" в текущей версии БД),
+    # но НЕ заполнено поле "Топливо (по СО ЕЭС)" (fuel_so пусто/NULL/"не указано").
+    if filters.get("fuel_check"):
+        from sqlalchemy import and_, or_, func
+        from app.refdata.models.fuels.fuel_type_model import FuelType
+        from app.common.services.database_version_filter import get_current_db_version_id
+
+        current_version_id = get_current_db_version_id()
+        if current_version_id is not None:
+            mf_version_cond = MachineFuel.database_version_id == current_version_id
+        else:
+            mf_version_cond = MachineFuel.database_version_id.is_(None)
+
+        has_primary_fuel = Machine.machine_fuels.any(
+            and_(
+                mf_version_cond,
+                MachineFuel.fuel.has(
+                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
+                ),
+            )
+        )
+
+        fuel_so_missing = or_(
+            Machine.fuel_so.is_(None),
+            func.trim(Machine.fuel_so) == "",
+            func.lower(func.trim(Machine.fuel_so)) == "не указано",
+        )
+
+        machine_query = machine_query.filter(and_(has_primary_fuel, fuel_so_missing))
+
     if filters.get("date_exploitation_filter"):
         machine_query = machine_query.filter(
             or_(
@@ -1922,7 +1953,12 @@ def get_station_list_data(
     station_ids = [s.id for s in stations]
     
     if not show_all:
-        machines, station_totals = fetch_machines_with_rowspans(station_ids, show_p_ogr=show_p_ogr, show_p_rasp=show_p_rasp)
+        machines, station_totals = fetch_machines_with_rowspans(
+            station_ids,
+            show_p_ogr=show_p_ogr,
+            show_p_rasp=show_p_rasp,
+            filters=filters,
+        )
         
         # Привязываем машины обратно к станциям
         station_machines_map = defaultdict(list)
@@ -1949,7 +1985,10 @@ def get_station_list_data(
     else:
         # Для per_page=all считаем rowspan и итоги так же, как в постраничном режиме
         machines, station_totals = fetch_machines_with_rowspans(
-            station_ids, show_p_ogr=show_p_ogr, show_p_rasp=show_p_rasp
+            station_ids,
+            show_p_ogr=show_p_ogr,
+            show_p_rasp=show_p_rasp,
+            filters=filters,
         )
         # Привязываем машины обратно к станциям
         station_machines_map = defaultdict(list)
@@ -2917,6 +2956,59 @@ def build_total_energy_system_type_aggregates(data):
         "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp": _select_nested_total_values(
             data["aggregate_total_energy_system_types_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"]
         ),
+    }
+
+
+def build_synchronous_area_aggregates(data):
+    """
+    Итоги по синхронным зонам (Synchronous Areas) для шаблонов станций.
+
+    В optimized_aggregation уже формируются агрегаты:
+      - aggregate_power_by_synchronous_areas
+      - aggregate_synchronous_areas_by_station_types
+      - aggregate_synchronous_areas_by_station_types_with_fuel
+      - aggregate_synchronous_areas_by_tes_types
+      - aggregate_synchronous_areas_by_tes_types_with_fuel
+      - aggregate_synchronous_areas_by_tes_machine_types
+      - aggregate_synchronous_areas_by_tes_machine_types_with_fuel
+
+    Здесь лишь приводим их к именам, которые ожидают шаблоны.
+    """
+    return {
+        # Основная агрегация
+        "synchronous_areas_yearly_p_ust": data["aggregate_power_by_synchronous_areas"]["aggregated"]["p_ust"],
+        "synchronous_areas_yearly_p_ogr": data["aggregate_power_by_synchronous_areas"]["aggregated"]["p_ogr"],
+        "synchronous_areas_yearly_p_rasp": data["aggregate_power_by_synchronous_areas"]["aggregated"]["p_rasp"],
+
+        # По типам станций
+        "synchronous_areas_by_station_types_yearly_p_ust": data["aggregate_synchronous_areas_by_station_types"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_station_types_yearly_p_ogr": data["aggregate_synchronous_areas_by_station_types"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_station_types_yearly_p_rasp": data["aggregate_synchronous_areas_by_station_types"]["aggregated"]["p_rasp"],
+
+        # По типам станций и топливу
+        "synchronous_areas_by_station_types_with_fuel_yearly_p_ust": data["aggregate_synchronous_areas_by_station_types_with_fuel"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_station_types_with_fuel_yearly_p_ogr": data["aggregate_synchronous_areas_by_station_types_with_fuel"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_station_types_with_fuel_yearly_p_rasp": data["aggregate_synchronous_areas_by_station_types_with_fuel"]["aggregated"]["p_rasp"],
+
+        # По типам ТЭС
+        "synchronous_areas_by_tes_types_yearly_p_ust": data["aggregate_synchronous_areas_by_tes_types"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_tes_types_yearly_p_ogr": data["aggregate_synchronous_areas_by_tes_types"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_tes_types_yearly_p_rasp": data["aggregate_synchronous_areas_by_tes_types"]["aggregated"]["p_rasp"],
+
+        # По типам ТЭС и топливу
+        "synchronous_areas_by_tes_types_with_fuel_yearly_p_ust": data["aggregate_synchronous_areas_by_tes_types_with_fuel"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_tes_types_with_fuel_yearly_p_ogr": data["aggregate_synchronous_areas_by_tes_types_with_fuel"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_tes_types_with_fuel_yearly_p_rasp": data["aggregate_synchronous_areas_by_tes_types_with_fuel"]["aggregated"]["p_rasp"],
+
+        # По типам машин ТЭС
+        "synchronous_areas_by_tes_machine_types_yearly_p_ust": data["aggregate_synchronous_areas_by_tes_machine_types"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_tes_machine_types_yearly_p_ogr": data["aggregate_synchronous_areas_by_tes_machine_types"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_tes_machine_types_yearly_p_rasp": data["aggregate_synchronous_areas_by_tes_machine_types"]["aggregated"]["p_rasp"],
+
+        # По типам машин ТЭС и топливу
+        "synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_ust": data["aggregate_synchronous_areas_by_tes_machine_types_with_fuel"]["aggregated"]["p_ust"],
+        "synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_ogr": data["aggregate_synchronous_areas_by_tes_machine_types_with_fuel"]["aggregated"]["p_ogr"],
+        "synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_rasp": data["aggregate_synchronous_areas_by_tes_machine_types_with_fuel"]["aggregated"]["p_rasp"],
     }
 
 

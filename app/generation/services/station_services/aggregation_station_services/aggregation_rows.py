@@ -17,7 +17,7 @@ from app.generation.services.station_services.aggregation_cache import cache_agg
 from app.common.services.get_services.stations.tes_type_get_services import (
     get_unknown_tes_type_id,
 )
-from app.common.services.database_version_filter import filter_by_db_version
+from app.common.services.database_version_filter import filter_by_db_version, get_current_db_version_id
 
 
 @cache_aggregation
@@ -47,6 +47,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
             _labeled_tes_type_expr(),
@@ -99,6 +100,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
             _labeled_tes_type_expr(),
@@ -182,6 +184,31 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_direct = query_direct.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
         query_via_district = query_via_district.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
 
+    # Проверка топлива (должно совпадать с логикой station_list):
+    # есть основное топливо (в текущей версии БД), но не заполнено fuel_so (по СО ЕЭС).
+    if filters.get("fuel_check"):
+        current_version_id = get_current_db_version_id()
+        if current_version_id is not None:
+            mf_version_cond = MachineFuel.database_version_id == current_version_id
+        else:
+            mf_version_cond = MachineFuel.database_version_id.is_(None)
+
+        has_primary_fuel = Machine.machine_fuels.any(
+            and_(
+                mf_version_cond,
+                MachineFuel.fuel.has(
+                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
+                ),
+            )
+        )
+        fuel_so_missing = or_(
+            Machine.fuel_so.is_(None),
+            func.trim(Machine.fuel_so) == "",
+            func.lower(func.trim(Machine.fuel_so)) == "не указано",
+        )
+        query_direct = query_direct.filter(has_primary_fuel, fuel_so_missing)
+        query_via_district = query_via_district.filter(has_primary_fuel, fuel_so_missing)
+
     # Применяем фильтры по станции
     if filters.get("station_type_filter"):
         query_direct = query_direct.filter(Station.id_station_type.in_(filters["station_type_filter"]))
@@ -204,6 +231,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
         tes_type_base_expr,
@@ -217,6 +245,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
         tes_type_base_expr,
@@ -244,6 +273,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
             _labeled_tes_type_expr(),
@@ -295,6 +325,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
             _labeled_tes_type_expr(),
@@ -367,11 +398,37 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         pgu_query_direct = pgu_query_direct.filter(PGUMachine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
         pgu_query_via_district = pgu_query_via_district.filter(PGUMachine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
 
+    # Проверка топлива: применяем к родительской машине (Machine),
+    # чтобы ПГУ учитывались только у "проблемных" агрегатов.
+    if filters.get("fuel_check"):
+        current_version_id = get_current_db_version_id()
+        if current_version_id is not None:
+            mf_version_cond = MachineFuel.database_version_id == current_version_id
+        else:
+            mf_version_cond = MachineFuel.database_version_id.is_(None)
+
+        has_primary_fuel = Machine.machine_fuels.any(
+            and_(
+                mf_version_cond,
+                MachineFuel.fuel.has(
+                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
+                ),
+            )
+        )
+        fuel_so_missing = or_(
+            Machine.fuel_so.is_(None),
+            func.trim(Machine.fuel_so) == "",
+            func.lower(func.trim(Machine.fuel_so)) == "не указано",
+        )
+        pgu_query_direct = pgu_query_direct.filter(has_primary_fuel, fuel_so_missing)
+        pgu_query_via_district = pgu_query_via_district.filter(has_primary_fuel, fuel_so_missing)
+
     rows_pgu_direct = pgu_query_direct.group_by(
         EnergySystemType.id,
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
         tes_type_base_expr,
@@ -385,6 +442,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
         tes_type_base_expr,

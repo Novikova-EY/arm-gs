@@ -372,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // === 4. Переключатель отображения сумм и выбор количества станций
     function setupPerPageToggle() {
         const showTotalsCheckbox = document.getElementById("show_totals_switch");
+        const fuelCheckCheckbox = document.getElementById("fuel_check_switch");
         const perPageSelect = document.getElementById("per_page_select");
 
         // Обработчик переключателя отображения сумм
@@ -382,6 +383,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     params.set("show_totals", "1");
                 } else {
                     params.delete("show_totals");
+                }
+                params.set("page", 1); // Сбрасываем на первую страницу
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        }
+
+        // Обработчик проверки топлива (качество заполнения поля "Топливо (по СО ЕЭС)")
+        if (fuelCheckCheckbox) {
+            fuelCheckCheckbox.addEventListener("change", () => {
+                const params = new URLSearchParams(window.location.search);
+                if (fuelCheckCheckbox.checked) {
+                    params.set("fuel_check", "1");
+                } else {
+                    params.delete("fuel_check");
                 }
                 params.set("page", 1); // Сбрасываем на первую страницу
                 window.location.href = window.location.pathname + "?" + params.toString();

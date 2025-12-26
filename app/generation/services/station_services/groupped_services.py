@@ -234,7 +234,12 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
     return result
 
 
-def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_p_rasp=False):
+def fetch_machines_with_rowspans(
+    station_ids: list[int],
+    show_p_ogr: bool = False,
+    show_p_rasp: bool = False,
+    filters: dict | None = None,
+):
     # Локальный помощник для фильтрации по текущей версии (чтобы избежать проблем области видимости)
     def _is_current_version(entity) -> bool:
         current_version_id = get_current_db_version_id()
@@ -255,6 +260,24 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
             .selectinload(MachineFuel.fuel)
             .selectinload(Fuel.fuel_type),
     ).filter(Machine.id_station.in_(station_ids)).all()
+
+    # Сначала фильтруем внутренние коллекции по версии БД (важно для primary_fuel_type)
+    for m in machines:
+        if hasattr(m, 'machine_powers') and m.machine_powers:
+            m.machine_powers = [mp for mp in m.machine_powers if _is_current_version(mp)]
+        if hasattr(m, 'machine_fuels') and m.machine_fuels:
+            m.machine_fuels = [mf for mf in m.machine_fuels if _is_current_version(mf)]
+
+    # Проверка топлива: оставляем только агрегаты с заполненным primary_fuel_type,
+    # но с пустым/не указанным fuel_so.
+    if (filters or {}).get("fuel_check"):
+        def _fuel_so_missing(value) -> bool:
+            if value is None:
+                return True
+            text = str(value).strip()
+            return (text == "") or (text.lower() == "не указано")
+
+        machines = [m for m in machines if (m.primary_fuel_type is not None) and _fuel_so_missing(m.fuel_so)]
 
     # Загружаем годы и устанавливаем их вручную
     year_numbers = set()
@@ -309,11 +332,6 @@ def fetch_machines_with_rowspans(station_ids: list[int], show_p_ogr=False, show_
     station_totals = {}
 
     for m in machines:
-        # фильтрация внутренних коллекций по версии
-        if hasattr(m, 'machine_powers') and m.machine_powers:
-            m.machine_powers = [mp for mp in m.machine_powers if _is_current_version(mp)]
-        if hasattr(m, 'machine_fuels') and m.machine_fuels:
-            m.machine_fuels = [mf for mf in m.machine_fuels if _is_current_version(mf)]
         m.pgu_machines = [p for p in pgu_map.get(m.id, []) if _is_current_version(p)]
         station_machine_map[m.id_station].append(m)
 

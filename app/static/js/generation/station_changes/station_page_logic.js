@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     // Экспорт station_changes без зависания страницы (по аналогии со stations)
-    const exportButton = document.getElementById("exportStationChangesExcel");
-    if (exportButton) {
+    function setupExportButton(buttonId, exportPath) {
+        const exportButton = document.getElementById(buttonId);
+        if (!exportButton) return;
+
         exportButton.addEventListener("click", function (e) {
             e.preventDefault();
 
@@ -25,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Формируем URL для экспорта
-            const exportUrl = '/generation/station_changes/station_changes_list/export?' + params.toString();
+            const exportUrl = exportPath + '?' + params.toString();
 
             // Запускаем скачивание в новой вкладке, чтобы не блокировать UI
             window.open(exportUrl, '_blank');
@@ -36,6 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 800);
         });
     }
+
+    setupExportButton("exportStationChangesExcel", "/generation/station_changes/station_changes_list/export");
+    setupExportButton("exportStationChangesAppendixBExcel", "/generation/station_changes/station_changes_list/export_appendix_b");
+    setupExportButton("exportStationChangesPril2RussiaExcel", "/generation/station_changes/station_changes_list/export_pril_2_russia");
 });
 
 // station_combined.js

@@ -118,10 +118,42 @@ def totals_summary():
     synchronous_area_list = get_synchronous_area_list_full()
     synchronous_area_names = {sa.id: sa.name for sa in synchronous_area_list if sa.id}
     
-    # Сортируем синхронные зоны по ID (исключаем id=0 если есть)
-    sorted_synchronous_area_ids = sorted(
-        [sa.id for sa in synchronous_area_list if sa.id and sa.id > 0]
-    )
+    # Сортируем синхронные зоны:
+    # - синхронная зона Калининградской области (по названию) всегда первой
+    # - далее по ID (исключаем id=0 если есть)
+    _sa_ids = [sa.id for sa in synchronous_area_list if sa.id and sa.id > 0]
+    _kaliningrad_ids = []
+
+    # 1) Надёжный способ: берём sa_id через субъект РФ Калининградской области (номер региона = 39)
+    #    -> RegionalDistrict.id_synchronous_area
+    try:
+        from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+        rd_query = RegionalDistrict.query
+        rd_query = filter_by_db_version(rd_query, RegionalDistrict)
+        rd_sa_ids = (
+            rd_query.filter(RegionalDistrict.region_number.in_(["39", "039"]))
+            .with_entities(RegionalDistrict.id_synchronous_area)
+            .all()
+        )
+        _kaliningrad_ids = [sa_id for (sa_id,) in rd_sa_ids if sa_id]
+    except Exception:
+        _kaliningrad_ids = []
+
+    # 2) Fallback: пытаемся по названию синхронной зоны (если вдруг нет маппинга на субъекте)
+    if not _kaliningrad_ids:
+        for _sa in synchronous_area_list:
+            try:
+                _sid = _sa.id
+                _name_l = (_sa.name or "").lower()
+            except Exception:
+                continue
+            if _sid and _sid > 0 and ("калининград" in _name_l):
+                _kaliningrad_ids.append(_sid)
+
+    _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
+    _rest_ids = sorted([i for i in _sa_ids if i not in set(_kaliningrad_ids)])
+    sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
 
     # Получаем типы станций для шаблона
     from app.refdata.models.refdata_for_stations.station.station_type_model import (

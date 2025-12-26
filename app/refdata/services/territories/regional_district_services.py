@@ -56,7 +56,7 @@ def regional_district_query(
     """ Базовый запрос для выборки субъектов РФ с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name", "name_full", "name_rp", "federal_district", "energy_zone", "synchronous_area", "region_id"}
+    allowed_sort_by = {"id","name", "name_full", "name_rp", "name_dp", "federal_district", "energy_zone", "synchronous_area", "region_id"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -81,6 +81,7 @@ def regional_district_query(
             or_(
                 RegionalDistrict.name.ilike(f"%{rd}%"),
                 RegionalDistrict.name_full.ilike(f"%{rd}%"),
+                RegionalDistrict.name_dp.ilike(f"%{rd}%"),
             )
         )
 
@@ -118,6 +119,11 @@ def regional_district_query(
 
     elif sort_by == "name_rp":
         col = RegionalDistrict.name_rp
+        order = col.asc() if sort_dir == "asc" else col.desc()
+        q = q.order_by(order, RegionalDistrict.id.asc())
+
+    elif sort_by == "name_dp":
+        col = RegionalDistrict.name_dp
         order = col.asc() if sort_dir == "asc" else col.desc()
         q = q.order_by(order, RegionalDistrict.id.asc())
 
@@ -194,6 +200,7 @@ def update_regional_district_service(data, user):
             name = (record.get("name") or "").strip()
             name_full = (record.get("name_full") or "").strip() or None
             name_rp = (record.get("name_rp") or "").strip() or None
+            name_dp = (record.get("name_dp") or "").strip() or None
 
             # Проверки на валидность данных
             if not name:
@@ -214,6 +221,10 @@ def update_regional_district_service(data, user):
                     entity_type="regional_district", 
                     entity_id=regional_district_id)
                 raise ValueError(f"Запись с ID «{regional_district_id}» не найдена.")
+
+            # name_dp NOT NULL: если не передали/пусто — используем fallback
+            if not name_dp:
+                name_dp = name_full or name
 
             # Проверка уникальности name
             if name != (obj.name or ""):
@@ -260,6 +271,12 @@ def update_regional_district_service(data, user):
                 new_val = name_rp or "не указано"
                 changes.append(f"Наименование (в родительном падеже): {old_val} → {new_val}")
                 obj.name_rp = name_rp
+
+            if name_dp != (obj.name_dp or None):
+                old_val = obj.name_dp or "не указано"
+                new_val = name_dp or "не указано"
+                changes.append(f"Наименование (в дательном падеже): {old_val} → {new_val}")
+                obj.name_dp = name_dp
 
             if region_id != obj.region_id:
                 old_val = obj.region_id if obj.region_id is not None else "не указано"
@@ -358,6 +375,7 @@ def add_regional_district_service(data, user):
                 name = (record.get("name") or "").strip()
                 name_full = (record.get("name_full") or "").strip()
                 name_rp = (record.get("name_rp") or "").strip()
+                name_dp = (record.get("name_dp") or "").strip()
                 federal_district_id = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
 
                 # Проверка на наличие необходимых данных
@@ -368,6 +386,10 @@ def add_regional_district_service(data, user):
                         f"Запись: {record}", 
                         entity_type="regional_district")
                     raise ValueError(f"Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'federal_district_id'. Данные: {record}")
+
+                # name_dp NOT NULL: если не передали/пусто — используем fallback
+                if not name_dp:
+                    name_dp = name_full or name
 
                 # Проверяем существование федерального округа
                 obj = db.session.get(FederalDistrict, federal_district_id)
@@ -393,6 +415,7 @@ def add_regional_district_service(data, user):
                     name=name,
                     name_full=name_full or None,
                     name_rp=name_rp or None,
+                    name_dp=name_dp or None,
                     id_federal_district=federal_district_id,
                 )
                 set_db_version_on_create(obj)
@@ -406,6 +429,7 @@ def add_regional_district_service(data, user):
                         f"Наименование: {name};"
                         f"Полное наименование: {_dash(name_full)};"
                         f"Наименование (в родительном падеже): {_dash(name_rp)};"
+                        f"Наименование (в дательном падеже): {_dash(name_dp)};"
                         f"Федеральный округ: {get_federal_district_name(federal_district_id)}",
                     ),
                     entity_type="regional_district", 
@@ -532,6 +556,10 @@ def import_regional_district_service(file, user):
         data['name'] = data['name'].str.strip()
         data['name_full'] = data['name_full'].str.strip()
         data['federal_district_name'] = data['federal_district_name'].str.strip()
+        if 'name_rp' in data.columns:
+            data['name_rp'] = data['name_rp'].astype(str).str.strip()
+        if 'name_dp' in data.columns:
+            data['name_dp'] = data['name_dp'].astype(str).str.strip()
 
         # Счетчики для статистики
         updated_count = 0
@@ -562,6 +590,12 @@ def import_regional_district_service(file, user):
             name = row['name']
             name_full = row['name_full']
             federal_district_name = row['federal_district_name']
+            name_rp = (row.get('name_rp') if 'name_rp' in data.columns else None)
+            name_dp = (row.get('name_dp') if 'name_dp' in data.columns else None)
+
+            # fallback для NOT NULL полей
+            name_rp = (str(name_rp).strip() if name_rp is not None and str(name_rp).strip().lower() != 'nan' else "") or name_full
+            name_dp = (str(name_dp).strip() if name_dp is not None and str(name_dp).strip().lower() != 'nan' else "") or name_full
 
             # Проверка существования федерального округа
             if federal_district_name not in federal_districts:
@@ -574,9 +608,16 @@ def import_regional_district_service(file, user):
 
             if existing_record:
                 # Проверяем, есть ли изменения в записи
-                if existing_record.name_full != name_full or existing_record.id_federal_district != id_federal_district:
+                if (
+                    existing_record.name_full != name_full
+                    or existing_record.id_federal_district != id_federal_district
+                    or (existing_record.name_rp or "") != (name_rp or "")
+                    or (existing_record.name_dp or "") != (name_dp or "")
+                ):
                     existing_record.name_full = name_full
                     existing_record.id_federal_district = id_federal_district
+                    existing_record.name_rp = name_rp
+                    existing_record.name_dp = name_dp
                     updated_count += 1
             else:
                 # Проверяем дубликаты перед добавлением
@@ -591,6 +632,8 @@ def import_regional_district_service(file, user):
                 new_record = RegionalDistrict(
                     name=name,
                     name_full=name_full,
+                    name_rp=name_rp,
+                    name_dp=name_dp,
                     id_federal_district=id_federal_district
                 )
                 set_db_version_on_create(new_record)
@@ -679,6 +722,7 @@ def export_regional_district_service(
             "Наименование субъекта РФ": _dash(o.name),
             "Полное наименование субъекта РФ": _dash(o.name_full),
             "Наименование (в родительном падеже)": _dash(o.name_rp),
+            "Наименование (в дательном падеже)": _dash(o.name_dp),
             "Федеральный округ": getattr(o.federal_district, "name", "Не указан") or "Не указан",
             "Энергозона номер": _dash(ez_num),
             "Энергозона наименование": _dash(ez_name) or "Не указана",

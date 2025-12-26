@@ -109,6 +109,13 @@ class AddRegionalDistrictForm(FlaskForm):
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )
+    name_dp = StringField(
+        "Наименование (в дательном падеже)",
+        validators=[
+            DataRequired(message="Поле «Наименование (в дательном падеже)» обязательно."),
+            Length(min=3, max=255, message="Длина от 3 до 255 символов."),
+        ],
+    )
     federal_district = SelectField(
         "Федеральный округ",
         choices=[],

@@ -25,14 +25,24 @@ def totals_summary_export():
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "0") == "1"
     
-    # Типы агрегации: можно выбрать несколько (ees, tites, russia)
-    # По умолчанию только ees
+    # Типы агрегации: можно выбрать несколько (ees, tites, russia, sync_area_{id})
     aggregation_types = request.args.getlist("aggregation_type")
     if not aggregation_types:
         aggregation_types = ["ees"]  # По умолчанию только ЕЭС
-    # Фильтруем только допустимые значения
+
     valid_types = ["ees", "tites", "russia"]
-    aggregation_types = [at for at in aggregation_types if at in valid_types]
+    filtered_aggregation_types = []
+    for at in aggregation_types:
+        if at in valid_types:
+            filtered_aggregation_types.append(at)
+        elif at.startswith("sync_area_"):
+            # Разрешаем синхронные зоны в экспорте (как на экране)
+            try:
+                int(at.replace("sync_area_", ""))
+                filtered_aggregation_types.append(at)
+            except ValueError:
+                pass
+    aggregation_types = filtered_aggregation_types
     if not aggregation_types:
         aggregation_types = ["ees"]  # Если все невалидные, возвращаемся к умолчанию
     

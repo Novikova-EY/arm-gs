@@ -104,42 +104,54 @@ def update_current_year(version_id, new_year, user):
         version = DatabaseVersion.query.get(version_id)
         if not version:
             return False, "Версия БД не найдена"
-        
-        # Получаем признак года "текущий (оценка)" для указанной версии
+
+        # Получаем признаки годов для указанной версии
+        fact_feature = db.session.query(YearFeature).filter_by(
+            name="факт",
+            database_version_id=version_id,
+        ).first()
         current_year_feature = db.session.query(YearFeature).filter_by(
             name="текущий (оценка)",
-            database_version_id=version_id
+            database_version_id=version_id,
         ).first()
-        
+        plan_feature = db.session.query(YearFeature).filter_by(
+            name="план",
+            database_version_id=version_id,
+        ).first()
+
+        missing = []
+        if not fact_feature:
+            missing.append("факт")
         if not current_year_feature:
-            return False, "Признак года 'текущий (оценка)' не найден для данной версии"
-        
-        # Удаляем старую связь текущего года с признаком "текущий (оценка)"
-        old_current_year = db.session.query(Year).filter_by(
-            id_year_feature=current_year_feature.id,
-            database_version_id=version_id
-        ).first()
-        
-        if old_current_year:
-            old_current_year.id_year_feature = None
-        
-        # Находим или создаем год с новым номером
+            missing.append("текущий (оценка)")
+        if not plan_feature:
+            missing.append("план")
+        if missing:
+            return False, f"Не найдены признаки года для данной версии: {', '.join(missing)}"
+
+        # Находим или создаем год с новым номером (в рамках указанной версии БД)
         new_year_obj = db.session.query(Year).filter_by(
             number=new_year,
-            database_version_id=version_id
+            database_version_id=version_id,
         ).first()
-        
         if not new_year_obj:
-            # Создаем новый год, если его нет
-            new_year_obj = Year(
-                number=new_year,
-                database_version_id=version_id
-            )
+            new_year_obj = Year(number=new_year, database_version_id=version_id)
             db.session.add(new_year_obj)
             db.session.flush()
-        
-        # Устанавливаем признак "текущий (оценка)" для нового года
-        new_year_obj.id_year_feature = current_year_feature.id
+
+        # Правило: меньше текущего -> факт, текущий -> текущий (оценка), больше -> план
+        years = (
+            db.session.query(Year)
+            .filter(Year.database_version_id == version_id)
+            .all()
+        )
+        for y in years:
+            if y.number < new_year:
+                y.id_year_feature = fact_feature.id
+            elif y.number > new_year:
+                y.id_year_feature = plan_feature.id
+            else:
+                y.id_year_feature = current_year_feature.id
         
         # Автоматически обновляем SIPR годы в таблице YearService
         year_service = db.session.query(YearService).filter_by(
@@ -160,10 +172,30 @@ def update_current_year(version_id, new_year, user):
             year_service.year_sipr_end = new_year + 6
         
         db.session.commit()
+
+        # Сбрасываем кэши справочных get-сервисов, чтобы обновления признаков сразу отражались в UI
+        try:
+            from app.common.services.get_services.years.year_feature_services import (
+                get_year_feature_list,
+                get_year_feature_id_dict,
+                get_year_feature_dict,
+            )
+            from app.common.services.get_services.years.years_get_services import (
+                get_year_list_full,
+            )
+
+            get_year_feature_list.cache_clear()
+            get_year_feature_id_dict.cache_clear()
+            get_year_feature_dict.cache_clear()
+            get_year_list_full.cache_clear()
+        except Exception:
+            # Кэш — оптимизация, не должен ломать основную операцию
+            pass
         
         log_to_db(
             user,
             f"Обновлен текущий год для версии БД {version_id} на {new_year}",
+            f"Признаки годов проставлены автоматически: <{new_year} -> факт, {new_year} -> текущий (оценка), >{new_year} -> план. "
             f"Установлены SIPR_START={new_year + 1}, SIPR_END={new_year + 6}",
             entity_type="database_version",
             entity_id=version_id

@@ -37,6 +37,8 @@ def extract_filters_from_args(args):
         "page": args.get("page", 1, type=int),
         "start_year": args.get("start_year", Config.START_YEAR, type=int),
         "end_year": args.get("end_year", Config.END_YEAR, type=int),
+        # Проверка качества заполнения топлива (для station_list)
+        "fuel_check": args.get("fuel_check", "0") == "1",
         "condition_type_filter": condition_type,
         "energy_system_type_filter": args.getlist("energy_system_type_filter", type=int),
         "union_energy_system_filter": args.getlist("union_energy_system_filter", type=int),

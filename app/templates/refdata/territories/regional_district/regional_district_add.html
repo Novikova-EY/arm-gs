@@ -57,6 +57,19 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Наименование (в дательном падеже) -->
+        <div class="mb-3">
+            <label for="name_dp" class="form-label">Наименование (в дательном падеже)</label>
+            {{ form.name_dp(class="form-control", id="name_dp") }}
+            
+            <!-- Ошибки валидации -->
+            {% if form.name_dp.errors %}
+                <div class="text-danger">
+                    {{ form.name_dp.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
         
         <!-- Наименование ФО -->
         <div class="mb-3">
@@ -85,7 +98,7 @@
                                 ) }}" 
                                 class="btn btn-secondary">
                         Отмена
-            </a>>
+            </a>
         </div>
     </form>
   </div>

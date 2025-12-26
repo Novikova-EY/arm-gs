@@ -47,6 +47,17 @@
             <form id="perPageForm" method="GET" action="{{ url_for('station_bp.station_list') }}">
                 <!-- Горизонтальное размещение блоков -->
                 <div class="d-flex align-items-center flex-wrap gap-4">
+                    <!-- Проверка топлива -->
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="btn-check" id="fuel_check_switch" autocomplete="off"
+                            {% if request.args.get('fuel_check') == '1' %}checked{% endif %}>
+                        <label for="fuel_check_switch"
+                            class="btn {% if request.args.get('fuel_check') == '1' %}btn-warning{% else %}btn-outline-secondary text-dark{% endif %} px-3 text-center"
+                            style="min-width: 260px;">
+                            Проверка топлива
+                        </label>
+                    </div>
+
                     <!-- Переключатель отображения сумм -->
                     <div class="d-flex align-items-center gap-2">
                         <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
