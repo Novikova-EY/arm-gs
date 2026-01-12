@@ -24,3 +24,5 @@ def test_sum_years_when_current_year_is_none_sums_all_years():
     assert header == "2025–2031 гг."
 
 
+
+

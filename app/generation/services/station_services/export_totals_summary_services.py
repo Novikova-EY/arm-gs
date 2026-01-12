@@ -10,6 +10,7 @@ from app.generation.services.station_services.station_services import (
     build_energy_system_type_aggregates,
     build_total_energy_system_type_aggregates,
     build_synchronous_area_aggregates,
+    build_federal_district_aggregates,
 )
 from app.generation.services.station_services.aggregation_station_services.aggregation_rows import get_full_aggregation_rows
 from app.generation.services.station_services.aggregation_station_services.optimized_aggregation import aggregate_all_at_once
@@ -21,6 +22,10 @@ from app.common.services.get_services.energy_systems.synchronous_area_get_servic
     get_synchronous_area_list_full,
 )
 from app.common.services.get_services.years.year_feature_services import get_year_feature_dict
+from app.common.services.get_services.territories.federal_district_get_services import (
+    get_federal_district_list_full,
+    get_federal_districts_map,
+)
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
@@ -86,7 +91,7 @@ def export_totals_summary_to_excel(
     if aggregation_types is None:
         aggregation_types = ["ees"]  # По умолчанию только ЕЭС
 
-    valid_types = ["ees", "tites", "russia"]
+    valid_types = ["fo", "ees", "tites", "russia"]
     filtered_aggregation_types = []
     for at in aggregation_types:
         if at in valid_types:
@@ -112,6 +117,7 @@ def export_totals_summary_to_excel(
         energy_system_type_aggregates = build_energy_system_type_aggregates(all_aggregations)
         total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(all_aggregations)
         synchronous_area_aggregates = build_synchronous_area_aggregates(all_aggregations)
+        federal_district_aggregates = build_federal_district_aggregates(all_aggregations)
     
         # Получаем списки для имен
         energy_system_type_list = get_energy_system_type_list_full()
@@ -145,17 +151,35 @@ def export_totals_summary_to_excel(
         _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
         _rest_ids = sorted([i for i in _sa_ids if i not in set(_kaliningrad_ids)])
         sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
+
+        # Федеральные округа: список + имена (порядок: display_order ASC)
+        federal_district_list = get_federal_district_list_full()
+        federal_district_names = get_federal_districts_map()
+        _fd_sorted = sorted(
+            federal_district_list,
+            key=lambda fd: (
+                fd.display_order is None,
+                fd.display_order if fd.display_order is not None else 0,
+                (fd.name or ""),
+                fd.id or 0,
+            ),
+        )
+        sorted_federal_district_ids = [fd.id for fd in _fd_sorted if fd.id and fd.id > 0]
         
         # Формируем should_show_totals в зависимости от выбранных типов агрегации
         should_show_totals = {
             "energy_system_types": {},
             "synchronous_areas": {},
+            "federal_districts": False,
             "total": False,
         }
         
         # Проверяем каждый выбранный тип агрегации
         if "russia" in aggregation_types:
             should_show_totals["total"] = True
+
+        if "fo" in aggregation_types:
+            should_show_totals["federal_districts"] = True
         
         # Показываем выбранные типы энергосистем (ЕЭС и/или ТИТЭС)
         for est_id in sorted_energy_system_type_ids:
@@ -625,6 +649,52 @@ def export_totals_summary_to_excel(
         sa_by_tes_machine_types_with_fuel_p_ust = synchronous_area_aggregates.get("synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_ust", {})
         sa_by_tes_machine_types_with_fuel_p_ogr = synchronous_area_aggregates.get("synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_ogr", {})
         sa_by_tes_machine_types_with_fuel_p_rasp = synchronous_area_aggregates.get("synchronous_areas_by_tes_machine_types_with_fuel_yearly_p_rasp", {})
+
+        # Федеральные округа: словари данных (только итоги)
+        fd_p_ust_dict = federal_district_aggregates.get("federal_districts_yearly_p_ust", {})
+        fd_p_ogr_dict = federal_district_aggregates.get("federal_districts_yearly_p_ogr", {})
+        fd_p_rasp_dict = federal_district_aggregates.get("federal_districts_yearly_p_rasp", {})
+
+        # Федеральные округа: детализация (как для ЕЭС)
+        fd_by_station_types_p_ust = federal_district_aggregates.get(
+            "federal_districts_by_station_types_yearly_p_ust", {}
+        )
+        fd_by_station_types_p_ogr = federal_district_aggregates.get(
+            "federal_districts_by_station_types_yearly_p_ogr", {}
+        )
+        fd_by_station_types_p_rasp = federal_district_aggregates.get(
+            "federal_districts_by_station_types_yearly_p_rasp", {}
+        )
+
+        fd_by_tes_types_p_ust = federal_district_aggregates.get(
+            "federal_districts_by_tes_types_yearly_p_ust", {}
+        )
+        fd_by_tes_types_p_ogr = federal_district_aggregates.get(
+            "federal_districts_by_tes_types_yearly_p_ogr", {}
+        )
+        fd_by_tes_types_p_rasp = federal_district_aggregates.get(
+            "federal_districts_by_tes_types_yearly_p_rasp", {}
+        )
+
+        fd_by_tes_machine_types_p_ust = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_yearly_p_ust", {}
+        )
+        fd_by_tes_machine_types_p_ogr = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_yearly_p_ogr", {}
+        )
+        fd_by_tes_machine_types_p_rasp = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_yearly_p_rasp", {}
+        )
+
+        fd_by_tes_machine_types_with_fuel_p_ust = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust", {}
+        )
+        fd_by_tes_machine_types_with_fuel_p_ogr = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_with_fuel_yearly_p_ogr", {}
+        )
+        fd_by_tes_machine_types_with_fuel_p_rasp = federal_district_aggregates.get(
+            "federal_districts_by_tes_machine_types_with_fuel_yearly_p_rasp", {}
+        )
         
         # Находим ID для ВЭС, СЭС и ТЭС
         ves_id = None
@@ -654,7 +724,165 @@ def export_totals_summary_to_excel(
             return 9
         
         # ----------------------------
-        # Сначала синхронные зоны (как на экране)
+        # Сначала федеральные округа (ФО)
+        # ----------------------------
+        if should_show_totals.get("federal_districts"):
+            for fd_id in sorted_federal_district_ids:
+                if fd_id not in fd_p_ust_dict:
+                    continue
+                fd_name = federal_district_names.get(fd_id, f"ФО {fd_id}")
+
+                rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                current_row = write_power_row_with_separate_dicts(
+                    current_row,
+                    0,
+                    f"{fd_name}, всего",
+                    fd_p_ust_dict.get(fd_id, {}),
+                    fd_p_ogr_dict.get(fd_id, {}),
+                    fd_p_rasp_dict.get(fd_id, {}),
+                    sync_bold_format,
+                    sync_bold_num_format,
+                    rowspan,
+                    indent_level=0,
+                )
+
+                # Разбивка по типам станций
+                st_dict = fd_by_station_types_p_ust.get(fd_id, {})
+                st_dict_ogr = fd_by_station_types_p_ogr.get(fd_id, {})
+                st_dict_rasp = fd_by_station_types_p_rasp.get(fd_id, {})
+
+                # ВИЭ (ВЭС/СЭС)
+                vie_aggregated = {
+                    "p_ust": defaultdict(lambda: Decimal(0)),
+                    "p_ogr": defaultdict(lambda: Decimal(0)),
+                    "p_rasp": defaultdict(lambda: Decimal(0)),
+                }
+                vie_station_type_ids = []
+                for st_id, st_name in station_type_list.items():
+                    if st_name and ("вэс" in st_name.lower() or "сэс" in st_name.lower() or "виэ" in st_name.lower()):
+                        vie_station_type_ids.append(st_id)
+                        if st_id in st_dict:
+                            for year, val in st_dict[st_id].items():
+                                vie_aggregated["p_ust"][year] += val or Decimal(0)
+                        if st_id in st_dict_ogr:
+                            for year, val in st_dict_ogr.get(st_id, {}).items():
+                                vie_aggregated["p_ogr"][year] += val or Decimal(0)
+                        if st_id in st_dict_rasp:
+                            for year, val in st_dict_rasp.get(st_id, {}).items():
+                                vie_aggregated["p_rasp"][year] += val or Decimal(0)
+
+                station_type_items_sorted = sorted(
+                    st_dict.items(),
+                    key=lambda item: (
+                        station_type_order(station_type_list.get(item[0], f"id={item[0]}")),
+                        station_type_list.get(item[0], "")
+                    )
+                )
+
+                # Типы станций (без ВЭС/СЭС)
+                for station_type_id, st_years in station_type_items_sorted:
+                    if station_type_id is None or station_type_id in vie_station_type_ids:
+                        continue
+                    station_type_name = station_type_list.get(station_type_id, f"id={station_type_id}")
+                    if "не указано" in station_type_name.lower():
+                        continue
+
+                    rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                    current_row = write_power_row_with_separate_dicts(
+                        current_row, 0, station_type_name,
+                        st_years,
+                        st_dict_ogr.get(station_type_id, {}),
+                        st_dict_rasp.get(station_type_id, {}),
+                        sync_format, sync_num_format, rowspan, indent_level=0
+                    )
+
+                    # Если это ТЭС — детализация по типам ТЭС -> типам машин -> топливу
+                    if station_type_id == tes_id:
+                        for tes_type_id, tes_name in tes_type_list.items():
+                            if (tes_name or "").lower() == "не указано":
+                                continue
+                            has_tes = fd_by_tes_types_p_ust.get(fd_id, {}).get(tes_type_id)
+                            if not has_tes:
+                                continue
+
+                            rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                            current_row = write_power_row_with_separate_dicts(
+                                current_row, 0, tes_name,
+                                fd_by_tes_types_p_ust.get(fd_id, {}).get(tes_type_id, {}),
+                                fd_by_tes_types_p_ogr.get(fd_id, {}).get(tes_type_id, {}),
+                                fd_by_tes_types_p_rasp.get(fd_id, {}).get(tes_type_id, {}),
+                                sync_format, sync_num_format, rowspan, indent_level=1
+                            )
+
+                            # Типы машин ТЭС
+                            mt_dict = fd_by_tes_machine_types_p_ust.get(fd_id, {}).get(tes_type_id, {})
+                            mt_dict_ogr = fd_by_tes_machine_types_p_ogr.get(fd_id, {}).get(tes_type_id, {})
+                            mt_dict_rasp = fd_by_tes_machine_types_p_rasp.get(fd_id, {}).get(tes_type_id, {})
+
+                            for tm_id, tm_name in tes_machine_type_list.items():
+                                if (tm_name or "").lower() == "не указано":
+                                    continue
+                                has_tm = mt_dict.get(tm_id)
+                                if not has_tm:
+                                    continue
+
+                                rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                                current_row = write_power_row_with_separate_dicts(
+                                    current_row, 0, tm_name,
+                                    mt_dict.get(tm_id, {}),
+                                    mt_dict_ogr.get(tm_id, {}),
+                                    mt_dict_rasp.get(tm_id, {}),
+                                    sync_format, sync_num_format, rowspan, indent_level=2
+                                )
+
+                                # Топливо
+                                fuel_dict = fd_by_tes_machine_types_with_fuel_p_ust.get(fd_id, {}).get(tes_type_id, {}).get(tm_id, {})
+                                fuel_dict_ogr = fd_by_tes_machine_types_with_fuel_p_ogr.get(fd_id, {}).get(tes_type_id, {}).get(tm_id, {})
+                                fuel_dict_rasp = fd_by_tes_machine_types_with_fuel_p_rasp.get(fd_id, {}).get(tes_type_id, {}).get(tm_id, {})
+
+                                for fuel_type_id, fuel_name in fuel_type_items_sorted:
+                                    has_fuel = fuel_dict.get(fuel_type_id)
+                                    if not has_fuel:
+                                        continue
+                                    rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                                    current_row = write_power_row_with_separate_dicts(
+                                        current_row, 0, fuel_name,
+                                        fuel_dict.get(fuel_type_id, {}),
+                                        fuel_dict_ogr.get(fuel_type_id, {}),
+                                        fuel_dict_rasp.get(fuel_type_id, {}),
+                                        sync_format, sync_num_format, rowspan, indent_level=3
+                                    )
+
+                # ВИЭ суммарно + ВЭС/СЭС
+                if vie_aggregated["p_ust"]:
+                    rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                    current_row = write_power_row_with_separate_dicts(
+                        current_row, 0, "ВИЭ",
+                        dict(vie_aggregated["p_ust"]),
+                        dict(vie_aggregated["p_ogr"]),
+                        dict(vie_aggregated["p_rasp"]),
+                        sync_format, sync_num_format, rowspan, indent_level=0
+                    )
+                    for station_type_id in vie_station_type_ids:
+                        if station_type_id not in st_dict:
+                            continue
+                        station_type_name = station_type_list.get(station_type_id, f"id={station_type_id}")
+                        if "не указано" in station_type_name.lower():
+                            continue
+                        rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
+                        current_row = write_power_row_with_separate_dicts(
+                            current_row, 0, station_type_name,
+                            st_dict.get(station_type_id, {}),
+                            st_dict_ogr.get(station_type_id, {}),
+                            st_dict_rasp.get(station_type_id, {}),
+                            sync_format, sync_num_format, rowspan, indent_level=1
+                        )
+
+                current_row += 1  # пустая строка между ФО
+            current_row += 1  # пустая строка после ФО
+
+        # ----------------------------
+        # Затем синхронные зоны (как на экране)
         # ----------------------------
         for sa_id in sorted_synchronous_area_ids:
             if not should_show_totals["synchronous_areas"].get(sa_id, False):

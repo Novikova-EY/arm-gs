@@ -25,12 +25,12 @@ def totals_summary_export():
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "0") == "1"
     
-    # Типы агрегации: можно выбрать несколько (ees, tites, russia, sync_area_{id})
+    # Типы агрегации: можно выбрать несколько (fo, ees, tites, russia, sync_area_{id})
     aggregation_types = request.args.getlist("aggregation_type")
     if not aggregation_types:
         aggregation_types = ["ees"]  # По умолчанию только ЕЭС
 
-    valid_types = ["ees", "tites", "russia"]
+    valid_types = ["fo", "ees", "tites", "russia"]
     filtered_aggregation_types = []
     for at in aggregation_types:
         if at in valid_types:

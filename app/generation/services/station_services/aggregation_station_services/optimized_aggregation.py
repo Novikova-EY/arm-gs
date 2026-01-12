@@ -213,11 +213,33 @@ def aggregate_all_at_once(rows):
     sa_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     sa_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     sa_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+
+    # Federal Districts
+    fd_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    fd_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    fd_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+
+    fd_st_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    fd_st_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    fd_st_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+
+    fd_tes_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    fd_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    fd_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+
+    fd_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    fd_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    fd_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+
+    fd_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    fd_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    fd_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     
     # Один проход по всем данным
     for row in rows:
         eu = row.energy_unit_id
         rd = row.regional_district_id
+        fd = getattr(row, "federal_district_id", None)
         res = row.regional_energy_system_id
         ues = row.union_energy_system_id
         est = row.energy_system_type_id
@@ -290,6 +312,28 @@ def aggregate_all_at_once(rows):
         rd_tes_machine_fuel_p_ust[rd][tes_type][tes_machine][fuel][year] += p_ust_val
         rd_tes_machine_fuel_p_ogr[rd][tes_type][tes_machine][fuel][year] += p_ogr_val
         rd_tes_machine_fuel_p_rasp[rd][tes_type][tes_machine][fuel][year] += p_rasp_val
+
+        # Federal Districts агрегации (только если федеральный округ определён)
+        if fd is not None:
+            fd_p_ust[fd][year] += p_ust_val
+            fd_p_ogr[fd][year] += p_ogr_val
+            fd_p_rasp[fd][year] += p_rasp_val
+
+            fd_st_p_ust[fd][st][year] += p_ust_val
+            fd_st_p_ogr[fd][st][year] += p_ogr_val
+            fd_st_p_rasp[fd][st][year] += p_rasp_val
+
+            fd_tes_p_ust[fd][tes_type][year] += p_ust_val
+            fd_tes_p_ogr[fd][tes_type][year] += p_ogr_val
+            fd_tes_p_rasp[fd][tes_type][year] += p_rasp_val
+
+            fd_tes_machine_p_ust[fd][tes_type][tes_machine][year] += p_ust_val
+            fd_tes_machine_p_ogr[fd][tes_type][tes_machine][year] += p_ogr_val
+            fd_tes_machine_p_rasp[fd][tes_type][tes_machine][year] += p_rasp_val
+
+            fd_tes_machine_fuel_p_ust[fd][tes_type][tes_machine][fuel][year] += p_ust_val
+            fd_tes_machine_fuel_p_ogr[fd][tes_type][tes_machine][fuel][year] += p_ogr_val
+            fd_tes_machine_fuel_p_rasp[fd][tes_type][tes_machine][fuel][year] += p_rasp_val
         
         # Regional Energy Systems агрегации
         res_p_ust[res][year] += p_ust_val
@@ -483,6 +527,23 @@ def aggregate_all_at_once(rows):
         },
         "aggregate_regional_districts_by_tes_machine_types_with_fuel": {
             "aggregated": {"p_ust": rd_tes_machine_fuel_p_ust, "p_ogr": rd_tes_machine_fuel_p_ogr, "p_rasp": rd_tes_machine_fuel_p_rasp}
+        },
+
+        # Federal Districts
+        "aggregate_power_by_federal_districts": {
+            "aggregated": {"p_ust": fd_p_ust, "p_ogr": fd_p_ogr, "p_rasp": fd_p_rasp}
+        },
+        "aggregate_federal_districts_by_station_types": {
+            "aggregated": {"p_ust": fd_st_p_ust, "p_ogr": fd_st_p_ogr, "p_rasp": fd_st_p_rasp}
+        },
+        "aggregate_federal_districts_by_tes_types": {
+            "aggregated": {"p_ust": fd_tes_p_ust, "p_ogr": fd_tes_p_ogr, "p_rasp": fd_tes_p_rasp}
+        },
+        "aggregate_federal_districts_by_tes_machine_types": {
+            "aggregated": {"p_ust": fd_tes_machine_p_ust, "p_ogr": fd_tes_machine_p_ogr, "p_rasp": fd_tes_machine_p_rasp}
+        },
+        "aggregate_federal_districts_by_tes_machine_types_with_fuel": {
+            "aggregated": {"p_ust": fd_tes_machine_fuel_p_ust, "p_ogr": fd_tes_machine_fuel_p_ogr, "p_rasp": fd_tes_machine_fuel_p_rasp}
         },
         
         # Regional Energy Systems

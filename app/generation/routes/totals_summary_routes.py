@@ -17,6 +17,7 @@ def totals_summary():
         build_energy_system_type_aggregates,
         build_total_energy_system_type_aggregates,
         build_synchronous_area_aggregates,
+        build_federal_district_aggregates,
     )
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
         get_energy_system_type_list_full,
@@ -26,6 +27,10 @@ def totals_summary():
         get_synchronous_area_list_full,
     )
     from app.common.services.get_services.years.year_feature_services import get_year_feature_dict
+    from app.common.services.get_services.territories.federal_district_get_services import (
+        get_federal_district_list_full,
+        get_federal_districts_map,
+    )
 
     import time
     start_data = time.time()
@@ -42,7 +47,7 @@ def totals_summary():
     if not aggregation_types:
         aggregation_types = ["ees"]  # По умолчанию только ЕЭС
     # Фильтруем только допустимые значения (ees, tites, russia, sync_area_{id})
-    valid_types = ["ees", "tites", "russia"]
+    valid_types = ["fo", "ees", "tites", "russia"]
     # Проверяем также синхронные зоны (формат: "sync_area_{id}")
     filtered_aggregation_types = []
     sync_area_ids = []
@@ -104,6 +109,21 @@ def totals_summary():
         data
     )
     synchronous_area_aggregates = build_synchronous_area_aggregates(data)
+    federal_district_aggregates = build_federal_district_aggregates(data)
+
+    # Список федеральных округов (порядок: display_order ASC)
+    federal_district_list = get_federal_district_list_full()
+    federal_district_names = get_federal_districts_map()
+    _fd_sorted = sorted(
+        federal_district_list,
+        key=lambda fd: (
+            fd.display_order is None,
+            fd.display_order if fd.display_order is not None else 0,
+            (fd.name or ""),
+            fd.id or 0,
+        ),
+    )
+    sorted_federal_district_ids = [fd.id for fd in _fd_sorted if fd.id]
 
     # Получаем список типов энергосистем
     energy_system_type_list = get_energy_system_type_list_full()
@@ -197,12 +217,16 @@ def totals_summary():
     should_show_totals = {
         "energy_system_types": {},
         "synchronous_areas": {},
+        "federal_districts": False,
         "total": False,
     }
 
     # Проверяем каждый выбранный тип агрегации
     if "russia" in aggregation_types:
         should_show_totals["total"] = True
+
+    if "fo" in aggregation_types:
+        should_show_totals["federal_districts"] = True
 
     # Показываем выбранные типы энергосистем (ЕЭС и/или ТИТЭС)
     for est_id in sorted_energy_system_type_ids:
@@ -233,9 +257,11 @@ def totals_summary():
         "should_show_totals": should_show_totals,
         "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
         "sorted_synchronous_area_ids": sorted_synchronous_area_ids,
+        "sorted_federal_district_ids": sorted_federal_district_ids,
         "energy_system_type_list": station_type_list,
         "energy_system_type_names": energy_system_type_names,
         "synchronous_area_names": synchronous_area_names,
+        "federal_district_names": federal_district_names,
         "station_type_list": station_type_list,
         "tes_type_list": tes_type_list,
         "tes_machine_type_list": tes_machine_type_list,
@@ -245,6 +271,7 @@ def totals_summary():
         **energy_system_type_aggregates,
         **total_energy_system_type_aggregates,
         **synchronous_area_aggregates,
+        **federal_district_aggregates,
     }
 
     overall = time.time() - start_data

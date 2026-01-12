@@ -54,3 +54,5 @@ def downgrade():
     op.drop_column("gs_regional_districts", "name_dp", schema=SCHEMA_REFDATA)
 
 
+
+

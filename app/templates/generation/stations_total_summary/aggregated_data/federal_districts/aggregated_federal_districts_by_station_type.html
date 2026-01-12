@@ -1,22 +1,33 @@
-<!-- Итоговые значения по типам ТЭС (внутри синхронной зоны) -->
-{% set table_color = 'table-secondary' %}
+{% set ns = namespace(ves_id=None, ses_id=None, tes_id=None) %}
+{% for station_type_id, st_name in station_type_list.items() %}
+    {% if st_name == 'ВЭС' %}
+        {% set ns.ves_id = station_type_id %}
+    {% elif st_name == 'СЭС' %}
+        {% set ns.ses_id = station_type_id %}
+    {% elif st_name == 'ТЭС' %}
+        {% set ns.tes_id = station_type_id %}
+    {% endif %}
+{% endfor %}
 
-{% for tes_type_id, tes_name in tes_type_list.items() %}
-    {% if tes_name|lower != 'не указано' %}
-        {% set has_tes = synchronous_areas_by_tes_types_yearly_p_ust
-            .get(current_sa_id, {})
-            .get(tes_type_id) %}
-
-        {% if has_tes %}
+<!-- Итоговые значения по типам электростанций -->
+{% for station_type_id, st_name in station_type_list.items() %}
+    {% set has_st = federal_districts_by_station_types_yearly_p_ust
+        .get(current_fd_id, {})
+        .get(station_type_id) %}
+        
+    {% if has_st %}
+        {% if station_type_id not in [ns.ves_id, ns.ses_id] %}
+            {% set table_color = 'table-primary' %}
+            
             <!-- Первая строка: p_ust -->
             <tr class="{{ table_color }} text-center total-power-row" style="vertical-align: middle;">
-                <td class="total-row-cell ind2cm" rowspan="3" style="font-weight: bold; padding-left: 6cm;">
-                    {{ tes_name }}
+                <td class="total-row-cell" rowspan="3" style="font-weight: bold;">
+                    {{ st_name }}
                 </td>
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_ust_value = synchronous_areas_by_tes_types_yearly_p_ust.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_ust_value = federal_districts_by_station_types_yearly_p_ust.get(current_fd_id, {}).get(station_type_id, {}).get(y, 0) %}
                         {% if p_ust_value is none or p_ust_value == 0 %}
                             &mdash;
                         {% else %}
@@ -31,7 +42,7 @@
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_ogr_value = synchronous_areas_by_tes_types_yearly_p_ogr.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_ogr_value = federal_districts_by_station_types_yearly_p_ogr.get(current_fd_id, {}).get(station_type_id, {}).get(y, 0) %}
                         {% if p_ogr_value is none or p_ogr_value == 0 %}
                             &mdash;
                         {% else %}
@@ -46,7 +57,7 @@
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_rasp_value = synchronous_areas_by_tes_types_yearly_p_rasp.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_rasp_value = federal_districts_by_station_types_yearly_p_rasp.get(current_fd_id, {}).get(station_type_id, {}).get(y, 0) %}
                         {% if p_rasp_value is none or p_rasp_value == 0 %}
                             &mdash;
                         {% else %}
@@ -55,12 +66,18 @@
                     </td>
                 {% endfor %}
             </tr>
-
-            {% include 'generation/stations_total_summary/aggregated_data/synchronous_areas/aggregated_synchronous_areas_by_tes_machine_type.html' %}
+        
         {% endif %}
+            
+        {% if station_type_id == ns.tes_id %}
+            {% include 'generation/stations_total_summary/aggregated_data/federal_districts/aggregated_federal_districts_by_tes_type.html' %}
+        {% endif %}
+        
     {% endif %}
+       
 {% endfor %}
 
-
-
+{% if ns.ves_id or ns.ses_id %}
+    {% include 'generation/stations_total_summary/aggregated_data/federal_districts/aggregated_federal_districts_by_via.html' %}
+{% endif %}
 

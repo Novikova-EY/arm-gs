@@ -333,11 +333,12 @@ def add_union_energy_system_service(data, user):
                     raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
                 # Проверяем уникальность display_order при создании
-                dup_display = (apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
-                        .filter(UnionEnergySystem.display_order == display_order)
-                        .with_for_update().first())
-                if dup_display:
-                    raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+                if display_order is not None:
+                    dup_display = (apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
+                            .filter(UnionEnergySystem.display_order == display_order)
+                            .with_for_update().first())
+                    if dup_display:
+                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
 
                 # Создаем новую запись
                 obj = UnionEnergySystem(

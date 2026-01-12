@@ -189,22 +189,24 @@ def copy_payload(payload_root: Path) -> None:
 
 def copy_static_files(build_dir: Path) -> None:
     """
-    Копирует статические файлы из app/static в /usr/share/generation-app/static/
-    для доступа через nginx без проблем с правами доступа.
+    Копирует статические файлы в /usr/share/generation-app/static
+    чтобы nginx всегда раздавал их из стабильного места.
     """
+    # ВАЖНО: в проекте статика лежит в app/app/static
     static_src = PROJECT_ROOT / "app" / "static"
     static_dest = build_dir / "usr" / "share" / "generation-app" / "static"
-    
+
     if not static_src.exists():
         print(f"Предупреждение: {static_src} не найден, пропускаем копирование статики")
         return
-    
+
     if static_dest.exists():
         shutil.rmtree(static_dest)
-    
+
     static_dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(static_src, static_dest)
     print(f"Статические файлы скопированы в {static_dest}")
+
 
 
 def patch_control_version(build_dir: Path, version: str) -> None:

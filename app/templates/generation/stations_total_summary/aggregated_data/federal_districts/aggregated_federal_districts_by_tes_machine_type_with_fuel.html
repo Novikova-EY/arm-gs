@@ -1,20 +1,23 @@
-{# --- Разбивка по типам машин ТЭС с топливом --- #}
+{# --- Разбивка по типам машин ТЭС с топливом (ФО) --- #}
+{% set table_color = 'table-primary' %}
+
 {% for fuel_type_id, fuel_type_name in fuel_type_list.items() %}
-    {% set has_fuels = total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust
-                        .get(tes_type_id or 0, {})
-                        .get(tm_id or 0, {})
-                        .get(fuel_type_id, {}) %}
+    {% set has_fuels = federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust
+        .get(current_fd_id, {})
+        .get(tes_type_id or 0, {})
+        .get(tm_id or 0, {})
+        .get(fuel_type_id, {}) %}
 
     {% if has_fuels %}
         <!-- Первая строка: Руст -->
-        <tr class="table-danger text-center total-power-row" style="vertical-align: middle;">
+        <tr class="{{ table_color }} text-center total-power-row" style="vertical-align: middle;">
             <td class="total-row-cell" rowspan="3" style="font-weight: bold; padding-left: 15cm;">
                 {{ fuel_type_name }}
             </td>
             <td class="fw-bold">Руст</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
-                    {% set p_ust_value = total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust.get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% set p_ust_value = federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust.get(current_fd_id, {}).get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
                     {% if p_ust_value is none or p_ust_value == 0 %}
                         &mdash;
                     {% else %}
@@ -25,11 +28,11 @@
         </tr>
 
         <!-- Вторая строка: p_ogr -->
-        <tr class="table-danger text-center p-ogr-row">
+        <tr class="{{ table_color }} text-center p-ogr-row">
             <td class="fw-bold">Рогр</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
-                    {% set p_ogr_value = total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr.get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% set p_ogr_value = federal_districts_by_tes_machine_types_with_fuel_yearly_p_ogr.get(current_fd_id, {}).get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
                     {% if p_ogr_value is none or p_ogr_value == 0 %}
                         &mdash;
                     {% else %}
@@ -40,11 +43,11 @@
         </tr>
 
         <!-- Третья строка: Ррасп -->
-        <tr class="table-danger text-center p-rasp-row">
+        <tr class="{{ table_color }} text-center p-rasp-row">
             <td class="fw-bold">Ррасп</td>
             {% for y in range(start_year, end_year + 1) %}
                 <td class="power-column">
-                    {% set p_rasp_value = total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp.get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% set p_rasp_value = federal_districts_by_tes_machine_types_with_fuel_yearly_p_rasp.get(current_fd_id, {}).get(tes_type_id or 0, {}).get(tm_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
                     {% if p_rasp_value is none or p_rasp_value == 0 %}
                         &mdash;
                     {% else %}
@@ -55,15 +58,4 @@
         </tr>
     {% endif %}
 {% endfor %}
-
-
-
-
-
-
-
-
-
-
-
 

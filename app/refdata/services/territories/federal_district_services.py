@@ -37,7 +37,7 @@ def federal_district_query(
     """ Базовый запрос для выборки списка федеральных округов с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name","name_full","name_abr"}
+    allowed_sort_by = {"id", "name", "name_full", "name_abr", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -80,6 +80,18 @@ def federal_district_query(
     elif sort_by == "name_abr":
         sort_col = FederalDistrict.name_abr
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+
+    elif sort_by == "display_order":
+        if sort_dir == "desc":
+            query = query.order_by(
+                (FederalDistrict.display_order.is_(None)),
+                FederalDistrict.display_order.desc()
+            )
+        else:
+            query = query.order_by(
+                (FederalDistrict.display_order.is_(None)),
+                FederalDistrict.display_order.asc()
+            )
 
     else:  # "id" (по умолчанию)
         sort_col = FederalDistrict.id
@@ -131,6 +143,7 @@ def update_federal_district_service(data, user):
     with db.session.no_autoflush:
         for record in data:
             federal_district_id = record.get("federal_district_id")
+            display_order = record.get("display_order")
             name = record.get("name", "").strip()
             name_full = record.get("name_full", "").strip()
             name_abr = record.get("name_abr", "").strip()
@@ -156,6 +169,15 @@ def update_federal_district_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
             
+            # Проверка уникальности display_order (если меняется и задано)
+            if display_order != obj.display_order:
+                if display_order is not None:
+                    q_display = (apply_version_filter(FederalDistrict.query, FederalDistrict)
+                                 .filter(FederalDistrict.display_order == display_order,
+                                         FederalDistrict.id != federal_district_id))
+                    if q_display.first():
+                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+            
             changes = []
 
             if name != (obj.name or ""):
@@ -173,6 +195,12 @@ def update_federal_district_service(data, user):
                 new_val = name_abr or "не указано"
                 changes.append(f"Сокращенное наименование: {old_val} → {new_val}")
                 obj.name_abr = name_abr
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
+                obj.display_order = display_order
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:

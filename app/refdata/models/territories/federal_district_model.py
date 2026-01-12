@@ -14,6 +14,10 @@ class FederalDistrict(db.Model, AuditMixin, VersionedModelMixin):
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Порядок отображения
+    display_order = db.Column(db.Integer, nullable=True)
+
     name = db.Column(db.String(80), nullable=False, index=True)
     name_full = db.Column(db.String(80), nullable=True)
     name_abr = db.Column(db.String(80), nullable=True)

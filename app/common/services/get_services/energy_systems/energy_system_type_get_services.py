@@ -212,4 +212,3 @@ def get_est_to_fd_ids_map() -> Dict[int, List[int]]:
     
     # Убираем дубликаты
     return {k: list(set(v)) for k, v in acc.items()}
-

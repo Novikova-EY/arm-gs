@@ -57,7 +57,7 @@
                     <button type="submit" class="btn btn-outline-success">Применить</button>
 
                     <div class="filter-item">
-                        <a href="{{ url_for('generation_bp.totals_summary') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                        <a href="{{ url_for('generation_bp.totals_summary') }}" class="btn btn-outline-danger w-100 me-3">Сбросить</a>
                     </div>
                     
                     <div class="filter-item">
@@ -72,20 +72,26 @@
                 <input type="hidden" name="start_year" value="{{ start_year }}">
                 <input type="hidden" name="end_year" value="{{ end_year }}">
 
-                <!-- Кнопки выбора типа агрегации: ЕЭС, ТИТЭС, Россия (можно комбинировать) -->
+                <!-- Кнопки выбора типа агрегации: ФО, ЕЭС, ТИТЭС, Россия (можно комбинировать) -->
+                
                 <input type="checkbox" class="btn-check" id="aggregationEES" name="aggregation_type" value="ees" {% if 'ees' in aggregation_types %}checked{% endif %}>
                 <label for="aggregationEES" class="btn {% if 'ees' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
                     ЕЭС
                 </label>
-
+                
                 <input type="checkbox" class="btn-check" id="aggregationTITES" name="aggregation_type" value="tites" {% if 'tites' in aggregation_types %}checked{% endif %}>
                 <label for="aggregationTITES" class="btn {% if 'tites' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
                     ТИТЭС
                 </label>
-
+                
                 <input type="checkbox" class="btn-check" id="aggregationRussia" name="aggregation_type" value="russia" {% if 'russia' in aggregation_types %}checked{% endif %}>
-                <label for="aggregationRussia" class="btn {% if 'russia' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">
+                <label for="aggregationRussia" class="btn {% if 'russia' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">
                     Россия
+                </label>
+
+                <input type="checkbox" class="btn-check" id="aggregationFO" name="aggregation_type" value="fo" {% if 'fo' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationFO" class="btn {% if 'fo' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">
+                    ФО
                 </label>
 
                 <!-- Кнопки для синхронных зон -->
@@ -96,7 +102,7 @@
                         {% set sa_value = 'sync_area_' + sa_id|string %}
                         {% set is_checked = sa_value in aggregation_types %}
                         <input type="checkbox" class="btn-check sync-area-checkbox" id="{{ sa_checkbox_id }}" name="aggregation_type" value="{{ sa_value }}" {% if is_checked %}checked{% endif %}>
-                        <label for="{{ sa_checkbox_id }}" class="btn {% if is_checked %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center sync-area-label" style="min-width: auto; white-space: nowrap;">
+                        <label for="{{ sa_checkbox_id }}" class="btn {% if is_checked %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center sync-area-label {% if loop.last %}me-3{% endif %}" style="min-width: auto; white-space: nowrap;">
                             {{ sa_name }}
                         </label>
                     {% endfor %}
@@ -197,6 +203,15 @@
 
             <!-- Данные таблицы - только итоговые суммы -->
             <tbody>
+                {# Итоги по федеральным округам #}
+                {% set show_fd_totals = (should_show_totals|default({})).get('federal_districts') %}
+                {% if show_fd_totals and sorted_federal_district_ids %}
+                    {% for fd_id in sorted_federal_district_ids %}
+                        {% set current_fd_id = fd_id %}
+                        {% include 'generation/stations_total_summary/aggregated_data/federal_districts/aggregated_federal_districts_total.html' %}
+                    {% endfor %}
+                {% endif %}
+
                 {# Итоги по синхронным зонам #}
                 {% if sorted_synchronous_area_ids %}
                     {% for sa_id in sorted_synchronous_area_ids %}
@@ -239,6 +254,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // Функция для обновления стилей кнопок агрегации
     function updateAggregationButtons() {
         const aggregationCheckboxes = {
+            'aggregationFO': 'fo',
             'aggregationEES': 'ees',
             'aggregationTITES': 'tites',
             'aggregationRussia': 'russia'

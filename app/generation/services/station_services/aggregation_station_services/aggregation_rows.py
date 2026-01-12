@@ -35,6 +35,20 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
     def _labeled_tes_type_expr():
         return tes_type_base_expr.label("tes_type_id")
 
+    current_version_id = get_current_db_version_id()
+
+    def _version_cond(model_cls):
+        """
+        Условие по database_version_id для join'ов:
+        - если версия выбрана -> только эта версия
+        - если версия не выбрана -> только NULL
+        """
+        if not hasattr(model_cls, "database_version_id"):
+            return literal(True)
+        if current_version_id is None:
+            return model_cls.database_version_id.is_(None)
+        return model_cls.database_version_id == current_version_id
+
     # ---------------- Обычные агрегаты (машины) ----------------
     # Разделяем выборку на 2 части:
     # 1) Станции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
@@ -47,6 +61,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
@@ -59,20 +74,28 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             func.sum(MachinePower.p_rasp).label("p_rasp"),
         )
         .select_from(MachinePower)
-        .join(Machine, Machine.id == MachinePower.id_machine)
-        .join(Station, Station.id == Machine.id_station)
-        .outerjoin(MachineTesType, and_(
-            MachineTesType.id_machine == Machine.id,
-            MachineTesType.year_number == MachinePower.year_number
-        ))
-        .outerjoin(TesType, TesType.id == MachineTesType.id_tes_type)
-        .outerjoin(TesMachineType, TesMachineType.id == Machine.id_tes_machine_type)
-        .outerjoin(MachineFuel, and_(
-            MachineFuel.id_machine == Machine.id,
-            MachineFuel.year_number == MachinePower.year_number
-        ))
-        .outerjoin(Fuel, Fuel.id == MachineFuel.id_fuel)
-        .outerjoin(FuelType, FuelType.id == Fuel.id_fuel_type)
+        .join(Machine, and_(Machine.id == MachinePower.id_machine, _version_cond(Machine)))
+        .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(
+            MachineTesType,
+            and_(
+                MachineTesType.id_machine == Machine.id,
+                MachineTesType.year_number == MachinePower.year_number,
+                _version_cond(MachineTesType),
+            ),
+        )
+        .outerjoin(TesType, and_(TesType.id == MachineTesType.id_tes_type, _version_cond(TesType)))
+        .outerjoin(TesMachineType, and_(TesMachineType.id == Machine.id_tes_machine_type, _version_cond(TesMachineType)))
+        .outerjoin(
+            MachineFuel,
+            and_(
+                MachineFuel.id_machine == Machine.id,
+                MachineFuel.year_number == MachinePower.year_number,
+                _version_cond(MachineFuel),
+            ),
+        )
+        .outerjoin(Fuel, and_(Fuel.id == MachineFuel.id_fuel, _version_cond(Fuel)))
+        .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         # Территориальная иерархия (субъект РФ можем взять, если есть)
         .outerjoin(Station.regional_district)
         # Иерархия РЭС/ОЭС/типов энергосистем по прямой связи
@@ -83,6 +106,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.isnot(None),
             MachinePower.year_number.between(start_year, end_year),
+            _version_cond(MachinePower),
         )
     )
 
@@ -100,6 +124,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
@@ -112,20 +137,28 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             func.sum(MachinePower.p_rasp).label("p_rasp"),
         )
         .select_from(MachinePower)
-        .join(Machine, Machine.id == MachinePower.id_machine)
-        .join(Station, Station.id == Machine.id_station)
-        .outerjoin(MachineTesType, and_(
-            MachineTesType.id_machine == Machine.id,
-            MachineTesType.year_number == MachinePower.year_number
-        ))
-        .outerjoin(TesType, TesType.id == MachineTesType.id_tes_type)
-        .outerjoin(TesMachineType, TesMachineType.id == Machine.id_tes_machine_type)
-        .outerjoin(MachineFuel, and_(
-            MachineFuel.id_machine == Machine.id,
-            MachineFuel.year_number == MachinePower.year_number
-        ))
-        .outerjoin(Fuel, Fuel.id == MachineFuel.id_fuel)
-        .outerjoin(FuelType, FuelType.id == Fuel.id_fuel_type)
+        .join(Machine, and_(Machine.id == MachinePower.id_machine, _version_cond(Machine)))
+        .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(
+            MachineTesType,
+            and_(
+                MachineTesType.id_machine == Machine.id,
+                MachineTesType.year_number == MachinePower.year_number,
+                _version_cond(MachineTesType),
+            ),
+        )
+        .outerjoin(TesType, and_(TesType.id == MachineTesType.id_tes_type, _version_cond(TesType)))
+        .outerjoin(TesMachineType, and_(TesMachineType.id == Machine.id_tes_machine_type, _version_cond(TesMachineType)))
+        .outerjoin(
+            MachineFuel,
+            and_(
+                MachineFuel.id_machine == Machine.id,
+                MachineFuel.year_number == MachinePower.year_number,
+                _version_cond(MachineFuel),
+            ),
+        )
+        .outerjoin(Fuel, and_(Fuel.id == MachineFuel.id_fuel, _version_cond(Fuel)))
+        .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         # Старый путь: через субъект РФ и M2M связь с РЭС
         .join(Station.regional_district)
         .join(RegionalDistrict.regional_energy_systems)
@@ -135,6 +168,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.is_(None),
             MachinePower.year_number.between(start_year, end_year),
+            _version_cond(MachinePower),
         )
     )
 
@@ -231,6 +265,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
@@ -245,6 +280,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
@@ -273,6 +309,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
@@ -287,20 +324,28 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .select_from(PGUMachinePower)
         .join(PGUMachine, PGUMachine.id == PGUMachinePower.id_pgu_machine)
         # Родительская обычная машина, чтобы дотянуться до станции и связей
-        .join(Machine, Machine.id == PGUMachine.id_parent_machine)
-        .join(Station, Station.id == Machine.id_station)
-        .outerjoin(MachineTesType, and_(
-            MachineTesType.id_machine == Machine.id,
-            MachineTesType.year_number == PGUMachinePower.year_number
-        ))
-        .outerjoin(TesType, TesType.id == MachineTesType.id_tes_type)
-        .outerjoin(TesMachineType, TesMachineType.id == PGUMachine.id_tes_machine_type)
-        .outerjoin(MachineFuel, and_(
-            MachineFuel.id_machine == Machine.id,
-            MachineFuel.year_number == PGUMachinePower.year_number
-        ))
-        .outerjoin(Fuel, Fuel.id == MachineFuel.id_fuel)
-        .outerjoin(FuelType, FuelType.id == Fuel.id_fuel_type)
+        .join(Machine, and_(Machine.id == PGUMachine.id_parent_machine, _version_cond(Machine)))
+        .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(
+            MachineTesType,
+            and_(
+                MachineTesType.id_machine == Machine.id,
+                MachineTesType.year_number == PGUMachinePower.year_number,
+                _version_cond(MachineTesType),
+            ),
+        )
+        .outerjoin(TesType, and_(TesType.id == MachineTesType.id_tes_type, _version_cond(TesType)))
+        .outerjoin(TesMachineType, and_(TesMachineType.id == PGUMachine.id_tes_machine_type, _version_cond(TesMachineType)))
+        .outerjoin(
+            MachineFuel,
+            and_(
+                MachineFuel.id_machine == Machine.id,
+                MachineFuel.year_number == PGUMachinePower.year_number,
+                _version_cond(MachineFuel),
+            ),
+        )
+        .outerjoin(Fuel, and_(Fuel.id == MachineFuel.id_fuel, _version_cond(Fuel)))
+        .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         .outerjoin(Station.regional_district)
         .join(RegionalEnergySystem, RegionalEnergySystem.id == Station.id_regional_energy_system)
         .join(UnionEnergySystem, UnionEnergySystem.id == RegionalEnergySystem.id_union_energy_system)
@@ -309,6 +354,8 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.isnot(None),
             PGUMachinePower.year_number.between(start_year, end_year),
+            _version_cond(PGUMachinePower),
+            _version_cond(PGUMachine),
         )
     )
 
@@ -325,6 +372,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
             Station.id_station_type.label("station_type_id"),
@@ -338,20 +386,28 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         )
         .select_from(PGUMachinePower)
         .join(PGUMachine, PGUMachine.id == PGUMachinePower.id_pgu_machine)
-        .join(Machine, Machine.id == PGUMachine.id_parent_machine)
-        .join(Station, Station.id == Machine.id_station)
-        .outerjoin(MachineTesType, and_(
-            MachineTesType.id_machine == Machine.id,
-            MachineTesType.year_number == PGUMachinePower.year_number
-        ))
-        .outerjoin(TesType, TesType.id == MachineTesType.id_tes_type)
-        .outerjoin(TesMachineType, TesMachineType.id == PGUMachine.id_tes_machine_type)
-        .outerjoin(MachineFuel, and_(
-            MachineFuel.id_machine == Machine.id,
-            MachineFuel.year_number == PGUMachinePower.year_number
-        ))
-        .outerjoin(Fuel, Fuel.id == MachineFuel.id_fuel)
-        .outerjoin(FuelType, FuelType.id == Fuel.id_fuel_type)
+        .join(Machine, and_(Machine.id == PGUMachine.id_parent_machine, _version_cond(Machine)))
+        .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(
+            MachineTesType,
+            and_(
+                MachineTesType.id_machine == Machine.id,
+                MachineTesType.year_number == PGUMachinePower.year_number,
+                _version_cond(MachineTesType),
+            ),
+        )
+        .outerjoin(TesType, and_(TesType.id == MachineTesType.id_tes_type, _version_cond(TesType)))
+        .outerjoin(TesMachineType, and_(TesMachineType.id == PGUMachine.id_tes_machine_type, _version_cond(TesMachineType)))
+        .outerjoin(
+            MachineFuel,
+            and_(
+                MachineFuel.id_machine == Machine.id,
+                MachineFuel.year_number == PGUMachinePower.year_number,
+                _version_cond(MachineFuel),
+            ),
+        )
+        .outerjoin(Fuel, and_(Fuel.id == MachineFuel.id_fuel, _version_cond(Fuel)))
+        .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         .join(Station.regional_district)
         .join(RegionalDistrict.regional_energy_systems)
         .join(RegionalEnergySystem.union_energy_system)
@@ -360,6 +416,8 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.is_(None),
             PGUMachinePower.year_number.between(start_year, end_year),
+            _version_cond(PGUMachinePower),
+            _version_cond(PGUMachine),
         )
     )
 
@@ -428,6 +486,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,
@@ -442,6 +501,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
         Station.id_station_type,

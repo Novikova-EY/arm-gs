@@ -217,7 +217,7 @@ def add_union_energy_system():
         
         try:
             payload = [{
-                "display_order": form.display_order.data if form.display_order.data else None,
+                "display_order": None,
                 "name": (form.name.data or "").strip(),
                 "name_full": (form.name_full.data or "").strip(),
                 "energy_system_type_id": form.energy_system_type.data,

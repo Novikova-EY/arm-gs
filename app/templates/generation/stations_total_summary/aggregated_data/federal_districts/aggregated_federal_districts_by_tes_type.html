@@ -1,12 +1,12 @@
-<!-- Итоговые значения по типам ТЭС (внутри синхронной зоны) -->
-{% set table_color = 'table-secondary' %}
+<!-- Итоговые значения по типам ТЭС федерального округа -->
+{% set table_color = 'table-primary' %}
 
 {% for tes_type_id, tes_name in tes_type_list.items() %}
     {% if tes_name|lower != 'не указано' %}
-        {% set has_tes = synchronous_areas_by_tes_types_yearly_p_ust
-            .get(current_sa_id, {})
+        {% set has_tes = federal_districts_by_tes_types_yearly_p_ust
+            .get(current_fd_id, {})
             .get(tes_type_id) %}
-
+            
         {% if has_tes %}
             <!-- Первая строка: p_ust -->
             <tr class="{{ table_color }} text-center total-power-row" style="vertical-align: middle;">
@@ -16,7 +16,7 @@
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_ust_value = synchronous_areas_by_tes_types_yearly_p_ust.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_ust_value = federal_districts_by_tes_types_yearly_p_ust.get(current_fd_id, {}).get(tes_type_id, {}).get(y, 0) %}
                         {% if p_ust_value is none or p_ust_value == 0 %}
                             &mdash;
                         {% else %}
@@ -31,7 +31,7 @@
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_ogr_value = synchronous_areas_by_tes_types_yearly_p_ogr.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_ogr_value = federal_districts_by_tes_types_yearly_p_ogr.get(current_fd_id, {}).get(tes_type_id, {}).get(y, 0) %}
                         {% if p_ogr_value is none or p_ogr_value == 0 %}
                             &mdash;
                         {% else %}
@@ -46,7 +46,7 @@
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
-                        {% set p_rasp_value = synchronous_areas_by_tes_types_yearly_p_rasp.get(current_sa_id, {}).get(tes_type_id, {}).get(y, 0) %}
+                        {% set p_rasp_value = federal_districts_by_tes_types_yearly_p_rasp.get(current_fd_id, {}).get(tes_type_id, {}).get(y, 0) %}
                         {% if p_rasp_value is none or p_rasp_value == 0 %}
                             &mdash;
                         {% else %}
@@ -56,11 +56,9 @@
                 {% endfor %}
             </tr>
 
-            {% include 'generation/stations_total_summary/aggregated_data/synchronous_areas/aggregated_synchronous_areas_by_tes_machine_type.html' %}
+            {% include 'generation/stations_total_summary/aggregated_data/federal_districts/aggregated_federal_districts_by_tes_machine_type.html' %}
+
         {% endif %}
     {% endif %}
 {% endfor %}
-
-
-
 

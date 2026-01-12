@@ -76,10 +76,6 @@ class AddUnionEnergySystemForm(FlaskForm):
         coerce=int,
         validators=[DataRequired(message="Выберите тип энергосистемы.")],
     )
-    display_order = IntegerField(
-        "Порядок отображения",
-        validators=[Optional()],
-    )
 
 
 class FileUploadForm(FlaskForm):

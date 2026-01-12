@@ -58,21 +58,6 @@
             {% endif %}
         </div>
 
-        <!-- Порядок отображения (только для admin) -->
-        {% if current_user.has_admin %}
-        <div class="mb-3">
-            <label for="display_order" class="form-label">Порядок отображения</label>
-            {{ form.display_order(class="form-control", id="display_order", type="number") }}
-            
-            <!-- Ошибки валидации -->
-            {% if form.display_order.errors %}
-                <div class="text-danger">
-                    {{ form.display_order.errors|join(', ') }}
-                </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
         <!-- Кнопки сохранения записи и возвращения назад -->
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Добавить</button>

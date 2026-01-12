@@ -3012,6 +3012,41 @@ def build_synchronous_area_aggregates(data):
     }
 
 
+def build_federal_district_aggregates(data):
+    """
+    Итоги по федеральным округам (ФО) для totals_summary.
+
+    Сейчас используем только суммарные значения (без детализаций).
+    """
+    return {
+        "federal_districts_yearly_p_ust": data["aggregate_power_by_federal_districts"]["aggregated"]["p_ust"],
+        "federal_districts_yearly_p_ogr": data["aggregate_power_by_federal_districts"]["aggregated"]["p_ogr"],
+        "federal_districts_yearly_p_rasp": data["aggregate_power_by_federal_districts"]["aggregated"]["p_rasp"],
+
+        "federal_districts_by_station_types_yearly_p_ust": data["aggregate_federal_districts_by_station_types"]["aggregated"]["p_ust"],
+        "federal_districts_by_station_types_yearly_p_ogr": data["aggregate_federal_districts_by_station_types"]["aggregated"]["p_ogr"],
+        "federal_districts_by_station_types_yearly_p_rasp": data["aggregate_federal_districts_by_station_types"]["aggregated"]["p_rasp"],
+
+        "federal_districts_by_tes_types_yearly_p_ust": data["aggregate_federal_districts_by_tes_types"]["aggregated"]["p_ust"],
+        "federal_districts_by_tes_types_yearly_p_ogr": data["aggregate_federal_districts_by_tes_types"]["aggregated"]["p_ogr"],
+        "federal_districts_by_tes_types_yearly_p_rasp": data["aggregate_federal_districts_by_tes_types"]["aggregated"]["p_rasp"],
+
+        "federal_districts_by_tes_machine_types_yearly_p_ust": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_ust"],
+        "federal_districts_by_tes_machine_types_yearly_p_ogr": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_ogr"],
+        "federal_districts_by_tes_machine_types_yearly_p_rasp": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_rasp"],
+
+        "federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust": data[
+            "aggregate_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "federal_districts_by_tes_machine_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "federal_districts_by_tes_machine_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+    }
+
+
 # -------------------------------
 # Мутации по станциям/агрегатам
 # -------------------------------

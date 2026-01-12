@@ -58,6 +58,7 @@ def federal_district_list():
 
         # Получение данных из формы
         federal_district_ids = request.form.getlist("federal_district_ids[]")
+        display_orders = request.form.getlist("display_orders[]")
         federal_district_names = request.form.getlist("federal_district_names[]")
         federal_district_full_names = request.form.getlist("federal_district_full_names[]")
         federal_district_abr_names = request.form.getlist("federal_district_abr_names[]")
@@ -79,7 +80,7 @@ def federal_district_list():
            
         # Обновление данных в базе
         try:
-            if not (federal_district_ids and federal_district_names and federal_district_full_names and federal_district_abr_names):
+            if not (federal_district_ids and display_orders and federal_district_names and federal_district_full_names and federal_district_abr_names):
                 log_to_db(user, "Нет данных для обновления.", entity_type="federal_district")
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.federal_district_list", 
@@ -91,8 +92,8 @@ def federal_district_list():
 
            # Формирование данных для обновления
             federal_district_data = []
-            for federal_district_id, federal_district_name, federal_district_full_name, federal_district_abr_name in zip(
-                federal_district_ids, federal_district_names, federal_district_full_names, federal_district_abr_names
+            for federal_district_id, display_order, federal_district_name, federal_district_full_name, federal_district_abr_name in zip(
+                federal_district_ids, display_orders, federal_district_names, federal_district_full_names, federal_district_abr_names
             ):
                 try:
                     if not federal_district_name.strip():
@@ -101,6 +102,7 @@ def federal_district_list():
 
                     federal_district_data.append({
                         "federal_district_id": int(federal_district_id) if federal_district_id else None,
+                        "display_order": int(display_order) if display_order and str(display_order).strip() else None,
                         "name": federal_district_name.strip(),
                         "name_full": federal_district_full_name.strip(),
                         "name_abr": federal_district_abr_name.strip(),
@@ -109,6 +111,7 @@ def federal_district_list():
                     raise ValueError(
                         f"Ошибка обработки данных: "
                         f"federal_district_id={federal_district_id}, "
+                        f"display_order={display_order}, "
                         f"name={federal_district_name}, "
                         f"name_full={federal_district_full_name}, "
                         f"name_abr={federal_district_abr_name}. "

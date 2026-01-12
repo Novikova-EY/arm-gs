@@ -28,7 +28,11 @@ def get_federal_district_list_full():
     
     return (
         query
-        .order_by(FederalDistrict.name.asc())
+        .order_by(
+            FederalDistrict.display_order.asc().nullslast(),
+            FederalDistrict.name.asc(),
+            FederalDistrict.id.asc(),
+        )
         .all()
     )
 
@@ -45,7 +49,11 @@ def get_federal_district_list():
     return (
         query
         .filter(FederalDistrict.id.isnot(None), FederalDistrict.id > 0)
-        .order_by(FederalDistrict.name.asc())
+        .order_by(
+            FederalDistrict.display_order.asc().nullslast(),
+            FederalDistrict.name.asc(),
+            FederalDistrict.id.asc(),
+        )
     )
 
 def get_federal_districts_list() -> List[FederalDistrict]:
@@ -62,7 +70,11 @@ def get_federal_districts_list() -> List[FederalDistrict]:
             selectinload(FederalDistrict.regional_districts)
             .load_only(RegionalDistrict.id, RegionalDistrict.name)
         )
-        .order_by(FederalDistrict.id)
+        .order_by(
+            FederalDistrict.display_order.asc().nullslast(),
+            FederalDistrict.name.asc(),
+            FederalDistrict.id.asc(),
+        )
         .all()
     )
 
@@ -123,7 +135,10 @@ def get_regional_district_to_fd_id_map() -> Dict[int, int]:
 
 # 6) Инвалидатор кэшей — вызывай после CRUD по ФО/Субъектам РФ
 def invalidate_fd_lookups_cache() -> None:
+    get_federal_district_list_full.cache_clear()
+    get_federal_district_list.cache_clear()
     get_federal_districts_map.cache_clear()
+    # get_federal_districts_list не кэшируется, но оставляем как явное место для будущих инвалидаций
     get_fd_to_rd_ids_map.cache_clear()
     get_regional_district_to_fd_id_map.cache_clear()
     get_fd_to_res_ids_map.cache_clear()

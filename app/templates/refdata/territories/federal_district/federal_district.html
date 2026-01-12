@@ -128,6 +128,26 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.federal_district_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            federal_district_filter=federal_district_filter, 
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Наименование ФО" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('refdata_bp.federal_district_list', 
@@ -203,6 +223,18 @@
                                     <input type="hidden" name="federal_district_ids[]" value="{{ item.id }}">
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                                <td class="text-center align-middle">
+                                    <input 
+                                        type="text" 
+                                        name="display_orders[]" 
+                                        class="form-control text-center" 
+                                        value="{{ item.display_order if item.display_order is not none else '' }}"
+                                        style="border: none; resize: none; width: 100%; background: transparent;"
+                                        pattern="[0-9]*"
+                                    >
+                                </td>
+
                                 <!-- Строки таблицы. Столбец "Наименование ФО" -->
                                 <td>
                                     <input type="text" name="federal_district_names[]" class="form-control" value="{{ item.name }}">
@@ -225,7 +257,7 @@
                             </tr>
                             {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                    <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
                                 </tr>
                         {% endfor %}
                     </tbody>
