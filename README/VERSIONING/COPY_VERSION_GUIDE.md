@@ -95,7 +95,7 @@ python copy_version_data.py
 
 ```sql
 -- Копирование станций из версии NULL в версию 6
-INSERT INTO generation.stations (
+INSERT INTO gs_gen.stations (
     name, 
     id_station_type, 
     id_regional_district,
@@ -108,7 +108,7 @@ SELECT
     id_regional_district,
     -- ... остальные поля ...
     6 as database_version_id
-FROM generation.stations
+FROM gs_gen.stations
 WHERE database_version_id IS NULL;
 
 -- Аналогично для других таблиц
@@ -174,8 +174,8 @@ python copy_version_data.py
 
 ```sql
 -- Удалить все данные версии 7
-DELETE FROM generation.stations WHERE database_version_id = 7;
-DELETE FROM generation.machines WHERE database_version_id = 7;
+DELETE FROM gs_gen.stations WHERE database_version_id = 7;
+DELETE FROM gs_gen.machines WHERE database_version_id = 7;
 -- и т.д. для других таблиц
 ```
 
@@ -218,7 +218,7 @@ A: Да, если вы не закрыли подключение к БД. В с
 Если уже закрыли - нужно удалить данные вручную:
 
 ```sql
-DELETE FROM generation.stations WHERE database_version_id = [целевая_версия];
+DELETE FROM gs_gen.stations WHERE database_version_id = [целевая_версия];
 -- и т.д.
 ```
 

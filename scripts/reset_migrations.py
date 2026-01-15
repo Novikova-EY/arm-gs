@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, text
 from config import Config
 
 def reset_alembic_version():
-    """Очищает таблицу alembic_version в схеме auth."""
+    """Очищает таблицу alembic_version в схеме gs_auth."""
     # Получаем URL базы данных
     db_url = Config.SQLALCHEMY_DATABASE_URI
     
@@ -42,9 +42,9 @@ def reset_alembic_version():
     try:
         with engine.connect() as conn:
             # Очищаем таблицу alembic_version
-            conn.execute(text("DELETE FROM auth.alembic_version"))
+            conn.execute(text("DELETE FROM gs_auth.alembic_version"))
             conn.commit()
-            print("Таблица auth.alembic_version очищена")
+            print("Таблица gs_auth.alembic_version очищена")
     except Exception as e:
         print(f"Ошибка при очистке таблицы alembic_version: {e}")
         sys.exit(1)

@@ -286,11 +286,11 @@ def upgrade():
     op.add_column(
         'station_groups',
         sa.Column('version', sa.Integer(), nullable=False, server_default='1'),
-        schema='generation'
+        schema='gs_gen'
     )
 
 def downgrade():
-    op.drop_column('station_groups', 'version', schema='generation')
+    op.drop_column('station_groups', 'version', schema='gs_gen')
 ```
 
 ### Пример 2: Программная проверка версии

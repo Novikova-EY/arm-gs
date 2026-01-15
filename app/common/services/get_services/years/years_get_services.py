@@ -1,13 +1,16 @@
 from app.extensions import db
 from functools import lru_cache
+from sqlalchemy import func
 
 # Модели
 from app.refdata.models.years.year_model import Year
 from app.refdata.models.years.year_feature_model import YearFeature
+from app.refdata.models.years.year_service_model import YearService
 
 # Сервисы
 from app.common.services.database_version_services import get_current_version
 from app.common.services.get_services.years.year_feature_services import get_year_feature_dict as get_year_feature_dict_service
+from config import Config
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +50,130 @@ def get_current_year():
     current_year_obj = query.first()
     current_year = current_year_obj.number - 1 if current_year_obj else None
     return current_year
+
+
+@lru_cache(maxsize=64)
+def _get_filter_start_year_for_version(version_id: int | None) -> int:
+    """
+    Возвращает стартовый год для фильтров как (YearService.year_sipr_start - 2)
+    для указанной версии БД.
+
+    Fallback: Config.START_YEAR.
+    """
+    if not version_id:
+        return Config.START_YEAR
+
+    # NOTE:
+    # YearService должен быть 1 запись на версию, но в БД иногда встречаются дубликаты.
+    # Чтобы корректно работать "в привязке к version_id" и не падать на дубликатах,
+    # берем агрегат (одна строка) по текущей версии.
+    year_sipr_start = (
+        db.session.query(func.min(YearService.year_sipr_start))
+        .filter(YearService.database_version_id == version_id)
+        .scalar()
+    )
+    if year_sipr_start is None:
+        return Config.START_YEAR
+
+    try:
+        return int(year_sipr_start) - 2
+    except Exception:
+        return Config.START_YEAR
+
+
+def get_filter_start_year() -> int:
+    """
+    Возвращает стартовый год для фильтров текущей версии БД:
+    year_start = year_sipr_start - 2 (из модели YearService).
+    """
+    return _get_filter_start_year_for_version(get_current_version())
+
+
+@lru_cache(maxsize=64)
+def _get_filter_end_year_for_version(version_id: int | None) -> int:
+    """
+    Возвращает конечный год для фильтров как YearService.year_sipr_end
+    для указанной версии БД.
+
+    Fallback: Config.END_YEAR.
+    """
+    if not version_id:
+        return Config.END_YEAR
+
+    year_sipr_end = (
+        db.session.query(func.max(YearService.year_sipr_end))
+        .filter(YearService.database_version_id == version_id)
+        .scalar()
+    )
+    if year_sipr_end is None:
+        return Config.END_YEAR
+
+    try:
+        return int(year_sipr_end)
+    except Exception:
+        return Config.END_YEAR
+
+
+def get_filter_end_year() -> int:
+    """
+    Возвращает конечный год для фильтров текущей версии БД:
+    year_end = year_sipr_end (из модели YearService).
+    """
+    return _get_filter_end_year_for_version(get_current_version())
+
+
+@lru_cache(maxsize=64)
+def _get_sipr_start_year_for_version(version_id: int | None) -> int:
+    """
+    Возвращает год начала СиПР (YearService.year_sipr_start) для указанной версии БД.
+    Fallback: Config.START_YEAR_SIPR.
+    """
+    if not version_id:
+        return Config.START_YEAR_SIPR
+
+    value = (
+        db.session.query(func.min(YearService.year_sipr_start))
+        .filter(YearService.database_version_id == version_id)
+        .scalar()
+    )
+    if value is None:
+        return Config.START_YEAR_SIPR
+    try:
+        return int(value)
+    except Exception:
+        return Config.START_YEAR_SIPR
+
+
+def get_sipr_start_year() -> int:
+    """Возвращает год начала СиПР для текущей версии БД (из YearService)."""
+    return _get_sipr_start_year_for_version(get_current_version())
+
+
+@lru_cache(maxsize=64)
+def _get_sipr_end_year_for_version(version_id: int | None) -> int:
+    """
+    Возвращает год конца СиПР (YearService.year_sipr_end) для указанной версии БД.
+    Fallback: Config.END_YEAR_SIPR.
+    """
+    if not version_id:
+        return Config.END_YEAR_SIPR
+
+    value = (
+        db.session.query(func.max(YearService.year_sipr_end))
+        .filter(YearService.database_version_id == version_id)
+        .scalar()
+    )
+    if value is None:
+        return Config.END_YEAR_SIPR
+    try:
+        return int(value)
+    except Exception:
+        return Config.END_YEAR_SIPR
+
+
+def get_sipr_end_year() -> int:
+    """Возвращает год конца СиПР для текущей версии БД (из YearService)."""
+    return _get_sipr_end_year_for_version(get_current_version())
 
 
 @lru_cache(maxsize=1)

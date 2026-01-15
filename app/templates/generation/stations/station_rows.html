@@ -1,8 +1,6 @@
 <tr>
-    <td class="text-center station-rowspan-td" colspan="4" style="vertical-align: middle; font-weight: bold;"
-        rowspan="{{ station.total_rows }}"
-        data-total-machines="{{ station.machine_count }}"
-        data-total-pgu-count="{{ station.total_pgu_count }}">
+    {# По просьбе: не объединяем ячейку "Субъект РФ" вниз (без rowspan) #}
+    <td class="text-center" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.regional_district.name }}
     </td>
     <td class="text-center align-middle" colspan="3" style="vertical-align: middle; font-weight: bold;">

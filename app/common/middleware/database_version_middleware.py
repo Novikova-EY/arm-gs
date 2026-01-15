@@ -87,4 +87,35 @@ def set_session_version(version_id):
     # Обновляем текущий контекст
     g.current_db_version = version_id
 
+    # ВАЖНО: многие справочники/маппинги кэшируются через lru_cache(maxsize=1) без учёта версии.
+    # При смене версии в сессии нужно очистить эти кэши, иначе JS-фильтры получат маппинги от другой версии
+    # (например, ues_to_rd_mapping с ключами не из текущей версии) и взаимные ограничения "перестают работать".
+    try:
+        from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+            get_union_energy_system_list_full,
+            get_union_energy_system_list,
+            get_union_energy_systems_map,
+            get_ues_to_res_ids_map,
+            get_res_to_ues_id_map,
+            get_ues_to_est_id_map,
+            get_ues_to_rd_ids_map,
+            get_ues_to_fd_ids_map,
+        )
+
+        for fn in (
+            get_union_energy_system_list_full,
+            get_union_energy_system_list,
+            get_union_energy_systems_map,
+            get_ues_to_res_ids_map,
+            get_res_to_ues_id_map,
+            get_ues_to_est_id_map,
+            get_ues_to_rd_ids_map,
+            get_ues_to_fd_ids_map,
+        ):
+            if hasattr(fn, "cache_clear"):
+                fn.cache_clear()
+    except Exception as e:
+        # не ломаем запрос из-за очистки кэша
+        current_app.logger.error(f"[VERSION_MIDDLEWARE] Ошибка при очистке кэшей энергосистем: {e}")
+
 

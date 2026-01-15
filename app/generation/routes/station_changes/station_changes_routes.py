@@ -25,6 +25,10 @@ from app.generation.services.station_services.export_cache import (
     set_export_payload,
     get_export_payload,
 )
+from app.common.services.get_services.years.years_get_services import (
+    get_filter_start_year,
+    get_filter_end_year,
+)
 
 # Версия структуры/смысла данных, которые кладём в export_cache для station_changes.
 # При изменениях логики группировок/агрегаций — увеличивать, чтобы не использовать устаревший кэш.
@@ -58,8 +62,8 @@ def station_changes_list():
 
     filters = extract_filters_from_args(request.args)
     page = filters.pop("page", 1)
-    start_year = filters.pop("start_year", Config.START_YEAR)
-    end_year = filters.pop("end_year", Config.END_YEAR)
+    start_year = filters.pop("start_year", get_filter_start_year())
+    end_year = filters.pop("end_year", get_filter_end_year())
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -189,8 +193,8 @@ def station_changes_list_export():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', Config.START_YEAR))
-    end_year = int(request.args.get('end_year', Config.END_YEAR))
+    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    end_year = int(request.args.get('end_year', get_filter_end_year()))
     # Для экспорта «Приложение Б» итоги/агрегации должны выводиться независимо от переключателей на странице
     show_totals = True
 
@@ -277,8 +281,8 @@ def station_changes_list_export_appendix_b():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', Config.START_YEAR))
-    end_year = int(request.args.get('end_year', Config.END_YEAR))
+    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    end_year = int(request.args.get('end_year', get_filter_end_year()))
     show_totals = request.args.get("show_totals", "0") == "1"
 
     # Для «Приложение Б» используем отдельный cache key
@@ -368,8 +372,8 @@ def station_changes_list_export_pril_2_russia():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', Config.START_YEAR))
-    end_year = int(request.args.get('end_year', Config.END_YEAR))
+    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    end_year = int(request.args.get('end_year', get_filter_end_year()))
     show_totals = request.args.get("show_totals", "0") == "1"
 
     from app.common.services.database_version_filter import get_current_db_version_id

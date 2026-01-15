@@ -1285,12 +1285,24 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
     # Всегда работаем в контексте активной версии БД
     current_version_id = get_current_db_version_id()
 
-    from collections import defaultdict
+    import re
 
 
-    # По состоянию на 01.01.<START_YEAR_SIPR - 1> (например, при START_YEAR_SIPR=2026 это 01.01.2025):
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_start_year,
+        get_filter_end_year,
+        get_sipr_start_year,
+        get_sipr_end_year,
+    )
+
+    year_start = get_filter_start_year()
+    year_end = get_filter_end_year()
+    sipr_start = get_sipr_start_year()
+    sipr_end = get_sipr_end_year()
+
+    # По состоянию на 01.01.<SIPR_START - 1> (например, при SIPR_START=2026 это 01.01.2025):
     # агрегаты/станции с фактической датой вывода ПОЗЖЕ этой даты должны попадать в выборку.
-    as_of_date = date(int(Config.START_YEAR_SIPR) - 1, 1, 1)
+    as_of_date = date(int(sipr_start) - 1, 1, 1)
 
     def _parse_date_value(value):
         """
@@ -1326,6 +1338,45 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
         return None
 
+    _DASH_RE = re.compile(r"[\s\-–—_]+", re.UNICODE)
+
+    def _machine_number_sort_key(value):
+        """
+        Сортировка станционного номера:
+        - сначала "чистые цифры": 1,2,3...
+        - затем номера с буквами/префиксами: ГТУ-4, ГТУ-5, ПТУ-1...
+          (по префиксу, затем по числу, затем по хвосту)
+        - пустые/непарсимые — в конец
+        """
+        if value is None:
+            return (2, "", 10**9, "")
+        s = str(value).strip()
+        if not s:
+            return (2, "", 10**9, "")
+
+        # 1) Только цифры -> идут первыми
+        if s.isdigit():
+            return (0, "", int(s), "")
+
+        # 2) Есть число внутри -> префикс + число + суффикс
+        m = re.search(r"\d+", s)
+        if m:
+            prefix_raw = s[: m.start()]
+            prefix_norm = _DASH_RE.sub("", prefix_raw).strip().upper()
+            n = int(m.group(0))
+            suffix = _DASH_RE.sub("", s[m.end():]).strip().upper()
+            return (1, prefix_norm, n, suffix)
+
+        # 3) Вообще без цифр
+        return (2, _DASH_RE.sub("", s).strip().upper(), 10**9, "")
+
+    def _machine_sort_key(m):
+        return (
+            _machine_number_sort_key(getattr(m, "machine_number", None)),
+            (getattr(m, "machine_name", None) or "").strip().lower(),
+            getattr(m, "id", 0) or 0,
+        )
+
     for station in station_list:
         # Фильтрация агрегатов по активной версии БД
         if hasattr(station, "machines"):
@@ -1336,7 +1387,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             ]
             station.machines = version_machines
 
-        # Фильтрация агрегатов по выводу из эксплуатации (по состоянию на 01.01.<START_YEAR_SIPR - 1>)
+        # Фильтрация агрегатов по выводу из эксплуатации (по состоянию на 01.01.<SIPR_START - 1>)
         #
         # Правило:
         # - если фактическая дата вывода указана и она <= as_of_date → агрегат исключаем;
@@ -1357,10 +1408,13 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             except Exception:
                 expected_year_int = None
 
-            if expected_year_int is None or expected_year_int >= int(Config.START_YEAR_SIPR):
+            if expected_year_int is None or expected_year_int >= int(sipr_start):
                 filtered_machines.append(m)
 
         station.machines = filtered_machines
+        # Явно фиксируем порядок агрегатов, чтобы он был одинаковым
+        # как при выгрузке одного файла, так и при формировании ZIP по всем ЭС.
+        station.machines.sort(key=_machine_sort_key)
 
         total_machines = len(station.machines)
 
@@ -1369,29 +1423,42 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             m.group_rowspan = 0
             m.fuel_rowspan = 0
 
-        # Группировка по machine_group
-        group_map = defaultdict(list)
-        for m in station.machines:
-            if m.machine_group:
-                group_map[m.machine_group].append(m)
+        def _set_rowspan_for_consecutive_runs(items, key_fn, attr_name):
+            """
+            Ставит rowspan только для ПОДРЯД идущих одинаковых значений.
+            Это критично после сортировки: иначе merge может "перескочить" через чужие строки.
+            """
+            i = 0
+            n = len(items)
+            while i < n:
+                k = key_fn(items[i])
+                # Не объединяем пустые значения (но оставляем rowspan=0)
+                if k in (None, ""):
+                    i += 1
+                    continue
+                j = i + 1
+                while j < n and key_fn(items[j]) == k:
+                    j += 1
+                run_len = j - i
+                if run_len > 1:
+                    setattr(items[i], attr_name, run_len)
+                    for t in range(i + 1, j):
+                        setattr(items[t], attr_name, 0)
+                i = j
 
-        for group_machines in group_map.values():
-            count = len(group_machines)
-            if count > 1:
-                for i, m in enumerate(group_machines):
-                    m.group_rowspan = count if i == 0 else 0
+        # rowspan по группе агрегатов (machine_group) — только подряд идущие
+        _set_rowspan_for_consecutive_runs(
+            station.machines,
+            key_fn=lambda m: (getattr(m, "machine_group", None) or "").strip(),
+            attr_name="group_rowspan",
+        )
 
-        # Группировка по виду топлива (fuel_so)
-        fuel_map = defaultdict(list)
-        for m in station.machines:
-            fuel_key = (m.fuel_so or '').strip()
-            fuel_map[fuel_key].append(m)
-
-        for fuel_machines in fuel_map.values():
-            count = len(fuel_machines)
-            if count > 1:
-                for i, m in enumerate(fuel_machines):
-                    m.fuel_rowspan = count if i == 0 else 0
+        # rowspan по виду топлива (fuel_so) — только подряд идущие
+        _set_rowspan_for_consecutive_runs(
+            station.machines,
+            key_fn=lambda m: (getattr(m, "fuel_so", None) or "").strip(),
+            attr_name="fuel_rowspan",
+        )
 
     total_stations = len(station_list)
     log_to_db(user, "Найдено станций в БД", f"{total_stations} записей")
@@ -1400,7 +1467,8 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
         log_to_db(user, "Экспорт остановлен", "Нет данных для экспорта.")
         return None
 
-    all_years = list(range(Config.START_YEAR_SIPR - 2, Config.END_YEAR_SIPR + 1))
+    # Диапазон лет для колонок в выгрузке должен соответствовать фильтрам (зависит от YearService)
+    all_years = list(range(int(year_start), int(year_end) + 1))
     output_files = []
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
@@ -1425,7 +1493,8 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
     processed_stations = 0
     
-    aggregated_rows = get_station_hierarchy_aggregates(Config.START_YEAR_SIPR, Config.END_YEAR_SIPR)
+    # Иерархические итоги считаем по периоду СиПР (зависит от YearService)
+    aggregated_rows = get_station_hierarchy_aggregates(int(sipr_start), int(sipr_end))
     build_hierarchy_structure(station_list, include_names=False)
 
     for district_name, stations in regional_districts.items():
@@ -1953,7 +2022,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     title_format)
                 worksheet.merge_range(
                     "A4:N4",
-                    f"Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до {Config.END_YEAR_SIPR} года",
+                    f"Таблица А.1 – Перечень действующих электростанций, с указанием состава генерирующего оборудования и планов по выводу из эксплуатации, реконструкции (модернизации или перемаркировке), вводу в эксплуатацию генерирующего оборудования в период до {int(sipr_end)} года",
                     subtitle_format
                 )
                 worksheet.set_row(3, 42)
@@ -2129,7 +2198,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     note_format = workbook.add_format({
                         'font_name': 'Times New Roman',
                         'font_size': 13,
-                        'align': 'center',
+                        'align': 'justify',
                         'valign': 'vcenter',
                         'text_wrap': True,
                         'border': 1,

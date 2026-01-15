@@ -42,6 +42,7 @@ from app.logs.models.log_model import Log
 from app.common.models.database_version_model import DatabaseVersion
 from app.common.middleware.database_version_middleware import set_session_version
 from app.extensions import db
+from app.refdata.models.years.year_service_model import YearService
 
 
 @station_bp.route("/database_versions", methods=["GET", "POST"], endpoint="database_versions_v2")
@@ -225,6 +226,24 @@ def add_database_version():
         for v in all_versions
     ]
 
+    # Для UI: карта "id версии -> год конца СиПР" (чтобы подсказать пользователю базовый год в модальном окне)
+    sipr_end_map = {}
+    try:
+        version_ids = [v.id for v in all_versions]
+        if version_ids:
+            year_services = (
+                YearService.query
+                .filter(YearService.database_version_id.in_(version_ids))
+                .all()
+            )
+            sipr_end_map = {
+                str(ys.database_version_id): ys.year_sipr_end
+                for ys in year_services
+                if ys and ys.year_sipr_end
+            }
+    except Exception:
+        sipr_end_map = {}
+
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 20, type=int)
@@ -241,7 +260,13 @@ def add_database_version():
                     flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
             return render_template(
                 "generation/database_versions/database_versions_add.html",
-                form=form
+                form=form,
+                page=page,
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+                version_filter=version_filter,
+                sipr_end_map=sipr_end_map,
             )
         
         try:
@@ -298,6 +323,7 @@ def add_database_version():
                 "description": (form.description.data or "").strip(),
                 "parent_version_id": parent_id,
                 "refdata_source_version_id": refdata_source_id,
+                "extend_years": form.extend_years.data,
             }]
 
             # Добавление новой записи через сервис
@@ -307,7 +333,18 @@ def add_database_version():
             if create_mode == 'inherit' and parent_id:
                 parent = DatabaseVersion.query.get(parent_id)
                 if parent:
-                    flash(f"Новая версия успешно создана на основе версии {parent.version_number}: {parent.name}. Данные скопированы.", "success")
+                    extend_years = form.extend_years.data or 0
+                    if extend_years and extend_years > 0:
+                        flash(
+                            f"Новая версия успешно создана на основе версии {parent.version_number}: {parent.name}. "
+                            f"Данные скопированы и период продлён на {extend_years} лет.",
+                            "success",
+                        )
+                    else:
+                        flash(
+                            f"Новая версия успешно создана на основе версии {parent.version_number}: {parent.name}. Данные скопированы.",
+                            "success",
+                        )
                 else:
                     flash("Новая версия успешно добавлена.", "success")
             elif create_mode == 'empty' and refdata_source_id:
@@ -354,6 +391,7 @@ def add_database_version():
         sort_dir=sort_dir,
         form=form,
         version_filter=version_filter,
+        sipr_end_map=sipr_end_map,
     )
 
 

@@ -66,13 +66,24 @@
 
       {# Мощности по годам #}
       {% for year in range(start_year, end_year + 1) %}
-        <td class="power-column">
-          {% if power_row.year == year %}
-            {{ power_row.p_ust | format_decimal }}
-          {% else %}
-            
-          {% endif %}
-        </td>
+        {% if current_year_split is not none and year == current_year_split %}
+          <td class="power-column">
+            {% if power_row.year == year and power_row.current_year_bucket == 'fact' %}
+              {{ power_row.p_ust | format_decimal }}
+            {% endif %}
+          </td>
+          <td class="power-column">
+            {% if power_row.year == year and power_row.current_year_bucket != 'fact' %}
+              {{ power_row.p_ust | format_decimal }}
+            {% endif %}
+          </td>
+        {% else %}
+          <td class="power-column">
+            {% if power_row.year == year %}
+              {{ power_row.p_ust | format_decimal }}
+            {% endif %}
+          </td>
+        {% endif %}
       {% endfor %}
 
       {# Итого за отображаемый период (только годы с year_feature = "план") — по каждому мероприятию, без объединения ячеек #}

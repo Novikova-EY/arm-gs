@@ -31,6 +31,31 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 from app.common.services.database_version_filter import apply_version_filter, set_db_version_on_create
 
 
+def _invalidate_fuel_type_caches() -> None:
+    """
+    Инвалидирует кэши, используемые для выпадающих списков и get-сервисов FuelType.
+    Важно: без этого новые/изменённые виды топлива могут не появляться на страницах,
+    которые используют in-memory кэш (например, refdata/fuel).
+    """
+    # Локальные импорты, чтобы избежать возможных циклических зависимостей при старте приложения
+    try:
+        from app.common.services.choices_cache_service import choices_cache
+
+        # По умолчанию ключ = model_class.__name__.lower() => "fueltype"
+        choices_cache.invalidate_cache(FuelType.__name__.lower())
+    except Exception:
+        # Кэш — оптимизация; если не получилось очистить, не роняем бизнес-операцию.
+        pass
+
+    try:
+        from app.common.services.get_services.fuels import fuel_type_get_services
+
+        fuel_type_get_services.get_fuel_type_list_full.cache_clear()
+        fuel_type_get_services.get_fuel_type_list.cache_clear()
+    except Exception:
+        pass
+
+
 def fuel_type_query(
         fuel_type_filter=None, 
         sort_by="id", 
@@ -154,6 +179,7 @@ def update_fuel_type_service(data, user):
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
         _commit_with_retry()
+        _invalidate_fuel_type_caches()
 
         if updated_ids:
             log_to_db(
@@ -227,6 +253,7 @@ def add_fuel_type_service(data, user):
     try:
         _do_insert()
         _commit_with_retry()
+        _invalidate_fuel_type_caches()
         return None
 
     except IntegrityError:
@@ -234,6 +261,7 @@ def add_fuel_type_service(data, user):
         quick_fix_seq(SCHEMA_REFDATA, "fuel_types")
         _do_insert()
         _commit_with_retry()
+        _invalidate_fuel_type_caches()
         return None
     except Exception as e:
         db.session.rollback()
@@ -301,6 +329,7 @@ def delete_fuel_type_service(ids, user):
         # Сохранение изменений в базе данных
         # Фиксация транзакции (устойчивый коммит)
         _commit_with_retry()
+        _invalidate_fuel_type_caches()
 
         parts = [f"Удалено: {successful_deletes}"]
         if deleted_names:
@@ -347,6 +376,7 @@ def import_fuel_type_service(file, user):
         db.session.bulk_save_objects(records)
         db.session.commit()
 
+        _invalidate_fuel_type_caches()
         log_to_db(user, "Импорт завершен", f"Импортировано записей: {len(records)}", entity_type="fuel_type")
         return len(records)
     except Exception as e:

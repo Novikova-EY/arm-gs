@@ -65,9 +65,53 @@ body {
     display: block !important;
 }
 
+/* Единая логика для страниц с таблицами:
+   скроллим весь контент страницы, а шапка таблицы остаётся sticky */
+.page-table-scroll {
+    /* высота рассчитывается относительно верхней "шапки" приложения */
+    max-height: calc(100vh - var(--app-topbar-height, 0px) - 16px);
+    overflow-y: auto;
+    /* На Windows при "always show scrollbars" любой overflow-x:auto рисует полосу даже без переполнения.
+       Поэтому по умолчанию прячем горизонтальный скролл и включаем его только когда реально нужен (см. base.html JS). */
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Включаем горизонтальный скролл только когда контент шире контейнера */
+.page-table-scroll.has-x-scroll {
+    overflow-x: auto;
+}
+
+/* Внутри page-table-scroll вертикальный скролл должен быть один (на wrapper),
+   а table-responsive используется только для горизонтального скролла */
+.page-table-scroll .table-responsive {
+    max-height: none !important;
+    /* Важно: overflow на промежуточном предке ломает sticky у thead/th.
+       Поэтому в режиме page-table-scroll скролл (x/y) делаем только на wrapper. */
+    overflow: visible !important;
+}
+
+/* Страницы, где раньше был отдельный внутренний скролл таблицы:
+   убираем вертикальный скролл у внутреннего контейнера, чтобы скролл был один (page-table-scroll). */
+.page-table-scroll #stationChangesTableContainer,
+.page-table-scroll #stationsTableContainer {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+}
+
 /* Фикс для контейнера таблицы, если он обрезает список */
 .table-responsive {
-    overflow: visible !important;
+    /* Bootstrap по умолчанию делает overflow-x:auto.
+       На Windows (особенно при "always show scrollbars") это рисует горизонтальную полосу даже без переполнения.
+       Поэтому по умолчанию прячем X-скролл и включаем его только когда реально нужен (см. base.html JS). */
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Включаем горизонтальный скролл только когда контент шире контейнера */
+.table-responsive.has-x-scroll {
+    overflow-x: auto;
 }
 
 /* Чекбоксы в выпадающем списке */
@@ -80,6 +124,29 @@ thead {
 }
 tfoot {
     display: table-footer-group;
+}
+
+/* Липкая шапка таблиц при прокрутке страницы */
+.table-responsive table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 50; /* выше строк таблицы, ниже выпадающих меню (1050) */
+    /* фон берём из bootstrap переменных таблицы */
+    background-color: var(--bs-table-bg);
+}
+
+/* Для двухстрочных шапок: 2-я строка фиксируется ниже 1-й */
+.table-responsive table thead tr:nth-child(2) th {
+    top: var(--sticky-thead-row1-height, 0px);
+    z-index: 49;
+}
+
+/* Контейнер со скроллом для очень больших таблиц (список станций) */
+#stationsTableContainer {
+    /* Fallback: если высота фильтров меняется, можно подправить константу */
+    max-height: calc(100vh - var(--app-topbar-height, 0px) - 16px);
+    overflow-y: auto;
+    overflow-x: auto;
 }
 
 tr {
@@ -145,4 +212,20 @@ tr {
   display: inline-flex;
   align-items: center;
   gap: .5rem;
+}
+
+/* Кнопка: синий контур + синий текст + белая заливка (в т.ч. на hover/active) */
+.btn-outline-primary-white {
+  background-color: #fff !important;
+  border: 1px solid var(--bs-primary) !important;
+  color: var(--bs-primary) !important;
+}
+.btn-outline-primary-white:hover,
+.btn-outline-primary-white:focus,
+.btn-outline-primary-white:focus-visible,
+.btn-outline-primary-white:active,
+.btn-outline-primary-white.active {
+  background-color: #fff !important;
+  border-color: var(--bs-primary) !important;
+  color: var(--bs-primary) !important;
 }

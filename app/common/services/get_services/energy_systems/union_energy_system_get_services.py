@@ -137,29 +137,26 @@ def get_ues_to_est_id_map() -> Dict[int, int]:
 
 @lru_cache(maxsize=1)
 def get_ues_to_rd_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ОЭС.id: [СубъектРФ.id, ...]} через РЭС (кэшируется)."""
-    current_version = get_current_version()
+    """Возвращает отображение {ОЭС.id: [СубъектРФ.id, ...]} через РЭС (кэшируется).
+
+    ВАЖНО: M2M-таблица RegionalDistrict<->RegionalEnergySystem не версионируется,
+    поэтому при построении маппинга нужно фильтровать по версии через join'ы.
+    """
     ues_to_res = get_ues_to_res_ids_map()
-    
-    # Получаем связь РЭС -> Субъект РФ через M2M таблицу
-    from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
-    res_to_rd_query = db.session.query(
-        regional_district_regional_energy_system.c.regional_energy_system_id,
-        regional_district_regional_energy_system.c.regional_district_id
+
+    # Используем версионированный маппинг {РЭС.id: [СубъектРФ.id,...]}
+    # (внутри он фильтрует по версии через join с таблицами-родителями).
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+        get_res_to_rd_ids_map,
     )
-    
-    res_to_rd_rows = res_to_rd_query.all()
-    res_to_rd = defaultdict(list)
-    for res_id, rd_id in res_to_rd_rows:
-        res_to_rd[res_id].append(rd_id)
-    
-    # Строим ues -> rd
+    res_to_rd = get_res_to_rd_ids_map()
+
     acc: Dict[int, List[int]] = defaultdict(list)
     for ues_id, res_ids in ues_to_res.items():
         for res_id in res_ids:
             if res_id in res_to_rd:
                 acc[ues_id].extend(res_to_rd[res_id])
-    
+
     # Убираем дубликаты
     return {k: list(set(v)) for k, v in acc.items()}
 

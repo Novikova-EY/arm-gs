@@ -3,6 +3,35 @@ from dotenv import load_dotenv
 # Загрузка переменных окружения из .env
 load_dotenv()
 
+_SCHEMA_RENAMES = {
+    # legacy -> new
+    "generation": "gs_gen",
+    "auth": "gs_auth",
+    "logs": "gs_logs",
+}
+
+def _normalize_schema_name(value: str | None, default: str) -> str:
+    """
+    Нормализует имя схемы БД.
+    - Если пришло legacy-имя (generation/auth/logs) — автоматически маппим на новое.
+    - Если значение пустое/None — используем default.
+    """
+    if value is None:
+        return default
+    v = str(value).strip()
+    if not v:
+        return default
+    return _SCHEMA_RENAMES.get(v, v)
+
+def _normalize_search_path(value: str | None, default: str) -> str:
+    """
+    Нормализует DB_SEARCH_PATH, применяя rename-map к каждому элементу пути.
+    """
+    raw = default if value is None else str(value)
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    parts = [_SCHEMA_RENAMES.get(p, p) for p in parts]
+    return ",".join(parts)
+
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -10,13 +39,13 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME")
 DB_DRIVER = os.getenv("DB_DRIVER", "psycopg2")
 SECRET_KEY = os.getenv('SECRET_KEY', 'cVX84FQ5P0!mXnUwZ@sRek#bLgdpN9Yz')
-SCHEMA_AUTH = os.getenv("SCHEMA_AUTH", "auth")
-SCHEMA_LOGS = os.getenv("SCHEMA_LOGS", "logs")
+SCHEMA_AUTH = _normalize_schema_name(os.getenv("SCHEMA_AUTH"), "gs_auth")
+SCHEMA_LOGS = _normalize_schema_name(os.getenv("SCHEMA_LOGS"), "gs_logs")
 # После миграции 7e4b6c9f1a23 схема refdata была переименована в gs_sys.
 # Поэтому значение по умолчанию изменено на gs_sys.
 SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
-SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
-DB_SEARCH_PATH = os.getenv("DB_SEARCH_PATH", "auth,logs,gs_sys,generation")
+SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
+DB_SEARCH_PATH = _normalize_search_path(os.getenv("DB_SEARCH_PATH"), "gs_auth,gs_logs,gs_sys,gs_gen")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
 # DEBUG определяется по FLASK_ENV или явной переменной DEBUG.
@@ -49,13 +78,13 @@ END_YEAR_SIPR = 2031
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'cVX84FQ5P0!mXnUwZ@sRek#bLgdpN9Yz')
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
-    SCHEMA_AUTH = os.getenv("SCHEMA_AUTH", "auth")
-    SCHEMA_LOGS = os.getenv("SCHEMA_LOGS", "logs")
+    SCHEMA_AUTH = _normalize_schema_name(os.getenv("SCHEMA_AUTH"), "gs_auth")
+    SCHEMA_LOGS = _normalize_schema_name(os.getenv("SCHEMA_LOGS"), "gs_logs")
     # Значение по умолчанию соответствует новой схеме gs_sys
     SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
-    SCHEMA_GENERATION = os.getenv("SCHEMA_GENERATION", "generation")
-    DB_SEARCH_PATH = os.getenv(
-        "DB_SEARCH_PATH",
+    SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
+    DB_SEARCH_PATH = _normalize_search_path(
+        os.getenv("DB_SEARCH_PATH"),
         f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},public",
     )
     

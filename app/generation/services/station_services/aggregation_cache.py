@@ -16,6 +16,11 @@ _cache_timeout = timedelta(minutes=30)  # Кэш на 30 минут
 # использования старых закэшированных результатов с несовместимыми полями.
 AGGREGATION_CACHE_KEY_VERSION = 2
 
+# Версия ключей кэша сортировки станций.
+# Инкрементируйте при изменении логики сортировки station_list, чтобы не использовать
+# устаревший порядок из Redis/in-memory кэша.
+STATIONS_SORT_CACHE_KEY_VERSION = 1
+
 # Отдельный Redis‑клиент для кэша (не тот, что используется Flask‑Session)
 _redis_client = None
 
@@ -284,16 +289,31 @@ def warmup_station_cache(force=False):
         
         print(f"[CACHE WARMUP] Загружено {len(stations)} станций")
         
-        # Сортируем станции
+        # Сортируем станции как на station_list: территориальная иерархия + нижний уровень (тип/название)
         def get_sorting_key(station):
+            station_type_name = ""
+            if getattr(station, "station_type", None) is not None and getattr(station.station_type, "name", None):
+                station_type_name = station.station_type.name.strip()
+
+            def _station_type_rank(name: str) -> int:
+                s = (name or "").strip().upper()
+                ordered = ["АЭС", "ГАЭС", "ГЭС", "ТЭС", "ВЭС", "СЭС"]  # "ГАЭС" раньше "ГЭС"
+                direct = {abbr: idx for idx, abbr in enumerate(ordered)}
+                if s in direct:
+                    return direct[s]
+                for idx, abbr in enumerate(ordered):
+                    if abbr in s:
+                        return idx
+                return 999
+
+            station_type_rank = _station_type_rank(station_type_name)
+
             energy_system_type_id = 0
             union_energy_system_order = float('inf')
             regional_energy_system_id = 0
             regional_district_name = ""
             energy_unit_id = station.id_energy_unit or 0
-            
-            min_type = station.id_station_type if station.id_station_type is not None else float('inf')
-            
+
             if station.regional_district:
                 regional_district_name = (station.regional_district.name or "").lower()
                 if station.regional_district.regional_energy_systems:
@@ -307,15 +327,18 @@ def warmup_station_cache(force=False):
                             )
                             if res.union_energy_system.energy_system_type:
                                 energy_system_type_id = res.union_energy_system.energy_system_type.id
-            
+
+            station_name = (station.name or "").strip().lower()
+
             return (
                 energy_system_type_id,
                 union_energy_system_order,
                 regional_energy_system_id,
                 regional_district_name,
                 energy_unit_id,
-                min_type,
-                station.id
+                station_type_rank,
+                station_name,
+                station.id,
             )
         
         sorted_stations = sorted(stations, key=get_sorting_key)
@@ -405,11 +428,12 @@ def get_sorted_stations_cache_key(filters):
     # Добавляем текущую версию БД в ключ кэша
     current_version = get_current_db_version_id()
     relevant_filters['_db_version'] = current_version
+    relevant_filters['_sort_v'] = STATIONS_SORT_CACHE_KEY_VERSION
     
     filter_items = sorted(relevant_filters.items())
     key_data = str(filter_items)
     hash_key = hashlib.md5(key_data.encode()).hexdigest()
-    return f"stations:sorted:v{current_version or 'all'}:{hash_key}"
+    return f"stations:sorted:sv{STATIONS_SORT_CACHE_KEY_VERSION}:v{current_version or 'all'}:{hash_key}"
 
 def cache_sorted_stations(filters, sorted_station_ids):
     """Кэширует отсортированный список ID станций в Redis."""

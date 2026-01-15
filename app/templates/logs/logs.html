@@ -5,11 +5,7 @@
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Кнопка возврата на главную страницу -->
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary">
-            Вернуться на страницу " Справочники"
-        </a>
-    </div>
+
 
     <div class="container-fluid py-5">
         <h1 class="text-center mb-4">Действия пользователей</h1>
@@ -25,9 +21,11 @@
             <div class="col-md-2">
                 <input type="text" name="details" class="form-control" placeholder="Фильтр по деталям" value="{{ request.args.get('details', '') }}">
             </div>
-            <div class="col-md-2">
-                <input type="text" name="entity_type" class="form-control" placeholder="Тип сущности" value="{{ request.args.get('entity_type', '') }}">
-            </div>
+            {% if is_strict_admin %}
+                <div class="col-md-2">
+                    <input type="text" name="entity_type" class="form-control" placeholder="Тип сущности" value="{{ request.args.get('entity_type', '') }}">
+                </div>
+            {% endif %}
             <div class="col-md-1">
                 <select name="per_page" class="form-select" onchange="this.form.submit()">
                     <option value="10" {% if request.args.get('per_page', '10')|int == 10 %}selected{% endif %}>10</option>
@@ -97,8 +95,10 @@
                                 Действие
                             </a>
                         </th>
-                        <th class="p-3" style="width: 15%;">Тип сущности</th>
-                        <th class="p-3" style="width: 15%;">ID cущности</th>
+                        {% if is_strict_admin %}
+                            <th class="p-3" style="width: 15%;">Тип сущности</th>
+                            <th class="p-3" style="width: 15%;">ID cущности</th>
+                        {% endif %}
                         <th class="p-3" style="width: 40%;">
                             <a href="{{ 
                             url_for('logs.view_logs', 
@@ -121,18 +121,20 @@
                             <td class="p-3">{{ log.timestamp_msk.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] if log.timestamp_msk else '' }}</td>
                             <td class="p-3">{{ log.username }}</td>
                             <td class="p-3">{{ log.action }}</td>
-                            <td class="p-3">
-                                {% if log.entity_type %}
-                                    <span class="badge bg-info">{{ log.entity_type }} </span>
-                                {% endif %}
-                            </td>
-                            <td class="p-3">
-                                {% if log.entity_type and log.entity_id %}
-                                    <span class="badge bg-info">{{ log.entity_type }} #{{ log.entity_id }}</span>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
+                            {% if is_strict_admin %}
+                                <td class="p-3">
+                                    {% if log.entity_type %}
+                                        <span class="badge bg-info">{{ log.entity_type }} </span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-3">
+                                    {% if log.entity_type and log.entity_id %}
+                                        <span class="badge bg-info">{{ log.entity_type }} #{{ log.entity_id }}</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
                             <td class="p-3">{{ log.details }}</td>
                         </tr>
                     {% endfor %}

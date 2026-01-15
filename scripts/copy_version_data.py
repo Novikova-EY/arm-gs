@@ -70,7 +70,7 @@ for table in tables:
             SELECT 
                 COALESCE(database_version_id, -1) as ver_id,
                 COUNT(*) as cnt
-            FROM generation.{table}
+            FROM gs_gen.{table}
             GROUP BY database_version_id
         """)
         stats[table] = {}
@@ -191,7 +191,7 @@ try:
             cur.execute(f"""
                 SELECT column_name 
                 FROM information_schema.columns 
-                WHERE table_schema = 'generation' 
+                WHERE table_schema = 'gs_gen' 
                   AND table_name = '{table}'
                   AND column_name NOT IN ('id', 'database_version_id')
                 ORDER BY ordinal_position
@@ -206,9 +206,9 @@ try:
             
             # Копирование данных
             copy_query = f"""
-                INSERT INTO generation.{table} ({columns_str}, database_version_id)
+                INSERT INTO gs_gen.{table} ({columns_str}, database_version_id)
                 SELECT {columns_str}, {target_version_id}
-                FROM generation.{table}
+                FROM gs_gen.{table}
                 WHERE {where_source}
             """
             
@@ -284,7 +284,7 @@ try:
         SELECT 
             COALESCE(database_version_id::text, 'NULL') as ver,
             COUNT(*) as cnt
-        FROM generation.stations
+        FROM gs_gen.stations
         GROUP BY database_version_id
         ORDER BY database_version_id NULLS FIRST
     """)

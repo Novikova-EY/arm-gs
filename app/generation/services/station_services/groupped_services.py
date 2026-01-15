@@ -239,6 +239,8 @@ def fetch_machines_with_rowspans(
     show_p_ogr: bool = False,
     show_p_rasp: bool = False,
     filters: dict | None = None,
+    start_year: int | None = None,
+    end_year: int | None = None,
 ):
     # Локальный помощник для фильтрации по текущей версии (чтобы избежать проблем области видимости)
     def _is_current_version(entity) -> bool:
@@ -268,16 +270,59 @@ def fetch_machines_with_rowspans(
         if hasattr(m, 'machine_fuels') and m.machine_fuels:
             m.machine_fuels = [mf for mf in m.machine_fuels if _is_current_version(mf)]
 
-    # Проверка топлива: оставляем только агрегаты с заполненным primary_fuel_type,
-    # но с пустым/не указанным fuel_so.
+    # Проверка топлива: оставляем только "проблемные" агрегаты:
+    # - fuel_so (по СО ЕЭС) пустое, но есть топливо по годам, ИЛИ
+    # - fuel_so заполнено, но не совпадает с топливами по годам в диапазоне лет.
     if (filters or {}).get("fuel_check"):
+        from app.common.services.get_services.years.years_get_services import (
+            get_filter_start_year,
+            get_filter_end_year,
+        )
+        from config import Config
+
         def _fuel_so_missing(value) -> bool:
             if value is None:
                 return True
             text = str(value).strip()
             return (text == "") or (text.lower() == "не указано")
 
-        machines = [m for m in machines if (m.primary_fuel_type is not None) and _fuel_so_missing(m.fuel_so)]
+        def _normalize_fuel_token(text: str) -> str:
+            # Нормализация для сравнения (без попыток "умного" маппинга синонимов)
+            return " ".join(str(text).strip().lower().split())
+
+        def _split_fuel_so(text: str) -> set[str]:
+            # fuel_so часто вводится как "уголь, газ" / "уголь;газ" / "уголь/газ" / "уголь и газ"
+            s = _normalize_fuel_token(text)
+            for sep in [";", "/", "+", "|"]:
+                s = s.replace(sep, ",")
+            s = s.replace(" и ", ",")
+            parts = [p.strip() for p in s.split(",") if p.strip()]
+            return set(parts)
+
+        sy = int(start_year if start_year is not None else get_filter_start_year())
+        ey = int(end_year if end_year is not None else get_filter_end_year())
+
+        def _is_problem_machine(m: Machine) -> bool:
+            fuels_by_year = m.fuel_type_by_year or {}
+            year_fuels = {
+                _normalize_fuel_token(name)
+                for y, name in fuels_by_year.items()
+                if y is not None and sy <= int(y) <= ey and name and _normalize_fuel_token(name) != "не указано"
+            }
+            if not year_fuels:
+                return False
+
+            if _fuel_so_missing(m.fuel_so):
+                return True
+
+            so_tokens = _split_fuel_so(m.fuel_so)
+            if not so_tokens:
+                return True
+
+            # Совпадение, если хотя бы один токен из fuel_so встречается в топливах по годам
+            return year_fuels.isdisjoint(so_tokens)
+
+        machines = [m for m in machines if _is_problem_machine(m)]
 
     # Загружаем годы и устанавливаем их вручную
     year_numbers = set()

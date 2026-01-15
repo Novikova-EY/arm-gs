@@ -7,11 +7,20 @@
         </td>
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
-            <td class="power-column" style="font-weight: bold;">
-                {{ regional_energy_systems_yearly_p_ust
-                    .get(current_res_id, {})
-                    .get(year, 0) | format_decimal or '—' }}
-            </td>
+            {% if current_year_split is not none and year == current_year_split %}
+                <td class="power-column" style="font-weight: bold;"></td>
+                <td class="power-column" style="font-weight: bold;">
+                    {{ regional_energy_systems_yearly_p_ust
+                        .get(current_res_id, {})
+                        .get(year, 0) | format_decimal or '—' }}
+                </td>
+            {% else %}
+                <td class="power-column" style="font-weight: bold;">
+                    {{ regional_energy_systems_yearly_p_ust
+                        .get(current_res_id, {})
+                        .get(year, 0) | format_decimal or '—' }}
+                </td>
+            {% endif %}
         {% endfor %}
         <td class="power-column fw-bold">
             {% if plan_years %}
@@ -27,7 +36,8 @@
                 —
             {% endif %}
         </td>
-        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+        {% set _extra_col = 1 if (current_year_split is not none and current_year_split >= start_year and current_year_split <= end_year) else 0 %}
+        <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) + _extra_col }}" style="vertical-align: middle; font-weight: bold;">
         </td>
     </tr>
     {% include 'generation/station_changes/aggregated_data/regional_energy_systems/aggregated_regional_energy_systems_by_station_type.html' %}

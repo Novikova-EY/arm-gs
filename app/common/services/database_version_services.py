@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
-from config import SCHEMA_GENERATION
+from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 import os
 from datetime import datetime
 from flask import current_app, g
@@ -30,6 +30,8 @@ from app.common.services.get_services.years.year_version_services import (
     create_year_version_data,
     copy_year_data_from_version,
 )
+from app.refdata.models.years.year_service_model import YearService
+from typing import Optional
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
@@ -230,6 +232,7 @@ def add_version_service(data, user):
     created_ids = []
     parent_version_ids = []  # Список parent_version_id для копирования
     refdata_source_version_ids = []  # Список версий, из которых копируем только справочники
+    extend_years_list = []  # Список лет продления (только для сценария parent_version_id)
     
     def _do_insert():
         with db.session.no_autoflush:
@@ -239,6 +242,7 @@ def add_version_service(data, user):
                 description = (record.get("description") or "").strip()
                 parent_version_id = record.get("parent_version_id")
                 refdata_source_version_id = record.get("refdata_source_version_id")
+                extend_years = record.get("extend_years")
 
                 if not name or not version_number:
                     log_to_db(
@@ -284,6 +288,16 @@ def add_version_service(data, user):
                 parent_version_ids.append(parent_version_id)
                 refdata_source_version_ids.append(refdata_source_version_id)
 
+                # Нормализуем extend_years в int (или None)
+                if extend_years in (None, "", "None", "none"):
+                    extend_years_norm = None
+                else:
+                    try:
+                        extend_years_norm = int(extend_years)
+                    except (TypeError, ValueError) as exc:
+                        raise ValueError("Некорректное значение поля «Продлить период (лет)».") from exc
+                extend_years_list.append(extend_years_norm)
+
                 log_to_db(
                     user, 
                     "Создана версия БД", 
@@ -299,11 +313,22 @@ def add_version_service(data, user):
         for idx, new_version_id in enumerate(created_ids):
             parent_id = parent_version_ids[idx]
             refdata_source_id = refdata_source_version_ids[idx]
+            extend_years = extend_years_list[idx] if idx < len(extend_years_list) else None
             if parent_id:
                 try:
                     _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
                     # Копируем данные годов из родительской версии
-                    copy_year_data_from_version(parent_id, new_version_id, user)
+                    copy_year_data_from_version(parent_id, new_version_id, user, do_commit=False)
+
+                    # При необходимости — продлеваем период и размножаем данные последнего года на новые годы
+                    if extend_years is not None and extend_years > 0:
+                        extend_version_period_by_copying_last_year(
+                            source_version_id=parent_id,
+                            target_version_id=new_version_id,
+                            years_to_extend=extend_years,
+                            user=user,
+                            do_commit=False,
+                        )
                 except Exception as e:
                     log_to_db(
                         user,
@@ -324,7 +349,7 @@ def add_version_service(data, user):
                         do_commit=False,
                         copy_mode="refdata_only"
                     )
-                    copy_year_data_from_version(refdata_source_id, new_version_id, user)
+                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                 except Exception as e:
                     log_to_db(
                         user,
@@ -377,6 +402,7 @@ def add_version_service(data, user):
         created_ids.clear()
         parent_version_ids.clear()
         refdata_source_version_ids.clear()
+        extend_years_list.clear()
         quick_fix_seq(SCHEMA_GENERATION, "database_versions")
         _do_insert()
         
@@ -384,11 +410,21 @@ def add_version_service(data, user):
         for idx, new_version_id in enumerate(created_ids):
             parent_id = parent_version_ids[idx]
             refdata_source_id = refdata_source_version_ids[idx]
+            extend_years = extend_years_list[idx] if idx < len(extend_years_list) else None
             if parent_id:
                 try:
                     _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
                     # Копируем данные годов из родительской версии
-                    copy_year_data_from_version(parent_id, new_version_id, user)
+                    copy_year_data_from_version(parent_id, new_version_id, user, do_commit=False)
+
+                    if extend_years is not None and extend_years > 0:
+                        extend_version_period_by_copying_last_year(
+                            source_version_id=parent_id,
+                            target_version_id=new_version_id,
+                            years_to_extend=extend_years,
+                            user=user,
+                            do_commit=False,
+                        )
                 except Exception as e:
                     log_to_db(
                         user,
@@ -408,7 +444,7 @@ def add_version_service(data, user):
                         do_commit=False,
                         copy_mode="refdata_only"
                     )
-                    copy_year_data_from_version(refdata_source_id, new_version_id, user)
+                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                 except Exception as e:
                     log_to_db(
                         user,
@@ -464,6 +500,198 @@ def add_version_service(data, user):
         raise ValueError(f"Ошибка сохранения новой версии БД: {e}") from e
 
 
+def _get_sipr_end_year(version_id: int) -> Optional[int]:
+    """
+    Возвращает год конца СиПР (year_sipr_end) для версии, если он задан.
+    """
+    try:
+        ys = YearService.query.filter_by(database_version_id=version_id).first()
+        if ys and ys.year_sipr_end:
+            return int(ys.year_sipr_end)
+    except Exception:
+        return None
+    return None
+
+
+def _get_max_generation_data_year(version_id: int) -> Optional[int]:
+    """
+    Фоллбэк: пытается определить "последний год с данными" по годовым таблицам generation-схемы.
+    Используется, если YearService.year_sipr_end отсутствует.
+    """
+    q = text(f"""
+        SELECT GREATEST(
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.station_powers     WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_powers     WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.pgu_machine_powers WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_fuels      WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_tes_types  WHERE database_version_id = :vid), 0)
+        ) AS max_year
+    """)
+    try:
+        res = db.session.execute(q, {"vid": version_id}).scalar()
+        max_year = int(res) if res else 0
+        return max_year or None
+    except Exception:
+        return None
+
+
+def extend_version_period_by_copying_last_year(
+    source_version_id: int,
+    target_version_id: int,
+    years_to_extend: int,
+    user: str,
+    do_commit: bool = True,
+) -> None:
+    """
+    Продлевает период в целевой версии на N лет и заполняет новые годы
+    копией данных последнего года исходной версии (мощности/топливо/тип ТЭС).
+
+    Примечание: функция рассчитана на сценарий "создать версию на основе существующей".
+    Предполагается, что исходные данные уже скопированы в target_version_id.
+    """
+    try:
+        years_to_extend = int(years_to_extend)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Некорректное значение количества лет для продления.") from exc
+
+    if years_to_extend < 0:
+        raise ValueError("Количество лет для продления не может быть отрицательным.")
+    if years_to_extend == 0:
+        return
+
+    base_end_year = _get_sipr_end_year(source_version_id) or _get_max_generation_data_year(source_version_id)
+    if not base_end_year:
+        raise ValueError("Не удалось определить последний год исходной версии (year_sipr_end/max(year_number)).")
+
+    new_end_year = base_end_year + years_to_extend
+
+    log_to_db(
+        user,
+        "Продление периода версии и копирование данных последнего года",
+        f"source_version_id={source_version_id}, target_version_id={target_version_id}, "
+        f"base_end_year={base_end_year}, new_end_year={new_end_year}",
+        entity_type="database_version",
+        entity_id=target_version_id,
+    )
+
+    # 1) Обновляем YearService в целевой версии (если нет — создаём)
+    target_service = (
+        YearService.query
+        .filter_by(database_version_id=target_version_id)
+        .with_for_update()
+        .first()
+    )
+    if not target_service:
+        target_service = YearService(database_version_id=target_version_id)
+        db.session.add(target_service)
+
+    target_service.year_sipr_end = new_end_year
+    db.session.flush()
+
+    # 2) Гарантируем наличие записей годов (gs_years) для новых лет (чтобы не ломались FK по year_number)
+    ensure_year_sql = text(f"""
+        INSERT INTO {SCHEMA_REFDATA}.gs_years (number, database_version_id)
+        SELECT :year_number, :target_version_id
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM {SCHEMA_REFDATA}.gs_years
+            WHERE number = :year_number
+              AND database_version_id = :target_version_id
+        )
+    """)
+
+    for y in range(base_end_year + 1, new_end_year + 1):
+        db.session.execute(
+            ensure_year_sql,
+            {"year_number": y, "target_version_id": target_version_id},
+        )
+    db.session.flush()
+
+    # 3) Копируем данные последнего года (base_end_year) на каждый новый год
+    copy_specs = [
+        # station_powers: мощности станции
+        {
+            "table": f"{SCHEMA_GENERATION}.station_powers",
+            "key_cols": ["id_station"],
+            "select_cols": ["id_station", "p_ust", "p_ogr", "p_rasp"],
+            "insert_cols": ["year_number", "id_station", "p_ust", "p_ogr", "p_rasp", "database_version_id"],
+        },
+        # machine_powers: мощности агрегатов
+        {
+            "table": f"{SCHEMA_GENERATION}.machine_powers",
+            "key_cols": ["id_machine"],
+            "select_cols": ["id_machine", "p_ust", "p_ogr", "p_rasp"],
+            "insert_cols": ["year_number", "id_machine", "p_ust", "p_ogr", "p_rasp", "database_version_id"],
+        },
+        # pgu_machine_powers: мощности ПГУ-компонентов
+        {
+            "table": f"{SCHEMA_GENERATION}.pgu_machine_powers",
+            "key_cols": ["id_pgu_machine"],
+            "select_cols": ["id_pgu_machine", "p_ust"],
+            "insert_cols": ["year_number", "id_pgu_machine", "p_ust", "database_version_id"],
+        },
+        # machine_fuels: топливо агрегата
+        {
+            "table": f"{SCHEMA_GENERATION}.machine_fuels",
+            "key_cols": ["id_machine", "id_fuel"],
+            "select_cols": ["id_machine", "id_fuel"],
+            "insert_cols": ["year_number", "id_machine", "id_fuel", "database_version_id"],
+        },
+        # machine_tes_types: тип ТЭС агрегата
+        {
+            "table": f"{SCHEMA_GENERATION}.machine_tes_types",
+            "key_cols": ["id_machine", "id_tes_type"],
+            "select_cols": ["id_machine", "id_tes_type"],
+            "insert_cols": ["year_number", "id_machine", "id_tes_type", "database_version_id"],
+        },
+    ]
+
+    for y in range(base_end_year + 1, new_end_year + 1):
+        for spec in copy_specs:
+            table_name = spec["table"]
+            key_conditions = " AND ".join([f"t2.{c} = t1.{c}" for c in spec["key_cols"]])
+
+            insert_cols_sql = ", ".join(spec["insert_cols"])
+            select_cols_sql = ", ".join([f"t1.{c}" for c in spec["select_cols"]])
+
+            sql = text(f"""
+                INSERT INTO {table_name} ({insert_cols_sql})
+                SELECT
+                    :new_year AS year_number,
+                    {select_cols_sql},
+                    :target_version_id AS database_version_id
+                FROM {table_name} t1
+                WHERE t1.database_version_id = :target_version_id
+                  AND t1.year_number = :base_year
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM {table_name} t2
+                      WHERE t2.database_version_id = :target_version_id
+                        AND t2.year_number = :new_year
+                        AND {key_conditions}
+                  )
+            """)
+
+            db.session.execute(
+                sql,
+                {
+                    "target_version_id": target_version_id,
+                    "base_year": base_end_year,
+                    "new_year": y,
+                },
+            )
+
+    if do_commit:
+        db.session.commit()
+
+    log_to_db(
+        user,
+        "Продление периода версии завершено",
+        f"Добавлены годы: {base_end_year + 1}..{new_end_year} (копия данных {base_end_year} года)",
+        entity_type="database_version",
+        entity_id=target_version_id,
+    )
+
 def _copy_association_tables(source_version_id, target_version_id, id_mappings, user):
     """
     Копирует ассоциативные таблицы (many-to-many) из одной версии в другую.
@@ -485,7 +713,7 @@ def _copy_association_tables(source_version_id, target_version_id, id_mappings, 
     
     # Список ассоциативных таблиц С database_version_id
     association_tables = [
-        ('refdata', 'regional_district_regional_energy_system'),
+        (SCHEMA_REFDATA, 'gs_regional_district_regional_energy_system'),
         # Добавьте сюда другие ассоциативные таблицы при необходимости
     ]
     
@@ -516,10 +744,10 @@ def _copy_association_tables(source_version_id, target_version_id, id_mappings, 
             for col_name in column_names:
                 # Определяем, в какую таблицу ссылается эта колонка
                 if col_name == 'regional_district_id':
-                    mapping_key = 'refdata.regional_districts'
+                    mapping_key = f"{SCHEMA_REFDATA}.gs_regional_districts"
                     columns_to_map.append((col_name, mapping_key))
                 elif col_name == 'regional_energy_system_id':
-                    mapping_key = 'refdata.regional_energy_systems'
+                    mapping_key = f"{SCHEMA_REFDATA}.gs_regional_energy_systems"
                     columns_to_map.append((col_name, mapping_key))
                 # Добавьте другие колонки при необходимости
             
@@ -565,9 +793,11 @@ def _copy_association_tables(source_version_id, target_version_id, id_mappings, 
                         VALUES ({values_str})
                         ON CONFLICT DO NOTHING
                     """)
-                    
-                    db.session.execute(insert_query, row)
-                    copied_count += 1
+                    # Каждую вставку делаем в SAVEPOINT: ошибка на одной строке не должна
+                    # "ломать" транзакцию целиком (иначе получим InFailedSqlTransaction).
+                    with db.session.begin_nested():
+                        db.session.execute(insert_query, row)
+                        copied_count += 1
                 except Exception as e:
                     current_app.logger.error(f"Ошибка при копировании записи из {schema}.{table}: {e}")
                     continue
@@ -640,6 +870,11 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     
     id_mappings = {}
     total_copied = 0
+
+    # В проекте схема справочников может отличаться от "refdata" (по умолчанию gs_sys),
+    # а таблицы в ней имеют префикс gs_. Используем значения из config.
+    ref_schema = SCHEMA_REFDATA
+    gen_schema = SCHEMA_GENERATION
     
     # ЭТАП 1: Полностью независимые таблицы (без внешних ключей на другие таблицы)
     log_to_db(
@@ -652,32 +887,35 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     
     # Полностью независимые таблицы (справочники без внешних ключей)
     completely_independent_tables = [
-        ('refdata', 'station_types'),
-        ('refdata', 'machine_types'), 
-        ('refdata', 'tes_types'),
-        ('refdata', 'tes_machine_types'),
-        ('refdata', 'pgu_tes_machine_types'),
-        ('refdata', 'condition_types'),
-        ('refdata', 'technology_types'),
-        ('refdata', 'technology_availabilities'),
-        ('refdata', 'equipment_groups'),
-        ('refdata', 'energy_system_types'),
-        ('refdata', 'fuel_categories'),
-        ('refdata', 'fuel_types'),
-        ('refdata', 'fuels'),
-        ('refdata', 'gs_companies'),
-        ('generation', 'station_groups'),
-        ('generation', 'documents_kommod')
+        (ref_schema, 'gs_station_types'),
+        (ref_schema, 'gs_machine_types'),
+        (ref_schema, 'gs_tes_types'),
+        (ref_schema, 'gs_tes_machine_types'),
+        (ref_schema, 'gs_pgu_tes_machine_types'),
+        (ref_schema, 'gs_condition_types'),
+        (ref_schema, 'gs_technology_types'),
+        (ref_schema, 'gs_technology_availabilities'),
+        (ref_schema, 'gs_equipment_groups'),
+        (ref_schema, 'gs_energy_system_types'),
+        (ref_schema, 'gs_fuel_categories'),
+        (ref_schema, 'gs_fuel_types'),
+        (ref_schema, 'gs_fuels'),
+        (ref_schema, 'gs_companies'),
+        (gen_schema, 'station_groups'),
+        (gen_schema, 'documents_kommod')
     ]
     
     # Копируем полностью независимые таблицы
     for schema, table in completely_independent_tables:
         try:
-            copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-            total_copied += copied
-            if mapping:
-                id_mappings[f"{schema}.{table}"] = mapping
-                current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
+            # Важно: если копирование конкретной таблицы падает, не "ломаем" всю транзакцию.
+            # Используем SAVEPOINT, чтобы последующие операции не падали с InFailedSqlTransaction.
+            with db.session.begin_nested():
+                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                total_copied += copied
+                if mapping:
+                    id_mappings[f"{schema}.{table}"] = mapping
+                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
         except Exception as e:
             current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
             log_to_db(
@@ -700,23 +938,23 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     # Таблицы, зависящие только от таблиц ЭТАПА 1
     stage2_tables = [
         {
-            'schema': 'refdata',
-            'table': 'union_energy_systems',
+            'schema': ref_schema,
+            'table': 'gs_union_energy_systems',
             'dependencies': []  # Независимая, но копируем во 2 этапе для логической группировки
         },
         {
-            'schema': 'refdata', 
-            'table': 'synchronous_areas',
+            'schema': ref_schema,
+            'table': 'gs_synchronous_areas',
             'dependencies': []
         },
         {
-            'schema': 'refdata',
-            'table': 'energy_zones', 
+            'schema': ref_schema,
+            'table': 'gs_energy_zones',
             'dependencies': []
         },
         {
-            'schema': 'refdata',
-            'table': 'federal_districts',
+            'schema': ref_schema,
+            'table': 'gs_federal_districts',
             'dependencies': []
         }
     ]
@@ -727,11 +965,12 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         table = table_info['table']
         
         try:
-            copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-            total_copied += copied
-            if mapping:
-                id_mappings[f"{schema}.{table}"] = mapping
-                current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
+            with db.session.begin_nested():
+                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                total_copied += copied
+                if mapping:
+                    id_mappings[f"{schema}.{table}"] = mapping
+                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
         except Exception as e:
             current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
             log_to_db(
@@ -753,19 +992,19 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     
     stage3_tables = [
         {
-            'schema': 'refdata',
-            'table': 'regional_districts',
+            'schema': ref_schema,
+            'table': 'gs_regional_districts',
             'dependencies': [
-                {'fk': 'id_federal_district', 'ref_table': 'refdata.federal_districts'},
-                {'fk': 'id_energy_zone', 'ref_table': 'refdata.energy_zones'},
-                {'fk': 'id_synchronous_area', 'ref_table': 'refdata.synchronous_areas'}
+                {'fk': 'id_federal_district', 'ref_table': f'{ref_schema}.gs_federal_districts'},
+                {'fk': 'id_energy_zone', 'ref_table': f'{ref_schema}.gs_energy_zones'},
+                {'fk': 'id_synchronous_area', 'ref_table': f'{ref_schema}.gs_synchronous_areas'}
             ]
         },
         {
-            'schema': 'refdata',
-            'table': 'regional_energy_systems',
+            'schema': ref_schema,
+            'table': 'gs_regional_energy_systems',
             'dependencies': [
-                {'fk': 'id_union_energy_system', 'ref_table': 'refdata.union_energy_systems'}
+                {'fk': 'id_union_energy_system', 'ref_table': f'{ref_schema}.gs_union_energy_systems'}
             ]
         }
     ]
@@ -776,24 +1015,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         table = table_info['table']
         
         try:
-            # Копируем данные таблицы (пока со старыми FK)
-            copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-            total_copied += copied
-            if mapping:
-                id_mappings[f"{schema}.{table}"] = mapping
-                current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-            
-            # Обновляем foreign key согласно зависимостям
-            for dep in table_info['dependencies']:
-                fk_column = dep['fk']
-                ref_table = dep['ref_table']
+            with db.session.begin_nested():
+                # Копируем данные таблицы (пока со старыми FK)
+                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                total_copied += copied
+                if mapping:
+                    id_mappings[f"{schema}.{table}"] = mapping
+                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                 
-                if ref_table in id_mappings:
-                    ref_mapping = id_mappings[ref_table]
-                    _update_foreign_keys_in_table(
-                        schema, table, fk_column, ref_mapping, target_version_id, user
-                    )
-                    current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                # Обновляем foreign key согласно зависимостям
+                for dep in table_info['dependencies']:
+                    fk_column = dep['fk']
+                    ref_table = dep['ref_table']
+                    
+                    if ref_table in id_mappings:
+                        ref_mapping = id_mappings[ref_table]
+                        _update_foreign_keys_in_table(
+                            schema, table, fk_column, ref_mapping, target_version_id, user
+                        )
+                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                     
         except Exception as e:
             current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -816,18 +1056,18 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     
     stage4_tables = [
         {
-            'schema': 'refdata',
-            'table': 'energy_areas',
+            'schema': ref_schema,
+            'table': 'gs_energy_areas',
             'dependencies': [
-                {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'}
+                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'}
             ]
         },
         {
-            'schema': 'refdata',
-            'table': 'energy_units',
+            'schema': ref_schema,
+            'table': 'gs_energy_units',
             'dependencies': [
-                {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
-                {'fk': 'id_regional_energy_system', 'ref_table': 'refdata.regional_energy_systems'}
+                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'},
+                {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_regional_energy_systems'}
             ]
         }
     ]
@@ -838,24 +1078,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         table = table_info['table']
         
         try:
-            # Копируем данные таблицы (пока со старыми FK)
-            copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-            total_copied += copied
-            if mapping:
-                id_mappings[f"{schema}.{table}"] = mapping
-                current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-            
-            # Обновляем foreign key согласно зависимостям
-            for dep in table_info['dependencies']:
-                fk_column = dep['fk']
-                ref_table = dep['ref_table']
+            with db.session.begin_nested():
+                # Копируем данные таблицы (пока со старыми FK)
+                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                total_copied += copied
+                if mapping:
+                    id_mappings[f"{schema}.{table}"] = mapping
+                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                 
-                if ref_table in id_mappings:
-                    ref_mapping = id_mappings[ref_table]
-                    _update_foreign_keys_in_table(
-                        schema, table, fk_column, ref_mapping, target_version_id, user
-                    )
-                    current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                # Обновляем foreign key согласно зависимостям
+                for dep in table_info['dependencies']:
+                    fk_column = dep['fk']
+                    ref_table = dep['ref_table']
+                    
+                    if ref_table in id_mappings:
+                        ref_mapping = id_mappings[ref_table]
+                        _update_foreign_keys_in_table(
+                            schema, table, fk_column, ref_mapping, target_version_id, user
+                        )
+                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                     
         except Exception as e:
             current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -887,14 +1128,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         
         stage5_tables = [
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'stations',
                 'dependencies': [
-                    {'fk': 'id_station_group', 'ref_table': 'generation.station_groups'},
-                    {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
-                    {'fk': 'id_energy_unit', 'ref_table': 'refdata.energy_units'},
-                    {'fk': 'id_station_type', 'ref_table': 'refdata.station_types'},
-                    {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
+                    {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.station_groups'},
+                    {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'},
+                    {'fk': 'id_energy_unit', 'ref_table': f'{ref_schema}.gs_energy_units'},
+                    {'fk': 'id_station_type', 'ref_table': f'{ref_schema}.gs_station_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'}
                 ]
             }
         ]
@@ -905,24 +1146,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             table = table_info['table']
             
             try:
-                # Копируем данные таблицы (пока со старыми FK)
-                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-                total_copied += copied
-                if mapping:
-                    id_mappings[f"{schema}.{table}"] = mapping
-                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-                
-                # Обновляем foreign key согласно зависимостям
-                for dep in table_info['dependencies']:
-                    fk_column = dep['fk']
-                    ref_table = dep['ref_table']
+                with db.session.begin_nested():
+                    # Копируем данные таблицы (пока со старыми FK)
+                    copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                    total_copied += copied
+                    if mapping:
+                        id_mappings[f"{schema}.{table}"] = mapping
+                        current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                     
-                    if ref_table in id_mappings:
-                        ref_mapping = id_mappings[ref_table]
-                        _update_foreign_keys_in_table(
-                            schema, table, fk_column, ref_mapping, target_version_id, user
-                        )
-                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                    # Обновляем foreign key согласно зависимостям
+                    for dep in table_info['dependencies']:
+                        fk_column = dep['fk']
+                        ref_table = dep['ref_table']
+                        
+                        if ref_table in id_mappings:
+                            ref_mapping = id_mappings[ref_table]
+                            _update_foreign_keys_in_table(
+                                schema, table, fk_column, ref_mapping, target_version_id, user
+                            )
+                            current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                         
             except Exception as e:
                 current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -945,32 +1187,32 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         
         stage6_tables = [
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'station_powers',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': 'generation.stations'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
                 ]
             },
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'machines',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': 'generation.stations'},
-                    {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
-                    {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
-                    {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
-                    {'fk': 'id_gen_company', 'ref_table': 'refdata.gs_companies'},
-                    {'fk': 'id_energy_area', 'ref_table': 'refdata.energy_areas'},
-                    {'fk': 'id_technology_availability', 'ref_table': 'refdata.technology_availabilities'},
-                    {'fk': 'id_technology_type', 'ref_table': 'refdata.technology_types'},
-                    {'fk': 'id_equipment_group', 'ref_table': 'refdata.equipment_groups'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
+                    {'fk': 'id_machine_type', 'ref_table': f'{ref_schema}.gs_machine_types'},
+                    {'fk': 'id_tes_machine_type', 'ref_table': f'{ref_schema}.gs_tes_machine_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'},
+                    {'fk': 'id_gen_company', 'ref_table': f'{ref_schema}.gs_companies'},
+                    {'fk': 'id_energy_area', 'ref_table': f'{ref_schema}.gs_energy_areas'},
+                    {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
+                    {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'},
+                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
                 ]
             },
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'boilers',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': 'generation.stations'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
                 ]
             }
         ]
@@ -981,24 +1223,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             table = table_info['table']
             
             try:
-                # Копируем данные таблицы (пока со старыми FK)
-                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-                total_copied += copied
-                if mapping:
-                    id_mappings[f"{schema}.{table}"] = mapping
-                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-                
-                # Обновляем foreign key согласно зависимостям
-                for dep in table_info['dependencies']:
-                    fk_column = dep['fk']
-                    ref_table = dep['ref_table']
+                with db.session.begin_nested():
+                    # Копируем данные таблицы (пока со старыми FK)
+                    copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                    total_copied += copied
+                    if mapping:
+                        id_mappings[f"{schema}.{table}"] = mapping
+                        current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                     
-                    if ref_table in id_mappings:
-                        ref_mapping = id_mappings[ref_table]
-                        _update_foreign_keys_in_table(
-                            schema, table, fk_column, ref_mapping, target_version_id, user
-                        )
-                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                    # Обновляем foreign key согласно зависимостям
+                    for dep in table_info['dependencies']:
+                        fk_column = dep['fk']
+                        ref_table = dep['ref_table']
+                        
+                        if ref_table in id_mappings:
+                            ref_mapping = id_mappings[ref_table]
+                            _update_foreign_keys_in_table(
+                                schema, table, fk_column, ref_mapping, target_version_id, user
+                            )
+                            current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                         
             except Exception as e:
                 current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -1021,35 +1264,35 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         
         stage7_tables = [
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'machine_powers',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': 'generation.machines'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
                 ]
             },
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'machine_fuels',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': 'generation.machines'},
-                    {'fk': 'id_fuel', 'ref_table': 'refdata.fuels'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
+                    {'fk': 'id_fuel', 'ref_table': f'{ref_schema}.gs_fuels'}
                 ]
             },
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'machine_tes_types',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': 'generation.machines'},
-                    {'fk': 'id_tes_type', 'ref_table': 'refdata.tes_types'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
+                    {'fk': 'id_tes_type', 'ref_table': f'{ref_schema}.gs_tes_types'}
                 ]
             },
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'pgu_machines',
                 'dependencies': [
-                    {'fk': 'id_parent_machine', 'ref_table': 'generation.machines'},
-                    {'fk': 'id_pgu_tes_machine_type', 'ref_table': 'refdata.pgu_tes_machine_types'},
-                    {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
+                    {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.machines'},
+                    {'fk': 'id_pgu_tes_machine_type', 'ref_table': f'{ref_schema}.gs_pgu_tes_machine_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'}
                 ]
             }
         ]
@@ -1060,24 +1303,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             table = table_info['table']
             
             try:
-                # Копируем данные таблицы (пока со старыми FK)
-                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-                total_copied += copied
-                if mapping:
-                    id_mappings[f"{schema}.{table}"] = mapping
-                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-                
-                # Обновляем foreign key согласно зависимостям
-                for dep in table_info['dependencies']:
-                    fk_column = dep['fk']
-                    ref_table = dep['ref_table']
+                with db.session.begin_nested():
+                    # Копируем данные таблицы (пока со старыми FK)
+                    copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                    total_copied += copied
+                    if mapping:
+                        id_mappings[f"{schema}.{table}"] = mapping
+                        current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                     
-                    if ref_table in id_mappings:
-                        ref_mapping = id_mappings[ref_table]
-                        _update_foreign_keys_in_table(
-                            schema, table, fk_column, ref_mapping, target_version_id, user
-                        )
-                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                    # Обновляем foreign key согласно зависимостям
+                    for dep in table_info['dependencies']:
+                        fk_column = dep['fk']
+                        ref_table = dep['ref_table']
+                        
+                        if ref_table in id_mappings:
+                            ref_mapping = id_mappings[ref_table]
+                            _update_foreign_keys_in_table(
+                                schema, table, fk_column, ref_mapping, target_version_id, user
+                            )
+                            current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                         
             except Exception as e:
                 current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -1100,10 +1344,10 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         
         stage8_tables = [
             {
-                'schema': 'generation',
+                'schema': gen_schema,
                 'table': 'pgu_machine_powers',
                 'dependencies': [
-                    {'fk': 'id_pgu_machine', 'ref_table': 'generation.pgu_machines'}
+                    {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.pgu_machines'}
                 ]
             }
         ]
@@ -1114,24 +1358,25 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             table = table_info['table']
             
             try:
-                # Копируем данные таблицы (пока со старыми FK)
-                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
-                total_copied += copied
-                if mapping:
-                    id_mappings[f"{schema}.{table}"] = mapping
-                    current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
-                
-                # Обновляем foreign key согласно зависимостям
-                for dep in table_info['dependencies']:
-                    fk_column = dep['fk']
-                    ref_table = dep['ref_table']
+                with db.session.begin_nested():
+                    # Копируем данные таблицы (пока со старыми FK)
+                    copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
+                    total_copied += copied
+                    if mapping:
+                        id_mappings[f"{schema}.{table}"] = mapping
+                        current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
                     
-                    if ref_table in id_mappings:
-                        ref_mapping = id_mappings[ref_table]
-                        _update_foreign_keys_in_table(
-                            schema, table, fk_column, ref_mapping, target_version_id, user
-                        )
-                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
+                    # Обновляем foreign key согласно зависимостям
+                    for dep in table_info['dependencies']:
+                        fk_column = dep['fk']
+                        ref_table = dep['ref_table']
+                        
+                        if ref_table in id_mappings:
+                            ref_mapping = id_mappings[ref_table]
+                            _update_foreign_keys_in_table(
+                                schema, table, fk_column, ref_mapping, target_version_id, user
+                            )
+                            current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
                         
             except Exception as e:
                 current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
@@ -1146,148 +1391,153 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     # Копирование ассоциативных таблиц (связей many-to-many)
     _copy_association_tables(source_version_id, target_version_id, id_mappings, user)
     
-    # Доп. шаги перепривязки FK в refdata после поэтапного копирования
+    # Доп. шаги перепривязки FK в справочниках после поэтапного копирования.
+    # Важно: выполняем в SAVEPOINT, чтобы единичная ошибка не переводила всю транзакцию
+    # в состояние aborted (и не приводила к InFailedSqlTransaction на следующих шагах).
     try:
         from sqlalchemy import text as _text
-        # fuels.id_fuel_type -> fuel_types (сначала по ID-мэппингу, затем резерв по name)
-        updated_rows_total = 0
-        ft_mapping = id_mappings.get('refdata.fuel_types') or {}
-        if ft_mapping:
-            current_app.logger.info("🔧 [STAGED] Перепривязка fuels по маппингу ID fuel_types...")
-            temp_tbl = f"tmp_map_ft_{target_version_id}"
-            db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl}"))
-            db.session.execute(_text(
-                f"CREATE TEMP TABLE {temp_tbl} (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
-            ))
-            rows = [(old_id, new_id) for old_id, new_id in ft_mapping.items()]
-            batch_size = 1000
-            for i in range(0, len(rows), batch_size):
-                batch = rows[i:i+batch_size]
-                db.session.execute(
-                    _text(f"INSERT INTO {temp_tbl} (old_id, new_id) VALUES (:old_id, :new_id) ON CONFLICT (old_id) DO NOTHING"),
-                    [{"old_id": o, "new_id": n} for o, n in batch]
-                )
-            result = db.session.execute(_text(
-                f"""
-                UPDATE refdata.fuels f
-                SET id_fuel_type = m.new_id
-                FROM {temp_tbl} m
-                WHERE f.database_version_id = :target_version_id
-                  AND f.id_fuel_type = m.old_id
-                  AND f.id_fuel_type IS DISTINCT FROM m.new_id
-                """
-            ), {"target_version_id": target_version_id})
-            updated_rows_total += result.rowcount or 0
-            db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl}"))
-        if updated_rows_total == 0:
-            current_app.logger.info("🔧 [STAGED] Перепривязка fuels по name fuel_types (резервный путь)...")
-            relink_sql = _text(
-                """
-                WITH map AS (
-                    SELECT f.id AS fuel_id, ft_new.id AS new_ft_id
-                    FROM refdata.fuels f
-                    JOIN refdata.fuel_types ft_old ON ft_old.id = f.id_fuel_type
-                    JOIN refdata.fuel_types ft_new
-                      ON ft_new.name = ft_old.name
-                     AND ft_new.database_version_id = f.database_version_id
+        with db.session.begin_nested():
+            # fuels.id_fuel_type -> fuel_types (сначала по ID-мэппингу, затем резерв по name)
+            updated_rows_total = 0
+            ft_mapping = id_mappings.get(f'{ref_schema}.gs_fuel_types') or {}
+            if ft_mapping:
+                current_app.logger.info("🔧 [STAGED] Перепривязка fuels по маппингу ID fuel_types...")
+                temp_tbl = f"tmp_map_ft_{target_version_id}"
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl}"))
+                db.session.execute(_text(
+                    f"CREATE TEMP TABLE {temp_tbl} (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
+                ))
+                rows = [(old_id, new_id) for old_id, new_id in ft_mapping.items()]
+                batch_size = 1000
+                for i in range(0, len(rows), batch_size):
+                    batch = rows[i:i+batch_size]
+                    db.session.execute(
+                        _text(f"INSERT INTO {temp_tbl} (old_id, new_id) VALUES (:old_id, :new_id) ON CONFLICT (old_id) DO NOTHING"),
+                        [{"old_id": o, "new_id": n} for o, n in batch]
+                    )
+                result = db.session.execute(_text(
+                    f"""
+                    UPDATE {ref_schema}.gs_fuels f
+                    SET id_fuel_type = m.new_id
+                    FROM {temp_tbl} m
                     WHERE f.database_version_id = :target_version_id
+                      AND f.id_fuel_type = m.old_id
+                      AND f.id_fuel_type IS DISTINCT FROM m.new_id
+                    """
+                ), {"target_version_id": target_version_id})
+                updated_rows_total += result.rowcount or 0
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl}"))
+            if updated_rows_total == 0:
+                current_app.logger.info("🔧 [STAGED] Перепривязка fuels по name fuel_types (резервный путь)...")
+                relink_sql = _text(
+                    f"""
+                    WITH map AS (
+                        SELECT f.id AS fuel_id, ft_new.id AS new_ft_id
+                        FROM {ref_schema}.gs_fuels f
+                        JOIN {ref_schema}.gs_fuel_types ft_old ON ft_old.id = f.id_fuel_type
+                        JOIN {ref_schema}.gs_fuel_types ft_new
+                          ON ft_new.name = ft_old.name
+                         AND ft_new.database_version_id = f.database_version_id
+                        WHERE f.database_version_id = :target_version_id
+                    )
+                    UPDATE {ref_schema}.gs_fuels f
+                    SET id_fuel_type = m.new_ft_id
+                    FROM map m
+                    WHERE f.id = m.fuel_id
+                      AND f.id_fuel_type IS DISTINCT FROM m.new_ft_id;
+                    """
                 )
-                UPDATE refdata.fuels f
-                SET id_fuel_type = m.new_ft_id
-                FROM map m
-                WHERE f.id = m.fuel_id
-                  AND f.id_fuel_type IS DISTINCT FROM m.new_ft_id;
-                """
-            )
-            result = db.session.execute(relink_sql, {"target_version_id": target_version_id})
-            updated_rows_total += result.rowcount or 0
-        current_app.logger.info(f"  ✓ [STAGED] Обновлено связей fuels.id_fuel_type: {updated_rows_total}")
-        # Контрольная проверка
-        check_sql = _text(
-            """
-            SELECT COUNT(*)
-            FROM refdata.fuels f
-            LEFT JOIN refdata.fuel_types ft
-              ON ft.id = f.id_fuel_type
-             AND ft.database_version_id = f.database_version_id
-            WHERE f.database_version_id = :target_version_id
-              AND ft.id IS NULL;
-            """
-        )
-        not_mapped_cnt = db.session.execute(check_sql, {"target_version_id": target_version_id}).scalar()
-        if not_mapped_cnt and not_mapped_cnt > 0:
-            current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в refdata.fuels: {not_mapped_cnt}")
-        
-        # union_energy_systems.id_energy_system_type -> energy_system_types (ID-мэппинг, затем резерв по name)
-        updated_ues_rows_total = 0
-        est_mapping = id_mappings.get('refdata.energy_system_types') or {}
-        if est_mapping:
-            current_app.logger.info("🔧 [STAGED] Перепривязка UES по маппингу ID energy_system_types...")
-            temp_tbl2 = f"tmp_map_est_{target_version_id}"
-            db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl2}"))
-            db.session.execute(_text(
-                f"CREATE TEMP TABLE {temp_tbl2} (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
-            ))
-            rows2 = [(old_id, new_id) for old_id, new_id in est_mapping.items()]
-            batch_size = 1000
-            for i in range(0, len(rows2), batch_size):
-                batch2 = rows2[i:i+batch_size]
-                db.session.execute(
-                    _text(f"INSERT INTO {temp_tbl2} (old_id, new_id) VALUES (:old_id, :new_id) ON CONFLICT (old_id) DO NOTHING"),
-                    [{"old_id": o, "new_id": n} for o, n in batch2]
-                )
-            result2 = db.session.execute(_text(
+                result = db.session.execute(relink_sql, {"target_version_id": target_version_id})
+                updated_rows_total += result.rowcount or 0
+            current_app.logger.info(f"  ✓ [STAGED] Обновлено связей fuels.id_fuel_type: {updated_rows_total}")
+            # Контрольная проверка
+            check_sql = _text(
                 f"""
-                UPDATE refdata.union_energy_systems ues
-                SET id_energy_system_type = m.new_id
-                FROM {temp_tbl2} m
-                WHERE ues.database_version_id = :target_version_id
-                  AND ues.id_energy_system_type = m.old_id
-                  AND ues.id_energy_system_type IS DISTINCT FROM m.new_id
-                """
-            ), {"target_version_id": target_version_id})
-            updated_ues_rows_total += result2.rowcount or 0
-            db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl2}"))
-        if updated_ues_rows_total == 0:
-            current_app.logger.info("🔧 [STAGED] Перепривязка UES по name energy_system_types (резервный путь)...")
-            relink_ues_sql = _text(
-                """
-                WITH map AS (
-                    SELECT ues.id AS ues_id, est_new.id AS new_type_id
-                    FROM refdata.union_energy_systems ues
-                    JOIN refdata.energy_system_types est_old ON est_old.id = ues.id_energy_system_type
-                    JOIN refdata.energy_system_types est_new
-                      ON est_new.name = est_old.name
-                     AND est_new.database_version_id = ues.database_version_id
-                    WHERE ues.database_version_id = :target_version_id
-                )
-                UPDATE refdata.union_energy_systems ues
-                SET id_energy_system_type = m.new_type_id
-                FROM map m
-                WHERE ues.id = m.ues_id
-                  AND ues.id_energy_system_type IS DISTINCT FROM m.new_type_id;
+                SELECT COUNT(*)
+                FROM {ref_schema}.gs_fuels f
+                LEFT JOIN {ref_schema}.gs_fuel_types ft
+                  ON ft.id = f.id_fuel_type
+                 AND ft.database_version_id = f.database_version_id
+                WHERE f.database_version_id = :target_version_id
+                  AND ft.id IS NULL;
                 """
             )
-            result2 = db.session.execute(relink_ues_sql, {"target_version_id": target_version_id})
-            updated_ues_rows_total += result2.rowcount or 0
-        current_app.logger.info(f"  ✓ [STAGED] Обновлено связей union_energy_systems.id_energy_system_type: {updated_ues_rows_total}")
-        # Контрольная проверка
-        check_ues_sql = _text(
-            """
-            SELECT COUNT(*)
-            FROM refdata.union_energy_systems ues
-            LEFT JOIN refdata.energy_system_types est
-              ON est.id = ues.id_energy_system_type
-             AND est.database_version_id = ues.database_version_id
-            WHERE ues.database_version_id = :target_version_id
-              AND est.id IS NULL;
-            """
-        )
-        not_mapped_cnt2 = db.session.execute(check_ues_sql, {"target_version_id": target_version_id}).scalar()
-        if not_mapped_cnt2 and not_mapped_cnt2 > 0:
-            current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в refdata.union_energy_systems: {not_mapped_cnt2}")
+            not_mapped_cnt = db.session.execute(check_sql, {"target_version_id": target_version_id}).scalar()
+            if not_mapped_cnt and not_mapped_cnt > 0:
+                current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_fuels: {not_mapped_cnt}")
+            
+            # union_energy_systems.id_energy_system_type -> energy_system_types (ID-мэппинг, затем резерв по name)
+            updated_ues_rows_total = 0
+            est_mapping = id_mappings.get(f'{ref_schema}.gs_energy_system_types') or {}
+            if est_mapping:
+                current_app.logger.info("🔧 [STAGED] Перепривязка UES по маппингу ID energy_system_types...")
+                temp_tbl2 = f"tmp_map_est_{target_version_id}"
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl2}"))
+                db.session.execute(_text(
+                    f"CREATE TEMP TABLE {temp_tbl2} (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
+                ))
+                rows2 = [(old_id, new_id) for old_id, new_id in est_mapping.items()]
+                batch_size = 1000
+                for i in range(0, len(rows2), batch_size):
+                    batch2 = rows2[i:i+batch_size]
+                    db.session.execute(
+                        _text(f"INSERT INTO {temp_tbl2} (old_id, new_id) VALUES (:old_id, :new_id) ON CONFLICT (old_id) DO NOTHING"),
+                        [{"old_id": o, "new_id": n} for o, n in batch2]
+                    )
+                result2 = db.session.execute(_text(
+                    f"""
+                    UPDATE {ref_schema}.gs_union_energy_systems ues
+                    SET id_energy_system_type = m.new_id
+                    FROM {temp_tbl2} m
+                    WHERE ues.database_version_id = :target_version_id
+                      AND ues.id_energy_system_type = m.old_id
+                      AND ues.id_energy_system_type IS DISTINCT FROM m.new_id
+                    """
+                ), {"target_version_id": target_version_id})
+                updated_ues_rows_total += result2.rowcount or 0
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl2}"))
+            if updated_ues_rows_total == 0:
+                current_app.logger.info("🔧 [STAGED] Перепривязка UES по name energy_system_types (резервный путь)...")
+                relink_ues_sql = _text(
+                    f"""
+                    WITH map AS (
+                        SELECT ues.id AS ues_id, est_new.id AS new_type_id
+                        FROM {ref_schema}.gs_union_energy_systems ues
+                        JOIN {ref_schema}.gs_energy_system_types est_old ON est_old.id = ues.id_energy_system_type
+                        JOIN {ref_schema}.gs_energy_system_types est_new
+                          ON est_new.name = est_old.name
+                         AND est_new.database_version_id = ues.database_version_id
+                        WHERE ues.database_version_id = :target_version_id
+                    )
+                    UPDATE {ref_schema}.gs_union_energy_systems ues
+                    SET id_energy_system_type = m.new_type_id
+                    FROM map m
+                    WHERE ues.id = m.ues_id
+                      AND ues.id_energy_system_type IS DISTINCT FROM m.new_type_id;
+                    """
+                )
+                result2 = db.session.execute(relink_ues_sql, {"target_version_id": target_version_id})
+                updated_ues_rows_total += result2.rowcount or 0
+            current_app.logger.info(f"  ✓ [STAGED] Обновлено связей union_energy_systems.id_energy_system_type: {updated_ues_rows_total}")
+            # Контрольная проверка
+            check_ues_sql = _text(
+                f"""
+                SELECT COUNT(*)
+                FROM {ref_schema}.gs_union_energy_systems ues
+                LEFT JOIN {ref_schema}.gs_energy_system_types est
+                  ON est.id = ues.id_energy_system_type
+                 AND est.database_version_id = ues.database_version_id
+                WHERE ues.database_version_id = :target_version_id
+                  AND est.id IS NULL;
+                """
+            )
+            not_mapped_cnt2 = db.session.execute(check_ues_sql, {"target_version_id": target_version_id}).scalar()
+            if not_mapped_cnt2 and not_mapped_cnt2 > 0:
+                current_app.logger.warning(
+                    f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_union_energy_systems: {not_mapped_cnt2}"
+                )
     except Exception as e:
-        current_app.logger.error(f"  ❌ [STAGED] Ошибка доп. перепривязки FK в refdata: {e}")
+        current_app.logger.error(f"  ❌ [STAGED] Ошибка доп. перепривязки FK в справочниках: {e}")
     
     # Коммитим только если do_commit=True
     if do_commit:
@@ -1458,12 +1708,12 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
             copied, mapping = _copy_table_with_mapping('generation', table, source_version_id, target_version_id, user)
             total_copied += copied
             if mapping:
-                id_mappings[f"generation.{table}"] = mapping
+                id_mappings[f"gs_gen.{table}"] = mapping
         except Exception as e:
-            current_app.logger.error(f"Ошибка копирования таблицы generation.{table}: {e}")
+            current_app.logger.error(f"Ошибка копирования таблицы gs_gen.{table}: {e}")
             log_to_db(
                 user,
-                f"Ошибка копирования таблицы generation.{table}",
+                f"Ошибка копирования таблицы gs_gen.{table}",
                 str(e),
                 entity_type="database_version",
                 entity_id=target_version_id
@@ -1488,7 +1738,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         {
             'table': 'stations',
             'dependencies': [
-                {'fk': 'id_station_group', 'ref_table': 'generation.station_groups'},
+                {'fk': 'id_station_group', 'ref_table': 'gs_gen.station_groups'},
                 {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
                 {'fk': 'id_energy_unit', 'ref_table': 'refdata.energy_units'},
                 {'fk': 'id_station_type', 'ref_table': 'refdata.station_types'},
@@ -1498,13 +1748,13 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         {
             'table': 'station_powers',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'generation.stations'}
+                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
             ]
         },
         {
             'table': 'machines',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'generation.stations'},
+                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'},
                 {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
                 {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
@@ -1518,27 +1768,27 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         {
             'table': 'machine_powers',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'generation.machines'}
+                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'}
             ]
         },
         {
             'table': 'machine_fuels',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'generation.machines'},
+                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
                 {'fk': 'id_fuel', 'ref_table': 'refdata.fuels'}
             ]
         },
         {
             'table': 'machine_tes_types',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'generation.machines'},
+                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
                 {'fk': 'id_tes_type', 'ref_table': 'refdata.tes_types'}
             ]
         },
         {
             'table': 'pgu_machines',
             'dependencies': [
-                {'fk': 'id_parent_machine', 'ref_table': 'generation.machines'},
+                {'fk': 'id_parent_machine', 'ref_table': 'gs_gen.machines'},
                 {'fk': 'id_pgu_tes_machine_type', 'ref_table': 'refdata.pgu_tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
             ]
@@ -1546,13 +1796,13 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         {
             'table': 'pgu_machine_powers',
             'dependencies': [
-                {'fk': 'id_pgu_machine', 'ref_table': 'generation.pgu_machines'}
+                {'fk': 'id_pgu_machine', 'ref_table': 'gs_gen.pgu_machines'}
             ]
         },
         {
             'table': 'boilers',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'generation.stations'}
+                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
             ]
         }
     ]
@@ -1562,37 +1812,36 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         table = table_info['table']
         
         try:
-            # Копируем данные таблицы (пока со старыми FK)
-            copied, mapping = _copy_table_with_mapping('generation', table, source_version_id, target_version_id, user)
-            total_copied += copied
-            if mapping:
-                id_mappings[f"generation.{table}"] = mapping
-            
-            # Обновляем foreign key согласно зависимостям
-            for dep in table_info['dependencies']:
-                fk_column = dep['fk']
-                ref_table = dep['ref_table']
+            with db.session.begin_nested():
+                # Копируем данные таблицы (пока со старыми FK)
+                copied, mapping = _copy_table_with_mapping('generation', table, source_version_id, target_version_id, user)
+                total_copied += copied
+                if mapping:
+                    id_mappings[f"gs_gen.{table}"] = mapping
                 
-                if ref_table in id_mappings:
-                    ref_mapping = id_mappings[ref_table]
-                    _update_foreign_keys_in_table(
-                        'generation', table, fk_column, ref_mapping, target_version_id, user
-                    )
+                # Обновляем foreign key согласно зависимостям
+                for dep in table_info['dependencies']:
+                    fk_column = dep['fk']
+                    ref_table = dep['ref_table']
+                    
+                    if ref_table in id_mappings:
+                        ref_mapping = id_mappings[ref_table]
+                        _update_foreign_keys_in_table(
+                            'generation', table, fk_column, ref_mapping, target_version_id, user
+                        )
                     
         except Exception as e:
-            current_app.logger.error(f"Ошибка копирования таблицы generation.{table}: {e}")
+            current_app.logger.error(f"Ошибка копирования таблицы gs_gen.{table}: {e}")
             log_to_db(
                 user,
-                f"Ошибка копирования таблицы generation.{table}",
+                f"Ошибка копирования таблицы gs_gen.{table}",
                 str(e),
                 entity_type="database_version",
                 entity_id=target_version_id
             )
-            # Откат транзакции на ошибке, чтобы последующие операции не падали с InFailedSqlTransaction
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
+            # rollback() здесь делать нельзя: эта функция вызывается с do_commit=False
+            # в рамках общей транзакции создания версии, и полный rollback откатит создание версии.
+            # Используем begin_nested() выше, чтобы сбросить только неудачный этап.
     
     # Копирование ассоциативных таблиц (связей many-to-many)
     _copy_association_tables(source_version_id, target_version_id, id_mappings, user)
@@ -2181,57 +2430,57 @@ def _update_version_relationships(id_mappings, target_version_id, user):
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'generation.machines',
+            'table': 'gs_gen.machines',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'generation.machine_powers',
+            'table': 'gs_gen.machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'generation.machine_fuels',
+            'table': 'gs_gen.machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'generation.machine_tes_types',
+            'table': 'gs_gen.machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'generation.pgu_machines',
+            'table': 'gs_gen.pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'generation.pgu_machine_powers',
+            'table': 'gs_gen.pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'generation.pgu_machines'
+            'reference_table': 'gs_gen.pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'generation.stations',
+            'table': 'gs_gen.stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'generation.station_groups'
+            'reference_table': 'gs_gen.station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'generation.station_powers',
+            'table': 'gs_gen.station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'generation.boilers',
+            'table': 'gs_gen.boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         }
     ]
     
@@ -2342,57 +2591,57 @@ def _update_version_relationships_ultra_fast(id_mappings, target_version_id, use
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'generation.machines',
+            'table': 'gs_gen.machines',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'generation.machine_powers',
+            'table': 'gs_gen.machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'generation.machine_fuels',
+            'table': 'gs_gen.machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'generation.machine_tes_types',
+            'table': 'gs_gen.machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'generation.pgu_machines',
+            'table': 'gs_gen.pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'generation.pgu_machine_powers',
+            'table': 'gs_gen.pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'generation.pgu_machines'
+            'reference_table': 'gs_gen.pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'generation.stations',
+            'table': 'gs_gen.stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'generation.station_groups'
+            'reference_table': 'gs_gen.station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'generation.station_powers',
+            'table': 'gs_gen.station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'generation.boilers',
+            'table': 'gs_gen.boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         }
     ]
     
@@ -2501,57 +2750,57 @@ def _update_version_relationships_ultra_optimized(id_mappings, target_version_id
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'generation.machines',
+            'table': 'gs_gen.machines',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'generation.machine_powers',
+            'table': 'gs_gen.machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'generation.machine_fuels',
+            'table': 'gs_gen.machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'generation.machine_tes_types',
+            'table': 'gs_gen.machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'generation.pgu_machines',
+            'table': 'gs_gen.pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'generation.pgu_machine_powers',
+            'table': 'gs_gen.pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'generation.pgu_machines'
+            'reference_table': 'gs_gen.pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'generation.stations',
+            'table': 'gs_gen.stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'generation.station_groups'
+            'reference_table': 'gs_gen.station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'generation.station_powers',
+            'table': 'gs_gen.station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'generation.boilers',
+            'table': 'gs_gen.boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         }
     ]
     
@@ -2676,57 +2925,57 @@ def _update_version_relationships_fixed(id_mappings, target_version_id, user):
     relationships = [
         # 1. stations -> station_groups (станции ссылаются на группы)
         {
-            'table': 'generation.stations',
+            'table': 'gs_gen.stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'generation.station_groups'
+            'reference_table': 'gs_gen.station_groups'
         },
         # 2. station_powers -> stations (мощности станций ссылаются на станции)
         {
-            'table': 'generation.station_powers',
+            'table': 'gs_gen.station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 3. machines -> stations (машины ссылаются на станции)
         {
-            'table': 'generation.machines',
+            'table': 'gs_gen.machines',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 4. boilers -> stations (котлы ссылаются на станции)
         {
-            'table': 'generation.boilers',
+            'table': 'gs_gen.boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 5. machine_powers -> machines (мощности машин ссылаются на машины)
         {
-            'table': 'generation.machine_powers',
+            'table': 'gs_gen.machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 6. machine_fuels -> machines (топливо машин ссылается на машины)
         {
-            'table': 'generation.machine_fuels',
+            'table': 'gs_gen.machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 7. machine_tes_types -> machines (типы ТЭС машин ссылаются на машины)
         {
-            'table': 'generation.machine_tes_types',
+            'table': 'gs_gen.machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 8. pgu_machines -> machines (ПГУ машины ссылаются на машины)
         {
-            'table': 'generation.pgu_machines',
+            'table': 'gs_gen.pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 9. pgu_machine_powers -> pgu_machines (мощности ПГУ машин ссылаются на ПГУ машины)
         {
-            'table': 'generation.pgu_machine_powers',
+            'table': 'gs_gen.pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'generation.pgu_machines'
+            'reference_table': 'gs_gen.pgu_machines'
         }
     ]
     
@@ -2856,57 +3105,57 @@ def _update_version_relationships_lightning_fast(id_mappings, target_version_id,
     critical_relationships = [
         # 1. machines -> stations
         {
-            'table': 'generation.machines',
+            'table': 'gs_gen.machines',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'generation.machine_powers',
+            'table': 'gs_gen.machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'generation.machine_fuels',
+            'table': 'gs_gen.machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'generation.machine_tes_types',
+            'table': 'gs_gen.machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'generation.pgu_machines',
+            'table': 'gs_gen.pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'generation.machines'
+            'reference_table': 'gs_gen.machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'generation.pgu_machine_powers',
+            'table': 'gs_gen.pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'generation.pgu_machines'
+            'reference_table': 'gs_gen.pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'generation.stations',
+            'table': 'gs_gen.stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'generation.station_groups'
+            'reference_table': 'gs_gen.station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'generation.station_powers',
+            'table': 'gs_gen.station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'generation.boilers',
+            'table': 'gs_gen.boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'generation.stations'
+            'reference_table': 'gs_gen.stations'
         }
     ]
     
@@ -3119,14 +3368,14 @@ def _delete_version_data_staged(version_id, user):
     # Объединяем все этапы в обратном порядке (от 8 к 1)
     # Сначала удаляем generation, затем refdata
     all_stages = [
-        ("ЭТАП 8", stage8_tables),  # generation.pgu_machine_powers
-        ("ЭТАП 7", stage7_tables),  # generation.machine_powers, machine_fuels, machine_tes_types, pgu_machines
-        ("ЭТАП 6", stage6_tables),  # generation.station_powers, machines, boilers
-        ("ЭТАП 5", stage5_tables),  # generation.stations
+        ("ЭТАП 8", stage8_tables),  # gs_gen.pgu_machine_powers
+        ("ЭТАП 7", stage7_tables),  # gs_gen.machine_powers, machine_fuels, machine_tes_types, pgu_machines
+        ("ЭТАП 6", stage6_tables),  # gs_gen.station_powers, machines, boilers
+        ("ЭТАП 5", stage5_tables),  # gs_gen.stations
         ("ЭТАП 4", stage4_tables),  # refdata.energy_areas, energy_units
         ("ЭТАП 3", stage3_tables),  # refdata.regional_districts, regional_energy_systems
         ("ЭТАП 2", stage2_tables),  # refdata.union_energy_systems, synchronous_areas, energy_zones, federal_districts
-        ("ЭТАП 1", stage1_tables)   # refdata.station_types, machine_types, etc. + generation.station_groups, documents_kommod
+        ("ЭТАП 1", stage1_tables)   # refdata.station_types, machine_types, etc. + gs_gen.station_groups, documents_kommod
     ]
     
     total_deleted = 0
@@ -3814,7 +4063,14 @@ def set_active_version(version_id, user):
             get_federal_districts_map, get_fd_to_rd_ids_map, get_regional_district_to_fd_id_map
         )
         from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
-            get_union_energy_systems_map, get_ues_to_res_ids_map, get_res_to_ues_id_map
+            get_union_energy_system_list_full,
+            get_union_energy_system_list,
+            get_union_energy_systems_map,
+            get_ues_to_res_ids_map,
+            get_res_to_ues_id_map,
+            get_ues_to_est_id_map,
+            get_ues_to_rd_ids_map,
+            get_ues_to_fd_ids_map,
         )
         from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
             get_regional_energy_systems_map, get_res_to_ues_id_map as get_res_to_ues_id_map_res, 
@@ -3843,12 +4099,22 @@ def set_active_version(version_id, user):
             get_regional_district_to_fd_id_map.cache_clear()
         
         # Очищаем кэши энергосистем
+        if hasattr(get_union_energy_system_list_full, 'cache_clear'):
+            get_union_energy_system_list_full.cache_clear()
+        if hasattr(get_union_energy_system_list, 'cache_clear'):
+            get_union_energy_system_list.cache_clear()
         if hasattr(get_union_energy_systems_map, 'cache_clear'):
             get_union_energy_systems_map.cache_clear()
         if hasattr(get_ues_to_res_ids_map, 'cache_clear'):
             get_ues_to_res_ids_map.cache_clear()
         if hasattr(get_res_to_ues_id_map, 'cache_clear'):
             get_res_to_ues_id_map.cache_clear()
+        if hasattr(get_ues_to_est_id_map, 'cache_clear'):
+            get_ues_to_est_id_map.cache_clear()
+        if hasattr(get_ues_to_rd_ids_map, 'cache_clear'):
+            get_ues_to_rd_ids_map.cache_clear()
+        if hasattr(get_ues_to_fd_ids_map, 'cache_clear'):
+            get_ues_to_fd_ids_map.cache_clear()
         if hasattr(get_regional_energy_systems_map, 'cache_clear'):
             get_regional_energy_systems_map.cache_clear()
         if hasattr(get_res_to_ues_id_map_res, 'cache_clear'):
@@ -4124,16 +4390,16 @@ def _build_version_id_mappings(version_id, user):
     
     # Таблицы для обработки
     tables = [
-        'generation.station_groups',
-        'generation.stations', 
-        'generation.machines',
-        'generation.machine_powers',
-        'generation.machine_fuels',
-        'generation.machine_tes_types',
-        'generation.station_powers',
-        'generation.pgu_machines',
-        'generation.pgu_machine_powers',
-        'generation.boilers'
+        'gs_gen.station_groups',
+        'gs_gen.stations', 
+        'gs_gen.machines',
+        'gs_gen.machine_powers',
+        'gs_gen.machine_fuels',
+        'gs_gen.machine_tes_types',
+        'gs_gen.station_powers',
+        'gs_gen.pgu_machines',
+        'gs_gen.pgu_machine_powers',
+        'gs_gen.boilers'
     ]
     
     id_mappings = {}
@@ -4435,8 +4701,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Станции -> Группы станций',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM generation.stations s
-                LEFT JOIN generation.station_groups sg ON s.id_station_group = sg.id
+                FROM gs_gen.stations s
+                LEFT JOIN gs_gen.station_groups sg ON s.id_station_group = sg.id
                 WHERE s.database_version_id = :version_id 
                   AND s.id_station_group IS NOT NULL 
                   AND sg.id IS NULL
@@ -4446,8 +4712,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Машины -> Станции',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM generation.machines m
-                LEFT JOIN generation.stations s ON m.id_station = s.id
+                FROM gs_gen.machines m
+                LEFT JOIN gs_gen.stations s ON m.id_station = s.id
                 WHERE m.database_version_id = :version_id 
                   AND m.id_station IS NOT NULL 
                   AND s.id IS NULL
@@ -4457,8 +4723,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Мощности машин -> Машины',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM generation.machine_powers mp
-                LEFT JOIN generation.machines m ON mp.id_machine = m.id
+                FROM gs_gen.machine_powers mp
+                LEFT JOIN gs_gen.machines m ON mp.id_machine = m.id
                 WHERE mp.database_version_id = :version_id 
                   AND mp.id_machine IS NOT NULL 
                   AND m.id IS NULL
@@ -4468,8 +4734,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'ПГУ машины -> Машины',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM generation.pgu_machines pm
-                LEFT JOIN generation.machines m ON pm.id_machine = m.id
+                FROM gs_gen.pgu_machines pm
+                LEFT JOIN gs_gen.machines m ON pm.id_machine = m.id
                 WHERE pm.database_version_id = :version_id 
                   AND pm.id_machine IS NOT NULL 
                   AND m.id IS NULL

@@ -5,35 +5,180 @@ function initializeStationFilters() {
     if (window.stationFiltersInitialized) return;
     window.stationFiltersInitialized = true;
 
-    if (!$.fn.select2) {
-        alert("⚠️ Ошибка: Select2 не загружена!");
-        return;
+    // Важно для production/deb: фильтры должны работать без CDN-зависимостей.
+    // Если jQuery/Select2 есть — проинициализируем, но зависимость не обязательна.
+    const hasJQuery = typeof window.$ !== 'undefined';
+    const hasSelect2 = hasJQuery && window.$.fn && window.$.fn.select2;
+
+    // Если Select2 отсутствует, `<select multiple>` выглядит как "развёрнутый" список.
+    // Чтобы поля "сворачивались" (как dropdown), делаем лёгкую обёртку на Bootstrap dropdown,
+    // оставляя исходный <select> скрытым (для корректной отправки формы и логики фильтрации).
+    function ensureDropdownMultiSelect(selector, placeholder) {
+        const selectEl = document.querySelector(selector);
+        if (!selectEl) return;
+        if (selectEl.dataset.multiDropdownInit === '1') return;
+
+        selectEl.dataset.multiDropdownInit = '1';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dropdown w-100';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'form-select w-100 text-start';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        // не закрываем при клике по чекбоксам внутри
+        btn.setAttribute('data-bs-auto-close', 'outside');
+        btn.setAttribute('aria-expanded', 'false');
+
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu p-2 filter-dropdown-menu';
+
+        // Скрываем исходный select, но оставляем в DOM для submit'а формы
+        selectEl.classList.add('d-none');
+
+        // Вставляем wrapper на место select
+        const parent = selectEl.parentNode;
+        if (!parent) return;
+        parent.replaceChild(wrapper, selectEl);
+        wrapper.appendChild(btn);
+        wrapper.appendChild(menu);
+        wrapper.appendChild(selectEl);
+
+        function setButtonText() {
+            const selected = Array.from(selectEl.selectedOptions)
+                .map(o => o.textContent || '')
+                .map(s => s.trim())
+                .filter(Boolean);
+
+            if (selected.length === 0) {
+                btn.textContent = placeholder;
+                return;
+            }
+
+            // Короткий текст, чтобы поле не раздувало строку
+            const preview = selected.slice(0, 1).join(', ');
+            const suffix = selected.length > 1 ? ` (+${selected.length - 1})` : '';
+            btn.textContent = `${preview}${suffix}`;
+        }
+
+        function renderMenu() {
+            menu.innerHTML = '';
+
+            const actions = document.createElement('div');
+            actions.className = 'd-flex justify-content-between align-items-center mb-2 gap-2';
+
+            const title = document.createElement('div');
+            title.className = 'fw-bold';
+            title.textContent = placeholder;
+
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'btn btn-sm btn-outline-danger';
+            clearBtn.textContent = 'Сбросить';
+            clearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Явный сброс пользователем: не автоподставлять "единственный доступный" вариант обратно
+                // до тех пор, пока пользователь сам не выберет значение в этом поле.
+                selectEl.dataset.skipAutoselect = '1';
+                Array.from(selectEl.options).forEach(opt => { opt.selected = false; });
+                setButtonText();
+                selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                renderMenu();
+            });
+
+            actions.appendChild(title);
+            actions.appendChild(clearBtn);
+            menu.appendChild(actions);
+
+            const list = document.createElement('div');
+            list.className = 'd-flex flex-column gap-1';
+
+            Array.from(selectEl.options).forEach(opt => {
+                const value = (opt.value ?? '').toString();
+                // пустой option используем как placeholder/allowClear — в меню не показываем
+                if (value === '') return;
+
+                const item = document.createElement('label');
+                item.className = 'dropdown-item d-flex align-items-center gap-2';
+                item.style.whiteSpace = 'normal';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = !!opt.selected;
+                cb.addEventListener('click', (e) => {
+                    // не закрываем dropdown
+                    e.stopPropagation();
+                });
+                cb.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    // Пользователь меняет поле вручную — разрешаем автоподстановку снова.
+                    delete selectEl.dataset.skipAutoselect;
+                    // находим option по value (opt может быть пересоздан при updateSelectOptions)
+                    const found = Array.from(selectEl.options).find(o => String(o.value) === value);
+                    if (found) found.selected = cb.checked;
+                    setButtonText();
+                    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+
+                const text = document.createElement('span');
+                text.textContent = (opt.textContent || '').trim();
+
+                item.appendChild(cb);
+                item.appendChild(text);
+                list.appendChild(item);
+            });
+
+            menu.appendChild(list);
+            setButtonText();
+        }
+
+        // экспортируем рендер для обновления после пересборки options
+        selectEl._multiDropdownRender = renderMenu;
+
+        renderMenu();
     }
 
-    function initializeSelect2(selector, placeholder) {
-        if ($(selector).length) {
-            // Проверяем, не инициализирован ли уже Select2
-            if (!$(selector).data('select2')) {
-                $(selector).select2({
-                    placeholder: placeholder,
-                    allowClear: true,
-                    width: '100%',
-                    closeOnSelect: false,
-                    minimumResultsForSearch: Infinity
-                });
-            }
-        } else {
-            console.warn(`❌ Select2: элемент ${selector} не найден`);
+    function refreshDropdownMultiSelect(selector) {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        if (el.dataset.multiDropdownInit !== '1') return;
+        if (typeof el._multiDropdownRender === 'function') {
+            el._multiDropdownRender();
         }
+    }
+
+    function initializeSelect2IfAvailable(selector, placeholder) {
+        if (!hasSelect2) return;
+        const $el = window.$(selector);
+        if (!$el.length) return;
+        if ($el.data('select2')) return;
+        $el.select2({
+            placeholder: placeholder,
+            allowClear: true,
+            width: '100%',
+            closeOnSelect: false,
+            minimumResultsForSearch: Infinity
+        });
     }
 
     // Откладываем инициализацию select2, чтобы collapse успел отрисоваться
     setTimeout(() => {
-        initializeSelect2('#energy_system_type', 'Тип энергосистемы');
-        initializeSelect2('#union_energy_system', 'ОЭС');
-        initializeSelect2('#regional_energy_system', 'Региональная энергосистема');
-        initializeSelect2('#federal_district', 'Федеральный округ');
-        initializeSelect2('#regional_district', 'Субъект РФ');
+        initializeSelect2IfAvailable('#energy_system_type', 'Тип энергосистемы');
+        initializeSelect2IfAvailable('#union_energy_system', 'ОЭС');
+        initializeSelect2IfAvailable('#regional_energy_system', 'Региональная энергосистема');
+        initializeSelect2IfAvailable('#federal_district', 'Федеральный округ');
+        initializeSelect2IfAvailable('#regional_district', 'Субъект РФ');
+
+        // Если Select2 нет — делаем "сворачиваемые" dropdown-поля
+        if (!hasSelect2) {
+            ensureDropdownMultiSelect('#energy_system_type', 'Тип энергосистемы');
+            ensureDropdownMultiSelect('#union_energy_system', 'ОЭС');
+            ensureDropdownMultiSelect('#regional_energy_system', 'Региональная энергосистема');
+            ensureDropdownMultiSelect('#federal_district', 'Федеральный округ');
+            ensureDropdownMultiSelect('#regional_district', 'Субъект РФ');
+        }
     }, 100);
 
     function parseMaybeJSON(value, fallback) {
@@ -150,27 +295,73 @@ function initializeStationFilters() {
     }
 
     // Функция для обновления опций в select
-    function updateSelectOptions(selector, allItems, allowedIds, prevSelected, skipTrigger = false) {
-        let options = '<option></option>';
-        const newSelected = [];
-        const prevSelectedSet = new Set((prevSelected || []).map(String));
+    function getSelectValues(selector) {
+        const el = document.querySelector(selector);
+        if (!el) return [];
+        return Array.from(el.selectedOptions).map(o => Number(o.value)).filter(v => Number.isFinite(v));
+    }
 
-        allItems.forEach(item => {
+    function setSelectValues(selector, values) {
+        const el = document.querySelector(selector);
+        if (!el) return;
+        const set = new Set((values || []).map(String));
+        Array.from(el.options).forEach(opt => {
+            opt.selected = set.has(String(opt.value));
+        });
+        if (hasSelect2) {
+            window.$(selector).trigger('change.select2');
+        } else {
+            refreshDropdownMultiSelect(selector);
+        }
+    }
+
+    function updateSelectOptions(selector, allItems, allowedIds, prevSelected, skipTrigger = false) {
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        const prevSelectedSet = new Set((prevSelected || []).map(String));
+        const newSelected = [];
+
+        const frag = document.createDocumentFragment();
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        frag.appendChild(emptyOpt);
+
+        // UX: "не указано" всегда должно быть первым пунктом.
+        // Порядок, который приходит с бэка, может отличаться (например, для ОЭС).
+        const sortedItems = [...(allItems || [])].sort((a, b) => {
+            const an = String(a?.name ?? '').trim().toLowerCase();
+            const bn = String(b?.name ?? '').trim().toLowerCase();
+            const aIsNA = an === 'не указано';
+            const bIsNA = bn === 'не указано';
+            if (aIsNA && !bIsNA) return -1;
+            if (!aIsNA && bIsNA) return 1;
+            return an.localeCompare(bn, 'ru', { sensitivity: 'base' });
+        });
+
+        sortedItems.forEach(item => {
             const itemId = Number(item.id);
             const isAllowed = allowedIds === null || allowedIds.has(itemId);
             const wasSelected = prevSelectedSet.has(String(itemId));
-
-            if (isAllowed) {
-                const selected = wasSelected ? "selected" : "";
-                options += `<option value="${itemId}" ${selected}>${item.name}</option>`;
-                if (wasSelected) newSelected.push(String(itemId));
-            }
+            if (!isAllowed) return;
+            const opt = document.createElement('option');
+            opt.value = String(itemId);
+            opt.textContent = item.name;
+            opt.selected = wasSelected;
+            frag.appendChild(opt);
+            if (wasSelected) newSelected.push(String(itemId));
         });
 
-        $(selector).html(options).val(newSelected);
+        el.innerHTML = '';
+        el.appendChild(frag);
+        setSelectValues(selector, newSelected);
+        // если select "завёрнут" в dropdown — пересобираем меню
+        refreshDropdownMultiSelect(selector);
+
         if (!skipTrigger) {
-            // Обновляем Select2 без триггера события change
-            $(selector).trigger('change.select2');
+            if (!hasSelect2) {
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         }
     }
 
@@ -181,11 +372,11 @@ function initializeStationFilters() {
         isUpdating = true;
 
         try {
-            const currentEst = ($('#energy_system_type').val() || []).map(Number);
-            const currentUes = ($('#union_energy_system').val() || []).map(Number);
-            const currentRes = ($('#regional_energy_system').val() || []).map(Number);
-            const currentFd = ($('#federal_district').val() || []).map(Number);
-            const currentRd = ($('#regional_district').val() || []).map(Number);
+            const currentEst = getSelectValues('#energy_system_type');
+            const currentUes = getSelectValues('#union_energy_system');
+            const currentRes = getSelectValues('#regional_energy_system');
+            const currentFd = getSelectValues('#federal_district');
+            const currentRd = getSelectValues('#regional_district');
 
             // Вычисляем разрешенные ID для каждого фильтра
             // Тип энергосистемы: фильтруется по выбранным ОЭС, РЭС, субъектам РФ, ФО
@@ -229,60 +420,6 @@ function initializeStationFilters() {
             updateSelectOptions('#regional_energy_system', allRegionalEnergySystems, resAllowed, currentRes, true);
             updateSelectOptions('#federal_district', allFederalDistricts, fdAllowed, currentFd, true);
             updateSelectOptions('#regional_district', allRegionalDistricts, rdAllowed, currentRd, true);
-
-            // Автоподстановка: если поле пустое и доступен ровно один вариант — выбираем его.
-            // Делаем это без триггера 'change' (только обновляем Select2), затем пересчитаем фильтры ещё раз.
-            let didAutoSelect = false;
-
-            const singleEst = getSingleAllowedId(estAllowed);
-            if (singleEst !== null) {
-                const v = ($('#energy_system_type').val() || []).map(Number);
-                if (v.length === 0) {
-                    $('#energy_system_type').val([String(singleEst)]).trigger('change.select2');
-                    didAutoSelect = true;
-                }
-            }
-
-            const singleUes = getSingleAllowedId(uesAllowed);
-            if (singleUes !== null) {
-                const v = ($('#union_energy_system').val() || []).map(Number);
-                if (v.length === 0) {
-                    $('#union_energy_system').val([String(singleUes)]).trigger('change.select2');
-                    didAutoSelect = true;
-                }
-            }
-
-            const singleRes = getSingleAllowedId(resAllowed);
-            if (singleRes !== null) {
-                const v = ($('#regional_energy_system').val() || []).map(Number);
-                if (v.length === 0) {
-                    $('#regional_energy_system').val([String(singleRes)]).trigger('change.select2');
-                    didAutoSelect = true;
-                }
-            }
-
-            const singleFd = getSingleAllowedId(fdAllowed);
-            if (singleFd !== null) {
-                const v = ($('#federal_district').val() || []).map(Number);
-                if (v.length === 0) {
-                    $('#federal_district').val([String(singleFd)]).trigger('change.select2');
-                    didAutoSelect = true;
-                }
-            }
-
-            const singleRd = getSingleAllowedId(rdAllowed);
-            if (singleRd !== null) {
-                const v = ($('#regional_district').val() || []).map(Number);
-                if (v.length === 0) {
-                    $('#regional_district').val([String(singleRd)]).trigger('change.select2');
-                    didAutoSelect = true;
-                }
-            }
-
-            if (didAutoSelect) {
-                // На следующем тике пересчитаем ограничения с учётом автоподстановок.
-                setTimeout(() => updateAllFilters(), 0);
-            }
         } finally {
             isUpdating = false;
         }
@@ -290,19 +427,13 @@ function initializeStationFilters() {
 
 
     // Обработчики изменений для каждого фильтра
-    $('#energy_system_type').on('change', function() {
-        updateAllFilters();
-    });
-
-    $('#union_energy_system').on('change', function() {
-        updateAllFilters();
-    });
-
-    $('#regional_energy_system').on('change', function() {
-        // "Как в Excel": РЭС однозначно определяет ФО, ОЭС и тип энергосистемы.
+    document.getElementById('energy_system_type')?.addEventListener('change', () => updateAllFilters());
+    document.getElementById('union_energy_system')?.addEventListener('change', () => updateAllFilters());
+    document.getElementById('regional_energy_system')?.addEventListener('change', function() {
+        // "Как в Excel": выбранная РЭС однозначно задаёт ФО, ОЭС и тип энергосистемы.
         // Если выбрана ровно одна РЭС — синхронизируем связанные поля автоматически.
         if (isUpdating) return;
-        const currentRes = ($('#regional_energy_system').val() || []).map(Number);
+        const currentRes = getSelectValues('#regional_energy_system');
         if (currentRes.length === 1) {
             const resId = currentRes[0];
 
@@ -319,31 +450,30 @@ function initializeStationFilters() {
             const mappedEst = resToEst[String(resId)] || resToEst[Number(resId)];
             const estUnique = (mappedEst !== null && mappedEst !== undefined) ? [Number(mappedEst)] : [];
 
-            // Выставляем связанные поля ОДНИМ проходом, без триггера 'change'
-            // (чтобы не плодить каскадные события и не пропускать ФО).
+            // Выставляем связанные поля одним проходом, без каскадных событий.
             let didSync = false;
             isUpdating = true;
             try {
                 if (estUnique.length === 1) {
-                    const currentEst = ($('#energy_system_type').val() || []).map(Number);
+                    const currentEst = getSelectValues('#energy_system_type');
                     if (currentEst.length !== 1 || currentEst[0] !== estUnique[0]) {
-                        $('#energy_system_type').val([String(estUnique[0])]).trigger('change.select2');
+                        setSelectValues('#energy_system_type', [String(estUnique[0])]);
                         didSync = true;
                     }
                 }
 
                 if (uesUnique.length === 1) {
-                    const currentUes = ($('#union_energy_system').val() || []).map(Number);
+                    const currentUes = getSelectValues('#union_energy_system');
                     if (currentUes.length !== 1 || currentUes[0] !== uesUnique[0]) {
-                        $('#union_energy_system').val([String(uesUnique[0])]).trigger('change.select2');
+                        setSelectValues('#union_energy_system', [String(uesUnique[0])]);
                         didSync = true;
                     }
                 }
 
                 if (fdUnique.length === 1) {
-                    const currentFd = ($('#federal_district').val() || []).map(Number);
+                    const currentFd = getSelectValues('#federal_district');
                     if (currentFd.length !== 1 || currentFd[0] !== fdUnique[0]) {
-                        $('#federal_district').val([String(fdUnique[0])]).trigger('change.select2');
+                        setSelectValues('#federal_district', [String(fdUnique[0])]);
                         didSync = true;
                     }
                 }
@@ -360,30 +490,15 @@ function initializeStationFilters() {
         updateAllFilters();
     });
 
-    $('#federal_district').on('change', function() {
-        updateAllFilters();
-    });
-
-    $('#regional_district').on('change', function() {
-        updateAllFilters();
-    });
+    document.getElementById('federal_district')?.addEventListener('change', () => updateAllFilters());
+    document.getElementById('regional_district')?.addEventListener('change', () => updateAllFilters());
 
     // Инициализация при загрузке страницы
-    if (selectedEst.length > 0) {
-        $('#energy_system_type').val(selectedEst.map(String)).trigger('change');
-    }
-    if (selectedUes.length > 0) {
-        $('#union_energy_system').val(selectedUes.map(String)).trigger('change');
-    }
-    if (selectedRes.length > 0) {
-        $('#regional_energy_system').val(selectedRes.map(String)).trigger('change');
-    }
-    if (selectedFd.length > 0) {
-        $('#federal_district').val(selectedFd.map(String)).trigger('change');
-    }
-    if (selectedRd.length > 0) {
-        $('#regional_district').val(selectedRd.map(String)).trigger('change');
-    }
+    if (selectedEst.length > 0) setSelectValues('#energy_system_type', selectedEst.map(String));
+    if (selectedUes.length > 0) setSelectValues('#union_energy_system', selectedUes.map(String));
+    if (selectedRes.length > 0) setSelectValues('#regional_energy_system', selectedRes.map(String));
+    if (selectedFd.length > 0) setSelectValues('#federal_district', selectedFd.map(String));
+    if (selectedRd.length > 0) setSelectValues('#regional_district', selectedRd.map(String));
 
     // Вызываем updateAllFilters для первоначальной настройки
     setTimeout(() => {

@@ -275,6 +275,196 @@ def create_app():
 
         # Проброс мапперов
         db.configure_mappers()
+
+        # Авто-инвалидация кэшей справочников при изменениях в refdata.
+        # Цель: после CRUD/импорта в разделе /refdata кэш должен обновляться сразу,
+        # чтобы формы/страницы не показывали устаревшие значения.
+        if not getattr(db, "_refdata_cache_events_registered", False):
+            def _clear_module_lru_caches(module) -> None:
+                """Очищает все functools.lru_cache функции в модуле (best-effort)."""
+                try:
+                    for obj in module.__dict__.values():
+                        if hasattr(obj, "cache_clear"):
+                            try:
+                                obj.cache_clear()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            def _invalidate_refdata_caches(reason: str = "refdata_change") -> None:
+                """Инвалидирует серверные кэши, используемые справочниками."""
+                # Кэш choices (выпадающие списки) + небольшой кэш справочников для форм
+                try:
+                    from app.common.services.choices_cache_service import ChoicesCacheService
+                    from app.common.services.cache_services import CacheService
+                    ChoicesCacheService.clear_cache()
+                    CacheService.clear_cache()
+                except Exception:
+                    pass
+
+                # Кэши get_services (почти все справочники используют @lru_cache(maxsize=1))
+                try:
+                    from app.common.services.get_services.territories import (
+                        regional_district_get_services,
+                        federal_district_get_services,
+                    )
+                    _clear_module_lru_caches(regional_district_get_services)
+                    _clear_module_lru_caches(federal_district_get_services)
+                except Exception:
+                    pass
+
+                try:
+                    from app.common.services.get_services.energy_systems import (
+                        union_energy_system_get_services,
+                        regional_energy_system_get_services,
+                        energy_system_type_get_services,
+                        energy_unit_get_services,
+                        energy_zone_get_services,
+                        energy_area_get_services,
+                        synchronous_area_get_services,
+                    )
+                    _clear_module_lru_caches(union_energy_system_get_services)
+                    _clear_module_lru_caches(regional_energy_system_get_services)
+                    _clear_module_lru_caches(energy_system_type_get_services)
+                    _clear_module_lru_caches(energy_unit_get_services)
+                    _clear_module_lru_caches(energy_zone_get_services)
+                    _clear_module_lru_caches(energy_area_get_services)
+                    _clear_module_lru_caches(synchronous_area_get_services)
+                except Exception:
+                    pass
+
+                try:
+                    from app.common.services.get_services.fuels import (
+                        fuel_get_services,
+                        fuel_type_get_services,
+                    )
+                    _clear_module_lru_caches(fuel_get_services)
+                    _clear_module_lru_caches(fuel_type_get_services)
+                except Exception:
+                    pass
+
+                try:
+                    from app.common.services.get_services.gen_companies import gen_company_get_services
+                    _clear_module_lru_caches(gen_company_get_services)
+                except Exception:
+                    pass
+
+                try:
+                    from app.common.services.get_services.years import (
+                        years_get_services,
+                        year_feature_services,
+                    )
+                    _clear_module_lru_caches(years_get_services)
+                    _clear_module_lru_caches(year_feature_services)
+                except Exception:
+                    pass
+
+                # refdata_for_stations (технологии/типовые справочники для форм)
+                try:
+                    from app.common.services.get_services.refdata_for_stations.technologies import (
+                        technology_type_get_services,
+                        technology_availability_get_services,
+                    )
+                    _clear_module_lru_caches(technology_type_get_services)
+                    _clear_module_lru_caches(technology_availability_get_services)
+                except Exception:
+                    pass
+
+                # Справочники "для станций" тоже находятся в refdata и участвуют в choices
+                try:
+                    from app.common.services.get_services.stations import (
+                        station_type_get_services,
+                        station_group_get_services,
+                        tes_type_get_services,
+                        tes_machine_type_get_services,
+                        pgu_tes_machine_type_get_services,
+                        machine_type_get_services,
+                        condition_type_get_services,
+                    )
+                    _clear_module_lru_caches(station_type_get_services)
+                    _clear_module_lru_caches(station_group_get_services)
+                    _clear_module_lru_caches(tes_type_get_services)
+                    _clear_module_lru_caches(tes_machine_type_get_services)
+                    _clear_module_lru_caches(pgu_tes_machine_type_get_services)
+                    _clear_module_lru_caches(machine_type_get_services)
+                    _clear_module_lru_caches(condition_type_get_services)
+                except Exception:
+                    pass
+
+                try:
+                    app.logger.info(f"[REFDATA_CACHE] invalidated ({reason})")
+                except Exception:
+                    pass
+
+            def _mark_refdata_changed(session, _flush_context) -> None:
+                """Помечает транзакцию как затрагивающую refdata (для не-/refdata запросов)."""
+                changed = False
+                try:
+                    # new / deleted всегда считаем изменениями
+                    for obj in list(getattr(session, "new", []) or []):
+                        cls = getattr(obj, "__class__", None)
+                        if cls and getattr(cls, "__module__", "").startswith("app.refdata.models"):
+                            changed = True
+                            break
+                    if not changed:
+                        for obj in list(getattr(session, "deleted", []) or []):
+                            cls = getattr(obj, "__class__", None)
+                            if cls and getattr(cls, "__module__", "").startswith("app.refdata.models"):
+                                changed = True
+                                break
+                    # dirty проверяем на реальные изменения
+                    if not changed:
+                        for obj in list(getattr(session, "dirty", []) or []):
+                            cls = getattr(obj, "__class__", None)
+                            if not (cls and getattr(cls, "__module__", "").startswith("app.refdata.models")):
+                                continue
+                            try:
+                                if session.is_modified(obj, include_collections=False):
+                                    changed = True
+                                    break
+                            except Exception:
+                                changed = True
+                                break
+                except Exception:
+                    changed = False
+
+                if changed:
+                    session.info["_refdata_changed"] = True
+
+            def _after_commit(session) -> None:
+                """После коммита при изменениях справочников — очищаем refdata-кэши."""
+                force = False
+                try:
+                    from flask import has_request_context, request
+                    if has_request_context():
+                        # В refdata много bulk-операций/импортов, которые не всегда попадают в session.dirty.
+                        # Но на GET страницы часто пишутся логи (commit) — их нельзя превращать в инвалидацию кэша.
+                        # Поэтому "force" делаем только для изменяющих запросов.
+                        is_refdata = (request.path or "").startswith("/refdata")
+                        is_mutation = (request.method or "").upper() in {"POST", "PUT", "PATCH", "DELETE"}
+                        force = is_refdata and is_mutation
+                except Exception:
+                    force = False
+
+                if force or session.info.pop("_refdata_changed", False):
+                    _invalidate_refdata_caches(reason="commit:/refdata" if force else "commit:refdata_models")
+                else:
+                    # подчистим флаг на всякий случай
+                    session.info.pop("_refdata_changed", None)
+
+            def _after_rollback(session) -> None:
+                session.info.pop("_refdata_changed", None)
+
+            try:
+                from sqlalchemy.orm import Session as _SASession
+                event.listen(_SASession, "after_flush", _mark_refdata_changed)
+                event.listen(_SASession, "after_commit", _after_commit)
+                event.listen(_SASession, "after_rollback", _after_rollback)
+                db._refdata_cache_events_registered = True
+                app.logger.info("[REFDATA_CACHE] SQLAlchemy session listeners registered")
+            except Exception as e:
+                app.logger.warning(f"[REFDATA_CACHE] failed to register listeners: {e}")
         
         # Прогрев кэша станций и запуск периодического обновления (в фоновом режиме)
         # Пропускаем прогрев кэша при запуске миграций

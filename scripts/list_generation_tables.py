@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Скрипт для получения списка таблиц в схеме generation."""
+"""Скрипт для получения списка таблиц в схеме gs_gen."""
 
 import os
 from sqlalchemy import create_engine, text
@@ -21,11 +21,11 @@ with engine.connect() as conn:
         SELECT table_name, 
                (SELECT COUNT(*) 
                 FROM information_schema.columns 
-                WHERE table_schema = 'generation' 
+                WHERE table_schema = 'gs_gen' 
                   AND columns.table_name = tables.table_name 
                   AND column_name = 'database_version_id') as has_version_column
         FROM information_schema.tables
-        WHERE table_schema = 'generation'
+        WHERE table_schema = 'gs_gen'
           AND table_type = 'BASE TABLE'
         ORDER BY table_name
     """)

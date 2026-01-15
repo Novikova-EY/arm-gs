@@ -13,12 +13,22 @@
                 </td>
                 <td class="fw-bold">Руст</td>
                 {% for y in range(start_year, end_year + 1) %}
-                    <td class="power-column" style="font-weight: bold;">
-                        {{ regional_energy_systems_by_station_types_yearly_p_ust
-                            .get(current_res_id, {})
-                            .get(station_type_id, {})
-                            .get(y, '—') | format_decimal or '—' }}
-                    </td>
+                    {% if current_year_split is not none and y == current_year_split %}
+                        <td class="power-column" style="font-weight: bold;"></td>
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ regional_energy_systems_by_station_types_yearly_p_ust
+                                .get(current_res_id, {})
+                                .get(station_type_id, {})
+                                .get(y, '—') | format_decimal or '—' }}
+                        </td>
+                    {% else %}
+                        <td class="power-column" style="font-weight: bold;">
+                            {{ regional_energy_systems_by_station_types_yearly_p_ust
+                                .get(current_res_id, {})
+                                .get(station_type_id, {})
+                                .get(y, '—') | format_decimal or '—' }}
+                        </td>
+                    {% endif %}
                 {% endfor %}
                 <td class="power-column fw-bold">
                     {% if plan_years %}
@@ -37,7 +47,8 @@
                         —
                     {% endif %}
                 </td>
-                <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+                {% set _extra_col = 1 if (current_year_split is not none and current_year_split >= start_year and current_year_split <= end_year) else 0 %}
+                <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) + _extra_col }}" style="vertical-align: middle; font-weight: bold;">
                 </td>
             </tr>     
         {% endif %}
@@ -55,9 +66,16 @@
                             {{ event_label }}
                         </td>
                         {% for y in range(start_year, end_year + 1) %}
-                            <td class="power-column">
-                                {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
-                            </td>
+                            {% if current_year_split is not none and y == current_year_split %}
+                                <td class="power-column"></td>
+                                <td class="power-column">
+                                    {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                                </td>
+                            {% else %}
+                                <td class="power-column">
+                                    {{ yearly.get(y) | default('—') | format_decimal if yearly.get(y) is not none }}
+                                </td>
+                            {% endif %}
                         {% endfor %}
                         <td class="power-column fw-bold">
                             {% if plan_years %}

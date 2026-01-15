@@ -185,152 +185,124 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     // Скрипт для отображения строк с располагаемой мощность и ограничениями мощности
-    $(document).ready(function() {
-        if (window.machineRowsSetupDone) {
-            return;
-        }
+    (function setupPowerRowsVanilla() {
+        if (window.machineRowsSetupDone) return;
         window.machineRowsSetupDone = true;
 
-        // Сохраним исходный rowspan у ячеек агрегатов (где rowspan="3") — только один раз
-        $('.rowspan-td').each(function() {
-            if ($(this).data('original-rowspan') == null) {
-                $(this).data('original-rowspan', $(this).attr('rowspan'));
+        // Сохраним исходный rowspan у ячеек агрегатов — только один раз
+        document.querySelectorAll('.rowspan-td').forEach(td => {
+            if (td.dataset.originalRowspan == null) {
+                td.dataset.originalRowspan = td.getAttribute('rowspan') || '';
             }
         });
 
         // Сохраняем базовое количество агрегатов на станцию — только один раз
-        $('.station-rowspan-td').each(function() {
-            // Приоритет: использовать данные из разметки, если есть
-            const dataTotalMachines = $(this).attr('data-total-machines');
-            const dataTotalPgu = $(this).attr('data-total-pgu-count');
-            if ($(this).data('total-machines') == null) {
+        document.querySelectorAll('.station-rowspan-td').forEach(td => {
+            const dataTotalMachines = td.getAttribute('data-total-machines');
+            const dataTotalPgu = td.getAttribute('data-total-pgu-count');
+
+            if (td.dataset.totalMachines == null) {
                 if (dataTotalMachines != null) {
-                    $(this).data('total-machines', parseInt(dataTotalMachines, 10) || 0);
+                    td.dataset.totalMachines = String(parseInt(dataTotalMachines, 10) || 0);
                 } else {
-                    let originalRowspan = parseInt($(this).attr('rowspan'), 10);
-                    let totalMachines = (originalRowspan - 1) / 3;
-                    $(this).data('total-machines', totalMachines);
+                    const originalRowspan = parseInt(td.getAttribute('rowspan') || '0', 10);
+                    const totalMachines = (originalRowspan - 1) / 3;
+                    td.dataset.totalMachines = String(totalMachines || 0);
                 }
             }
-            if ($(this).data('total-pgu-count') == null && dataTotalPgu != null) {
-                $(this).data('total-pgu-count', parseInt(dataTotalPgu, 10) || 0);
+            if (td.dataset.totalPguCount == null && dataTotalPgu != null) {
+                td.dataset.totalPguCount = String(parseInt(dataTotalPgu, 10) || 0);
             }
         });
 
+        function showEl(el) {
+            if (!el) return;
+            const tag = (el.tagName || '').toUpperCase();
+            // Для табличных элементов важно явно выставлять display,
+            // иначе некоторые браузеры могут не восстановить корректную геометрию таблицы.
+            if (tag === 'TR') el.style.display = 'table-row';
+            else if (tag === 'TD' || tag === 'TH') el.style.display = 'table-cell';
+            else el.style.display = '';
+        }
+
+        function hideEl(el) {
+            if (!el) return;
+            el.style.display = 'none';
+        }
+
+        const showEls = (nodes) => nodes.forEach(showEl);
+        const hideEls = (nodes) => nodes.forEach(hideEl);
+
         // Функция обновления строк
         function updateRows() {
-            let showPOgr  = $('#toggleP_Ogr').prop('checked');   // "Отображать ограничения мощности"
-            let showPRasp = $('#toggleP_Rasp').prop('checked');  // "Отображать располагаемую мощность"
-            let hideAggregates = $('#hide_aggregates_switch').prop('checked') || false; // "Скрыть агрегаты"
-            const machineOgrRows = $('.p-ogr-row.machine-ogr-row');
-            const machineRaspRows = $('.p-rasp-row.machine-rasp-row');
-            const aggregatedOgrRows = $('.p-ogr-row')
-                .not('.station-ogr-row')
-                .not('.machine-ogr-row');
-            const aggregatedRaspRows = $('.p-rasp-row')
-                .not('.station-rasp-row')
-                .not('.machine-rasp-row');
+            const showPOgr = !!document.getElementById('toggleP_Ogr')?.checked;
+            const showPRasp = !!document.getElementById('toggleP_Rasp')?.checked;
+            const hideAggregates = !!document.getElementById('hide_aggregates_switch')?.checked;
 
-            // Показываем/скрываем строки p_ogr-row
-            // Учитываем и состояние чекбокса, и режим скрытия агрегатов
-            if (showPOgr && !hideAggregates) {
-                machineOgrRows.show();
-            } else {
-                machineOgrRows.hide();
-            }
+            const machineOgrRows = Array.from(document.querySelectorAll('.p-ogr-row.machine-ogr-row'));
+            const machineRaspRows = Array.from(document.querySelectorAll('.p-rasp-row.machine-rasp-row'));
+            const aggregatedOgrRows = Array.from(document.querySelectorAll('.p-ogr-row:not(.station-ogr-row):not(.machine-ogr-row)'));
+            const aggregatedRaspRows = Array.from(document.querySelectorAll('.p-rasp-row:not(.station-rasp-row):not(.machine-rasp-row)'));
 
-            if (showPOgr) {
-                aggregatedOgrRows.show();
-            } else {
-                aggregatedOgrRows.hide();
-            }
+            // Машинные строки: зависят от showPOgr/showPRasp и hideAggregates
+            if (showPOgr && !hideAggregates) showEls(machineOgrRows); else hideEls(machineOgrRows);
+            if (showPRasp && !hideAggregates) showEls(machineRaspRows); else hideEls(machineRaspRows);
 
-            // Показываем/скрываем строки p_rasp-row
-            // Учитываем и состояние чекбокса, и режим скрытия агрегатов
-            if (showPRasp && !hideAggregates) {
-                machineRaspRows.show();
-            } else {
-                machineRaspRows.hide();
-            }
-
-            if (showPRasp) {
-                aggregatedRaspRows.show();
-            } else {
-                aggregatedRaspRows.hide();
-            }
+            // Агрегированные строки (не машинные): зависят только от переключателей
+            if (showPOgr) showEls(aggregatedOgrRows); else hideEls(aggregatedOgrRows);
+            if (showPRasp) showEls(aggregatedRaspRows); else hideEls(aggregatedRaspRows);
 
             // Итоговые строки по станции подчиняются соответствующим переключателям
-            document.querySelectorAll('.station-ogr-row').forEach(row => {
-                row.style.display = showPOgr ? '' : 'none';
-            });
-            document.querySelectorAll('.station-rasp-row').forEach(row => {
-                row.style.display = showPRasp ? '' : 'none';
-            });
+            document.querySelectorAll('.station-ogr-row').forEach(row => { showPOgr ? showEl(row) : hideEl(row); });
+            document.querySelectorAll('.station-rasp-row').forEach(row => { showPRasp ? showEl(row) : hideEl(row); });
 
             // Количество отображаемых строк на агрегат (1..3)
-            let aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
+            const aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
 
-            // Обновляем rowspan для ячейки "Всего по станции"
-            $('.total-row-cell').attr('rowspan', aggregatorRows);
+            // Обновляем rowspan для ячеек "Всего по станции"
+            document.querySelectorAll('.total-row-cell').forEach(td => td.setAttribute('rowspan', String(aggregatorRows)));
 
             // Меняем rowspan для ячеек агрегатов: baseRows + extras
-            $('.rowspan-td').each(function() {
-                const baseRowsAttr = this.getAttribute('data-machine-base-rowspan');
-                const baseRows = parseInt(baseRowsAttr, 10);
+            document.querySelectorAll('.rowspan-td').forEach(td => {
+                const baseRowsAttr = td.getAttribute('data-machine-base-rowspan');
+                const baseRows = parseInt(baseRowsAttr || '', 10);
                 if (Number.isFinite(baseRows) && baseRows > 0) {
-                    const extras = aggregatorRows - 1; // доп. строки на агрегат
-                    this.setAttribute('rowspan', String(baseRows + extras));
+                    const extras = aggregatorRows - 1;
+                    td.setAttribute('rowspan', String(baseRows + extras));
                 } else {
-                    // fallback для ячеек без базового атрибута
-                    this.setAttribute('rowspan', String(aggregatorRows));
+                    td.setAttribute('rowspan', String(aggregatorRows));
                 }
             });
 
-            // Меняем rowspan для ячеек с названием станции
-            $('.station-rowspan-td').each(function() {
-                const totalMachines = parseInt($(this).data('total-machines'), 10) || 0;
-                const totalPgu = parseInt($(this).data('total-pgu-count'), 10) || 0;
-                const newRowSpan = (totalMachines * aggregatorRows) + totalPgu + 1;
-                $(this).attr('rowspan', newRowSpan);
-            });
-
-            // Обновляем rowspan для ячейки "Всего по станции" согласно формуле
-            $('.total-row-cell').attr('rowspan', aggregatorRows);
+            // Ячейку с субъектом РФ больше не объединяем вниз (rowspan убран в шаблоне)
 
             // Синхронизация высоты ячеек "гр." и "Топливо (по СО ЕЭС)"
             const rowMultiplier = aggregatorRows; // 1..3
             document.querySelectorAll('.fuel-cell').forEach(cell => {
-                if (!cell) return;
-                // baseRows = сумма базовых строк по всем агрегатам группы: Σ(1 + num_pgu)
-                const baseRows = parseInt(cell.getAttribute('data-base-rowspan'), 10) || 1;
-                const groupCount = parseInt(cell.getAttribute('data-group-machine-count'), 10);
-                const fuelCount = parseInt(cell.getAttribute('data-fuel-machine-count'), 10);
+                const baseRows = parseInt(cell.getAttribute('data-base-rowspan') || '1', 10) || 1;
+                const groupCount = parseInt(cell.getAttribute('data-group-machine-count') || '', 10);
+                const fuelCount = parseInt(cell.getAttribute('data-fuel-machine-count') || '', 10);
                 const machinesCount = Number.isFinite(groupCount) ? groupCount
                     : Number.isFinite(fuelCount) ? fuelCount
                     : 1;
-                // extras = число доп. строк (Рогр, Ррасп) на агрегат
                 const extras = rowMultiplier - 1;
-                // Итог: Σ(1 + num_pgu) + countMachines * extras
                 const newRowspan = baseRows + machinesCount * extras;
                 cell.setAttribute('rowspan', String(newRowspan));
-                cell.style.display = 'table-cell';
+                showEl(cell);
             });
-
         }
 
         // Экспортируем функцию для других обработчиков
         window.applyPowerRowsUpdate = updateRows;
-        // Алиас для совместимости с вызовами в station_details.html
-        window.updateRows = updateRows;
+        window.updateRows = updateRows; // совместимость
 
-        // Обновляем строки при загрузке страницы
         updateRows();
 
-        // Обновляем строки при изменении чекбоксов
-        $('#toggleP_Ogr, #toggleP_Rasp').on('change', function() {
-            updateRows();
-        });
-    });
+        const togglePOgr = document.getElementById('toggleP_Ogr');
+        const togglePRasp = document.getElementById('toggleP_Rasp');
+        togglePOgr?.addEventListener('change', updateRows);
+        togglePRasp?.addEventListener('change', updateRows);
+    })();
 
     // === 3. Обработка отображения p_ogr / p_rasp
     function setupMachinePowerRows() {
@@ -429,7 +401,12 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Скрываем/показываем строки с агрегатами
             document.querySelectorAll('.machine-row').forEach(row => {
-                row.style.display = isHidden ? 'none' : '';
+                if (isHidden) {
+                    row.style.display = 'none';
+                } else {
+                    // TR
+                    row.style.display = 'table-row';
+                }
             });
 
             // Также скрываем/показываем строки p-ogr и p-rasp для агрегатов
@@ -438,7 +415,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isHidden) {
                     row.style.display = 'none';
                 } else {
-                    row.style.display = showPOgr ? '' : 'none';
+                    row.style.display = showPOgr ? 'table-row' : 'none';
                 }
             });
             
@@ -446,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (isHidden) {
                     row.style.display = 'none';
                 } else {
-                    row.style.display = showPRasp ? '' : 'none';
+                    row.style.display = showPRasp ? 'table-row' : 'none';
                 }
             });
 
@@ -585,7 +562,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "filtersCollapse",
         "filtersToggleBtn",
         "/static/js/generation/stations/station_filters_first_row.js",
-        "initializeStationFilters",
+        "filtersScriptLoaded",
         window.initialState.hasActiveFilters // ← только для фильтров
     );
 

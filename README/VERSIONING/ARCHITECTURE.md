@@ -395,11 +395,11 @@ CREATE INDEX idx_database_versions_is_active
 
 ```sql
 -- Пример: таблица stations
-ALTER TABLE generation.stations
+ALTER TABLE gs_gen.stations
 ADD COLUMN database_version_id INTEGER;
 
 -- Foreign key
-ALTER TABLE generation.stations
+ALTER TABLE gs_gen.stations
 ADD CONSTRAINT fk_stations_database_version
 FOREIGN KEY (database_version_id)
 REFERENCES refdata.database_versions(id)
@@ -407,7 +407,7 @@ ON DELETE SET NULL;
 
 -- Индекс
 CREATE INDEX idx_stations_database_version_id
-ON generation.stations(database_version_id);
+ON gs_gen.stations(database_version_id);
 ```
 
 ### SQL запросы системы
@@ -422,7 +422,7 @@ LIMIT 1;
 #### Фильтрация данных по версии
 ```sql
 -- Пример для stations
-SELECT * FROM generation.stations
+SELECT * FROM gs_gen.stations
 WHERE (
     database_version_id = :current_version_id OR
     database_version_id IS NULL
@@ -436,7 +436,7 @@ SELECT
     dv.name,
     COUNT(s.id) as station_count
 FROM refdata.database_versions dv
-LEFT JOIN generation.stations s ON s.database_version_id = dv.id
+LEFT JOIN gs_gen.stations s ON s.database_version_id = dv.id
 GROUP BY dv.id, dv.version_number, dv.name
 ORDER BY dv.version_number;
 ```
@@ -467,8 +467,8 @@ BACKUP_SCHEDULE_MINUTE=0
 
 ```python
 # Схемы БД
-SCHEMA_GENERATION = "generation"
-SCHEMA_REFDATA = "refdata"
+SCHEMA_GENERATION = "gs_gen"
+SCHEMA_REFDATA = "gs_sys"
 
 # Бэкапы
 ENABLE_SCHEDULED_BACKUPS = os.getenv('ENABLE_SCHEDULED_BACKUPS', 'False').lower() == 'true'
@@ -564,7 +564,7 @@ CREATE INDEX idx_database_versions_is_active
 
 -- Индекс на database_version_id в каждой таблице
 CREATE INDEX idx_stations_database_version_id
-    ON generation.stations(database_version_id);
+    ON gs_gen.stations(database_version_id);
 ```
 
 #### 2. Кеширование

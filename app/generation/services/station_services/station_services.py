@@ -176,6 +176,8 @@ def get_stations_list(
     page=1,
     per_page=None,
     rounding_digits=None,
+    start_year=None,
+    end_year=None,
     **filters,
 ):
     # Совместимость параметров: поддерживаем legacy-ключ station_fuel_type_filter
@@ -210,13 +212,18 @@ def get_stations_list(
             Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
         )
 
-    # Проверка топлива: показываем только агрегаты, у которых заполнено "Основное топливо"
-    # (есть хотя бы один MachineFuel с FuelType != "не указано" в текущей версии БД),
-    # но НЕ заполнено поле "Топливо (по СО ЕЭС)" (fuel_so пусто/NULL/"не указано").
+    # Проверка топлива: показываем "проблемные" агрегаты:
+    # - fuel_so (по СО ЕЭС) не заполнено, но есть топливо по годам, ИЛИ
+    # - fuel_so заполнено, но не совпадает с типом топлива(ами) по годам в выбранном диапазоне лет.
     if filters.get("fuel_check"):
         from sqlalchemy import and_, or_, func
         from app.refdata.models.fuels.fuel_type_model import FuelType
         from app.common.services.database_version_filter import get_current_db_version_id
+        from app.common.services.get_services.years.years_get_services import (
+            get_filter_start_year,
+            get_filter_end_year,
+        )
+        from config import Config
 
         current_version_id = get_current_db_version_id()
         if current_version_id is not None:
@@ -224,9 +231,16 @@ def get_stations_list(
         else:
             mf_version_cond = MachineFuel.database_version_id.is_(None)
 
-        has_primary_fuel = Machine.machine_fuels.any(
+        # Границы лет берём из параметров страницы (то, что показано в таблице)
+        sy = int(start_year if start_year is not None else get_filter_start_year())
+        ey = int(end_year if end_year is not None else get_filter_end_year())
+
+        # Есть ли указанное топливо по годам в диапазоне (игнорируем "не указано")
+        has_year_fuel = Machine.machine_fuels.any(
             and_(
                 mf_version_cond,
+                MachineFuel.year_number >= sy,
+                MachineFuel.year_number <= ey,
                 MachineFuel.fuel.has(
                     Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
                 ),
@@ -239,7 +253,35 @@ def get_stations_list(
             func.lower(func.trim(Machine.fuel_so)) == "не указано",
         )
 
-        machine_query = machine_query.filter(and_(has_primary_fuel, fuel_so_missing))
+        # Совпадение считаем "мягко": fuel_so может содержать несколько топлив через запятую/и т.п.,
+        # поэтому проверяем, что название FuelType встречается как подстрока в fuel_so.
+        has_match_with_year_fuel = Machine.machine_fuels.any(
+            and_(
+                mf_version_cond,
+                MachineFuel.year_number >= sy,
+                MachineFuel.year_number <= ey,
+                MachineFuel.fuel.has(
+                    Fuel.fuel_type.has(
+                        and_(
+                            func.lower(FuelType.name) != "не указано",
+                            func.strpos(
+                                func.lower(func.coalesce(Machine.fuel_so, "")),
+                                func.lower(FuelType.name),
+                            ) > 0,
+                        )
+                    )
+                ),
+            )
+        )
+
+        # "Проблемный" агрегат: есть топливо по годам в диапазоне и при этом fuel_so пустое
+        # или не содержит ни одного из топлив по годам.
+        machine_query = machine_query.filter(
+            and_(
+                has_year_fuel,
+                or_(fuel_so_missing, ~has_match_with_year_fuel),
+            )
+        )
 
     if filters.get("date_exploitation_filter"):
         machine_query = machine_query.filter(
@@ -438,26 +480,46 @@ def get_stations_list(
         
         use_cached_sort = False
     
-    # Сортировка в Python по полной территориальной иерархии
+    # Сортировка в Python по полной территориальной иерархии.
+    # На самом нижнем уровне: по типам станций (фиксированный порядок) и по названию станции.
     def get_sorting_key(station):
         """
         Возвращает кортеж для сортировки по полной территориальной иерархии:
-        (energy_system_type_id, union_energy_system_id, regional_energy_system_id, 
-         regional_district_id, energy_unit_id, min_station_type_id, station_id)
-        Это гарантирует, что все станции одного субъекта будут отображаться вместе.
-        Использует прямую связь id_regional_energy_system для определения РЭС.
+        (energy_system_type_id, union_energy_system_order, regional_energy_system_id,
+         regional_district_name, energy_unit_id, station_type_rank, station_name, station_id)
+        Это сохраняет текущую территориальную группировку, но меняет порядок на нижнем уровне.
         """
         # Определяем тип станции
-        min_type = station.id_station_type if station.id_station_type is not None else float('inf')
-        
-        # Получаем иерархию через связи
+        station_type_name = ""
+        if getattr(station, "station_type", None) is not None and getattr(station.station_type, "name", None):
+            station_type_name = station.station_type.name.strip()
+
+        def _station_type_rank(name: str) -> int:
+            """
+            Фиксированный порядок типов: АЭС, ГЭС, ГАЭС, ТЭС, ВЭС, СЭС.
+            Если в справочнике тип называется иначе, пытаемся найти вхождение аббревиатуры.
+            """
+            s = (name or "").strip().upper()
+            # Важно: "ГАЭС" проверяем раньше "ГЭС"
+            ordered = ["АЭС", "ГАЭС", "ГЭС", "ТЭС", "ВЭС", "СЭС"]
+            direct = {abbr: idx for idx, abbr in enumerate(ordered)}
+            if s in direct:
+                return direct[s]
+            for idx, abbr in enumerate(ordered):
+                if abbr in s:
+                    return idx
+            return 999
+
+        station_type_rank = _station_type_rank(station_type_name)
+
+        # Получаем иерархию через связи (как было)
         energy_system_type_id = 0
         # Для корректной сортировки по ОЭС используем display_order; None уходит в конец
         union_energy_system_order = float('inf')
         regional_energy_system_id = 0
         regional_district_name = ""
         energy_unit_id = station.id_energy_unit or 0
-        
+
         # 1) Приоритет: прямая связь станции с РЭС (Station.id_regional_energy_system)
         if station.id_regional_energy_system and station.regional_energy_system_obj:
             res = station.regional_energy_system_obj
@@ -470,12 +532,12 @@ def get_stations_list(
                 )
                 if res.union_energy_system.energy_system_type:
                     energy_system_type_id = res.union_energy_system.energy_system_type.id
-        
+
         # 2) Fallback: через субъект РФ (старое поведение)
         if regional_energy_system_id == 0 and station.regional_district:
             # Субъекты сортируются ПО АЛФАВИТУ (по name)
             regional_district_name = (station.regional_district.name or "").lower()
-            
+
             if station.regional_district.regional_energy_systems:
                 res = station.regional_district.regional_energy_systems[0]
                 if res:
@@ -490,15 +552,19 @@ def get_stations_list(
                             energy_system_type_id = res.union_energy_system.energy_system_type.id
         elif station.regional_district:
             regional_district_name = (station.regional_district.name or "").lower()
-        
+
+        # Нижний уровень: по алфавиту названия станции
+        station_name = (station.name or "").strip().lower()
+
         return (
             energy_system_type_id,
             union_energy_system_order,
             regional_energy_system_id,
-            regional_district_name,  # ← Сортировка по алфавиту!
+            regional_district_name,
             energy_unit_id,
-            min_type,
-            station.id
+            station_type_rank,
+            station_name,
+            station.id,
         )
     
     if not use_cached_sort:
@@ -1938,6 +2004,8 @@ def get_station_list_data(
         page=page,
         per_page=per_page,
         rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
         **filters
     )
     stations = station_data["stations"]
@@ -1958,6 +2026,8 @@ def get_station_list_data(
             show_p_ogr=show_p_ogr,
             show_p_rasp=show_p_rasp,
             filters=filters,
+            start_year=start_year,
+            end_year=end_year,
         )
         
         # Привязываем машины обратно к станциям
@@ -1977,6 +2047,13 @@ def get_station_list_data(
                     'total_pgu_count': 0,
                     'summary_rows': 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                 }
+        
+        # Проставляем вычисленные totals прямо в объекты Station (нужно для корректных rowspan/data-атрибутов в шаблонах/JS)
+        for station in stations:
+            totals = station_totals.get(station.id) or {}
+            station.total_rows = totals.get('total_rows', 1)
+            station.machine_count = totals.get('machine_count', 0)
+            station.total_pgu_count = totals.get('total_pgu_count', 0)
             
         # 🧩 Назначение мощностей агрегатам
         for station in stations:
@@ -1989,6 +2066,8 @@ def get_station_list_data(
             show_p_ogr=show_p_ogr,
             show_p_rasp=show_p_rasp,
             filters=filters,
+            start_year=start_year,
+            end_year=end_year,
         )
         # Привязываем машины обратно к станциям
         station_machines_map = defaultdict(list)
@@ -2006,6 +2085,13 @@ def get_station_list_data(
                     'total_pgu_count': 0,
                     'summary_rows': 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                 }
+        
+        # Проставляем вычисленные totals прямо в объекты Station (нужно для корректных rowspan/data-атрибутов в шаблонах/JS)
+        for station in stations:
+            totals = station_totals.get(station.id) or {}
+            station.total_rows = totals.get('total_rows', 1)
+            station.machine_count = totals.get('machine_count', 0)
+            station.total_pgu_count = totals.get('total_pgu_count', 0)
                 
         # Назначаем мощности агрегатам
         for station in stations:
@@ -3102,6 +3188,20 @@ def add_station_service(
 def update_station_from_form_service(user, station: Station, form, regional_district_list) -> list:
     changes = []
     try:
+        def _norm_text(v) -> str:
+            """Нормализует текст для сравнения: None/пусто/пробелы -> ''."""
+            if v is None:
+                return ""
+            try:
+                return str(v).strip()
+            except Exception:
+                return ""
+
+        def _is_unspecified_text(v) -> bool:
+            """Считает 'не указано' и пустые значения эквивалентом None."""
+            s = _norm_text(v).lower()
+            return s in {"", "не указано", "не указан", "не указана", "—", "-"}
+
         # Название
         if station.name != form.name.data:
             changes.append(f"Название: {station.name} → {form.name.data}")
@@ -3223,25 +3323,50 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             station.id_regional_energy_system = new_res_id
 
         # Местоположение
-        new_location = form.location.data.strip() if form.location.data.strip() else None
-        if station.location != new_location:
-            changes.append(f"Местоположение: {station.location} → {new_location}")
+        new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
+        new_location = _norm_text(new_location_raw) or None
+        old_location = _norm_text(getattr(station, "location", None)) or None
+        if old_location != new_location:
+            changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
             station.location = new_location
 
         # Энергоузел
-        if form.id_energy_unit.data and int(form.id_energy_unit.data) != 0:
-            new_energy_unit_id = int(form.id_energy_unit.data)
-            from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
-            new_energy_unit = db.session.query(EnergyUnit).filter_by(id=new_energy_unit_id).first()
-            old_value = station.energy_unit.name if station.energy_unit else "не указано"
-            new_value = new_energy_unit.name
+        from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+
+        # Приводим выбранное значение формы к id/None
+        new_energy_unit_id = None
+        try:
+            if getattr(form, "id_energy_unit", None) is not None and form.id_energy_unit.data not in (None, "", 0, "0"):
+                new_energy_unit_id = int(form.id_energy_unit.data)
+        except Exception:
+            new_energy_unit_id = None
+        if new_energy_unit_id == 0:
+            new_energy_unit_id = None
+
+        # Если выбран "не указано" (по имени), считаем это None и не логируем как изменение
+        new_energy_unit_obj = db.session.get(EnergyUnit, new_energy_unit_id) if new_energy_unit_id is not None else None
+        if new_energy_unit_obj is not None and _is_unspecified_text(getattr(new_energy_unit_obj, "name", None)):
+            new_energy_unit_id = None
+            new_energy_unit_obj = None
+
+        old_energy_unit_id_raw = getattr(station, "id_energy_unit", None)
+        old_energy_unit_id = old_energy_unit_id_raw
+        if old_energy_unit_id == 0:
+            old_energy_unit_id = None
+        old_energy_unit_obj = getattr(station, "energy_unit", None) or (db.session.get(EnergyUnit, old_energy_unit_id) if old_energy_unit_id is not None else None)
+        if old_energy_unit_obj is not None and _is_unspecified_text(getattr(old_energy_unit_obj, "name", None)):
+            old_energy_unit_id = None
+            old_energy_unit_obj = None
+
+        if old_energy_unit_id != new_energy_unit_id:
+            old_value = (getattr(old_energy_unit_obj, "name", None) or "не указано") if old_energy_unit_obj else "не указано"
+            new_value = (getattr(new_energy_unit_obj, "name", None) or "не указано") if new_energy_unit_obj else "не указано"
             changes.append(f"Энергоузел: {old_value} → {new_value}")
-            station.id_energy_unit = new_energy_unit.id
+            station.id_energy_unit = new_energy_unit_id
         else:
-            # Если выбрано пустое значение (0) или None, устанавливаем None
-            if station.id_energy_unit is not None:
-                old_value = station.energy_unit.name if station.energy_unit else "не указано"
-                changes.append(f"Энергоузел: {old_value} → не указано")
+            # Видимых изменений нет, но если в базе был "технический" placeholder (например, name='не указано' с id!=0),
+            # нормализуем хранение до None без создания записи в логе.
+            if old_energy_unit_id is None and old_energy_unit_id_raw not in (None, 0, "0"):
                 station.id_energy_unit = None
 
         _commit_with_retry()
@@ -3300,6 +3425,15 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
     try:
         if not form_machines.validate():
             return changes
+
+        def _norm_text(v) -> str:
+            """Нормализует текст для сравнения: None/пусто/пробелы -> ''."""
+            if v is None:
+                return ""
+            try:
+                return str(v).strip()
+            except Exception:
+                return ""
 
         # ОПТИМИЗАЦИЯ 1: Предварительно загружаем все GenCompany одним запросом
         # Собираем все уникальные id_gen_company из формы
@@ -3363,13 +3497,22 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
                 # Флаг для отслеживания изменений в этом агрегате
                 machine_changed = False
 
-                if machine.fuel_so != new_fuel_so:
-                    changes.append(f"Агрегат {machine.machine_number}: Топливо {machine.fuel_so} → {new_fuel_so}")
+                old_fuel_so_norm = _norm_text(getattr(machine, "fuel_so", None))
+                new_fuel_so_norm = _norm_text(new_fuel_so)
+                # Не логируем "None → ''" и подобные псевдо-изменения
+                if old_fuel_so_norm != new_fuel_so_norm:
+                    changes.append(
+                        f"Агрегат {machine.machine_number}: Топливо {old_fuel_so_norm or 'не указано'} → {new_fuel_so_norm or 'не указано'}"
+                    )
                     machine.fuel_so = new_fuel_so
                     machine_changed = True
 
-                if machine.note != new_note:
-                    changes.append(f"Агрегат {machine.machine_number}: Примечание {machine.note} → {new_note}")
+                old_note_norm = _norm_text(getattr(machine, "note", None))
+                new_note_norm = _norm_text(new_note)
+                if old_note_norm != new_note_norm:
+                    changes.append(
+                        f"Агрегат {machine.machine_number}: Примечание {old_note_norm or 'не указано'} → {new_note_norm or 'не указано'}"
+                    )
                     machine.note = new_note
                     machine_changed = True
 

@@ -326,6 +326,12 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     entity_id=pgu_machine.id)
 
         _commit_with_retry()
+        # ВАЖНО: ПГУ влияет на агрегации/списки, поэтому чистим кэш после мутаций
+        try:
+            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
+            clear_aggregation_cache()
+        except Exception as _e:
+            print(f"[CACHE] Failed to clear aggregation cache after PGU delete: {_e}")
 
         if deleted_names:
             log_to_db(user, f"Удаление ПГУ агрегатов на станции {station.name}", details="; ".join(deleted_names))
@@ -708,6 +714,12 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         recalculate_machine_years_by_p_ust(machine, changes, year_features)
 
         _commit_with_retry()
+        # ВАЖНО: изменения Machine/его мощностей/топлива/ПГУ влияют на агрегации и кэш сортировки/страниц
+        try:
+            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
+            clear_aggregation_cache()
+        except Exception as _e:
+            print(f"[CACHE] Failed to clear aggregation cache after Machine save: {_e}")
         
         # Инвалидация кэша после успешного обновления
         from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
@@ -951,6 +963,13 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 db.session.add(pgu_power)
 
         _commit_with_retry()
+        
+        # ВАЖНО: ПГУ влияет на агрегаты/агрегации — чистим кэш после мутаций
+        try:
+            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
+            clear_aggregation_cache()
+        except Exception as _e:
+            print(f"[CACHE] Failed to clear aggregation cache after PGU save: {_e}")
         
         # Инвалидация кэша после успешного обновления
         from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
@@ -1294,9 +1313,9 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
         n_pos = is_positive_power(p_n)
         n1_pos = is_positive_power(p_n1)
 
-        # 1) Если Руст года N ≠ 0, а года N+1 == 0 → ожидаемый год вывода = N
+        # 1) Если Руст года N ≠ 0, а года N+1 == 0 → ожидаемый год вывода = N+1
         if n_pos and not n1_pos and new_decomp_year is None:
-            new_decomp_year = year_n
+            new_decomp_year = year_n1
 
         # 2) Если Руст года N == 0, а года N+1 ≠ 0 → ожидаемый год ввода = N+1
         if (not n_pos) and n1_pos and new_expected_expl_year is None:

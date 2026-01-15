@@ -20,6 +20,8 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
+    get_filter_start_year,
+    get_filter_end_year,
 )
 
 def extract_filters_from_args(args):
@@ -35,8 +37,8 @@ def extract_filters_from_args(args):
 
     return {
         "page": args.get("page", 1, type=int),
-        "start_year": args.get("start_year", Config.START_YEAR, type=int),
-        "end_year": args.get("end_year", Config.END_YEAR, type=int),
+        "start_year": args.get("start_year", get_filter_start_year(), type=int),
+        "end_year": args.get("end_year", get_filter_end_year(), type=int),
         # Проверка качества заполнения топлива (для station_list)
         "fuel_check": args.get("fuel_check", "0") == "1",
         "condition_type_filter": condition_type,

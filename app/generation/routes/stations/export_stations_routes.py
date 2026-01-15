@@ -33,6 +33,10 @@ from app.generation.services.station_services.export_cache import (
     build_export_key,
     get_export_payload,
 )
+from app.common.services.get_services.years.years_get_services import (
+    get_filter_start_year,
+    get_filter_end_year,
+)
 import pandas as pd
 
 
@@ -111,8 +115,8 @@ def export_station_sipr_ees_application_A_routes():
 @no_compress
 def export_station_full_routes():
     filters = extract_filters_from_args(request.args)
-    start_year = int(request.args.get("start_year", Config.START_YEAR))
-    end_year = int(request.args.get("end_year", Config.END_YEAR))
+    start_year = int(request.args.get("start_year", get_filter_start_year()))
+    end_year = int(request.args.get("end_year", get_filter_end_year()))
     rounding_digits = request.args.get("rounding_digits", "1")
     # Всегда выгружаем без пагинации: все строки по текущим фильтрам
     per_page = "all"

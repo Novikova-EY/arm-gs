@@ -24,6 +24,8 @@ from app.common.services.help_services import (
 )
 from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
+    get_filter_start_year,
+    get_filter_end_year,
 )
 from app.logs.models.log_model import Log
 from sqlalchemy import or_
@@ -226,8 +228,8 @@ def machine_details(station_id, machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.args.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":
@@ -298,8 +300,8 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.args.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":

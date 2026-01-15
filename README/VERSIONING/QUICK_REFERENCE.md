@@ -120,7 +120,7 @@ WHERE is_active = true;
 SELECT 
     COALESCE(database_version_id::text, 'NULL') AS version,
     COUNT(*) AS count
-FROM generation.stations
+FROM gs_gen.stations
 GROUP BY database_version_id
 ORDER BY database_version_id;
 ```

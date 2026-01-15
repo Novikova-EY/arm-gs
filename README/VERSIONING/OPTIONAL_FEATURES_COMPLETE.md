@@ -204,8 +204,8 @@ BACKUP_SCHEDULE_MINUTE=0
 │ • Детальные различия по таблицам ↓                 │
 │                                                     │
 │ Таблица              V1    V2    Разница   %       │
-│ generation.stations  100   120    +20     +20%     │
-│ generation.machines  500   550    +50     +10%     │
+│ gs_gen.stations  100   120    +20     +20%     │
+│ gs_gen.machines  500   550    +50     +10%     │
 │ refdata.fuels        30    35     +5      +16.7%   │
 └─────────────────────────────────────────────────────┘
 ```

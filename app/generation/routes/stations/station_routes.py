@@ -42,6 +42,10 @@ from app.generation.services.station_services.filters_services import (
     extract_filters_from_args, 
     extract_filters_from_form,
 )
+from app.common.services.get_services.years.years_get_services import (
+    get_filter_start_year,
+    get_filter_end_year,
+)
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
 )
@@ -71,8 +75,8 @@ def station_list():
     # Получение параметров запроса
     filters             = extract_filters_from_args(request.args)
     page                = filters.pop("page", 1)
-    start_year          = filters.pop("start_year", Config.START_YEAR)
-    end_year            = filters.pop("end_year", Config.END_YEAR)
+    start_year          = filters.pop("start_year", get_filter_start_year())
+    end_year            = filters.pop("end_year", get_filter_end_year())
     # По умолчанию ограничения мощности (Огр) скрыты, располагаемая мощность отображается
     show_p_ogr          = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp         = request.args.get("show_p_rasp", "1") == "1"

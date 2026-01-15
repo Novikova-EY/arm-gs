@@ -101,9 +101,27 @@ class AddDatabaseVersionForm(FlaskForm):
         }
     )
 
+    extend_years = IntegerField(
+        "Продлить период (лет)",
+        validators=[
+            Optional(),
+            NumberRange(min=0, max=100, message="Количество лет для продления должно быть в диапазоне от 0 до 100."),
+        ],
+        render_kw={"class": "form-control"},
+    )
+
     def validate_refdata_source_version_id(self, field):
         parent_value = (self.parent_version_id.data or "").strip()
         if parent_value == "empty" and not field.data:
             raise ValidationError("Поле «Версия для копирования справочников» обязательно для пустой версии.")
 
+    def validate_extend_years(self, field):
+        """
+        При создании на основе существующей версии просим указать,
+        на сколько лет продлить период (можно 0 — без продления).
+        """
+        parent_value = (self.parent_version_id.data or "").strip()
+        if parent_value and parent_value not in ("empty", "None", "none"):
+            if field.data is None:
+                raise ValidationError("Укажите, на сколько лет продлить период (можно 0 — без продления).")
 

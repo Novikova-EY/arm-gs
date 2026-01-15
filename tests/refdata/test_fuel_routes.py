@@ -62,7 +62,8 @@ def test_add_fuel_post_ok(client):
     with patch("app.refdata.routes.fuels.fuel_routes.add_fuel_service") as m_add, \
          patch("app.refdata.routes.fuels.fuel_routes.fuel_query") as m_query, \
          patch("app.refdata.routes.fuels.fuel_routes.choices_cache.get_choices") as m_choices:
-        m_choices.return_value = []
+        # Важно: SelectField валидирует значение по списку choices.
+        m_choices.return_value = [(1, "Вид 1")]
         m_add.return_value = None
         m_query.return_value = types.SimpleNamespace(count=lambda: 21)
 

@@ -83,6 +83,94 @@ def _get_sum_years_and_header(start_year: int, end_year: int, current_year: int 
     return sum_years, f"{start_year}–{end_year} гг.\n(без {current_year} г.)"
 
 
+def _get_export_header_period_start(current_year: int | None, fallback_start_year: int) -> int:
+    """
+    Для шапок экспортируемых файлов: начало периода = (текущий год + 1).
+
+    Если текущий год определить не удалось — используем fallback_start_year.
+    """
+    if current_year is None:
+        return int(fallback_start_year)
+    return int(current_year) + 1
+
+
+def _normalize_year_feature_name(value: str | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip().lower().replace(" ", "")
+
+
+def _get_expected_export_years(
+    start_year: int,
+    end_year: int,
+) -> tuple[list[int], int | None]:
+    """
+    Требование для экспорта: показываем только "ожидаемые" годы:
+    - текущий год (план)
+    - планируемые на последующий период
+
+    В терминах справочника годов:
+    - текущий год определяется признаком "текущий (оценка)" (если есть в диапазоне),
+      иначе берем get_current_year().
+    - последующий период берем из годов с признаком "план".
+    """
+    year_features = get_year_feature_dict() or {}
+
+    current_year_split: int | None = None
+    try:
+        current_year_split = next(
+            (
+                y
+                for y in range(int(start_year), int(end_year) + 1)
+                if _normalize_year_feature_name(year_features.get(y)) == "текущий(оценка)"
+            ),
+            None,
+        )
+    except Exception:
+        current_year_split = None
+
+    if current_year_split is None:
+        try:
+            current_year_split = get_current_year()
+        except Exception:
+            current_year_split = None
+
+    # Плановые годы (как "последующий период")
+    plan_years = [
+        y
+        for y in range(int(start_year), int(end_year) + 1)
+        if _normalize_year_feature_name(year_features.get(y)) == "план"
+    ]
+
+    export_years: list[int] = []
+
+    # Текущий год (план) — всегда первый, если попадает в диапазон
+    if current_year_split is not None and int(start_year) <= int(current_year_split) <= int(end_year):
+        export_years.append(int(current_year_split))
+
+    # Далее — плановые годы после текущего года (или весь плановый хвост, если текущий не найден)
+    if current_year_split is not None:
+        export_years.extend([y for y in plan_years if y > int(current_year_split)])
+    else:
+        export_years.extend(plan_years)
+
+    export_years = sorted(set(export_years))
+
+    # Фолбэк: если признаки годов отсутствуют/не совпали, не делаем пустую выгрузку.
+    if not export_years:
+        base_current = current_year_split
+        if base_current is None:
+            try:
+                base_current = get_current_year()
+            except Exception:
+                base_current = None
+        safe_start = int(base_current) if base_current is not None else int(start_year)
+        safe_start = max(int(start_year), safe_start)
+        export_years = list(range(safe_start, int(end_year) + 1))
+
+    return export_years, current_year_split
+
+
 def export_station_changes_to_excel(
     user: str,
     filters: dict,
@@ -185,33 +273,37 @@ def export_station_changes_to_excel(
     static_headers = [
         "Субъект Российской Федерации",
         "Генерирующая компания",
-        "Наименование",
-        "Мероприятие",
+        "Электростанция",
+        "Вид мероприятия",
         "Тип электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
     ]
-    # Формируем заголовки годов с " г.", для годов с признаком "текущий (оценка)" добавляем пометку
-    year_headers = []
-    year_feature_by_number = get_year_feature_dict()
-    for y in range(start_year, end_year + 1):
-        feature_name = year_feature_by_number.get(y)
-        if feature_name == "текущий (оценка)":
-            year_headers.append(f"{y} г.\n(ожидается, справочно)")
+    export_years, current_year_split = _get_expected_export_years(start_year, end_year)
+    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
+    # значит начало периода = (первый год + 1).
+    current_year_for_header = int(export_years[0]) if export_years else int(start_year)
+
+    # Формируем заголовки годов (только ожидаемые)
+    year_headers: list[str] = []
+    for y in export_years:
+        if current_year_split is not None and y == int(current_year_split):
+            year_headers.append(f"{y} г.\n(план)")
         else:
             year_headers.append(f"{y} г.")
-    
-    # Список лет для суммирования в колонке "Итого": только годы с признаком "план"
-    year_features = get_year_feature_dict() or {}
-    plan_years = [
-        y for y in range(start_year, end_year + 1)
-        if str(year_features.get(y, "")).strip().lower() == "план"
-    ]
-    sum_years = plan_years
-    if plan_years:
-        all_years_header = f"{plan_years[0]}–{plan_years[-1]} гг.\n"
+
+    # "Итого" — для шапки: период начинается со следующего года (текущий+1).
+    # Суммирование — по тем же годам, что указаны в шапке "Итого".
+    if export_years:
+        header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
+        header_end_year = int(export_years[-1])
+        if header_start_year > header_end_year:
+            header_start_year = header_end_year
+        sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
+        all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
     else:
+        sum_years = []
         all_years_header = ""
     note_header = "Документ-основание"
 
@@ -476,85 +568,135 @@ def export_station_changes_to_excel(
             for ues_id, rd_group in sa_group.items():
                 for res_id, res_group in rd_group.items():
                     for rd_id, stations in res_group.items():
+                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
+                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
+                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
+                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
                         for station in stations:
-                            # Каждая виртуальная станция содержит machines с выставленными rowspan'ами
+                            machine_plans: list[tuple[object, list[dict]]] = []
                             for machine in getattr(station, "machines", []):
                                 if not getattr(machine, "powers_by_year", None):
                                     continue
-
-                                first_row_for_machine = current_row
-
-                                # Сумма "Итого" по план-годам отдельно для каждого мероприятия
-                                event_sum_map = {}
+                                filtered_power_rows: list[dict] = []
                                 for _p in machine.powers_by_year:
                                     if not isinstance(_p, dict):
                                         continue
+                                    y0 = _p.get("year")
+                                    if y0 not in export_years:
+                                        continue
+                                    if (
+                                        current_year_split is not None
+                                        and y0 == int(current_year_split)
+                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
+                                    ):
+                                        continue
+                                    filtered_power_rows.append(_p)
+                                if filtered_power_rows:
+                                    machine_plans.append((machine, filtered_power_rows))
+                            if machine_plans:
+                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
+                                rd_station_plans.append((station, station_rows, machine_plans))
+
+                        if not rd_station_plans:
+                            continue
+
+                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
+                        rd_start_row = current_row
+                        rd_end_row = rd_start_row + rd_total_rows - 1
+
+                        # Субъект РФ / энергоузел (как на веб)
+                        first_station = rd_station_plans[0][0]
+                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                        if "титэс сибири" in str(ues_label).lower():
+                            value = energy_unit_names.get(
+                                rd_id,
+                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
+                            )
+                        else:
+                            value = (
+                                first_station.regional_district.name_full
+                                if getattr(first_station, "regional_district", None)
+                                and getattr(first_station.regional_district, "name_full", None)
+                                else (
+                                    first_station.regional_district.name
+                                    if getattr(first_station, "regional_district", None)
+                                    and getattr(first_station.regional_district, "name", None)
+                                    else "Без субъекта"
+                                )
+                            )
+                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
+
+                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
+                        flat_segments: list[tuple[str, int]] = []
+                        for _station, _station_rows, _machine_plans in rd_station_plans:
+                            for _machine, _rows in _machine_plans:
+                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
+                                flat_segments.append((company, len(_rows)))
+                        row_cursor = rd_start_row
+                        i = 0
+                        while i < len(flat_segments):
+                            company = flat_segments[i][0]
+                            block_rows = 0
+                            while i < len(flat_segments) and flat_segments[i][0] == company:
+                                block_rows += flat_segments[i][1]
+                                i += 1
+                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
+                            row_cursor += block_rows
+
+                        # Станции: объединение по фактической высоте станции в выгрузке
+                        station_row_cursor = rd_start_row
+                        for station, station_rows, machine_plans in rd_station_plans:
+                            merge_if_needed(
+                                station_row_cursor,
+                                station_name_col,
+                                station_row_cursor + station_rows - 1,
+                                station_name_col,
+                                getattr(station, "name", "—"),
+                                text_center_format,
+                            )
+
+                            # Данные по агрегатам
+                            for machine, filtered_power_rows in machine_plans:
+                                first_row_for_machine = current_row
+                                machine_rows = len(filtered_power_rows)
+                                last_row_for_machine = first_row_for_machine + machine_rows - 1
+
+                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
+                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
+                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+
+                                station_type_obj = getattr(station, "station_type", None)
+                                station_type_name = getattr(station_type_obj, "name", None)
+                                if not station_type_name:
+                                    st_id = getattr(station, "id_station_type", None)
+                                    station_type_name = station_type_names.get(st_id) if st_id else None
+                                station_type_name = station_type_name or "—"
+                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
+
+                                # Топливо (по СО ЕЭС) — на высоту агрегата
+                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
+
+                                # Основание — на высоту агрегата
+                                change_doc = getattr(machine, "change_document", None)
+                                doc_text = _extract_document_names(change_doc) if change_doc else None
+                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
+
+                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
+                                event_sum_map: dict = {}
+                                for _p in filtered_power_rows:
                                     _ev = _p.get("event")
                                     _y = _p.get("year")
                                     _v = _p.get("p_ust")
                                     if _y in sum_years and _ev:
                                         event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events = set()
+                                seen_events: set = set()
 
-                                for idx_power, power_row in enumerate(machine.powers_by_year):
-                                    # Субъект РФ (region_rowspan применяется один раз)
-                                    if idx_power == 0 and getattr(machine, "region_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.region_rowspan - 1
-                                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                                        if "титэс сибири" in str(ues_label).lower():
-                                            eu_id = getattr(station, "id_energy_unit", None) or 0
-                                            value = energy_unit_names.get(eu_id, "Без энергоузла" if not eu_id else f"Энергоузел {eu_id}")
-                                        else:
-                                            value = (
-                                                station.regional_district.name_full
-                                                if getattr(station, "regional_district", None)
-                                                and getattr(station.regional_district, "name_full", None)
-                                                else (
-                                                    station.regional_district.name
-                                                    if getattr(station, "regional_district", None)
-                                                    and getattr(station.regional_district, "name", None)
-                                                    else "Без субъекта"
-                                                )
-                                            )
-                                        merge_if_needed(current_row, 0, r2, 0, value, text_center_format)
-
-                                    # Генкомпания
-                                    if idx_power == 0 and getattr(machine, "gen_company_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.gen_company_rowspan - 1
-                                        value = machine.gen_company.name if getattr(machine, "gen_company", None) else "—"
-                                        merge_if_needed(current_row, 1, r2, 1, value, text_center_format)
-
-                                    # Станция
-                                    if idx_power == 0 and getattr(machine, "station_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.station_rowspan - 1
-                                        merge_if_needed(current_row, 2, r2, 2, getattr(station, "name", "—"), text_center_format)
-
-                                    # Поля агрегата — один раз на агрегат, объединяем на machine.total_rows
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        # Станционный номер
-                                        merge_if_needed(current_row, machine_num_col, r2, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
-                                        # Тип генерирующего оборудования
-                                        merge_if_needed(current_row, machine_name_col, r2, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
-                                        # Тип станции
-                                        station_type_obj = getattr(station, "station_type", None)
-                                        station_type_name = getattr(station_type_obj, "name", None)
-                                        if not station_type_name:
-                                            st_id = getattr(station, "id_station_type", None)
-                                            station_type_name = station_type_names.get(st_id) if st_id else None
-                                        station_type_name = station_type_name or "—"
-                                        merge_if_needed(current_row, station_type_col, r2, station_type_col, station_type_name, text_center_format)
-
-                                    # Топливо (по СО ЕЭС) — объединение на fuel_rowspan
-                                    if idx_power == 0 and getattr(machine, "fuel_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.fuel_rowspan - 1
-                                        merge_if_needed(current_row, fuel_col, r2, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
-
+                                for power_row in filtered_power_rows:
                                     # Мероприятие — построчно
                                     worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
 
                                     # Годы — значение только в год power_row["year"], остальное пусто
-                                    for i, y in enumerate(range(start_year, end_year + 1)):
+                                    for i, y in enumerate(export_years):
                                         val = power_row["p_ust"] if power_row["year"] == y else None
                                         worksheet.write(current_row, years_start_col + i, val, text_center_format)
 
@@ -567,15 +709,9 @@ def export_station_changes_to_excel(
                                     else:
                                         worksheet.write(current_row, all_years_col, None, text_center_format)
 
-                                    # Основание — один раз на агрегат, объединяем на высоту агрегата
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        change_doc = getattr(machine, "change_document", None)
-                                        # Извлекаем только названия документов без ID
-                                        doc_text = _extract_document_names(change_doc) if change_doc else None
-                                        merge_if_needed(current_row, note_col, r2, note_col, doc_text or "", text_center_format)
-
                                     current_row += 1
+
+                            station_row_cursor += station_rows
 
                         # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
                         # (иначе при нескольких субъектах в одной РЭС "пропадает" один из итогов, напр. Санкт‑Петербург).
@@ -866,33 +1002,34 @@ def export_station_changes_pril_b_to_excel(
     static_headers = [
         "Субъект Российской Федерации",
         "Генерирующая компания",
-        "Наименование",
-        "Мероприятие",
+        "Электростанция",
+        "Вид мероприятия",
         "Тип электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
     ]
-    # Формируем заголовки годов с " г.", для годов с признаком "текущий (оценка)" добавляем пометку
-    year_headers = []
-    year_feature_by_number = get_year_feature_dict()
-    for y in range(start_year, end_year + 1):
-        feature_name = year_feature_by_number.get(y)
-        if feature_name == "текущий (оценка)":
-            year_headers.append(f"{y} г.\n(ожидается, справочно)")
+    export_years, current_year_split = _get_expected_export_years(start_year, end_year)
+    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
+    # значит начало периода = (первый год + 1).
+    current_year_for_header = int(export_years[0]) if export_years else int(start_year)
+
+    year_headers: list[str] = []
+    for y in export_years:
+        if current_year_split is not None and y == int(current_year_split):
+            year_headers.append(f"{y} г.\n(план)")
         else:
             year_headers.append(f"{y} г.")
 
-    # Список лет для суммирования в колонке "Итого": только годы с признаком "план"
-    year_features = get_year_feature_dict() or {}
-    plan_years = [
-        y for y in range(start_year, end_year + 1)
-        if str(year_features.get(y, "")).strip().lower() == "план"
-    ]
-    sum_years = plan_years
-    if plan_years:
-        all_years_header = f"{plan_years[0]}–{plan_years[-1]} гг.\n"
+    if export_years:
+        header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
+        header_end_year = int(export_years[-1])
+        if header_start_year > header_end_year:
+            header_start_year = header_end_year
+        sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
+        all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
     else:
+        sum_years = []
         all_years_header = ""
     note_header = "Документ-основание"
 
@@ -927,7 +1064,7 @@ def export_station_changes_pril_b_to_excel(
         title_format)
     worksheet.merge_range(
         f"A2:{last_col_name}2",
-        f"Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России\nна период {start_year + 1}–{end_year} годов",
+        f"Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России\nна период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов",
         title_format)
     worksheet.set_row(1, 62.25)
     worksheet.merge_range(
@@ -937,7 +1074,7 @@ def export_station_changes_pril_b_to_excel(
     worksheet.set_row(2, 30.75)
     worksheet.merge_range(
         f"A4:{last_col_name}4",
-        f"Таблица Б.1 – Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России на период {start_year + 1}–{end_year} годов, МВт",
+        f"Таблица Б.1 – Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России на период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов, МВт",
         subtitle_format
     )
     worksheet.set_row(3, 47.25)
@@ -1173,85 +1310,135 @@ def export_station_changes_pril_b_to_excel(
             for ues_id, rd_group in sa_group.items():
                 for res_id, res_group in rd_group.items():
                     for rd_id, stations in res_group.items():
+                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
+                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
+                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
+                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
                         for station in stations:
-                            # Каждая виртуальная станция содержит machines с выставленными rowspan'ами
+                            machine_plans: list[tuple[object, list[dict]]] = []
                             for machine in getattr(station, "machines", []):
                                 if not getattr(machine, "powers_by_year", None):
                                     continue
-
-                                first_row_for_machine = current_row
-
-                                # Сумма "Итого" по план-годам отдельно для каждого мероприятия
-                                event_sum_map = {}
+                                filtered_power_rows: list[dict] = []
                                 for _p in machine.powers_by_year:
                                     if not isinstance(_p, dict):
                                         continue
+                                    y0 = _p.get("year")
+                                    if y0 not in export_years:
+                                        continue
+                                    if (
+                                        current_year_split is not None
+                                        and y0 == int(current_year_split)
+                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
+                                    ):
+                                        continue
+                                    filtered_power_rows.append(_p)
+                                if filtered_power_rows:
+                                    machine_plans.append((machine, filtered_power_rows))
+                            if machine_plans:
+                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
+                                rd_station_plans.append((station, station_rows, machine_plans))
+
+                        if not rd_station_plans:
+                            continue
+
+                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
+                        rd_start_row = current_row
+                        rd_end_row = rd_start_row + rd_total_rows - 1
+
+                        # Субъект РФ / энергоузел (как на веб)
+                        first_station = rd_station_plans[0][0]
+                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                        if "титэс сибири" in str(ues_label).lower():
+                            value = energy_unit_names.get(
+                                rd_id,
+                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
+                            )
+                        else:
+                            value = (
+                                first_station.regional_district.name_full
+                                if getattr(first_station, "regional_district", None)
+                                and getattr(first_station.regional_district, "name_full", None)
+                                else (
+                                    first_station.regional_district.name
+                                    if getattr(first_station, "regional_district", None)
+                                    and getattr(first_station.regional_district, "name", None)
+                                    else "Без субъекта"
+                                )
+                            )
+                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
+
+                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
+                        flat_segments: list[tuple[str, int]] = []
+                        for _station, _station_rows, _machine_plans in rd_station_plans:
+                            for _machine, _rows in _machine_plans:
+                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
+                                flat_segments.append((company, len(_rows)))
+                        row_cursor = rd_start_row
+                        i = 0
+                        while i < len(flat_segments):
+                            company = flat_segments[i][0]
+                            block_rows = 0
+                            while i < len(flat_segments) and flat_segments[i][0] == company:
+                                block_rows += flat_segments[i][1]
+                                i += 1
+                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
+                            row_cursor += block_rows
+
+                        # Станции: объединение по фактической высоте станции в выгрузке
+                        station_row_cursor = rd_start_row
+                        for station, station_rows, machine_plans in rd_station_plans:
+                            merge_if_needed(
+                                station_row_cursor,
+                                station_name_col,
+                                station_row_cursor + station_rows - 1,
+                                station_name_col,
+                                getattr(station, "name", "—"),
+                                text_center_format,
+                            )
+
+                            # Данные по агрегатам
+                            for machine, filtered_power_rows in machine_plans:
+                                first_row_for_machine = current_row
+                                machine_rows = len(filtered_power_rows)
+                                last_row_for_machine = first_row_for_machine + machine_rows - 1
+
+                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
+                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
+                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+
+                                station_type_obj = getattr(station, "station_type", None)
+                                station_type_name = getattr(station_type_obj, "name", None)
+                                if not station_type_name:
+                                    st_id = getattr(station, "id_station_type", None)
+                                    station_type_name = station_type_names.get(st_id) if st_id else None
+                                station_type_name = station_type_name or "—"
+                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
+
+                                # Топливо (по СО ЕЭС) — на высоту агрегата
+                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
+
+                                # Основание — на высоту агрегата
+                                change_doc = getattr(machine, "change_document", None)
+                                doc_text = _extract_document_names(change_doc) if change_doc else None
+                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
+
+                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
+                                event_sum_map: dict = {}
+                                for _p in filtered_power_rows:
                                     _ev = _p.get("event")
                                     _y = _p.get("year")
                                     _v = _p.get("p_ust")
                                     if _y in sum_years and _ev:
                                         event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events = set()
+                                seen_events: set = set()
 
-                                for idx_power, power_row in enumerate(machine.powers_by_year):
-                                    # Субъект РФ (region_rowspan применяется один раз)
-                                    if idx_power == 0 and getattr(machine, "region_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.region_rowspan - 1
-                                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                                        if "титэс сибири" in str(ues_label).lower():
-                                            eu_id = getattr(station, "id_energy_unit", None) or 0
-                                            value = energy_unit_names.get(eu_id, "Без энергоузла" if not eu_id else f"Энергоузел {eu_id}")
-                                        else:
-                                            value = (
-                                                station.regional_district.name_full
-                                                if getattr(station, "regional_district", None)
-                                                and getattr(station.regional_district, "name_full", None)
-                                                else (
-                                                    station.regional_district.name
-                                                    if getattr(station, "regional_district", None)
-                                                    and getattr(station.regional_district, "name", None)
-                                                    else "Без субъекта"
-                                                )
-                                            )
-                                        merge_if_needed(current_row, 0, r2, 0, value, text_center_format)
-
-                                    # Генкомпания
-                                    if idx_power == 0 and getattr(machine, "gen_company_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.gen_company_rowspan - 1
-                                        value = machine.gen_company.name if getattr(machine, "gen_company", None) else "—"
-                                        merge_if_needed(current_row, 1, r2, 1, value, text_center_format)
-
-                                    # Станция
-                                    if idx_power == 0 and getattr(machine, "station_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.station_rowspan - 1
-                                        merge_if_needed(current_row, 2, r2, 2, getattr(station, "name", "—"), text_center_format)
-
-                                    # Поля агрегата — один раз на агрегат, объединяем на machine.total_rows
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        # Станционный номер
-                                        merge_if_needed(current_row, machine_num_col, r2, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
-                                        # Тип генерирующего оборудования
-                                        merge_if_needed(current_row, machine_name_col, r2, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
-                                        # Тип станции
-                                        station_type_obj = getattr(station, "station_type", None)
-                                        station_type_name = getattr(station_type_obj, "name", None)
-                                        if not station_type_name:
-                                            st_id = getattr(station, "id_station_type", None)
-                                            station_type_name = station_type_names.get(st_id) if st_id else None
-                                        station_type_name = station_type_name or "—"
-                                        merge_if_needed(current_row, station_type_col, r2, station_type_col, station_type_name, text_center_format)
-
-                                    # Топливо (по СО ЕЭС) — объединение на fuel_rowspan
-                                    if idx_power == 0 and getattr(machine, "fuel_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.fuel_rowspan - 1
-                                        merge_if_needed(current_row, fuel_col, r2, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
-
+                                for power_row in filtered_power_rows:
                                     # Мероприятие — построчно
                                     worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
 
                                     # Годы — значение только в год power_row["year"], остальное пусто
-                                    for i, y in enumerate(range(start_year, end_year + 1)):
+                                    for i, y in enumerate(export_years):
                                         val = power_row["p_ust"] if power_row["year"] == y else None
                                         worksheet.write(current_row, years_start_col + i, val, text_center_format)
 
@@ -1264,15 +1451,9 @@ def export_station_changes_pril_b_to_excel(
                                     else:
                                         worksheet.write(current_row, all_years_col, None, text_center_format)
 
-                                    # Основание — один раз на агрегат, объединяем на высоту агрегата
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        change_doc = getattr(machine, "change_document", None)
-                                        # Извлекаем только названия документов без ID
-                                        doc_text = _extract_document_names(change_doc) if change_doc else None
-                                        merge_if_needed(current_row, note_col, r2, note_col, doc_text or "", text_center_format)
-
                                     current_row += 1
+
+                            station_row_cursor += station_rows
 
                         # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
                         # Как на веб: для Калининграда не выводим внутри списка станций (выводим отдельно ниже)
@@ -1516,33 +1697,34 @@ def export_station_changes_pril_2_russia_to_excel(
     static_headers = [
         "Субъект Российской Федерации",
         "Генерирующая компания",
-        "Наименование",
-        "Мероприятие",
+        "Электростанция",
+        "Вид мероприятия",
         "Тип электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
     ]
-    # Формируем заголовки годов с " г.", для годов с признаком "текущий (оценка)" добавляем пометку
-    year_headers = []
-    year_feature_by_number = get_year_feature_dict()
-    for y in range(start_year, end_year + 1):
-        feature_name = year_feature_by_number.get(y)
-        if feature_name == "текущий (оценка)":
-            year_headers.append(f"{y} г.\n(ожидается, справочно)")
+    export_years, current_year_split = _get_expected_export_years(start_year, end_year)
+    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
+    # значит начало периода = (первый год + 1).
+    current_year_for_header = int(export_years[0]) if export_years else int(start_year)
+
+    year_headers: list[str] = []
+    for y in export_years:
+        if current_year_split is not None and y == int(current_year_split):
+            year_headers.append(f"{y} г.\n(план)")
         else:
             year_headers.append(f"{y} г.")
-    
-    # Список лет для суммирования в колонке "Итого": только годы с признаком "план"
-    year_features = get_year_feature_dict() or {}
-    plan_years = [
-        y for y in range(start_year, end_year + 1)
-        if str(year_features.get(y, "")).strip().lower() == "план"
-    ]
-    sum_years = plan_years
-    if plan_years:
-        all_years_header = f"{plan_years[0]}–{plan_years[-1]} гг.\n"
+
+    if export_years:
+        header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
+        header_end_year = int(export_years[-1])
+        if header_start_year > header_end_year:
+            header_start_year = header_end_year
+        sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
+        all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
     else:
+        sum_years = []
         all_years_header = ""
     note_header = "Документ-основание"
 
@@ -1608,7 +1790,7 @@ def export_station_changes_pril_2_russia_to_excel(
     # 3-я строка Excel: правый верхний блок (в одной строке)
     worksheet.merge_range(
         f"{right_start_name}3:{last_col_name}3",
-        f"к схеме и программе развития электроэнергетических систем России на {start_year + 1}–{end_year} годы",
+        f"к схеме и программе развития электроэнергетических систем России на {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годы",
         header_center_format,
     )
     worksheet.set_row(2, 89.25)
@@ -1618,7 +1800,7 @@ def export_station_changes_pril_2_russia_to_excel(
         "ПЕРЕЧЕНЬ\n"
         "планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России и технологически\n"
         "изолированных территориальных электроэнергетических системах\n"
-        f"на период {start_year + 1}–{end_year} годов"
+        f"на период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов"
     )
     # Пустая строка ПЕРЕД «ПЕРЕЧЕНЬ...»
     worksheet.set_row(4, 33)  # строка 5 Excel
@@ -1876,85 +2058,135 @@ def export_station_changes_pril_2_russia_to_excel(
             for ues_id, rd_group in sa_group.items():
                 for res_id, res_group in rd_group.items():
                     for rd_id, stations in res_group.items():
+                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
+                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
+                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
+                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
                         for station in stations:
-                            # Каждая виртуальная станция содержит machines с выставленными rowspan'ами
+                            machine_plans: list[tuple[object, list[dict]]] = []
                             for machine in getattr(station, "machines", []):
                                 if not getattr(machine, "powers_by_year", None):
                                     continue
-
-                                first_row_for_machine = current_row
-
-                                # Сумма "Итого" по план-годам отдельно для каждого мероприятия
-                                event_sum_map = {}
+                                filtered_power_rows: list[dict] = []
                                 for _p in machine.powers_by_year:
                                     if not isinstance(_p, dict):
                                         continue
+                                    y0 = _p.get("year")
+                                    if y0 not in export_years:
+                                        continue
+                                    if (
+                                        current_year_split is not None
+                                        and y0 == int(current_year_split)
+                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
+                                    ):
+                                        continue
+                                    filtered_power_rows.append(_p)
+                                if filtered_power_rows:
+                                    machine_plans.append((machine, filtered_power_rows))
+                            if machine_plans:
+                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
+                                rd_station_plans.append((station, station_rows, machine_plans))
+
+                        if not rd_station_plans:
+                            continue
+
+                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
+                        rd_start_row = current_row
+                        rd_end_row = rd_start_row + rd_total_rows - 1
+
+                        # Субъект РФ / энергоузел (как на веб)
+                        first_station = rd_station_plans[0][0]
+                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                        if "титэс сибири" in str(ues_label).lower():
+                            value = energy_unit_names.get(
+                                rd_id,
+                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
+                            )
+                        else:
+                            value = (
+                                first_station.regional_district.name_full
+                                if getattr(first_station, "regional_district", None)
+                                and getattr(first_station.regional_district, "name_full", None)
+                                else (
+                                    first_station.regional_district.name
+                                    if getattr(first_station, "regional_district", None)
+                                    and getattr(first_station.regional_district, "name", None)
+                                    else "Без субъекта"
+                                )
+                            )
+                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
+
+                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
+                        flat_segments: list[tuple[str, int]] = []
+                        for _station, _station_rows, _machine_plans in rd_station_plans:
+                            for _machine, _rows in _machine_plans:
+                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
+                                flat_segments.append((company, len(_rows)))
+                        row_cursor = rd_start_row
+                        i = 0
+                        while i < len(flat_segments):
+                            company = flat_segments[i][0]
+                            block_rows = 0
+                            while i < len(flat_segments) and flat_segments[i][0] == company:
+                                block_rows += flat_segments[i][1]
+                                i += 1
+                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
+                            row_cursor += block_rows
+
+                        # Станции: объединение по фактической высоте станции в выгрузке
+                        station_row_cursor = rd_start_row
+                        for station, station_rows, machine_plans in rd_station_plans:
+                            merge_if_needed(
+                                station_row_cursor,
+                                station_name_col,
+                                station_row_cursor + station_rows - 1,
+                                station_name_col,
+                                getattr(station, "name", "—"),
+                                text_center_format,
+                            )
+
+                            # Данные по агрегатам
+                            for machine, filtered_power_rows in machine_plans:
+                                first_row_for_machine = current_row
+                                machine_rows = len(filtered_power_rows)
+                                last_row_for_machine = first_row_for_machine + machine_rows - 1
+
+                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
+                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
+                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+
+                                station_type_obj = getattr(station, "station_type", None)
+                                station_type_name = getattr(station_type_obj, "name", None)
+                                if not station_type_name:
+                                    st_id = getattr(station, "id_station_type", None)
+                                    station_type_name = station_type_names.get(st_id) if st_id else None
+                                station_type_name = station_type_name or "—"
+                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
+
+                                # Топливо (по СО ЕЭС) — на высоту агрегата
+                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
+
+                                # Основание — на высоту агрегата
+                                change_doc = getattr(machine, "change_document", None)
+                                doc_text = _extract_document_names(change_doc) if change_doc else None
+                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
+
+                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
+                                event_sum_map: dict = {}
+                                for _p in filtered_power_rows:
                                     _ev = _p.get("event")
                                     _y = _p.get("year")
                                     _v = _p.get("p_ust")
                                     if _y in sum_years and _ev:
                                         event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events = set()
+                                seen_events: set = set()
 
-                                for idx_power, power_row in enumerate(machine.powers_by_year):
-                                    # Субъект РФ (region_rowspan применяется один раз)
-                                    if idx_power == 0 and getattr(machine, "region_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.region_rowspan - 1
-                                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                                        if "титэс сибири" in str(ues_label).lower():
-                                            eu_id = getattr(station, "id_energy_unit", None) or 0
-                                            value = energy_unit_names.get(eu_id, "Без энергоузла" if not eu_id else f"Энергоузел {eu_id}")
-                                        else:
-                                            value = (
-                                                station.regional_district.name_full
-                                                if getattr(station, "regional_district", None)
-                                                and getattr(station.regional_district, "name_full", None)
-                                                else (
-                                                    station.regional_district.name
-                                                    if getattr(station, "regional_district", None)
-                                                    and getattr(station.regional_district, "name", None)
-                                                    else "Без субъекта"
-                                                )
-                                            )
-                                        merge_if_needed(current_row, 0, r2, 0, value, text_center_format)
-
-                                    # Генкомпания
-                                    if idx_power == 0 and getattr(machine, "gen_company_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.gen_company_rowspan - 1
-                                        value = machine.gen_company.name if getattr(machine, "gen_company", None) else "—"
-                                        merge_if_needed(current_row, 1, r2, 1, value, text_center_format)
-
-                                    # Станция
-                                    if idx_power == 0 and getattr(machine, "station_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.station_rowspan - 1
-                                        merge_if_needed(current_row, 2, r2, 2, getattr(station, "name", "—"), text_center_format)
-
-                                    # Поля агрегата — один раз на агрегат, объединяем на machine.total_rows
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        # Станционный номер
-                                        merge_if_needed(current_row, machine_num_col, r2, machine_num_col, getattr(machine, "machine_number", None), text_center_format)
-                                        # Тип генерирующего оборудования
-                                        merge_if_needed(current_row, machine_name_col, r2, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
-                                        # Тип станции
-                                        station_type_obj = getattr(station, "station_type", None)
-                                        station_type_name = getattr(station_type_obj, "name", None)
-                                        if not station_type_name:
-                                            st_id = getattr(station, "id_station_type", None)
-                                            station_type_name = station_type_names.get(st_id) if st_id else None
-                                        station_type_name = station_type_name or "—"
-                                        merge_if_needed(current_row, station_type_col, r2, station_type_col, station_type_name, text_center_format)
-
-                                    # Топливо (по СО ЕЭС) — объединение на fuel_rowspan
-                                    if idx_power == 0 and getattr(machine, "fuel_rowspan", 0) > 0:
-                                        r2 = first_row_for_machine + machine.fuel_rowspan - 1
-                                        merge_if_needed(current_row, fuel_col, r2, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
-
+                                for power_row in filtered_power_rows:
                                     # Мероприятие — построчно
                                     worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
 
                                     # Годы — значение только в год power_row["year"], остальное пусто
-                                    for i, y in enumerate(range(start_year, end_year + 1)):
+                                    for i, y in enumerate(export_years):
                                         val = power_row["p_ust"] if power_row["year"] == y else None
                                         worksheet.write(current_row, years_start_col + i, val, text_center_format)
 
@@ -1967,15 +2199,9 @@ def export_station_changes_pril_2_russia_to_excel(
                                     else:
                                         worksheet.write(current_row, all_years_col, None, text_center_format)
 
-                                    # Основание — один раз на агрегат, объединяем на высоту агрегата
-                                    if idx_power == 0:
-                                        r2 = first_row_for_machine + max(getattr(machine, "total_rows", 1) - 1, 0)
-                                        change_doc = getattr(machine, "change_document", None)
-                                        # Извлекаем только названия документов без ID
-                                        doc_text = _extract_document_names(change_doc) if change_doc else None
-                                        merge_if_needed(current_row, note_col, r2, note_col, doc_text or "", text_center_format)
-
                                     current_row += 1
+
+                            station_row_cursor += station_rows
 
                         # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
                         # (иначе при нескольких субъектах в одной РЭС "пропадает" один из итогов, напр. Санкт‑Петербург).

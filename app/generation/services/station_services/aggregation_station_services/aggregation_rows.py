@@ -219,7 +219,9 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_via_district = query_via_district.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
 
     # Проверка топлива (должно совпадать с логикой station_list):
-    # есть основное топливо (в текущей версии БД), но не заполнено fuel_so (по СО ЕЭС).
+    # показываем строки только для "проблемных" агрегатов:
+    # - fuel_so пустое, но топливо по годам задано, ИЛИ
+    # - fuel_so заполнено, но не совпадает с топливом по годам (по строке/году).
     if filters.get("fuel_check"):
         current_version_id = get_current_db_version_id()
         if current_version_id is not None:
@@ -227,21 +229,36 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         else:
             mf_version_cond = MachineFuel.database_version_id.is_(None)
 
-        has_primary_fuel = Machine.machine_fuels.any(
-            and_(
-                mf_version_cond,
-                MachineFuel.fuel.has(
-                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
-                ),
-            )
-        )
         fuel_so_missing = or_(
             Machine.fuel_so.is_(None),
             func.trim(Machine.fuel_so) == "",
             func.lower(func.trim(Machine.fuel_so)) == "не указано",
         )
-        query_direct = query_direct.filter(has_primary_fuel, fuel_so_missing)
-        query_via_district = query_via_district.filter(has_primary_fuel, fuel_so_missing)
+
+        fuel_type_valid = and_(
+            FuelType.id.isnot(None),
+            func.lower(FuelType.name) != "не указано",
+        )
+        # "Мягкое" сравнение (fuel_so может содержать несколько видов топлива)
+        match_row_fuel = func.strpos(
+            func.lower(func.coalesce(Machine.fuel_so, "")),
+            func.lower(FuelType.name),
+        ) > 0
+
+        query_direct = query_direct.filter(
+            and_(
+                mf_version_cond,
+                fuel_type_valid,
+                or_(fuel_so_missing, ~match_row_fuel),
+            )
+        )
+        query_via_district = query_via_district.filter(
+            and_(
+                mf_version_cond,
+                fuel_type_valid,
+                or_(fuel_so_missing, ~match_row_fuel),
+            )
+        )
 
     # Применяем фильтры по станции
     if filters.get("station_type_filter"):
@@ -465,21 +482,35 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         else:
             mf_version_cond = MachineFuel.database_version_id.is_(None)
 
-        has_primary_fuel = Machine.machine_fuels.any(
-            and_(
-                mf_version_cond,
-                MachineFuel.fuel.has(
-                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
-                ),
-            )
-        )
         fuel_so_missing = or_(
             Machine.fuel_so.is_(None),
             func.trim(Machine.fuel_so) == "",
             func.lower(func.trim(Machine.fuel_so)) == "не указано",
         )
-        pgu_query_direct = pgu_query_direct.filter(has_primary_fuel, fuel_so_missing)
-        pgu_query_via_district = pgu_query_via_district.filter(has_primary_fuel, fuel_so_missing)
+
+        fuel_type_valid = and_(
+            FuelType.id.isnot(None),
+            func.lower(FuelType.name) != "не указано",
+        )
+        match_row_fuel = func.strpos(
+            func.lower(func.coalesce(Machine.fuel_so, "")),
+            func.lower(FuelType.name),
+        ) > 0
+
+        pgu_query_direct = pgu_query_direct.filter(
+            and_(
+                mf_version_cond,
+                fuel_type_valid,
+                or_(fuel_so_missing, ~match_row_fuel),
+            )
+        )
+        pgu_query_via_district = pgu_query_via_district.filter(
+            and_(
+                mf_version_cond,
+                fuel_type_valid,
+                or_(fuel_so_missing, ~match_row_fuel),
+            )
+        )
 
     rows_pgu_direct = pgu_query_direct.group_by(
         EnergySystemType.id,

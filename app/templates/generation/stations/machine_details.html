@@ -19,12 +19,9 @@
 <div class="container-fluid mt-4 machine-details-page">
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
-        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции</a>
-        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
-            {{ station.name }}
-        </a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
     </div>
 
     <!-- Скрытые поля для сохранения параметров предыдущей страницы -->
@@ -669,8 +666,10 @@
 <script>
 (function() {
     function initGenCompanySelect() {
-        var $ = window.jQuery || window.$;
-        if (typeof $ === 'undefined' || !$.fn.select2) {
+        const $ = window.jQuery;
+        // Важно: не используем window.$ как fallback — он может быть переопределён не-jQuery,
+        // что приводит к "$ is not a function" и обрывает выполнение скриптов страницы.
+        if (typeof $ !== 'function' || !$.fn || !$.fn.select2) {
             return false;
         }
         
@@ -741,8 +740,8 @@
     
     // Инициализация при загрузке страницы
     function tryInit() {
-        var $ = window.jQuery || window.$;
-        if (typeof $ !== 'undefined' && $.fn.select2) {
+        const $ = window.jQuery;
+        if (typeof $ === 'function' && $.fn && $.fn.select2) {
             $(document).ready(function() {
                 // Инициализируем сразу при загрузке страницы
                 setTimeout(function() {
@@ -1024,25 +1023,29 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const $ = window.jQuery;
+    const $ = window.jQuery; // может отсутствовать, поэтому ниже всё jQuery-зависимое — под guard
 
     // --- Select2 и ширина колонок ---
-    $('.pftt-select').each(function() {
-        if (!$(this).data('select2')) {
-            $(this).select2({
-                width: '100%',
-                placeholder: "Выберите значение",
-                allowClear: true,
-                minimumResultsForSearch: 0
-            });
-        }
-    });
+    if (typeof $ === "function" && $.fn && $.fn.select2) {
+        $('.pftt-select').each(function() {
+            if (!$(this).data('select2')) {
+                $(this).select2({
+                    width: '100%',
+                    placeholder: "Выберите значение",
+                    allowClear: true,
+                    minimumResultsForSearch: 0
+                });
+            }
+        });
+    }
 
     function equalizeColumnWidth() {
-        const yearColumns = $('.year-header');
+        const yearColumns = Array.from(document.querySelectorAll('.year-header'));
         if (yearColumns.length > 0) {
-            const width = 100 / yearColumns.length + "%";
-            yearColumns.css('width', width);
+            const width = (100 / yearColumns.length) + "%";
+            yearColumns.forEach((el) => {
+                el.style.width = width;
+            });
         }
     }
 
@@ -1076,10 +1079,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (toggleOgrEl) {
         // Рогр по умолчанию всегда включен
         toggleOgrEl.checked = true;
-        // Используем jQuery для установки значения и обновления стиля
-        $('#toggleP_Ogr').prop('checked', true);
-        const $ogrLabel = $('label[for="toggleP_Ogr"]');
-        $ogrLabel.addClass('btn-primary').removeClass('btn-outline-primary');
+        // Не полагаемся на jQuery: это не критичная функциональность и не должна падать
+        const ogrLabel = document.querySelector('label[for="toggleP_Ogr"]');
+        if (ogrLabel) {
+            ogrLabel.classList.add('btn-primary');
+            ogrLabel.classList.remove('btn-outline-primary');
+        }
     }
 
     if (toggleRaspEl) {
@@ -1128,35 +1133,33 @@ document.addEventListener("DOMContentLoaded", function () {
         const showOgr = document.getElementById("toggleP_Ogr").checked;
         const showRasp = document.getElementById("toggleP_Rasp").checked;
 
-        if (showOgr) {
-            $(".p-ogr-row").show();
-        } else {
-            $(".p-ogr-row").hide();
-        }
-        if (showRasp) {
-            $(".p-rasp-row").show();
-        } else {
-            $(".p-rasp-row").hide();
-        }
+        // TR-строки важно показывать как table-row
+        document.querySelectorAll(".p-ogr-row").forEach((row) => {
+            row.style.display = showOgr ? "table-row" : "none";
+        });
+        document.querySelectorAll(".p-rasp-row").forEach((row) => {
+            row.style.display = showRasp ? "table-row" : "none";
+        });
 
         // Обновляем стили кнопок
-        const $ogrLabel = $('label[for="toggleP_Ogr"]');
-        const $raspLabel = $('label[for="toggleP_Rasp"]');
-        
-        $ogrLabel.toggleClass('btn-primary', showOgr).toggleClass('btn-outline-primary', !showOgr);
-        $raspLabel.toggleClass('btn-primary', showRasp).toggleClass('btn-outline-primary', !showRasp);
+        const ogrLabel = document.querySelector('label[for="toggleP_Ogr"]');
+        const raspLabel = document.querySelector('label[for="toggleP_Rasp"]');
+        if (ogrLabel) {
+            ogrLabel.classList.toggle("btn-primary", showOgr);
+            ogrLabel.classList.toggle("btn-outline-primary", !showOgr);
+        }
+        if (raspLabel) {
+            raspLabel.classList.toggle("btn-primary", showRasp);
+            raspLabel.classList.toggle("btn-outline-primary", !showRasp);
+        }
 
         const rows = 1 + (showOgr ? 1 : 0) + (showRasp ? 1 : 0);
 
-        $(".total-row-cell").attr("rowspan", rows);
-        $(".rowspan-td").each(function () {
-            const orig = parseInt(this.dataset.originalRowspan, 10);
-            this.setAttribute("rowspan", rows);
-        });
-
-        $(".station-rowspan-td").each(function () {
-            const count = parseInt(this.dataset.totalMachines, 10);
-            this.setAttribute("rowspan", count * rows + 1);
+        document.querySelectorAll(".total-row-cell").forEach((td) => td.setAttribute("rowspan", String(rows)));
+        document.querySelectorAll(".rowspan-td").forEach((td) => td.setAttribute("rowspan", String(rows)));
+        document.querySelectorAll(".station-rowspan-td").forEach((td) => {
+            const count = parseInt(td.dataset.totalMachines || "0", 10) || 0;
+            td.setAttribute("rowspan", String(count * rows + 1));
         });
     }
 
@@ -1454,13 +1457,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const dateExploitationField = document.querySelector('input[name*="date_exploitation"]');
         
         // Логика 1: Ожидаемый год вывода из эксплуатации
-        // Если p_ust[N] != 0 и p_ust[N+1] == 0, то date_decompressing_expected = N
+        // Если p_ust[N] != 0 и p_ust[N+1] == 0, то date_decompressing_expected = N+1 (первый год с нулевой мощностью)
         let decompYear = null;
         for (let i = 0; i < powersByYear.length - 1; i++) {
             const current = powersByYear[i];
             const next = powersByYear[i + 1];
             if (current.power > 0 && next.power === 0) {
-                decompYear = current.year;
+                decompYear = next.year;
                 break; // Берем первый такой случай
             }
         }

@@ -128,7 +128,7 @@ stage5_tables = [
         'schema': 'generation',
         'table': 'stations',
         'dependencies': [
-            {'fk': 'id_station_group', 'ref_table': 'generation.station_groups'},
+            {'fk': 'id_station_group', 'ref_table': 'gs_gen.station_groups'},
             {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
             {'fk': 'id_energy_unit', 'ref_table': 'refdata.energy_units'},
             {'fk': 'id_station_type', 'ref_table': 'refdata.station_types'},
@@ -147,14 +147,14 @@ stage6_tables = [
         'schema': 'generation',
         'table': 'station_powers',
         'dependencies': [
-            {'fk': 'id_station', 'ref_table': 'generation.stations'}
+            {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
         ]
     },
     {
         'schema': 'generation',
         'table': 'machines',
         'dependencies': [
-            {'fk': 'id_station', 'ref_table': 'generation.stations'},
+            {'fk': 'id_station', 'ref_table': 'gs_gen.stations'},
             {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
             {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
             {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
@@ -169,7 +169,7 @@ stage6_tables = [
         'schema': 'generation',
         'table': 'boilers',
         'dependencies': [
-            {'fk': 'id_station', 'ref_table': 'generation.stations'}
+            {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
         ]
     }
 ]
@@ -183,14 +183,14 @@ stage7_tables = [
         'schema': 'generation',
         'table': 'machine_powers',
         'dependencies': [
-            {'fk': 'id_machine', 'ref_table': 'generation.machines'}
+            {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'}
         ]
     },
     {
         'schema': 'generation',
         'table': 'machine_fuels',
         'dependencies': [
-            {'fk': 'id_machine', 'ref_table': 'generation.machines'},
+            {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
             {'fk': 'id_fuel', 'ref_table': 'refdata.fuels'}
         ]
     },
@@ -198,7 +198,7 @@ stage7_tables = [
         'schema': 'generation',
         'table': 'machine_tes_types',
         'dependencies': [
-            {'fk': 'id_machine', 'ref_table': 'generation.machines'},
+            {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
             {'fk': 'id_tes_type', 'ref_table': 'refdata.tes_types'}
         ]
     },
@@ -206,7 +206,7 @@ stage7_tables = [
         'schema': 'generation',
         'table': 'pgu_machines',
         'dependencies': [
-            {'fk': 'id_parent_machine', 'ref_table': 'generation.machines'},
+            {'fk': 'id_parent_machine', 'ref_table': 'gs_gen.machines'},
             {'fk': 'id_pgu_tes_machine_type', 'ref_table': 'refdata.pgu_tes_machine_types'},
             {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
         ]
@@ -222,7 +222,7 @@ stage8_tables = [
         'schema': 'generation',
         'table': 'pgu_machine_powers',
         'dependencies': [
-            {'fk': 'id_pgu_machine', 'ref_table': 'generation.pgu_machines'}
+            {'fk': 'id_pgu_machine', 'ref_table': 'gs_gen.pgu_machines'}
         ]
     }
 ]
@@ -279,57 +279,57 @@ relationships = [
     # === СВЯЗИ В СХЕМЕ GENERATION ===
     # 8. stations -> station_groups (станции ссылаются на группы)
     {
-        'table': 'generation.stations',
+        'table': 'gs_gen.stations',
         'foreign_key': 'id_station_group',
-        'reference_table': 'generation.station_groups'
+        'reference_table': 'gs_gen.station_groups'
     },
     # 9. station_powers -> stations (мощности станций ссылаются на станции)
     {
-        'table': 'generation.station_powers',
+        'table': 'gs_gen.station_powers',
         'foreign_key': 'id_station',
-        'reference_table': 'generation.stations'
+        'reference_table': 'gs_gen.stations'
     },
     # 10. machines -> stations (машины ссылаются на станции)
     {
-        'table': 'generation.machines',
+        'table': 'gs_gen.machines',
         'foreign_key': 'id_station',
-        'reference_table': 'generation.stations'
+        'reference_table': 'gs_gen.stations'
     },
     # 11. boilers -> stations (котлы ссылаются на станции)
     {
-        'table': 'generation.boilers',
+        'table': 'gs_gen.boilers',
         'foreign_key': 'id_station',
-        'reference_table': 'generation.stations'
+        'reference_table': 'gs_gen.stations'
     },
     # 12. machine_powers -> machines (мощности машин ссылаются на машины)
     {
-        'table': 'generation.machine_powers',
+        'table': 'gs_gen.machine_powers',
         'foreign_key': 'id_machine',
-        'reference_table': 'generation.machines'
+        'reference_table': 'gs_gen.machines'
     },
     # 13. machine_fuels -> machines (топливо машин ссылается на машины)
     {
-        'table': 'generation.machine_fuels',
+        'table': 'gs_gen.machine_fuels',
         'foreign_key': 'id_machine',
-        'reference_table': 'generation.machines'
+        'reference_table': 'gs_gen.machines'
     },
     # 14. machine_tes_types -> machines (типы ТЭС машин ссылаются на машины)
     {
-        'table': 'generation.machine_tes_types',
+        'table': 'gs_gen.machine_tes_types',
         'foreign_key': 'id_machine',
-        'reference_table': 'generation.machines'
+        'reference_table': 'gs_gen.machines'
     },
     # 15. pgu_machines -> machines (ПГУ машины ссылаются на машины)
     {
-        'table': 'generation.pgu_machines',
+        'table': 'gs_gen.pgu_machines',
         'foreign_key': 'id_parent_machine',
-        'reference_table': 'generation.machines'
+        'reference_table': 'gs_gen.machines'
     },
     # 16. pgu_machine_powers -> pgu_machines (мощности ПГУ машин ссылаются на ПГУ машины)
     {
-        'table': 'generation.pgu_machine_powers',
+        'table': 'gs_gen.pgu_machine_powers',
         'foreign_key': 'id_pgu_machine',
-        'reference_table': 'generation.pgu_machines'
+        'reference_table': 'gs_gen.pgu_machines'
     }
 ]
 ```

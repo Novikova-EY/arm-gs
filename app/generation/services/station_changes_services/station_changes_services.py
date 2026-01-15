@@ -35,6 +35,8 @@ from app.generation.services.station_services.station_services import (
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
     get_year_feature_dict,
+    get_filter_start_year,
+    get_filter_end_year,
 )
 from app.common.services.get_services.fuels.fuel_type_get_services import (
     get_fuel_type_list_full,
@@ -186,8 +188,8 @@ def get_station_changes_list(
 ):
     from collections import defaultdict
 
-    start_year = start_year or Config.START_YEAR
-    end_year = end_year or Config.END_YEAR
+    start_year = start_year or get_filter_start_year()
+    end_year = end_year or get_filter_end_year()
     year_range = set(range(start_year, end_year + 1))
     current_year = get_current_year()
     current_db_version_id = get_current_db_version_id()
@@ -441,6 +443,7 @@ def get_station_changes_list_data(
     show_all=False,
 ):
     from collections import defaultdict
+    from datetime import date, datetime
 
     filters = filters.copy()
     filters.pop("page", None)
@@ -479,6 +482,61 @@ def get_station_changes_list_data(
         rounding_digits=rounding_digits,
         event_type_filter=filters.get("event_type_filter"),
     )
+
+    # 3.1. Находим "текущий (оценка)" год (в выбранной версии БД) и делим его на факт/план.
+    # Правило:
+    # - факт: если ЛЮБОЕ поле Machine.date_*_fact попадает в [01.01.Y; min(сегодня, 31.12.Y)]
+    # - иначе: план
+    current_year_split = None
+    try:
+        year_features_for_split = get_year_feature_dict() or {}
+        _sy = int(start_year or 0)
+        _ey = int(end_year or -1)
+        current_year_split = next(
+            (
+                y
+                for y in range(_sy, _ey + 1)
+                if str(year_features_for_split.get(y, "")).strip().lower().replace(" ", "") == "текущий(оценка)"
+            ),
+            None,
+        )
+
+        def _parse_fact_date(raw: str | None):
+            if not raw:
+                return None
+            s = str(raw).strip()
+            if not s:
+                return None
+            for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
+                try:
+                    return datetime.strptime(s, fmt).date()
+                except Exception:
+                    continue
+            return None
+
+        def _machine_has_fact_date_in_window(m: Machine, window_start: date, window_end: date) -> bool:
+            for attr in dir(m):
+                if not attr.startswith("date_") or not attr.endswith("_fact"):
+                    continue
+                try:
+                    d = _parse_fact_date(getattr(m, attr, None))
+                except Exception:
+                    d = None
+                if d and window_start <= d <= window_end:
+                    return True
+            return False
+
+        if current_year_split is not None:
+            window_start = date(int(current_year_split), 1, 1)
+            window_end = min(date.today(), date(int(current_year_split), 12, 31))
+            for m in all_machines:
+                bucket = "fact" if _machine_has_fact_date_in_window(m, window_start, window_end) else "plan"
+                rows = getattr(m, "powers_by_year", None) or []
+                for p in rows:
+                    if isinstance(p, dict) and p.get("year") == current_year_split:
+                        p["current_year_bucket"] = bucket
+    except Exception:
+        current_year_split = None
 
     # 3.1. Итоги по отображаемому периоду (только годы с признаком "план")
     try:
@@ -674,6 +732,7 @@ def get_station_changes_list_data(
         "total_pages": total_pages,
         "page": page,
         "per_page": per_page,
+        "current_year_split": current_year_split,
         }
     
     result.update({
@@ -1881,6 +1940,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         "regional_district_filter": filters.get("regional_district_filter") or [],
         "station_fuel_type_filter": filters.get("station_fuel_type_filter"),
         "year_features": year_features,
+        "current_year_split": data.get("current_year_split"),
         "machine_tes_types_map": machine_tes_types_map,
         "energy_unit_names": energy_unit_names,
         # JSON-готовые данные для Select2 в station_changes

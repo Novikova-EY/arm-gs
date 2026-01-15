@@ -104,7 +104,7 @@ def main():
             for table in tables:
                 count_query = text(f"""
                     SELECT COUNT(*) 
-                    FROM generation.{table}
+                    FROM gs_gen.{table}
                     WHERE database_version_id = :version_id
                 """)
                 
@@ -129,7 +129,7 @@ def main():
                     for table in tables:
                         count_query = text(f"""
                             SELECT COUNT(*) 
-                            FROM generation.{table}
+                            FROM gs_gen.{table}
                             WHERE database_version_id = :parent_id
                         """)
                         count = conn.execute(count_query, {"parent_id": parent_version_id}).scalar()
@@ -148,7 +148,7 @@ def main():
         for table in tables:
             count_query = text(f"""
                 SELECT COUNT(*) 
-                FROM generation.{table}
+                FROM gs_gen.{table}
                 WHERE database_version_id IS NULL
             """)
             count = conn.execute(count_query).scalar()

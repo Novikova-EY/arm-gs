@@ -27,6 +27,10 @@ def totals_summary():
         get_synchronous_area_list_full,
     )
     from app.common.services.get_services.years.year_feature_services import get_year_feature_dict
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_start_year,
+        get_filter_end_year,
+    )
     from app.common.services.get_services.territories.federal_district_get_services import (
         get_federal_district_list_full,
         get_federal_districts_map,
@@ -36,8 +40,8 @@ def totals_summary():
     start_data = time.time()
 
     # Получение параметров запроса (только минимальные фильтры)
-    start_year = request.args.get("start_year", type=int) or Config.START_YEAR
-    end_year = request.args.get("end_year", type=int) or Config.END_YEAR
+    start_year = request.args.get("start_year", type=int) or get_filter_start_year()
+    end_year = request.args.get("end_year", type=int) or get_filter_end_year()
     # По умолчанию Рогр и Ррасп скрыты
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "0") == "1"

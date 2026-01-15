@@ -113,6 +113,7 @@ def include_object(object, name, type_, reflected, compare_to):
 # ---- Offline ----
 def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
+    version_schema = current_app.config.get("SCHEMA_AUTH", "gs_auth")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -122,7 +123,7 @@ def run_migrations_offline():
         compare_server_default=True,
         include_object=include_object,
         version_table='alembic_version',
-        version_table_schema='auth',
+        version_table_schema=version_schema,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -131,6 +132,7 @@ def run_migrations_offline():
 def run_migrations_online():
     connectable = get_engine()
     with connectable.connect() as connection:
+        version_schema = current_app.config.get("SCHEMA_AUTH", "gs_auth")
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -140,7 +142,7 @@ def run_migrations_online():
             include_object=include_object,
             process_revision_directives=process_revision_directives,
             version_table='alembic_version',
-            version_table_schema='auth',
+            version_table_schema=version_schema,
         )
         with context.begin_transaction():
             context.run_migrations()

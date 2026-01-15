@@ -37,6 +37,7 @@ MACHINE_FIELDS = {
     "machine_number": "Номер агрегата",
     "machine_name": "Название агрегата",
     "machine_group": "Номер/название группы агрегата",
+    "fuel_so": "Топливо по СО",
     "id_condition_type": "Состояние агрегата станции",
     "id_gen_company": "Организация-собственник",
     "id_energy_area": "Энергорайон агрегата станции",

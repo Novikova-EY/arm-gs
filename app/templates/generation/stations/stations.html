@@ -17,11 +17,12 @@
 </div>
 
 <div class="container-fluid mt-2">
+    {# Скроллим весь блок страницы: при прокрутке скрывается всё над шапкой таблицы #}
+    <div class="table-responsive" id="stationsTableContainer">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Справочники</a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -47,7 +48,6 @@
     {% include 'generation/stations/station_filters.html' %}
 
     <!-- Таблица с данными -->
-    <div class="table-responsive">
         <table class="table table-hover table-striped table-bordered table-responsive">
 
             <!-- Шапка таблицы с данными -->
@@ -576,16 +576,16 @@
             </tbody>
             
         </table>
+
+        <!-- Пагинация (скрывается при прокрутке вниз) -->
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endif %}
-
-<!-- Пагинация -->
-<div>
-    {% if per_page is not none %}
-        {% include 'generation/includes/pagination_station.html' %}
-    {% endif %}
-</div> 
 
 <script id="initial-state-json" type="application/json">
     {

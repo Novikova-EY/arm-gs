@@ -18,10 +18,14 @@ def totals_summary_export():
     Открывается в новом окне и автоматически закрывается после выгрузки файла."""
     from config import Config
     from app.generation.services.station_services.export_totals_summary_services import export_totals_summary_to_excel
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_start_year,
+        get_filter_end_year,
+    )
     
     # Получение параметров запроса
-    start_year = request.args.get("start_year", type=int) or Config.START_YEAR
-    end_year = request.args.get("end_year", type=int) or Config.END_YEAR
+    start_year = request.args.get("start_year", type=int) or get_filter_start_year()
+    end_year = request.args.get("end_year", type=int) or get_filter_end_year()
     show_p_ogr = request.args.get("show_p_ogr", "0") == "1"
     show_p_rasp = request.args.get("show_p_rasp", "0") == "1"
     

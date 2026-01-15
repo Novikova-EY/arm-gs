@@ -16,9 +16,16 @@
             <td class="text-center align-middle" colspan="4"></td>
             <td class="text-center align-middle">{{ event_label }}</td>
             {% for year in range(start_year, end_year + 1) %}
-                <td class="power-column">
-                    {{ event_data.get(year, '—') | format_decimal if event_data }}
-                </td>
+                {% if current_year_split is not none and year == current_year_split %}
+                    <td class="power-column"></td>
+                    <td class="power-column">
+                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                    </td>
+                {% else %}
+                    <td class="power-column">
+                        {{ event_data.get(year, '—') | format_decimal if event_data }}
+                    </td>
+                {% endif %}
             {% endfor %}
             <td class="power-column fw-bold">
                 {% if plan_years %}

@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request
+from flask_login import current_user
 from app.logs.models.log_model import Log
 from app.extensions import db
 from datetime import datetime, timezone
@@ -14,7 +15,13 @@ def view_logs():
     username_filter = request.args.get('username', '').strip()
     action_filter = request.args.get('action', '').strip()
     details_filter = request.args.get('details', '').strip()
-    entity_type_filter = request.args.get('entity_type', '').strip()
+
+    # Доступ к данным о сущности (тип/ID) — строго только для пользователя admin
+    is_strict_admin = bool(
+        getattr(current_user, "is_authenticated", False)
+        and getattr(current_user, "username", None) == "admin"
+    )
+    entity_type_filter = request.args.get('entity_type', '').strip() if is_strict_admin else ''
     sort_by = request.args.get('sort_by', 'timestamp')
     sort_dir = request.args.get('sort_dir', 'desc')
     per_page = request.args.get('per_page', 10, type=int)
@@ -55,6 +62,11 @@ def view_logs():
         else:
             log.timestamp_msk = None
 
+        # Не отдаём тип/ID сущности не-admin даже в исходнике HTML
+        if not is_strict_admin:
+            log.entity_type = None
+            log.entity_id = None
+
     # ✦ Контрольные часы (один раз за запрос)
     db_now_utc  = db.session.execute(text("SELECT now() AT TIME ZONE 'UTC'")).scalar()
     db_now_msk  = db.session.execute(text("SELECT now() AT TIME ZONE 'Europe/Moscow'")).scalar()
@@ -72,6 +84,7 @@ def view_logs():
         sort_dir=sort_dir,
         per_page=per_page,
         show_page_events=show_page_events,
+        is_strict_admin=is_strict_admin,
         db_now_utc=db_now_utc, db_now_msk=db_now_msk,
         app_now_utc=app_now_utc, app_now_msk=app_now_msk
     )

@@ -487,8 +487,8 @@ python copy_version_data.py
 
 ```sql
 -- Удалить все данные версии 7
-DELETE FROM generation.stations WHERE database_version_id = 7;
-DELETE FROM generation.machines WHERE database_version_id = 7;
+DELETE FROM gs_gen.stations WHERE database_version_id = 7;
+DELETE FROM gs_gen.machines WHERE database_version_id = 7;
 -- и т.д.
 ```
 
@@ -558,9 +558,9 @@ DELETE FROM generation.machines WHERE database_version_id = 7;
 
 | Таблица | Версия 1 | Версия 2 | Разница | Изменение |
 |---------|----------|----------|---------|-----------|
-| generation.stations | 100 | 120 | +20 | +20.0% 🟢 |
-| generation.machines | 500 | 550 | +50 | +10.0% 🟢 |
-| generation.machine_power | 1,500 | 1,650 | +150 | +10.0% 🟢 |
+| gs_gen.stations | 100 | 120 | +20 | +20.0% 🟢 |
+| gs_gen.machines | 500 | 550 | +50 | +10.0% 🟢 |
+| gs_gen.machine_power | 1,500 | 1,650 | +150 | +10.0% 🟢 |
 | refdata.fuels | 30 | 35 | +5 | +16.7% 🟢 |
 | refdata.gen_companies | 50 | 45 | -5 | -10.0% 🔴 |
 
@@ -1172,7 +1172,7 @@ WHERE is_active = true;
 SELECT 
     COALESCE(database_version_id::text, 'NULL') AS version,
     COUNT(*) AS count
-FROM generation.stations
+FROM gs_gen.stations
 GROUP BY database_version_id
 ORDER BY database_version_id;
 
@@ -1181,7 +1181,7 @@ SELECT
     'stations' AS table_name,
     database_version_id,
     COUNT(*) AS records
-FROM generation.stations
+FROM gs_gen.stations
 GROUP BY database_version_id
 
 UNION ALL
@@ -1190,7 +1190,7 @@ SELECT
     'machines' AS table_name,
     database_version_id,
     COUNT(*) AS records
-FROM generation.machines
+FROM gs_gen.machines
 GROUP BY database_version_id
 
 ORDER BY table_name, database_version_id;

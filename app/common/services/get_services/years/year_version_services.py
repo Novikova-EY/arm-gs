@@ -6,6 +6,7 @@
 from app.extensions import db
 from sqlalchemy import text
 from flask import current_app
+from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.years.year_model import Year
@@ -96,7 +97,7 @@ def create_year_version_data(target_version_id, target_year, user):
         return False
 
 
-def copy_year_data_from_version(source_version_id, target_version_id, user):
+def copy_year_data_from_version(source_version_id, target_version_id, user, do_commit: bool = True):
     """
     Копирует данные годов из одной версии в другую.
     
@@ -114,48 +115,55 @@ def copy_year_data_from_version(source_version_id, target_version_id, user):
     )
     
     try:
-        # Копируем YearFeature
-        year_features_query = text("""
-            INSERT INTO refdata.year_features (name, database_version_id)
+        # ВАЖНО: не используем commit() внутри по умолчанию — вызывающий код может
+        # собирать всю операцию создания версии в одну транзакцию.
+        #
+        # Также важно сохранить порядок соответствия old_id -> new_id:
+        # используем CTE с ORDER BY old_id и вставляем в том же порядке.
+        year_features_query = text(f"""
+            WITH source_data AS (
+                SELECT id AS old_id, name
+                FROM {SCHEMA_REFDATA}.gs_year_features
+                WHERE database_version_id = :source_version_id
+                ORDER BY id
+            )
+            INSERT INTO {SCHEMA_REFDATA}.gs_year_features (name, database_version_id)
             SELECT name, :target_version_id
-            FROM refdata.year_features
-            WHERE database_version_id = :source_version_id
+            FROM source_data
+            ORDER BY old_id
             RETURNING id
         """)
-        
+
         result = db.session.execute(
-            year_features_query, 
-            {"source_version_id": source_version_id, "target_version_id": target_version_id}
+            year_features_query,
+            {"source_version_id": source_version_id, "target_version_id": target_version_id},
         )
         new_feature_ids = [row[0] for row in result]
         db.session.flush()
-        
-        # Получаем старые ID признаков годов
-        old_feature_ids_query = text("""
-            SELECT id FROM refdata.year_features
+
+        old_feature_ids_query = text(f"""
+            SELECT id
+            FROM {SCHEMA_REFDATA}.gs_year_features
             WHERE database_version_id = :source_version_id
             ORDER BY id
         """)
-        
+
         result = db.session.execute(old_feature_ids_query, {"source_version_id": source_version_id})
         old_feature_ids = [row[0] for row in result]
-        
-        # Создаем маппинг старых и новых ID
+
         feature_id_mapping = dict(zip(old_feature_ids, new_feature_ids))
-        
-        # Копируем Year с обновленными связями
-        years_query = text("""
-            INSERT INTO refdata.years (number, id_year_feature, database_version_id)
-            SELECT 
+
+        years_query = text(f"""
+            INSERT INTO {SCHEMA_REFDATA}.gs_years (number, id_year_feature, database_version_id)
+            SELECT
                 y.number,
                 :new_feature_id,
                 :target_version_id
-            FROM refdata.years y
-            JOIN refdata.year_features yf ON y.id_year_feature = yf.id
+            FROM {SCHEMA_REFDATA}.gs_years y
             WHERE y.database_version_id = :source_version_id
-              AND yf.id = :old_feature_id
+              AND y.id_year_feature = :old_feature_id
         """)
-        
+
         for old_id, new_id in feature_id_mapping.items():
             db.session.execute(
                 years_query,
@@ -181,7 +189,8 @@ def copy_year_data_from_version(source_version_id, target_version_id, user):
             )
             db.session.add(new_service)
 
-        db.session.commit()
+        if do_commit:
+            db.session.commit()
 
         log_to_db(
             user,
@@ -203,7 +212,9 @@ def copy_year_data_from_version(source_version_id, target_version_id, user):
             entity_type="database_version",
             entity_id=target_version_id
         )
-        return False
+        # Важно: пробрасываем исключение вверх, чтобы создание версии не продолжало
+        # выполняться и не логировало "успех" после частичного отката.
+        raise
 
 
 def get_years_for_version(version_id):

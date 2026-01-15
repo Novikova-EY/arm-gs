@@ -80,6 +80,8 @@ from app.common.services.get_services.stations.condition_type_get_services impor
 )
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
+    get_filter_start_year,
+    get_filter_end_year,
 )
 from app.common.services.get_services.gen_companies.gen_company_get_services import (
     get_gen_company_list_full,
@@ -309,8 +311,8 @@ def station_details(station_id):
     form_machines = MachineFilterSmallForm()
 
     # Получение параметров запроса с дефолтными значениями
-    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     machine_ids_to_delete = request.form.getlist("machines_delete[]", type=int)
     
     # Определяем, какая форма была отправлена
@@ -672,8 +674,8 @@ def station_details_tbody(station_id):
     """
     start_time = time.time()
     
-    start_year = request.args.get("start_year", Config.START_YEAR, type=int)
-    end_year = request.args.get("end_year", Config.END_YEAR, type=int)
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.args.get("rounding_digits", 0, type=int)
 
     # Обновляем кэш раз в минуту через bucket

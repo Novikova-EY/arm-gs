@@ -6,10 +6,8 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
-        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5">Модуль "Генерация"</a>
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Справочники</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -31,49 +29,55 @@
     <!-- Таблица с данными -->
     <style>
         /* Фиксированная шапка таблицы */
-        .table-responsive {
+        #stationChangesTableContainer {
+            /* JS выставит точную высоту под экран; это fallback */
             max-height: calc(100vh - 300px);
             overflow-y: auto;
             overflow-x: auto;
             position: relative;
+            width: 100%;
         }
         
-        .table-responsive table {
+        #stationChangesTableContainer table {
             margin-bottom: 0;
+            width: 100%;
+            min-width: 100%;
         }
         
-        .table-responsive thead {
+        #stationChangesTableContainer thead {
             position: sticky;
             top: 0;
             z-index: 10;
         }
         
-        .table-responsive thead tr:first-child th {
+        #stationChangesTableContainer thead tr:first-child th {
             position: sticky;
             top: 0;
             background-color: #d1e7dd; /* Цвет table-success */
             z-index: 11;
         }
         
-        .table-responsive thead tr:nth-child(2) th {
+        #stationChangesTableContainer thead tr:nth-child(2) th {
             position: sticky;
             background-color: #d1e7dd; /* Цвет table-success */
             z-index: 11;
         }
         
         /* Для правильного отображения границ при прокрутке */
-        .table-responsive thead th {
+        #stationChangesTableContainer thead th {
             box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
         }
     </style>
-    <div class="table-responsive mt-2">
-        <table class="table table-hover table-striped table-bordered table-responsive">
+    <div class="table-responsive mt-2" id="stationChangesTableContainer">
+        <table class="table table-hover table-striped table-bordered">
 
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th colspan="14">Электростанция</th>
-                    <th colspan="{{ end_year - start_year + 2 }}">Установленная мощность</th>
+                    {# "Установленная мощность" = годы + "Итого"; для года current_year_split добавляется доп. колонка (Факт/План) #}
+                    {% set _split_in_range = (current_year_split is not none and start_year <= current_year_split <= end_year) %}
+                    <th colspan="{{ (end_year - start_year + 2) + (1 if _split_in_range else 0) }}">Установленная мощность</th>
                     <th rowspan="2" style="width: 200px;">Основание</th>
                 </tr>
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
@@ -487,14 +491,31 @@
 
                     <!-- Столбцы для годов с start_year по end_year + 1 -->
                     {% for year in range(start_year, end_year + 1) %}
-                    <th style="width: 50px; text-align: center;">
-                        {{ year }}
-                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                            {% if year_features[year] is defined %}
-                                {{ year_features[year] }}
-                            {% endif %}
-                        </div>
-                    </th>
+                        {% if current_year_split is not none and year == current_year_split %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    (текущий)
+                                </div>
+                                факт
+                            </th>
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    (текущий)
+                                </div>
+                                план
+                            </th>
+                        {% else %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    {% if year_features[year] is defined %}
+                                        {{ year_features[year] }}
+                                    {% endif %}
+                                </div>
+                            </th>
+                        {% endif %}
                     {% endfor %}
                     <th style="width: 140px; text-align: center;">
                         Итого<br>
@@ -505,7 +526,6 @@
                         {% endif %}
                     </th>
 
-                </tr>
                 </tr>
             </thead>
 
@@ -629,13 +649,6 @@
 </div>
 {% endif %}
 
-<!-- Пагинация -->
-<div>
-    {% if per_page is not none %}
-        {% include 'generation/includes/pagination_station_changes.html' %}
-    {% endif %}
-</div> 
-
 
 <script id="initial-state-json" type="application/json">
     {
@@ -689,7 +702,7 @@
 <script>
     window.addEventListener('load', function() {
         // Настройка фиксированной шапки таблицы
-        const tableResponsive = document.querySelector('.table-responsive');
+        const tableResponsive = document.getElementById('stationChangesTableContainer');
         if (tableResponsive) {
             const firstHeaderRow = tableResponsive.querySelector('thead tr:first-child');
             const secondHeaderRow = tableResponsive.querySelector('thead tr:nth-child(2)');
@@ -712,6 +725,53 @@
             }
         }
     });
+</script>
+
+<!-- Подгон таблицы под высоту экрана (всегда) -->
+<script>
+    (function () {
+        function getViewportHeight() {
+            return (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight;
+        }
+
+        function fitStationChangesTableToViewport() {
+            const el = document.getElementById('stationChangesTableContainer');
+            if (!el) return;
+
+            const rect = el.getBoundingClientRect();
+            const viewportH = getViewportHeight();
+            const bottomGap = 12; // небольшой отступ от низа окна
+            let target = Math.floor(viewportH - rect.top - bottomGap);
+
+            // защита от отрицательных/слишком маленьких значений
+            if (!Number.isFinite(target) || target < 200) target = 200;
+
+            el.style.height = target + 'px';
+            el.style.maxHeight = target + 'px';
+        }
+
+        window.addEventListener('load', fitStationChangesTableToViewport);
+        window.addEventListener('resize', fitStationChangesTableToViewport);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', fitStationChangesTableToViewport);
+        }
+
+        // Если пользователь сворачивает/разворачивает фильтры/панели — пересчитываем высоту
+        document.addEventListener('DOMContentLoaded', function () {
+            const collapses = ['filtersCollapse', 'importExportCollapse']
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+
+            collapses.forEach(el => {
+                el.addEventListener('shown.bs.collapse', fitStationChangesTableToViewport);
+                el.addEventListener('hidden.bs.collapse', fitStationChangesTableToViewport);
+            });
+
+            // первый расчёт после того, как DOM встал на место
+            fitStationChangesTableToViewport();
+            setTimeout(fitStationChangesTableToViewport, 250);
+        });
+    })();
 </script>
 
 {% endblock %}

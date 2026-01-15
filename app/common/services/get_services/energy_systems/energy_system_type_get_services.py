@@ -157,28 +157,24 @@ def get_est_to_res_ids_map() -> Dict[int, List[int]]:
 
 @lru_cache(maxsize=1)
 def get_est_to_rd_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ТипЭС.id: [СубъектРФ.id, ...]} через РЭС (кэшируется)."""
-    current_version = get_current_version()
+    """Возвращает отображение {ТипЭС.id: [СубъектРФ.id, ...]} через РЭС (кэшируется).
+
+    ВАЖНО: M2M-таблица RegionalDistrict<->RegionalEnergySystem не версионируется,
+    поэтому берём версионированный маппинг res->rd (он фильтрует по версии через join'ы).
+    """
     est_to_res = get_est_to_res_ids_map()
-    
-    # Получаем связь РЭС -> Субъект РФ через M2M таблицу
-    res_to_rd_query = db.session.query(
-        regional_district_regional_energy_system.c.regional_energy_system_id,
-        regional_district_regional_energy_system.c.regional_district_id
+
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+        get_res_to_rd_ids_map,
     )
-    
-    res_to_rd_rows = res_to_rd_query.all()
-    res_to_rd = defaultdict(list)
-    for res_id, rd_id in res_to_rd_rows:
-        res_to_rd[res_id].append(rd_id)
-    
-    # Строим est -> rd
+    res_to_rd = get_res_to_rd_ids_map()
+
     acc: Dict[int, List[int]] = defaultdict(list)
     for est_id, res_ids in est_to_res.items():
         for res_id in res_ids:
             if res_id in res_to_rd:
                 acc[est_id].extend(res_to_rd[res_id])
-    
+
     # Убираем дубликаты
     return {k: list(set(v)) for k, v in acc.items()}
 

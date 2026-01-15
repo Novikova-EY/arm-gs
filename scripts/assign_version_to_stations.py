@@ -62,7 +62,7 @@ total_null_count = 0
 table_counts = {}
 
 for table in tables:
-    cur.execute(f"SELECT COUNT(*) FROM generation.{table} WHERE database_version_id IS NULL")
+    cur.execute(f"SELECT COUNT(*) FROM gs_gen.{table} WHERE database_version_id IS NULL")
     null_count = cur.fetchone()[0]
     table_counts[table] = null_count
     total_null_count += null_count
@@ -100,7 +100,7 @@ if choice == "1":
             for table in tables:
                 if table_counts[table] > 0:
                     cur.execute(f"""
-                        UPDATE generation.{table}
+                        UPDATE gs_gen.{table}
                         SET database_version_id = %s 
                         WHERE database_version_id IS NULL
                     """, (version_id,))
@@ -120,7 +120,7 @@ if choice == "1":
             for table in ['stations', 'machines', 'documents_kommod']:
                 cur.execute(f"""
                     SELECT database_version_id, COUNT(*) 
-                    FROM generation.{table}
+                    FROM gs_gen.{table}
                     GROUP BY database_version_id 
                     ORDER BY database_version_id NULLS FIRST
                 """)

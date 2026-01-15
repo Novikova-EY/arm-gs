@@ -13,9 +13,16 @@
                 <td colspan="4"></td>
                 <td></td>
                 {% for y in range(start_year, end_year + 1) %}
-                    <td class="power-column">
-                        {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
-                    </td>
+                    {% if current_year_split is not none and y == current_year_split %}
+                        <td class="power-column"></td>
+                        <td class="power-column">
+                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                        </td>
+                    {% else %}
+                        <td class="power-column">
+                            {{ yearly_data.get(y) | default('—') | format_decimal if yearly_data.get(y) is not none }}
+                        </td>
+                    {% endif %}
                 {% endfor %}
                 <td class="power-column fw-bold">
                     {% if plan_years %}

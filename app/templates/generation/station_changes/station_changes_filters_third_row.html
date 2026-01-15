@@ -33,12 +33,7 @@
             </form>
         </div>
 
-        <!-- Пагинация -->
-        <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="min-width: 200px;">
-            {% if per_page is not none %}
-                {% include 'generation/includes/pagination_station_changes.html' %}
-            {% endif %}
-        </div>
+        {# Пагинация убрана по требованию: не показываем элементы навигации по страницам #}
 
         <!-- Правая часть: итоги и выбор количества строк -->
         <div class="d-flex align-items-center flex-wrap justify-content-end gap-5">

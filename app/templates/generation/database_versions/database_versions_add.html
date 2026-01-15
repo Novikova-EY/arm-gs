@@ -5,14 +5,6 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid  mt-4">
-    <!-- Кнопки возврата -->
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-            <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5"> <i class="bi bi-house"></i> Главная страница</a>
-            <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-secondary fs-5"><i class="bi bi-book"></i> Справочники</a>
-        </div>
-    </div>
-
     <h1 class="text-center mb-4">Добавить новую версию базы данных</h1>
 
     <form method="POST" action="{{ url_for('station_bp.add_database_version', page=page, per_page=per_page, version_filter=version_filter, sort_by=sort_by, sort_dir=sort_dir) }}" onsubmit="return showLoadingOverlay()">
@@ -71,6 +63,22 @@
                             {% if form.parent_version_id.errors %}
                                 <div class="text-danger">
                                     {% for error in form.parent_version_id.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Поле "Продлить период (лет)" — показываем только для копии существующей версии -->
+                        <div class="mb-3 d-none" id="extendYearsWrapper">
+                            {{ form.extend_years.label(class="form-label fw-bold") }}
+                            {{ form.extend_years(class="form-control", min="0", step="1", placeholder="0") }}
+                            <small class="form-text text-muted" id="extendYearsHelpText">
+                                0 — без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года.
+                            </small>
+                            {% if form.extend_years.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.extend_years.errors %}
                                         <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
@@ -146,10 +154,48 @@ function showLoadingOverlay() {
 }
 
 (function () {
+    const siprEndMap = {{ (sipr_end_map or {}) | tojson }};
+
+    function isNumericId(value) {
+        return /^[0-9]+$/.test(String(value || ''));
+    }
+
+    function updateExtendYearsHelp(parentValue) {
+        const extendYearsHelp = document.getElementById('extendYearsHelpText');
+        const extendYearsInput = document.getElementById('extend_years');
+
+        if (!extendYearsHelp || !extendYearsInput) {
+            return;
+        }
+
+        const endYear = siprEndMap[String(parentValue)];
+        if (isNumericId(parentValue) && endYear) {
+            const nRaw = parseInt(extendYearsInput.value || '0', 10);
+            const n = Number.isFinite(nRaw) ? Math.max(0, nRaw) : 0;
+            const startNew = endYear + 1;
+            const endNew = endYear + n;
+
+            if (n <= 0) {
+                extendYearsHelp.textContent = `Базовая версия содержит данные до ${endYear} года. 0 — без продления.`;
+            } else {
+                extendYearsHelp.textContent =
+                    `Базовая версия содержит данные до ${endYear} года. ` +
+                    `0 — без продления. Если указать ${n}, будут добавлены годы ${startNew}..${endNew} с копированием данных ${endYear} года.`;
+            }
+            return;
+        }
+
+        // дефолтная подсказка
+        extendYearsHelp.textContent =
+            '0 — без продления (только копия версии). При указании продления периода на N лет, будут добавлены N лет с копированием данных последнего года.';
+    }
+
     function toggleRefdataField() {
         const parentSelect = document.getElementById('parent_version_id');
         const refdataWrapper = document.getElementById('refdataSourceWrapper');
         const refdataSelect = document.getElementById('refdata_source_version_id');
+        const extendYearsWrapper = document.getElementById('extendYearsWrapper');
+        const extendYearsInput = document.getElementById('extend_years');
 
         if (!parentSelect || !refdataWrapper || !refdataSelect) {
             return;
@@ -164,15 +210,41 @@ function showLoadingOverlay() {
         } else {
             refdataSelect.required = true;
         }
+
+        // Поле продления — только для копии существующей версии (числовой id)
+        const shouldShowExtend = isNumericId(parentSelect.value);
+        if (extendYearsWrapper && extendYearsInput) {
+            extendYearsWrapper.classList.toggle('d-none', !shouldShowExtend);
+            extendYearsInput.required = shouldShowExtend;
+
+            if (!shouldShowExtend) {
+                extendYearsInput.value = '';
+            } else if (extendYearsInput.value === '' || extendYearsInput.value == null) {
+                extendYearsInput.value = '1';
+            }
+
+            updateExtendYearsHelp(parentSelect.value);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         const parentSelect = document.getElementById('parent_version_id');
+        const extendYearsInput = document.getElementById('extend_years');
         if (!parentSelect) {
             return;
         }
         toggleRefdataField();
         parentSelect.addEventListener('change', toggleRefdataField);
+
+        // Динамическое обновление подсказки при изменении N
+        if (extendYearsInput) {
+            extendYearsInput.addEventListener('input', function () {
+                updateExtendYearsHelp(parentSelect.value);
+            });
+            extendYearsInput.addEventListener('change', function () {
+                updateExtendYearsHelp(parentSelect.value);
+            });
+        }
     });
 
     window.addEventListener('load', toggleRefdataField);

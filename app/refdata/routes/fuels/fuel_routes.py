@@ -26,6 +26,9 @@ from app.refdata.services.fuels.fuel_services import (
     export_fuel_service, 
 )
 
+# Модели
+from app.refdata.models.fuels.fuel_type_model import FuelType
+
 # Логирование
 from app.logs.services.logging_service import log_to_db
 
@@ -135,7 +138,6 @@ def fuel_list():
 
     # Подготовка данных для формы
     # Заполняем список типов топлива с фильтрацией по версии БД
-    from app.refdata.models.fuels.fuel_type_model import FuelType
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
 
     return render_template(

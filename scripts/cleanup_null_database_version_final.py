@@ -31,11 +31,11 @@ def main():
         # Проверяем текущее состояние
         print("1. Проверка текущего состояния...")
         
-        stations_null = db.session.execute(text("SELECT COUNT(*) FROM generation.stations WHERE database_version_id IS NULL")).scalar()
-        machines_null = db.session.execute(text("SELECT COUNT(*) FROM generation.machines WHERE database_version_id IS NULL")).scalar()
+        stations_null = db.session.execute(text("SELECT COUNT(*) FROM gs_gen.stations WHERE database_version_id IS NULL")).scalar()
+        machines_null = db.session.execute(text("SELECT COUNT(*) FROM gs_gen.machines WHERE database_version_id IS NULL")).scalar()
         machines_ref_stations_null = db.session.execute(text("""
-            SELECT COUNT(*) FROM generation.machines 
-            WHERE id_station IN (SELECT id FROM generation.stations WHERE database_version_id IS NULL)
+            SELECT COUNT(*) FROM gs_gen.machines 
+            WHERE id_station IN (SELECT id FROM gs_gen.stations WHERE database_version_id IS NULL)
         """)).scalar()
         
         print(f"  - Станций с database_version_id = NULL: {stations_null}")
@@ -66,7 +66,7 @@ def main():
         try:
             # Получаем список станций для удаления
             station_ids = db.session.execute(text("""
-                SELECT id FROM generation.stations WHERE database_version_id IS NULL
+                SELECT id FROM gs_gen.stations WHERE database_version_id IS NULL
             """)).fetchall()
             station_ids = [row[0] for row in station_ids]
             
@@ -77,9 +77,9 @@ def main():
             
             # Удаляем machine_fuels
             result = db.session.execute(text("""
-                DELETE FROM generation.machine_fuels 
+                DELETE FROM gs_gen.machine_fuels 
                 WHERE id_machine IN (
-                    SELECT id FROM generation.machines 
+                    SELECT id FROM gs_gen.machines 
                     WHERE id_station = ANY(:station_ids)
                 )
             """), {"station_ids": station_ids})
@@ -87,9 +87,9 @@ def main():
             
             # Удаляем machine_powers
             result = db.session.execute(text("""
-                DELETE FROM generation.machine_powers 
+                DELETE FROM gs_gen.machine_powers 
                 WHERE id_machine IN (
-                    SELECT id FROM generation.machines 
+                    SELECT id FROM gs_gen.machines 
                     WHERE id_station = ANY(:station_ids)
                 )
             """), {"station_ids": station_ids})
@@ -97,9 +97,9 @@ def main():
             
             # Удаляем machine_tes_types
             result = db.session.execute(text("""
-                DELETE FROM generation.machine_tes_types 
+                DELETE FROM gs_gen.machine_tes_types 
                 WHERE id_machine IN (
-                    SELECT id FROM generation.machines 
+                    SELECT id FROM gs_gen.machines 
                     WHERE id_station = ANY(:station_ids)
                 )
             """), {"station_ids": station_ids})
@@ -107,35 +107,35 @@ def main():
             
             # Удаляем машины
             result = db.session.execute(text("""
-                DELETE FROM generation.machines 
+                DELETE FROM gs_gen.machines 
                 WHERE id_station = ANY(:station_ids)
             """), {"station_ids": station_ids})
             print(f"  Удалено машин: {result.rowcount}")
             
             # Удаляем station_powers
             result = db.session.execute(text("""
-                DELETE FROM generation.station_powers 
+                DELETE FROM gs_gen.station_powers 
                 WHERE id_station = ANY(:station_ids)
             """), {"station_ids": station_ids})
             print(f"  Удалено station_powers: {result.rowcount}")
             
             # Удаляем котлы
             result = db.session.execute(text("""
-                DELETE FROM generation.boilers 
+                DELETE FROM gs_gen.boilers 
                 WHERE id_station = ANY(:station_ids)
             """), {"station_ids": station_ids})
             print(f"  Удалено котлов: {result.rowcount}")
             
             # Удаляем документы
             result = db.session.execute(text("""
-                DELETE FROM generation.documents_kommod 
+                DELETE FROM gs_gen.documents_kommod 
                 WHERE database_version_id IS NULL
             """))
             print(f"  Удалено документов: {result.rowcount}")
             
             # Удаляем станции
             result = db.session.execute(text("""
-                DELETE FROM generation.stations 
+                DELETE FROM gs_gen.stations 
                 WHERE database_version_id IS NULL
             """))
             print(f"  Удалено станций: {result.rowcount}")

@@ -64,12 +64,12 @@ SKIP_TABLES = {
 # Порядок важен: сначала справочники, потом зависящие таблицы
 TABLE_MAP = [
     # --- AUTH (на будущее, уже загружены)
-    ("roles", ("auth", "roles")),
-    ("users", ("auth", "users")),
-    ("user_roles", ("auth", "user_roles")),
+    ("roles", ("gs_auth", "roles")),
+    ("users", ("gs_auth", "users")),
+    ("user_roles", ("gs_auth", "user_roles")),
 
     # --- LOGS (уже загружены)
-    ("logs", ("logs", "logs")),
+    ("logs", ("gs_logs", "logs")),
 
     # --- REFDATA (часть уже загружена; gen_companies ДО machines)
     ("energy_system_types", ("refdata", "energy_system_types")),
@@ -85,7 +85,7 @@ TABLE_MAP = [
     ("station_types", ("refdata", "station_types")),
     ("condition_types", ("refdata", "condition_types")),
     ("equipment_groups", ("refdata", "equipment_groups")),
-    ("gen_companies", ("refdata", "gen_companies")),  # <— ДО generation.machines
+    ("gen_companies", ("refdata", "gen_companies")),  # <— ДО gs_gen.machines
 
     ("union_energy_systems", ("refdata", "union_energy_systems")),
     ("regional_energy_systems", ("refdata", "regional_energy_systems")),
@@ -98,16 +98,16 @@ TABLE_MAP = [
     ("regional_district_regional_energy_system", ("refdata", "regional_district_regional_energy_system")),
 
     # --- GENERATION
-    ("station_groups", ("generation", "station_groups")),
-    ("stations", ("generation", "stations")),
-    ("boilers", ("generation", "boilers")),
-    ("machines", ("generation", "machines")),
-    ("station_powers", ("generation", "station_powers")),
-    ("machine_powers", ("generation", "machine_powers")),
-    ("machine_fuels", ("generation", "machine_fuels")),
-    ("machine_tes_types", ("generation", "machine_tes_types")),
-    ("pgu_machines", ("generation", "pgu_machines")),
-    ("pgu_machine_powers", ("generation", "pgu_machine_powers")),
+    ("station_groups", ("gs_gen", "station_groups")),
+    ("stations", ("gs_gen", "stations")),
+    ("boilers", ("gs_gen", "boilers")),
+    ("machines", ("gs_gen", "machines")),
+    ("station_powers", ("gs_gen", "station_powers")),
+    ("machine_powers", ("gs_gen", "machine_powers")),
+    ("machine_fuels", ("gs_gen", "machine_fuels")),
+    ("machine_tes_types", ("gs_gen", "machine_tes_types")),
+    ("pgu_machines", ("gs_gen", "pgu_machines")),
+    ("pgu_machine_powers", ("gs_gen", "pgu_machine_powers")),
 ]
 
 # UPSERT-ключи (уникальные поля) для таблиц, где логично поддерживать повторный пуск
