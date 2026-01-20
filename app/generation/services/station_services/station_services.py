@@ -216,7 +216,7 @@ def get_stations_list(
     # - fuel_so (по СО ЕЭС) не заполнено, но есть топливо по годам, ИЛИ
     # - fuel_so заполнено, но не совпадает с типом топлива(ами) по годам в выбранном диапазоне лет.
     if filters.get("fuel_check"):
-        from sqlalchemy import and_, or_, func
+        from sqlalchemy import func
         from app.refdata.models.fuels.fuel_type_model import FuelType
         from app.common.services.database_version_filter import get_current_db_version_id
         from app.common.services.get_services.years.years_get_services import (
@@ -2210,6 +2210,26 @@ def get_station_list_data(
         result.update(all_aggregations)
 
     return result
+
+
+def get_filtered_station_count(filters):
+    """
+    Быстрый подсчет количества станций по текущим фильтрам.
+    Используется для ранней проверки объема данных при экспорте.
+    """
+    filters = (filters or {}).copy()
+    filters.pop("page", None)
+    start_year = filters.pop("start_year", None)
+    end_year = filters.pop("end_year", None)
+
+    station_data = get_stations_list(
+        page=1,
+        per_page=1,
+        start_year=start_year,
+        end_year=end_year,
+        **filters,
+    )
+    return station_data.get("total_count", 0)
 
 
 def get_station_list_template_context(form, data, rounding_digits, filters, show_all=False, hierarchy_data=None):

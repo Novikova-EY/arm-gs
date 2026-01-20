@@ -9,14 +9,14 @@
     </td>
     <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
     {% for year in range(start_year, end_year + 1) %}
-    <td style="font-weight: bold;">
+    <td class="power-column" style="font-weight: bold;">
         {% set p_ust_value = station.powers_by_year
                             .get(year, {})
-                            .get("p_ust", "-") %}
-        {% if p_ust_value == 0 %}
+                            .get("p_ust") %}
+        {% if p_ust_value is none or p_ust_value == 0 %}
             &mdash;
         {% else %}
-            {{ p_ust_value | format_decimal}}
+            {{ p_ust_value | format_decimal }}
         {% endif %}
     </td>
     {% endfor %}
@@ -28,14 +28,14 @@
 <tr class="text-center p-ogr-row station-ogr-row"{% if not show_p_ogr %} style="display: none;"{% endif %}>
     <td class="text-center station-ogr-row" style="font-weight: bold;">Рогр</td>
     {% for year in range(start_year, end_year + 1) %}
-    <td style="font-weight: bold;">
+    <td class="power-column" style="font-weight: bold;">
         {% set p_ogr_value = station.powers_by_year
                             .get(year, {})
-                            .get("p_ogr", "-") %}
-        {% if p_ogr_value == 0 %}
+                            .get("p_ogr") %}
+        {% if p_ogr_value is none or p_ogr_value == 0 %}
             &mdash;
         {% else %}
-            {{ p_ogr_value | format_decimal}}
+            {{ p_ogr_value | format_decimal }}
         {% endif %}
     </td>
     {% endfor %}
@@ -47,9 +47,13 @@
 <tr class="text-center p-rasp-row station-rasp-row" style="vertical-align: middle;"{% if not show_p_rasp %} style="display: none;"{% endif %}>
     <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
     {% for year in range(start_year, end_year + 1) %}
-    <td style="font-weight: bold;">
-        {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp", "-") %}
-        {% if p_rasp_value == 0 %}&mdash;{% else %}{{ p_rasp_value | format_decimal }}{% endif %}
+    <td class="power-column" style="font-weight: bold;">
+        {% set p_rasp_value = station.powers_by_year.get(year, {}).get("p_rasp") %}
+        {% if p_rasp_value is none or p_rasp_value == 0 %}
+            &mdash;
+        {% else %}
+            {{ p_rasp_value | format_decimal }}
+        {% endif %}
     </td>
     {% endfor %}
     <td class="text-center align-middle" colspan="{{ trailing_columns }}" style="vertical-align: middle; font-weight: bold;"></td>

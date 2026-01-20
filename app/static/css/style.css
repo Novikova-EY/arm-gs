@@ -225,7 +225,7 @@ tr {
 .btn-outline-primary-white:focus-visible,
 .btn-outline-primary-white:active,
 .btn-outline-primary-white.active {
-  background-color: #fff !important;
+  background-color: var(--bs-primary) !important;
   border-color: var(--bs-primary) !important;
-  color: var(--bs-primary) !important;
+  color: #fff !important;
 }

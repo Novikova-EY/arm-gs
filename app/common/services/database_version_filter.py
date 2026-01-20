@@ -4,8 +4,27 @@
 """
 
 from functools import wraps
-from flask import g
+import logging
+from flask import g, current_app, has_app_context
 from sqlalchemy import or_
+
+_logger = logging.getLogger(__name__)
+
+
+def _debug(message: str) -> None:
+    """
+    Безопасный debug-логгер:
+    - в Flask app context пишет в current_app.logger (попадёт в gunicorn/errorlog)
+    - вне контекста — в стандартный logging logger модуля
+    """
+    try:
+        if has_app_context():
+            current_app.logger.debug(message)
+            return
+    except Exception:
+        # не ломаем бизнес-логику из-за логирования
+        pass
+    _logger.debug(message)
 
 
 def get_current_db_version_id():
@@ -59,25 +78,29 @@ def filter_by_db_version(query, model_class):
     
     # Логи НЕ должны фильтроваться по версии БД, так как они хранят историю изменений
     if model_name == 'Log':
-        print(f"[DEBUG] Пропускаем фильтрацию для {model_name}: логи должны отображаться все")
+        _debug(f"[DB_VERSION] skip filtering for {model_name}: logs must be visible across versions")
         return query
     
-    print(f"[DEBUG] filter_by_db_version для {model_name}: current_version_id = {current_version_id}")
+    _debug(f"[DB_VERSION] filter_by_db_version for {model_name}: current_version_id={current_version_id}")
     
     if current_version_id is not None and hasattr(model_class, 'database_version_id'):
         # При выбранной версии показываем ТОЛЬКО записи этой версии
         # Записи без версии (NULL) НЕ показываются, так как они относятся к другим версиям
-        print(f"[DEBUG] Применяем фильтр: {model_name}.database_version_id == {current_version_id}")
+        _debug(f"[DB_VERSION] applying filter: {model_name}.database_version_id == {current_version_id}")
         query = query.filter(
             model_class.database_version_id == current_version_id
         )
     elif current_version_id is None and hasattr(model_class, 'database_version_id'):
         # Если версия не установлена, показываем только записи без версии (NULL)
         # Это предотвращает показ записей из неактивных версий
-        print(f"[DEBUG] Применяем фильтр: {model_name}.database_version_id IS NULL")
+        _debug(f"[DB_VERSION] applying filter: {model_name}.database_version_id IS NULL")
         query = query.filter(model_class.database_version_id.is_(None))
     else:
-        print(f"[DEBUG] Фильтр не применен для {model_name}: current_version_id={current_version_id}, has_database_version_id={hasattr(model_class, 'database_version_id')}")
+        _debug(
+            f"[DB_VERSION] filter not applied for {model_name}: "
+            f"current_version_id={current_version_id}, "
+            f"has_database_version_id={hasattr(model_class, 'database_version_id')}"
+        )
     
     return query
 

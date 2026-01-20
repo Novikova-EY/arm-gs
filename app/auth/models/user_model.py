@@ -9,7 +9,7 @@ from sqlalchemy.sql import func
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
-from config import SCHEMA_AUTH
+from config import SCHEMA_AUTH, SCHEMA_REFDATA
 from app.auth.models.user_role_model import user_roles
 
 class User(db.Model, UserMixin):
@@ -27,6 +27,19 @@ class User(db.Model, UserMixin):
 
     # M2M: User <-> Role
     roles = db.relationship('Role', secondary=user_roles, back_populates='users', lazy='selectin')
+
+    # Последняя выбранная пользователем версия БД
+    last_database_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    last_database_version = db.relationship(
+        'DatabaseVersion',
+        foreign_keys=[last_database_version_id],
+        lazy='joined',
+    )
 
     # --- Вспомогательные методы ---
     def set_password(self, password: str) -> None:

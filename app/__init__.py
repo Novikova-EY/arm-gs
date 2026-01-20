@@ -37,7 +37,15 @@ def create_app():
     except Exception:
         pass
     # #endregion
-    app = Flask(__name__)
+    # В production deb-пакет раскладывает статику в /usr/share/generation-app/static,
+    # а старую папку /opt/generation-app/app/app/static может удалять postinst.
+    # Чтобы /static/* продолжал работать даже без nginx-alias, используем shared static,
+    # если каталог существует (иначе — дефолтный app/static для dev/Windows).
+    shared_static_dir = os.getenv("GENERATION_APP_STATIC_DIR") or "/usr/share/generation-app/static"
+    if Path(shared_static_dir).is_dir():
+        app = Flask(__name__, static_folder=shared_static_dir, static_url_path="/static")
+    else:
+        app = Flask(__name__)
     app.config.from_object(Config) 
     app.secret_key = SECRET_KEY
     app.debug = app.config.get("DEBUG", False)
@@ -587,6 +595,7 @@ def create_app():
     from app.generation.routes.stations import station_bp
     from app.generation.routes.generation_routes import generation_bp
     from app.generation.routes.rational_structure import rational_structure_bp
+    from app.fuel.routes import fuel_bp
     from app.generation.routes.station_changes import station_changes_bp
     from app.start.routes import start_bp
     from app.logs.routes import logs_bp
@@ -598,6 +607,7 @@ def create_app():
     app.register_blueprint(station_bp, url_prefix="/generation/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
     app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
+    app.register_blueprint(fuel_bp, url_prefix="/fuel")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
 
@@ -611,7 +621,8 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         from app.auth.models.user_model import User
-        return User.query.get(int(user_id))
+        # Используем современный API SQLAlchemy 2.x: Session.get вместо Query.get
+        return db.session.get(User, int(user_id))
     
     # Error handlers для детального логирования
     @app.errorhandler(500)

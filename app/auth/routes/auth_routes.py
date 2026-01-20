@@ -7,6 +7,8 @@ from app.logs.models.log_model import Log
 from app.auth.models.user_model import User
 from app.auth.models.role_model import Role
 from app.auth.models.user_role_model import user_roles
+from app.common.middleware.database_version_middleware import set_session_version
+from app.common.models.database_version_model import DatabaseVersion
 
 # Функция логирования действий
 
@@ -51,6 +53,23 @@ def login():
             if user and user.check_password(password):
                 login_user(user)
                 session['username'] = user.username
+
+                # Восстанавливаем последнюю выбранную пользователем версию БД (если есть)
+                if user.last_database_version_id is not None:
+                    version = DatabaseVersion.query.get(user.last_database_version_id)
+                    if version:
+                        try:
+                            set_session_version(version.id)
+                        except Exception as e:
+                            log_to_db('Система', f'Ошибка установки версии БД для пользователя: {e}')
+                    else:
+                        # Версия удалена — очищаем сохраненное значение
+                        try:
+                            user.last_database_version_id = None
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            log_to_db('Система', f'Ошибка очистки сохраненной версии БД: {e}')
                 log_to_db(user.username, 'Успешный вход в систему')
                 flash('Вы успешно вошли.', 'success')
                 return redirect(url_for('start.index'))

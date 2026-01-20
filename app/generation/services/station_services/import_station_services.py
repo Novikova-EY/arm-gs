@@ -1625,11 +1625,14 @@ def import_fuel_tes_station_from_excel(file, user):
     if errors:
         logger.error("[IMPORT_FUEL] errors (first 50): %s", errors[:50])
 
-    # Итоговый аудит в таблицу Log (одной записью)
+    # Итоговый аудит в таблицу Log:
+    # 1) Сводная запись по всему файлу
+    # 2) Отдельная запись Log для каждого "sample" из audit_samples,
+    #    чтобы в логах станций было видно построчно, что произошло.
     try:
-        # Формируем человекочитаемые детали
+        # 1) Сводная запись (как и раньше, для совместимости)
         counts_parts = [f"{k}={v}" for k, v in sorted(audit_counts.items(), key=lambda kv: (-kv[1], kv[0]))]
-        details_lines = [
+        summary_details_lines = [
             f"filename={filename}",
             f"processed_rows={processed_rows}",
             f"skipped_empty_rows={skipped_empty_rows}",
@@ -1638,23 +1641,52 @@ def import_fuel_tes_station_from_excel(file, user):
             "counts: " + (", ".join(counts_parts) if counts_parts else "нет"),
         ]
 
-        # Примеры по причинам (ограничены внутри _audit_inc)
+        log_to_db(
+            user,
+            "Подгрузка топлива (СО): итог импорта",
+            details="\n".join(summary_details_lines),
+            entity_type="import_fuel",
+            entity_id=None,
+        )
+
+        # 2) Детализированные записи по каждому sample
         for reason in sorted(audit_samples.keys()):
             examples = audit_samples.get(reason) or []
             if not examples:
                 continue
-            details_lines.append(f"samples[{reason}] (first {len(examples)}):")
-            details_lines.extend([f" - {s}" for s in examples])
 
-        log_to_db(
-            user,
-            "Подгрузка топлива (СО): итог импорта",
-            details="\n".join(details_lines),
-            entity_type="import_fuel",
-            entity_id=None,
-        )
+            for sample in examples:
+                # Пытаемся вытащить station_id из sample, если он там есть,
+                # чтобы привязать запись к конкретной станции.
+                entity_type = "import_fuel"
+                entity_id = None
+
+                marker = "station_id="
+                idx = sample.find(marker)
+                if idx != -1:
+                    # Ищем конец числа (до ';' или конца строки)
+                    start = idx + len(marker)
+                    end = start
+                    while end < len(sample) and sample[end].isdigit():
+                        end += 1
+                    station_id_str = sample[start:end].strip()
+                    if station_id_str.isdigit():
+                        entity_type = "station"
+                        entity_id = int(station_id_str)
+
+                # Формируем action и details для записи в Log
+                action = f"Подгрузка топлива (СО): {reason}"
+                details = f"filename={filename}; {sample}"
+
+                log_to_db(
+                    user,
+                    action,
+                    details=details,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                )
     except Exception:
-        logger.exception("[IMPORT_FUEL] failed to write summary audit log filename=%s", filename)
+        logger.exception("[IMPORT_FUEL] failed to write detailed audit log filename=%s", filename)
 
     return {
         'message': f'Импорт топлива завершён. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах.',

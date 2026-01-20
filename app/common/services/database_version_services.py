@@ -35,6 +35,7 @@ from typing import Optional
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
+from app.logs.models.log_model import Log
 
 
 def version_query(
@@ -1195,6 +1196,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             },
             {
                 'schema': gen_schema,
+                'table': 'station_equipment_groups',
+                'dependencies': [
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
+                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
+                ]
+            },
+            {
+                'schema': gen_schema,
                 'table': 'machines',
                 'dependencies': [
                     {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
@@ -1205,7 +1214,8 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     {'fk': 'id_energy_area', 'ref_table': f'{ref_schema}.gs_energy_areas'},
                     {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
                     {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'},
-                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
+                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'},
+                    {'fk': 'station_equipment_group_id', 'ref_table': f'{gen_schema}.station_equipment_groups'}
                 ]
             },
             {
@@ -3315,6 +3325,7 @@ def _delete_version_data_staged(version_id, user):
     stage6_tables = [
         ('generation', 'station_powers'),
         ('generation', 'machines'),
+        ('generation', 'station_equipment_groups'),
         ('generation', 'boilers')
     ]
     
@@ -3738,6 +3749,7 @@ def delete_version_service(ids, user):
     invalid = []
     active_versions = []
     total_data_deleted = 0
+    deleted_version_ids = []
 
     for version_id in ids:
         try:
@@ -3829,6 +3841,7 @@ def delete_version_service(ids, user):
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
+            deleted_version_ids.append(vid)
             log_to_db(
                 user, 
                 "Удалена версия БД", 
@@ -3867,6 +3880,13 @@ def delete_version_service(ids, user):
             "Завершено удаление версий БД", 
             f"Удалено версий: {successful_deletes}, удалено записей данных: {total_data_deleted}", 
             entity_type="database_version")
+
+        # Удаляем логи, привязанные к удаленным версиям
+        if deleted_version_ids:
+            Log.query.filter(Log.database_version_id.in_(deleted_version_ids)).delete(
+                synchronize_session=False
+            )
+            _commit_with_retry()
 
         return {
             "deleted": successful_deletes,
@@ -4584,6 +4604,26 @@ def load_version_snapshot(version_id, user):
             current_app.logger.warning(f"Ошибка создания автобэкапа: {e}")
             # Продолжаем восстановление даже если автобэкап не удался
         
+        # Проверка активных соединений к БД (может вызвать проблемы при восстановлении)
+        try:
+            from sqlalchemy import text
+            result = db.session.execute(text("""
+                SELECT COUNT(*) as active_connections 
+                FROM pg_stat_activity 
+                WHERE datname = current_database() 
+                AND pid <> pg_backend_pid()
+                AND state = 'active'
+            """))
+            active_count = result.scalar()
+            if active_count > 0:
+                current_app.logger.warning(
+                    f"Обнаружено {active_count} активных соединений к БД. "
+                    "Это может вызвать блокировки при восстановлении. "
+                    "Рекомендуется закрыть активные соединения перед восстановлением."
+                )
+        except Exception as e:
+            current_app.logger.warning(f"Не удалось проверить активные соединения: {e}")
+        
         # Поиск pg_restore
         pg_restore_path = _find_pg_binary("pg_restore")
         current_app.logger.info(f"Используется pg_restore: {pg_restore_path}")
@@ -4600,6 +4640,8 @@ def load_version_snapshot(version_id, user):
         # Команда pg_restore
         # Используем --clean для очистки существующих объектов
         # --if-exists чтобы не выдавать ошибки если объект не существует
+        # ВАЖНО: --single-transaction убран, т.к. с --clean может вызывать deadlock
+        # и зависания при активных соединениях к БД
         cmd = [
             pg_restore_path,
             "-h", db_host,
@@ -4611,7 +4653,7 @@ def load_version_snapshot(version_id, user):
             "--if-exists",          # Не выдавать ошибки если объект не существует
             "--no-owner",           # Не пытаться восстанавливать владельцев
             "--no-privileges",      # Не восстанавливать права
-            "--single-transaction", # В одной транзакции (меньше блокировок)
+            "-j", "1",              # Использовать 1 поток (избегаем проблем с блокировками)
             "-v",                   # verbose
             version.snapshot_path
         ]
@@ -4628,18 +4670,81 @@ def load_version_snapshot(version_id, user):
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True
+            text=True,
+            bufsize=1  # Line buffered
         )
         
         try:
-            for line in process.stdout:  # type: ignore[attr-defined]
-                if not line:
-                    break
-                # Логируем построчно, чтобы не переполнять буфер
-                current_app.logger.info(line.rstrip())
+            import threading
+            from queue import Queue, Empty
+            
+            # Используем очередь для неблокирующего чтения stdout
+            output_queue = Queue()
+            read_timeout = 300  # 5 минут без вывода = возможное зависание
+            
+            def read_output():
+                """Читает вывод процесса в отдельном потоке"""
+                try:
+                    for line in iter(process.stdout.readline, ''):  # type: ignore[attr-defined]
+                        if not line:
+                            break
+                        output_queue.put(line.rstrip())
+                except Exception as e:
+                    current_app.logger.error(f"Ошибка чтения вывода pg_restore: {e}")
+                finally:
+                    output_queue.put(None)  # Сигнал окончания
+            
+            # Запускаем чтение в отдельном потоке
+            reader_thread = threading.Thread(target=read_output, daemon=True)
+            reader_thread.start()
+            
+            last_output_time = datetime.now()
+            lines_read = 0
+            
+            # Читаем вывод с таймаутом
+            while True:
+                try:
+                    line = output_queue.get(timeout=60)  # Ждем максимум 60 секунд
+                    if line is None:  # Сигнал окончания
+                        break
+                    
+                    if line:
+                        current_app.logger.info(f"pg_restore: {line}")
+                        last_output_time = datetime.now()
+                        lines_read += 1
+                    
+                    # Проверяем, не завис ли процесс (нет вывода более 5 минут)
+                    if (datetime.now() - last_output_time).total_seconds() > read_timeout:
+                        current_app.logger.error(
+                            f"pg_restore не выводит данные более {read_timeout} секунд. "
+                            "Возможно зависание. Проверьте активные соединения к БД."
+                        )
+                        # Проверяем, жив ли процесс
+                        if process.poll() is None:
+                            current_app.logger.warning("Процесс pg_restore все еще работает, но не выводит данные")
+                            # Продолжаем ждать, но логируем предупреждение
+                            last_output_time = datetime.now()  # Сбрасываем таймер
+                    
+                except Empty:
+                    # Таймаут очереди - проверяем статус процесса
+                    if process.poll() is not None:
+                        # Процесс завершился
+                        break
+                    # Если процесс еще работает, продолжаем ждать
+                    if (datetime.now() - last_output_time).total_seconds() > read_timeout:
+                        current_app.logger.warning(
+                            f"pg_restore не выводит данные более {read_timeout} секунд, "
+                            "но процесс все еще работает"
+                        )
+            
+            # Ждем завершения процесса с таймаутом
             return_code = process.wait(timeout=3600)
+            current_app.logger.info(f"pg_restore завершился с кодом {return_code}, прочитано строк: {lines_read}")
+            
         except subprocess.TimeoutExpired:
+            current_app.logger.error("Превышен таймаут ожидания pg_restore (>1 час)")
             process.kill()
+            process.wait()
             raise
         
         if return_code not in [0, 1]:  # 1 - warning, 0 - success

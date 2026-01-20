@@ -5,11 +5,31 @@ from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
+from app.refdata.models.fuels.station_equpment_group_model import StationEquipmentGroup
 from flask import render_template
 from sqlalchemy.orm import joinedload
 from app.common.services.help_services import (
     _clean_name,
 )
+from app.common.services.database_version_filter import set_db_version_on_create
+
+
+def _get_or_create_station_equipment_group(station_id, equipment_group_id):
+    if not station_id or not equipment_group_id:
+        return None
+    seg = StationEquipmentGroup.query.filter_by(
+        id_station=station_id,
+        id_equipment_group=equipment_group_id,
+    ).first()
+    if seg is None:
+        seg = StationEquipmentGroup(
+            id_station=station_id,
+            id_equipment_group=equipment_group_id,
+        )
+        set_db_version_on_create(seg)
+        db.session.add(seg)
+        db.session.flush()
+    return seg
 
 @rational_structure_bp.route("/ti_table")
 def ti_table():
@@ -17,6 +37,7 @@ def ti_table():
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
         joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.tes_machine_type),
+        joinedload(Machine.station_equipment_group).joinedload(StationEquipmentGroup.equipment_group),
         joinedload(Machine.equipment_group),
         joinedload(Machine.machine_powers),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
@@ -34,14 +55,22 @@ def ti_table():
         data.append({
             "subject": station.regional_district.name if station and station.regional_district else "—",
             "ti_number": m.id_ti or "—",
-            "group_type": m.equipment_group.name if m.equipment_group else "—",
+            "group_type": (
+                m.station_equipment_group.equipment_group.name
+                if m.station_equipment_group and m.station_equipment_group.equipment_group
+                else (m.equipment_group.name if m.equipment_group else "—")
+            ),
             "station": station.name if station else "—",
             "group_number": m.machine_group or "—",
             "machine_number": m.machine_number or "—",
             "machine_name": m.machine_name or "—",
             "exploitation_year": m.date_exploitation or "—",
             "power_2024": float(power_2024) if power_2024 else "—",
-            "station_type": m.station_type.name if m.station_type else "—",
+            "station_type": (
+                station.station_type.name
+                if station and station.station_type
+                else "—"
+            ),
             "tes_type": ", ".join(sorted(tes_types)) if tes_types else "—",
             "tes_machine_type": m.tes_machine_type.name if m.tes_machine_type else "—",
             "year_modern": m.year_modern if m.year_modern else "—",
@@ -167,6 +196,8 @@ def upload_and_update_machines():
                     id_ti = 0
                     
                 matched_machine.id_equipment_group = eq_group.id
+                seg = _get_or_create_station_equipment_group(station.id, eq_group.id)
+                matched_machine.station_equipment_group_id = seg.id if seg else None
                 matched_machine.id_ti = id_ti
                 matched_machine.year_modern = year_modern
                 matched_machine.year_demontaz = year_demontaz

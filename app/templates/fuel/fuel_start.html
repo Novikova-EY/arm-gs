@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Топливо{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="container">
+        <div class="container-fluid">
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Электростанции Российской Федерации (с группами оборудования)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

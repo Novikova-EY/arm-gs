@@ -347,6 +347,14 @@ def get_aggregated_power_by_year(entity_id, source, start_year, end_year):
 
 # Выгрузка в эксель по форме файла "Список станций"
 def generate_excel_export_with_all_totals(data, rows, start_year, end_year, rounding_digits, show_p_ogr=False, show_p_rasp=False, hide_aggregates=False, show_totals=True):
+    # Проверка наличия необходимых библиотек
+    try:
+        import openpyxl
+    except ImportError as e:
+        error_msg = f"Библиотека openpyxl не установлена. Установите её командой: pip install openpyxl"
+        print(f"[EXPORT] ОШИБКА: {error_msg}")
+        raise ImportError(error_msg) from e
+    
     import time
     start_time = time.time()
     print(f"[EXPORT] Начало экспорта в Excel")
@@ -450,6 +458,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 tes_machine_type_name = machine.tes_machine_type.name
 
         row_ust = {
+            "ID электростанции": machine.machine_station.id if machine.machine_station else "",
+            "ID агрегата": machine.id,
             "Электростанция": machine.machine_number,
             " ": machine.machine_name,
             "Генерирующая компания": machine.gen_company.name if machine.gen_company else "—",
@@ -467,14 +477,22 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
         if show_p_ogr:
             row_ogr = {k: "" for k in row_ust}
-            row_ogr.update({"Тип мощности": "Рогр"})
+            row_ogr.update({
+                "Тип мощности": "Рогр",
+                "ID электростанции": "",
+                "ID агрегата": "",
+            })
             for year in range(start_year, end_year + 1):
                 row_ogr[str(year)] = round_val(machine.powers_by_year.get(year, {}).get("p_ogr"))
             rows.append(row_ogr)
 
         if show_p_rasp:
             row_rasp = {k: "" for k in row_ust}
-            row_rasp.update({"Тип мощности": "Ррасп"})
+            row_rasp.update({
+                "Тип мощности": "Ррасп",
+                "ID электростанции": "",
+                "ID агрегата": "",
+            })
             for year in range(start_year, end_year + 1):
                 row_rasp[str(year)] = round_val(machine.powers_by_year.get(year, {}).get("p_rasp"))
             rows.append(row_rasp)
@@ -482,6 +500,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     def add_station_total_row(station):
         def total_row(label, power_key, show_name=False):
             row = {
+                "ID электростанции": "",
+                "ID агрегата": "",
                 "Электростанция": f"{station.name}, всего" if show_name else "",
                 " ": "",
                 "Генерирующая компания": "",
@@ -1167,6 +1187,8 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             for station in eu_group:
                                 first_machine = True
                                 row_station = {
+                                    "ID электростанции": station.id,
+                                    "ID агрегата": "",
                                     "Электростанция": station.name,
                                     " ": "",
                                     "Генерирующая компания": "",
@@ -1216,19 +1238,34 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     fuel_columns = [f"{year} (топливо)" for year in range(start_year, end_year + 1)]
 
     columns = [
+        "ID электростанции",
+        "ID агрегата",
         "Электростанция", " ", "Генерирующая компания",
         "Год ввода", "Тип мощности"
     ] + year_columns + fuel_columns + [
         "Тип станции", "Тип ТЭС", "Тип агрегата ТЭС", "Примечание"
     ]
 
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+    except ImportError as e:
+        error_msg = f"Не удалось импортировать openpyxl: {e}. Установите библиотеку командой: pip install openpyxl"
+        print(f"[EXPORT] ОШИБКА: {error_msg}")
+        raise ImportError(error_msg) from e
+    
     from io import BytesIO
 
     output = BytesIO()
-    wb = Workbook()
-    ws = wb.active
+    try:
+        wb = Workbook()
+        ws = wb.active
+    except Exception as e:
+        error_msg = f"Ошибка при создании Excel файла: {e}"
+        print(f"[EXPORT] ОШИБКА: {error_msg}")
+        import traceback
+        print(traceback.format_exc())
+        raise
 
     # Заголовки
     ws.append(columns)
@@ -1259,7 +1296,15 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             for cell in row:
                 cell.font = bold_font
 
-    wb.save(output)
+    try:
+        wb.save(output)
+    except Exception as e:
+        error_msg = f"Ошибка при сохранении Excel файла: {e}"
+        print(f"[EXPORT] ОШИБКА: {error_msg}")
+        import traceback
+        print(traceback.format_exc())
+        raise ValueError(error_msg) from e
+    
     output.seek(0, 2)  # Переходим в конец для проверки размера
     final_size = output.tell()
     output.seek(0)  # Возвращаемся в начало
@@ -1269,8 +1314,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     print(f"[EXPORT] ИТОГО время экспорта: {time.time() - start_time:.2f}с")
 
     if final_size == 0:
-        print("[EXPORT] ОШИБКА: сгенерированный файл пустой!")
-        raise ValueError("Сгенерированный Excel файл пустой")
+        error_msg = "Сгенерированный Excel файл пустой. Возможные причины: нет данных для экспорта или ошибка при создании файла."
+        print(f"[EXPORT] ОШИБКА: {error_msg}")
+        raise ValueError(error_msg)
 
     return output
 

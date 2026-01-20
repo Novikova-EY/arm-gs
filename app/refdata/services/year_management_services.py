@@ -67,6 +67,13 @@ def get_current_year_info(version_id):
         sipr_end = year_service.year_sipr_end if year_service else None
         date_sipr_start = year_service.date_sipr_start.isoformat() if (year_service and year_service.date_sipr_start) else None
         date_sipr_end = year_service.date_sipr_end.isoformat() if (year_service and year_service.date_sipr_end) else None
+
+        # Если годы СиПР не заданы, но текущий год известен — подставляем дефолтные значения
+        if current_year is not None and current_year != 0:
+            if sipr_start is None:
+                sipr_start = current_year + 1
+            if sipr_end is None:
+                sipr_end = current_year + 6
         
         # Если по каким‑то причинам данных по годам нет – вернём 0, как требуется
         return {

@@ -43,6 +43,28 @@
     max-width: 180px;
 }
 
+/* Примечание: переносимый текст, показываем полностью */
+.machines-table th.col-note,
+.machines-table td.col-note {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.machines-table .machine-note-text {
+    white-space: pre-wrap;      /* сохраняем переводы строк */
+    overflow-wrap: anywhere;    /* переносим длинные слова/идентификаторы */
+    word-break: break-word;
+}
+.machines-table .machine-note-textarea {
+    width: 100%;
+    resize: none;               /* высоту даём скриптом, без ручного ресайза */
+    overflow: hidden;           /* без внутреннего скролла */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-height: 2.2em;
+}
+
 /* Столбцы мощности и топлива - одинаковой ширины */
 .machines-table .power-section ~ th:not(.fuel-section):not(.col-note):not(.col-delete) {
     width: 80px !important;
@@ -74,6 +96,7 @@
 /* Стили для полей ввода */
 .machines-table input[type="text"],
 .machines-table input[type="number"],
+.machines-table textarea,
 .machines-table select {
     width: 100%;
     padding: 6px;
@@ -110,7 +133,7 @@
 }
 
 .machines-table .col-fuel-type input[type="text"],
-.machines-table .col-note input[type="text"] {
+.machines-table .col-note textarea {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -661,27 +684,61 @@
 }
 </style>
 
-<!-- jQuery и Select2 уже подключены в base.html -->
-
+<!-- jQuery/Select2: инициализируем только если библиотека реально загружена -->
 <script>
-    // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
-    $(document).on('focus', '.gen-company-select', function () {
-        const $el = $(this);
-        if ($el.data('select2')) return;
-        performance.mark && performance.mark('select2-init-start');
-        $el.select2({
-            placeholder: "Выберите компанию",
-            allowClear: true,
-            width: 'resolve',
-            dropdownAutoWidth: false,
-            dropdownParent: $el.closest('.table-responsive'),
-            minimumResultsForSearch: 10
+    (function () {
+        const $ = window.jQuery;
+        if (typeof $ !== 'function' || !$.fn || !$.fn.select2) return;
+
+        // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
+        $(document).on('focus', '.gen-company-select', function () {
+            const $el = $(this);
+            if ($el.data('select2')) return;
+            performance.mark && performance.mark('select2-init-start');
+
+            $el.select2({
+                placeholder: "Выберите компанию (начните вводить для поиска)",
+                allowClear: true,
+                width: 'resolve',
+                dropdownAutoWidth: false,
+                dropdownParent: $el.closest('.table-responsive'),
+                minimumResultsForSearch: 0,
+                matcher: function (params, data) {
+                    if (!params.term || params.term.trim() === '') return data;
+                    const term = params.term.toLowerCase().trim();
+                    const text = (data.text || '').toLowerCase();
+                    return text.indexOf(term) !== -1 ? data : null;
+                },
+                language: {
+                    noResults: function () { return "Ничего не найдено"; },
+                    searching: function () { return "Поиск..."; }
+                }
+            });
+
+            // "Как в Excel": Enter выбирает первый результат
+            $el.on('select2:open', function () {
+                const $search = $('.select2-container--open .select2-search__field');
+                if (!$search.length) return;
+                $search.off('keyup.select2-excel').on('keyup.select2-excel', function (e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        const $results = $('.select2-results__option--highlighted, .select2-results__option:first');
+                        if ($results.length) {
+                            const value = $results.first().data('id');
+                            if (value !== undefined) {
+                                $el.val(value).trigger('change');
+                                $el.trigger('select2:close');
+                            }
+                        }
+                    }
+                });
+            });
+
+            performance.mark && performance.mark('select2-init-end');
+            performance.measure && performance.measure('select2-init', 'select2-init-start', 'select2-init-end');
+            const m = performance.getEntriesByName && performance.getEntriesByName('select2-init').pop();
+            if (m) console.log('select2 init:', Math.round(m.duration), 'ms');
         });
-        performance.mark && performance.mark('select2-init-end');
-        performance.measure && performance.measure('select2-init', 'select2-init-start', 'select2-init-end');
-        const m = performance.getEntriesByName && performance.getEntriesByName('select2-init').pop();
-        if (m) console.log('select2 init:', Math.round(m.duration), 'ms');
-    });
+    })();
 </script>
 
 <script>
@@ -754,6 +811,50 @@
             filterRow.appendChild(td);
         });
         thead.appendChild(filterRow);
+    })();
+</script>
+
+<script>
+    // Авто-расширение textarea в колонке "Примечание" (чтобы был виден весь текст)
+    (function () {
+        function resizeOne(el) {
+            if (!el) return;
+            // Сбрасываем, потом выставляем по scrollHeight
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight || 0) + 'px';
+        }
+
+        function resizeAll() {
+            document.querySelectorAll('.machine-note-textarea').forEach(resizeOne);
+        }
+
+        // Делаем доступным для вызова после ленивой подгрузки
+        window.resizeMachineNotes = resizeAll;
+
+        document.addEventListener('input', function (e) {
+            const t = e.target;
+            if (t && t.classList && t.classList.contains('machine-note-textarea')) {
+                resizeOne(t);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', resizeAll);
+        window.addEventListener('load', resizeAll);
+
+        // При ленивой вставке строк в tbody — ресайзим один раз на кадр
+        const tbody = document.getElementById('machines-tbody');
+        if (tbody && 'MutationObserver' in window) {
+            let scheduled = false;
+            const obs = new MutationObserver(function () {
+                if (scheduled) return;
+                scheduled = true;
+                requestAnimationFrame(function () {
+                    scheduled = false;
+                    resizeAll();
+                });
+            });
+            obs.observe(tbody, { childList: true, subtree: true });
+        }
     })();
 </script>
 
@@ -1066,16 +1167,54 @@
         function updateEnergySystemFields(data) {
             // Согласно новой логике:
             // - Федеральный округ определяется по субъекту РФ
-            // - Региональная энергосистема / ОЭС / Часть энергосистемы берутся из id_regional_energy_system станции
-            const element = document.getElementById("federal_district");
-            const value = (data && data.federal_district) ? data.federal_district : "Нет данных";
-            if (element) {
-                element.innerText = value;
-                element.style.transition = "background-color 0.3s ease";
-                element.style.backgroundColor = "#d4edda";
+            // - Региональная энергосистема / ОЭС / Часть энергосистемы:
+            //   * при смене субъекта РФ подставляются по основной РЭС из эндпоинта get_energy_system_data
+            //   * при ручном выборе РЭС — через updateEnergySystemFromRes()
+            const fdElement = document.getElementById("federal_district");
+            const resElement = document.getElementById("regional_energy_system");
+            const uesElement = document.getElementById("union_energy_system");
+            const estElement = document.getElementById("energy_system_type");
+
+            const fdValue = (data && data.federal_district) ? data.federal_district : "Нет данных";
+            if (fdElement) {
+                fdElement.innerText = fdValue;
+                fdElement.style.transition = "background-color 0.3s ease";
+                fdElement.style.backgroundColor = "#d4edda";
                 setTimeout(() => {
-                    element.style.backgroundColor = "";
+                    fdElement.style.backgroundColor = "";
                 }, 1000);
+            }
+
+            // Обновляем отображаемые значения РЭС / ОЭС / части энергосистемы,
+            // чтобы при смене субъекта они снова автоматически показывались
+            if (data) {
+                const resText = data.regional_energy_system || "Нет данных";
+                const uesText = data.union_energy_system || "Нет данных";
+                const estText = data.energy_system_type || "Нет данных";
+
+                // В режиме просмотра в блоке regional_energy_system просто текст,
+                // в режиме редактирования внутри находится select — текст обновлять не нужно
+                if (resElement && !resElement.querySelector("select")) {
+                    resElement.innerText = resText;
+                }
+
+                if (uesElement) {
+                    uesElement.innerText = uesText;
+                    uesElement.style.transition = "background-color 0.3s ease";
+                    uesElement.style.backgroundColor = "#d4edda";
+                    setTimeout(() => {
+                        uesElement.style.backgroundColor = "";
+                    }, 1000);
+                }
+
+                if (estElement) {
+                    estElement.innerText = estText;
+                    estElement.style.transition = "background-color 0.3s ease";
+                    estElement.style.backgroundColor = "#d4edda";
+                    setTimeout(() => {
+                        estElement.style.backgroundColor = "";
+                    }, 1000);
+                }
             }
         }
         

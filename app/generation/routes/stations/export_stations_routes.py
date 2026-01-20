@@ -19,7 +19,8 @@ def no_compress(f):
         return f(*args, **kwargs)
     return decorated_function
 from app.generation.services.station_services.station_services import (
-    get_station_list_data
+    get_station_list_data,
+    get_filtered_station_count
 )
 from app.generation.services.station_services.filters_services import (
     extract_filters_from_args,
@@ -37,7 +38,14 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_start_year,
     get_filter_end_year,
 )
-import pandas as pd
+
+# Проверка наличия pandas
+try:
+    import pandas as pd
+except ImportError as e:
+    import sys
+    print(f"КРИТИЧЕСКАЯ ОШИБКА: pandas не установлен! Установите командой: pip install pandas")
+    sys.exit(1)
 
 
 @station_bp.route('/export_station_sipr_ees_application_A', methods=['GET'])
@@ -107,7 +115,28 @@ def export_station_sipr_ees_application_A_routes():
         current_app.logger.error(f"Ошибка экспорта: {e}\n{error_details}")
         print(f"Ошибка экспорта: {e}")
         print(f"Полный traceback:\n{error_details}")
-        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
+        
+        # Проверяем наличие необходимых библиотек
+        missing_libs = []
+        try:
+            import pandas
+        except ImportError:
+            missing_libs.append("pandas")
+        try:
+            import openpyxl
+        except ImportError:
+            missing_libs.append("openpyxl")
+        try:
+            import xlsxwriter
+        except ImportError:
+            missing_libs.append("xlsxwriter")
+        
+        if missing_libs:
+            error_msg = f"Ошибка экспорта: отсутствуют необходимые библиотеки: {', '.join(missing_libs)}. Установите их командой: pip install {' '.join(missing_libs)}"
+        else:
+            error_msg = f"Ошибка экспорта данных: {str(e)}. Проверьте логи сервера для подробностей."
+        
+        flash(error_msg, "danger")
         return redirect(url_for("station_bp.station_list", **redirect_args))
 
 
@@ -148,6 +177,22 @@ def export_station_full_routes():
     print(f"  - start_year: {start_year}, end_year: {end_year}")
     print(f"  - rounding_digits: {rounding_digits}")
 
+    # Ранняя проверка количества станций перед загрузкой данных
+    try:
+        print(f"[EXPORT] Проверка количества станций перед загрузкой данных...")
+        stations_count_early = get_filtered_station_count(filters)
+        print(f"[EXPORT] Найдено станций: {stations_count_early}")
+        
+        # Проверка на слишком большое количество данных (более 1500 станций для экспорта)
+        # Уменьшено с 2000 до 1500 для предотвращения таймаутов
+        if stations_count_early > 1500:
+            flash(f"Экспорт слишком большого количества данных ({stations_count_early} станций). Пожалуйста, примените фильтры для уменьшения объема данных. Максимально допустимое количество: 1500 станций.", "warning")
+            return redirect(url_for("station_bp.station_list", **filters_for_redirect))
+    except Exception as count_error:
+        print(f"[EXPORT] Ошибка при подсчете станций: {count_error}")
+        # Продолжаем выполнение, если подсчет не удался
+        current_app.logger.warning(f"Не удалось подсчитать количество станций: {count_error}")
+
     try:
         # Try get precomputed dataset from export cache (from station_list render)
         user = session.get('username', 'anonymous')
@@ -182,9 +227,10 @@ def export_station_full_routes():
             flash("Нет данных для экспорта.", "warning")
             return redirect(url_for("station_bp.station_list", **filters_for_redirect))
 
-        # Проверка на слишком большое количество данных (более 2000 станций)
-        if stations_count > 2000:
-            flash(f"Экспорт слишком большого количества данных ({stations_count} станций). Пожалуйста, примените фильтры для уменьшения объема данных.", "warning")
+        # Проверка на слишком большое количество данных (более 1500 станций)
+        # Дополнительная проверка на случай, если ранняя проверка не сработала
+        if stations_count > 1500:
+            flash(f"Экспорт слишком большого количества данных ({stations_count} станций). Пожалуйста, примените фильтры для уменьшения объема данных. Максимально допустимое количество: 1500 станций.", "warning")
             return redirect(url_for("station_bp.station_list", **filters_for_redirect))
 
         print(f"[EXPORT] Начинаем генерацию Excel файла...")
@@ -251,7 +297,28 @@ def export_station_full_routes():
         current_app.logger.error(f"Ошибка экспорта: {e}\n{error_details}")
         print(f"❌ ОШИБКА ЭКСПОРТА: {e}")
         print(f"Traceback:\n{error_details}")
-        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
+        
+        # Проверяем наличие необходимых библиотек
+        missing_libs = []
+        try:
+            import pandas
+        except ImportError:
+            missing_libs.append("pandas")
+        try:
+            import openpyxl
+        except ImportError:
+            missing_libs.append("openpyxl")
+        try:
+            import xlsxwriter
+        except ImportError:
+            missing_libs.append("xlsxwriter")
+        
+        if missing_libs:
+            error_msg = f"Ошибка экспорта: отсутствуют необходимые библиотеки: {', '.join(missing_libs)}. Установите их командой: pip install {' '.join(missing_libs)}"
+        else:
+            error_msg = f"Ошибка экспорта данных: {str(e)}. Проверьте логи сервера для подробностей."
+        
+        flash(error_msg, "danger")
         return redirect(url_for("station_bp.station_list", **filters_for_redirect))
 
 

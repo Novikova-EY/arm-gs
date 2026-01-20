@@ -14,6 +14,35 @@ document.addEventListener("DOMContentLoaded", function () {
         if (field) field.classList.add(className);
     }
 
+    function getPowerCellsForRow(row) {
+        const directCells = Array.from(row.querySelectorAll("td.power-column"));
+        if (directCells.length) return directCells;
+
+        if (!row.classList.contains("p-ogr-row") &&
+            !row.classList.contains("p-rasp-row") &&
+            !row.classList.contains("total-power-row")) {
+            return [];
+        }
+
+        return Array.from(row.querySelectorAll("td")).filter(cell => {
+            if (cell.classList.contains("fuel-column") ||
+                cell.classList.contains("rowspan-td") ||
+                cell.classList.contains("fuel-cell") ||
+                cell.classList.contains("total-row-cell") ||
+                cell.classList.contains("total-row_cell")) {
+                return false;
+            }
+
+            if (cell.hasAttribute("rowspan") || cell.hasAttribute("colspan")) return false;
+
+            const text = (cell.textContent || "").trim();
+            if (!text) return false;
+            if (text === "Руст" || text === "Рогр" || text === "Ррасп") return false;
+
+            return true;
+        });
+    }
+
     button.addEventListener("click", function () {
         // СБРОС ПОДСВЕТКИ
         if (isHighlighted) {
@@ -34,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("✨ Подсветка изменений активирована");
 
         document.querySelectorAll("tr").forEach(row => {
-            const powerCells = row.querySelectorAll("td.power-column");
+            const powerCells = getPowerCellsForRow(row);
             const fuelCells = row.querySelectorAll("td.fuel-column");
 
             let previousPowerCell = null;
@@ -117,13 +146,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const origIsZero = isDash(origRaw) || isNaN(origVal) || origVal === 0;
             const currIsZero = isDash(currRaw) || isNaN(currVal) || currVal === 0;
+            const cell = input.closest("td.power-column");
 
             if (origIsZero && currVal > 0) {
-                input.classList.add("highlight-green");
+                addHighlightToCellAndField(cell, "highlight-green");
             } else if (!origIsZero && currIsZero) {
-                input.classList.add("highlight-red");
+                addHighlightToCellAndField(cell, "highlight-red");
             } else if (!isNaN(origVal) && !isNaN(currVal) && origVal !== currVal) {
-                input.classList.add("highlight-blue");
+                addHighlightToCellAndField(cell, "highlight-blue");
             }
         });
 

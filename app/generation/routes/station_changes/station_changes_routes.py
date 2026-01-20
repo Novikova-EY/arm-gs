@@ -62,8 +62,12 @@ def station_changes_list():
 
     filters = extract_filters_from_args(request.args)
     page = filters.pop("page", 1)
-    start_year = filters.pop("start_year", get_filter_start_year())
-    end_year = filters.pop("end_year", get_filter_end_year())
+    start_year = filters.pop("start_year", None)
+    end_year = filters.pop("end_year", None)
+    if start_year is None:
+        start_year = get_filter_start_year()
+    if end_year is None:
+        end_year = get_filter_end_year()
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))

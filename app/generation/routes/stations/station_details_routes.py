@@ -189,6 +189,9 @@ def _load_station_with_version(query_factory, requested_version_id):
     """
     Возвращает станцию и фактический ID версии (None, если базовая),
     с попыткой fallback на базовую версию, если запись для текущей версии отсутствует.
+    
+    Сначала ищет станцию по ID без фильтра по версии, чтобы проверить её существование.
+    Затем проверяет соответствие версии и делает fallback при необходимости.
     """
     def _apply_version_filter(q, version_id):
         if not hasattr(Station, "database_version_id"):
@@ -197,19 +200,32 @@ def _load_station_with_version(query_factory, requested_version_id):
             return q.filter(Station.database_version_id.is_(None))
         return q.filter(Station.database_version_id == version_id)
 
+    # Сначала проверяем, существует ли станция вообще (без фильтра по версии)
+    # Это нужно для диагностики: если станция не существует, вернем None
+    base_query = query_factory()
+    station_any_version = base_query.first()
+    
+    if not station_any_version:
+        # Станция с таким ID не существует вообще
+        return None, None
+
+    # Если запрашивается базовая версия (None)
     if requested_version_id is None:
         station = _apply_version_filter(query_factory(), None).first()
         if station:
             return station, station.database_version_id
-        return None, None
+        # Если станция существует, но не в базовой версии, возвращаем её
+        return station_any_version, station_any_version.database_version_id
 
+    # Ищем станцию в запрошенной версии
     station = _apply_version_filter(query_factory(), requested_version_id).first()
     if station:
         return station, station.database_version_id
 
-    fallback_station = _apply_version_filter(query_factory(), None).first()
-    if fallback_station:
-        return fallback_station, fallback_station.database_version_id
+    # Fallback: если станция существует, но не в запрошенной версии,
+    # возвращаем её (возможно, она из другой версии или базовой)
+    if station_any_version:
+        return station_any_version, station_any_version.database_version_id
 
     return None, requested_version_id
 
@@ -272,6 +288,15 @@ def station_details(station_id):
     
     if not station:
         abort(404)
+    
+    # Проверяем, соответствует ли версия станции текущей версии БД
+    if current_version_id is not None and station_version_id != current_version_id:
+        # Станция найдена, но не в текущей версии БД
+        flash(
+            f"Внимание: Станция '{station.name}' не найдена в текущей версии базы данных. "
+            f"Отображаются данные из другой версии.",
+            "warning"
+        )
 
     station.machines = _filter_items_by_version(station.machines, station_version_id)
 

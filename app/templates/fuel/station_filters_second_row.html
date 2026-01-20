@@ -1,0 +1,39 @@
+<!-- Вторая строка фильтров -->
+<div class="col-12 mb-2">
+    <div class="collapse" id="importExportCollapse">
+
+        <div class="d-flex justify-content-between align-items-start w-100 flex-nowrap">
+
+            <!-- Левая часть (экспорт) -->
+            <div class="d-flex gap-2">
+
+                <!-- Экспорт в Excel -->
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_groups') }}" id="exportExcelFormFull">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button" id="exportExcelFull" class="btn btn-outline-success" style="white-space: nowrap;">
+                        Экспорт списка отображаемых станций
+                    </button>
+                </form>
+            </div>
+
+            <!-- Правая часть (импорт) -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                {% if current_user.has_admin %}
+                <!-- Импорт -->
+                <form action="{{ url_for('station_bp.import_station_list_from_excel_routes') }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center">
+                    {{ form.csrf_token }}
+                    <input type="file" name="file" class="form-control me-2">
+                    <button type="submit" class="btn btn-outline-danger" style="white-space: nowrap;">
+                        Импорт
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>

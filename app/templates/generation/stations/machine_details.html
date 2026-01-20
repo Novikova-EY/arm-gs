@@ -154,7 +154,11 @@
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_equipment_group(class="form-select") }}
                                         {% else %}
-                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
+                                            {% if machine.station_equipment_group and machine.station_equipment_group.equipment_group %}
+                                                {{ machine.station_equipment_group.equipment_group.name }}
+                                            {% else %}
+                                                {{ machine.equipment_group.name if machine.equipment_group else '—' }}
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -588,7 +592,11 @@
                                             ) }}
                                         {% else %}
                                             {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
-                                            <span>{{ '—' if t.tes_type.data == 0 else (selected_tes_type or '—') }}</span>
+                                            {% if t.tes_type.data and t.tes_type.data != 0 and selected_tes_type and selected_tes_type|lower != 'не указано' %}
+                                                <span>{{ selected_tes_type }}</span>
+                                            {% else %}
+                                                <span>не указано</span>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -632,7 +640,11 @@
                                             ) }}
                                         {% else %}
                                             {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
-                                            <span>{{ '—' if f.fuel_type.data == 0 else (selected_fuel_type or '—') }}</span>
+                                            {% if f.fuel_type.data and f.fuel_type.data != 0 and selected_fuel_type and selected_fuel_type|lower != 'не указано' %}
+                                                <span>{{ selected_fuel_type }}</span>
+                                            {% else %}
+                                                <span>не указано</span>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                 {% endfor %}
@@ -1467,9 +1479,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 break; // Берем первый такой случай
             }
         }
-        if (decompYear !== null && dateDecompressingExpectedField) {
-            dateDecompressingExpectedField.value = decompYear;
-        }
+        // ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей (ввод/вывод/модернизация).
+        // Приоритет: вывод -> ввод -> модернизация.
         
         // Логика 2: Ожидаемый год ввода в эксплуатацию
         // Если p_ust[N] == 0 и p_ust[N+1] != 0, то date_exploitation_expected = N+1
@@ -1482,9 +1493,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 break; // Берем первый такой случай
             }
         }
-        if (explExpectedYear !== null && dateExploitationExpectedField) {
-            dateExploitationExpectedField.value = explExpectedYear;
-        }
+        // (значение применим позже, после выбора приоритета)
         
         // Логика 3: Ожидаемый год модернизации
         // Если p_ust[N] != 0 и p_ust[N+1] != 0 и p_ust[N+1] != p_ust[N], то date_modernization_expected = N+1
@@ -1497,8 +1506,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 break; // Берем первый такой случай
             }
         }
-        if (modernYear !== null && dateModernizationExpectedField) {
-            dateModernizationExpectedField.value = modernYear;
+        // (значение применим позже, после выбора приоритета)
+
+        // Выбираем единственное поле по приоритету событий мощности
+        const selectedKind =
+            (decompYear !== null) ? "decomp" :
+            (explExpectedYear !== null) ? "expl" :
+            (modernYear !== null) ? "modern" :
+            null;
+
+        function clearField(field) {
+            if (field) field.value = "";
+        }
+
+        if (selectedKind === "decomp") {
+            if (dateDecompressingExpectedField) dateDecompressingExpectedField.value = decompYear;
+            clearField(dateExploitationExpectedField);
+            clearField(dateModernizationExpectedField);
+        } else if (selectedKind === "expl") {
+            if (dateExploitationExpectedField) dateExploitationExpectedField.value = explExpectedYear;
+            clearField(dateDecompressingExpectedField);
+            clearField(dateModernizationExpectedField);
+        } else if (selectedKind === "modern") {
+            if (dateModernizationExpectedField) dateModernizationExpectedField.value = modernYear;
+            clearField(dateDecompressingExpectedField);
+            clearField(dateExploitationExpectedField);
         }
         
         // Дополнительно: Год ввода в эксплуатацию (если не задан)

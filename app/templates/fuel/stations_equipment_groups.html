@@ -1,0 +1,712 @@
+{% extends 'base.html' %}
+
+{% block title %}Электростанции Российской Федерации (с группами оборудования){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<!-- Индикатор загрузки для per_page=all -->
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных по станциям...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    {# Скроллим весь блок страницы: при прокрутке скрывается всё над шапкой таблицы #}
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Левая группа кнопок -->
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Электростанции Российской Федерации (с группами оборудования)</h2>
+            </div>
+
+            <!-- Правая группа: чекбоксы и подсветка -->
+            <div class="d-flex align-items-center gap-2 ms-auto">
+
+                
+                <!-- Кнопка добавления электростанции -->
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_equipment_groups_filters.html' %}
+
+    {% set column_count = 30 %}
+
+    <!-- Таблица с данными -->
+        <table class="table table-hover table-striped table-bordered table-responsive">
+
+            <!-- Шапка таблицы с данными -->
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th style="width: 180px;">Наименование</th>
+                    <th style="width: 50px;">Тип</th>
+                    <th style="width: 80px;">cт. №</th>
+                    <th style="width: 200px;">Тип агрегата</th>
+                    <th style="width: 80px;">niv</th>
+                    <th style="width: 80px;">comp</th>
+                    <th style="width: 80px;">main</th>
+                    <th style="width: 80px;">d</th>
+                    <th style="width: 80px;">r</th>
+                    <th style="width: 80px;">form</th>
+                    <th style="width: 80px;">type</th>
+                    <th style="width: 100px;">vedomstvo</th>
+                    <th style="width: 80px;">obl</th>
+                    <th style="width: 80px;">dep</th>
+                    <th style="width: 80px;">oes</th>
+                    <th style="width: 80px;">er</th>
+                    <th style="width: 80px;">fo</th>
+                    <th style="width: 80px;">numb</th>
+                    <th style="width: 80px;">tm</th>
+                    <th style="width: 80px;">n1</th>
+                    <th style="width: 80px;">n2</th>
+                    <th style="width: 80px;">p1</th>
+                    <th style="width: 80px;">p2</th>
+                    <th style="width: 100px;">ordnumb</th>
+                    <th style="width: 180px;">addr</th>
+                    <th style="width: 200px;">note</th>
+                    <th style="width: 100px;">codegor</th>
+                    <th style="width: 80px;">be</th>
+                    <th style="width: 80px;">gk</th>
+                    <th style="width: 80px;">gkf</th>
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+                {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+                {% for es_type_id in sorted_energy_system_type_ids %}
+                    {% set es_type_group = stations_grouped[es_type_id] %}
+
+                    {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                        <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">
+                                {{ energy_system_type_names[es_type_id] }}
+                            </td>
+                        </tr>
+                    {% endif %}
+
+                    {% for ues in union_energy_system_list %}
+                        {% set ues_id = ues.id %}
+                        {% set ues_group = es_type_group.get(ues_id) %}
+                        {% if ues_group %}
+
+                        {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                            <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">
+                                    {{ union_energy_system_names[ues_id] }}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% for res_id, res_group in ues_group.items() %}
+                            {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                                <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan="{{ column_count }}">
+                                        {{ regional_energy_system_names[res_id] }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                            {% for rd_id, rd_group in res_group.items() %}
+                                {% set rd_name = regional_district_names.get(rd_id) %}
+                                {% if rd_name and rd_name|lower != 'не указано' %}
+                                    {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                            <td colspan="{{ column_count }}">
+                                                {{ rd_name }}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+
+                                    {% for eu_id, eu_group in rd_group.items() %}
+                                        {% set eu_name = energy_unit_names.get(eu_id) %}
+                                        {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                        {% if not skip_eu %}
+                                            {% if eu_name and eu_name|lower != 'не указано' %}
+                                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                                        <td colspan="{{ column_count }}">
+                                                            {{ eu_name }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+
+                                        {% for station in eu_group %}
+                                            <tr class="table-light">
+                                                <td colspan="4" class="fw-bold text-start">
+                                                    {{ station.regional_district.name if station.regional_district and station.regional_district.name else '—' }}
+                                                </td>
+                                                <td colspan="4" class="fw-bold text-start">
+                                                    <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ station.name }}
+                                                    </a>
+                                                </td>
+                                                <td colspan="{{ column_count - 8 }}" class="fw-bold text-start">
+                                                    {{ station.gen_companies if station.gen_companies else '—' }}
+                                                </td>
+                                            </tr>
+
+                                            {% if station.machines %}
+                                                {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                                                {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
+                                                {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                                    {% set equipment_group_id = group.grouper %}
+                                                    {% set seg_list = station.station_equipment_groups
+                                                        | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                                        | list %}
+                                                    {% set seg = (
+                                                        group.list[0].station_equipment_group
+                                                        if group.list and group.list[0].station_equipment_group
+                                                        else (seg_list[0] if seg_list else None)
+                                                    ) %}
+                                                    {% set group_name = (
+                                                        seg.equipment_group.name
+                                                        if seg and seg.equipment_group
+                                                        else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                                    ) %}
+                                                    {% for machine in group.list %}
+                                                        <tr class="text-center align-middle">
+                                                            {% if loop.first %}
+                                                                <td rowspan="{{ group.list|length }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                                <td rowspan="{{ group.list|length }}">{{ group_name }}</td>
+                                                            {% endif %}
+                                                        <td>{{ machine.machine_number or '—' }}</td>
+                                                        <td>
+                                                            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                                {{ machine.machine_name or '—' }}
+                                                            </a>
+                                                        </td>
+                                                        {% if loop.first %}
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.niv if seg and seg.niv else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.comp if seg and seg.comp else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.main if seg and seg.main else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.d if seg and seg.d else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.r if seg and seg.r else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.form if seg and seg.form else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.type if seg and seg.type else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.vedomstvo if seg and seg.vedomstvo else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.obl if seg and seg.obl else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.dep if seg and seg.dep else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.oes if seg and seg.oes else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.er if seg and seg.er else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.fo if seg and seg.fo else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.numb if seg and seg.numb else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.tm if seg and seg.tm else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.n1 if seg and seg.n1 else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.n2 if seg and seg.n2 else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.p1 if seg and seg.p1 else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.p2 if seg and seg.p2 else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.ordnumb if seg and seg.ordnumb else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.addr if seg and seg.addr else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.note if seg and seg.note else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.codegor if seg and seg.codegor else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.be if seg and seg.be else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.gk if seg and seg.gk else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ seg.gkf if seg and seg.gkf else '—' }}</td>
+                                                        {% endif %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                                {% if machines_without_group %}
+                                                    {% for machine in machines_without_group %}
+                                                        <tr class="text-center align-middle">
+                                                            {% if loop.first %}
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                            {% endif %}
+                                                            <td>{{ machine.machine_number or '—' }}</td>
+                                                            <td>
+                                                                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                                    {{ machine.machine_name or '—' }}
+                                                                </a>
+                                                            </td>
+                                                            {% if loop.first %}
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                            {% endif %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="{{ column_count }}" class="text-center text-muted">Нет агрегатов для отображения</td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+
+                        {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+
+                {% endfor %}
+                {% else %}
+                    {% for station in stations %}
+                        <tr class="table-light">
+                            <td colspan="4" class="fw-bold text-start">
+                                {{ station.regional_district.name if station.regional_district and station.regional_district.name else '—' }}
+                            </td>
+                            <td colspan="4" class="fw-bold text-start">
+                                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                    {{ station.name }}
+                                </a>
+                            </td>
+                            <td colspan="{{ column_count - 8 }}" class="fw-bold text-start">
+                                {{ station.gen_companies if station.gen_companies else '—' }}
+                            </td>
+                        </tr>
+
+                        {% if station.machines %}
+                            {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                            {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
+                            {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                {% set equipment_group_id = group.grouper %}
+                                {% set seg_list = station.station_equipment_groups
+                                    | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                    | list %}
+                                {% set seg = (
+                                    group.list[0].station_equipment_group
+                                    if group.list and group.list[0].station_equipment_group
+                                    else (seg_list[0] if seg_list else None)
+                                ) %}
+                                {% set group_name = (
+                                    seg.equipment_group.name
+                                    if seg and seg.equipment_group
+                                    else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                ) %}
+                                {% for machine in group.list %}
+                                    <tr class="text-center align-middle">
+                                        {% if loop.first %}
+                                            <td rowspan="{{ group.list|length }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                            <td rowspan="{{ group.list|length }}">{{ group_name }}</td>
+                                        {% endif %}
+                                    <td>{{ machine.machine_number or '—' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                            {{ machine.machine_name or '—' }}
+                                        </a>
+                                    </td>
+                                    {% if loop.first %}
+                                        <td rowspan="{{ group.list|length }}">{{ seg.niv if seg and seg.niv else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.comp if seg and seg.comp else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.main if seg and seg.main else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.d if seg and seg.d else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.r if seg and seg.r else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.form if seg and seg.form else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.type if seg and seg.type else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.vedomstvo if seg and seg.vedomstvo else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.obl if seg and seg.obl else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.dep if seg and seg.dep else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.oes if seg and seg.oes else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.er if seg and seg.er else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.fo if seg and seg.fo else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.numb if seg and seg.numb else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.tm if seg and seg.tm else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.n1 if seg and seg.n1 else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.n2 if seg and seg.n2 else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.p1 if seg and seg.p1 else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.p2 if seg and seg.p2 else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.ordnumb if seg and seg.ordnumb else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.addr if seg and seg.addr else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.note if seg and seg.note else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.codegor if seg and seg.codegor else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.be if seg and seg.be else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.gk if seg and seg.gk else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ seg.gkf if seg and seg.gkf else '—' }}</td>
+                                    {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                            {% if machines_without_group %}
+                                {% for machine in machines_without_group %}
+                                    <tr class="text-center align-middle">
+                                        {% if loop.first %}
+                                            <td rowspan="{{ machines_without_group|length }}">—</td>
+                                            <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        {% endif %}
+                                        <td>{{ machine.machine_number or '—' }}</td>
+                                        <td>
+                                            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                {{ machine.machine_name or '—' }}
+                                            </a>
+                                        </td>
+                                    {% if loop.first %}
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                    {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        {% else %}
+                            <tr>
+                                <td colspan="{{ column_count }}" class="text-center text-muted">Нет агрегатов для отображения</td>
+                            </tr>
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+            
+        </table>
+
+        <!-- Пагинация (скрывается при прокрутке вниз) -->
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script id="initial-state-json" type="application/json">
+    {
+        "hasActiveFilters": {{ has_active_filters | tojson }}
+    }
+</script>
+
+<!-- Данные фильтров (для первой строки) -->
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<!-- jQuery и Select2 уже подключены в base.html -->
+
+<!-- Функции управления кэшем -->
+<script>
+function clearStationCache() {
+    if (confirm('Вы уверены, что хотите очистить кэш станций? Это может временно замедлить загрузку страницы.')) {
+        fetch('{{ url_for("station_bp.clear_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Показываем уведомление об успехе
+                showNotification('Кэш станций успешно очищен', 'success');
+                // Перезагружаем страницу для обновления данных
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при очистке кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при очистке кэша:', error);
+            showNotification('Ошибка при очистке кэша', 'error');
+        });
+    }
+}
+
+function refreshStationCache() {
+    if (confirm('Вы уверены, что хотите обновить кэш станций? Это может занять некоторое время.')) {
+        // Показываем индикатор загрузки
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        fetch('{{ url_for("station_bp.refresh_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Скрываем индикатор загрузки
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            
+            if (data.success) {
+                showNotification('Кэш станций успешно обновлен', 'success');
+                // Перезагружаем страницу для обновления данных
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при обновлении кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при обновлении кэша:', error);
+            // Скрываем индикатор загрузки
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            showNotification('Ошибка при обновлении кэша', 'error');
+        });
+    }
+}
+
+function showNotification(message, type) {
+    // Создаем уведомление
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Автоматически скрываем через 5 секунд
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+{% include 'generation/stations/scripts/station_list_scripts.html' %}
+
+<!-- Скрипт для обработки экспорта на странице stations_equipment_groups -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const exportButton = document.getElementById("exportExcelFull");
+    if (!exportButton) return;
+    
+    // Сохраняем оригинальный обработчик, чтобы переопределить его
+    const form = document.getElementById("exportExcelFormFull");
+    if (!form) return;
+    
+    // Удаляем все существующие обработчики события click
+    const newButton = exportButton.cloneNode(true);
+    exportButton.parentNode.replaceChild(newButton, exportButton);
+    
+    newButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Сохраняем ссылку на кнопку
+        const button = this;
+        const originalText = button.innerHTML;
+        
+        // Визуальная индикация
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        button.disabled = true;
+        
+        // Формируем URL с текущими параметрами страницы
+        const currentUrl = new URL(window.location.href);
+        const params = new URLSearchParams(currentUrl.search);
+        
+        // Формируем URL для экспорта
+        const exportUrl = form.action + '?' + params.toString();
+        
+        console.log('[EXPORT] Начало экспорта stations_equipment_groups');
+        console.log('[EXPORT] URL:', exportUrl);
+        
+        // Используем fetch для экспорта
+        fetch(exportUrl, {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log('[EXPORT] Ответ получен, статус:', response.status);
+            
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('[EXPORT] Ошибка сервера:', text);
+                    throw new Error(`Ошибка сервера (${response.status}): ${text.substring(0, 200)}`);
+                });
+            }
+            
+            const contentType = response.headers.get('content-type');
+            console.log('[EXPORT] Content-Type:', contentType);
+            
+            if (contentType && contentType.includes('application/vnd.openxmlformats')) {
+                // Это Excel файл, скачиваем его
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = `Электростанции_с_группами_оборудования_${timestamp}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    console.log('[EXPORT] Файл успешно скачан');
+                });
+            } else {
+                // Возможно, это редирект с сообщением об ошибке
+                return response.text().then(text => {
+                    console.warn('[EXPORT] Неожиданный тип ответа:', contentType);
+                    throw new Error('Получен неожиданный тип ответа от сервера');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('[EXPORT] Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        })
+        .finally(() => {
+            // Возвращаем состояние кнопки
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    });
+});
+</script>
+
+<!-- Скрываем индикатор загрузки после полной загрузки -->
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 500);
+    });
+</script>
+
+<!-- Скрипт для сброса отдельных фильтров в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Обработка кликов по кнопкам сброса фильтров
+        document.querySelectorAll('.filter-clear-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Предотвращаем всплытие события
+                
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+                
+                // Получаем текущие параметры URL
+                const urlParams = new URLSearchParams(window.location.search);
+                
+                // Удаляем все значения этого фильтра
+                urlParams.delete(filterName);
+                
+                // Сбрасываем страницу на первую при изменении фильтров
+                urlParams.set('page', '1');
+                
+                // Формируем новый URL
+                const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                
+                // Перенаправляем на новый URL
+                window.location.href = newUrl;
+            });
+        });
+    });
+</script>
+
+{% endblock %}

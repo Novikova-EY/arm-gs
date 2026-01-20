@@ -4,6 +4,8 @@ Station model (Электростанция).
 - Сохранены все исходные связи и индексы/уникальные ограничения.
 - Добавлены серверные таймстемпы (UTC).
 """
+import uuid
+from sqlalchemy import event
 from sqlalchemy.sql import func
 from sqlalchemy.schema import UniqueConstraint, Index
 from app.extensions import db
@@ -16,12 +18,17 @@ class Station(db.Model, VersionedModelMixin):
         UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
         Index('ix_station_id_regional_district', 'id_regional_district'),
         Index('ix_station_name', 'name'),
+        Index('ix_station_external_code', 'external_code'),
         Index('ix_station_id_station_group', 'id_station_group'),
         Index('ix_station_id_station_type', 'id_station_type'),
         {"schema": SCHEMA_GENERATION},
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    external_code = db.Column(
+        db.String(36),
+        nullable=False,
+    )
 
     # FK -> StationGroup
     id_station_group = db.Column(
@@ -197,3 +204,25 @@ class Station(db.Model, VersionedModelMixin):
 
     def __repr__(self) -> str:
         return f"<Station id={self.id} name={self.name!r}>"
+
+
+def _station_key(name, name_so, name_combined, district_id) -> str:
+    if name_so:
+        return f"station|so|{name_so}"
+    if name_combined:
+        return f"station|combined|{name_combined}"
+    return f"station|name|{name or ''}|district|{district_id or ''}"
+
+
+@event.listens_for(Station, 'before_insert')
+def generate_external_code_before_insert(mapper, connection, target):
+    """Генерирует стабильный external_code перед вставкой станции."""
+    if target.external_code:
+        return
+    key = _station_key(
+        target.name,
+        target.name_so,
+        target.name_combined,
+        target.id_regional_district,
+    )
+    target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, key))

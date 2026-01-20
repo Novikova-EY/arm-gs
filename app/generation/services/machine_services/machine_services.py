@@ -30,6 +30,7 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.years.year_model import Year
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
+from app.refdata.models.fuels.station_equpment_group_model import StationEquipmentGroup
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
 
 from app.generation.services.station_services.station_services import (
@@ -78,6 +79,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
             db.joinedload(Machine.machine_type),
             db.joinedload(Machine.tes_machine_type),
             db.joinedload(Machine.equipment_group),
+            db.joinedload(Machine.station_equipment_group).joinedload(StationEquipmentGroup.equipment_group),
             db.joinedload(Machine.machine_powers),
             db.joinedload(Machine.machine_fuels),
             db.joinedload(Machine.machine_tes_types),
@@ -249,6 +251,24 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         "year_features": year_features,
         "all_documents": all_documents,
     }
+
+
+def _get_or_create_station_equipment_group(station_id, equipment_group_id):
+    if not station_id or not equipment_group_id:
+        return None
+    seg = StationEquipmentGroup.query.filter_by(
+        id_station=station_id,
+        id_equipment_group=equipment_group_id,
+    ).first()
+    if seg is None:
+        seg = StationEquipmentGroup(
+            id_station=station_id,
+            id_equipment_group=equipment_group_id,
+        )
+        set_db_version_on_create(seg)
+        db.session.add(seg)
+        db.session.flush()
+    return seg
 
 
 @no_autoflush
@@ -452,6 +472,13 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                 elif old_v != new_v:
                     # Если строки одинаковы, но значения разные, просто обновляем без логирования
                     setattr(machine, fld, new_v)
+
+        # Синхронизируем station_equipment_group_id с выбранным типом оборудования
+        seg = _get_or_create_station_equipment_group(
+            station_id=machine.id_station,
+            equipment_group_id=machine.id_equipment_group,
+        )
+        machine.station_equipment_group_id = seg.id if seg else None
 
         date_fields = [
             "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
@@ -962,6 +989,51 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 set_db_version_on_create(pgu_power)
                 db.session.add(pgu_power)
 
+            powers_seq = [(pe.year.data, to_decimal(pe.p_ust.data)) for pe in pgu_form.powers.entries]
+
+            # ============================================================
+            # ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей:
+            # - date_exploitation (год ввода)
+            # - date_decompressing_expected (год вывода)
+            # - date_modernization_expected (год модернизации)
+            #
+            # Приоритет: вывод -> ввод -> модернизация
+            # ============================================================
+            decomp_year = _calculate_decompressing_expected_year_from_powers(powers_seq)
+            expl_year = _calculate_exploitation_year_from_powers(powers_seq)
+            modern_year = _calculate_modernization_expected_year_from_powers(powers_seq)
+
+            selected_kind = None
+            selected_year = None
+            if decomp_year is not None:
+                selected_kind, selected_year = "decomp", decomp_year
+            elif expl_year is not None:
+                selected_kind, selected_year = "expl", expl_year
+            elif modern_year is not None:
+                selected_kind, selected_year = "modern", modern_year
+
+            def _set_int_field(attr: str, value: int | None, label: str):
+                old_val = getattr(pgu_machine, attr)
+                if old_val != value:
+                    changes.append(f"{label}: {old_val} → {value if value is not None else '—'}")
+                    setattr(pgu_machine, attr, value)
+
+            if selected_kind == "decomp":
+                _set_int_field("date_decompressing_expected", selected_year, "date_decompressing_expected")
+                _set_int_field("date_exploitation", None, "date_exploitation")
+                _set_int_field("date_modernization_expected", None, "date_modernization_expected")
+            elif selected_kind == "expl":
+                _set_int_field("date_exploitation", selected_year, "date_exploitation")
+                _set_int_field("date_decompressing_expected", None, "date_decompressing_expected")
+                _set_int_field("date_modernization_expected", None, "date_modernization_expected")
+            elif selected_kind == "modern":
+                _set_int_field("date_modernization_expected", selected_year, "date_modernization_expected")
+                _set_int_field("date_decompressing_expected", None, "date_decompressing_expected")
+                _set_int_field("date_exploitation", None, "date_exploitation")
+            else:
+                # Ничего не вычислили — не меняем поля автоматически
+                pass
+
         _commit_with_retry()
         
         # ВАЖНО: ПГУ влияет на агрегаты/агрегации — чистим кэш после мутаций
@@ -1105,6 +1177,92 @@ def to_decimal(val):
     except (InvalidOperation, TypeError):
         return None
     
+
+def _calculate_decompressing_expected_year_from_powers(powers_sequence: list[tuple[int, Decimal | None]]) -> int | None:
+    """
+    Ожидаемый год вывода из эксплуатации = первый год, когда мощность становится 0.
+    При переходе >0 (год N) -> 0 (год N+1) возвращаем N+1.
+    """
+    if not powers_sequence:
+        return None
+
+    seq = sorted(
+        [(int(y), (p if isinstance(p, Decimal) else None)) for y, p in powers_sequence if y is not None],
+        key=lambda t: t[0],
+    )
+    if len(seq) < 2:
+        return None
+
+    for i in range(len(seq) - 1):
+        _, p_cur = seq[i]
+        y_next, p_next = seq[i + 1]
+
+        cur_pos = isinstance(p_cur, Decimal) and p_cur > 0
+        next_pos = isinstance(p_next, Decimal) and p_next > 0
+        if cur_pos and not next_pos:
+            return y_next
+
+    return None
+
+
+def _calculate_exploitation_year_from_powers(powers_sequence: list[tuple[int, Decimal | None]]) -> int | None:
+    """
+    Год ввода (для ПГУ используем `date_exploitation`) по мощности:
+    - если p_ust[N] == 0 и p_ust[N+1] > 0 -> возвращаем N+1
+    - если такого перехода нет, но есть ненулевая мощность -> возвращаем первый год с p_ust > 0
+    """
+    if not powers_sequence:
+        return None
+
+    seq = sorted(
+        [(int(y), (p if isinstance(p, Decimal) else None)) for y, p in powers_sequence if y is not None],
+        key=lambda t: t[0],
+    )
+    if not seq:
+        return None
+
+    def _pos(p: Decimal | None) -> bool:
+        return isinstance(p, Decimal) and p > 0
+
+    for i in range(len(seq) - 1):
+        _, p_cur = seq[i]
+        y_next, p_next = seq[i + 1]
+        if (not _pos(p_cur)) and _pos(p_next):
+            return y_next
+
+    for y, p in seq:
+        if _pos(p):
+            return y
+
+    return None
+
+
+def _calculate_modernization_expected_year_from_powers(powers_sequence: list[tuple[int, Decimal | None]]) -> int | None:
+    """
+    Ожидаемый год модернизации по мощности:
+    если p_ust[N] > 0 и p_ust[N+1] > 0 и значения различаются -> возвращаем N+1 (первый такой случай).
+    """
+    if not powers_sequence:
+        return None
+
+    seq = sorted(
+        [(int(y), (p if isinstance(p, Decimal) else None)) for y, p in powers_sequence if y is not None],
+        key=lambda t: t[0],
+    )
+    if len(seq) < 2:
+        return None
+
+    def _pos(p: Decimal | None) -> bool:
+        return isinstance(p, Decimal) and p > 0
+
+    for i in range(len(seq) - 1):
+        _, p_cur = seq[i]
+        y_next, p_next = seq[i + 1]
+        if _pos(p_cur) and _pos(p_next) and p_cur != p_next:
+            return y_next
+
+    return None
+
 
 def is_same_decimal(a, b, tol=6):
     if a is None and (b is None or Decimal(b) == 0):
@@ -1330,41 +1488,69 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     # По требованиям UI/бизнес-логики НЕ рассчитываем автоматически.
     # Поле `date_exploitation` заполняется пользователем вручную.
 
-    # --- Ожидаемый год ввода ---
-    if new_expected_expl_year is not None:
-        if machine.date_exploitation_expected != new_expected_expl_year:
-            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → {new_expected_expl_year}")
-            flash(f"🧠 Ожидаемый год ввода автоматически определен: {new_expected_expl_year}", "info")
-            machine.date_exploitation_expected = new_expected_expl_year
+    # ============================================================
+    # ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей:
+    # - date_exploitation_expected (ожидаемый год ввода)
+    # - date_decompressing_expected (ожидаемый год вывода)
+    # - date_modernization_expected (ожидаемый год модернизации)
+    #
+    # Выбор делаем по приоритету событий мощности:
+    # 1) вывод (>0 -> 0) — самый приоритетный
+    # 2) ввод (0 -> >0)
+    # 3) модернизация (>0 -> >0 и изменилось значение)
+    # ============================================================
+    effective_decomp_year = new_decomp_year if (new_decomp_year is not None and new_decomp_year < Config.END_YEAR) else None
 
-    # --- Ожидаемый год вывода ---
-    if new_decomp_year is not None and new_decomp_year < Config.END_YEAR:
-        if machine.date_decompressing_expected != new_decomp_year:
-            changes.append(f"Год вывода: {machine.date_decompressing_expected} → {new_decomp_year}")
-            flash(f"🧠 Ожидаемый год вывода автоматически определен: {new_decomp_year}", "info")
-            machine.date_decompressing_expected = new_decomp_year
-    elif new_decomp_year is None:
-        # Не удалось определить год вывода автоматически — не трогаем существующее значение
-        pass
-    else:
+    selected_kind = None
+    selected_year = None
+    if effective_decomp_year is not None:
+        selected_kind, selected_year = "decomp", effective_decomp_year
+    elif new_expected_expl_year is not None:
+        selected_kind, selected_year = "expl", new_expected_expl_year
+    elif new_modern_year is not None:
+        selected_kind, selected_year = "modern", new_modern_year
+
+    if selected_kind == "decomp":
+        if machine.date_decompressing_expected != selected_year:
+            changes.append(f"Год вывода: {machine.date_decompressing_expected} → {selected_year}")
+            flash(f"🧠 Ожидаемый год вывода автоматически определен: {selected_year}", "info")
+            machine.date_decompressing_expected = selected_year
+        # очищаем остальные два поля (взаимоисключаемость)
+        if machine.date_exploitation_expected is not None:
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → —")
+            machine.date_exploitation_expected = None
+        if machine.date_modernization_expected is not None:
+            changes.append(f"Год модернизации: {machine.date_modernization_expected} → —")
+            machine.date_modernization_expected = None
+
+    elif selected_kind == "expl":
+        if machine.date_exploitation_expected != selected_year:
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → {selected_year}")
+            flash(f"🧠 Ожидаемый год ввода автоматически определен: {selected_year}", "info")
+            machine.date_exploitation_expected = selected_year
         if machine.date_decompressing_expected is not None:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")
-            flash(f"🧠 Год вывода удален: агрегат продолжает работать", "info")
             machine.date_decompressing_expected = None
+        if machine.date_modernization_expected is not None:
+            changes.append(f"Год модернизации: {machine.date_modernization_expected} → —")
+            machine.date_modernization_expected = None
 
-    # --- Ожидаемый год модернизации ---
-    if new_modern_year is not None:
-        if machine.date_modernization_expected != new_modern_year:
-            changes.append(f"Год модернизации: {machine.date_modernization_expected} → {new_modern_year}")
-            flash(f"🧠 Ожидаемый год модернизации автоматически определен: {new_modern_year}", "info")
-            machine.date_modernization_expected = new_modern_year
-    elif machine.date_modernization_expected is not None:
-        # Если формально год модернизации не определяется по правилам,
-        # но в данных он указан, оставляем как есть, только предупреждаем
-        flash(
-            "[WARNING] Расчетный год модернизации не найден по текущим данным о мощности, "
-            "но в агрегате указано значение. Проверьте корректность вручную.",
-            "warning",
-        )
+    elif selected_kind == "modern":
+        if machine.date_modernization_expected != selected_year:
+            changes.append(f"Год модернизации: {machine.date_modernization_expected} → {selected_year}")
+            flash(f"🧠 Ожидаемый год модернизации автоматически определен: {selected_year}", "info")
+            machine.date_modernization_expected = selected_year
+        if machine.date_decompressing_expected is not None:
+            changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")
+            machine.date_decompressing_expected = None
+        if machine.date_exploitation_expected is not None:
+            changes.append(f"Ожидаемый год ввода: {machine.date_exploitation_expected} → —")
+            machine.date_exploitation_expected = None
+
+    else:
+        # Ничего не выбрано — не трогаем текущие значения.
+        # Ранее тут было предупреждение про модернизацию; теперь оно не нужно,
+        # чтобы не мешать логике взаимоисключаемости.
+        pass
 
 

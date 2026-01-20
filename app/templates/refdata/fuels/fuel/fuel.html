@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Виды топлива{% endblock %}
+{% block title %}Типы топлива{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -134,7 +134,7 @@
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
-                                    Вид топлива
+                                    Тип топлива
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲

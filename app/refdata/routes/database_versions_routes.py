@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import datetime
 import os
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.generation.routes.stations import station_bp
@@ -183,6 +183,14 @@ def database_versions():
                     creators_map[lg.entity_id] = lg.username
     except Exception:
         creators_map = {}
+    
+    # Получаем текущую версию БД для пользователя (из сессии или активную)
+    from flask import g
+    from app.common.middleware.database_version_middleware import get_current_version_id
+    current_version_id = get_current_version_id()
+    current_db_version = None
+    if current_version_id:
+        current_db_version = DatabaseVersion.query.get(current_version_id)
 
     return render_template(
         "generation/database_versions/database_versions.html",
@@ -193,7 +201,8 @@ def database_versions():
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page,
-        creators_map=creators_map
+        creators_map=creators_map,
+        current_db_version=current_db_version
     )
 
 

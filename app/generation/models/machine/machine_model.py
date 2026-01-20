@@ -4,8 +4,11 @@ Machine model (Агрегат электростанции).
 - Сохранены все исходные связи и индексы.
 - Добавлены серверные таймстемпы (UTC).
 """
+import uuid
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
+from sqlalchemy import event
+from sqlalchemy.sql import text as sql_text
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.versioned_model import VersionedModelMixin
@@ -17,8 +20,10 @@ class Machine(db.Model, VersionedModelMixin):
         Index('ix_machine_id_condition_type', 'id_condition_type'),
         Index('ix_machine_id_tes_machine_type', 'id_tes_machine_type'),
         Index('ix_machine_id_equipment_group', 'id_equipment_group'),
+        Index('ix_machine_station_equipment_group_id', 'station_equipment_group_id'),
         Index('ix_machine_id_gen_company', 'id_gen_company'),
         Index('ix_machine_id_energy_area', 'id_energy_area'),
+        Index('ix_machine_external_code', 'external_code'),
         Index('ix_machine_date_exploitation', 'date_exploitation'),
         Index('ix_machine_date_decompressing_expected', 'date_decompressing_expected'),
         Index('ix_machine_date_modernization_expected', 'date_modernization_expected'),
@@ -26,6 +31,12 @@ class Machine(db.Model, VersionedModelMixin):
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Универсальный внешний код для трехсторонней привязки:
+    # станция - группа оборудования - агрегат
+    external_code = db.Column(
+        db.String(36),
+        nullable=False,
+    )
     id_ti = db.Column(db.Integer, nullable=True)
 
     # FK -> ConditionType
@@ -114,6 +125,15 @@ class Machine(db.Model, VersionedModelMixin):
         index=True,
     )
     equipment_group = db.relationship('EquipmentGroup', back_populates='machines')
+
+    # FK -> StationEquipmentGroup (группа оборудования на конкретной станции)
+    station_equipment_group_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{SCHEMA_GENERATION}.station_equipment_groups.id', ondelete='RESTRICT'),
+        nullable=True,
+        index=True,
+    )
+    station_equipment_group = db.relationship('StationEquipmentGroup', back_populates='machines')
 
     # Children: powers / fuels / tes_types
     machine_powers = db.relationship(
@@ -284,3 +304,65 @@ class Machine(db.Model, VersionedModelMixin):
 
     def __repr__(self) -> str:
         return f"<Machine id={self.id} name={self.machine_name!r} station_id={self.id_station}>"
+
+
+@event.listens_for(Machine, 'before_insert')
+def generate_external_code_before_insert(mapper, connection, target):
+    """
+    Генерирует external_code для агрегата перед вставкой записи.
+    Трехсторонняя привязка: станция - группа оборудования - агрегат
+    """
+    # Если код уже есть, не меняем его
+    if target.external_code:
+        return
+    
+    # Получаем external_code связки станция-группа оборудования
+    station_equipment_group_code = None
+    
+    # Пытаемся получить через связь, если она загружена
+    if target.station_equipment_group and hasattr(target.station_equipment_group, 'external_code'):
+        station_equipment_group_code = target.station_equipment_group.external_code
+    
+    # Если связь не загружена, загружаем через SQL-запрос
+    if not station_equipment_group_code and target.station_equipment_group_id:
+        result = connection.execute(
+            sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.station_equipment_groups WHERE id = :id"),
+            {"id": target.station_equipment_group_id}
+        )
+        row = result.fetchone()
+        if row:
+            station_equipment_group_code = row[0]
+    
+    # Если связка станция-группа оборудования не указана, используем fallback
+    if not station_equipment_group_code:
+        # Получаем external_code станции
+        station_code = None
+        if target.machine_station and hasattr(target.machine_station, 'external_code'):
+            station_code = target.machine_station.external_code
+        elif target.id_station:
+            result = connection.execute(
+                sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.stations WHERE id = :id"),
+                {"id": target.id_station}
+            )
+            row = result.fetchone()
+            if row:
+                station_code = row[0]
+        
+        # external_code группы оборудования НЕ используем; берем только ID группы оборудования
+        equipment_group_id = target.id_equipment_group or 0
+
+        # Fallback на ID, если external_code станции ещё не заполнен
+        station_code = station_code or f"station_id_{target.id_station}"
+        
+        # Формируем ключ связки станция-группа оборудования (через ID группы оборудования)
+        seg_key = f"station_equipment_group|station|{station_code}|equipment_group_id|{equipment_group_id}"
+        station_equipment_group_code = str(uuid.uuid5(uuid.NAMESPACE_URL, seg_key))
+    
+    # Формируем ключ для трехсторонней привязки: станция-группа оборудования-агрегат
+    machine_key = (
+        f"machine|station_equipment_group|{station_equipment_group_code}|"
+        f"ti|{target.id_ti or ''}|num|{target.machine_number or ''}|name|{target.machine_name or ''}"
+    )
+    
+    # Генерируем детерминированный UUID5
+    target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, machine_key))

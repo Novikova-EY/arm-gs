@@ -124,16 +124,12 @@
         <tr class="text-center p-ogr-row machine-ogr-row">
             <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
             {% for year in range(start_year, end_year + 1) %}
-                <td >
+                <td class="power-column">
                     {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
-                    {% if p_ogr_value == 0 %}
+                    {% if p_ogr_value is none or p_ogr_value == 0 %}
                         &mdash;
                     {% else %}
-                        {% if p_ogr_value == None %}
-
-                        {% else %}
-                            {{ p_ogr_value | format_decimal }}
-                        {% endif %}
+                        {{ p_ogr_value | format_decimal }}
                     {% endif %}
                 </td>
             {% endfor %}
@@ -144,16 +140,12 @@
 
             <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}
-                <td >
+                <td class="power-column">
                     {% set p_rasp_value = machine.powers_by_year.get(year, {}).get("p_rasp") %}
-                    {% if p_rasp_value == 0 %}
+                    {% if p_rasp_value is none or p_rasp_value == 0 %}
                         &mdash;
                     {% else %}
-                        {% if p_rasp_value == None %}
-
-                        {% else %}
-                            {{ p_rasp_value | format_decimal }}
-                        {% endif %}
+                        {{ p_rasp_value | format_decimal }}
                     {% endif %}
                 </td>
             {% endfor %}
@@ -278,7 +270,7 @@
                 <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
 
                 {% for year in range(start_year, end_year + 1) %}
-                    <td class="text-center align-middle">
+                    <td class="text-center align-middle power-column">
                         {% set p_ust_value = pgu_machine.powers_by_year.get(year, {}) %}
                         {% if p_ust_value is none or p_ust_value == 0 %}
                             &mdash;
@@ -300,18 +292,14 @@
 
             <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
             {% for year in range(start_year, end_year + 1) %}
-            <td >
-                {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
-                {% if p_ogr_value == 0 %}
-                    &mdash;
-                {% else %}
-                    {% if p_ogr_value == None %}
-
+                <td class="power-column">
+                    {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
+                    {% if p_ogr_value is none or p_ogr_value == 0 %}
+                        &mdash;
                     {% else %}
-                    {{ p_ogr_value | format_decimal }}
+                        {{ p_ogr_value | format_decimal }}
                     {% endif %}
-                {% endif %}
-            </td>
+                </td>
             {% endfor %}
         </tr>
 
@@ -322,16 +310,12 @@
             
             <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}
-            <td >
+                <td class="power-column">
                     {% set p_rasp_value = machine.powers_by_year.get(year, {}).get("p_rasp") %}
-                    {% if p_rasp_value == 0 %}
+                    {% if p_rasp_value is none or p_rasp_value == 0 %}
                         &mdash;
                     {% else %}
-                    {% if p_rasp_value == None %}
-                    
-                    {% else %}
-                    {{ p_rasp_value | format_decimal }}
-                    {% endif %}
+                        {{ p_rasp_value | format_decimal }}
                     {% endif %}
                 </td>
             {% endfor %}

@@ -513,15 +513,64 @@ document.addEventListener("DOMContentLoaded", () => {
             // Формируем URL для экспорта
             const exportUrl = '/generation/stations/export_station_full?' + params.toString();
             
-            // Простой и быстрый способ - прямое скачивание без блокировки UI
-            // Браузер автоматически начнёт скачивание, страница не перезагрузится
-            window.location.href = exportUrl;
+            console.log('[EXPORT] Начало экспорта станций');
+            console.log('[EXPORT] URL:', exportUrl);
             
-            // Возвращаем состояние кнопки
-            setTimeout(() => {
+            // Пробуем использовать fetch для лучшей обработки ошибок
+            fetch(exportUrl, {
+                method: 'GET',
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                console.log('[EXPORT] Ответ получен, статус:', response.status);
+                
+                if (!response.ok) {
+                    // Если ошибка, пытаемся получить текст ошибки
+                    return response.text().then(text => {
+                        console.error('[EXPORT] Ошибка сервера:', text);
+                        throw new Error(`Ошибка сервера (${response.status}): ${text.substring(0, 200)}`);
+                    });
+                }
+                
+                // Проверяем тип контента
+                const contentType = response.headers.get('content-type');
+                console.log('[EXPORT] Content-Type:', contentType);
+                
+                if (contentType && contentType.includes('application/vnd.openxmlformats')) {
+                    // Это Excel файл, скачиваем его
+                    return response.blob().then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `stations_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        console.log('[EXPORT] Файл успешно скачан');
+                    });
+                } else {
+                    // Возможно, это редирект с сообщением об ошибке
+                    return response.text().then(text => {
+                        console.warn('[EXPORT] Неожиданный тип ответа:', contentType);
+                        // Пробуем открыть как HTML (может быть страница с ошибкой)
+                        const newWindow = window.open();
+                        if (newWindow) {
+                            newWindow.document.write(text);
+                        }
+                        throw new Error('Получен неожиданный тип ответа от сервера');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('[EXPORT] Ошибка при экспорте:', error);
+                alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+            })
+            .finally(() => {
+                // Возвращаем состояние кнопки
                 this.innerHTML = originalText;
                 this.disabled = false;
-            }, 500);
+            });
         });
     }
 
