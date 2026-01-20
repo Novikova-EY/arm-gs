@@ -98,20 +98,20 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.6
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.8
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.6 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.8 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 Используйте любой удобный способ (scp, rsync, artifact registry):
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.6_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.8_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 ```
 ---
 
@@ -121,7 +121,9 @@ scp C:\arm_gs\packaging\generation-app_1.0.6_amd64.deb novikova-eyu@10.31.205.27
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.6_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.8_amd64.deb || sudo apt -f install
+sudo systemctl restart generation-app
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 **Что происходит при установке:**
@@ -153,7 +155,7 @@ export FLASK_APP=run.py
 export FLASK_ENV=production
 flask db upgrade
 
-- Для обновления соберите новый пакет с версией `1.0.6`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.6_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.8`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.8_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 
@@ -183,11 +185,25 @@ sudo systemctl enable generation-app
 
 📜 4. Смотреть логи приложения
 
-Самое важное — потому что если что-то не так, нам надо увидеть ошибки:
+Flask + Gunicorn (твой код)
 
-```bash
-journalctl -u generation-app -f
-```
+sudo journalctl -u generation-app -f
+
+
+Nginx
+
+sudo tail -n 200 /var/log/nginx/error.log
+sudo tail -n 200 /var/log/nginx/access.log
+
+
+PostgreSQL
+
+sudo tail -n 200 /var/log/postgresql/*.log
+
+
+Redis
+
+sudo tail -n 200 /var/log/redis/redis-server.log
 
 (будет показывать логи в реальном времени)
 
