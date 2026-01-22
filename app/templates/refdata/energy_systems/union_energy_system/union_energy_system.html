@@ -271,12 +271,12 @@
                                 <!-- Строки таблицы. Столбец "Порядок отображения" -->
                                 <td>
                                     <input 
-                                        type="text" 
+                                        type="number" 
                                         name="display_orders[]" 
                                         class="form-control text-center" 
                                         value="{{ union_energy_system.display_order if union_energy_system.display_order is not none else '' }}"
-                                        style="border: none; resize: none; width: 100%; background: transparent;"
-                                        pattern="[0-9]*"
+                                        style="width: 100%;"
+                                        min="0" step="1" placeholder=""
                                     >
                                 </td>
 
@@ -287,18 +287,17 @@
                                         name="union_energy_system_names[]" 
                                         class="form-control" 
                                         value="{{ union_energy_system.name }}"
-                                        style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent;"
                                     >
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Полное наименование ОЭС" -->
                                 <td>
-                                    <textarea 
+                                    <input 
+                                        type="text" 
                                         name="union_energy_system_full_names[]" 
                                         class="form-control" 
-                                        style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
-                                        rows="1"
-                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ union_energy_system.name_full }}</textarea>
+                                        value="{{ union_energy_system.name_full }}"
+                                    >
                                 </td> 
 
                                 <!-- Строки таблицы. Столбец "Тип энергосистемы" -->

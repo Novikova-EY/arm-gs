@@ -126,6 +126,28 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.equipment_group_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            equipment_group_filter=equipment_group_filter,
+                                            technology_type_filter=technology_type_filter,
+                                            technology_availability_filter=technology_availability_filter,
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Группа оборудования" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('refdata_bp.equipment_group_list', 
@@ -292,6 +314,18 @@
                                 <input type="hidden" name="equipment_group_ids[]" value="{{ equipment_group.id }}">
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td>
+                                <input 
+                                    type="number" 
+                                    name="display_orders[]" 
+                                    class="form-control text-center" 
+                                    value="{{ equipment_group.display_order if equipment_group.display_order is not none else '' }}"
+                                    style="width: 100%;"
+                                    min="0" step="1" placeholder=""
+                                >
+                            </td>
+
                             <!-- Строки таблицы. Столбец "Группа оборудования" -->
                             <td>
                                 <input type="text" name="equipment_group_names[]" class="form-control" value="{{ equipment_group.name }}">
@@ -328,7 +362,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -354,6 +388,28 @@
                                         class="text-black">
                                 №
                                 {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.equipment_group_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        equipment_group_filter=equipment_group_filter,
+                                        technology_type_filter=technology_type_filter,
+                                        technology_availability_filter=technology_availability_filter,
+                                        sort_by='display_order', 
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
                                     {% else %}
@@ -528,6 +584,11 @@
                             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                         </td>
 
+                        <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                        <td class="text-center">
+                            {{ equipment_group.display_order if equipment_group.display_order is not none else '—' }}
+                        </td>
+
                         <!-- Строки таблицы. Столбец "Группа оборудования" -->
                         <td> {{ equipment_group.name }} </td>
 
@@ -543,7 +604,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                        <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -91,6 +91,7 @@ def equipment_group_list():
         equipment_group_delete          = request.form.getlist("equipment_group_delete[]")
         technology_types                = request.form.getlist("technology_types[]")
         technology_availabilities        = request.form.getlist("technology_availabilities[]")
+        display_orders                  = request.form.getlist("display_orders[]")
   
         # Удаление записей
         if equipment_group_delete:
@@ -122,13 +123,28 @@ def equipment_group_list():
            
            # Формирование данных для обновления
             equipment_group_data = []
-            for equipment_group_id, equipment_group_name, technology_type, technology_availability in zip(equipment_group_ids, equipment_group_names, technology_types, technology_availabilities):
-                equipment_group_data.append({
-                    "equipment_group_id": int(equipment_group_id) if equipment_group_id else None,
-                    "name": equipment_group_name.strip(),
-                    "technology_type_id": int(technology_type) if technology_type else None,
-                    "technology_availability_id": int(technology_availability) if technology_availability else None
-                })
+            for equipment_group_id, display_order, equipment_group_name, technology_type, technology_availability in zip(
+                equipment_group_ids, display_orders, equipment_group_names, technology_types, technology_availabilities
+            ):
+                try:
+                    equipment_group_data.append({
+                        "equipment_group_id": int(equipment_group_id) if equipment_group_id else None,
+                        "display_order": int(display_order) if display_order and str(display_order).strip() else None,
+                        "name": equipment_group_name.strip(),
+                        "technology_type_id": int(technology_type) if technology_type else None,
+                        "technology_availability_id": int(technology_availability) if technology_availability else None
+                    })
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки данных: id={equipment_group_id}, "
+                            f"Порядок отображения: {display_order}, "
+                            f"Наименование: {equipment_group_name}, "
+                            f"Тип технологии: {technology_type}, "
+                            f"Доступность технологии: {technology_availability}. "
+                            f"Ошибка: {str(e)}"
+                        )
+                    )
             
             # Проверка на дублирующиеся IDs
             ids = [record["equipment_group_id"] for record in equipment_group_data if record["equipment_group_id"] is not None]

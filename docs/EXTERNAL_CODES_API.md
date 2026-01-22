@@ -13,66 +13,67 @@
 
 ### 1. Получить станцию по external_code
 
-**GET** `/api/external_codes/station/<external_code>`
+**GET** `/generation/stations/api/external_codes/station/<external_code>`
 
 **Пример запроса:**
 ```bash
-curl http://msk-arm-gs01.ntcees.ru/api/external_codes/station/abc-123-def-456
+curl http://msk-arm-gs01.ntcees.ru/generation/stations/api/external_codes/station/5aa8d4b9-1348-588a-8974-d3d590e629d7
 ```
 
 **Пример ответа:**
 ```json
 {
+  "type": "Электростанция",
   "external_code": "abc-123-def-456",
   "database_version_id": 7,
   "database_version": "Наименование версии базы данных",
-  "regional_district": "Наименование субъекта",
-  "gen_company": "Наименование генерирующей компании",
   "id_station": 123,
   "name_station": "Название станции",
+  "regional_district": "Наименование субъекта",
   "station_type": "Наименование типа станции",
+  "gen_company": "Наименование генерирующей компании",
 }
 ```
 
 ### 2. Получить агрегат по external_code (трехсторонняя привязка)
 
-**GET** `/api/external_codes/machine/<external_code>`
+**GET** `/generation/stations/api/external_codes/machine/<external_code>`
 
 Агрегат имеет трехстороннюю привязку: **станция - группа оборудования - агрегат**.
 `external_code` агрегата формируется на основе `external_code` связки «станция‑группа оборудования» и характеристик самого агрегата.
 
 **Пример запроса:**
 ```bash
-curl http://msk-arm-gs01.ntcees.ru/api/external_codes/machine/machine-code-123
+curl http://msk-arm-gs01.ntcees.ru/generation/stations/api/external_codes/machine/e7a8ed52-10ed-51fc-a521-fcf9649ef2d8
 ```
 
 **Пример ответа:**
 ```json
 {
+  "type": "Агрегат",
   "external_code": "machine-code-123",
   "database_version_id": 7,
   "database_version": "Наименование версии базы данных",
-  "regional_district": "Наименование субъекта",
-  "gen_company": "Наименование генерирующей компании",
-  "id_station": 123,
-  "name_station": "Название станции",
-  "station_external_code": "abc-123-def-456",
-  "equipment_group": "Наименование группы оборудования",
   "id_machine": 789,
   "machine_number": "1",
   "machine_name": "Название агрегата",
+  "id_station": 123,
+  "station_external_code": "abc-123-def-456",
+  "equipment_group": "Наименование группы оборудования",
+  "regional_district": "Наименование субъекта",
+  "gen_company": "Наименование генерирующей компании",
 }
 ```
 
 ### 3. Batch запрос (получить несколько сущностей за раз)
 
-**POST** `/api/external_codes/batch`
+**POST** `/generation/stations/api/external_codes/batch`
 
 Полезно для внешних систем, которым нужно получить данные для множества сущностей за один запрос.
 
 **Пример запроса:**
 ```bash
-curl -X POST http://your-domain/api/external_codes/batch \
+curl -X POST http://your-domain/generation/stations/api/external_codes/batch \
   -H "Content-Type: application/json" \
   -d '{
     "stations": ["code1", "code2"],
@@ -122,7 +123,7 @@ curl -X POST http://your-domain/api/external_codes/batch \
 1. Внешняя система собирает список `external_code`, которые нужно обновить
 2. Использует batch endpoint для получения всех данных за один запрос:
    ```bash
-   POST /api/external_codes/batch
+   POST /generation/stations/api/external_codes/batch
    {
      "stations": ["code1", "code2"],
      "machines": ["code3", "code4", ...]

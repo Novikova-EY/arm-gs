@@ -68,6 +68,14 @@ def create_app():
     app.config['TEMPLATES_AUTO_RELOAD'] = app.debug
     app.jinja_env.auto_reload = app.debug
     app.config['SQLALCHEMY_ECHO'] = False
+    # Возвращаем JSON в читаемом виде и с порядком полей как задано
+    app.config["JSON_AS_ASCII"] = False
+    app.config["JSON_SORT_KEYS"] = False
+    try:
+        app.json.ensure_ascii = False  # Flask 2.2+
+        app.json.sort_keys = False
+    except Exception:
+        pass
     # Уровень логирования зависит от режима DEBUG
     if app.debug:
         app.logger.setLevel(logging.DEBUG)

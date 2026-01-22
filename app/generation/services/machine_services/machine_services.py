@@ -271,6 +271,23 @@ def _get_or_create_station_equipment_group(station_id, equipment_group_id):
     return seg
 
 
+def _validate_power_ranges(advanced_form, formdata):
+    has_errors = False
+    for power_form in advanced_form.powers:
+        for field_name in ("p_ust", "p_ogr", "p_rasp"):
+            field = getattr(power_form, field_name)
+            raw_value = formdata.get(field.name)
+            orig_value = formdata.get(f"{field.name}_orig")
+            current = to_decimal(raw_value)
+            original = to_decimal(orig_value)
+
+            if current != original and current is not None and current < 0:
+                field.errors.append("Number must be at least 0.")
+                has_errors = True
+
+    return not has_errors
+
+
 @no_autoflush
 def handle_machine_post(station_id, machine_id, form_data, user, start_year, end_year, rounding_digits):
     from werkzeug.datastructures import MultiDict
@@ -372,6 +389,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
     main_valid = main_form.validate()
     adv_valid = advanced_form.validate()
+    adv_valid = adv_valid and _validate_power_ranges(advanced_form, normalized)
     pgu_valid = pgu_machines_form.validate() if is_pgu_action else True
 
     if not (main_valid and adv_valid and pgu_valid):
@@ -380,7 +398,10 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print("pgu_machines_form.errors:", pgu_machines_form.errors)
         print(f"[DEBUG] Ошибка валидации: tes_types entries: {len(advanced_form.tes_types.entries)}")
         print(f"[DEBUG] Ошибка валидации: fuels entries: {len(advanced_form.fuels.entries)}")
-        flash("Ошибка в заполнении формы. Проверьте поля.", "danger")
+        flash(
+            "Ошибка в заполнении формы. Обязательные поля: Название агрегата, Организация-собственник.",
+            "danger",
+        )
         # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
         all_documents = choices_cache.get_choices(Document, Document.name)
         # Преобразуем обратно в объекты для совместимости с шаблоном
@@ -856,7 +877,10 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
     _fill_pgu_machines_form_choices(pgu_form, machine_id)
 
     if not pgu_form.validate():
-        flash("Ошибка в заполнении формы.", "danger")
+        flash(
+            "Ошибка в заполнении формы. Обязательные поля: Название агрегата, Организация-собственник.",
+            "danger",
+        )
         return render_template(
             "generation/stations/pgu_machine_details.html",
             station=station,

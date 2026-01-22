@@ -24,6 +24,7 @@ def get_station_by_external_code(external_code):
     
     Возвращает:
         {
+            "type": "Электростанция",
             "external_code": "abc-123-def-456",
             "database_version_id": 7,
             "database_version": "Наименование версии базы данных",
@@ -51,12 +52,14 @@ def get_station_by_external_code(external_code):
     gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
     gen_company = ", ".join(sorted(gen_companies)) if gen_companies else None
     
+    # Сохраняем порядок полей как в документации
     return jsonify({
+        "type": "Электростанция",
         "external_code": station.external_code,
         "database_version_id": station.database_version_id,
         "database_version": database_version_name,
-        "id": station.id,
-        "name": station.name,
+        "id_station": station.id,
+        "name_station": station.name,
         "regional_district": station.regional_district.name if station.regional_district else None,
         "station_type": station.station_type.name if station.station_type else None,
         "gen_company": gen_company,
@@ -73,6 +76,7 @@ def get_machine_by_external_code(external_code):
     
     Возвращает:
         {
+            "type": "Агрегат",
             "external_code": "machine-code-123",
             "database_version_id": 7,
             "database_version": "Наименование версии базы данных",
@@ -105,10 +109,11 @@ def get_machine_by_external_code(external_code):
         regional_district_name = machine.machine_station.regional_district.name
     
     result = {
+        "type": "Агрегат",
         "external_code": machine.external_code,
         "database_version_id": machine.database_version_id,
         "database_version": database_version_name,
-        "id": machine.id,
+        "id_machine": machine.id,
         "machine_number": machine.machine_number,
         "machine_name": machine.machine_name,
         "id_station": machine.id_station,

@@ -84,7 +84,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Название агрегата:</div>
+                                    <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.machine_name(class="form-control fw-bold") }}
@@ -104,7 +104,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Организация-собственник:</div>
+                                    <div class="col-5 text-start fw-semibold">Организация-собственник: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_gen_company(class="form-select", id="id_gen_company") }}
@@ -502,6 +502,9 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
+                                    <input type="hidden"
+                                        name="{{ p.p_ust.name }}_orig"
+                                        value="{{ p.p_ust.data | format_decimal }}">
                             {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                         <input type="text"
                                             name="{{ p.p_ust.name }}"
@@ -521,6 +524,9 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
+                                    <input type="hidden"
+                                        name="{{ p.p_ogr.name }}_orig"
+                                        value="{{ p.p_ogr.data | format_decimal }}">
                             {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
@@ -540,6 +546,9 @@
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
                                 <td class="power-column align-middle text-center">
+                                    <input type="hidden"
+                                        name="{{ p.p_rasp.name }}_orig"
+                                        value="{{ p.p_rasp.data | format_decimal }}">
                             {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
@@ -1066,11 +1075,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // --- Установка годов из URL или localStorage ---
     const urlParams = new URLSearchParams(window.location.search);
+    const hasStartInUrl = urlParams.has("start_year");
+    const hasEndInUrl = urlParams.has("end_year");
     const startYear = urlParams.get("start_year") || localStorage.getItem("start_year");
     const endYear = urlParams.get("end_year") || localStorage.getItem("end_year");
 
     if (startYear) document.getElementById("start_year").value = startYear;
     if (endYear) document.getElementById("end_year").value = endYear;
+
+    // Если годовые параметры пришли только из localStorage, перезагружаем страницу с ними,
+    // чтобы таблицы строились по тем же годам, что и выбранные фильтры.
+    if ((!hasStartInUrl || !hasEndInUrl) && startYear && endYear) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("start_year", startYear);
+        url.searchParams.set("end_year", endYear);
+        url.searchParams.set("page", 1);
+        if (url.toString() !== window.location.href) {
+            window.location.replace(url.toString());
+            return;
+        }
+    }
 
     // --- Состояние чекбоксов и округления из localStorage ---
     const roundingFromURL = urlParams.get("rounding_digits");

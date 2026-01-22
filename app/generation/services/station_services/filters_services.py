@@ -228,9 +228,18 @@ def get_filtered_station_ids(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
+        # Учитываем как прямую привязку станции к РЭС с нужной ОЭС,
+        # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
         query = query.filter(
-            Station.regional_energy_system_obj.has(
-                RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+            or_(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                ),
+                Station.regional_district.has(
+                    RegionalDistrict.regional_energy_systems.any(
+                        RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                    )
+                ),
             )
         )
 
@@ -325,9 +334,18 @@ def get_stations_all(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
+        # Учитываем как прямую привязку станции к РЭС с нужной ОЭС,
+        # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
         query = query.filter(
-            Station.regional_energy_system_obj.has(
-                RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+            or_(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                ),
+                Station.regional_district.has(
+                    RegionalDistrict.regional_energy_systems.any(
+                        RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
+                    )
+                ),
             )
         )
 

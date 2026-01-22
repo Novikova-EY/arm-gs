@@ -117,7 +117,7 @@
             </div>
     
             <div class="filter-item">
-                <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger w-100">Сбросить</a>
             </div>
         </form>
     </div>

@@ -33,6 +33,7 @@ from app.refdata.models.refdata_for_stations.machine.machine_type_model import M
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.common.services.get_services.stations.tes_type_get_services import get_unknown_tes_type_id
 
 
@@ -476,6 +477,9 @@ def update_if_changed(obj, field, new_value, changes, display_name=None):
 def handle_station(row, user):
     station_name = _clean_name(row['station_name'])
 
+    # Текущая версия БД для версионированных справочников/станций
+    current_version_id = get_current_db_version_id()
+
     raw_district = row.get('regional_district')
     regional_district_name = _clean_name(raw_district) if not pd.isna(raw_district) else None
 
@@ -493,6 +497,33 @@ def handle_station(row, user):
         )
         if energy_unit and energy_unit.regional_district:
             regional_district = energy_unit.regional_district
+
+    # Определяем «основную» РЭС для субъекта:
+    # приоритет у той, у которой есть ОЭС, иначе берём первую.
+    main_res_id = None
+    if regional_district:
+        try:
+            # Учитываем только РЭС той же версии БД, что и текущая,
+            # либо записи без версии, если current_version_id is NULL.
+            energy_systems = [
+                res
+                for res in (regional_district.regional_energy_systems or [])
+                if (
+                    (current_version_id is None and res.database_version_id is None)
+                    or res.database_version_id == current_version_id
+                )
+            ]
+            main_res = None
+            for res in energy_systems:
+                if res.union_energy_system:
+                    main_res = res
+                    break
+            if not main_res and energy_systems:
+                main_res = energy_systems[0]
+            if main_res:
+                main_res_id = main_res.id
+        except Exception:
+            main_res_id = None
 
     # Энергоузел по умолчанию (или найденный)
     energy_unit = (
@@ -522,6 +553,7 @@ def handle_station(row, user):
         station = Station(
             name=station_name,
             id_regional_district=regional_district.id if regional_district else None,
+            id_regional_energy_system=main_res_id,
             id_condition_type=condition_type.id if condition_type else None,
             id_energy_unit=energy_unit.id if energy_unit else None,
             id_station_type=station_type_id,
@@ -534,8 +566,21 @@ def handle_station(row, user):
         print(f"Создание станции, Создана станция: {station_name}")
     else:
         changes = {}
-        if station.id_regional_district != (regional_district.id if regional_district else None):
-            changes['id_regional_district'] = regional_district.id if regional_district else None
+        new_district_id = regional_district.id if regional_district else None
+
+        if station.id_regional_district != new_district_id:
+            changes['id_regional_district'] = new_district_id
+
+        # Автоподстановка/обновление РЭС:
+        # - если у станции ещё нет прямой РЭС, но есть main_res_id;
+        # - либо если сменился субъект и новая «основная» РЭС отличается.
+        if main_res_id and (
+            station.id_regional_energy_system is None
+            or station.id_regional_district != new_district_id
+        ):
+            if station.id_regional_energy_system != main_res_id:
+                changes['id_regional_energy_system'] = main_res_id
+
         if station.id_energy_unit != (energy_unit.id if energy_unit else None):
             changes['id_energy_unit'] = energy_unit.id if energy_unit else None
         if station.note != note:

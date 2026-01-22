@@ -378,7 +378,70 @@ def get_stations_list(
     # 4. Подсчет и пагинация (сортировка не нужна, т.к. будет в Python)
     # Получаем уникальные ID станций (важно для случаев с multiple regional_energy_systems)
     raw_station_ids = [row[0] for row in station_ids_query.all()]
-    all_station_ids = list(set(raw_station_ids))
+
+    # Если ищем по названию станции, добавляем станции без агрегатов,
+    # но только когда нет машинных фильтров (иначе они не могут быть выполнены).
+    machine_filters_present = any(
+        [
+            filters.get("tes_type_filter"),
+            filters.get("tes_machine_type_filter"),
+            filters.get("fuel_type_filter"),
+            filters.get("fuel_check"),
+            filters.get("date_exploitation_filter"),
+            filters.get("date_decompressing_expected_filter"),
+            filters.get("date_modernization_expected_filter"),
+            filters.get("gen_company_filter"),
+            filters.get("condition_type_filter"),
+        ]
+    )
+    extra_station_ids = []
+    if filters.get("station_name_filter") and not machine_filters_present:
+        station_query = filter_by_db_version(Station.query, Station).filter(
+            Station.name.ilike(f"%{filters['station_name_filter']}%")
+        )
+        if filters.get("station_type_filter"):
+            station_query = station_query.filter(
+                Station.id_station_type.in_(filters["station_type_filter"])
+            )
+        if filters.get("regional_district_filter"):
+            station_query = station_query.filter(
+                Station.id_regional_district.in_(filters["regional_district_filter"])
+            )
+        if filters.get("federal_district_filter"):
+            station_query = station_query.filter(
+                Station.regional_district.has(
+                    RegionalDistrict.federal_district.has(
+                        FederalDistrict.id.in_(filters["federal_district_filter"])
+                    )
+                )
+            )
+        if filters.get("regional_energy_system_filter"):
+            station_query = station_query.filter(
+                Station.id_regional_energy_system.in_(
+                    filters["regional_energy_system_filter"]
+                )
+            )
+        if filters.get("union_energy_system_filter"):
+            station_query = station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(
+                        filters["union_energy_system_filter"]
+                    )
+                )
+            )
+        if filters.get("energy_system_type_filter"):
+            station_query = station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
+                        )
+                    )
+                )
+            )
+        extra_station_ids = [row[0] for row in station_query.with_entities(Station.id).all()]
+
+    all_station_ids = list(set(raw_station_ids).union(set(extra_station_ids)))
     
     print(f"[DEBUG] Итоговое количество станций: {len(all_station_ids)}")
     print(f"[DEBUG] Первые 10 ID станций: {all_station_ids[:10]}")
@@ -3167,6 +3230,21 @@ def add_station_service(
     if not name:
         raise ValueError("Не указано название станции")
 
+    current_version_id = get_current_db_version_id()
+    station_query = Station.query.filter(
+        Station.name == name,
+        Station.id_regional_district == id_regional_district,
+    )
+    if current_version_id is None:
+        station_query = station_query.filter(Station.database_version_id.is_(None))
+    else:
+        station_query = station_query.filter(Station.database_version_id == current_version_id)
+    existing_station = station_query.first()
+    if existing_station:
+        raise ValueError(
+            "Станция с таким названием уже существует в выбранной версии БД."
+        )
+
     # SelectField часто возвращает строку; "0"/"" трактуем как "не указано"
     station_type_id = None
     if id_station_type not in (None, "", 0, "0"):
@@ -3194,6 +3272,10 @@ def add_station_service(
             # Проверяем, является ли это ошибкой UniqueViolation на первичном ключе
             if isinstance(e.orig, psycopg2.errors.UniqueViolation) and attempt == 0:
                 error_msg = str(e.orig)
+                if "uq_station_name_district_version" in error_msg:
+                    raise ValueError(
+                        "Станция с таким названием уже существует в выбранной версии БД."
+                    )
                 # Проверяем, что это ошибка именно на первичном ключе stations
                 if "stations_pkey" in error_msg:
                     # Исправляем последовательность и повторяем попытку

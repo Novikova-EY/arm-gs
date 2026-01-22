@@ -388,12 +388,12 @@
 
                                 <!-- Строки таблицы. Столбец "Энергорайон" -->
                                 <td>
-                                    <textarea 
+                                    <input 
+                                        type="text" 
                                         name="energy_unit_names[]" 
                                         class="form-control" 
-                                        style="overflow-wrap: break-word; white-space: normal; border: none; resize: none; width: 100%; background: transparent; height: auto;" 
-                                        rows="1"
-                                        oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">{{ energy_unit.name }}</textarea>
+                                        value="{{ energy_unit.name }}"
+                                    >
                                 </td>
                                 
                                 <!-- Столбец "Субъекты РФ" -->

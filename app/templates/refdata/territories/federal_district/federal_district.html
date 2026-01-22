@@ -221,12 +221,12 @@
                                 <!-- Строки таблицы. Столбец "Порядок отображения" -->
                                 <td class="text-center align-middle">
                                     <input 
-                                        type="text" 
+                                        type="number" 
                                         name="display_orders[]" 
                                         class="form-control text-center" 
                                         value="{{ item.display_order if item.display_order is not none else '' }}"
-                                        style="border: none; resize: none; width: 100%; background: transparent;"
-                                        pattern="[0-9]*"
+                                        style="width: 100%;"
+                                        min="0" step="1" placeholder=""
                                     >
                                 </td>
 

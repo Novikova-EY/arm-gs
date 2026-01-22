@@ -98,20 +98,18 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.9
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.15
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.9 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.15 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
-Используйте любой удобный способ (scp, rsync, artifact registry):
-
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.9_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.15_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 ```
 ---
 
@@ -121,10 +119,10 @@ scp C:\arm_gs\packaging\generation-app_1.0.9_amd64.deb novikova-eyu@10.31.205.27
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.9_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.15_amd64.deb || sudo apt -f install
 sudo systemctl restart generation-app
 sudo nginx -t && sudo systemctl reload nginx
-tail -f ~/generation-app.log
+sudo journalctl -u generation-app -f
 ```
 
 **Что происходит при установке:**
@@ -143,13 +141,15 @@ tail -f ~/generation-app.log
 ## 10. Обновление миграций
 
 ```bash
-cd /opt/generation-app/app
+cd /opt/generation-app/
 source venv/bin/activate
+cd /opt/generation-app/app
 export FLASK_APP=run.py
 export FLASK_ENV=production
+eval "$(sudo systemctl show generation-app -p Environment --value | tr ' ' '\n' | sed 's/^/export /')"
 flask db upgrade
 
-- Для обновления соберите новый пакет с версией `1.0.9`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.9_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.15`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.15_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 

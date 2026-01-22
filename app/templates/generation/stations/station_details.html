@@ -344,17 +344,13 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Часть энергосистемы России:</div>
                                 <div class="col-7 text-start" id="energy_system_type">
-                                    {% if station.regional_energy_system_obj and station.regional_energy_system_obj.union_energy_system and station.regional_energy_system_obj.union_energy_system.energy_system_type %}
-                                        {{ station.regional_energy_system_obj.union_energy_system.energy_system_type.name }}
-                                    {% else %} Нет данных {% endif %}
+                                    {{ station.energy_system_type or 'Нет данных' }}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">ОЭС:</div>
                                 <div class="col-7 text-start" id="union_energy_system">
-                                    {% if station.regional_energy_system_obj and station.regional_energy_system_obj.union_energy_system %}
-                                        {{ station.regional_energy_system_obj.union_energy_system.name }}
-                                    {% else %} Нет данных {% endif %}
+                                    {{ station.union_energy_system or 'Нет данных' }}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">

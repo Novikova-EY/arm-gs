@@ -271,9 +271,9 @@ class MachinePowerForm(FlaskForm):
         csrf = False  # Отключаем CSRF для вложенной формы
 
     year = IntegerField('Год', render_kw={'readonly': True})
-    p_ust = DecimalField('Pуст', validators=[Optional(), NumberRange(min=0)], places=2, default=0)
-    p_ogr = DecimalField('Pуст', validators=[Optional(), NumberRange(min=0)], places=2, default=0)
-    p_rasp = DecimalField('Pуст', validators=[Optional(), NumberRange(min=0)], places=2, default=0)
+    p_ust = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
+    p_ogr = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
+    p_rasp = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
 
 
 class MachineFuelForm(FlaskForm):

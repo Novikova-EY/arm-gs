@@ -51,7 +51,7 @@ def equipment_group_query(
     """ Базовый запрос для выборки типов групп оборудования с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "technology_type", "technology_availability"}
+    allowed_sort_by = {"id", "name", "technology_type", "technology_availability", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -116,10 +116,22 @@ def equipment_group_query(
         if not joined_tech_avail:
             query = query.join(TechnologyAvailability, EquipmentGroup.id_technology_availability == TechnologyAvailability.id, isouter=True)
         sort_col = TechnologyAvailability.name
+    elif sort_by == "display_order":
+        if sort_dir == "desc":
+            query = query.order_by(
+                (EquipmentGroup.display_order.is_(None)),
+                EquipmentGroup.display_order.desc()
+            )
+        else:
+            query = query.order_by(
+                (EquipmentGroup.display_order.is_(None)),
+                EquipmentGroup.display_order.asc()
+            )
     else:
         sort_col = EquipmentGroup.id
 
-    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    if sort_by != "display_order":
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
 
@@ -167,6 +179,7 @@ def update_equipment_group_service(data, user):
     with db.session.no_autoflush:
         for record in data:
             equipment_group_id = record.get("equipment_group_id")
+            display_order = record.get("display_order")
             name = (record.get("name") or "").strip()
 
             # Проверка наличия наименования
@@ -191,11 +204,26 @@ def update_equipment_group_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
+            # Проверка уникальности display_order
+            if display_order != obj.display_order:
+                if display_order is not None:
+                    q_display = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
+                                .filter(EquipmentGroup.display_order == display_order,
+                                        EquipmentGroup.id != equipment_group_id))
+                    if q_display.first():
+                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+
             changes = []
 
             if name != (obj.name or ""):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "equipment_group"))
                 obj.name = name
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
+                obj.display_order = display_order
 
             # Проверка наличия типа технологии
             if "technology_type_id" in record:
@@ -287,6 +315,7 @@ def add_equipment_group_service(data, user):
     def _do_insert():
         with db.session.no_autoflush:
             for record in data:
+                display_order = record.get("display_order")
                 name = (record.get("name") or "").strip()
                 technology_type_id = _to_int_or_none(record.get("technology_type_id"), keep_zero=False)
                 technology_availability_id = _to_int_or_none(record.get("technology_availability_id"), keep_zero=False)
@@ -317,7 +346,16 @@ def add_equipment_group_service(data, user):
                 if dup:
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
+                # Проверяем уникальность display_order при создании
+                if display_order is not None:
+                    dup_display = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
+                            .filter(EquipmentGroup.display_order == display_order)
+                            .with_for_update().first())
+                    if dup_display:
+                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+
                 obj = EquipmentGroup(
+                    display_order=display_order,
                     name=name,
                     id_technology_type=technology_type_id,
                     id_technology_availability=technology_availability_id
@@ -329,6 +367,7 @@ def add_equipment_group_service(data, user):
                 log_to_db(
                     user, 
                     "Создан тип группы оборудования", 
+                    f"Порядок отображения: {_dash(display_order)}; "
                     f"Тип технологии: {get_technology_type_name(technology_type_id)} "
                     f"Тип доступности технологии: {get_technology_availability_name(technology_availability_id)} ",
                     entity_type="equipment_group", 

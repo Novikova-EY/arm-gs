@@ -15,6 +15,8 @@ class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin):
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Порядок отображения
+    display_order = db.Column(db.Integer, nullable=True)
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
 
     # FK -> TechnologyAvailability
