@@ -172,6 +172,15 @@ from app.common.services.tranzaction_services import (
 )
 
 
+def clear_station_aggregation_cache(reason: str | None = None) -> None:
+    """Сбрасывает кэш агрегированных сумм после мутаций станции/агрегатов."""
+    try:
+        clear_aggregation_cache()
+    except Exception as exc:
+        suffix = f" ({reason})" if reason else ""
+        print(f"[CACHE] Failed to clear aggregation cache{suffix}: {exc}")
+
+
 def get_stations_list(
     page=1,
     per_page=None,
@@ -2816,7 +2825,7 @@ def recalculate_station_power(station, start_year, end_year):
                 pass
         db.session.add_all(powers_to_create)
         _commit_with_retry()
-        clear_aggregation_cache()  # Очищаем кэш после изменения мощностей
+        clear_station_aggregation_cache("после изменения мощностей")  # Очищаем кэш после изменения мощностей
 
 
 def build_energy_unit_aggregates(data):
@@ -3262,7 +3271,7 @@ def add_station_service(
             set_db_version_on_create(station)
             db.session.add(station)
             _commit_with_retry()
-            clear_aggregation_cache()  # Очищаем кэш после добавления станции
+            clear_station_aggregation_cache("после добавления станции")  # Очищаем кэш после добавления станции
             rd = db.session.query(RegionalDistrict).get(id_regional_district)
             rd_name = rd.name if rd else "не указано"
             log_to_db(user, f"Создана новая станция: {station.name}", entity_type="station", entity_id=station.id, details=f"Субъект РФ: {rd_name}")
@@ -3472,7 +3481,7 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
                 station.id_energy_unit = None
 
         _commit_with_retry()
-        clear_aggregation_cache()  # Очищаем кэш после обновления станции
+        clear_station_aggregation_cache("после обновления станции")  # Очищаем кэш после обновления станции
 
         if changes:
             rd_name = station.regional_district.name if station.regional_district else "не указано"
@@ -3506,7 +3515,7 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
                 changes.append(f"Мощности станции ID={station_id} удалены, так как все агрегаты были удалены")
 
         _commit_with_retry()
-        clear_aggregation_cache()  # Очищаем кэш после удаления агрегатов
+        clear_station_aggregation_cache("после удаления агрегатов")  # Очищаем кэш после удаления агрегатов
 
         if changes:
             log_to_db(user, f"Агрегаты удалены на станции {station.name}", details="; ".join(changes), entity_type="station", entity_id=station.id)
@@ -3648,7 +3657,7 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
             return []
         
         _commit_with_retry()
-        clear_aggregation_cache()  # Очищаем кэш после обновления агрегатов
+        clear_station_aggregation_cache("после обновления агрегатов")  # Очищаем кэш после обновления агрегатов
 
         if changes:
             log_to_db(user, f"Обновлены агрегаты станции {station.name}", details="; ".join(changes), entity_type="station", entity_id=station.id)

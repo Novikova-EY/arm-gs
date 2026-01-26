@@ -1231,6 +1231,32 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         print(traceback.format_exc())
         raise
 
+    def _row_has_unset_value(row):
+        for value in row.values():
+            if isinstance(value, str):
+                value_lower = value.strip().lower()
+                if any(token in value_lower for token in ("не указано", "не указан", "не указана")):
+                    return True
+        return False
+
+    def _is_effectively_empty_row(row):
+        if not row:
+            return True
+        for value in row.values():
+            if value is None:
+                continue
+            if isinstance(value, str) and not value.strip():
+                continue
+            return False
+        return True
+
+    # Удаляем строки с "не указано/не указан/не указана" и чистим хвостовые пустые/дубли
+    rows = [row for row in rows if not _row_has_unset_value(row)]
+    while rows and _is_effectively_empty_row(rows[-1]):
+        rows.pop()
+    while len(rows) > 1 and rows[-1] == rows[-2]:
+        rows.pop()
+
     print(f"[EXPORT] Формирование строк данных: {time.time() - t4:.2f}с, всего строк: {len(rows)}")
 
     t5 = time.time()
@@ -1500,9 +1526,17 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
         )
 
         # rowspan по виду топлива (fuel_so) — только подряд идущие
+        # и только внутри одной группы агрегатов
+        def _fuel_rowspan_key(m):
+            fuel_key = (getattr(m, "fuel_so", None) or "").strip()
+            if not fuel_key or fuel_key.lower() == "не указано":
+                return None
+            group_key = (getattr(m, "machine_group", None) or "").strip()
+            return (group_key, fuel_key)
+
         _set_rowspan_for_consecutive_runs(
             station.machines,
-            key_fn=lambda m: (getattr(m, "fuel_so", None) or "").strip(),
+            key_fn=_fuel_rowspan_key,
             attr_name="fuel_rowspan",
         )
 

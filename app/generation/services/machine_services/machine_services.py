@@ -37,6 +37,7 @@ from app.generation.services.station_services.station_services import (
     recalculate_station_power,
     get_machine_by_id,
     get_station_by_id,
+    clear_station_aggregation_cache,
 )
 from app.common.services.help_services import (
     convert_to_date,
@@ -301,10 +302,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             elif "," in value and not key.endswith("change_document"):
                 normalized[key] = value.replace(",", ".")
 
-    main_form = MachineFilterForm(formdata=normalized, prefix="main_")
-    advanced_form = EditMachineForm(formdata=normalized, prefix="adv_")
-    pgu_machines_form = PGUMachineFilterForm(formdata=normalized, prefix="pgu_")
-
     station = get_station_by_id(station_id)
     
     # Проверяем, создается ли новый агрегат
@@ -313,6 +310,16 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         machine = None
     else:
         machine = get_machine_by_id(machine_id)
+
+    # Если поле "Организация-собственник" не пришло в POST (иногда Select2 не отправляет),
+    # подставляем текущее значение агрегата, чтобы избежать ложной ошибки валидации.
+    if machine is not None and "main_id_gen_company" not in normalized:
+        if machine.id_gen_company is not None:
+            normalized["main_id_gen_company"] = str(machine.id_gen_company)
+
+    main_form = MachineFilterForm(formdata=normalized, prefix="main_")
+    advanced_form = EditMachineForm(formdata=normalized, prefix="adv_")
+    pgu_machines_form = PGUMachineFilterForm(formdata=normalized, prefix="pgu_")
     
     year_features = get_year_feature_dict()
     
@@ -364,11 +371,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         _commit_with_retry()
         # ВАЖНО: ПГУ влияет на агрегации/списки, поэтому чистим кэш после мутаций
-        try:
-            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
-            clear_aggregation_cache()
-        except Exception as _e:
-            print(f"[CACHE] Failed to clear aggregation cache after PGU delete: {_e}")
+        clear_station_aggregation_cache("after PGU delete")
 
         if deleted_names:
             log_to_db(user, f"Удаление ПГУ агрегатов на станции {station.name}", details="; ".join(deleted_names))
@@ -763,11 +766,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         _commit_with_retry()
         # ВАЖНО: изменения Machine/его мощностей/топлива/ПГУ влияют на агрегации и кэш сортировки/страниц
-        try:
-            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
-            clear_aggregation_cache()
-        except Exception as _e:
-            print(f"[CACHE] Failed to clear aggregation cache after Machine save: {_e}")
+        clear_station_aggregation_cache("after machine save")
         
         # Инвалидация кэша после успешного обновления
         from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
@@ -1061,11 +1060,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         _commit_with_retry()
         
         # ВАЖНО: ПГУ влияет на агрегаты/агрегации — чистим кэш после мутаций
-        try:
-            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
-            clear_aggregation_cache()
-        except Exception as _e:
-            print(f"[CACHE] Failed to clear aggregation cache after PGU save: {_e}")
+        clear_station_aggregation_cache("after PGU save")
         
         # Инвалидация кэша после успешного обновления
         from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern

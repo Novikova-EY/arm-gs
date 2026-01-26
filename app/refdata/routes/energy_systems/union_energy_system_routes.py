@@ -50,7 +50,7 @@ def union_energy_system_list():
 
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
@@ -59,7 +59,7 @@ def union_energy_system_list():
     if request.method == "POST":        
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 20, type=int)
+        per_page                    = request.form.get("per_page", 25, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         union_energy_system_filter  = request.form.get("union_energy_system_filter", "").strip()
@@ -73,25 +73,21 @@ def union_energy_system_list():
         energy_system_type_ids          = request.form.getlist("energy_system_types[]")
         display_orders                  = request.form.getlist("display_orders[]")
   
+        deleted_ids = set()
         # Удаление записей
         if union_energy_system_delete:
             try:
                 delete_union_energy_system_service(union_energy_system_delete, user)
+                deleted_ids = {int(item) for item in union_energy_system_delete if item}
                 flash("Записи ОЭС успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.union_energy_system_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    union_energy_system_filter=union_energy_system_filter,
-                                    energy_system_type_filter=energy_system_type_filter,
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not (union_energy_system_ids and union_energy_system_names and union_energy_system_full_names):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.union_energy_system_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -106,6 +102,8 @@ def union_energy_system_list():
             for union_energy_system_id, display_order, union_energy_system_name, union_energy_system_name_full, energy_system_type_id in zip(
                 union_energy_system_ids, display_orders, union_energy_system_names, union_energy_system_full_names, energy_system_type_ids
             ):
+                if union_energy_system_id and int(union_energy_system_id) in deleted_ids:
+                    continue
                 try:
                     union_energy_system_data.append({
                         "union_energy_system_id": int(union_energy_system_id) if union_energy_system_id else None,
@@ -126,6 +124,15 @@ def union_energy_system_list():
                         )
                     )
             
+            if not union_energy_system_data:
+                return redirect(url_for("refdata_bp.union_energy_system_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        union_energy_system_filter=union_energy_system_filter,
+                                        energy_system_type_filter=energy_system_type_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["union_energy_system_id"] for record in union_energy_system_data if record["union_energy_system_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -193,7 +200,7 @@ def add_union_energy_system():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()

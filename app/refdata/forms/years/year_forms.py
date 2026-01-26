@@ -43,11 +43,12 @@ class AddYearForm(FlaskForm):
         ],
     )
 
-    year_feature = SelectField(
+    year_feature = StringField(
         "Признак года",
-        choices=[],  # Наполняется в контроллере
-        coerce=int,
-        validators=[DataRequired(message="Выберите признак года.")],
+        validators=[
+            DataRequired(message="Укажите признак года."),
+            Length(max=80, message="Длина признака года не должна превышать 80 символов."),
+        ],
     )
 
 

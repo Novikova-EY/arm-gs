@@ -68,7 +68,7 @@ def equipment_group_list():
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     equipment_group_filter          = _normalize_filter(request.args.get("equipment_group_filter"))
@@ -78,7 +78,7 @@ def equipment_group_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
-        per_page                        = request.form.get("per_page", 20, type=int)
+        per_page                        = request.form.get("per_page", 25, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
         equipment_group_filter          = _normalize_filter(request.form.get("equipment_group_filter"))
@@ -93,25 +93,20 @@ def equipment_group_list():
         technology_availabilities        = request.form.getlist("technology_availabilities[]")
         display_orders                  = request.form.getlist("display_orders[]")
   
+        deleted_ids = set()
         # Удаление записей
         if equipment_group_delete:
             try:
                 delete_equipment_group_service(equipment_group_delete, user)
+                deleted_ids = {int(item) for item in equipment_group_delete if item}
                 flash("Записи типов групп оборудования успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.equipment_group_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    equipment_group_filter=equipment_group_filter, 
-                                    technology_type_filter=technology_type_filter, 
-                                    technology_availability_filter=technology_availability_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not equipment_group_ids or not equipment_group_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.equipment_group_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -126,6 +121,8 @@ def equipment_group_list():
             for equipment_group_id, display_order, equipment_group_name, technology_type, technology_availability in zip(
                 equipment_group_ids, display_orders, equipment_group_names, technology_types, technology_availabilities
             ):
+                if equipment_group_id and int(equipment_group_id) in deleted_ids:
+                    continue
                 try:
                     equipment_group_data.append({
                         "equipment_group_id": int(equipment_group_id) if equipment_group_id else None,
@@ -146,6 +143,16 @@ def equipment_group_list():
                         )
                     )
             
+            if not equipment_group_data:
+                return redirect(url_for("refdata_bp.equipment_group_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        equipment_group_filter=equipment_group_filter,
+                                        technology_type_filter=technology_type_filter, 
+                                        technology_availability_filter=technology_availability_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["equipment_group_id"] for record in equipment_group_data if record["equipment_group_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -220,7 +227,7 @@ def add_equipment_group():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     equipment_group_filter    = request.args.get("equipment_group_filter", "").strip()

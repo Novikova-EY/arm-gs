@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Типы топлива{% endblock %}
+{% block title %}Виды топлива{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -20,8 +20,8 @@
                     <div class="flex-grow-1" style="min-width: 220px;">
                         {{ form.fuel_filter(
                             class="form-control",
-                            value=fuel_filter,
-                            placeholder="Поиск по типам топлива"
+                            value=fuel_filter or '',
+                            placeholder="Поиск по видам топлива"
                         ) }}
                     </div>
 
@@ -46,6 +46,8 @@
                     href="{{ url_for('refdata_bp.export_fuel',
                                         fuel_filter=fuel_filter or '',
                                         fuel_type_filter=fuel_type_filter or '',
+                                        topl_nazvl_filter=topl_nazvl_filter or '',
+                                        topl_kmbur_filter=topl_kmbur_filter or '',
                                         sort_by=sort_by, sort_dir=sort_dir) }}"
                     target="_blank" rel="noopener">
                     Экспорт в Excel
@@ -67,6 +69,8 @@
         <input type="hidden" name="sort_by"             value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
         <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
+        <input type="hidden" name="topl_nazvl_filter"   value="{{ topl_nazvl_filter }}">
+        <input type="hidden" name="topl_kmbur_filter"   value="{{ topl_kmbur_filter }}">
     </form>
 
     <!-- Таблица данных -->
@@ -80,6 +84,8 @@
             <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
             <input type="hidden" name="fuel_filter"         value="{{ fuel_filter }}">
             <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
+            <input type="hidden" name="topl_nazvl_filter"   value="{{ topl_nazvl_filter }}">
+            <input type="hidden" name="topl_kmbur_filter"   value="{{ topl_kmbur_filter }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -94,6 +100,8 @@
                                     sort_dir=sort_dir,
                                     fuel_filter=fuel_filter,
                                     fuel_type_filter=fuel_type_filter,
+                                    topl_nazvl_filter=topl_nazvl_filter,
+                                    topl_kmbur_filter=topl_kmbur_filter,
                             ) }}" class="btn btn-primary">
                     Добавить новую запись
                 </a>
@@ -110,6 +118,8 @@
                                             per_page=per_page, 
                                             fuel_filter=fuel_filter,
                                             fuel_type_filter=fuel_type_filter,
+                                            topl_nazvl_filter=topl_nazvl_filter,
+                                            topl_kmbur_filter=topl_kmbur_filter,
                                             sort_by='number', 
                                             sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
@@ -124,17 +134,19 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Тип топлива" -->
+                            <!-- Шапка таблицы. Столбец "Вид топлива" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('refdata_bp.fuel_list', 
                                             page=pagination.page, 
                                             per_page=per_page, 
                                             fuel_filter=fuel_filter, 
                                             fuel_type_filter=fuel_type_filter,
+                                            topl_nazvl_filter=topl_nazvl_filter,
+                                            topl_kmbur_filter=topl_kmbur_filter,
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
-                                    Тип топлива
+                                    Вид топлива
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
@@ -145,7 +157,7 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                            <!-- Шапка таблицы. Столбец "тип топлива" -->
                             <th class="text-center align-middle">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="mx-auto">
@@ -153,6 +165,8 @@
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
                                                     fuel_type_filter=fuel_type_filter,
+                                                    topl_nazvl_filter=topl_nazvl_filter,
+                                                    topl_kmbur_filter=topl_kmbur_filter,
                                                     per_page=per_page,
                                                     sort_by='fuel_type', 
                                                     sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
@@ -182,11 +196,13 @@
                                                             page=pagination.page, 
                                                             fuel_filter=fuel_filter,
                                                             fuel_type_filter='',
+                                                            topl_nazvl_filter=topl_nazvl_filter,
+                                                            topl_kmbur_filter=topl_kmbur_filter,
                                                             per_page=per_page,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
-                                                    Все виды топлива
+                                                    Все типы топлива
                                                 </a>
                                             </li>
                                             {% for id, name in fuel_types %}
@@ -195,10 +211,148 @@
                                                         page=pagination.page, 
                                                         fuel_filter=fuel_filter,
                                                         fuel_type_filter=id,
+                                                        topl_nazvl_filter=topl_nazvl_filter,
+                                                        topl_kmbur_filter=topl_kmbur_filter,
                                                         per_page=per_page,
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" class="dropdown-item">
                                                         {{ name }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Короткое наименование" -->
+                            <th class="text-center align-middle">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                    page=pagination.page, 
+                                                    per_page=per_page, 
+                                                    fuel_filter=fuel_filter, 
+                                                    fuel_type_filter=fuel_type_filter,
+                                                    topl_nazvl_filter=topl_nazvl_filter,
+                                                    topl_kmbur_filter=topl_kmbur_filter,
+                                                    sort_by='topl_nazvl', 
+                                                    sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                    class="text-black">
+                                            Наименование в БД Топливо
+                                            {% if sort_by == 'topl_nazvl' %}
+                                                {% if sort_dir == 'asc' %}
+                                                    ▲
+                                                {% else %}
+                                                    ▼
+                                                {% endif %}
+                                            {% endif %}
+                                        </a>
+                                    </span>
+                                    <div class="dropdown">
+                                        <button 
+                                            class="btn btn-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            id="toplNazvlFilterDropdownFuelAdmin" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="toplNazvlFilterDropdownFuelAdmin">
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                            page=pagination.page, 
+                                                            per_page=per_page, 
+                                                            fuel_filter=fuel_filter, 
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            topl_nazvl_filter='',
+                                                            topl_kmbur_filter=topl_kmbur_filter,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" 
+                                                            class="dropdown-item">
+                                                    Все наименования
+                                                </a>
+                                            </li>
+                                            {% for value in topl_nazvl_values %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                                page=pagination.page, 
+                                                                per_page=per_page, 
+                                                                fuel_filter=fuel_filter, 
+                                                                fuel_type_filter=fuel_type_filter,
+                                                                topl_nazvl_filter=value,
+                                                                topl_kmbur_filter=topl_kmbur_filter,
+                                                                sort_by=sort_by,
+                                                                sort_dir=sort_dir) }}" 
+                                                                class="dropdown-item">
+                                                        {{ value }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Тип угольного топлива" -->
+                            <th class="text-center align-middle">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                    page=pagination.page, 
+                                                    per_page=per_page, 
+                                                    fuel_filter=fuel_filter, 
+                                                    fuel_type_filter=fuel_type_filter,
+                                                    topl_nazvl_filter=topl_nazvl_filter,
+                                                    topl_kmbur_filter=topl_kmbur_filter,
+                                                    sort_by='topl_kmbur', 
+                                                    sort_dir='asc' if sort_by != 'topl_kmbur' or sort_dir == 'desc' else 'desc') }}" 
+                                                    class="text-black">
+                                            Тип угольного топлива
+                                            {% if sort_by == 'topl_kmbur' %}
+                                                {% if sort_dir == 'asc' %}
+                                                    ▲
+                                                {% else %}
+                                                    ▼
+                                                {% endif %}
+                                            {% endif %}
+                                        </a>
+                                    </span>
+                                    <div class="dropdown">
+                                        <button 
+                                            class="btn btn-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            id="toplKmburFilterDropdownFuelAdmin" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="toplKmburFilterDropdownFuelAdmin">
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                            page=pagination.page, 
+                                                            per_page=per_page, 
+                                                            fuel_filter=fuel_filter, 
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            topl_nazvl_filter=topl_nazvl_filter,
+                                                            topl_kmbur_filter='',
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" 
+                                                            class="dropdown-item">
+                                                    Все типы угольного топива
+                                                </a>
+                                            </li>
+                                            {% for value in topl_kmbur_values %}
+                                                <li>
+                                                    <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                                page=pagination.page, 
+                                                                per_page=per_page, 
+                                                                fuel_filter=fuel_filter, 
+                                                                fuel_type_filter=fuel_type_filter,
+                                                                topl_nazvl_filter=topl_nazvl_filter,
+                                                                topl_kmbur_filter=value,
+                                                                sort_by=sort_by,
+                                                                sort_dir=sort_dir) }}" 
+                                                                class="dropdown-item">
+                                                        {{ value }}
                                                     </a>
                                                 </li>
                                             {% endfor %}
@@ -222,12 +376,12 @@
                                     <input type="hidden" name="fuel_ids[]" value="{{ fuel.id }}">
                                 </td>
 
-                                <!-- Строки таблицы. Столбец "Тип топлива" -->
+                                <!-- Строки таблицы. Столбец "Вид топлива" -->
                                 <td>
                                     <input type="text" name="fuel_names[]" class="form-control" value="{{ fuel.name }}">
                                 </td>
 
-                                <!-- Строки таблицы. Столбец "Вид топлива" -->
+                                <!-- Строки таблицы. Столбец "Тип топлива" -->
                                 <td>
                                     <select name="fuel_types[]" class="form-select">
                                         {% for fuel_type in fuel_types %}
@@ -239,6 +393,16 @@
                                     </select>
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Короткое наименование" -->
+                                <td>
+                                    <input type="text" name="fuel_topl_nazvl[]" class="form-control" value="{{ fuel.topl_nazvl or '' }}">
+                                </td>
+
+                                <!-- Строки таблицы. Столбец "Тип угольного топлива" -->
+                                <td>
+                                    <input type="text" name="fuel_topl_kmbur[]" class="form-control" value="{{ fuel.topl_kmbur or '' }}">
+                                </td>
+
                                 <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
                                 <td class="text-center align-middle">
                                     <input type="checkbox" name="fuel_delete[]" value="{{ fuel.id }}" class="form-check-input">
@@ -246,7 +410,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -266,6 +430,8 @@
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
                                         fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        topl_kmbur_filter=topl_kmbur_filter,
                                         sort_by='number', 
                                         sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -280,17 +446,19 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Тип топлива" -->
+                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
                         <th class="text-center align-middle">
-                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                        <a href="{{ url_for('refdata_bp.fuel_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter, 
                                         fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        topl_kmbur_filter=topl_kmbur_filter,
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Тип топлива
+                                Вид топлива
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -301,7 +469,7 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                        <!-- Шапка таблицы. Столбец "Тип топлива" -->
                         <th class="text-center align-middle">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
@@ -309,11 +477,13 @@
                                                 page=pagination.page, 
                                                 fuel_filter=fuel_filter,
                                                 fuel_type_filter=fuel_type_filter,
+                                                topl_nazvl_filter=topl_nazvl_filter,
+                                                topl_kmbur_filter=topl_kmbur_filter,
                                                 per_page=per_page,
                                                 sort_by='fuel_type', 
                                                 sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
                                     class="text-black">
-                                        Вид топлива
+                                        Тип топлива
                                         {% if sort_by == 'fuel_type' %}
                                             {% if sort_dir == 'asc' %}
                                                 ▲
@@ -338,11 +508,13 @@
                                                         page=pagination.page, 
                                                         fuel_filter=fuel_filter,
                                                         fuel_type_filter='',
+                                                        topl_nazvl_filter=topl_nazvl_filter,
+                                                        topl_kmbur_filter=topl_kmbur_filter,
                                                         per_page=per_page,
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" 
                                                         class="dropdown-item">
-                                                Все виды топлива
+                                                Все типы топлива
                                             </a>
                                         </li>
                                         {% for id, name in fuel_types %}
@@ -351,10 +523,148 @@
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
                                                     fuel_type_filter=id,
+                                                    topl_nazvl_filter=topl_nazvl_filter,
+                                                    topl_kmbur_filter=topl_kmbur_filter,
                                                     per_page=per_page,
                                                     sort_by=sort_by,
                                                     sort_dir=sort_dir) }}" class="dropdown-item">
                                                     {{ name }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Короткое наименование" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                fuel_filter=fuel_filter, 
+                                                fuel_type_filter=fuel_type_filter,
+                                                topl_nazvl_filter=topl_nazvl_filter,
+                                                topl_kmbur_filter=topl_kmbur_filter,
+                                                sort_by='topl_nazvl', 
+                                                sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                class="text-black">
+                                        Наименование в БД Топливо
+                                        {% if sort_by == 'topl_nazvl' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="toplNazvlFilterDropdownFuelReadonly" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="toplNazvlFilterDropdownFuelReadonly">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                        page=pagination.page, 
+                                                        per_page=per_page, 
+                                                        fuel_filter=fuel_filter, 
+                                                        fuel_type_filter=fuel_type_filter,
+                                                        topl_nazvl_filter='',
+                                                        topl_kmbur_filter=topl_kmbur_filter,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" 
+                                                        class="dropdown-item">
+                                                Все наименования
+                                            </a>
+                                        </li>
+                                        {% for value in topl_nazvl_values %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                            page=pagination.page, 
+                                                            per_page=per_page, 
+                                                            fuel_filter=fuel_filter, 
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            topl_nazvl_filter=value,
+                                                            topl_kmbur_filter=topl_kmbur_filter,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" 
+                                                            class="dropdown-item">
+                                                    {{ value }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Тип угольного топлива" -->
+                        <th class="text-center align-middle">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="mx-auto">
+                                    <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                fuel_filter=fuel_filter, 
+                                                fuel_type_filter=fuel_type_filter,
+                                                topl_nazvl_filter=topl_nazvl_filter,
+                                                topl_kmbur_filter=topl_kmbur_filter,
+                                                sort_by='topl_kmbur', 
+                                                sort_dir='asc' if sort_by != 'topl_kmbur' or sort_dir == 'desc' else 'desc') }}" 
+                                                class="text-black">
+                                        Тип угольного топлива
+                                        {% if sort_by == 'topl_kmbur' %}
+                                            {% if sort_dir == 'asc' %}
+                                                ▲
+                                            {% else %}
+                                                ▼
+                                            {% endif %}
+                                        {% endif %}
+                                    </a>
+                                </span>
+                                <div class="dropdown">
+                                    <button 
+                                        class="btn btn-secondary btn-sm dropdown-toggle" 
+                                        type="button" 
+                                        id="toplKmburFilterDropdownFuelReadonly" 
+                                        data-bs-toggle="dropdown" 
+                                        aria-expanded="false">
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="toplKmburFilterDropdownFuelReadonly">
+                                        <li>
+                                            <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                        page=pagination.page, 
+                                                        per_page=per_page, 
+                                                        fuel_filter=fuel_filter, 
+                                                        fuel_type_filter=fuel_type_filter,
+                                                        topl_nazvl_filter=topl_nazvl_filter,
+                                                        topl_kmbur_filter='',
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" 
+                                                        class="dropdown-item">
+                                                Все типы угольного топлива
+                                            </a>
+                                        </li>
+                                        {% for value in topl_kmbur_values %}
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list', 
+                                                            page=pagination.page, 
+                                                            per_page=per_page, 
+                                                            fuel_filter=fuel_filter, 
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            topl_nazvl_filter=topl_nazvl_filter,
+                                                            topl_kmbur_filter=value,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}" 
+                                                            class="dropdown-item">
+                                                    {{ value }}
                                                 </a>
                                             </li>
                                         {% endfor %}
@@ -374,16 +684,22 @@
                                 {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Тип топлива" -->
+                            <!-- Строки таблицы. Столбец "Вид топлива" -->
                             <td> {{ fuel.name }} </td>
 
-                            <!-- Строки таблицы. Столбец "Вид топлива" -->
+                            <!-- Строки таблицы. Столбец "Тип топлива" -->
                             <td class="text-center align-middle"> {{ fuel.fuel_type.name }} </td>
+
+                            <!-- Строки таблицы. Столбец "Короткое наименование" -->
+                            <td> {{ fuel.topl_nazvl or '' }} </td>
+
+                            <!-- Строки таблицы. Столбец "Тип угольного топлива" -->
+                            <td> {{ fuel.topl_kmbur or '' }} </td>
 
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                     {% endfor %}
                 </tbody>

@@ -265,6 +265,7 @@ def create_app():
             year_model,
             year_feature_model,
         )
+        from app.refdata.services.history import refdata_history_listeners  # noqa: F401
         from app.generation.models.station import (
             station_model,
             station_group_model,
@@ -607,6 +608,7 @@ def create_app():
     from app.generation.routes.station_changes import station_changes_bp
     from app.start.routes import start_bp
     from app.logs.routes import logs_bp
+    from app.history.routes import history_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -618,6 +620,7 @@ def create_app():
     app.register_blueprint(fuel_bp, url_prefix="/fuel")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
+    app.register_blueprint(history_bp, url_prefix="/history")
 
     # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')

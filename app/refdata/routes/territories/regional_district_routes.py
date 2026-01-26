@@ -49,7 +49,7 @@ def regional_district_list():
 
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     region_ids                  = request.args.getlist("region_ids[]")
@@ -61,7 +61,7 @@ def regional_district_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 20, type=int)
+        per_page                    = request.form.get("per_page", 25, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         regional_district_filter    = request.form.get("regional_district_filter", "").strip()
@@ -81,28 +81,22 @@ def regional_district_list():
         energy_zone_ids                 = request.form.getlist("energy_zones[]")
         synchronous_area_ids            = request.form.getlist("synchronous_areas[]")
 
+        deleted_ids = set()
         # Удаление записей
         if regional_district_delete:
             try:
                 delete_regional_district_service(regional_district_delete, user)
+                deleted_ids = {int(item) for item in regional_district_delete if item}
                 flash("Записи субъектов РФ успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.regional_district_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    regional_district_filter=regional_district_filter,
-                                    federal_district_filter=federal_district_filter,
-                                    energy_zone_filter=energy_zone_filter,
-                                    synchronous_area_filter=synchronous_area_filter,
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not regional_district_ids:
-                log_to_db(user, "Нет данных для обновления.", entity_type="regional_district")
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    log_to_db(user, "Нет данных для обновления.", entity_type="regional_district")
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.regional_district_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -118,6 +112,8 @@ def regional_district_list():
             for regional_district_id, regional_district_name, regional_district_full_name, regional_district_rp_name, regional_district_dp_name, federal_district_id, energy_zone_id, synchronous_area_id, region_id in zip(
                 regional_district_ids, regional_district_names, regional_district_full_names, regional_district_rp_names, regional_district_dp_names, federal_district_ids, energy_zone_ids, synchronous_area_ids, region_ids
             ):
+                if regional_district_id and int(regional_district_id) in deleted_ids:
+                    continue
                 try:
                     regional_district_data.append({
                         "regional_district_id": int(regional_district_id) if regional_district_id else None,
@@ -144,6 +140,17 @@ def regional_district_list():
                         f"Ошибка: {e}"
                     )
             
+            if not regional_district_data:
+                return redirect(url_for("refdata_bp.regional_district_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        regional_district_filter=regional_district_filter,
+                                        federal_district_filter=federal_district_filter,
+                                        energy_zone_filter=energy_zone_filter,
+                                        synchronous_area_filter=synchronous_area_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["regional_district_id"] for record in regional_district_data if record["regional_district_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -230,7 +237,7 @@ def add_regional_district():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     regional_district_filter    = request.args.get("regional_district_filter", "").strip()

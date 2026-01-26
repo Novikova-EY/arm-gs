@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any, Optional
 from werkzeug.local import LocalProxy
-from flask import current_app, has_app_context
+from flask import current_app, has_app_context, g
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, DataError, DBAPIError
 from app.extensions import db
@@ -40,19 +40,17 @@ def _make_independent_session():
     Безопасный fallback для разных версий Flask-SQLAlchemy.
     """
     try:
-        # В новых версиях этого может не быть — проверяем явно
-        if hasattr(db, "create_scoped_session"):
-            return db.create_scoped_session()
-    except Exception as e:
-        # Падать не даём — идём в fallback
-        if has_app_context():
-            current_app.logger.warning(f"log_to_db: create_scoped_session failed: {e!r}")
-
-    # Fallback
-    try:
         engine = db.get_engine() if hasattr(db, "get_engine") else db.engine
         Session = sessionmaker(bind=engine)
-        return Session()
+        session = Session()
+        # Защита на случай, если внезапно вернули текущую scoped-сессию
+        try:
+            if session is db.session:
+                session.close()
+                session = Session()
+        except Exception:
+            pass
+        return session
     except Exception as e:
         if has_app_context():
             current_app.logger.error(f"log_to_db: cannot create session: {e!r}")
@@ -75,11 +73,22 @@ def log_to_db(
         if details is not None and not isinstance(details, str):
             details = str(details)
 
-        # Получаем текущую версию БД
+        # Создаем независимую сессию заранее — ее же используем для версии БД
+        session = _make_independent_session()
+        # Если создать независимую сессию не удалось — тихо выходим,
+        # чтобы не коммитить основной db.session и не инвалидировать объекты
+        if session is None:
+            return
+
+        # Получаем текущую версию БД, не трогая основной db.session (может быть в flush)
         database_version_id = None
         try:
-            from app.common.services.database_version_filter import get_current_db_version_id
-            database_version_id = get_current_db_version_id()
+            if has_app_context() and hasattr(g, "current_db_version"):
+                database_version_id = g.current_db_version
+            else:
+                from app.common.models.database_version_model import DatabaseVersion
+                active_version = session.query(DatabaseVersion).filter_by(is_active=True).first()
+                database_version_id = active_version.id if active_version else None
         except Exception:
             # Если не удалось получить версию, продолжаем без нее
             pass
@@ -92,12 +101,6 @@ def log_to_db(
             entity_id=entity_id,
             database_version_id=database_version_id,
         )
-
-        session = _make_independent_session()
-        # Если создать независимую сессию не удалось — тихо выходим,
-        # чтобы не коммитить основной db.session и не инвалидировать объекты
-        if session is None:
-            return
 
         session.add(rec)
         session.commit()

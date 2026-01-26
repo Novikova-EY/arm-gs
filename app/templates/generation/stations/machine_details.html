@@ -138,16 +138,18 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_tes_machine_type(class="form-select") }}
-                                        {% else %}
-                                            {{ machine.tes_machine_type.name if machine and machine.tes_machine_type else '—' }}
-                                        {% endif %}
+                                {% if station.station_type.name|lower == 'тэс' %}
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
+                                        <div class="col-7 text-start">
+                                            {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                                {{ main_form.id_tes_machine_type(class="form-select") }}
+                                            {% else %}
+                                                {{ machine.tes_machine_type.name if machine and machine.tes_machine_type else '—' }}
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                </div>
+                                {% endif %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип технологии:</div>
                                     <div class="col-7 text-start">
@@ -902,6 +904,7 @@
         padding-left: 0 !important;
         padding-right: 50px !important;
         width: 100% !important;
+        color: #212529 !important;
     }
     
     .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__arrow,
@@ -928,6 +931,70 @@
     .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"]:focus-within .select2-selection--single {
         border-color: #80bdff !important;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+    }
+
+    /* Контрастные цвета в выпадающем списке Select2 */
+    .machine-details-page .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background-color: #e9f2ff !important;
+        color: #000 !important;
+        font-weight: 700 !important;
+    }
+    .machine-details-page .select2-container--default .select2-results__option--selected {
+        background-color: #cfe2ff !important;
+        color: #000 !important;
+    }
+    .machine-details-page .select2-container--default .select2-results__option--selectable {
+        color: #000 !important;
+    }
+    .machine-details-page .select2-container--default .select2-results__option--highlighted[aria-selected],
+    .machine-details-page .select2-container--default .select2-results__option--selectable:hover {
+        background-color: #e9f2ff !important;
+        color: #000 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Select2 dropdown рендерится в body, поэтому делаем глобальные правила */
+    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable,
+    .select2-container--default .select2-results__option--highlighted[aria-selected],
+    .select2-container--default .select2-results__option--selectable:hover {
+        background-color: #e9f2ff !important;
+        color: #000 !important;
+        font-weight: 700 !important;
+    }
+    .select2-container--default .select2-results__option--selected {
+        background-color: #cfe2ff !important;
+        color: #000 !important;
+    }
+    .select2-container--default .select2-results__option--selectable {
+        color: #000 !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #000 !important;
+    }
+
+    /* Поддержка bootstrap тем Select2 */
+    .select2-container--bootstrap-5 .select2-results__option--highlighted.select2-results__option--selectable,
+    .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected],
+    .select2-container--bootstrap-5 .select2-results__option--selectable:hover,
+    .select2-container--bootstrap4 .select2-results__option--highlighted.select2-results__option--selectable,
+    .select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected],
+    .select2-container--bootstrap4 .select2-results__option--selectable:hover {
+        background-color: #e9f2ff !important;
+        color: #000 !important;
+        font-weight: 700 !important;
+    }
+    .select2-container--bootstrap-5 .select2-results__option--selected,
+    .select2-container--bootstrap4 .select2-results__option--selected {
+        background-color: #cfe2ff !important;
+        color: #000 !important;
+    }
+    .select2-container--bootstrap-5 .select2-results__option--selectable,
+    .select2-container--bootstrap4 .select2-results__option--selectable {
+        color: #000 !important;
+    }
+    .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered,
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+        color: #000 !important;
     }
 
     /* Крупнее шрифт во всех ячейках строк таблиц: Мощность, Тип ТЭС, Топливо */
@@ -1293,8 +1360,59 @@ document.addEventListener("DOMContentLoaded", function () {
         return isNaN(num) ? null : num;
     }
 
+    function parseDecimalString(raw) {
+        if (raw === null || raw === undefined) return null;
+        const cleaned = raw.toString().trim().replace(/\s+/g, "").replace(",", ".");
+        if (cleaned === "") return null;
+        const match = cleaned.match(/^([+-])?(\d*)(?:\.(\d*))?$/);
+        if (!match) return null;
+        let intPart = match[2] || "0";
+        let fracPart = match[3] || "";
+        intPart = intPart.replace(/^0+(?=\d)/, "");
+        return {
+            sign: match[1] === "-" ? -1n : 1n,
+            intPart,
+            fracPart,
+            scale: fracPart.length
+        };
+    }
+
+    function decimalToBigInt(parts, scale) {
+        const frac = parts.fracPart.padEnd(scale, "0");
+        const raw = `${parts.intPart || "0"}${frac}`;
+        return BigInt(raw || "0");
+    }
+
+    function formatDecimalFromBigInt(value, scale) {
+        const negative = value < 0n;
+        let s = (negative ? -value : value).toString();
+        if (scale > 0) {
+            if (s.length <= scale) {
+                s = s.padStart(scale + 1, "0");
+            }
+            const intPart = s.slice(0, s.length - scale);
+            let fracPart = s.slice(s.length - scale).replace(/0+$/, "");
+            s = fracPart ? `${intPart}.${fracPart}` : intPart;
+        }
+        if (negative && s !== "0") {
+            s = `-${s}`;
+        }
+        return s;
+    }
+
+    function decimalSubtract(aRaw, bRaw) {
+        const a = parseDecimalString(aRaw);
+        const b = parseDecimalString(bRaw);
+        if (!a || !b) return null;
+        const scale = Math.max(a.scale, b.scale);
+        const aInt = decimalToBigInt(a, scale) * a.sign;
+        const bInt = decimalToBigInt(b, scale) * b.sign;
+        const result = aInt - bInt;
+        return formatDecimalFromBigInt(result, scale);
+    }
+
     function formatPowerValue(template, value) {
-        if (value === null || value === undefined || isNaN(value)) return "";
+        if (value === null || value === undefined || value === "") return "";
         // Если в шаблоне использовалась запятая, сохраняем её
         const str = String(value);
         if (template && template.indexOf(",") !== -1) {
@@ -1350,12 +1468,10 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 0; i < len; i++) {
             const rustRaw = rustInputs[i].value;
             const raspRaw = raspInputs[i].value;
-            const rust = parsePowerValue(rustRaw);
-            const rasp = parsePowerValue(raspRaw);
-            if (rust === null || rasp === null) {
+            const ogr = decimalSubtract(rustRaw, raspRaw);
+            if (ogr === null) {
                 continue;
             }
-            const ogr = rust - rasp;
             ogrInputs[i].value = formatPowerValue(rustRaw, ogr);
         }
 
@@ -1374,12 +1490,10 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 0; i < len; i++) {
             const rustRaw = rustInputs[i].value;
             const ogrRaw  = ogrInputs[i].value;
-            const rust = parsePowerValue(rustRaw);
-            const ogr  = parsePowerValue(ogrRaw);
-            if (rust === null || ogr === null) {
+            const rasp = decimalSubtract(rustRaw, ogrRaw);
+            if (rasp === null) {
                 continue;
             }
-            const rasp = rust - ogr;
             raspInputs[i].value = formatPowerValue(rustRaw, rasp);
         }
 

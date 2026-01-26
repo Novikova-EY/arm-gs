@@ -31,7 +31,6 @@ class FuelTypeFilterForm(FlaskForm):
         validators=[Optional(), Length(max=100)],
         render_kw={"placeholder": "Поиск по видам топлива"},
     )
-
     # Пагинация
     page = HiddenField(default=1)
     per_page = SelectField(

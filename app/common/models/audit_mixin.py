@@ -34,7 +34,10 @@ def _get_current_username() -> str:
     2) session['username']
     3) 'Неизвестный пользователь'
     """
-    from flask import session
+    from flask import session, has_request_context
+
+    if not has_request_context():
+        return "Неизвестный пользователь"
 
     try:
         from flask_login import current_user

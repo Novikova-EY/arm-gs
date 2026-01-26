@@ -46,7 +46,7 @@ def condition_type_list():
 
     # Получение параметров запроса
     page        = request.args.get("page", 1, type=int)
-    per_page    = request.args.get("per_page", 20, type=int)
+    per_page    = request.args.get("per_page", 25, type=int)
     sort_by     = request.args.get("sort_by", "id")
     sort_dir    = request.args.get("sort_dir", "asc")
     condition_type_filter = request.args.get("condition_type_filter", "").strip()
@@ -54,7 +54,7 @@ def condition_type_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page        = request.form.get("page", 1, type=int)
-        per_page    = request.form.get("per_page", 20, type=int)
+        per_page    = request.form.get("per_page", 25, type=int)
         sort_by     = request.form.get("sort_by", "id")
         sort_dir    = request.form.get("sort_dir", "asc")
         condition_type_filter = request.form.get("condition_type_filter", "").strip()
@@ -64,24 +64,21 @@ def condition_type_list():
         condition_type_names   = request.form.getlist("condition_type_names[]")
         condition_type_delete = request.form.getlist("condition_type_delete[]")
 
+        deleted_ids = set()
         # Удаление записей
         if condition_type_delete:
             try:
                 delete_condition_type_service(condition_type_delete, user)
+                deleted_ids = {int(item) for item in condition_type_delete if item}
                 flash("Записи типов состоянияуспешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.condition_type_list",
-                                    page=page,
-                                    per_page=per_page,
-                                    sort_by=sort_by,
-                                    sort_dir=sort_dir,
-                                    condition_type_filter=condition_type_filter))
 
         # Обновление данных в базе
         try:
             if not condition_type_ids or not condition_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.condition_type_list",
                                         page=page,
                                         per_page=per_page,
@@ -92,10 +89,20 @@ def condition_type_list():
            # Формирование данных для обновления
             condition_type_payload = []
             for condition_type_id, condition_type_name in zip(condition_type_ids, condition_type_names):
+                if condition_type_id and int(condition_type_id) in deleted_ids:
+                    continue
                 condition_type_payload.append({
                     "condition_type_id": int(condition_type_id) if condition_type_id else None,
                     "name": (condition_type_name or "").strip(),
                 })
+
+            if not condition_type_payload:
+                return redirect(url_for("refdata_bp.condition_type_list",
+                                        page=page,
+                                        per_page=per_page,
+                                        sort_by=sort_by,
+                                        sort_dir=sort_dir,
+                                        condition_type_filter=condition_type_filter))
 
             # Проверка на дублирующиеся IDs
             ids = [record["condition_type_id"] for record in condition_type_payload if record["condition_type_id"] is not None]
@@ -158,7 +165,7 @@ def add_condition_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page        = request.args.get("page", 1, type=int)
-    per_page    = request.args.get("per_page", 20, type=int)
+    per_page    = request.args.get("per_page", 25, type=int)
     sort_by     = request.args.get("sort_by", "id")
     sort_dir    = request.args.get("sort_dir", "asc")
     condition_type_filter = request.args.get("condition_type_filter", "").strip()

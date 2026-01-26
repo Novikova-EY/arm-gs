@@ -43,7 +43,7 @@ def federal_district_list():
 
     # Получение параметров запроса
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
     federal_district_filter = request.args.get("federal_district_filter", "").strip()
     sort_by = request.args.get("sort_by", "id")
     sort_dir = request.args.get("sort_dir", "asc")
@@ -51,7 +51,7 @@ def federal_district_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 20, type=int)
+        per_page = request.form.get("per_page", 25, type=int)
         sort_by = request.form.get("sort_by", "id")
         sort_dir = request.form.get("sort_dir", "asc")
         federal_district_filter = request.form.get("federal_district_filter", "").strip()
@@ -64,25 +64,22 @@ def federal_district_list():
         federal_district_abr_names = request.form.getlist("federal_district_abr_names[]")
         federal_district_delete = request.form.getlist("federal_district_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if federal_district_delete:
             try:
                 delete_federal_district_service(federal_district_delete, user)
+                deleted_ids = {int(item) for item in federal_district_delete if item}
                 flash("Записи успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.federal_district_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    federal_district_filter=federal_district_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not (federal_district_ids and display_orders and federal_district_names and federal_district_full_names and federal_district_abr_names):
-                log_to_db(user, "Нет данных для обновления.", entity_type="federal_district")
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    log_to_db(user, "Нет данных для обновления.", entity_type="federal_district")
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.federal_district_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -95,6 +92,8 @@ def federal_district_list():
             for federal_district_id, display_order, federal_district_name, federal_district_full_name, federal_district_abr_name in zip(
                 federal_district_ids, display_orders, federal_district_names, federal_district_full_names, federal_district_abr_names
             ):
+                if federal_district_id and int(federal_district_id) in deleted_ids:
+                    continue
                 try:
                     if not federal_district_name.strip():
                         log_to_db(user, f"Пустое имя обнаружено: ID={federal_district_id}", entity_type="federal_district")
@@ -118,6 +117,14 @@ def federal_district_list():
                         f"Ошибка: {e}"
                     )
             
+            if not federal_district_data:
+                return redirect(url_for("refdata_bp.federal_district_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        federal_district_filter=federal_district_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["federal_district_id"] for record in federal_district_data if record["federal_district_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -178,7 +185,7 @@ def add_federal_district():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     federal_district_filter     = request.args.get("federal_district_filter", "").strip()

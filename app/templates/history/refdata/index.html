@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}История справочников{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-4">
+    <div class="container mt-5 mb-5">
+        <h2 class="text-center align-middle">История справочников</h2>
+
+        <div class="row align-items-start mb-4">
+            <div class="col">
+                <a href="{{ url_for('history_bp.history_index') }}" class="btn btn-outline-secondary fs-5 w-100">
+                    Назад к обзору истории
+                </a>
+            </div>
+        </div>
+
+        {% for section in sections %}
+            <div class="row align-items-start mb-3">
+                <h4 class="text-center mt-4">{{ section.title }}</h4>
+                {% for item in section["items"] %}
+                    <div class="col">
+                        <a href="{{ url_for('history_bp.history_refdata_entity', entity_type=item[0]) }}"
+                           class="btn btn-outline-primary fs-4 w-100">
+                            {{ item[1] }}
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

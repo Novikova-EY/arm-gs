@@ -48,7 +48,7 @@ def years_list():
 
     # Параметры отображения
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
     sort_by = request.args.get("sort_by", "number")
     sort_dir = request.args.get("sort_dir", "asc")
     year_filter = request.args.get("year_filter", "").strip()
@@ -63,7 +63,7 @@ def years_list():
 
         # Обновление параметров из формы
         page = request.form.get("page", 1, type=int)
-        per_page = request.form.get("per_page", 20, type=int)
+        per_page = request.form.get("per_page", 25, type=int)
         sort_by = request.form.get("sort_by", "number")
         sort_dir = request.form.get("sort_dir", "asc")
         year_filter = (request.form.get("year_filter", "") or "").strip()
@@ -73,30 +73,46 @@ def years_list():
         year_features = request.form.getlist("year_features[]")
         year_delete = request.form.getlist("year_delete[]")
 
+        deleted_ids = set()
         # Удаление
         if year_delete:
             try:
                 delete_year_service(year_delete, user)
+                deleted_ids = {int(item) for item in year_delete if item}
                 flash("Записи годов успешно удалены.", "success")
             except Exception as e:
                 current_app.logger.error(f"Ошибка удаления годов: {e}")
                 flash("Ошибка удаления записей.", "danger")
 
-            return redirect(
-                url_for(
-                    "refdata_bp.years_list",
-                    page=page,
-                    per_page=per_page,
-                    year_filter=year_filter,
-                    sort_by=sort_by,
-                    sort_dir=sort_dir,
-                )
-            )
-
         # Обновление
         try:
             if not year_ids or not year_numbers or not year_features:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
+                return redirect(
+                    url_for(
+                        "refdata_bp.years_list",
+                        page=page,
+                        per_page=per_page,
+                        year_filter=year_filter,
+                        sort_by=sort_by,
+                        sort_dir=sort_dir,
+                    )
+                )
+
+            payload = []
+            for yid, ynum, yfeat in zip(year_ids, year_numbers, year_features):
+                if yid and int(yid) in deleted_ids:
+                    continue
+                payload.append(
+                    {
+                        "year_id": int(yid) if yid else None,
+                        "number": ynum,
+                        "year_feature_id": int(yfeat) if yfeat else None,
+                    }
+                )
+
+            if not payload:
                 return redirect(
                     url_for(
                         "refdata_bp.years_list",
@@ -109,20 +125,10 @@ def years_list():
                 )
 
             # Проверка на дублирующиеся IDs
-            ids = [int(x) for x in year_ids if x]
+            ids = [record["year_id"] for record in payload if record["year_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID годов: {duplicates}")
-
-            payload = []
-            for yid, ynum, yfeat in zip(year_ids, year_numbers, year_features):
-                payload.append(
-                    {
-                        "year_id": int(yid) if yid else None,
-                        "number": ynum,
-                        "year_feature_id": int(yfeat) if yfeat else None,
-                    }
-                )
 
             update_year_service(payload, user)
             flash("Изменения успешно сохранены.", "success")
@@ -188,7 +194,7 @@ def add_year():
 
     # Сохранение параметров возврата
     page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
     sort_by = request.args.get("sort_by", "number")
     sort_dir = request.args.get("sort_dir", "asc")
     year_filter = request.args.get("year_filter", "").strip()

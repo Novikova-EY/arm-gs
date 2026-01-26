@@ -3,6 +3,7 @@
 
 from app.extensions import db
 from sqlalchemy import or_, text
+import re
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -117,22 +118,32 @@ def update_version_service(data, user):
         f"{data}",
         entity_type="database_version")
     
+    def _validate_version_number(raw_value):
+        version_number = (raw_value or "").strip()
+        if not version_number:
+            raise ValueError("Поле «Номер версии» обязательно.")
+        if len(version_number) > 30:
+            raise ValueError("Длина номера версии не должна превышать 30 символов.")
+        if not re.fullmatch(r"[A-Za-zА-Яа-я0-9 ()\-]+", version_number):
+            raise ValueError("Номер версии должен содержать только буквы, цифры, пробелы, дефисы и круглые скобки.")
+        return version_number
+
     # Проверки на валидность данных
     with db.session.no_autoflush:
         for record in data:
             version_id = record.get("version_id")
-            version_number = record.get("version_number")
+            version_number = _validate_version_number(record.get("version_number"))
             name = (record.get("name") or "").strip()
             description = (record.get("description") or "").strip()
 
-            if not name or not version_number:
+            if not name:
                 log_to_db(
                     user, 
                     "Ошибка валидации", 
                     f"Запись: {record}", 
                     entity_type="database_version",
                     entity_id=version_id)
-                raise ValueError(f"Поля 'name' и 'version_number' обязательны для заполнения.")
+                raise ValueError(f"Поле 'name' обязательно для заполнения.")
 
             obj = db.session.get(DatabaseVersion, version_id)
             if not obj:
@@ -235,23 +246,33 @@ def add_version_service(data, user):
     refdata_source_version_ids = []  # Список версий, из которых копируем только справочники
     extend_years_list = []  # Список лет продления (только для сценария parent_version_id)
     
+    def _validate_version_number(raw_value):
+        version_number = (raw_value or "").strip()
+        if not version_number:
+            raise ValueError("Поле «Номер версии» обязательно.")
+        if len(version_number) > 30:
+            raise ValueError("Длина номера версии не должна превышать 30 символов.")
+        if not re.fullmatch(r"[A-Za-zА-Яа-я0-9 ()\-]+", version_number):
+            raise ValueError("Номер версии должен содержать только буквы, цифры, пробелы, дефисы и круглые скобки.")
+        return version_number
+
     def _do_insert():
         with db.session.no_autoflush:
             for record in data:
-                version_number = record.get("version_number")
+                version_number = _validate_version_number(record.get("version_number"))
                 name = (record.get("name") or "").strip()
                 description = (record.get("description") or "").strip()
                 parent_version_id = record.get("parent_version_id")
                 refdata_source_version_id = record.get("refdata_source_version_id")
                 extend_years = record.get("extend_years")
 
-                if not name or not version_number:
+                if not name:
                     log_to_db(
                         user, 
                         "Ошибка валидации", 
                         f"Запись: {record}", 
                         entity_type="database_version")
-                    raise ValueError("Каждая запись должна содержать 'name' и 'version_number'.")
+                    raise ValueError("Каждая запись должна содержать 'name'.")
 
                 dup_name = (DatabaseVersion.query
                             .filter(DatabaseVersion.name == name)
@@ -372,6 +393,42 @@ def add_version_service(data, user):
                 
                 create_year_version_data(new_version_id, target_year, user)
         
+        # Исторический снимок территорий для каждой созданной версии (в рамках общей транзакции)
+        from app.refdata.services.history.refdata_history_services import (
+            snapshot_energy_systems_for_version,
+            snapshot_fuels_for_version,
+            snapshot_station_machine_types_for_version,
+            snapshot_territories_for_version,
+        )
+        snapshot_stats = {}
+        for idx, new_version_id in enumerate(created_ids):
+            parent_id = parent_version_ids[idx]
+            refdata_source_id = refdata_source_version_ids[idx]
+            if not parent_id and not refdata_source_id:
+                # Пустая версия: справочники не копируются, снимки не создаем.
+                continue
+            snapshot_stats[new_version_id] = {}
+            snapshot_stats[new_version_id]["territories"] = snapshot_territories_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["energy_systems"] = snapshot_energy_systems_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["station_machine_types"] = snapshot_station_machine_types_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["fuels"] = snapshot_fuels_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+
         # Коммитим ВСЁ разом: и создание версии, и копирование данных
         _commit_with_retry()
         
@@ -394,6 +451,14 @@ def add_version_service(data, user):
                     f"Из версии {refdata_source_id} в версию {new_version_id}",
                     entity_type="database_version",
                     entity_id=new_version_id
+                )
+            if new_version_id in snapshot_stats:
+                log_to_db(
+                    user,
+                    "Исторические снимки справочников созданы",
+                    f"{snapshot_stats[new_version_id]}",
+                    entity_type="database_version",
+                    entity_id=new_version_id,
                 )
         
         return created_ids[0] if len(created_ids) == 1 else created_ids
@@ -466,6 +531,42 @@ def add_version_service(data, user):
                 
                 create_year_version_data(new_version_id, target_year, user)
         
+        # Исторический снимок территорий для каждой созданной версии (в рамках общей транзакции)
+        from app.refdata.services.history.refdata_history_services import (
+            snapshot_energy_systems_for_version,
+            snapshot_fuels_for_version,
+            snapshot_station_machine_types_for_version,
+            snapshot_territories_for_version,
+        )
+        snapshot_stats = {}
+        for idx, new_version_id in enumerate(created_ids):
+            parent_id = parent_version_ids[idx]
+            refdata_source_id = refdata_source_version_ids[idx]
+            if not parent_id and not refdata_source_id:
+                # Пустая версия: справочники не копируются, снимки не создаем.
+                continue
+            snapshot_stats[new_version_id] = {}
+            snapshot_stats[new_version_id]["territories"] = snapshot_territories_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["energy_systems"] = snapshot_energy_systems_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["station_machine_types"] = snapshot_station_machine_types_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+            snapshot_stats[new_version_id]["fuels"] = snapshot_fuels_for_version(
+                database_version_id=new_version_id,
+                user=user,
+                do_commit=False,
+            )
+
         # Коммитим всё разом после retry
         _commit_with_retry()
         
@@ -488,6 +589,14 @@ def add_version_service(data, user):
                     f"Из версии {refdata_source_id} в версию {new_version_id}",
                     entity_type="database_version",
                     entity_id=new_version_id
+                )
+            if new_version_id in snapshot_stats:
+                log_to_db(
+                    user,
+                    "Исторические снимки справочников созданы",
+                    f"{snapshot_stats[new_version_id]}",
+                    entity_type="database_version",
+                    entity_id=new_version_id,
                 )
         
         return created_ids[0] if len(created_ids) == 1 else created_ids
@@ -3995,11 +4104,13 @@ def get_default_version():
     # Затем пытаемся найти версию по номеру из конфига
     if Config.DEFAULT_DATABASE_VERSION_NUMBER:
         try:
-            version = DatabaseVersion.query.filter_by(
-                version_number=int(Config.DEFAULT_DATABASE_VERSION_NUMBER)
-            ).first()
-            if version:
-                return version
+            version_number = str(Config.DEFAULT_DATABASE_VERSION_NUMBER).strip()
+            if version_number:
+                version = DatabaseVersion.query.filter_by(
+                    version_number=version_number
+                ).first()
+                if version:
+                    return version
         except (ValueError, TypeError):
             pass
     

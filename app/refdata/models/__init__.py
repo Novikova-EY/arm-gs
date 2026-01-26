@@ -28,3 +28,6 @@ from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesTy
 from app.refdata.models.years.year_model import Year
 from app.refdata.models.years.year_feature_model import YearFeature
 from app.refdata.models.years.year_service_model import YearService
+
+# --- Исторический слой справочников ---
+from app.refdata.models.history.refdata_entity_model import RefdataEntity, RefdataEntityYear

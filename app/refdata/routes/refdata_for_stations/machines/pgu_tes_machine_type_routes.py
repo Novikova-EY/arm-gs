@@ -46,7 +46,7 @@ def pgu_tes_machine_type_list():
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     pgu_tes_machine_type_filter     = request.args.get("pgu_tes_machine_type_filter")
@@ -54,7 +54,7 @@ def pgu_tes_machine_type_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         pgu_tes_machine_type_filter    = request.form.get("pgu_tes_machine_type_filter")
@@ -64,23 +64,20 @@ def pgu_tes_machine_type_list():
         pgu_tes_machine_type_names     = request.form.getlist("pgu_tes_machine_type_names[]")
         pgu_tes_machine_type_delete    = request.form.getlist("pgu_tes_machine_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if pgu_tes_machine_type_delete:
             try:
                 delete_pgu_tes_machine_type_service(pgu_tes_machine_type_delete, user)
+                deleted_ids = {int(item) for item in pgu_tes_machine_type_delete if item}
                 flash("Записи типов агрегатов ПГУ успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.pgu_tes_machine_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    pgu_tes_machine_type_filter=pgu_tes_machine_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not pgu_tes_machine_type_ids or not pgu_tes_machine_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.pgu_tes_machine_type_list", 
                                         page=page,
                                         per_page=per_page,
@@ -91,11 +88,21 @@ def pgu_tes_machine_type_list():
             # Формирование данных для обновления
             pgu_tes_machine_type_data = []
             for pgu_tes_machine_type_id, pgu_tes_machine_type_name in zip(pgu_tes_machine_type_ids, pgu_tes_machine_type_names):
+                if pgu_tes_machine_type_id and int(pgu_tes_machine_type_id) in deleted_ids:
+                    continue
                 pgu_tes_machine_type_data.append({
                     "pgu_tes_machine_type_id": int(pgu_tes_machine_type_id) if pgu_tes_machine_type_id else None,
                     "name": pgu_tes_machine_type_name.strip(),
                 })
             
+            if not pgu_tes_machine_type_data:
+                return redirect(url_for("refdata_bp.pgu_tes_machine_type_list", 
+                                        page=page,
+                                        per_page=per_page,
+                                        pgu_tes_machine_type_filter=pgu_tes_machine_type_filter,
+                                        sort_by=sort_by,
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["pgu_tes_machine_type_id"] for record in pgu_tes_machine_type_data if record["pgu_tes_machine_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -155,7 +162,7 @@ def add_pgu_tes_machine_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     pgu_tes_machine_type_filter     = request.args.get("pgu_tes_machine_type_filter", "").strip()

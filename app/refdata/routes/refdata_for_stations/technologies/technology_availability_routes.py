@@ -46,7 +46,7 @@ def technology_availability_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_availability_filter    = request.args.get("technology_availability_filter")
@@ -54,7 +54,7 @@ def technology_availability_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         technology_availability_filter    = request.form.get("technology_availability_filter")
@@ -64,23 +64,20 @@ def technology_availability_list():
         technology_availability_names     = request.form.getlist("technology_availability_names[]")
         technology_availability_delete    = request.form.getlist("technology_availability_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if technology_availability_delete:
             try:
                 delete_technology_availability_service(technology_availability_delete, user)
+                deleted_ids = {int(item) for item in technology_availability_delete if item}
                 flash("Записи доступности технологий успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.technology_availability_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    technology_availability_filter=technology_availability_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not technology_availability_ids or not technology_availability_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.technology_availability_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -91,11 +88,21 @@ def technology_availability_list():
            # Формирование данных для обновления
             technology_availability_data = []
             for technology_availability_id, technology_availability_name in zip(technology_availability_ids, technology_availability_names):
+                if technology_availability_id and int(technology_availability_id) in deleted_ids:
+                    continue
                 technology_availability_data.append({
                     "technology_availability_id": int(technology_availability_id) if technology_availability_id else None,
                     "name": technology_availability_name.strip(),
                 })
             
+            if not technology_availability_data:
+                return redirect(url_for("refdata_bp.technology_availability_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        technology_availability_filter=technology_availability_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["technology_availability_id"] for record in technology_availability_data if record["technology_availability_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -155,7 +162,7 @@ def add_technology_availability():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_availability_filter    = request.args.get("technology_availability_filter", "").strip()

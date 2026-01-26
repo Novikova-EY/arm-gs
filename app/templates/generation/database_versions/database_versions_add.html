@@ -17,7 +17,7 @@
                         <!-- Поле "Номер версии" -->
                         <div class="mb-3">
                             {{ form.version_number.label(class="form-label fw-bold") }}
-                            {{ form.version_number(class="form-control", placeholder="Введите номер версии (например, 1)") }}
+                            {{ form.version_number(class="form-control", placeholder="Введите номер версии (например, A1)") }}
                             {% if form.version_number.errors %}
                                 <div class="text-danger">
                                     {% for error in form.version_number.errors %}

@@ -28,6 +28,7 @@ from app.refdata.services.fuels.fuel_services import (
 
 # Модели
 from app.refdata.models.fuels.fuel_type_model import FuelType
+from app.refdata.models.fuels.fuel_model import Fuel
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
@@ -38,6 +39,11 @@ from app.logs.services.logging_service import log_to_db
 def fuel_list():
     """Маршрут для отображения списка типов топлива."""
 
+    def _normalize_filter(value):
+        if value in (None, "", "None"):
+            return None
+        return value
+
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница типов топлива", entity_type="fuel")
     
@@ -47,63 +53,92 @@ def fuel_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
-    fuel_filter         = request.args.get("fuel_filter", "").strip()
-    fuel_type_filter    = request.args.get("fuel_type_filter")
+    fuel_filter         = _normalize_filter(request.args.get("fuel_filter"))
+    if fuel_filter is not None:
+        fuel_filter = fuel_filter.strip()
+    fuel_type_filter    = _normalize_filter(request.args.get("fuel_type_filter"))
+    topl_nazvl_filter   = _normalize_filter(request.args.get("topl_nazvl_filter"))
+    topl_kmbur_filter   = _normalize_filter(request.args.get("topl_kmbur_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
-        fuel_filter         = request.form.get("fuel_filter", "").strip()
-        fuel_type_filter    = request.form.get("fuel_type_filter")
+        fuel_filter         = _normalize_filter(request.form.get("fuel_filter"))
+        if fuel_filter is not None:
+            fuel_filter = fuel_filter.strip()
+        fuel_type_filter    = _normalize_filter(request.form.get("fuel_type_filter"))
+        topl_nazvl_filter   = _normalize_filter(request.form.get("topl_nazvl_filter"))
+        topl_kmbur_filter   = _normalize_filter(request.form.get("topl_kmbur_filter"))
 
         # Получение данных из формы
         fuel_ids = request.form.getlist("fuel_ids[]")
         fuel_names = request.form.getlist("fuel_names[]")
         fuel_types = request.form.getlist("fuel_types[]")
+        fuel_topl_nazvl = request.form.getlist("fuel_topl_nazvl[]")
+        fuel_topl_kmbur = request.form.getlist("fuel_topl_kmbur[]")
         fuel_delete = request.form.getlist("fuel_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if fuel_delete:
             try:
                 delete_fuel_service(fuel_delete, user)
+                deleted_ids = {int(item) for item in fuel_delete if item}
                 flash("Записи типов топлива успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.fuel_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    fuel_filter=fuel_filter,
-                                    fuel_type_filter=fuel_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not fuel_ids or not fuel_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.fuel_list", 
                                         page=page, 
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
                                         fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        topl_kmbur_filter=topl_kmbur_filter,
                                         sort_by=sort_by, 
                                         sort_dir=sort_dir))
            
            # Формирование данных для обновления
             fuel_data = []
-            for fuel_id, fuel_name, fuel_type in zip(fuel_ids, fuel_names, fuel_types):
+            for fuel_id, fuel_name, fuel_type, topl_nazvl, topl_kmbur in zip(
+                fuel_ids,
+                fuel_names,
+                fuel_types,
+                fuel_topl_nazvl,
+                fuel_topl_kmbur,
+            ):
+                if fuel_id and int(fuel_id) in deleted_ids:
+                    continue
                 fuel_data.append({
                     "fuel_id": int(fuel_id) if fuel_id else None,
                     "name": fuel_name.strip(),
                     # Ключ должен соответствовать ожидаемому в update_fuel_service ("fuel_type_id")
                     "fuel_type_id": int(fuel_type) if fuel_type else None,
+                    "topl_nazvl": (topl_nazvl or "").strip(),
+                    "topl_kmbur": (topl_kmbur or "").strip(),
                 })
             
+            if not fuel_data:
+                return redirect(url_for("refdata_bp.fuel_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        fuel_filter=fuel_filter,
+                                        fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        topl_kmbur_filter=topl_kmbur_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["fuel_id"] for record in fuel_data if record["fuel_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -125,6 +160,8 @@ def fuel_list():
                                 per_page=per_page, 
                                 fuel_filter=fuel_filter,
                                 fuel_type_filter=fuel_type_filter,
+                                topl_nazvl_filter=topl_nazvl_filter,
+                                topl_kmbur_filter=topl_kmbur_filter,
                                 sort_by=sort_by, 
                                 sort_dir=sort_dir))
 
@@ -133,8 +170,39 @@ def fuel_list():
                               per_page, 
                               fuel_filter,
                               fuel_type_filter,
+                              topl_nazvl_filter,
+                              topl_kmbur_filter,
                               sort_by, 
                               sort_dir)
+
+    topl_nazvl_values = [
+        row[0] for row in (
+            fuel_query(
+                fuel_filter=fuel_filter,
+                fuel_type_filter=fuel_type_filter,
+            )
+            .with_entities(Fuel.topl_nazvl)
+            .order_by(None)
+            .distinct()
+            .order_by(Fuel.topl_nazvl.asc())
+            .all()
+        )
+        if row[0]
+    ]
+    topl_kmbur_values = [
+        row[0] for row in (
+            fuel_query(
+                fuel_filter=fuel_filter,
+                fuel_type_filter=fuel_type_filter,
+            )
+            .with_entities(Fuel.topl_kmbur)
+            .order_by(None)
+            .distinct()
+            .order_by(Fuel.topl_kmbur.asc())
+            .all()
+        )
+        if row[0]
+    ]
 
     # Подготовка данных для формы
     # Заполняем список типов топлива с фильтрацией по версии БД
@@ -148,6 +216,10 @@ def fuel_list():
         fuel_types=form.fuel_type.choices,
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
+        topl_nazvl_filter=topl_nazvl_filter,
+        topl_kmbur_filter=topl_kmbur_filter,
+        topl_nazvl_values=topl_nazvl_values,
+        topl_kmbur_values=topl_kmbur_values,
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page
@@ -169,11 +241,15 @@ def add_fuel():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_filter         = request.args.get("fuel_filter", "").strip()
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
+    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
+    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
+    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
+    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
 
     # Подготовка данных для формы с фильтрацией по версии БД
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
@@ -193,7 +269,9 @@ def add_fuel():
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = fuel_query(
                                 fuel_filter, 
-                                fuel_type_filter).count()
+                                fuel_type_filter,
+                                topl_nazvl_filter,
+                                topl_kmbur_filter).count()
             last_page = (total_records + per_page - 1) // per_page
             
             # Корректировка текущей страницы, если она больше последней
@@ -207,6 +285,8 @@ def add_fuel():
                 sort_dir=sort_dir,
                 fuel_filter=fuel_filter,
                 fuel_type_filter=fuel_type_filter,
+                topl_nazvl_filter=topl_nazvl_filter,
+                topl_kmbur_filter=topl_kmbur_filter,
             ))
 
         except ValueError as e:
@@ -228,6 +308,8 @@ def add_fuel():
         fuel_types=form.fuel_type.choices,
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
+        topl_nazvl_filter=topl_nazvl_filter,
+        topl_kmbur_filter=topl_kmbur_filter,
     )
 
 
@@ -282,6 +364,8 @@ def export_fuel():
                         sort_dir=sort_dir,
                         fuel_filter=fuel_filter,
                         fuel_type_filter=fuel_type_filter,
+                        topl_nazvl_filter=topl_nazvl_filter,
+                        topl_kmbur_filter=topl_kmbur_filter,
         )
 
         # Проверка наличия данных

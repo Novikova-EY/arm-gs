@@ -7,9 +7,10 @@ from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class EnergyArea(db.Model, AuditMixin, VersionedModelMixin):
+class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_energy_areas'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 

@@ -46,7 +46,7 @@ def tes_type_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     tes_type_filter    = request.args.get("tes_type_filter")
@@ -54,7 +54,7 @@ def tes_type_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         tes_type_filter    = request.form.get("tes_type_filter")
@@ -64,23 +64,20 @@ def tes_type_list():
         tes_type_names     = request.form.getlist("tes_type_names[]")
         tes_type_delete    = request.form.getlist("tes_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if tes_type_delete:
             try:
                 delete_tes_type_service(tes_type_delete, user)
+                deleted_ids = {int(item) for item in tes_type_delete if item}
                 flash("Записи типов ТЭС успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.tes_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    tes_type_filter=tes_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not tes_type_ids or not tes_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.tes_type_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -91,11 +88,21 @@ def tes_type_list():
            # Формирование данных для обновления
             tes_type_data = []
             for tes_type_id, tes_type_name in zip(tes_type_ids, tes_type_names):
+                if tes_type_id and int(tes_type_id) in deleted_ids:
+                    continue
                 tes_type_data.append({
                     "tes_type_id": int(tes_type_id) if tes_type_id else None,
                     "name": tes_type_name.strip(),
                 })
             
+            if not tes_type_data:
+                return redirect(url_for("refdata_bp.tes_type_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        tes_type_filter=tes_type_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["tes_type_id"] for record in tes_type_data if record["tes_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -155,7 +162,7 @@ def add_tes_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     tes_type_filter    = request.args.get("tes_type_filter", "").strip()

@@ -7,9 +7,10 @@ from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class StationType(db.Model, AuditMixin, VersionedModelMixin):
+class StationType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_station_types'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 

@@ -250,8 +250,11 @@
                             <!-- Строки таблицы. Столбец "Номер версии" -->
                             <td class="text-center">
                                 <input type="hidden" name="version_ids[]" value="{{ version.id }}">
-                                <input type="number" name="version_numbers[]" class="form-control text-center" 
-                                       value="{{ version.version_number }}" min="1" required>
+                                <input type="text" name="version_numbers[]" class="form-control text-center"
+                                       value="{{ version.version_number }}" maxlength="30"
+                                       pattern="[A-Za-zА-Яа-я0-9 ()\-]+"
+                                       title="До 30 символов: буквы, цифры, пробелы, дефисы и круглые скобки."
+                                       required>
                             </td>
 
                             <!-- Строки таблицы. Столбец "Название версии" -->

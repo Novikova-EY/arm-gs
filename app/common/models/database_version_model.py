@@ -11,7 +11,7 @@ class DatabaseVersion(db.Model):
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    version_number = db.Column(db.Integer, unique=True, nullable=False, index=True)
+    version_number = db.Column(db.String(30), unique=True, nullable=False, index=True)
     name = db.Column(db.String(255), unique=True, nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=False, nullable=False, index=True)

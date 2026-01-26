@@ -45,7 +45,7 @@ def synchronous_area_list():
 
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
@@ -53,7 +53,7 @@ def synchronous_area_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 20, type=int)
+        per_page                    = request.form.get("per_page", 25, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         synchronous_area_filter     = request.form.get("synchronous_area_filter", "").strip()
@@ -64,24 +64,21 @@ def synchronous_area_list():
         synchronous_area_names      = request.form.getlist("synchronous_area_names[]")
         synchronous_area_delete     = request.form.getlist("synchronous_area_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if synchronous_area_delete:
             try:
                 delete_synchronous_area_service(synchronous_area_delete, user)
+                deleted_ids = {int(item) for item in synchronous_area_delete if item}
                 flash("Записи синхронных зон успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.synchronous_area_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    synchronous_area_filter=synchronous_area_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not (synchronous_area_ids and synchronous_area_names):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.synchronous_area_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -94,6 +91,8 @@ def synchronous_area_list():
             for synchronous_area_id, synchronous_area_number, synchronous_area_name in zip(
                 synchronous_area_ids, synchronous_area_numbers, synchronous_area_names
             ):
+                if synchronous_area_id and int(synchronous_area_id) in deleted_ids:
+                    continue
                 try:
                     synchronous_area_data.append({
                         "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
@@ -109,6 +108,14 @@ def synchronous_area_list():
                             f"Ошибка: {str(e)}"
                         )
                     )
+
+            if not synchronous_area_data:
+                return redirect(url_for("refdata_bp.synchronous_area_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        synchronous_area_filter=synchronous_area_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
 
             # Проверка на дублирующиеся IDs
             ids = [record["synchronous_area_id"] for record in synchronous_area_data if record["synchronous_area_id"] is not None]
@@ -168,7 +175,7 @@ def add_synchronous_area():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()

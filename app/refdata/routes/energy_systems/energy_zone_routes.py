@@ -43,7 +43,7 @@ def energy_zone_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     energy_zone_filter  = request.args.get("energy_zone_filter", "").strip()
@@ -51,7 +51,7 @@ def energy_zone_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         energy_zone_filter  = request.form.get("energy_zone_filter", energy_zone_filter).strip()
@@ -62,24 +62,21 @@ def energy_zone_list():
         energy_zone_names   = request.form.getlist("energy_zone_names[]")
         energy_zone_delete  = request.form.getlist("energy_zone_delete[]")
 
+        deleted_ids = set()
         # Удаление записей
         if energy_zone_delete:
             try:
                 delete_energy_zone_service(energy_zone_delete, user)
+                deleted_ids = {int(item) for item in energy_zone_delete if item}
                 flash("Записи энергозон успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.energy_zone_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    energy_zone_filter=energy_zone_filter,
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
 
         # Обновление данных в базе
         try:
             if not (energy_zone_ids and energy_zone_names and energy_zone_numbers):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_zone_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -92,6 +89,8 @@ def energy_zone_list():
             for energy_zone_id, energy_zone_number, energy_zone_name in zip(
                 energy_zone_ids, energy_zone_numbers, energy_zone_names
             ):
+                if energy_zone_id and int(energy_zone_id) in deleted_ids:
+                    continue
                 try:
                     energy_zone_data.append({
                         "energy_zone_id": int(energy_zone_id) if energy_zone_id else None,
@@ -108,6 +107,14 @@ def energy_zone_list():
                         )
                     )
             
+            if not energy_zone_data:
+                return redirect(url_for("refdata_bp.energy_zone_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        energy_zone_filter=energy_zone_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["energy_zone_id"] for record in energy_zone_data if record["energy_zone_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -165,7 +172,7 @@ def add_energy_zone():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     energy_zone_filter          = request.args.get("energy_zone_filter", "").strip()

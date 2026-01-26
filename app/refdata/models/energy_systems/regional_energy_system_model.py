@@ -10,9 +10,10 @@ from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import regional_district_regional_energy_system
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin):
+class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_regional_energy_systems'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 

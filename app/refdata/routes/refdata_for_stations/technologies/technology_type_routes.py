@@ -46,7 +46,7 @@ def technology_type_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_type_filter    = request.args.get("technology_type_filter")
@@ -54,7 +54,7 @@ def technology_type_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         technology_type_filter    = request.form.get("technology_type_filter")
@@ -64,23 +64,20 @@ def technology_type_list():
         technology_type_names     = request.form.getlist("technology_type_names[]")
         technology_type_delete    = request.form.getlist("technology_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if technology_type_delete:
             try:
                 delete_technology_type_service(technology_type_delete, user)
+                deleted_ids = {int(item) for item in technology_type_delete if item}
                 flash("Записи типов технологий успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.technology_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    technology_type_filter=technology_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not technology_type_ids or not technology_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.technology_type_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -91,11 +88,21 @@ def technology_type_list():
            # Формирование данных для обновления
             technology_type_data = []
             for technology_type_id, technology_type_name in zip(technology_type_ids, technology_type_names):
+                if technology_type_id and int(technology_type_id) in deleted_ids:
+                    continue
                 technology_type_data.append({
                     "technology_type_id": int(technology_type_id) if technology_type_id else None,
                     "name": technology_type_name.strip(),
                 })
             
+            if not technology_type_data:
+                return redirect(url_for("refdata_bp.technology_type_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        technology_type_filter=technology_type_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["technology_type_id"] for record in technology_type_data if record["technology_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -155,7 +162,7 @@ def add_technology_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_type_filter    = request.args.get("technology_type_filter", "").strip()

@@ -46,7 +46,7 @@ def gen_company_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     gen_company_filter  = request.args.get("gen_company_filter", "").strip()
@@ -54,7 +54,7 @@ def gen_company_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         gen_company_filter  = request.form.get("gen_company_filter", "").strip()
@@ -64,24 +64,21 @@ def gen_company_list():
         gen_company_names   = request.form.getlist("gen_company_names[]")
         gen_company_delete  = request.form.getlist("gen_company_delete[]")
         
+        deleted_ids = set()
         # Удаление записей
         if gen_company_delete:
             try:
                 delete_gen_company_service(gen_company_delete, user)
+                deleted_ids = {int(item) for item in gen_company_delete if item}
                 flash("Записи генерирующих компаний успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.gen_company_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    gen_company_filter=gen_company_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not gen_company_ids or not gen_company_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.gen_company_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -92,6 +89,8 @@ def gen_company_list():
            # Формирование данных для обновления
             gen_company_data = []
             for gen_company_id, gen_company_name in zip(gen_company_ids, gen_company_names):
+                if gen_company_id and int(gen_company_id) in deleted_ids:
+                    continue
                 if gen_company_name is None or gen_company_name.strip() == "":
                     raise ValueError(f"Пустое имя для ID: {gen_company_id}")
                 gen_company_data.append({
@@ -99,6 +98,14 @@ def gen_company_list():
                     "name": gen_company_name.strip(),
                 })
             
+            if not gen_company_data:
+                return redirect(url_for("refdata_bp.gen_company_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        gen_company_filter=gen_company_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["gen_company_id"] for record in gen_company_data if record["gen_company_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -157,7 +164,7 @@ def add_gen_company():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     gen_company_filter  = request.args.get("gen_company_filter", "").strip()

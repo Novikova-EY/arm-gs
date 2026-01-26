@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Исторические данные{% endblock %}
+
+{% macro render_summary(payload) %}
+    {% if not payload %}
+        <span class="text-muted">—</span>
+    {% else %}
+        {% set ns = namespace(parts=[]) %}
+        {% if payload.get('deleted') %}
+            {% set ns.parts = ns.parts + ['удалено'] %}
+        {% endif %}
+        {% if payload.get('name') %}
+            {% set ns.parts = ns.parts + [payload.get('name')] %}
+        {% elif payload.get('name_full') %}
+            {% set ns.parts = ns.parts + [payload.get('name_full')] %}
+        {% endif %}
+        {% if payload.get('name_abr') %}
+            {% set ns.parts = ns.parts + ['abbr: ' ~ payload.get('name_abr')] %}
+        {% endif %}
+        {{ ns.parts | join('; ') }}
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="container-fluid py-4">
+        <h1 class="text-center mb-4">Исторические данные</h1>
+
+        <form method="get" action="{{ url_for('history_bp.history_index') }}" class="row g-3 mb-4 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label">Версия БД</label>
+                <input type="number" name="database_version_id" class="form-control"
+                       value="{{ filters.database_version_id }}" placeholder="database_version_id">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Год</label>
+                <input type="number" name="year" class="form-control"
+                       value="{{ filters.year }}" placeholder="year">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Поиск по названию</label>
+                <input type="text" name="name_search" class="form-control"
+                       value="{{ filters.name_search }}" placeholder="строка поиска">
+            </div>
+            <div class="col-md-1 d-grid">
+                <button type="submit" class="btn btn-primary">Показать</button>
+            </div>
+        </form>
+
+        <div class="alert alert-info">
+            До {{ max_rows }} строк в таблице, до {{ max_years }} лет в колонках.
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <a href="{{ url_for('history_bp.history_refdata_index') }}" class="btn btn-outline-primary w-100">
+                    История справочников
+                </a>
+            </div>
+        </div>
+
+        <h3 class="mt-4">Справочники по годам</h3>
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered table-responsive">
+                <thead class="table-success">
+                    <tr>
+                        <th class="text-center align-middle">Тип</th>
+                        <th class="text-center align-middle">Entity ID</th>
+                        <th class="text-center align-middle">Версия БД</th>
+                        {% for y in refdata_years %}
+                            <th class="text-center align-middle">{{ y }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in refdata_rows %}
+                        <tr>
+                            <td class="text-center align-middle">{{ row.fields.entity_type }}</td>
+                            <td class="text-center align-middle">{{ row.fields.entity_id }}</td>
+                            <td class="text-center align-middle">{{ row.fields.database_version_id }}</td>
+                            {% for y in refdata_years %}
+                                {% set cell = row.cells.get(y) %}
+                                <td title="{{ cell.payload | tojson if cell else '' }}">
+                                    {{ render_summary(cell.payload) if cell else '' }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

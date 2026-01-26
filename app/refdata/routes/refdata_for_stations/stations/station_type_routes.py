@@ -46,7 +46,7 @@ def station_type_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     station_type_filter    = request.args.get("station_type_filter")
@@ -54,7 +54,7 @@ def station_type_list():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
         station_type_filter    = request.form.get("station_type_filter")
@@ -64,23 +64,20 @@ def station_type_list():
         station_type_names     = request.form.getlist("station_type_names[]")
         station_type_delete    = request.form.getlist("station_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if station_type_delete:
             try:
                 delete_station_type_service(station_type_delete, user)
+                deleted_ids = {int(item) for item in station_type_delete if item}
                 flash("Записи типов электростанций успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.station_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    station_type_filter=station_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not station_type_ids or not station_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.station_type_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -91,11 +88,21 @@ def station_type_list():
            # Формирование данных для обновления
             station_type_data = []
             for station_type_id, station_type_name in zip(station_type_ids, station_type_names):
+                if station_type_id and int(station_type_id) in deleted_ids:
+                    continue
                 station_type_data.append({
                     "station_type_id": int(station_type_id) if station_type_id else None,
                     "name": station_type_name.strip(),
                 })
             
+            if not station_type_data:
+                return redirect(url_for("refdata_bp.station_type_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        station_type_filter=station_type_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["station_type_id"] for record in station_type_data if record["station_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -155,7 +162,7 @@ def add_station_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     station_type_filter    = request.args.get("station_type_filter", "").strip()

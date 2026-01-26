@@ -8,9 +8,10 @@ from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from sqlalchemy.dialects.postgresql import ENUM as PGEnum
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin):
+class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_equipment_groups'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 

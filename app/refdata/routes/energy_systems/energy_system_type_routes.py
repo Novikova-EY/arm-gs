@@ -47,13 +47,13 @@ def energy_system_type_list():
     page                        = request.args.get("page", 1, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
 
     if request.method == "POST":
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
-        per_page                    = request.form.get("per_page", 20, type=int)
+        per_page                    = request.form.get("per_page", 25, type=int)
         sort_by                     = request.form.get("sort_by", "id")
         sort_dir                    = request.form.get("sort_dir", "asc")
         energy_system_type_filter   = request.form.get("energy_system_type_filter", "").strip()
@@ -63,24 +63,21 @@ def energy_system_type_list():
         energy_system_type_names    = request.form.getlist("energy_system_type_names[]")
         energy_system_type_delete   = request.form.getlist("energy_system_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if energy_system_type_delete:
             try:
                 delete_energy_system_type_service(energy_system_type_delete, user)
+                deleted_ids = {int(item) for item in energy_system_type_delete if item}
                 flash("Записи типов частей энергосистемы России успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.energy_system_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    energy_system_type_filter=energy_system_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
            
         # Обновление данных в базе
         try:
             if not (energy_system_type_ids and energy_system_type_names):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_system_type_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -93,6 +90,8 @@ def energy_system_type_list():
             for energy_system_type_id, energy_system_type_name in zip(
                 energy_system_type_ids, energy_system_type_names
             ):
+                if energy_system_type_id and int(energy_system_type_id) in deleted_ids:
+                    continue
                 try:
                     energy_system_type_data.append({
                         "energy_system_type_id": int(energy_system_type_id) if energy_system_type_id else None,
@@ -107,6 +106,14 @@ def energy_system_type_list():
                         )
                     )
             
+            if not energy_system_type_data:
+                return redirect(url_for("refdata_bp.energy_system_type_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        energy_system_type_filter=energy_system_type_filter, 
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["energy_system_type_id"] for record in energy_system_type_data if record["energy_system_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -165,7 +172,7 @@ def add_energy_system_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
-    per_page                    = request.args.get("per_page", 20, type=int)
+    per_page                    = request.args.get("per_page", 25, type=int)
     sort_by                     = request.args.get("sort_by", "id")
     sort_dir                    = request.args.get("sort_dir", "asc")
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()

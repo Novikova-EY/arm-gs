@@ -1,20 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-Fuel model (Тип топлива).
+Fuel model (Вид топлива).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA, SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class Fuel(db.Model, AuditMixin, VersionedModelMixin):
+class Fuel(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_fuels'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
+
+    # Название вида топлива из базы Топливо
+    topl_nazvl = db.Column(db.String(80), nullable=True)
+
+    # Название типа угольного топлива из базы Топливо (каменный/бурый)
+    topl_kmbur = db.Column(db.String(80), nullable=True)
 
     # FK -> FuelType
     id_fuel_type = db.Column(

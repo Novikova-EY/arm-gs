@@ -54,7 +54,7 @@ def energy_area_list():
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     energy_area_filter              = request.args.get("energy_area_filter", "").strip()
@@ -65,7 +65,7 @@ def energy_area_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
-        per_page                        = request.form.get("per_page", 20, type=int)
+        per_page                        = request.form.get("per_page", 25, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
         energy_area_filter              = request.form.get("energy_area_filter", "").strip()
@@ -79,28 +79,21 @@ def energy_area_list():
         energy_area_delete      = request.form.getlist("energy_area_delete[]")
         regional_district_ids   = request.form.getlist("regional_district_ids[]")
         
+        deleted_ids = set()
         # Удаление записей
         if energy_area_delete:
             try:
                 delete_energy_area_service(energy_area_delete, user)
+                deleted_ids = {int(item) for item in energy_area_delete if item}
                 flash("Записи энергорайонов успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.energy_area_list", 
-                                    page=page,
-                                    per_page=per_page,
-                                    sort_by=sort_by,
-                                    sort_dir=sort_dir,
-                                    energy_area_filter=energy_area_filter,
-                                    regional_district_filter=regional_district_filter,
-                                    regional_energy_system_filter=regional_energy_system_filter,
-                                    union_energy_system_filter=union_energy_system_filter,
-                                    ))
 
         # Обновление данных в базе
         try:
             if not (energy_area_ids and energy_area_names):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.energy_area_list", 
                                     page=page,
                                     per_page=per_page,
@@ -117,6 +110,8 @@ def energy_area_list():
             for energy_area_id, energy_area_name, regional_district_id in zip(
                 energy_area_ids, energy_area_names, regional_district_ids
             ):
+                if energy_area_id and int(energy_area_id) in deleted_ids:
+                    continue
                 try:
                     energy_area_data.append({
                         "energy_area_id": int(energy_area_id) if energy_area_id else None,
@@ -132,6 +127,18 @@ def energy_area_list():
                             f"Ошибка: {str(e)}"
                         )
                     )
+
+            if not energy_area_data:
+                return redirect(url_for("refdata_bp.energy_area_list", 
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    energy_area_filter=energy_area_filter,
+                                    regional_district_filter=regional_district_filter,
+                                    regional_energy_system_filter=regional_energy_system_filter,
+                                    union_energy_system_filter=union_energy_system_filter,
+                                    ))
 
             # Проверка на дублирующиеся IDs
             ids = [record["energy_area_id"] for record in energy_area_data if record["energy_area_id"] is not None]
@@ -215,7 +222,7 @@ def add_energy_area():
 
     # Сохранение текущих фильтров и параметров отображения
     page                            = request.args.get("page", 1, type=int) or 1
-    per_page                        = request.args.get("per_page", 20, type=int) or 10
+    per_page                        = request.args.get("per_page", 25, type=int) or 25
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     energy_area_filter              = request.args.get("energy_area_filter", "").strip()

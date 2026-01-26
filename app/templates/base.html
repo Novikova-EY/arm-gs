@@ -32,8 +32,7 @@
                 target="_blank" rel="noopener noreferrer">
                 <i class="bi bi-database"></i>
                 Версия БД:
-                <strong>{{ current_db_version.name }}</strong>
-                (v{{ current_db_version.version_number }})
+                <strong>{{ current_db_version.version_number }}</strong>
             </a>
             {% else %}
             <a href="{{ url_for('station_bp.database_versions') }}"
@@ -51,7 +50,7 @@
         <div class="d-flex align-items-center gap-2 gap-md-3">
             {% if current_user.is_authenticated %}
             <span class="me-4 fs-4">
-                {{ current_user.username }} ({{ current_user.email }})
+                {{ current_user.username }}
             </span>
             <a href="{{ url_for('station_bp.database_versions') }}" class="btn btn-outline-success fs-5" title="Управление версиями БД">
                 <i class="bi bi-clock-history"></i> Версии
@@ -265,6 +264,16 @@
         .searchable-select-item {
             cursor: pointer;
             user-select: none;
+        }
+        .searchable-select-item,
+        .searchable-select-item.text-primary {
+            color: #000 !important;
+        }
+        .searchable-select-item.active,
+        .searchable-select-item:hover {
+            background-color: #e9f2ff !important;
+            color: #000 !important;
+            font-weight: 700 !important;
         }
         .searchable-select-item.is-disabled {
             cursor: not-allowed;

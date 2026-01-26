@@ -98,18 +98,18 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.15
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.20
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.15 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.20 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.15_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.20_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 ```
 ---
 
@@ -119,10 +119,16 @@ scp C:\arm_gs\packaging\generation-app_1.0.15_amd64.deb novikova-eyu@10.31.205.2
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.15_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.20_amd64.deb || sudo apt -f install
 sudo systemctl restart generation-app
 sudo nginx -t && sudo systemctl reload nginx
 sudo journalctl -u generation-app -f
+```
+
+```bash
+flask db heads
+flask db merge heads -m "merge heads"
+flask db upgrade
 ```
 
 **Что происходит при установке:**
@@ -149,7 +155,7 @@ export FLASK_ENV=production
 eval "$(sudo systemctl show generation-app -p Environment --value | tr ' ' '\n' | sed 's/^/export /')"
 flask db upgrade
 
-- Для обновления соберите новый пакет с версией `1.0.15`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.15_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.20`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.20_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 

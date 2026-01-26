@@ -429,7 +429,14 @@ def fetch_machines_with_rowspans(
         fuel_dict = defaultdict(list)
         for m in machine_list:
             fuel_key = (m.fuel_so or '').strip()
-            fuel_dict[fuel_key].append(m)
+            group_key = (m.machine_group or '').strip()
+            if not fuel_key or fuel_key.lower() == 'не указано':
+                # Не объединяем пустое/не указанное топливо, чтобы не "съедать" ячейки
+                fuel_group_key = (group_key, f"__machine_{m.id}")
+            else:
+                # Объединяем топливо только внутри одной группы агрегатов
+                fuel_group_key = (group_key, fuel_key)
+            fuel_dict[fuel_group_key].append(m)
 
         for group in fuel_dict.values():
             fuel_rowspan = sum(m.total_rows for m in group)

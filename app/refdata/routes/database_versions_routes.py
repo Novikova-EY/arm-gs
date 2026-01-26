@@ -58,7 +58,7 @@ def database_versions():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "version_number")
     sort_dir            = request.args.get("sort_dir", "desc")
     version_filter      = request.args.get("version_filter")
@@ -70,7 +70,7 @@ def database_versions():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "version_number")
         sort_dir            = request.form.get("sort_dir", "desc")
         version_filter      = request.form.get("version_filter")
@@ -84,10 +84,12 @@ def database_versions():
         version_descriptions= request.form.getlist("version_descriptions[]")
         version_delete      = request.form.getlist("version_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if version_delete:
             try:
                 result = delete_version_service(version_delete, user)
+                deleted_ids = {int(item) for item in version_delete if item}
                 
                 # Формируем подробное сообщение об удалении
                 message_parts = [f"Удалено версий: {result['deleted']}"]
@@ -105,17 +107,12 @@ def database_versions():
                 flash(str(e), "danger")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("station_bp.database_versions", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    version_filter=version_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         
         # Обновление данных в базе
         try:
             if not version_ids or not version_names or not version_numbers:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("station_bp.database_versions", 
                                         page=page, 
                                         per_page=per_page, 
@@ -126,13 +123,24 @@ def database_versions():
            # Формирование данных для обновления
             version_data = []
             for vid, vnum, vname, vdesc in zip(version_ids, version_numbers, version_names, version_descriptions):
+                if vid and int(vid) in deleted_ids:
+                    continue
+                version_number = (vnum or "").strip()
                 version_data.append({
                     "version_id": int(vid) if vid else None,
-                    "version_number": int(vnum) if vnum else None,
+                    "version_number": version_number or None,
                     "name": vname.strip(),
                     "description": vdesc.strip() if vdesc else "",
                 })
             
+            if not version_data:
+                return redirect(url_for("station_bp.database_versions", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        version_filter=version_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["version_id"] for record in version_data if record["version_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -255,7 +263,7 @@ def add_database_version():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "version_number")
     sort_dir            = request.args.get("sort_dir", "desc")
     version_filter      = request.args.get("version_filter", "").strip()
@@ -327,7 +335,7 @@ def add_database_version():
                 )
             
             payload = [{
-                "version_number": form.version_number.data,
+                "version_number": (form.version_number.data or "").strip(),
                 "name": (form.name.data or "").strip(),
                 "description": (form.description.data or "").strip(),
                 "parent_version_id": parent_id,
@@ -685,7 +693,7 @@ def database_versions():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "version_number")
     sort_dir            = request.args.get("sort_dir", "desc")
     version_filter      = request.args.get("version_filter")
@@ -697,7 +705,7 @@ def database_versions():
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "version_number")
         sort_dir            = request.form.get("sort_dir", "desc")
         version_filter      = request.form.get("version_filter")
@@ -753,9 +761,10 @@ def database_versions():
            # Формирование данных для обновления
             version_data = []
             for vid, vnum, vname, vdesc in zip(version_ids, version_numbers, version_names, version_descriptions):
+                version_number = (vnum or "").strip()
                 version_data.append({
                     "version_id": int(vid) if vid else None,
-                    "version_number": int(vnum) if vnum else None,
+                    "version_number": version_number or None,
                     "name": vname.strip(),
                     "description": vdesc.strip() if vdesc else "",
                 })
@@ -855,7 +864,7 @@ def add_database_version():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "version_number")
     sort_dir            = request.args.get("sort_dir", "desc")
     version_filter      = request.args.get("version_filter", "").strip()
@@ -921,7 +930,7 @@ def add_database_version():
                 )
             
             payload = [{
-                "version_number": form.version_number.data,
+                "version_number": (form.version_number.data or "").strip(),
                 "name": (form.name.data or "").strip(),
                 "description": (form.description.data or "").strip(),
                 "parent_version_id": parent_id,

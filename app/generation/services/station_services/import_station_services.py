@@ -447,7 +447,7 @@ def resolve_fuel(value):
     return None
 
 
-def to_decimal(val, digits=9):
+def to_decimal(val, digits=15):
     try:
         return Decimal(str(val)).quantize(Decimal(f"1.{'0'*digits}"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError, TypeError):
@@ -455,9 +455,9 @@ def to_decimal(val, digits=9):
     
 def normalize(v):
     if isinstance(v, Decimal):
-        return round(v, 9)  # или другой нужный уровень точности
+        return round(v, 15)  # согласуем с точностью БД (Numeric(25, 15))
     if isinstance(v, float):
-        return round(v, 9)
+        return round(v, 15)
     if isinstance(v, str) and v.strip().isdigit():
         return int(v.strip())
     try:

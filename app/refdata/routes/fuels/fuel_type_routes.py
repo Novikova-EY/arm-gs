@@ -25,6 +25,7 @@ from app.refdata.services.fuels.fuel_type_services import (
     import_fuel_type_service, 
     export_fuel_type_service, 
 )
+from app.refdata.models.fuels.fuel_type_model import FuelType
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
@@ -35,6 +36,11 @@ from app.logs.services.logging_service import log_to_db
 def fuel_type_list():
     """Маршрут для отображения списка видов топлива."""
 
+    def _normalize_filter(value):
+        if value in (None, "", "None"):
+            return None
+        return value
+
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта страница видов топлива", entity_type="fuel_type")
     
@@ -43,57 +49,73 @@ def fuel_type_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
-    fuel_type_filter    = request.args.get("fuel_type_filter")
+    fuel_type_filter    = _normalize_filter(request.args.get("fuel_type_filter"))
+    topl_nazvl_filter   = _normalize_filter(request.args.get("topl_nazvl_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
-        per_page            = request.form.get("per_page", 20, type=int)
+        per_page            = request.form.get("per_page", 25, type=int)
         sort_by             = request.form.get("sort_by", "id")
         sort_dir            = request.form.get("sort_dir", "asc")
-        fuel_type_filter    = request.form.get("fuel_type_filter")
+        fuel_type_filter    = _normalize_filter(request.form.get("fuel_type_filter"))
+        topl_nazvl_filter   = _normalize_filter(request.form.get("topl_nazvl_filter"))
 
         # Получение данных из формы
         fuel_type_ids       = request.form.getlist("fuel_ids[]")
         fuel_type_names     = request.form.getlist("fuel_type_names[]")
+        fuel_type_topl_nazvl = request.form.getlist("fuel_type_topl_nazvl[]")
         fuel_type_delete    = request.form.getlist("fuel_type_delete[]")
   
+        deleted_ids = set()
         # Удаление записей
         if fuel_type_delete:
             try:
                 delete_fuel_type_service(fuel_type_delete, user)
+                deleted_ids = {int(item) for item in fuel_type_delete if item}
                 flash("Записи видов топлива успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.fuel_type_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    fuel_type_filter=fuel_type_filter, 
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
         # Обновление данных в базе
         try:
             if not fuel_type_ids or not fuel_type_names:
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.fuel_type_list", 
                                         page=page, 
                                         per_page=per_page, 
                                         fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
                                         sort_by=sort_by, 
                                         sort_dir=sort_dir))
            
            # Формирование данных для обновления
             fuel_type_data = []
-            for fuel_type_id, fuel_type_name in zip(fuel_type_ids, fuel_type_names):
+            for fuel_type_id, fuel_type_name, topl_nazvl in zip(
+                fuel_type_ids,
+                fuel_type_names,
+                fuel_type_topl_nazvl,
+            ):
+                if fuel_type_id and int(fuel_type_id) in deleted_ids:
+                    continue
                 fuel_type_data.append({
                     "fuel_type_id": int(fuel_type_id) if fuel_type_id else None,
                     "name": fuel_type_name.strip(),
+                    "topl_nazvl": (topl_nazvl or "").strip(),
                 })
             
+            if not fuel_type_data:
+                return redirect(url_for("refdata_bp.fuel_type_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["fuel_type_id"] for record in fuel_type_data if record["fuel_type_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -114,6 +136,7 @@ def fuel_type_list():
                                 page=page, 
                                 per_page=per_page, 
                                 fuel_type_filter=fuel_type_filter,
+                                topl_nazvl_filter=topl_nazvl_filter,
                                 sort_by=sort_by, 
                                 sort_dir=sort_dir))
 
@@ -122,15 +145,29 @@ def fuel_type_list():
                                 page, 
                                 per_page, 
                                 fuel_type_filter,
+                                topl_nazvl_filter,
                                 sort_by, 
                                 sort_dir)
 
+    topl_nazvl_values = [
+        row[0] for row in (
+            fuel_type_query(fuel_type_filter=fuel_type_filter)
+            .with_entities(FuelType.topl_nazvl)
+            .order_by(None)
+            .distinct()
+            .order_by(FuelType.topl_nazvl.asc())
+            .all()
+        )
+        if row[0]
+    ]
     return render_template(
         "refdata/fuels/fuel_type/fuel_type.html",
         form=form,
         fuel_type_list=pagination.items,
         pagination=pagination,
         fuel_type_filter=fuel_type_filter,
+        topl_nazvl_filter=topl_nazvl_filter,
+        topl_nazvl_values=topl_nazvl_values,
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page
@@ -153,10 +190,11 @@ def add_fuel_type():
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
-    per_page            = request.args.get("per_page", 20, type=int)
+    per_page            = request.args.get("per_page", 25, type=int)
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
+    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
 
     # Обработка формы
     if request.method == "POST":
@@ -194,6 +232,7 @@ def add_fuel_type():
                 sort_by=sort_by,
                 sort_dir=sort_dir,
                 fuel_type_filter=fuel_type_filter,
+                topl_nazvl_filter=topl_nazvl_filter,
             ))
 
         except ValueError as e:
@@ -213,6 +252,7 @@ def add_fuel_type():
         sort_dir=sort_dir,
         form=form,
         fuel_type_filter=fuel_type_filter,
+        topl_nazvl_filter=topl_nazvl_filter,
     )
 
 
@@ -265,6 +305,7 @@ def export_fuel_type():
                         sort_by=sort_by,
                         sort_dir=sort_dir,
                         fuel_type_filter=fuel_type_filter,
+                        topl_nazvl_filter=topl_nazvl_filter,
         )
 
         # Проверка наличия данных

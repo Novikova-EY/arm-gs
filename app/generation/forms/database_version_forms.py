@@ -3,7 +3,7 @@
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, HiddenField, IntegerField, TextAreaField
-from wtforms.validators import DataRequired, Optional, Length, NumberRange, ValidationError
+from wtforms.validators import DataRequired, Optional, Length, NumberRange, ValidationError, Regexp
 
 
 class DatabaseVersionFilterForm(FlaskForm):
@@ -14,12 +14,21 @@ class DatabaseVersionFilterForm(FlaskForm):
     version_ids = HiddenField("ID записей")
 
     # Поля редактируемых строк
-    version_number = IntegerField(
+    version_number = StringField(
         "Номер версии",
         validators=[
             DataRequired(message="Поле «Номер версии» обязательно."),
-            NumberRange(min=1, message="Номер версии должен быть больше 0."),
+            Length(min=1, max=30, message="Длина номера версии от 1 до 30 символов."),
+            Regexp(
+                r"^[A-Za-zА-Яа-я0-9 ()\-]+$",
+                message="Номер версии должен содержать только буквы, цифры, пробелы, дефисы и круглые скобки.",
+            ),
         ],
+        render_kw={
+            "maxlength": 30,
+            "pattern": "[A-Za-zА-Яа-я0-9 ()\\-]+",
+            "title": "До 30 символов: буквы, цифры, пробелы, дефисы и круглые скобки.",
+        },
     )
     
     name = StringField(
@@ -59,12 +68,21 @@ class AddDatabaseVersionForm(FlaskForm):
     """Форма добавления новой версии базы данных."""
     csrf_token = HiddenField()
 
-    version_number = IntegerField(
+    version_number = StringField(
         "Номер версии",
         validators=[
             DataRequired(message="Поле «Номер версии» обязательно."),
-            NumberRange(min=1, message="Номер версии должен быть больше 0."),
+            Length(min=1, max=30, message="Длина номера версии от 1 до 30 символов."),
+            Regexp(
+                r"^[A-Za-zА-Яа-я0-9 ()\-]+$",
+                message="Номер версии должен содержать только буквы, цифры, пробелы, дефисы и круглые скобки.",
+            ),
         ],
+        render_kw={
+            "maxlength": 30,
+            "pattern": "[A-Za-zА-Яа-я0-9 ()\\-]+",
+            "title": "До 30 символов: буквы, цифры, пробелы, дефисы и круглые скобки.",
+        },
     )
 
     name = StringField(

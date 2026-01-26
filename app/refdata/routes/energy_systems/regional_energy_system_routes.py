@@ -54,7 +54,7 @@ def regional_energy_system_list():
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
@@ -63,7 +63,7 @@ def regional_energy_system_list():
     if request.method == "POST":
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
-        per_page                        = request.form.get("per_page", 20, type=int)
+        per_page                        = request.form.get("per_page", 25, type=int)
         sort_by                         = request.form.get("sort_by", "id")
         sort_dir                        = request.form.get("sort_dir", "asc")
         regional_energy_system_filter   = request.form.get("regional_energy_system_filter", "").strip()
@@ -77,20 +77,15 @@ def regional_energy_system_list():
         regional_energy_system_delete       = request.form.getlist("regional_energy_system_delete[]")
         union_energy_system_ids             = request.form.getlist("union_energy_system[]")
         
+        deleted_ids = set()
         # Удаление записей
         if regional_energy_system_delete:
             try:
                 delete_regional_energy_system_service(regional_energy_system_delete, user)
+                deleted_ids = {int(item) for item in regional_energy_system_delete if item}
                 flash("Записи региональных энергосистем успешно удалены.", "success")
             except Exception as e:
                 flash("Ошибка удаления записей.", "danger")
-            return redirect(url_for("refdata_bp.regional_energy_system_list", 
-                                    page=page, 
-                                    per_page=per_page, 
-                                    regional_energy_system_filter=regional_energy_system_filter,
-                                    union_energy_system_filter=union_energy_system_filter,
-                                    sort_by=sort_by, 
-                                    sort_dir=sort_dir))
     
         # Группируем субъектов по энергосистемам
         regional_districts_mapping = defaultdict(list)
@@ -101,7 +96,8 @@ def regional_energy_system_list():
         # Обновление данных в базе
         try:
             if not (regional_energy_system_ids and regional_energy_system_names and regional_energy_system_full_names):
-                flash("Данные для обновления отсутствуют.", "info")
+                if not deleted_ids:
+                    flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("refdata_bp.regional_energy_system_list", 
                                         page=page, 
                                         per_page=per_page, 
@@ -113,6 +109,8 @@ def regional_energy_system_list():
             # Формирование данных для обновления
             regional_energy_system_data = []
             for regional_energy_system_id, regional_energy_system_name, regional_energy_system_name_full, regional_energy_system_rp_name, union_energy_system_id in zip(regional_energy_system_ids, regional_energy_system_names, regional_energy_system_full_names, regional_energy_system_rp_names, union_energy_system_ids):
+                if regional_energy_system_id and int(regional_energy_system_id) in deleted_ids:
+                    continue
                 try:
                     regional_energy_system_data.append({
                         "regional_energy_system_id": int(regional_energy_system_id) if regional_energy_system_id else None,
@@ -135,6 +133,15 @@ def regional_energy_system_list():
                     )
                 
  
+            if not regional_energy_system_data:
+                return redirect(url_for("refdata_bp.regional_energy_system_list", 
+                                        page=page, 
+                                        per_page=per_page, 
+                                        regional_energy_system_filter=regional_energy_system_filter,
+                                        union_energy_system_filter=union_energy_system_filter,
+                                        sort_by=sort_by, 
+                                        sort_dir=sort_dir))
+
             # Проверка на дублирующиеся IDs
             ids = [record["regional_energy_system_id"] for record in regional_energy_system_data if record["regional_energy_system_id"] is not None]
             duplicates = [item for item, count in Counter(ids).items() if count > 1]
@@ -206,7 +213,7 @@ def add_regional_energy_system():
 
     # Сохранение текущих фильтров и параметров отображения
     page                            = request.args.get("page", 1, type=int)
-    per_page                        = request.args.get("per_page", 20, type=int)
+    per_page                        = request.args.get("per_page", 25, type=int)
     sort_by                         = request.args.get("sort_by", "id")
     sort_dir                        = request.args.get("sort_dir", "asc")
     regional_energy_system_filter   = request.args.get("regional_energy_system_filter", "").strip()
