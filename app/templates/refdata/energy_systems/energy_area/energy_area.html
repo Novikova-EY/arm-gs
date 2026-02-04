@@ -1,13 +1,13 @@
 
 {% extends 'base.html' %}
 
-{% block title %}Энергорайоны{% endblock %}
+{% block title %}Энергоузлы{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
 
-    <h1 class="text-center mb-4">Список энергорайонов</h1>
+    <h1 class="text-center mb-4">Список энергоузлов</h1>
 
     <form method="GET" 
         action="{{ url_for('refdata_bp.energy_area_list') }}" 
@@ -22,7 +22,7 @@
                         {{ form.energy_area_filter(
                             class="form-control",
                             value=energy_area_filter,
-                            placeholder="Поиск по энергозонам"
+                            placeholder="Поиск по энергоузлам"
                         ) }}
                     </div>
 
@@ -139,7 +139,7 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Энергорайон" -->
+                            <!-- Шапка таблицы. Столбец "Энергоузел" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                     page=pagination.page, 
@@ -151,7 +151,7 @@
                                                     sort_by='name', 
                                                     sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="text-black">
-                                    Энергорайон
+                                    Энергоузел
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
@@ -385,7 +385,7 @@
                                     <input type="hidden" name="energy_area_ids[]" value="{{ energy_area.id }}">
                                 </td>
 
-                                <!-- Строки таблицы. Столбец "Энергорайон" -->
+                                <!-- Строки таблицы. Столбец "Энергоузел" -->
                                 <td>
                                     <textarea 
                                         name="energy_area_names[]" 
@@ -473,7 +473,7 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Энергорайон" -->
+                        <!-- Шапка таблицы. Столбец "Энергоузел" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.energy_area_list', 
                                                 page=pagination.page, 
@@ -485,7 +485,7 @@
                                                 sort_by='name', 
                                                 sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                                 class="text-black">
-                                Энергорайон
+                                Энергоузел
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -714,7 +714,7 @@
                                 {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Энергорайон" -->
+                            <!-- Строки таблицы. Столбец "Энергоузел" -->
                             <td>
                                 {{ item.name }}
                             </td>

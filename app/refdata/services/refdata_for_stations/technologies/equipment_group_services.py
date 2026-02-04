@@ -12,6 +12,7 @@ from config import SCHEMA_REFDATA
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import TechnologyType
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import TechnologyAvailability
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 
 # Сервисы
 from app.common.services.get_services.refdata_for_stations.technologies.technology_type_get_services import (
@@ -40,6 +41,18 @@ from app.common.services.database_version_filter import (
 # Логирование
 from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
+
+
+def _equipment_group_dup_query(name, technology_type_id, exclude_id=None):
+    """Возвращает запрос для проверки дубликатов по паре (name, technology_type)."""
+    query = apply_version_filter(EquipmentGroup.query, EquipmentGroup).filter(EquipmentGroup.name == name)
+    if technology_type_id is None:
+        query = query.filter(EquipmentGroup.id_technology_type.is_(None))
+    else:
+        query = query.filter(EquipmentGroup.id_technology_type == technology_type_id)
+    if exclude_id is not None:
+        query = query.filter(EquipmentGroup.id != exclude_id)
+    return query
 
 
 def equipment_group_query(
@@ -181,6 +194,7 @@ def update_equipment_group_service(data, user):
             equipment_group_id = record.get("equipment_group_id")
             display_order = record.get("display_order")
             name = (record.get("name") or "").strip()
+            new_technology_type_id = _to_int_or_none(record.get("technology_type_id"), keep_zero=False)
 
             # Проверка наличия наименования
             if not name:
@@ -196,13 +210,16 @@ def update_equipment_group_service(data, user):
                     entity_id=equipment_group_id)
                 raise ValueError(f"Запись с ID «{equipment_group_id}» не найдена.")
 
-            # Проверка уникальности name
-            if name != (obj.name or ""):
-                q = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
-                     .filter(EquipmentGroup.name == name,
-                             EquipmentGroup.id != equipment_group_id))
-                if q.first():
-                    raise ValueError(f"Запись с именем «{name}» уже существует.")
+            # Проверка уникальности пары (name, technology_type)
+            if name != (obj.name or "") or new_technology_type_id != obj.id_technology_type:
+                dup = (_equipment_group_dup_query(name, new_technology_type_id, exclude_id=equipment_group_id)
+                       .with_for_update()
+                       .first())
+                if dup:
+                    tech_name = get_technology_type_name(new_technology_type_id) or "не указано"
+                    raise ValueError(
+                        f"Запись с наименованием «{name}» и типом технологии «{tech_name}» уже существует."
+                    )
 
             # Проверка уникальности display_order
             if display_order != obj.display_order:
@@ -227,7 +244,7 @@ def update_equipment_group_service(data, user):
 
             # Проверка наличия типа технологии
             if "technology_type_id" in record:
-                new_val = _to_int_or_none(record.get("technology_type_id"), keep_zero=False)
+                new_val = new_technology_type_id
                 if new_val != obj.id_technology_type:
                     new_obj = db.session.get(TechnologyType, new_val) if new_val is not None else None
                     if new_val is not None and not new_obj:
@@ -340,11 +357,14 @@ def add_equipment_group_service(data, user):
                     if not obj:
                         raise ValueError(f"Тип доступности технологии с id={technology_availability_id} не найден.")
 
-                dup = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
-                        .filter(EquipmentGroup.name == name)
-                        .with_for_update().first())
+                dup = (_equipment_group_dup_query(name, technology_type_id)
+                       .with_for_update()
+                       .first())
                 if dup:
-                    raise ValueError(f"Запись с наименованием «{name}» уже существует.")
+                    tech_name = get_technology_type_name(technology_type_id) or "не указано"
+                    raise ValueError(
+                        f"Запись с наименованием «{name}» и типом технологии «{tech_name}» уже существует."
+                    )
 
                 # Проверяем уникальность display_order при создании
                 if display_order is not None:
@@ -409,6 +429,9 @@ def delete_equipment_group_service(ids, user):
 
     successful_deletes = 0
     deleted_names = []
+    deleted_ids = []
+    blocked_ids = []
+    blocked_names = []
     not_found = []
     invalid = []
 
@@ -427,10 +450,29 @@ def delete_equipment_group_service(ids, user):
 
         obj = _locked_get(EquipmentGroup, equipment_group_id)
         if obj:
+            has_group_sets = (
+                db.session.query(EquipmentGroupSet.id)
+                .filter(EquipmentGroupSet.id_equipment_group == equipment_group_id)
+                .first()
+                is not None
+            )
+            if has_group_sets:
+                name = obj.name or f"ID={equipment_group_id}"
+                blocked_ids.append(equipment_group_id)
+                blocked_names.append(name)
+                log_to_db(
+                    user,
+                    "Запрещено удаление типа группы оборудования",
+                    f"Используется в сборных группах оборудования: {name}",
+                    entity_type="equipment_group",
+                    entity_id=equipment_group_id)
+                continue
+
             name = obj.name or f"ID={equipment_group_id}"
             db.session.delete(obj)
             successful_deletes += 1
             deleted_names.append(name)
+            deleted_ids.append(equipment_group_id)
             log_to_db(
                 user, 
                 "Удален тип группы оборудования", 
@@ -454,6 +496,8 @@ def delete_equipment_group_service(ids, user):
         parts = [f"Удалено: {successful_deletes}"]
         if deleted_names:
             parts.append(f"Наименование: {deleted_names}")
+        if blocked_names:
+            parts.append(f"Не удалены (используются в группах): {blocked_names}")
         if not_found:
             parts.append(f"Не найдены ID: {not_found}")
         if invalid:
@@ -462,6 +506,9 @@ def delete_equipment_group_service(ids, user):
         return {
             "deleted": successful_deletes,
             "deleted_names": deleted_names,
+            "deleted_ids": deleted_ids,
+            "blocked": blocked_ids,
+            "blocked_names": blocked_names,
             "not_found": not_found,
             "invalid": invalid,
         }

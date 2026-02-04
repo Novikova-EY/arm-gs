@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Субъекты РФ, РЭС и энергорайоны (БД Топливо){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <h1 class="text-center mb-4">Субъекты РФ, региональные энергосистемы и энергорайоны</h1>
+
+    <div class="mb-4">
+            <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+                <form id="territoriesEnergyImportForm"
+                    action="{{ url_for('fuel_bp.import_fuel_territories_energy') }}"
+                    method="POST"
+                    enctype="multipart/form-data"
+                    class="d-inline-block">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="file"
+                        name="file"
+                        id="territoriesEnergyImportFile"
+                        class="d-none"
+                        accept=".xlsx,.xls"
+                        onchange="document.getElementById('territoriesEnergyImportForm').submit()">
+                    <label for="territoriesEnergyImportFile" class="btn btn-outline-primary fw-bold">
+                        Загрузить из Excel
+                    </label>
+                </form>
+
+                <a class="btn btn-warning fw-bold"
+                    href="{{ url_for('fuel_bp.export_fuel_territories_energy',
+                                        territories_energy_filter=territories_energy_filter or '',
+                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    target="_blank" rel="noopener">
+                    Экспорт в Excel
+                </a>
+
+                <select name="per_page"
+                        form="territoriesEnergyFilterForm"
+                        class="form-select d-inline-block w-auto"
+                        onchange="document.getElementById('territoriesEnergyFilterForm').page.value=1; document.getElementById('territoriesEnergyFilterForm').submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+
+            <form method="GET"
+                action="{{ url_for('fuel_bp.fuel_territories_energy_list') }}"
+                class="mb-3"
+                id="territoriesEnergyFilterForm">
+                <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+                <div class="row g-2 align-items-center">
+                    <div class="col-12 col-lg-8">
+                        <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                            <div class="flex-grow-1" style="min-width: 220px;">
+                                <input type="text"
+                                    name="territories_energy_filter"
+                                    class="form-control"
+                                    value="{{ territories_energy_filter }}"
+                                    placeholder="Поиск по территориям/энергосистемам">
+                            </div>
+
+                            <button type="submit"
+                                    class="btn btn-outline-primary fw-bold"
+                                    onclick="this.form.page.value=1">
+                                    Поиск
+                            </button>
+
+                            <a href="{{ url_for('fuel_bp.fuel_territories_energy_list') }}"
+                                    class="btn btn-outline-secondary fw-bold"
+                                    data-no-preloader>
+                                    Сбросить
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead>
+                        <tr class="table-success">
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    sort_by='regional_district_name',
+                                                    sort_dir='asc' if sort_by != 'regional_district_name' or sort_dir == 'desc' else 'desc') }}"
+                                    class="text-black">
+                                    Субъект РФ в АРМ
+                                    {% if sort_by == 'regional_district_name' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    sort_by='regional_energy_system_name',
+                                                    sort_dir='asc' if sort_by != 'regional_energy_system_name' or sort_dir == 'desc' else 'desc') }}"
+                                    class="text-black">
+                                    Региональная энергосистема в АРМ
+                                    {% if sort_by == 'regional_energy_system_name' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    sort_by='energy_zone_name',
+                                                    sort_dir='asc' if sort_by != 'energy_zone_name' or sort_dir == 'desc' else 'desc') }}"
+                                    class="text-black">
+                                    Энергорайон в АРМ
+                                    {% if sort_by == 'energy_zone_name' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            {% for col in [
+                                'name_topl','ao_topl','obl_topl','alph_topl','dep_topl','oes_topl','er_topl',
+                                'terr_belyaev_topl','teo90_topl','fo_topl','abbr_topl','reu_topl','pter_topl','keyword_topl'
+                            ] %}
+                                <th class="text-center align-middle">
+                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
+                                                        page=pagination.page,
+                                                        per_page=per_page,
+                                                        sort_by=col,
+                                                        sort_dir='asc' if sort_by != col or sort_dir == 'desc' else 'desc') }}"
+                                        class="text-black">
+                                        {{ col }}
+                                        {% if sort_by == col %}
+                                            {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                        {% endif %}
+                                    </a>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in items %}
+                            <tr class="align-middle text-center">
+                                <td>{{ row.regional_district_name or '' }}</td>
+                                <td>{{ row.regional_energy_system_name or '' }}</td>
+                                <td>{{ row.energy_zone_name or '' }}</td>
+                                <td>{{ row.name_topl or '' }}</td>
+                                <td>{{ row.ao_topl or '' }}</td>
+                                <td>{{ row.obl_topl or '' }}</td>
+                                <td>{{ row.alph_topl or '' }}</td>
+                                <td>{{ row.dep_topl_name or row.dep_topl or '' }}</td>
+                                <td>{{ row.oes_topl_name or row.oes_topl or '' }}</td>
+                                <td>{{ row.er_topl_name or row.er_topl or '' }}</td>
+                                <td>{{ row.terr_belyaev_topl or '' }}</td>
+                                <td>{{ row.teo90_topl or '' }}</td>
+                                <td>{{ row.fo_topl_name or row.fo_topl or '' }}</td>
+                                <td>{{ row.abbr_topl or '' }}</td>
+                                <td>{{ row.reu_topl or '' }}</td>
+                                <td>{{ row.pter_topl or '' }}</td>
+                                <td>{{ row.keyword_topl or '' }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="17" class="text-center align-middle">Нет данных для отображения</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include 'fuel/refdata/territories_energy/territories_energy_pagination.html' %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

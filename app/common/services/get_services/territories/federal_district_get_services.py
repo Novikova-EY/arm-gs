@@ -17,15 +17,12 @@ from app.refdata.models.energy_systems.union_energy_system_model import UnionEne
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_federal_district_list_full():
-    """Получает полный список федеральных округов."""
+    """Получает полный список федеральных округов. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = FederalDistrict.query
-    
     if current_version:
         query = query.filter(FederalDistrict.database_version_id == current_version)
-    
     return (
         query
         .order_by(
@@ -104,16 +101,13 @@ def get_federal_districts_map() -> Dict[int, str]:
     rows = query.order_by(FederalDistrict.id).all()
     return {id_: name for id_, name in rows}
 
-# 4) Карта связей {fd_id: [regional_district_id, ...]} — без загрузки ORM-объектов (кэшируется)
-@lru_cache(maxsize=1)
+# 4) Карта связей {fd_id: [regional_district_id, ...]} — без загрузки ORM-объектов
 def get_fd_to_rd_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ФО.id: [СубъектРФ.id, ...]} (кэшируется)."""
+    """Возвращает отображение {ФО.id: [СубъектРФ.id, ...]}. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalDistrict.id_federal_district, RegionalDistrict.id)
-    
     if current_version:
         query = query.filter(RegionalDistrict.database_version_id == current_version)
-    
     rows = query.order_by(RegionalDistrict.id_federal_district, RegionalDistrict.id).all()
     acc: Dict[int, List[int]] = {}
     for fd_id, rd_id in rows:
@@ -135,11 +129,8 @@ def get_regional_district_to_fd_id_map() -> Dict[int, int]:
 
 # 6) Инвалидатор кэшей — вызывай после CRUD по ФО/Субъектам РФ
 def invalidate_fd_lookups_cache() -> None:
-    get_federal_district_list_full.cache_clear()
     get_federal_district_list.cache_clear()
     get_federal_districts_map.cache_clear()
-    # get_federal_districts_list не кэшируется, но оставляем как явное место для будущих инвалидаций
-    get_fd_to_rd_ids_map.cache_clear()
     get_regional_district_to_fd_id_map.cache_clear()
     get_fd_to_res_ids_map.cache_clear()
     get_fd_to_ues_ids_map.cache_clear()

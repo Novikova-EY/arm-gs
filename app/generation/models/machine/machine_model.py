@@ -10,7 +10,7 @@ from sqlalchemy.schema import Index
 from sqlalchemy import event
 from sqlalchemy.sql import text as sql_text
 from app.extensions import db
-from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.versioned_model import VersionedModelMixin
 
 class Machine(db.Model, VersionedModelMixin):
@@ -20,7 +20,7 @@ class Machine(db.Model, VersionedModelMixin):
         Index('ix_machine_id_condition_type', 'id_condition_type'),
         Index('ix_machine_id_tes_machine_type', 'id_tes_machine_type'),
         Index('ix_machine_id_equipment_group', 'id_equipment_group'),
-        Index('ix_machine_station_equipment_group_id', 'station_equipment_group_id'),
+        Index('ix_machine_equipment_group_set_id', 'equipment_group_set_id'),
         Index('ix_machine_id_gen_company', 'id_gen_company'),
         Index('ix_machine_id_energy_area', 'id_energy_area'),
         Index('ix_machine_external_code', 'external_code'),
@@ -77,7 +77,7 @@ class Machine(db.Model, VersionedModelMixin):
 
     # Основные атрибуты
     machine_number = db.Column(db.String(80), nullable=False, index=True)
-    machine_name = db.Column(db.String(255), nullable=False, index=True)
+    machine_name = db.Column(db.String(1024), nullable=False, index=True)
     machine_group = db.Column(db.String(255), nullable=True)
     fuel_so = db.Column(db.String(255), nullable=True)
 
@@ -126,14 +126,16 @@ class Machine(db.Model, VersionedModelMixin):
     )
     equipment_group = db.relationship('EquipmentGroup', back_populates='machines')
 
-    # FK -> StationEquipmentGroup (группа оборудования на конкретной станции)
-    station_equipment_group_id = db.Column(
+    # FK -> EquipmentGroupSet (общая группа оборудования)
+    equipment_group_set_id = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.station_equipment_groups.id', ondelete='RESTRICT'),
+        db.ForeignKey(
+            f"{SCHEMA_FUEL}.gs_fue_equipment_group_sets.id", ondelete="RESTRICT"
+        ),
         nullable=True,
         index=True,
     )
-    station_equipment_group = db.relationship('StationEquipmentGroup', back_populates='machines')
+    equipment_group_set = db.relationship('EquipmentGroupSet', back_populates='machines')
 
     # Children: powers / fuels / tes_types
     machine_powers = db.relationship(
@@ -316,25 +318,28 @@ def generate_external_code_before_insert(mapper, connection, target):
     if target.external_code:
         return
     
-    # Получаем external_code связки станция-группа оборудования
-    station_equipment_group_code = None
+    # Получаем external_code группы оборудования (если есть)
+    equipment_group_set_code = None
     
     # Пытаемся получить через связь, если она загружена
-    if target.station_equipment_group and hasattr(target.station_equipment_group, 'external_code'):
-        station_equipment_group_code = target.station_equipment_group.external_code
+    if target.equipment_group_set and hasattr(target.equipment_group_set, 'external_code'):
+        equipment_group_set_code = target.equipment_group_set.external_code
     
     # Если связь не загружена, загружаем через SQL-запрос
-    if not station_equipment_group_code and target.station_equipment_group_id:
+    if not equipment_group_set_code and target.equipment_group_set_id:
         result = connection.execute(
-            sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.station_equipment_groups WHERE id = :id"),
-            {"id": target.station_equipment_group_id}
+            sql_text(
+                f"SELECT external_code FROM {SCHEMA_FUEL}.gs_fue_equipment_group_sets "
+                "WHERE id = :id"
+            ),
+            {"id": target.equipment_group_set_id}
         )
         row = result.fetchone()
         if row:
-            station_equipment_group_code = row[0]
+            equipment_group_set_code = row[0]
     
-    # Если связка станция-группа оборудования не указана, используем fallback
-    if not station_equipment_group_code:
+    # Если группа оборудования не указана, используем fallback
+    if not equipment_group_set_code:
         # Получаем external_code станции
         station_code = None
         if target.machine_station and hasattr(target.machine_station, 'external_code'):
@@ -356,11 +361,11 @@ def generate_external_code_before_insert(mapper, connection, target):
         
         # Формируем ключ связки станция-группа оборудования (через ID группы оборудования)
         seg_key = f"station_equipment_group|station|{station_code}|equipment_group_id|{equipment_group_id}"
-        station_equipment_group_code = str(uuid.uuid5(uuid.NAMESPACE_URL, seg_key))
+        equipment_group_set_code = str(uuid.uuid5(uuid.NAMESPACE_URL, seg_key))
     
     # Формируем ключ для трехсторонней привязки: станция-группа оборудования-агрегат
     machine_key = (
-        f"machine|station_equipment_group|{station_equipment_group_code}|"
+        f"machine|equipment_group_set|{equipment_group_set_code}|"
         f"ti|{target.id_ti or ''}|num|{target.machine_number or ''}|name|{target.machine_name or ''}"
     )
     

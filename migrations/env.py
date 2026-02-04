@@ -53,6 +53,16 @@ def import_all_models():
         "app.generation.models.machine_tes_type_model",
         "app.generation.models.pgu_machine_model",
         "app.generation.models.pgu_machine_power_model",
+        # fuel
+        "app.fuel.models.fue_equipment_group_set_model",
+        "app.fuel.models.fue_equipment_group_set_station_model",
+        "app.fuel.models.external_mapping.fue_em_union_energy_system_model",
+        "app.fuel.models.external_mapping.fue_em_federal_district_model",
+        "app.fuel.models.external_mapping.fue_em_territories_energy_model",
+        "app.fuel.models.external_mapping.fue_em_business_unit_model",
+        "app.fuel.models.external_mapping.fue_em_department_model",
+        "app.fuel.models.external_mapping.fue_em_economic_region_model",
+        "app.fuel.models.external_mapping.fue_em_economic_region_model",
         # refdata
         "app.refdata.models.condition_type_model",
         "app.refdata.models.equipment_group_model",
@@ -103,6 +113,9 @@ def process_revision_directives(context, revision, directives):
 def include_object(object, name, type_, reflected, compare_to):
     # не трогаем таблицу версий Alembic
     if type_ == "table" and name == "alembic_version":
+        return False
+    # при автогенерации не учитываем индексы, чтобы не плодить повторы
+    if type_ == "index" and getattr(config.cmd_opts, "autogenerate", False):
         return False
     # объект есть в БД (reflected=True), но отсутствует в metadata (compare_to is None)
     # => это что-то не импортировали в модели; не генерим DROP

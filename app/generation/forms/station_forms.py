@@ -19,7 +19,7 @@ class StationFilterForm(FlaskForm):
     # Наименование диспетчерское (основное)
     name = StringField(
         'Наименование (основное)',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[DataRequired(), Length(max=255)]
     )
 
     # Наименование собственника
@@ -117,7 +117,7 @@ class StationFilterForm(FlaskForm):
     # Примечание
     note = StringField(
         'Примечание',
-        validators=[Optional(), Length(max=80)]
+        validators=[Optional(), Length(max=1000)]
     )
     
     # Фильтры

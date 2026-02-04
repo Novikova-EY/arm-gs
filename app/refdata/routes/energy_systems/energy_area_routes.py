@@ -232,7 +232,7 @@ def add_energy_area():
  
     # Подготовка данных для формы
     regional_district_list = get_regional_district_list_full()
-    form.regional_district.choices = [(t.id, t.name) for t in regional_district_list]
+    form.regional_district.choices = regional_district_list
 
     # Обработка формы
     if request.method == "POST":

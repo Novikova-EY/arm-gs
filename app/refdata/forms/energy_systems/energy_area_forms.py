@@ -1,4 +1,4 @@
-"""Формы для «Энергорайоны»."""
+"""Формы для «Энергоузлы»."""
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
@@ -11,9 +11,9 @@ class EnergyAreaFilterForm(FlaskForm):
     energy_area_ids = HiddenField("ID записей")
 
     name = StringField(
-        "Энергорайон",
+        "Энергоузел",
         validators=[
-            DataRequired(message="Поле «Энергорайон» обязательно."),
+            DataRequired(message="Поле «Энергоузел» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
@@ -21,7 +21,7 @@ class EnergyAreaFilterForm(FlaskForm):
         "Субъект РФ",
         choices=[],
         coerce=int,
-        validators=[DataRequired(message="Поиск по наименованию энергорайона.")],
+        validators=[DataRequired(message="Поиск по наименованию энергоузла.")],
     )
     regional_energy_system = SelectField(
         "Региональная энергосистема",
@@ -39,9 +39,9 @@ class EnergyAreaFilterForm(FlaskForm):
 
     # Фильтры
     energy_area_filter = StringField(
-        "Фильтр по энергорайонам",
+        "Фильтр по энергоузлам",
         validators=[Optional(), Length(max=100)],
-        render_kw={"placeholder": "Введите энергорайон"},
+        render_kw={"placeholder": "Введите энергоузел"},
     )
     regional_district_filter = StringField(
         "Фильтр по субъекту РФ",
@@ -72,9 +72,9 @@ class AddEnergyAreaForm(FlaskForm):
     csrf_token = HiddenField()
 
     name = StringField(
-        "Энергорайон",
+        "Энергоузел",
         validators=[
-            DataRequired(message="Поле «Энергорайон» обязательно."),
+            DataRequired(message="Поле «Энергоузел» обязательно."),
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )

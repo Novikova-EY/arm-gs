@@ -212,12 +212,11 @@ def export_totals_summary_to_excel(
         
         fuel_type_query = FuelType.query
         fuel_type_query = filter_by_db_version(fuel_type_query, FuelType)
-        fuel_type_names = fuel_type_query.order_by(FuelType.id.asc()).all()
+        from app.common.services.sorting_services import sort_fuel_type_objects
+
+        fuel_type_names = sort_fuel_type_objects(fuel_type_query.all())
         fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
-        fuel_type_items_sorted = sorted(
-            fuel_type_list.items(),
-            key=lambda item: (item[0], (item[1] or "")),
-        )
+        fuel_type_items_sorted = list(fuel_type_list.items())
         
         year_features = get_year_feature_dict()
         

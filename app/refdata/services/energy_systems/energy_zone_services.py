@@ -1,7 +1,7 @@
 """Сервисный модуль: Энергозоны."""
 
 from app.extensions import db
-from sqlalchemy import or_
+from sqlalchemy import or_, case, cast, Integer
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -49,7 +49,12 @@ def energy_zone_query(
     """ Базовый запрос для выборки списка энергозон с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name"}
+    allowed_sort_by = {
+        "id",
+        "name",
+        "number",
+        "ref_uuid",
+    }
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -73,6 +78,11 @@ def energy_zone_query(
         sort_field = getattr(EnergyZone, sort_by)
         query = query.order_by(
             sort_field.desc() if sort_dir == "desc" else sort_field.asc()
+        )
+
+    elif sort_by == "ref_uuid":
+        query = query.order_by(
+            EnergyZone.ref_uuid.desc() if sort_dir == "desc" else EnergyZone.ref_uuid.asc()
         )
 
     else:  # сортировка по id
@@ -449,4 +459,80 @@ def export_energy_zone_service(
         f"Экспортировано записей: {len(data)}",
         entity_type="energy_zone")
 
+    return output
+
+
+def export_energy_zone_mappings_service(
+    user,
+    energy_zone_filter=None,
+    sort_by="id",
+    sort_dir="asc",
+):
+    """Экспортирует сопоставления энергорайонов (Топливо) в Excel."""
+    log_to_db(
+        user,
+        "Начата выгрузка сопоставлений энергорайонов (Топливо)",
+        entity_type="energy_zone_external_mapping",
+    )
+
+    query = energy_zone_query(
+        energy_zone_filter=energy_zone_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    rows = query.all()
+
+    mappings = EnergyZoneExternalMapping.query.order_by(
+        EnergyZoneExternalMapping.id.asc()
+    ).all()
+    mapping_by_uuid = {
+        m.energy_zone_ref_uuid: m for m in mappings if m.energy_zone_ref_uuid
+    }
+
+    def _normalize_external_id(value):
+        if value is None:
+            return ""
+        text = str(value).strip()
+        if text.endswith(".0") and text[:-2].isdigit():
+            return text[:-2]
+        return text
+
+    data = []
+    for idx, ez in enumerate(rows, start=1):
+        mapping = mapping_by_uuid.get(ez.ref_uuid)
+        data.append(
+            {
+                "№": idx,
+                "ID в БД Топливо": _normalize_external_id(
+                    mapping.external_id if mapping else None
+                ),
+                "Название в БД Топливо": mapping.external_name if mapping else "",
+                "Наименование энергорайона (Топливо)": mapping.external_nameoes if mapping else "",
+                "Сокр. энергорайона (Топливо)": mapping.external_abbr if mapping else "",
+                "UUID энергорайона": ez.ref_uuid,
+                "ID энергорайона (текущая версия)": ez.id,
+                "Наименование энергорайона в АРМ": ez.name,
+            }
+        )
+
+    unmatched = [m for m in mappings if not m.energy_zone_ref_uuid]
+    for mapping in unmatched:
+        data.append(
+            {
+                "№": len(data) + 1,
+                "ID в БД Топливо": _normalize_external_id(mapping.external_id),
+                "Название в БД Топливо": mapping.external_name or "",
+                "Наименование энергорайона (Топливо)": mapping.external_nameoes or "",
+                "Сокр. энергорайона (Топливо)": mapping.external_abbr or "",
+                "UUID энергорайона": "—",
+                "ID энергорайона (текущая версия)": "—",
+                "Наименование энергорайона в АРМ": "—",
+            }
+        )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Энергорайоны (Топливо)")
+    output.seek(0)
     return output

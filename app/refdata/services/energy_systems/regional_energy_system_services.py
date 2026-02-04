@@ -1,7 +1,7 @@
 """Сервисный модуль: Объединенные энергосистемы."""
 
 from app.extensions import db
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc, case, cast, Integer
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -53,7 +53,14 @@ def regional_energy_system_query(
     sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
     desc = (sort_dir == "desc")
     sort_by = (sort_by or "id").lower()
-    allowed_sort = {"id", "name", "name_full", "name_rp", "union_energy_system"}
+    allowed_sort = {
+        "id",
+        "name",
+        "name_full",
+        "name_rp",
+        "union_energy_system",
+        "ref_uuid",
+    }
     if sort_by not in allowed_sort:
         sort_by = "id"
 
@@ -98,6 +105,11 @@ def regional_energy_system_query(
             )
         )
     
+    elif sort_by == "ref_uuid":
+        query = query.order_by(
+            RegionalEnergySystem.ref_uuid.desc() if desc else RegionalEnergySystem.ref_uuid.asc()
+        )
+
     else:
         query = query.order_by(RegionalEnergySystem.id.desc() if sort_dir == "desc" else RegionalEnergySystem.id.asc())
 
@@ -165,7 +177,11 @@ def update_regional_energy_system_service(data, user):
                     entity_id=regional_energy_system_id)
                 raise ValueError(f"Каждая запись должна содержать 'name' и 'union_energy_system_id'. Данные: {record}")
 
-            obj = db.session.get(RegionalEnergySystem, regional_energy_system_id)
+            obj = (
+                apply_version_filter(RegionalEnergySystem.query, RegionalEnergySystem)
+                .filter(RegionalEnergySystem.id == regional_energy_system_id)
+                .first()
+            )
             if not obj:
                 log_to_db(
                     user, 
@@ -213,11 +229,23 @@ def update_regional_energy_system_service(data, user):
             if "union_energy_system_id" in record:
                 ues = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
                 if ues != obj.id_union_energy_system:
-                    new_ues = db.session.get(UnionEnergySystem, ues) if ues is not None else None
+                    new_ues = (
+                        apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
+                        .filter(UnionEnergySystem.id == ues)
+                        .first()
+                        if ues is not None
+                        else None
+                    )
                     if ues is not None and not new_ues:
                         raise ValueError(f"ОЭС с id={ues} не найдена.")
                     
-                    prev_fd = db.session.get(UnionEnergySystem, obj.id_union_energy_system) if obj.id_union_energy_system else None
+                    prev_fd = (
+                        apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
+                        .filter(UnionEnergySystem.id == obj.id_union_energy_system)
+                        .first()
+                        if obj.id_union_energy_system
+                        else None
+                    )
                     old_name = prev_fd.name if prev_fd else "не указано"
                     new_name = new_ues.name if new_ues else "не указано"
                     changes.append(format_field_change("id_union_energy_system", old_name, new_name, "regional_energy_system"))
@@ -226,7 +254,11 @@ def update_regional_energy_system_service(data, user):
             # Обновление связей «многие ко многим»
             if regional_energy_system_id:
                 # Обновление существующей записи
-                regional_energy_system = RegionalEnergySystem.query.get(regional_energy_system_id)
+                regional_energy_system = (
+                    apply_version_filter(RegionalEnergySystem.query, RegionalEnergySystem)
+                    .filter(RegionalEnergySystem.id == regional_energy_system_id)
+                    .first()
+                )
                 if regional_energy_system:
                     regional_energy_system.name = name
                     regional_energy_system.name_full = name_full
@@ -239,13 +271,21 @@ def update_regional_energy_system_service(data, user):
 
                     # Добавить новые связи
                     for district_id in new_districts - existing_districts:
-                        district = RegionalDistrict.query.get(district_id)
+                        district = (
+                            apply_version_filter(RegionalDistrict.query, RegionalDistrict)
+                            .filter(RegionalDistrict.id == district_id)
+                            .first()
+                        )
                         if district:
                             regional_energy_system.regional_districts.append(district)
 
                     # Удалить устаревшие связи
                     for district_id in existing_districts - new_districts:
-                        district = RegionalDistrict.query.get(district_id)
+                        district = (
+                            apply_version_filter(RegionalDistrict.query, RegionalDistrict)
+                            .filter(RegionalDistrict.id == district_id)
+                            .first()
+                        )
                         if district:
                             regional_energy_system.regional_districts.remove(district)
 
@@ -326,7 +366,11 @@ def add_regional_energy_system_service(data, user):
                     raise ValueError(f"Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'union_energy_system_id'. Данные: {record}")
 
                 # Проверяем существование ОЭС
-                obj = db.session.get(UnionEnergySystem, union_energy_system_id)
+                obj = (
+                    apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
+                    .filter(UnionEnergySystem.id == union_energy_system_id)
+                    .first()
+                )
                 if not obj:
                     raise ValueError(f"ОЭС с id={union_energy_system_id} не найдена.")
 
@@ -358,13 +402,21 @@ def add_regional_energy_system_service(data, user):
 
                 # Добавить новые связи
                 for district_id in new_districts - existing_districts:
-                    district = RegionalDistrict.query.get(district_id)
+                    district = (
+                        apply_version_filter(RegionalDistrict.query, RegionalDistrict)
+                        .filter(RegionalDistrict.id == district_id)
+                        .first()
+                    )
                     if district:
                         obj.regional_districts.append(district)
 
                 # Удалить устаревшие связи
                 for district_id in existing_districts - new_districts:
-                    district = RegionalDistrict.query.get(district_id)
+                    district = (
+                        apply_version_filter(RegionalDistrict.query, RegionalDistrict)
+                        .filter(RegionalDistrict.id == district_id)
+                        .first()
+                    )
                     if district:
                         obj.regional_districts.remove(district)
 
@@ -505,7 +557,8 @@ def import_regional_energy_system_service(file, user):
         updated_count = 0  # Количество обновленных записей
 
         # Создаем словарь соответствий названия ОЭС → ID (кэш для ускорения запросов)
-        oes_mapping = {oes.name: oes.id for oes in db.session.query(UnionEnergySystem).all()}
+        oes_query = apply_version_filter(UnionEnergySystem.query, UnionEnergySystem)
+        oes_mapping = {oes.name: oes.id for oes in oes_query.all()}
 
         # Обрабатываем каждую запись
         for _, row in data.iterrows():
@@ -664,4 +717,82 @@ def export_regional_energy_system_service(
         f"Экспортировано записей: {len(data)}",
         entity_type="regional_energy_system")
     
+    return output
+
+
+def export_regional_energy_system_mappings_service(
+    user,
+    regional_energy_system_filter=None,
+    sort_by="id",
+    sort_dir="asc",
+):
+    """Экспортирует сопоставления РЭС (Топливо) в Excel."""
+    log_to_db(
+        user,
+        "Начата выгрузка сопоставлений РЭС (Топливо)",
+        entity_type="regional_energy_system_external_mapping",
+    )
+
+    query = regional_energy_system_query(
+        regional_energy_system_filter=regional_energy_system_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    rows = query.all()
+
+    mappings = RegionalEnergySystemExternalMapping.query.order_by(
+        RegionalEnergySystemExternalMapping.id.asc()
+    ).all()
+    mapping_by_uuid = {
+        m.regional_energy_system_ref_uuid: m
+        for m in mappings
+        if m.regional_energy_system_ref_uuid
+    }
+
+    def _normalize_external_id(value):
+        if value is None:
+            return ""
+        text = str(value).strip()
+        if text.endswith(".0") and text[:-2].isdigit():
+            return text[:-2]
+        return text
+
+    data = []
+    for idx, res in enumerate(rows, start=1):
+        mapping = mapping_by_uuid.get(res.ref_uuid)
+        data.append(
+            {
+                "№": idx,
+                "ID в БД Топливо": _normalize_external_id(
+                    mapping.external_id if mapping else None
+                ),
+                "Название в БД Топливо": mapping.external_name if mapping else "",
+                "Наименование РЭС (Топливо)": mapping.external_nameoes if mapping else "",
+                "Сокр. РЭС (Топливо)": mapping.external_abbr if mapping else "",
+                "UUID РЭС": res.ref_uuid,
+                "ID РЭС (текущая версия)": res.id,
+                "Наименование РЭС в АРМ": res.name,
+            }
+        )
+
+    unmatched = [m for m in mappings if not m.regional_energy_system_ref_uuid]
+    for mapping in unmatched:
+        data.append(
+            {
+                "№": len(data) + 1,
+                "ID в БД Топливо": _normalize_external_id(mapping.external_id),
+                "Название в БД Топливо": mapping.external_name or "",
+                "Наименование РЭС (Топливо)": mapping.external_nameoes or "",
+                "Сокр. РЭС (Топливо)": mapping.external_abbr or "",
+                "UUID РЭС": "—",
+                "ID РЭС (текущая версия)": "—",
+                "Наименование РЭС в АРМ": "—",
+            }
+        )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="РЭС (Топливо)")
+    output.seek(0)
     return output

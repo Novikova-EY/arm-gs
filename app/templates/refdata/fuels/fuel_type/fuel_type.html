@@ -124,6 +124,27 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.fuel_type_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            fuel_type_filter=fuel_type_filter,
+                                            topl_nazvl_filter=topl_nazvl_filter,
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Тип топлива" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.fuel_type_list', 
@@ -222,6 +243,18 @@
                                 <input type="hidden" name="fuel_ids[]" value="{{ fuel_type.id }}">
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td>
+                                <input 
+                                    type="number" 
+                                    name="display_orders[]" 
+                                    class="form-control text-center" 
+                                    value="{{ fuel_type.display_order if fuel_type.display_order is not none else '' }}"
+                                    style="width: 100%;"
+                                    min="0" step="1" placeholder=""
+                                >
+                            </td>
+
                             <!-- Строки таблицы. Столбец "Тип топлива" -->
                             <td>
                                 <input type="text" name="fuel_type_names[]" class="form-control" value="{{ fuel_type.name }}">
@@ -239,7 +272,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -264,6 +297,27 @@
                                         class="text-black">
                                 №
                                 {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.fuel_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        fuel_type_filter=fuel_type_filter,
+                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        sort_by='display_order', 
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
                                     {% else %}
@@ -370,6 +424,11 @@
                         <!-- Строки таблицы. Столбец "Тип топлива" -->
                         <td> {{ fuel_type.name }} </td>
 
+                        <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                        <td class="text-center">
+                            {{ fuel_type.display_order if fuel_type.display_order is not none else '' }}
+                        </td>
+
                     <!-- Строки таблицы. Столбец "Короткое наименование" -->
                     <td> {{ fuel_type.topl_nazvl or '' }} </td>
 
@@ -377,7 +436,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                    <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                    <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
                     </tr>
                     {% endfor %}
                 </tbody>

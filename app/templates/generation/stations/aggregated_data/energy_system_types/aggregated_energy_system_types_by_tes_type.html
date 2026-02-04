@@ -6,6 +6,7 @@
             .get(tes_type_id) %}
             
         {% if has_tes %}
+            {% set tes_name_lower = tes_name|lower %}
             <!-- Первая строка: p_ust -->
             <tr class="table-light text-center total-power-row" style="vertical-align: middle;">
                 <td class="total-row-cell ind2cm" rowspan="3" colspan="11" style="font-weight: bold; padding-left: 6cm;">
@@ -60,7 +61,9 @@
                 </td>
             </tr>
 
-            {#–- {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_by_tes_type_with_fuel.html' %} --#}
+            {% if 'кэс' not in tes_name_lower and 'тэц' not in tes_name_lower %}
+                {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_by_tes_type_with_fuel.html' %}
+            {% endif %}
 
             {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_by_tes_machine_type.html' %}
 

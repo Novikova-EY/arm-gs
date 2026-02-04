@@ -53,8 +53,12 @@
                 {% endfor %}
             </tr>
 
-            {#–- {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_type_with_fuel.html' %} --#}
+            {# По видам топлива на уровне типа ТЭС — только для типов не КЭС/ТЭЦ (ДЭС, ДГА и т.д.) #}
+            {% if tes_type_id not in (tes_type_ids_no_fuel_breakdown or []) %}
+                {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_type_with_fuel.html' %}
+            {% endif %}
 
+            {# По типам агрегатов, внутри — по типам топлива (для не КЭС/ТЭЦ) #}
             {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_machine_type.html' %}
 
         {% endif %}

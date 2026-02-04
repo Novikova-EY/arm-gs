@@ -30,7 +30,8 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.years.year_model import Year
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
-from app.refdata.models.fuels.station_equpment_group_model import StationEquipmentGroup
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
 
 from app.generation.services.station_services.station_services import (
@@ -80,7 +81,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
             db.joinedload(Machine.machine_type),
             db.joinedload(Machine.tes_machine_type),
             db.joinedload(Machine.equipment_group),
-            db.joinedload(Machine.station_equipment_group).joinedload(StationEquipmentGroup.equipment_group),
+            db.joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
             db.joinedload(Machine.machine_powers),
             db.joinedload(Machine.machine_fuels),
             db.joinedload(Machine.machine_tes_types),
@@ -254,22 +255,43 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     }
 
 
-def _get_or_create_station_equipment_group(station_id, equipment_group_id):
+def _get_or_create_equipment_group_set(station_id, equipment_group_id):
     if not station_id or not equipment_group_id:
         return None
-    seg = StationEquipmentGroup.query.filter_by(
-        id_station=station_id,
-        id_equipment_group=equipment_group_id,
-    ).first()
-    if seg is None:
-        seg = StationEquipmentGroup(
-            id_station=station_id,
-            id_equipment_group=equipment_group_id,
+    group_set = (
+        EquipmentGroupSet.query
+        .join(
+            EquipmentGroupSetStation,
+            EquipmentGroupSetStation.equipment_group_set_id == EquipmentGroupSet.id,
         )
-        set_db_version_on_create(seg)
-        db.session.add(seg)
+        .filter(
+            EquipmentGroupSet.id_equipment_group == equipment_group_id,
+            EquipmentGroupSetStation.station_id == station_id,
+        )
+        .first()
+    )
+    if group_set is None:
+        station = Station.query.get(station_id)
+        equipment_group = EquipmentGroup.query.get(equipment_group_id)
+        group_name = None
+        if station and station.name and equipment_group and equipment_group.name:
+            group_name = f"{station.name} ({equipment_group.name})"
+        group_set = EquipmentGroupSet(
+            id_equipment_group=equipment_group_id,
+            name=group_name,
+        )
+        set_db_version_on_create(group_set)
+        db.session.add(group_set)
         db.session.flush()
-    return seg
+
+        link = EquipmentGroupSetStation(
+            equipment_group_set_id=group_set.id,
+            station_id=station_id,
+        )
+        set_db_version_on_create(link)
+        db.session.add(link)
+        db.session.flush()
+    return group_set
 
 
 def _validate_power_ranges(advanced_form, formdata):
@@ -294,16 +316,19 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     from werkzeug.datastructures import MultiDict
 
     normalized = MultiDict(form_data)
+    # Поля, в которых запятая — десятичный разделитель (только числовые)
+    _numeric_key_suffixes = ("p_ust", "p_ogr", "p_rasp")
     for key, value in list(normalized.items()):
         if isinstance(value, str):
             if value.strip() in {"\u2014", "-", ""}:
                 normalized[key] = ""
-            # Не заменяем запятые на точки в поле change_document (проверяем окончание ключа)
-            elif "," in value and not key.endswith("change_document"):
+            # Заменяем запятую на точку только в числовых полях мощности
+            # В текстовых (machine_name, note и т.п.) запятая — часть названия (напр. ТГ-3,5АС)
+            elif "," in value and key.endswith(_numeric_key_suffixes):
                 normalized[key] = value.replace(",", ".")
 
     station = get_station_by_id(station_id)
-    
+
     # Проверяем, создается ли новый агрегат
     is_new = machine_id == 0
     if is_new:
@@ -311,11 +336,32 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     else:
         machine = get_machine_by_id(machine_id)
 
-    # Если поле "Организация-собственник" не пришло в POST (иногда Select2 не отправляет),
-    # подставляем текущее значение агрегата, чтобы избежать ложной ошибки валидации.
-    if machine is not None and "main_id_gen_company" not in normalized:
+    # Если обязательные поля не пришли в POST (иногда Select2/textarea не отправляют),
+    # подставляем текущие значения агрегата, чтобы избежать ложной ошибки валидации.
+    def _ensure_form_value(field_name: str, fallback_value: str | None):
+        if fallback_value in (None, ""):
+            return
+        variants = {field_name}
+        if "-" in field_name:
+            variants.add(field_name.replace("-", "_"))
+        else:
+            variants.add(field_name.replace("_", "-"))
+
+        for variant in variants:
+            current_val = normalized.get(variant)
+            if current_val is None or (isinstance(current_val, str) and current_val.strip() == ""):
+                normalized[variant] = fallback_value
+
+    if machine is not None:
+        probe_form = MachineFilterForm(prefix="main_")
+        gen_company_name = probe_form.id_gen_company.name
+        machine_name_field = probe_form.machine_name.name
+
         if machine.id_gen_company is not None:
-            normalized["main_id_gen_company"] = str(machine.id_gen_company)
+            _ensure_form_value(gen_company_name, str(machine.id_gen_company))
+
+        if machine.machine_name:
+            _ensure_form_value(machine_name_field, machine.machine_name)
 
     main_form = MachineFilterForm(formdata=normalized, prefix="main_")
     advanced_form = EditMachineForm(formdata=normalized, prefix="adv_")
@@ -323,6 +369,11 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     
     year_features = get_year_feature_dict()
     
+    redirect_args = request.args.to_dict(flat=False)
+    redirect_args["start_year"] = start_year
+    redirect_args["end_year"] = end_year
+    redirect_args["rounding_digits"] = rounding_digits
+
     # Проверка версии из формы для предотвращения concurrent updates (только для существующих агрегатов)
     if not is_new and machine:
         form_version = request.form.get('version', type=int)
@@ -334,9 +385,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             return redirect(url_for("station_bp.machine_details", 
                                     station_id=station.id, 
                                     machine_id=machine.id,
-                                    start_year=start_year, 
-                                    end_year=end_year, 
-                                    rounding_digits=rounding_digits))
+                                    **redirect_args))
 
     _fill_main_form_choices(main_form)
     # Проверяем, нужно ли заполнять advanced_form choices
@@ -380,9 +429,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         return redirect(url_for("station_bp.machine_details", 
                                 station_id=station.id, 
                                 machine_id=machine.id,
-                                start_year=start_year, 
-                                end_year=end_year, 
-                                rounding_digits=rounding_digits))
+                                **redirect_args))
     
     is_pgu_action = any([
         pgu_machines_form.id_pgu_machine.data,
@@ -466,6 +513,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         fk_fields = {'id_condition_type', 'id_gen_company', 'id_machine_type', 
                      'id_tes_machine_type', 'id_equipment_group'}
         
+        equipment_group_changed = is_new
         for fld, to_str in field_map.items():
             old_v = getattr(machine, fld) if not is_new else None
             new_v = getattr(main_form, fld).data
@@ -497,12 +545,19 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     # Если строки одинаковы, но значения разные, просто обновляем без логирования
                     setattr(machine, fld, new_v)
 
-        # Синхронизируем station_equipment_group_id с выбранным типом оборудования
-        seg = _get_or_create_station_equipment_group(
-            station_id=machine.id_station,
-            equipment_group_id=machine.id_equipment_group,
-        )
-        machine.station_equipment_group_id = seg.id if seg else None
+            if fld == "id_equipment_group" and not is_new:
+                equipment_group_changed = old_v != new_v
+
+        # Синхронизируем equipment_group_set_id только при создании/смене группы
+        if equipment_group_changed:
+            if machine.id_equipment_group:
+                group_set = _get_or_create_equipment_group_set(
+                    station_id=machine.id_station,
+                    equipment_group_id=machine.id_equipment_group,
+                )
+                machine.equipment_group_set_id = group_set.id if group_set else None
+            else:
+                machine.equipment_group_set_id = None
 
         date_fields = [
             "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
@@ -792,7 +847,10 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         if not changes and not pgu_changes and not is_new:
             flash("Изменений не обнаружено", "info")
 
-        return redirect(url_for("station_bp.machine_details", start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, station_id=station.id, machine_id=machine.id))
+        return redirect(url_for("station_bp.machine_details",
+                                station_id=station.id,
+                                machine_id=machine.id,
+                                **redirect_args))
 
     except Exception as exc:
         db.session.rollback()
@@ -871,6 +929,9 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
 def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, user, start_year, end_year):
     station = get_station_by_id(station_id)
     parent_machine = get_machine_by_id(machine_id)
+    redirect_args = request.args.to_dict(flat=False)
+    redirect_args["start_year"] = start_year
+    redirect_args["end_year"] = end_year
 
     pgu_form = PGUMachineFilterForm(form_data, prefix='pgu_')
     _fill_pgu_machines_form_choices(pgu_form, machine_id)
@@ -912,8 +973,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                                             station_id=station.id,
                                             machine_id=parent_machine.id,
                                             pgu_machine_id=pgu_machine.id,
-                                            start_year=start_year,
-                                            end_year=end_year))
+                                            **redirect_args))
 
             # Логирование изменений полей
             from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
@@ -1093,7 +1153,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                                 station_id=station.id,
                                 machine_id=parent_machine.id,
                                 pgu_machine_id=pgu_machine.id,
-                                **request.args))
+                                **redirect_args))
 
     except Exception as e:
         db.session.rollback()
@@ -1283,12 +1343,32 @@ def _calculate_modernization_expected_year_from_powers(powers_sequence: list[tup
     return None
 
 
-def is_same_decimal(a, b, tol=6):
-    if a is None and (b is None or Decimal(b) == 0):
+def _coerce_decimal(val):
+    if val is None:
+        return None
+    if isinstance(val, Decimal):
+        return val
+    try:
+        if isinstance(val, str):
+            val = val.replace(",", ".")
+        return Decimal(val)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def is_same_decimal(a, b):
+    a_dec = _coerce_decimal(a)
+    b_dec = _coerce_decimal(b)
+
+    if a_dec is None and (b_dec is None or b_dec == 0):
         return True
-    if b is None and (a is None or Decimal(a) == 0):
+    if b_dec is None and (a_dec is None or a_dec == 0):
         return True
-    return rounded_decimal(a, tol) == rounded_decimal(b, tol)
+
+    if a_dec is None or b_dec is None:
+        return False
+
+    return a_dec == b_dec
 
 
 def autofill_powers_if_possible_decimal(p_ust, p_ogr, p_rasp, year_num=None, skip_ogr=False, skip_rasp=False):

@@ -1,7 +1,7 @@
 """Формы для справочника «Виды топлива». """
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, HiddenField
+from wtforms import StringField, SelectField, HiddenField, IntegerField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 
@@ -30,6 +30,11 @@ class FuelTypeFilterForm(FlaskForm):
         "Фильтр по видам топлива",
         validators=[Optional(), Length(max=100)],
         render_kw={"placeholder": "Поиск по видам топлива"},
+    )
+    # Порядок отображения (для единообразия с другими справочниками; в списке редактируется напрямую)
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional()],
     )
     # Пагинация
     page = HiddenField(default=1)

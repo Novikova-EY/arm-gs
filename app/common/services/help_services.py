@@ -80,13 +80,41 @@ def _clean_name(value: Any) -> Optional[str]:
     name = re.sub(r'\s-\s', ' – ', name)
     
     # Расстановка кавычек в зависимости от их положения
+    name = re.sub(r'^"', r'«', name)  # Первая кавычка не может быть закрывающей
+    name = re.sub(r'([(\[{])"', r'\1«', name)  # Открывающая кавычка после скобки
     name = re.sub(r'(?<=\s)"(\S)', r' «\1', name)  # Открывающая кавычка перед словом
     name = re.sub(r'(?<=\w)"(?=\w)', r' «', name)  # Открывающая кавычка внутри слова с пробелом перед ней
     name = re.sub(r'"(?=\s|$)', r'»', name)  # Закрывающая кавычка в конце слова
-    name = re.sub(r'(?<!«)(\S)"', r'\1»', name)  # Закрывающая кавычка, если перед ней нет открывающей
+    name = re.sub(r'(?<!«)([^\s\(\[\{])"', r'\1»', name)  # Закрывающая, если перед ней нет открывающей
     name = re.sub(r'\s+', ' ', name)  # Убираем лишние пробелы
     
     return name
+
+
+def _clean_multiline_text(value: Any) -> Optional[str]:
+    """Сохраняет переносы строк, чистит каждый ряд отдельно."""
+    if not isinstance(value, str):
+        return value
+
+    if value.strip().lower() == "nan":
+        return None
+
+    text = value.replace('\xa0', ' ')
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    lines = text.split('\n')
+
+    cleaned_lines = []
+    for line in lines:
+        cleaned_line = _clean_name(line)
+        cleaned_lines.append(cleaned_line or "")
+
+    # Убираем пустые строки только по краям
+    while cleaned_lines and cleaned_lines[0] == "":
+        cleaned_lines.pop(0)
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
+
+    return "\n".join(cleaned_lines) if cleaned_lines else None
 
 
 def format_decimal_for_display(value, digits=None):

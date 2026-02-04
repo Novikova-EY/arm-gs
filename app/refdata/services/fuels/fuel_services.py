@@ -511,16 +511,31 @@ def export_fuel_service(
     df = pd.DataFrame(data)
 
     # Создание Excel и авто-ширина столбцов
-    output = BytesIO()
     sheet_name = "Типы топлива"
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name=sheet_name)
-        ws = writer.sheets[sheet_name]
 
-        # Автоподбор ширины с аккуратным лимитом
-        for i, col in enumerate(df.columns):
-            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
-            ws.set_column(i, i, min(max_len + 2, 60))
+    def _write_excel(buffer, engine_name):
+        with pd.ExcelWriter(buffer, engine=engine_name) as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            ws = writer.sheets[sheet_name]
+
+            # Автоподбор ширины с аккуратным лимитом
+            for i, col in enumerate(df.columns):
+                max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+                ws.set_column(i, i, min(max_len + 2, 60))
+
+    output = BytesIO()
+    try:
+        _write_excel(output, "xlsxwriter")
+    except Exception as e:
+        # Резервный engine на случай проблем с xlsxwriter
+        log_to_db(
+            user,
+            "Переход на openpyxl при экспорте топлива",
+            f"xlsxwriter error: {e}",
+            entity_type="fuel",
+        )
+        output = BytesIO()
+        _write_excel(output, "openpyxl")
 
     output.seek(0)
     log_to_db(

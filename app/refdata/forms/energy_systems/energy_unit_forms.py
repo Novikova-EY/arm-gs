@@ -1,4 +1,4 @@
-"""Формы для «Энергоузлы»."""
+"""Формы для «Энергорайоны»."""
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
@@ -11,9 +11,9 @@ class EnergyUnitFilterForm(FlaskForm):
     energy_unit_ids = HiddenField("ID записей")
 
     name = StringField(
-        "Энергоузел",
+        "Энергорайон",
         validators=[
-            DataRequired(message="Поле «Энергоузел» обязательно."),
+            DataRequired(message="Поле «Энергорайон» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
@@ -40,9 +40,9 @@ class EnergyUnitFilterForm(FlaskForm):
 
     # Фильтры
     energy_unit_filter = StringField(
-        "Фильтр по энергоузлам",
+        "Фильтр по энергорайонам",
         validators=[Optional(), Length(max=100)],
-        render_kw={"placeholder": "Поиск по наименованию энергоузла"},
+        render_kw={"placeholder": "Поиск по наименованию энергорайона"},
     )
     regional_district_filter = StringField(
         "Фильтр по субъекту РФ",
@@ -70,9 +70,9 @@ class AddEnergyUnitForm(FlaskForm):
     csrf_token = HiddenField()
 
     name = StringField(
-        "Энергоузел",
+        "Энергорайон",
         validators=[
-            DataRequired(message="Поле «Энергоузел» обязательно."),
+            DataRequired(message="Поле «Энергорайон» обязательно."),
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )

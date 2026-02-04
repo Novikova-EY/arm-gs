@@ -11,6 +11,7 @@ from sqlalchemy.schema import UniqueConstraint, Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.versioned_model import VersionedModelMixin
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 
 class Station(db.Model, VersionedModelMixin):
     __tablename__ = 'stations'
@@ -103,11 +104,18 @@ class Station(db.Model, VersionedModelMixin):
     machines = db.relationship('Machine', back_populates='machine_station')
     boilers = db.relationship('Boiler', back_populates='boiler_station')
     
-    # FK -> StationEquipmentGroup
-    station_equipment_groups = db.relationship(
-        'StationEquipmentGroup',
+    # Связь со сборными группами оборудования
+    equipment_group_set_links = db.relationship(
+        'EquipmentGroupSetStation',
         back_populates='station',
         cascade="all, delete-orphan",
+        overlaps="stations",
+    )
+    equipment_group_sets = db.relationship(
+        'EquipmentGroupSet',
+        secondary=EquipmentGroupSetStation.__table__,
+        back_populates='stations',
+        overlaps="equipment_group_set_links,station,equipment_group_set,station_links",
     )
 
     # Прочее
@@ -207,8 +215,8 @@ class Station(db.Model, VersionedModelMixin):
 
 
 def _station_key(name, name_so, name_combined, district_id) -> str:
-    if name_so:
-        return f"station|so|{name_so}"
+    if name:
+        return f"station|name|{name}"
     if name_combined:
         return f"station|combined|{name_combined}"
     return f"station|name|{name or ''}|district|{district_id or ''}"

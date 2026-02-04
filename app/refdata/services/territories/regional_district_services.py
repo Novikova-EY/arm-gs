@@ -1,7 +1,7 @@
 """Сервисный модуль: Субъекты РФ."""
 
 from app.extensions import db
-from sqlalchemy import or_, func, nullslast, cast, Integer
+from sqlalchemy import or_, func, nullslast, cast, Integer, case
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -56,7 +56,18 @@ def regional_district_query(
     """ Базовый запрос для выборки субъектов РФ с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name", "name_full", "name_rp", "name_dp", "federal_district", "energy_zone", "synchronous_area", "region_id"}
+    allowed_sort_by = {
+        "id",
+        "name",
+        "name_full",
+        "name_rp",
+        "name_dp",
+        "federal_district",
+        "energy_zone",
+        "synchronous_area",
+        "region_id",
+        "ref_uuid",
+    }
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -133,6 +144,10 @@ def regional_district_query(
             q = q.order_by(nullslast(col.asc()), RegionalDistrict.id.asc())
         else:
             q = q.order_by(nullslast(col.desc()), RegionalDistrict.id.asc())
+
+    elif sort_by == "ref_uuid":
+        order = RegionalDistrict.ref_uuid.asc() if sort_dir == "asc" else RegionalDistrict.ref_uuid.desc()
+        q = q.order_by(order, RegionalDistrict.id.asc())
 
     elif sort_by == "synchronous_area":
         col = SynchronousArea.name

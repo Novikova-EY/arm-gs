@@ -1,13 +1,13 @@
 
 {% extends 'base.html' %}
 
-{% block title %}Энергоузлы{% endblock %}
+{% block title %}"Энергорайоны"{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
 
-    <h1 class="text-center mb-4">Список энергоузлов</h1>
+    <h1 class="text-center mb-4">Список энергорайонов</h1>
 
     <form method="GET" 
         action="{{ url_for('refdata_bp.energy_unit_list') }}" 
@@ -22,7 +22,7 @@
                         {{ form.energy_unit_filter(
                             class="form-control",
                             value=energy_unit_filter,
-                            placeholder="Поиск по энергоузлам"
+                            placeholder="Поиск по энергорайонам"
                         ) }}
                     </div>
 
@@ -152,7 +152,7 @@
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
-                                Энергоузел
+                                Энергорайон
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -496,7 +496,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                            Энергоузел
+                            Энергорайон
                             {% if sort_by == 'name' %}
                                 {% if sort_dir == 'asc' %}
                                     ▲

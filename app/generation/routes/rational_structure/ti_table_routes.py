@@ -5,46 +5,92 @@ from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
-from app.refdata.models.fuels.station_equpment_group_model import StationEquipmentGroup
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 from flask import render_template
 from sqlalchemy.orm import joinedload
 from app.common.services.help_services import (
     _clean_name,
 )
-from app.common.services.database_version_filter import set_db_version_on_create
+from app.common.services.database_version_filter import (
+    set_db_version_on_create,
+    filter_by_db_version,
+    get_current_db_version_id,
+)
 
 
-def _get_or_create_station_equipment_group(station_id, equipment_group_id):
+def _filter_items_by_version(items, version_id):
+    if not items:
+        return []
+    if version_id is None:
+        return [item for item in items if getattr(item, "database_version_id", None) is None]
+    return [
+        item for item in items
+        if getattr(item, "database_version_id", None) == version_id
+    ]
+
+
+def _get_or_create_equipment_group_set(station_id, equipment_group_id):
     if not station_id or not equipment_group_id:
         return None
-    seg = StationEquipmentGroup.query.filter_by(
-        id_station=station_id,
-        id_equipment_group=equipment_group_id,
-    ).first()
-    if seg is None:
-        seg = StationEquipmentGroup(
-            id_station=station_id,
-            id_equipment_group=equipment_group_id,
+    group_set = (
+        EquipmentGroupSet.query
+        .join(
+            EquipmentGroupSetStation,
+            EquipmentGroupSetStation.equipment_group_set_id == EquipmentGroupSet.id,
         )
-        set_db_version_on_create(seg)
-        db.session.add(seg)
+        .filter(
+            EquipmentGroupSet.id_equipment_group == equipment_group_id,
+            EquipmentGroupSetStation.station_id == station_id,
+        )
+        .first()
+    )
+    if group_set is None:
+        station_query = Station.query.filter(Station.id == station_id)
+        station_query = filter_by_db_version(station_query, Station)
+        station = station_query.first()
+        equipment_group_query = EquipmentGroup.query.filter(EquipmentGroup.id == equipment_group_id)
+        equipment_group_query = filter_by_db_version(equipment_group_query, EquipmentGroup)
+        equipment_group = equipment_group_query.first()
+        group_name = None
+        if station and station.name and equipment_group and equipment_group.name:
+            group_name = f"{station.name} ({equipment_group.name})"
+        group_set = EquipmentGroupSet(
+            id_equipment_group=equipment_group_id,
+            name=group_name,
+        )
+        set_db_version_on_create(group_set)
+        db.session.add(group_set)
         db.session.flush()
-    return seg
+
+        link = EquipmentGroupSetStation(
+            equipment_group_set_id=group_set.id,
+            station_id=station_id,
+        )
+        set_db_version_on_create(link)
+        db.session.add(link)
+        db.session.flush()
+    return group_set
 
 @rational_structure_bp.route("/ti_table")
 def ti_table():
-    machines = Machine.query.options(
+    current_version_id = get_current_db_version_id()
+    machines_query = Machine.query.options(
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
         joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.tes_machine_type),
-        joinedload(Machine.station_equipment_group).joinedload(StationEquipmentGroup.equipment_group),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
         joinedload(Machine.equipment_group),
         joinedload(Machine.machine_powers),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
-    ).all()
+    )
+    machines_query = filter_by_db_version(machines_query, Machine)
+    machines = machines_query.all()
 
     data = []
     for m in machines:
+        m.machine_powers = _filter_items_by_version(m.machine_powers, current_version_id)
+        m.machine_tes_types = _filter_items_by_version(m.machine_tes_types, current_version_id)
         station = m.machine_station
         power_2024 = next((p.p_ust for p in m.machine_powers if p.year_number == 2024), None)
         tes_types = {
@@ -56,8 +102,8 @@ def ti_table():
             "subject": station.regional_district.name if station and station.regional_district else "—",
             "ti_number": m.id_ti or "—",
             "group_type": (
-                m.station_equipment_group.equipment_group.name
-                if m.station_equipment_group and m.station_equipment_group.equipment_group
+                m.equipment_group_set.equipment_group.name
+                if m.equipment_group_set and m.equipment_group_set.equipment_group
                 else (m.equipment_group.name if m.equipment_group else "—")
             ),
             "station": station.name if station else "—",
@@ -95,6 +141,7 @@ def upload_and_update_machines():
         from datetime import datetime
         from io import BytesIO
         import os
+        current_version_id = get_current_db_version_id()
 
         file = request.files.get("file")
         if not file:
@@ -125,7 +172,9 @@ def upload_and_update_machines():
                 id_ti = row.get("id_ti")
 
                 # Поиск станции по подстроке
-                candidate_stations = Station.query.all()
+                candidate_stations_query = Station.query
+                candidate_stations_query = filter_by_db_version(candidate_stations_query, Station)
+                candidate_stations = candidate_stations_query.all()
                 station = None
                 for s in candidate_stations:
                     if station_name.lower() in _clean_name(s.name).lower():
@@ -141,7 +190,8 @@ def upload_and_update_machines():
                 # Поиск агрегата: 3 попытки
                 matched_machine = None
 
-                for m in station.machines:
+                station_machines = _filter_items_by_version(station.machines, current_version_id)
+                for m in station_machines:
                     db_machine_number = _clean_name(m.machine_number) if m.machine_number else None
                     db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
                     db_gen_company = _clean_name(m.gen_company.name) if m.gen_company else None
@@ -152,7 +202,7 @@ def upload_and_update_machines():
                         break
 
                 if not matched_machine:
-                    for m in station.machines:
+                    for m in station_machines:
                         db_machine_number = _clean_name(m.machine_number) if m.machine_number else None
                         db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
 
@@ -165,7 +215,7 @@ def upload_and_update_machines():
                             break
 
                 if not matched_machine:
-                    for m in station.machines:
+                    for m in station_machines:
                         db_machine_name = _clean_name(m.machine_name) if m.machine_name else None
                         db_gen_company = _clean_name(m.gen_company.name) if m.gen_company else None
 
@@ -184,7 +234,9 @@ def upload_and_update_machines():
                     skipped += 1
                     continue
 
-                eq_group = EquipmentGroup.query.filter_by(name=group_name).first()
+                eq_group_query = EquipmentGroup.query.filter_by(name=group_name)
+                eq_group_query = filter_by_db_version(eq_group_query, EquipmentGroup)
+                eq_group = eq_group_query.first()
                 if not eq_group:
                     msg = f"⛔ Не найдена группа оборудования: {group_name}"
                     log_rows.append([station_name, gen_company_name, machine_number, machine_name, msg])
@@ -196,8 +248,8 @@ def upload_and_update_machines():
                     id_ti = 0
                     
                 matched_machine.id_equipment_group = eq_group.id
-                seg = _get_or_create_station_equipment_group(station.id, eq_group.id)
-                matched_machine.station_equipment_group_id = seg.id if seg else None
+                group_set = _get_or_create_equipment_group_set(station.id, eq_group.id)
+                matched_machine.equipment_group_set_id = group_set.id if group_set else None
                 matched_machine.id_ti = id_ti
                 matched_machine.year_modern = year_modern
                 matched_machine.year_demontaz = year_demontaz

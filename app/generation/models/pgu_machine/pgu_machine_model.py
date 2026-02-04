@@ -40,7 +40,7 @@ class PGUMachine(db.Model, VersionedModelMixin):
     parent_machine = db.relationship('Machine', backref=db.backref('pgu_submachines', cascade='all, delete-orphan'))
 
     machine_number = db.Column(db.String(80), nullable=True, index=True)
-    machine_name = db.Column(db.String(255), nullable=False, index=True)
+    machine_name = db.Column(db.String(1024), nullable=False, index=True)
 
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(

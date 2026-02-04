@@ -17,15 +17,12 @@ from app.refdata.models.energy_systems.regional_district_regional_energy_system_
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_energy_system_type_list_full():
-    """Получает полный список типов энергосистем."""
+    """Получает полный список типов энергосистем. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = EnergySystemType.query
-    
     if current_version:
         query = query.filter(EnergySystemType.database_version_id == current_version)
-    
     return (
         query
         .order_by(
@@ -52,18 +49,14 @@ def get_energy_system_type_list():
     )
 
 
-@lru_cache(maxsize=1)
 def get_energy_system_type_map():
-    """Возвращает отображение {id: name} для всех типов энергосистем."""
+    """Возвращает отображение {id: name} для всех типов энергосистем. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(EnergySystemType.id, EnergySystemType.name)
-    
     if current_version:
         query = query.filter(EnergySystemType.database_version_id == current_version)
-    
     rows = query.order_by(EnergySystemType.id).all()
-    energy_system_type_names = {id_: name for id_, name in rows}
-    return energy_system_type_names
+    return {id_: name for id_, name in rows}
 
 
 def get_energy_system_type_name(energy_system_type_ids: Union[str, int, List[int]]) -> str:

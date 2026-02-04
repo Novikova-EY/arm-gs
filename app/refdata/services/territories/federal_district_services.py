@@ -1,7 +1,7 @@
 """Сервисный модуль: Федеральные округа."""
 
 from app.extensions import db
-from sqlalchemy import or_
+from sqlalchemy import or_, case, cast, Integer
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
@@ -9,6 +9,9 @@ from io import BytesIO
 
 # Модели
 from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.fuel.models.external_mapping.fue_em_federal_district_model import (
+    FederalDistrictExternalMapping,
+)
 
 # Сервисы
 from app.common.services.help_services import (
@@ -37,7 +40,17 @@ def federal_district_query(
     """ Базовый запрос для выборки списка федеральных округов с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "name_full", "name_abr", "display_order", "number"}
+    allowed_sort_by = {
+        "id",
+        "name",
+        "name_full",
+        "name_abr",
+        "display_order",
+        "number",
+        "ref_uuid",
+        "external_id",
+        "external_name",
+    }
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -68,6 +81,12 @@ def federal_district_query(
     if federal_district_id is not None:
         query = query.filter(FederalDistrict.id == federal_district_id)
 
+    if sort_by in {"external_id", "external_name"}:
+        query = query.outerjoin(
+            FederalDistrictExternalMapping,
+            FederalDistrict.ref_uuid == FederalDistrictExternalMapping.federal_district_ref_uuid,
+        )
+
     # Сортировка
     if sort_by == "name":
         sort_col = FederalDistrict.name
@@ -80,6 +99,34 @@ def federal_district_query(
     elif sort_by == "name_abr":
         sort_col = FederalDistrict.name_abr
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+
+    elif sort_by == "ref_uuid":
+        query = query.order_by(
+            FederalDistrict.ref_uuid.desc()
+            if sort_dir == "desc"
+            else FederalDistrict.ref_uuid.asc()
+        )
+
+    elif sort_by == "external_id":
+        sort_col = FederalDistrictExternalMapping.external_id
+        numeric_sort = case(
+            (sort_col.op("~")("^[0-9]+$"), cast(sort_col, Integer)),
+            else_=None,
+        )
+        query = query.order_by(
+            numeric_sort.desc().nullslast()
+            if sort_dir == "desc"
+            else numeric_sort.asc().nullslast(),
+            sort_col.asc().nullslast(),
+        )
+
+    elif sort_by == "external_name":
+        sort_col = FederalDistrictExternalMapping.external_name
+        query = query.order_by(
+            sort_col.desc().nullslast()
+            if sort_dir == "desc"
+            else sort_col.asc().nullslast()
+        )
 
     elif sort_by == "display_order":
         if sort_dir == "desc":
@@ -542,4 +589,119 @@ def export_federal_district_service(
 
     output.seek(0)
     log_to_db(user, "Экспорт таблицы федеральных округов в Excel завершен", f"Экспортировано записей: {len(data)}", entity_type="federal_district")
+    return output
+
+
+def export_federal_district_mappings_service(
+        user,
+        federal_district_filter=None,
+        sort_by="id",
+        sort_dir="asc"):
+    """Экспортирует сопоставления ФО с БД Топливо в Excel."""
+    log_to_db(
+        user,
+        "Начата выгрузка сопоставлений ФО (Топливо)",
+        entity_type="federal_district",
+    )
+    log_to_db(
+        user,
+        "Параметры экспорта",
+        (
+            f"Фильтр по ФО = {federal_district_filter}, "
+            f"Сортировка = {sort_by}, направление = {sort_dir}."
+        ),
+    )
+
+    query = federal_district_query(
+        federal_district_filter=federal_district_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
+    items = query.all()
+
+    def _normalize_external_id(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            return str(value)
+        raw = str(value).strip()
+        try:
+            as_float = float(raw.replace(",", "."))
+            if as_float.is_integer():
+                return str(int(as_float))
+        except ValueError:
+            pass
+        return raw
+
+    mapping_sort_fields = {"external_id", "external_name"}
+    mappings = FederalDistrictExternalMapping.query.order_by(
+        FederalDistrictExternalMapping.id.desc()
+    ).all()
+    mapping_by_uuid = {}
+    unmatched_mappings = []
+    for mapping in mappings:
+        if mapping.federal_district_ref_uuid:
+            if mapping.federal_district_ref_uuid not in mapping_by_uuid:
+                mapping_by_uuid[mapping.federal_district_ref_uuid] = mapping
+        else:
+            unmatched_mappings.append(mapping)
+
+    rows = [
+        {"fd": fd, "mapping": mapping_by_uuid.get(fd.ref_uuid)}
+        for fd in items
+    ]
+
+    if sort_by in mapping_sort_fields:
+        rows.extend([{"fd": None, "mapping": m} for m in unmatched_mappings])
+
+        def _sort_key(row):
+            mapping = row["mapping"]
+            value = getattr(mapping, sort_by, None) if mapping else None
+            if value is None or str(value).strip() == "":
+                return (2, "")
+            text = str(value).strip()
+            if text.isdigit():
+                return (0, int(text))
+            return (1, text.lower())
+
+        rows.sort(key=_sort_key, reverse=(sort_dir == "desc"))
+
+    data = []
+    for row in rows:
+        mapping = row["mapping"]
+        fd = row["fd"]
+        data.append({
+            "ID в БД Топливо": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "Название в БД Топливо": _dash(mapping.external_name if mapping else None),
+            "UUID ФО": _dash(fd.ref_uuid if fd else None),
+            "ID ФО (текущая версия)": _dash(fd.id if fd else None),
+            "Наименование ФО в АРМ": _dash(fd.name if fd else None),
+        })
+
+    log_to_db(
+        user,
+        "Подготовка данных для экспорта сопоставлений ФО",
+        f"Записей для экспорта: {len(data)}",
+        entity_type="federal_district",
+    )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    sheet_name = "Федеральные округа (Топливо)"
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
+
+    output.seek(0)
+    log_to_db(
+        user,
+        "Экспорт сопоставлений ФО завершен",
+        f"Экспортировано записей: {len(data)}",
+        entity_type="federal_district",
+    )
     return output

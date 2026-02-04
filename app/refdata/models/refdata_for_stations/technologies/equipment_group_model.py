@@ -55,5 +55,12 @@ class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin
         primaryjoin="EquipmentGroup.id == Machine.id_equipment_group"
     )
 
+    equipment_group_sets = db.relationship(
+        'EquipmentGroupSet',
+        back_populates='equipment_group',
+        primaryjoin="EquipmentGroup.id == EquipmentGroupSet.id_equipment_group",
+        passive_deletes=True,
+    )
+
     def __repr__(self) -> str:
         return f"<EquipmentGroup id={self.id} name={self.name!r}>"

@@ -8,6 +8,7 @@ _SCHEMA_RENAMES = {
     "generation": "gs_gen",
     "auth": "gs_auth",
     "logs": "gs_logs",
+    "fuel": "gs_fue",
 }
 
 def _normalize_schema_name(value: str | None, default: str) -> str:
@@ -32,6 +33,23 @@ def _normalize_search_path(value: str | None, default: str) -> str:
     parts = [_SCHEMA_RENAMES.get(p, p) for p in parts]
     return ",".join(parts)
 
+def _parse_int_set(value: str | None) -> set[int]:
+    if value is None:
+        return set()
+    parts = [p.strip() for p in str(value).split(",") if p.strip()]
+    result = set()
+    for part in parts:
+        try:
+            result.add(int(part))
+        except ValueError:
+            continue
+    return result
+
+def _parse_str_set(value: str | None) -> set[str]:
+    if value is None:
+        return set()
+    return {p.strip() for p in str(value).split(",") if p.strip()}
+
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -45,7 +63,21 @@ SCHEMA_LOGS = _normalize_schema_name(os.getenv("SCHEMA_LOGS"), "gs_logs")
 # Поэтому значение по умолчанию изменено на gs_sys.
 SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
 SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
-DB_SEARCH_PATH = _normalize_search_path(os.getenv("DB_SEARCH_PATH"), "gs_auth,gs_logs,gs_sys,gs_gen")
+SCHEMA_FUEL = _normalize_schema_name(os.getenv("SCHEMA_FUEL"), "gs_fue")
+SCHEMA_FUE_EM = _normalize_schema_name(os.getenv("SCHEMA_FUE_EM"), "gs_fue_em")
+DB_SEARCH_PATH = _normalize_search_path(
+    os.getenv("DB_SEARCH_PATH"),
+    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em",
+)
+STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
+    os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
+)
+STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES = _parse_str_set(
+    os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES", "Амурская область")
+)
+STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS = _parse_str_set(
+    os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS", "")
+)
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
 ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "xls,xlsx").split(",")
 # DEBUG определяется по FLASK_ENV или явной переменной DEBUG.
@@ -83,9 +115,20 @@ class Config:
     # Значение по умолчанию соответствует новой схеме gs_sys
     SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
     SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
+    SCHEMA_FUEL = _normalize_schema_name(os.getenv("SCHEMA_FUEL"), "gs_fue")
+    SCHEMA_FUE_EM = _normalize_schema_name(os.getenv("SCHEMA_FUE_EM"), "gs_fue_em")
     DB_SEARCH_PATH = _normalize_search_path(
         os.getenv("DB_SEARCH_PATH"),
-        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},public",
+        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},public",
+    )
+    STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
+        os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
+    )
+    STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES = _parse_str_set(
+        os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES", "Амурская область")
+    )
+    STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS = _parse_str_set(
+        os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS", "")
     )
     
     # Оптимизированные настройки пула соединений для параллельной работы

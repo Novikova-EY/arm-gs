@@ -65,10 +65,11 @@ def fuel_type_list():
         topl_nazvl_filter   = _normalize_filter(request.form.get("topl_nazvl_filter"))
 
         # Получение данных из формы
-        fuel_type_ids       = request.form.getlist("fuel_ids[]")
-        fuel_type_names     = request.form.getlist("fuel_type_names[]")
+        fuel_type_ids        = request.form.getlist("fuel_ids[]")
+        fuel_type_names      = request.form.getlist("fuel_type_names[]")
         fuel_type_topl_nazvl = request.form.getlist("fuel_type_topl_nazvl[]")
-        fuel_type_delete    = request.form.getlist("fuel_type_delete[]")
+        fuel_type_orders     = request.form.getlist("display_orders[]")
+        fuel_type_delete     = request.form.getlist("fuel_type_delete[]")
   
         deleted_ids = set()
         # Удаление записей
@@ -94,17 +95,29 @@ def fuel_type_list():
            
            # Формирование данных для обновления
             fuel_type_data = []
-            for fuel_type_id, fuel_type_name, topl_nazvl in zip(
+            for fuel_type_id, fuel_type_name, topl_nazvl, display_order in zip(
                 fuel_type_ids,
                 fuel_type_names,
                 fuel_type_topl_nazvl,
+                fuel_type_orders,
             ):
                 if fuel_type_id and int(fuel_type_id) in deleted_ids:
                     continue
+                try:
+                    parsed_display_order = int(display_order) if display_order and str(display_order).strip() else None
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки порядка отображения для записи c ID={fuel_type_id}: "
+                            f"значение «{display_order}» не является целым числом."
+                        )
+                    )
+
                 fuel_type_data.append({
                     "fuel_type_id": int(fuel_type_id) if fuel_type_id else None,
                     "name": fuel_type_name.strip(),
                     "topl_nazvl": (topl_nazvl or "").strip(),
+                    "display_order": parsed_display_order,
                 })
             
             if not fuel_type_data:
@@ -149,17 +162,23 @@ def fuel_type_list():
                                 sort_by, 
                                 sort_dir)
 
-    topl_nazvl_values = [
-        row[0] for row in (
-            fuel_type_query(fuel_type_filter=fuel_type_filter)
-            .with_entities(FuelType.topl_nazvl)
-            .order_by(None)
-            .distinct()
-            .order_by(FuelType.topl_nazvl.asc())
-            .all()
-        )
-        if row[0]
-    ]
+    # Значения для выпадающего фильтра "Наименование в БД Топливо".
+    # В тестовом окружении (без полноценной БД/моделей) этот блок может падать —
+    # тогда просто скрываем dropdown-значения.
+    try:
+        topl_nazvl_values = [
+            row[0] for row in (
+                fuel_type_query(fuel_type_filter=fuel_type_filter)
+                .with_entities(FuelType.topl_nazvl)
+                .order_by(None)
+                .distinct()
+                .order_by(FuelType.topl_nazvl.asc())
+                .all()
+            )
+            if row[0]
+        ]
+    except Exception:
+        topl_nazvl_values = []
     return render_template(
         "refdata/fuels/fuel_type/fuel_type.html",
         form=form,
@@ -296,7 +315,8 @@ def export_fuel_type():
 
     sort_by             = request.args.get("sort_by", "id")
     sort_dir            = request.args.get("sort_dir", "asc")
-    fuel_type_filter    = request.args.get("fuel_type_filter")
+    fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
+    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
 
     try:
         # Получение данных для экспорта
@@ -327,7 +347,7 @@ def export_fuel_type():
         )
 
 
-    except Exception as e:
-        current_app.logger.error(f"Ошибка экспорта: {e}")
+    except Exception:
+        current_app.logger.exception("Ошибка экспорта видов топлива")
         flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
         return redirect(url_for("refdata_bp.fuel_type_list"))

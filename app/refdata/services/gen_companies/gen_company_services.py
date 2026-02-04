@@ -10,6 +10,9 @@ from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.fuel.models.external_mapping.fue_em_gen_company_model import (
+    GenCompanyExternalMapping,
+)
 
 # Сервисы
 from app.common.services.help_services import (
@@ -472,4 +475,120 @@ def export_gen_company_service(
         "Экспорт таблицы генерирующих компаний в Excel завершен", 
         f"Экспортировано записей: {len(data)}", 
         entity_type="gen_company")
+    return output
+
+
+def export_gen_company_mappings_service(
+        user,
+        gen_company_filter=None,
+        sort_by="id",
+        sort_dir="asc"):
+    """Экспортирует сопоставления генерирующих компаний с БД Топливо в Excel."""
+    log_to_db(
+        user,
+        "Начата выгрузка сопоставлений генерирующих компаний (Топливо)",
+        entity_type="gen_company",
+    )
+    log_to_db(
+        user,
+        "Параметры экспорта",
+        (
+            f"Фильтр по генерирующим компаниям = {gen_company_filter}, "
+            f"Сортировка = {sort_by}, направление = {sort_dir}."
+        ),
+    )
+
+    query = gen_company_query(
+        gen_company_filter=gen_company_filter,
+        sort_by=sort_by if sort_by in {"id", "name"} else "id",
+        sort_dir=sort_dir,
+    )
+    items = query.all()
+
+    def _normalize_external_id(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            return str(value)
+        raw = str(value).strip()
+        try:
+            as_float = float(raw.replace(",", "."))
+            if as_float.is_integer():
+                return str(int(as_float))
+        except ValueError:
+            pass
+        return raw
+
+    mapping_sort_fields = {"external_id", "external_name", "external_name1"}
+    mappings = GenCompanyExternalMapping.query.order_by(
+        GenCompanyExternalMapping.id.desc()
+    ).all()
+    mapping_by_uuid = {}
+    unmatched_mappings = []
+    for mapping in mappings:
+        if mapping.gen_company_ref_uuid:
+            if mapping.gen_company_ref_uuid not in mapping_by_uuid:
+                mapping_by_uuid[mapping.gen_company_ref_uuid] = mapping
+        else:
+            unmatched_mappings.append(mapping)
+
+    rows = [
+        {"gc": gc, "mapping": mapping_by_uuid.get(gc.ref_uuid)}
+        for gc in items
+    ]
+
+    if sort_by in mapping_sort_fields:
+        rows.extend([{"gc": None, "mapping": m} for m in unmatched_mappings])
+
+        def _sort_key(row):
+            mapping = row["mapping"]
+            value = getattr(mapping, sort_by, None) if mapping else None
+            if value is None or str(value).strip() == "":
+                return (2, "")
+            text = str(value).strip()
+            if text.isdigit():
+                return (0, int(text))
+            return (1, text.lower())
+
+        rows.sort(key=_sort_key, reverse=(sort_dir == "desc"))
+
+    data = []
+    for row in rows:
+        mapping = row["mapping"]
+        gc = row["gc"]
+        data.append({
+            "code_topl": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "name_topl": _dash(mapping.external_name if mapping else None),
+            "name1_topl": _dash(mapping.external_name1 if mapping else None),
+            "UUID генерирующей компании": _dash(gc.ref_uuid if gc else None),
+            "ID генерирующей компании (текущая версия)": _dash(gc.id if gc else None),
+            "Наименование генерирующей компании в АРМ": _dash(gc.name if gc else None),
+        })
+
+    log_to_db(
+        user,
+        "Подготовка данных для экспорта сопоставлений генерирующих компаний",
+        f"Записей для экспорта: {len(data)}",
+        entity_type="gen_company",
+    )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    sheet_name = "Генерирующие компании (Топливо)"
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
+
+    output.seek(0)
+    log_to_db(
+        user,
+        "Экспорт сопоставлений генерирующих компаний завершен",
+        f"Экспортировано записей: {len(data)}",
+        entity_type="gen_company",
+    )
     return output

@@ -9,7 +9,10 @@ from app.refdata.models.years.year_service_model import YearService
 
 # Сервисы
 from app.common.services.database_version_services import get_current_version
-from app.common.services.get_services.years.year_feature_services import get_year_feature_dict as get_year_feature_dict_service
+from app.common.services.get_services.years.year_feature_services import (
+    get_year_feature_dict as get_year_feature_dict_service,
+    get_year_feature_dict_for_version as get_year_feature_dict_for_version_service,
+)
 from config import Config
 
 
@@ -176,7 +179,10 @@ def get_sipr_end_year() -> int:
     return _get_sipr_end_year_for_version(get_current_version())
 
 
-@lru_cache(maxsize=1)
 def get_year_feature_dict():
     """Возвращает словарь {year_number: year_feature_name}."""
     return get_year_feature_dict_service()
+
+def get_year_feature_dict_for_version(version_id: int | None):
+    """Возвращает словарь {year_number: year_feature_name} для указанной версии."""
+    return get_year_feature_dict_for_version_service(version_id)

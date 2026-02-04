@@ -227,6 +227,10 @@ def aggregate_all_at_once(rows):
     fd_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
     fd_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
 
+    fd_tes_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    fd_tes_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    fd_tes_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+
     fd_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
     fd_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
     fd_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
@@ -326,6 +330,10 @@ def aggregate_all_at_once(rows):
             fd_tes_p_ust[fd][tes_type][year] += p_ust_val
             fd_tes_p_ogr[fd][tes_type][year] += p_ogr_val
             fd_tes_p_rasp[fd][tes_type][year] += p_rasp_val
+
+            fd_tes_fuel_p_ust[fd][tes_type][fuel][year] += p_ust_val
+            fd_tes_fuel_p_ogr[fd][tes_type][fuel][year] += p_ogr_val
+            fd_tes_fuel_p_rasp[fd][tes_type][fuel][year] += p_rasp_val
 
             fd_tes_machine_p_ust[fd][tes_type][tes_machine][year] += p_ust_val
             fd_tes_machine_p_ogr[fd][tes_type][tes_machine][year] += p_ogr_val
@@ -538,6 +546,9 @@ def aggregate_all_at_once(rows):
         },
         "aggregate_federal_districts_by_tes_types": {
             "aggregated": {"p_ust": fd_tes_p_ust, "p_ogr": fd_tes_p_ogr, "p_rasp": fd_tes_p_rasp}
+        },
+        "aggregate_federal_districts_by_tes_types_with_fuel": {
+            "aggregated": {"p_ust": fd_tes_fuel_p_ust, "p_ogr": fd_tes_fuel_p_ogr, "p_rasp": fd_tes_fuel_p_rasp}
         },
         "aggregate_federal_districts_by_tes_machine_types": {
             "aggregated": {"p_ust": fd_tes_machine_p_ust, "p_ogr": fd_tes_machine_p_ogr, "p_rasp": fd_tes_machine_p_rasp}

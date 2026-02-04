@@ -1,15 +1,19 @@
 """Сервисный модуль: Объединенные энергосистемы."""
 
 from app.extensions import db
-from sqlalchemy import or_
+from sqlalchemy import or_, case, cast, Integer
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
-from io import BytesIO 
+from io import BytesIO
+from types import SimpleNamespace
 from config import SCHEMA_REFDATA
 
 # Модели
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
+    UnionEnergySystemExternalMapping,
+)
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 
 # Сервисы
@@ -46,7 +50,19 @@ def union_energy_system_query(
     """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "name_full", "energy_system_type", "display_order", "number"}
+    allowed_sort_by = {
+        "id",
+        "name",
+        "name_full",
+        "energy_system_type",
+        "display_order",
+        "number",
+        "ref_uuid",
+        "external_id",
+        "external_name",
+        "external_nameoes",
+        "external_abbr",
+    }
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -80,11 +96,61 @@ def union_energy_system_query(
     if energy_system_type_filter:
         query = query.filter(EnergySystemType.id == energy_system_type_id)
 
+    if sort_by in {"external_id", "external_name", "external_nameoes", "external_abbr"}:
+        query = query.outerjoin(
+            UnionEnergySystemExternalMapping,
+            UnionEnergySystem.ref_uuid == UnionEnergySystemExternalMapping.union_energy_system_ref_uuid,
+        )
+
     # Сортировка
     if sort_by in ["name", "name_full"]:
         sort_field = getattr(UnionEnergySystem, sort_by)
         query = query.order_by(
             sort_field.desc() if sort_dir == "desc" else sort_field.asc()
+        )
+
+    elif sort_by == "ref_uuid":
+        query = query.order_by(
+            UnionEnergySystem.ref_uuid.desc()
+            if sort_dir == "desc"
+            else UnionEnergySystem.ref_uuid.asc()
+        )
+
+    elif sort_by == "external_id":
+        sort_field = UnionEnergySystemExternalMapping.external_id
+        numeric_sort = case(
+            (sort_field.op("~")("^[0-9]+$"), cast(sort_field, Integer)),
+            else_=None,
+        )
+        query = query.order_by(
+            numeric_sort.desc().nullslast()
+            if sort_dir == "desc"
+            else numeric_sort.asc().nullslast(),
+            sort_field.asc().nullslast(),
+        )
+
+    elif sort_by == "external_name":
+        sort_field = UnionEnergySystemExternalMapping.external_name
+        query = query.order_by(
+            sort_field.desc().nullslast()
+            if sort_dir == "desc"
+            else sort_field.asc().nullslast()
+        )
+
+    elif sort_by == "external_nameoes":
+        sort_field = UnionEnergySystemExternalMapping.external_nameoes
+        query = query.order_by(
+            sort_field.desc().nullslast()
+            if sort_dir == "desc"
+            else sort_field.asc().nullslast()
+        )
+
+    elif sort_by == "external_abbr":
+        sort_field = UnionEnergySystemExternalMapping.external_abbr
+        query = query.order_by(
+            sort_field.desc().nullslast()
+            if sort_dir == "desc"
+            else sort_field.asc().nullslast()
         )
 
     elif sort_by == "energy_system_type":
@@ -629,13 +695,69 @@ def export_union_energy_system_service(
         entity_type="union_energy_system")
 
     # Подготовка данных для Excel
+    def _normalize_external_id(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and value.is_integer():
+                return str(int(value))
+            return str(value)
+        raw = str(value).strip()
+        try:
+            as_float = float(raw.replace(",", "."))
+            if as_float.is_integer():
+                return str(int(as_float))
+        except ValueError:
+            pass
+        return raw
+
+    mapping_sort_fields = {"external_id", "external_name", "external_nameoes", "external_abbr"}
+    mappings = UnionEnergySystemExternalMapping.query.order_by(
+        UnionEnergySystemExternalMapping.id.desc()
+    ).all()
+    mapping_by_uuid = {}
+    unmatched_mappings = []
+    for mapping in mappings:
+        if mapping.union_energy_system_ref_uuid:
+            if mapping.union_energy_system_ref_uuid not in mapping_by_uuid:
+                mapping_by_uuid[mapping.union_energy_system_ref_uuid] = mapping
+        else:
+            unmatched_mappings.append(mapping)
+
+    rows = [
+        SimpleNamespace(ues=ues, mapping=mapping_by_uuid.get(ues.ref_uuid))
+        for ues in items
+    ]
+
+    if sort_by in mapping_sort_fields:
+        rows.extend([SimpleNamespace(ues=None, mapping=m) for m in unmatched_mappings])
+
+        def _sort_key(row):
+            mapping = row.mapping
+            value = getattr(mapping, sort_by, None) if mapping else None
+            if value is None or str(value).strip() == "":
+                return (2, "")
+            text = str(value).strip()
+            if text.isdigit():
+                return (0, int(text))
+            return (1, text.lower())
+
+        rows.sort(key=_sort_key, reverse=(sort_dir == "desc"))
+    else:
+        rows.extend([SimpleNamespace(ues=None, mapping=m) for m in unmatched_mappings])
+
     data = []
-    for idx, o in enumerate(items, start=1):
+    for row in rows:
+        mapping = row.mapping
+        ues = row.ues
         data.append({
-            "№": idx,
-            "Наименование ОЭС": _dash(o.name),
-            "Полное наименование ОЭС": _dash(o.name_full),
-            "Тип энергосистемы": getattr(o.energy_system_type, "name") or "Не указана",
+            "ID в БД Топливо": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "Название в БД Топливо": _dash(mapping.external_name if mapping else None),
+            "Наименование ОЭС в БД Топливо": _dash(mapping.external_nameoes if mapping else None),
+            "Сокр. ОЭС в БД Топливо": _dash(mapping.external_abbr if mapping else None),
+            "UUID ОЭС": _dash(ues.ref_uuid if ues else None),
+            "ID ОЭС (текущая версия)": _dash(ues.id if ues else None),
+            "Наименование ОЭС в АРМ": _dash(ues.name if ues else None),
         })
 
     log_to_db(

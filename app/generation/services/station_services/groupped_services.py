@@ -390,34 +390,57 @@ def fetch_machines_with_rowspans(
                 return (0, num, suffix)
             return (1, float('inf'), s.lower())
 
-        machine_list.sort(key=lambda m: (
-            (m.machine_group or '').lower(),
-            machine_number_key(getattr(m, 'machine_number', None))
-        ))
+        def fuel_sort_key(m):
+            """Ключ для сортировки: топливо по СО ЕЭС (пустое/не указано — в конец)."""
+            raw = (getattr(m, 'fuel_so', None) or '').strip()
+            if not raw or raw.lower() == 'не указано':
+                return (1, raw.lower())  # в конец
+            return (0, raw.lower())
 
+        # Группы по топливу (по СО ЕЭС); пустое — отдельная «группа» на каждую машину
+        fuel_groups_dict = defaultdict(list)
+        for m in machine_list:
+            fkey = fuel_sort_key(m)
+            if fkey[0] == 1:
+                fkey = (1, m.id)  # уникальный ключ для пустого/не указано
+            fuel_groups_dict[fkey].append(m)
+
+        # В каждой группе сортируем по группе агрегата и станционному номеру
+        for group in fuel_groups_dict.values():
+            group.sort(key=lambda m: (
+                (m.machine_group or '').lower(),
+                machine_number_key(getattr(m, 'machine_number', None))
+            ))
+
+        # Порядок группировок — по минимальному станционному номеру в группе (сначала где есть №1 и т.д.)
+        def group_min_number_key(machines):
+            return min(machine_number_key(getattr(m, 'machine_number', None)) for m in machines)
+
+        sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
+        machine_list[:] = [m for group in sorted_fuel_groups for m in group]
+
+        # Сначала задаём total_rows каждой машине (нужно для fuel_rowspan)
+        for m in machine_list:
+            num_pgu = len(m.pgu_machines)
+            base_rows = 1 + num_pgu
+            total_rows = base_rows
+            if show_p_ogr:
+                total_rows += 1
+            if show_p_rasp:
+                total_rows += 1
+            m.total_rows = total_rows
+            m.base_rows = base_rows
+
+        # Группа "гр." — внутри одного блока топлива по СО ЕЭС (чтобы ячейка не разрывалась)
         group_dict = defaultdict(list)
         for m in machine_list:
-            group_key = (m.machine_group or '').strip()
+            fkey = fuel_sort_key(m)
+            group_key = (fkey, (m.machine_group or '').strip())
             group_dict[group_key].append(m)
 
         for group in group_dict.values():
-            group_rowspan = 0
-            group_base_rows = 0  # сумма (1 + num_pgu) по всем машинам группы
-            for m in group:
-                num_pgu = len(m.pgu_machines)
-                base_rows = 1 + num_pgu
-                # total_rows = базовые + дополнительные строки отображения
-                total_rows = base_rows
-                if show_p_ogr:
-                    total_rows += 1
-                if show_p_rasp:
-                    total_rows += 1
-                m.total_rows = total_rows
-                m.base_rows = base_rows
-                group_rowspan += total_rows
-                group_base_rows += base_rows
-
-            # Передаём метаданные только в первую строку группы
+            group_rowspan = sum(m.total_rows for m in group)
+            group_base_rows = sum((1 + len(m.pgu_machines)) for m in group)
             group[0].group_rowspan = group_rowspan
             group[0].group_base_rows = group_base_rows
             group[0].group_machine_count = len(group)
@@ -426,16 +449,14 @@ def fetch_machines_with_rowspans(
                 m.group_base_rows = 0
                 m.group_machine_count = 0
 
+        # Топливо (по СО ЕЭС) — одна ячейка на тип топлива по станции (блоки идут подряд после сортировки)
         fuel_dict = defaultdict(list)
         for m in machine_list:
             fuel_key = (m.fuel_so or '').strip()
-            group_key = (m.machine_group or '').strip()
             if not fuel_key or fuel_key.lower() == 'не указано':
-                # Не объединяем пустое/не указанное топливо, чтобы не "съедать" ячейки
-                fuel_group_key = (group_key, f"__machine_{m.id}")
+                fuel_group_key = f"__machine_{m.id}"
             else:
-                # Объединяем топливо только внутри одной группы агрегатов
-                fuel_group_key = (group_key, fuel_key)
+                fuel_group_key = fuel_key
             fuel_dict[fuel_group_key].append(m)
 
         for group in fuel_dict.values():

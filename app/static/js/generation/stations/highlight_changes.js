@@ -6,6 +6,52 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     let isHighlighted = false;
+    const isDashValue = (val) => val === "-" || val === "—" || val === "";
+
+    function normalizeDecimalString(raw) {
+        if (raw === null || raw === undefined) return "";
+        return raw
+            .toString()
+            .trim()
+            .replace(/\s+/g, "")
+            .replace(",", ".");
+    }
+
+    function parseDecimalParts(cleaned) {
+        if (!cleaned) return null;
+        const match = cleaned.match(/^([+-])?(\d*)(?:\.(\d*))?$/);
+        if (!match) return null;
+        const sign = match[1] === "-" ? -1n : 1n;
+        const intPart = match[2] || "0";
+        const fracPart = match[3] || "";
+        return {
+            sign,
+            intPart,
+            fracPart,
+            scale: fracPart.length
+        };
+    }
+
+    function decimalToBigInt(parts, scale) {
+        const frac = parts.fracPart.padEnd(scale, "0");
+        const raw = `${parts.intPart || "0"}${frac}`;
+        return BigInt(raw || "0");
+    }
+
+    function isZeroOrInvalidDecimal(cleaned) {
+        const parts = parseDecimalParts(cleaned);
+        if (!parts) return true;
+        const value = decimalToBigInt(parts, parts.scale) * parts.sign;
+        return value === 0n;
+    }
+
+    function isPositiveDecimal(cleaned) {
+        const parts = parseDecimalParts(cleaned);
+        if (!parts) return false;
+        const value = decimalToBigInt(parts, parts.scale) * parts.sign;
+        return value > 0n;
+    }
+
     // Хелпер: добавить подсветку ячейке и вложенному input/select (если есть)
     function addHighlightToCellAndField(cell, className) {
         if (!cell) return;
@@ -72,26 +118,28 @@ document.addEventListener("DOMContentLoaded", function () {
             powerCells.forEach(cell => {
                 const inputEl = cell.querySelector('input');
                 const currentValue = inputEl ? (inputEl.value || '').trim() : cell.textContent.trim();
-                const currentNumericValue = parseFloat(currentValue.replace(',', '.'));
-                const isCurrentDash = currentValue === "-" || currentValue === "—";
-                const num = Number.isFinite(currentNumericValue) ? currentNumericValue : null;
+                const currentNormalized = normalizeDecimalString(currentValue);
+                const isCurrentDash = isDashValue(currentValue);
+                const currIsPositive = isPositiveDecimal(currentNormalized);
+                const currIsZero = isZeroOrInvalidDecimal(currentNormalized);
 
                 cell.setAttribute("data-prev-value", currentValue);
 
                 if (previousPowerCell) {
                     const prevInputEl = previousPowerCell.querySelector('input');
                     const previousValue = prevInputEl ? (prevInputEl.value || '').trim() : previousPowerCell.getAttribute("data-prev-value");
-                    const previousNumeric = parseFloat(previousValue.replace(',', '.'));
-                    const isPreviousDash = previousValue === "-" || previousValue === "—";
-                    const prevNum = Number.isFinite(previousNumeric) ? previousNumeric : null;
+                    const previousNormalized = normalizeDecimalString(previousValue);
+                    const isPreviousDash = isDashValue(previousValue);
+                    const prevIsPositive = isPositiveDecimal(previousNormalized);
+                    const prevIsZero = isZeroOrInvalidDecimal(previousNormalized);
 
-                    if ((prevNum === 0 || isPreviousDash) && num > 0) {
+                    if ((prevIsZero || isPreviousDash) && currIsPositive) {
                         addHighlightToCellAndField(previousPowerCell, "highlight-green");
                         addHighlightToCellAndField(cell, "highlight-green");
-                    } else if (prevNum > 0 && (num === 0 || isCurrentDash)) {
+                    } else if (prevIsPositive && (currIsZero || isCurrentDash)) {
                         addHighlightToCellAndField(previousPowerCell, "highlight-red");
                         addHighlightToCellAndField(cell, "highlight-red");
-                    } else if (previousValue !== currentValue && !(isPreviousDash && isCurrentDash)) {
+                    } else if (previousNormalized !== currentNormalized && !(isPreviousDash && isCurrentDash)) {
                         addHighlightToCellAndField(previousPowerCell, "highlight-blue");
                         addHighlightToCellAndField(cell, "highlight-blue");
                     }
@@ -139,20 +187,21 @@ document.addEventListener("DOMContentLoaded", function () {
             const origRaw = (input.getAttribute("data-original-value") || "").replace(",", ".").trim();
             const currRaw = (input.value || "").replace(",", ".").trim();
 
-            const isDash = val => val === "-" || val === "—" || val === "";
+            const origNormalized = normalizeDecimalString(origRaw);
+            const currNormalized = normalizeDecimalString(currRaw);
 
-            const origVal = parseFloat(origRaw);
-            const currVal = parseFloat(currRaw);
+            const origIsDash = isDashValue(origRaw);
+            const currIsDash = isDashValue(currRaw);
 
-            const origIsZero = isDash(origRaw) || isNaN(origVal) || origVal === 0;
-            const currIsZero = isDash(currRaw) || isNaN(currVal) || currVal === 0;
+            const origIsZero = origIsDash || isZeroOrInvalidDecimal(origNormalized);
+            const currIsZero = currIsDash || isZeroOrInvalidDecimal(currNormalized);
             const cell = input.closest("td.power-column");
 
-            if (origIsZero && currVal > 0) {
+            if (origIsZero && isPositiveDecimal(currNormalized)) {
                 addHighlightToCellAndField(cell, "highlight-green");
             } else if (!origIsZero && currIsZero) {
                 addHighlightToCellAndField(cell, "highlight-red");
-            } else if (!isNaN(origVal) && !isNaN(currVal) && origVal !== currVal) {
+            } else if (origNormalized !== currNormalized && !(origIsDash && currIsDash)) {
                 addHighlightToCellAndField(cell, "highlight-blue");
             }
         });

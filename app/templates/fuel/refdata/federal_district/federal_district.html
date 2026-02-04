@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}Федеральные округа (связь с БД Топливо){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+    <h1 class="text-center mb-4">Список федеральных округов (связь с БД Топливо)</h1>
+
+    <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+        <form id="fdImportForm"
+            action="{{ url_for('fuel_bp.import_fuel_federal_district_mappings') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="d-inline-block">
+            {{ form.csrf_token }}
+            <input type="file"
+                name="file"
+                id="fdMappingImportFile"
+                class="d-none"
+                accept=".xlsx,.xls"
+                onchange="document.getElementById('fdImportForm').submit()">
+            <label for="fdMappingImportFile" class="btn btn-outline-primary fw-bold">
+                Загрузить из Excel
+            </label>
+        </form>
+
+        <a class="btn btn-warning fw-bold"
+            href="{{ url_for('fuel_bp.export_fuel_federal_district',
+                                federal_district_filter=federal_district_filter or '',
+                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            target="_blank" rel="noopener">
+            Экспорт в Excel
+        </a>
+
+        <select name="per_page"
+                form="filterForm"
+                class="form-select d-inline-block w-auto"
+                onchange="document.getElementById('filterForm').page.value=1; document.getElementById('filterForm').submit()">
+            <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+    </div>
+
+    <form method="GET"
+        action="{{ url_for('fuel_bp.fuel_federal_district_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <!-- ЛЕВАЯ СТОРОНА: поиск + кнопки -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.federal_district_filter(
+                            class="form-control",
+                            value=federal_district_filter,
+                            placeholder="Поиск по федеральным округам"
+                        ) }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('fuel_bp.fuel_federal_district_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
+            <div class="col-12 col-lg-4 text-lg-end"></div>
+        </div>
+
+        {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    <!-- Таблица данных -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered">
+
+            <thead>
+                <tr class="table-success" style="word-wrap: break-word;">
+                    <!-- Шапка таблицы. Столбец "ID в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_federal_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by='external_id',
+                                            sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            ID в БД Топливо
+                            {% if sort_by == 'external_id' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Название в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_federal_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by='external_name',
+                                            sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Название в БД Топливо
+                            {% if sort_by == 'external_name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "UUID ФО" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_federal_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by='ref_uuid',
+                                            sort_dir='asc' if sort_by != 'ref_uuid' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            UUID ФО
+                            {% if sort_by == 'ref_uuid' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "ID ФО (текущая версия)" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_federal_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by='id',
+                                            sort_dir='asc' if sort_by != 'id' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            ID ФО (текущая версия)
+                            {% if sort_by == 'id' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Наименование ФО в АРМ" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_federal_district_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by='name',
+                                            sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Наименование ФО в АРМ
+                            {% if sort_by == 'name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+                {% if display_rows %}
+                    {% for row in display_rows %}
+                        {% set federal_district = row.fd %}
+                        {% set mapping = row.mapping %}
+                        <tr class="align-middle text-center">
+                            <!-- Строки таблицы. Столбец "ID в БД Топливо" -->
+                            {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
+                            <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Название в БД Топливо" -->
+                            <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "UUID ФО" -->
+                            <td>{{ federal_district.ref_uuid if federal_district else '—' }}</td>
+
+                            <!-- Строки таблицы. Столбец "ID ФО (текущая версия)" -->
+                            <td>{{ federal_district.id if federal_district else '—' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование ФО в АРМ" -->
+                            <td>{{ federal_district.name if federal_district else '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    {% for federal_district in federal_district_list %}
+                        <tr class="align-middle text-center">
+                            {% set mapping = mapping_by_fd.get(federal_district.ref_uuid) %}
+                            <!-- Строки таблицы. Столбец "ID в БД Топливо" -->
+                            {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
+                            <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Название в БД Топливо" -->
+                            <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "UUID ФО" -->
+                            <td>{{ federal_district.ref_uuid }}</td>
+
+                            <!-- Строки таблицы. Столбец "ID ФО (текущая версия)" -->
+                            <td>{{ federal_district.id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование ФО в АРМ" -->
+                            <td>{{ federal_district.name }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Пагинация -->
+    <div>
+        {% include 'fuel/refdata/federal_district/federal_district_pagination.html' %}
+    </div>
+
+</div>
+
+<!-- Скрипт подстройки высоты строк под содержимое ячеек -->
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}

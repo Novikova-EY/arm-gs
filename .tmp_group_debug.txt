@@ -1,0 +1,1 @@
+EU 0: group_key repeats non-contiguously: 7fd4daf1-5271-5ee4-a5d4-d331dab97b68 at 6 and 8; stations between=[6]

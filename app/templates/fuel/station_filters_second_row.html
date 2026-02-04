@@ -31,6 +31,15 @@
                         Импорт
                     </button>
                 </form>
+                <form action="{{ url_for('fuel_bp.import_stations_equipment_groups') }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center">
+                    {{ form.csrf_token }}
+                    <input type="file" name="file" class="form-control me-2">
+                    <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;">
+                        Загрузка групп оборудования
+                    </button>
+                </form>
                 {% endif %}
             </div>
 

@@ -1,5 +1,6 @@
 import pandas as pd
 from io import BytesIO
+from collections import defaultdict
 from datetime import datetime, date
 from config import Config
 from openpyxl import load_workbook
@@ -118,11 +119,13 @@ def round_value(val, digits):
         return 0
     if val == 0:
         return 0
-    # Поддержка режима "Не округлять" (digits is None)
-    if digits is None:
+    # Режим "Не округлять": digits is None или 0 — не округлять (round(val, 0) даёт целое!)
+    if digits is None or digits == 0:
         return val
     try:
-        return round(val, digits) if digits >= 0 else int(round(val, 0))
+        if digits == -1:
+            return int(round(val, 0))
+        return round(val, digits)
     except Exception:
         return val
 
@@ -285,6 +288,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_energy_units",
         "station_type_key": "aggregate_energy_units_by_station_types",
         "tes_type_key": "aggregate_energy_units_by_tes_types",
+        "tes_type_fuel_key": "aggregate_energy_units_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_energy_units_by_tes_machine_types",
         "fuel_type_key": "aggregate_energy_units_by_tes_machine_types_with_fuel",
         "name_dict": "energy_unit_name",
@@ -293,6 +297,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_regional_districts",
         "station_type_key": "aggregate_regional_districts_by_station_types",
         "tes_type_key": "aggregate_regional_districts_by_tes_types",
+        "tes_type_fuel_key": "aggregate_regional_districts_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_regional_districts_by_tes_machine_types",
         "fuel_type_key": "aggregate_regional_districts_by_tes_machine_types_with_fuel",
         "name_dict": "regional_district_name",
@@ -301,6 +306,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_regional_energy_systems",
         "station_type_key": "aggregate_regional_energy_systems_by_station_types",
         "tes_type_key": "aggregate_regional_energy_systems_by_tes_types",
+        "tes_type_fuel_key": "aggregate_regional_energy_systems_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_regional_energy_systems_by_tes_machine_types",
         "fuel_type_key": "aggregate_regional_energy_systems_by_tes_machine_types_with_fuel",
         "name_dict": "regional_energy_system_name",
@@ -309,6 +315,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_union_energy_systems",
         "station_type_key": "aggregate_union_energy_systems_by_station_types",
         "tes_type_key": "aggregate_union_energy_systems_by_tes_types",
+        "tes_type_fuel_key": "aggregate_union_energy_systems_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_union_energy_systems_by_tes_machine_types",
         "fuel_type_key": "aggregate_union_energy_systems_by_tes_machine_types_with_fuel",
         "name_dict": "union_energy_system_name",
@@ -317,6 +324,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_energy_system_types",
         "station_type_key": "aggregate_energy_system_types_by_station_types",
         "tes_type_key": "aggregate_energy_system_types_by_tes_types",
+        "tes_type_fuel_key": "aggregate_energy_system_types_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_energy_system_types_by_tes_machine_types",
         "fuel_type_key": "aggregate_energy_system_types_by_tes_machine_types_with_fuel",
         "name_dict": "energy_system_type_name",
@@ -325,6 +333,7 @@ AGGREGATION_CONFIG = {
         "aggregated_power_key": "aggregate_power_by_total_energy_system_types",
         "station_type_key": "aggregate_total_energy_system_types_by_station_types",
         "tes_type_key": "aggregate_total_energy_system_types_by_tes_types",
+        "tes_type_fuel_key": "aggregate_total_energy_system_types_by_tes_types_with_fuel",
         "tes_machine_type_key": "aggregate_total_energy_system_types_by_tes_machine_types",
         "fuel_type_key": "aggregate_total_energy_system_types_by_tes_machine_types_with_fuel",
         "name_dict": None,
@@ -534,6 +543,11 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         
         config = AGGREGATION_CONFIG[level_key]
         current_version_id = get_current_db_version_id()
+
+        # Не выводим итоги по "техническим" / неопределённым уровням
+        # (именно они попадали в Excel как строки вида id=0 / id=None).
+        if level_id in (None, 0):
+            return
         
         # Отладка: проверяем наличие словаря названий
         name_dict_key = config.get("name_dict")
@@ -547,6 +561,10 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 lvl_name_lower = level_name.lower()
                 if "не указано" in lvl_name_lower or "не указан" in lvl_name_lower:
                     print(f"[DEBUG] add_named_total_row: пропуск level_id={level_id} (name='{level_name}') по причине 'не указано'")
+                    return
+                # Технические подписи вида "id=123" также не выводим
+                if level_name.strip().startswith("id="):
+                    print(f"[DEBUG] add_named_total_row: пропуск level_id={level_id} (name='{level_name}') по причине 'id='")
                     return
         else:
             print(f"[DEBUG] add_named_total_row: level_key={level_key}, level_id={level_id}, name_dict_key={name_dict_key} NOT FOUND in data keys: {list(data.keys())[:20]}")
@@ -717,9 +735,42 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         machine_type_names = data.get("tes_machine_type_name", {})
         fuel_type_names = data.get("fuel_type_name", {})
 
+        def _select_versioned(section):
+            if not isinstance(section, dict) or not section:
+                return {}
+            if current_version_id in section:
+                return section[current_version_id]
+            if 1 in section:
+                return section[1]
+            return next(iter(section.values()))
+
+        tes_type_fuel_section = data.get(config["tes_type_fuel_key"], {}).get("aggregated", {})
+        tes_type_fuel_p_ust = tes_type_fuel_section.get("p_ust", {})
+        tes_type_fuel_p_ogr = tes_type_fuel_section.get("p_ogr", {}) if show_p_ogr else {}
+        tes_type_fuel_p_rasp = tes_type_fuel_section.get("p_rasp", {}) if show_p_rasp else {}
+
+        if level_key == "russia":
+            tes_type_fuel_p_ust = _select_versioned(tes_type_fuel_p_ust)
+            tes_type_fuel_p_ogr = _select_versioned(tes_type_fuel_p_ogr)
+            tes_type_fuel_p_rasp = _select_versioned(tes_type_fuel_p_rasp)
+
+        def has_nonzero_values(values):
+            if not values or not isinstance(values, dict):
+                return False
+            return any(val not in (None, 0) for val in values.values())
+
         def total_row(label, key, show_name=False):
+            display_name = ""
+            if show_name:
+                if not config.get("name_dict"):
+                    display_name = f"{level_id}"
+                else:
+                    display_name = data.get(config["name_dict"], {}).get(level_id, f"id={level_id}")
+                # Если имя не найдено и получилась техническая подпись — не выводим строку
+                if isinstance(display_name, str) and display_name.strip().startswith("id="):
+                    return
             row = {
-                "Электростанция": f"{level_id if not config['name_dict'] else data.get(config['name_dict'], {}).get(level_id, f'id={level_id}')}" if show_name else "",
+                "Электростанция": f"{display_name}" if show_name else "",
                 " ": "",
                 "Генерирующая компания": "",
                 "Год ввода": "",
@@ -929,6 +980,70 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             row_rasp[str(year)] = round_val(val) if val is not None else None
                         rows.append(row_rasp)
 
+                    if tes_type_name:
+                        tes_type_lower = tes_type_name.lower()
+                    else:
+                        tes_type_lower = ""
+
+                    if tes_type_lower and "кэс" not in tes_type_lower and "тэц" not in tes_type_lower:
+                        if level_key == "russia":
+                            fuel_types_map = tes_type_fuel_p_ust.get(tes_type_id, {})
+                        else:
+                            fuel_types_map = tes_type_fuel_p_ust.get(level_id, {}).get(tes_type_id, {})
+                        from app.common.services.sorting_services import fuel_type_id_sort_key
+                        _id_to_order = data.get("fuel_type_display_order", {}) or {}
+                        _id_to_name = fuel_type_names or {}
+                        for fuel_type_id, fuel_years in sorted(
+                            fuel_types_map.items(),
+                            key=lambda kv: fuel_type_id_sort_key(
+                                kv[0],
+                                id_to_display_order=_id_to_order,
+                                id_to_name=_id_to_name,
+                            ),
+                        ):
+                            if not has_nonzero_values(fuel_years):
+                                continue
+                            fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
+                            row_fuel = {
+                                "Электростанция": f"         {fuel_type_name}",
+                                " ": "",
+                                "Генерирующая компания": "",
+                                "Год ввода": "",
+                                "Тип мощности": "Руст",
+                                "Тип станции": "",
+                                "Тип ТЭС": "",
+                                "Тип агрегата ТЭС": "",
+                                "Примечание": ""
+                            }
+                            for year in range(start_year, end_year + 1):
+                                row_fuel[str(year)] = round_val(fuel_years.get(year)) if fuel_years.get(year) is not None else None
+                                row_fuel[f"Топливо {year}"] = None
+                            rows.append(row_fuel)
+
+                            if show_p_ogr:
+                                if level_key == "russia":
+                                    fuel_years_ogr = tes_type_fuel_p_ogr.get(tes_type_id, {}).get(fuel_type_id, {})
+                                else:
+                                    fuel_years_ogr = tes_type_fuel_p_ogr.get(level_id, {}).get(tes_type_id, {}).get(fuel_type_id, {})
+                                row_ogr = {k: "" for k in row_fuel}
+                                row_ogr["Тип мощности"] = "Рогр"
+                                for year in range(start_year, end_year + 1):
+                                    val = fuel_years_ogr.get(year)
+                                    row_ogr[str(year)] = round_val(val) if val is not None else None
+                                rows.append(row_ogr)
+
+                            if show_p_rasp:
+                                if level_key == "russia":
+                                    fuel_years_rasp = tes_type_fuel_p_rasp.get(tes_type_id, {}).get(fuel_type_id, {})
+                                else:
+                                    fuel_years_rasp = tes_type_fuel_p_rasp.get(level_id, {}).get(tes_type_id, {}).get(fuel_type_id, {})
+                                row_rasp = {k: "" for k in row_fuel}
+                                row_rasp["Тип мощности"] = "Ррасп"
+                                for year in range(start_year, end_year + 1):
+                                    val = fuel_years_rasp.get(year)
+                                    row_rasp[str(year)] = round_val(val) if val is not None else None
+                                rows.append(row_rasp)
+
                     # Для "russia" данные хранятся без level_id
                     if level_key == "russia":
                         mt_dict = tes_machine_type_data.get(tes_type_id, {})
@@ -1009,7 +1124,17 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             fuel_type_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                             fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                        for fuel_type_id, fuel_years in fuel_dict.items():
+                        from app.common.services.sorting_services import fuel_type_id_sort_key
+                        _id_to_order = data.get("fuel_type_display_order", {}) or {}
+                        _id_to_name = fuel_type_names or {}
+                        for fuel_type_id, fuel_years in sorted(
+                            fuel_dict.items(),
+                            key=lambda kv: fuel_type_id_sort_key(
+                                kv[0],
+                                id_to_display_order=_id_to_order,
+                                id_to_name=_id_to_name,
+                            ),
+                        ):
                             if fuel_type_id is None:
                                 continue
                             fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
@@ -1143,21 +1268,32 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         if rd_name == f"id={rd_id}":
                             print(f"[WARNING] Не найдено название для regional_district_id={rd_id}, словарь содержит ключи: {list(data.get('regional_district_name', {}).keys())[:10]}")
 
+                        rd_name_str = str(rd_name) if rd_name is not None else ""
+                        rd_name_lower = rd_name_str.strip().lower()
+                        show_regional_district = (
+                            rd_id not in (None, 0)
+                            and bool(rd_name_str.strip())
+                            and "не указано" not in rd_name_lower
+                            and "не указан" not in rd_name_lower
+                            and not rd_name_str.strip().startswith("id=")
+                        )
+
                         print(f"[EXPORT]       Обработка субъекта {rd_id}: {rd_name}, станций: {sum(len(eu_group) for eu_group in rd_group.values())}")
 
-                        row_rd = {
-                            "Электростанция": rd_name,
-                            " ": "",
-                            "Генерирующая компания": "",
-                            "Год ввода": "",
-                            "Тип мощности": "",
-                            "Тип станции": "",
-                            "Тип ТЭС": "",
-                            "Тип агрегата ТЭС": "",
-                            "Примечание": "",
-                        }
-                        rows.append(row_rd)
-                        rows.append({})
+                        if show_regional_district:
+                            row_rd = {
+                                "Электростанция": rd_name,
+                                " ": "",
+                                "Генерирующая компания": "",
+                                "Год ввода": "",
+                                "Тип мощности": "",
+                                "Тип станции": "",
+                                "Тип ТЭС": "",
+                                "Тип агрегата ТЭС": "",
+                                "Примечание": "",
+                            }
+                            rows.append(row_rd)
+                            rows.append({})
 
                         for eu_id, eu_group in rd_group.items():
                             eu_name = data.get("energy_unit_name", {}).get(eu_id, f"id={eu_id}")
@@ -1484,9 +1620,35 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 filtered_machines.append(m)
 
         station.machines = filtered_machines
-        # Явно фиксируем порядок агрегатов, чтобы он был одинаковым
-        # как при выгрузке одного файла, так и при формировании ZIP по всем ЭС.
-        station.machines.sort(key=_machine_sort_key)
+
+        # Та же логика группировки, что и на странице station_list: по топливу (по СО ЕЭС),
+        # порядок группировок — по минимальному станционному номеру в группе (сначала где есть №1 и т.д.)
+        def _fuel_sort_key(m):
+            raw = (getattr(m, "fuel_so", None) or "").strip()
+            if not raw or raw.lower() == "не указано":
+                return (1, raw.lower() if raw else "")
+            return (0, raw.lower())
+
+        _fuel_groups_dict = defaultdict(list)
+        for m in station.machines:
+            fkey = _fuel_sort_key(m)
+            if fkey[0] == 1:
+                fkey = (1, m.id)
+            _fuel_groups_dict[fkey].append(m)
+
+        for _group in _fuel_groups_dict.values():
+            _group.sort(key=lambda m: (
+                (getattr(m, "machine_group", None) or "").strip().lower(),
+                _machine_number_sort_key(getattr(m, "machine_number", None)),
+                (getattr(m, "machine_name", None) or "").strip().lower(),
+                getattr(m, "id", 0) or 0,
+            ))
+
+        def _group_min_number_key(machines):
+            return min(_machine_number_sort_key(getattr(m, "machine_number", None)) for m in machines)
+
+        _sorted_fuel_groups = sorted(_fuel_groups_dict.values(), key=_group_min_number_key)
+        station.machines = [m for _group in _sorted_fuel_groups for m in _group]
 
         total_machines = len(station.machines)
 
@@ -1518,21 +1680,22 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         setattr(items[t], attr_name, 0)
                 i = j
 
-        # rowspan по группе агрегатов (machine_group) — только подряд идущие
+        # rowspan по группе агрегатов (гр.) — внутри блока топлива по СО ЕЭС (как на station_list)
         _set_rowspan_for_consecutive_runs(
             station.machines,
-            key_fn=lambda m: (getattr(m, "machine_group", None) or "").strip(),
+            key_fn=lambda m: (
+                _fuel_sort_key(m) if _fuel_sort_key(m)[0] == 0 else (1, m.id),
+                (getattr(m, "machine_group", None) or "").strip(),
+            ),
             attr_name="group_rowspan",
         )
 
-        # rowspan по виду топлива (fuel_so) — только подряд идущие
-        # и только внутри одной группы агрегатов
+        # rowspan по виду топлива (по СО ЕЭС) — одна ячейка на тип топлива по станции
         def _fuel_rowspan_key(m):
             fuel_key = (getattr(m, "fuel_so", None) or "").strip()
             if not fuel_key or fuel_key.lower() == "не указано":
                 return None
-            group_key = (getattr(m, "machine_group", None) or "").strip()
-            return (group_key, fuel_key)
+            return fuel_key
 
         _set_rowspan_for_consecutive_runs(
             station.machines,
@@ -1668,7 +1831,6 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         return None
 
             # Группируем станции по энергоузлам
-            from collections import defaultdict
             stations_by_energy_unit = defaultdict(list)
             for station in stations:
                 energy_unit_id = station.id_energy_unit if station.energy_unit else None

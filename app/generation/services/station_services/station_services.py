@@ -4,7 +4,12 @@ from app.extensions import db
 from app.logs.services.logging_service import log_to_db
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from config import SCHEMA_GENERATION
+from config import (
+    SCHEMA_GENERATION,
+    STATION_UNIQUE_EXCLUDED_DISTRICT_IDS,
+    STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES,
+    STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS,
+)
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import selectinload, joinedload
 from decimal import Decimal
@@ -2170,6 +2175,62 @@ def get_station_list_data(
             for machine in station.machines:
                 assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits)
 
+    def _build_equipment_group_sort_key(station):
+        machines_with_group = [
+            m for m in (station.machines or []) if m.id_equipment_group is not None
+        ]
+        if not machines_with_group:
+            return ""
+        machines_with_group.sort(key=lambda m: m.id_equipment_group)
+        key_parts = []
+        current_group = None
+        current_list = []
+
+        def _norm_group_key(seg, equipment_group_id):
+            base_raw = ""
+            if seg is not None:
+                if getattr(seg, "external_code", None):
+                    base_raw = seg.external_code or ""
+                elif getattr(seg, "name", None):
+                    base_raw = seg.name or ""
+            base_norm = (
+                base_raw.replace("\u00a0", " ")
+                .replace("\xa0", " ")
+                .replace(" ", "")
+                .lower()
+            )
+            return base_norm or f"none:{station.id}:{equipment_group_id}"
+
+        def _append_key(group_id, group_list):
+            seg = None
+            first_machine = group_list[0] if group_list else None
+            if first_machine and getattr(first_machine, "equipment_group_set", None):
+                seg = first_machine.equipment_group_set
+            else:
+                seg_list = [
+                    s for s in (station.equipment_group_sets or [])
+                    if getattr(s, "id_equipment_group", None) == group_id
+                ]
+                if seg_list:
+                    seg = seg_list[0]
+            key_parts.append(_norm_group_key(seg, group_id))
+
+        for machine in machines_with_group:
+            if current_group is None or machine.id_equipment_group != current_group:
+                if current_list:
+                    _append_key(current_group, current_list)
+                current_group = machine.id_equipment_group
+                current_list = [machine]
+            else:
+                current_list.append(machine)
+        if current_list:
+            _append_key(current_group, current_list)
+
+        return "|".join(key_parts)
+
+    for station in stations:
+        station.equipment_group_sort_key = _build_equipment_group_sort_key(station)
+
     # Перерасчет мощностей станции
     recalculate_station_powers_by_filtered_machines(
         stations, start_year, end_year, rounding_digits
@@ -2513,10 +2574,12 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     pgu_tes_machine_type_names = pgu_tes_machine_type_query.order_by(PGUTesMachineType.id.asc()).all()
     pgu_tes_machine_type_list = {pt.id: pt.name for pt in pgu_tes_machine_type_names}
 
-    # Типы топлива
+    # Типы топлива (сортировка по display_order для агрегатов/экспорта)
+    from app.common.services.sorting_services import sort_fuel_type_objects
+
     fuel_type_query = FuelType.query
     fuel_type_query = filter_by_db_version(fuel_type_query, FuelType)
-    fuel_type_names = fuel_type_query.order_by(FuelType.id.asc()).all()
+    fuel_type_names = sort_fuel_type_objects(fuel_type_query.all())
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()
@@ -3209,6 +3272,10 @@ def build_federal_district_aggregates(data):
         "federal_districts_by_tes_types_yearly_p_ogr": data["aggregate_federal_districts_by_tes_types"]["aggregated"]["p_ogr"],
         "federal_districts_by_tes_types_yearly_p_rasp": data["aggregate_federal_districts_by_tes_types"]["aggregated"]["p_rasp"],
 
+        "federal_districts_by_tes_types_with_fuel_yearly_p_ust": data["aggregate_federal_districts_by_tes_types_with_fuel"]["aggregated"]["p_ust"],
+        "federal_districts_by_tes_types_with_fuel_yearly_p_ogr": data["aggregate_federal_districts_by_tes_types_with_fuel"]["aggregated"]["p_ogr"],
+        "federal_districts_by_tes_types_with_fuel_yearly_p_rasp": data["aggregate_federal_districts_by_tes_types_with_fuel"]["aggregated"]["p_rasp"],
+
         "federal_districts_by_tes_machine_types_yearly_p_ust": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_ust"],
         "federal_districts_by_tes_machine_types_yearly_p_ogr": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_ogr"],
         "federal_districts_by_tes_machine_types_yearly_p_rasp": data["aggregate_federal_districts_by_tes_machine_types"]["aggregated"]["p_rasp"],
@@ -3240,19 +3307,20 @@ def add_station_service(
         raise ValueError("Не указано название станции")
 
     current_version_id = get_current_db_version_id()
-    station_query = Station.query.filter(
-        Station.name == name,
-        Station.id_regional_district == id_regional_district,
-    )
-    if current_version_id is None:
-        station_query = station_query.filter(Station.database_version_id.is_(None))
-    else:
-        station_query = station_query.filter(Station.database_version_id == current_version_id)
-    existing_station = station_query.first()
-    if existing_station:
-        raise ValueError(
-            "Станция с таким названием уже существует в выбранной версии БД."
+    if not _is_excluded_district(id_regional_district, current_version_id):
+        station_query = Station.query.filter(
+            Station.name == name,
+            Station.id_regional_district == id_regional_district,
         )
+        if current_version_id is None:
+            station_query = station_query.filter(Station.database_version_id.is_(None))
+        else:
+            station_query = station_query.filter(Station.database_version_id == current_version_id)
+        existing_station = station_query.first()
+        if existing_station:
+            raise ValueError(
+                "Станция с таким названием уже существует в выбранной версии БД."
+            )
 
     # SelectField часто возвращает строку; "0"/"" трактуем как "не указано"
     station_type_id = None
@@ -3282,9 +3350,12 @@ def add_station_service(
             if isinstance(e.orig, psycopg2.errors.UniqueViolation) and attempt == 0:
                 error_msg = str(e.orig)
                 if "uq_station_name_district_version" in error_msg:
-                    raise ValueError(
-                        "Станция с таким названием уже существует в выбранной версии БД."
-                    )
+                    if not _is_excluded_district(id_regional_district, get_current_db_version_id()):
+                        raise ValueError(
+                            "Станция с таким названием уже существует в выбранной версии БД."
+                        )
+                    # Для исключенных субъектов оставляем ошибку, чтобы можно было пересоздать без конфликтов
+                    # Перекидываем на повторную попытку только для устранения ошибок последовательности
                 # Проверяем, что это ошибка именно на первичном ключе stations
                 if "stations_pkey" in error_msg:
                     # Исправляем последовательность и повторяем попытку
@@ -3294,6 +3365,72 @@ def add_station_service(
         except Exception:
             db.session.rollback()
             raise
+
+
+_EXCLUDED_DISTRICT_IDS_CACHE: dict[object, set[int]] = {}
+
+
+def _norm_text_value(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def _get_excluded_district_ids(database_version_id: int | None) -> set[int]:
+    cache_key = database_version_id if database_version_id is not None else "none"
+    cached = _EXCLUDED_DISTRICT_IDS_CACHE.get(cache_key)
+    if cached is not None:
+        return set(cached)
+
+    excluded_ids = set(STATION_UNIQUE_EXCLUDED_DISTRICT_IDS)
+    needs_lookup = STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES or STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS
+    if needs_lookup:
+        version_id = database_version_id or get_current_db_version_id()
+        query = db.session.query(RegionalDistrict.id)
+        if version_id is not None:
+            query = query.filter(RegionalDistrict.database_version_id == version_id)
+
+        filters = []
+        if STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES:
+            names = [name.strip() for name in STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES if name.strip()]
+            if names:
+                filters.append(RegionalDistrict.name.in_(names))
+                filters.append(RegionalDistrict.name_full.in_(names))
+        if STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
+            uuids = [uid.strip() for uid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS if uid.strip()]
+            if uuids:
+                filters.append(RegionalDistrict.ref_uuid.in_(uuids))
+
+        if filters:
+            excluded_ids.update({row[0] for row in query.filter(or_(*filters)).all()})
+
+    _EXCLUDED_DISTRICT_IDS_CACHE[cache_key] = set(excluded_ids)
+    return excluded_ids
+
+
+def _is_excluded_district(district_id: int | None, database_version_id: int | None) -> bool:
+    if not district_id:
+        return False
+    excluded_ids = _get_excluded_district_ids(database_version_id)
+    if district_id in excluded_ids:
+        return True
+
+    # Дополнительная проверка: сверяем по имени/UUID конкретного id без фильтра по версии
+    if STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES or STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
+        rd = db.session.get(RegionalDistrict, district_id)
+        if rd:
+            name_candidates = {
+                _norm_text_value(rd.name),
+                _norm_text_value(getattr(rd, "name_full", None)),
+            }
+            excluded_names = {_norm_text_value(n) for n in STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES}
+            if name_candidates & excluded_names:
+                excluded_ids.add(district_id)
+                _EXCLUDED_DISTRICT_IDS_CACHE[database_version_id if database_version_id is not None else "none"] = set(excluded_ids)
+                return True
+            if rd.ref_uuid and rd.ref_uuid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
+                excluded_ids.add(district_id)
+                _EXCLUDED_DISTRICT_IDS_CACHE[database_version_id if database_version_id is not None else "none"] = set(excluded_ids)
+                return True
+    return False
 
 
 def update_station_from_form_service(user, station: Station, form, regional_district_list) -> list:
@@ -3313,10 +3450,47 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             s = _norm_text(v).lower()
             return s in {"", "не указано", "не указан", "не указана", "—", "-"}
 
-        # Название
-        if station.name != form.name.data:
-            changes.append(f"Название: {station.name} → {form.name.data}")
-            station.name = form.name.data
+        def _normalize_angle_quotes(value: str | None) -> str | None:
+            """Normalize «» pairs to opening/closing order."""
+            if value is None:
+                return None
+            text = str(value)
+            if "«" not in text and "»" not in text:
+                return text
+            normalized = []
+            inside = False
+            for ch in text:
+                if ch in {"«", "»"}:
+                    normalized.append("»" if inside else "«")
+                    inside = not inside
+                else:
+                    normalized.append(ch)
+            return "".join(normalized)
+
+        # Название + субъект РФ: проверка уникальности до присваивания
+        new_name = _normalize_angle_quotes(form.name.data)
+        new_district_id = form.id_regional_district.data
+        if station.name != new_name or station.id_regional_district != new_district_id:
+            if not _is_excluded_district(new_district_id, station.database_version_id):
+                with db.session.no_autoflush:
+                    conflict = (
+                        db.session.query(Station.id)
+                        .filter(
+                            Station.name == new_name,
+                            Station.id_regional_district == new_district_id,
+                            Station.database_version_id == station.database_version_id,
+                            Station.id != station.id,
+                        )
+                        .first()
+                    )
+                if conflict:
+                    raise ValueError(
+                        "Станция с таким названием уже существует в выбранном субъекте РФ и версии БД."
+                    )
+
+        if station.name != new_name:
+            changes.append(f"Название: {station.name} → {new_name}")
+            station.name = new_name
 
         # Состояние
         new_condition_type_id = int(form.id_condition_type.data)
@@ -3362,16 +3536,16 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
             station.note = new_note
 
         # Субъект РФ
-        if station.id_regional_district != form.id_regional_district.data:
+        if station.id_regional_district != new_district_id:
             old_value = station.regional_district.name if station.regional_district else "не указано"
             new_value = next(
                 (d[1] if isinstance(d, tuple) else d["name"]
                  for d in regional_district_list
-                 if (d[0] if isinstance(d, tuple) else d["id"]) == form.id_regional_district.data),
+                 if (d[0] if isinstance(d, tuple) else d["id"]) == new_district_id),
                 "не указано",
             )
             changes.append(f"Субъект РФ: {old_value} → {new_value}")
-            station.id_regional_district = form.id_regional_district.data
+            station.id_regional_district = new_district_id
 
             # Обновление федерального округа (как производного от субъекта)
             new_regional_district_obj = (
@@ -3380,7 +3554,7 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
                     joinedload(RegionalDistrict.federal_district),
                     joinedload(RegionalDistrict.regional_energy_systems),
                 )
-                .filter_by(id=form.id_regional_district.data)
+                .filter_by(id=new_district_id)
                 .first()
             )
             if new_regional_district_obj:
@@ -3456,6 +3630,28 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
 
         # Если выбран "не указано" (по имени), считаем это None и не логируем как изменение
         new_energy_unit_obj = db.session.get(EnergyUnit, new_energy_unit_id) if new_energy_unit_id is not None else None
+        station_version_id = getattr(station, "database_version_id", None)
+        energy_unit_version_id = getattr(new_energy_unit_obj, "database_version_id", None) if new_energy_unit_obj else None
+        try:
+            from flask import current_app
+            current_app.logger.debug(
+                "[ENERGY_UNIT_SAVE] station_id=%s station_version_id=%s form_energy_unit=%s loaded_energy_unit=%s loaded_version_id=%s",
+                getattr(station, "id", None),
+                station_version_id,
+                new_energy_unit_id,
+                getattr(new_energy_unit_obj, "id", None),
+                energy_unit_version_id,
+            )
+        except Exception:
+            pass
+        if new_energy_unit_id is not None and new_energy_unit_obj is None:
+            raise ValueError("Выбранный энергоузел не найден. Обновите страницу и попробуйте снова.")
+        if new_energy_unit_obj is not None:
+            if station_version_id != energy_unit_version_id:
+                raise ValueError(
+                    "Выбранный энергоузел относится к другой версии БД. "
+                    "Выберите энергоузел из текущей версии станции."
+                )
         if new_energy_unit_obj is not None and _is_unspecified_text(getattr(new_energy_unit_obj, "name", None)):
             new_energy_unit_id = None
             new_energy_unit_obj = None

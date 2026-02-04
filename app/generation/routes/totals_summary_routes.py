@@ -47,9 +47,16 @@ def totals_summary():
     show_p_rasp = request.args.get("show_p_rasp", "0") == "1"
     # Типы агрегации: можно выбрать несколько (ees, tites, russia)
     # По умолчанию только ees
-    aggregation_types = request.args.getlist("aggregation_type")
+    aggregation_types = [
+        (at or "").strip().lower()
+        for at in request.args.getlist("aggregation_type")
+        if (at or "").strip()
+    ]
+    # По умолчанию показываем ЕЭС только при "чистом" первом заходе на страницу (без query-параметров).
+    # Если пользователь снял все кнопки агрегации, в запросе останутся start_year/end_year, но aggregation_type не будет —
+    # в этом случае НИЧЕГО не показываем (и точно не подставляем ЕЭС обратно).
     if not aggregation_types:
-        aggregation_types = ["ees"]  # По умолчанию только ЕЭС
+        aggregation_types = ["ees"] if len(request.args) == 0 else []
     # Фильтруем только допустимые значения (ees, tites, russia, sync_area_{id})
     valid_types = ["fo", "ees", "tites", "russia"]
     # Проверяем также синхронные зоны (формат: "sync_area_{id}")
@@ -67,7 +74,9 @@ def totals_summary():
                 pass  # Игнорируем невалидные sync_area_
     aggregation_types = filtered_aggregation_types
     if not aggregation_types:
-        aggregation_types = ["ees"]  # Если все невалидные, возвращаемся к умолчанию
+        # Если пользователь снял все кнопки агрегации (aggregation_type отсутствует) — оставляем пусто.
+        # ЕЭС по умолчанию включаем только при первом "чистом" заходе без query-параметров.
+        aggregation_types = ["ees"] if len(request.args) == 0 else []
 
     try:
         rounding_digits = int(request.args.get("rounding_digits", 1))
@@ -140,6 +149,13 @@ def totals_summary():
     
     # Получаем список синхронных зон
     synchronous_area_list = get_synchronous_area_list_full()
+    synchronous_area_list = [
+        sa
+        for sa in synchronous_area_list
+        if sa.id
+        and (sa.name or "").strip()
+        and (sa.name or "").strip().lower() not in {"не указано", "не указ"}
+    ]
     synchronous_area_names = {sa.id: sa.name for sa in synchronous_area_list if sa.id}
     
     # Сортируем синхронные зоны:
@@ -201,6 +217,13 @@ def totals_summary():
     tes_type_names = tes_type_query.order_by(TesType.id.asc()).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
+    # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС); для остальных (ДЭС, ДГА и т.д.) — показывать
+    tes_type_ids_no_fuel_breakdown = [
+        tt_id
+        for tt_id, tt_name in tes_type_list.items()
+        if tt_name and ("ТЭЦ" in tt_name or "КЭС" in tt_name)
+    ]
+
     # Получаем типы машин ТЭС для шаблона
     tes_machine_type_query = TesMachineType.query
     tes_machine_type_query = filter_by_db_version(
@@ -211,10 +234,11 @@ def totals_summary():
     ).all()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
-    # Получаем типы топлива для шаблона
+    # Получаем типы топлива для шаблона (сортировка по display_order)
     fuel_type_query = FuelType.query
     fuel_type_query = filter_by_db_version(fuel_type_query, FuelType)
-    fuel_type_names = fuel_type_query.order_by(FuelType.id.asc()).all()
+    from app.common.services.sorting_services import sort_fuel_type_objects
+    fuel_type_names = sort_fuel_type_objects(fuel_type_query.all())
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     # Формируем should_show_totals в зависимости от выбранных типов агрегации
@@ -235,9 +259,10 @@ def totals_summary():
     # Показываем выбранные типы энергосистем (ЕЭС и/или ТИТЭС)
     for est_id in sorted_energy_system_type_ids:
         es_type_name = energy_system_type_names.get(est_id, "")
-        if "ees" in aggregation_types and "ЕЭС" in es_type_name:
+        es_type_name_upper = (es_type_name or "").upper()
+        if "ees" in aggregation_types and "ЕЭС" in es_type_name_upper:
             should_show_totals["energy_system_types"][est_id] = True
-        if "tites" in aggregation_types and "ТИТЭС" in es_type_name:
+        if "tites" in aggregation_types and "ТИТЭС" in es_type_name_upper:
             should_show_totals["energy_system_types"][est_id] = True
     
     # Показываем выбранные синхронные зоны (обрабатываем синхронные зоны из aggregation_types)
@@ -268,6 +293,7 @@ def totals_summary():
         "federal_district_names": federal_district_names,
         "station_type_list": station_type_list,
         "tes_type_list": tes_type_list,
+        "tes_type_ids_no_fuel_breakdown": tes_type_ids_no_fuel_breakdown,
         "tes_machine_type_list": tes_machine_type_list,
         "fuel_type_list": fuel_type_list,
         "year_features": year_features,

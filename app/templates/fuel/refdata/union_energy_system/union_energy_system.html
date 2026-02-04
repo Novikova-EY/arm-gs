@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}Объединенные энергосистемы (связь с БД Топливо){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+    <h1 class="text-center mb-4">Список объединенных энергосистем (связь с БД Топливо)</h1>
+
+    <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+        <form id="uesImportForm"
+            action="{{ url_for('fuel_bp.import_fuel_union_energy_system_mappings') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="d-inline-block">
+            {{ form.csrf_token }}
+            <input type="file"
+                name="file"
+                id="uesMappingImportFile"
+                class="d-none"
+                accept=".xlsx,.xls"
+                onchange="document.getElementById('uesImportForm').submit()">
+            <label for="uesMappingImportFile" class="btn btn-outline-primary fw-bold">
+                Загрузить из Excel
+            </label>
+        </form>
+
+        <a class="btn btn-warning fw-bold"
+            href="{{ url_for('fuel_bp.export_fuel_union_energy_system',
+                                union_energy_system_filter=union_energy_system_filter or '',
+                                energy_system_type_filter=energy_system_type_filter or '',
+                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            target="_blank" rel="noopener">
+            Экспорт в Excel
+        </a>
+
+        <select name="per_page"
+                form="filterForm"
+                class="form-select d-inline-block w-auto"
+                onchange="document.getElementById('filterForm').page.value=1; document.getElementById('filterForm').submit()">
+            <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+    </div>
+
+    <form method="GET"
+        action="{{ url_for('fuel_bp.fuel_union_energy_system_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <!-- ЛЕВАЯ СТОРОНА: поиск + кнопки -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.union_energy_system_filter(
+                            class="form-control",
+                            value=union_energy_system_filter,
+                            placeholder="Поиск по объединенным энергосистемам"
+                        ) }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
+            <div class="col-12 col-lg-4 text-lg-end"></div>
+        </div>
+
+        {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="page"                        value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by"                     value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                    value="{{ sort_dir }}">
+        <input type="hidden" name="energy_system_type_filter"   value="{{ energy_system_type_filter }}">
+    </form>
+
+    <!-- Таблица данных -->
+    <!-- Таблица с данными -->
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered">
+
+            <thead>
+                <tr class="table-success" style="word-wrap: break-word;">
+                    <!-- Шапка таблицы. Столбец "ID в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='external_id',
+                                            sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            ID в БД Топливо
+                            {% if sort_by == 'external_id' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Название в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='external_name',
+                                            sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Название в БД Топливо
+                            {% if sort_by == 'external_name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Наименование ОЭС в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='external_nameoes',
+                                            sort_dir='asc' if sort_by != 'external_nameoes' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Наименование ОЭС в БД Топливо
+                            {% if sort_by == 'external_nameoes' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Сокр. ОЭС в БД Топливо" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='external_abbr',
+                                            sort_dir='asc' if sort_by != 'external_abbr' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Сокр. ОЭС в БД Топливо
+                            {% if sort_by == 'external_abbr' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "UUID ОЭС" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='ref_uuid',
+                                            sort_dir='asc' if sort_by != 'ref_uuid' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            UUID ОЭС
+                            {% if sort_by == 'ref_uuid' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "ID ОЭС (текущая версия)" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='id',
+                                            sort_dir='asc' if sort_by != 'id' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            ID ОЭС (текущая версия)
+                            {% if sort_by == 'id' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <!-- Шапка таблицы. Столбец "Наименование ОЭС в АРМ" -->
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            union_energy_system_filter=union_energy_system_filter,
+                                            energy_system_type_filter=energy_system_type_filter,
+                                            sort_by='name',
+                                            sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            Наименование ОЭС в АРМ
+                            {% if sort_by == 'name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+                {% if display_rows %}
+                    {% for row in display_rows %}
+                        {% set union_energy_system = row.ues %}
+                        {% set mapping = row.mapping %}
+                        <tr class="align-middle text-center">
+                            <!-- Строки таблицы. Столбец "ID в БД Топливо" -->
+                            {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
+                            <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Название в БД Топливо" -->
+                            <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование в БД ОЭС Топливо" -->
+                            <td>{{ mapping.external_nameoes if mapping and mapping.external_nameoes else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Сокр. ОЭС  в БД Топливо" -->
+                            <td>{{ mapping.external_abbr if mapping and mapping.external_abbr else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "UUID ОЭС" -->
+                            <td>{{ union_energy_system.ref_uuid if union_energy_system else '—' }}</td>
+
+                            <!-- Строки таблицы. Столбец "ID ОЭС (текущая версия)" -->
+                            <td>{{ union_energy_system.id if union_energy_system else '—' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование ОЭС в АРМ" -->
+                            <td>{{ union_energy_system.name if union_energy_system else '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    {% for union_energy_system in union_energy_system_list %}
+                        <tr class="align-middle text-center">
+                            {% set mapping = mapping_by_ues.get(union_energy_system.ref_uuid) %}
+                            <!-- Строки таблицы. Столбец "ID в БД Топливо" -->
+                            {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
+                            <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Название в БД Топливо" -->
+                            <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование в БД ОЭС Топливо" -->
+                            <td>{{ mapping.external_nameoes if mapping and mapping.external_nameoes else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "Сокр. ОЭС  в БД Топливо" -->
+                            <td>{{ mapping.external_abbr if mapping and mapping.external_abbr else '' }}</td>
+
+                            <!-- Строки таблицы. Столбец "UUID ОЭС" -->
+                            <td>{{ union_energy_system.ref_uuid }}</td>
+
+                            <!-- Строки таблицы. Столбец "ID ОЭС (текущая версия)" -->
+                            <td>{{ union_energy_system.id }}</td>
+
+                            <!-- Строки таблицы. Столбец "Наименование ОЭС в АРМ" -->
+                            <td>{{ union_energy_system.name }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+
+                    {% for mapping in unmatched_mappings %}
+                        <tr class="align-middle text-center">
+                            {% set external_id = (mapping.external_id|string) if mapping.external_id is not none else '' %}
+                            <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+                            <td>{{ mapping.external_name if mapping.external_name else '' }}</td>
+                            <td>{{ mapping.external_nameoes if mapping.external_nameoes else '' }}</td>
+                            <td>{{ mapping.external_abbr if mapping.external_abbr else '' }}</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Пагинация -->
+    <div>
+        {% include 'fuel/refdata/union_energy_system/union_energy_system_pagination.html' %}
+    </div>
+
+</div>
+
+<!-- Скрипт подстройки высоты строк под содержимое ячеек -->
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}

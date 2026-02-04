@@ -417,10 +417,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!params.has('rounding_digits')) {
                 params.set('rounding_digits', '{{ rounding_digits }}');
             }
-            // Если нет выбранных типов агрегации, добавляем ЕЭС по умолчанию
-            if (!params.has('aggregation_type')) {
-                params.append('aggregation_type', 'ees');
-            }
+            // Если нет выбранных типов агрегации — экспортируем ровно то, что на экране (без автоподстановки ЕЭС).
             
             // Формируем URL для экспорта
             const exportUrl = '{{ url_for("generation_bp.totals_summary_export") }}?' + params.toString();

@@ -49,6 +49,7 @@ from app.refdata.models.territories.federal_district_model import FederalDistric
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.years.year_feature_model import YearFeature
 from app.refdata.models.years.year_model import Year
+from app.refdata.models.years.year_service_model import YearService
 
 
 def _get_or_create_refdata_entity(
@@ -88,6 +89,19 @@ def _upsert_refdata_entity_year(
 ) -> bool:
     entity = refdata_entity if isinstance(refdata_entity, RefdataEntity) else None
     entity_id = entity.id if entity is not None else int(refdata_entity)
+
+    # Учитываем уже созданные (но не зафлашенные) записи в рамках текущей сессии,
+    # чтобы не ловить дубликаты при no_autoflush.
+    for obj in db.session.new:
+        if not isinstance(obj, RefdataEntityYear):
+            continue
+        if (
+            obj.refdata_entity_id == entity_id
+            and obj.year == year
+            and obj.database_version_id == database_version_id
+        ):
+            obj.payload = payload
+            return False
 
     entity_year = None
     if entity_id is not None:
@@ -137,14 +151,22 @@ def _ensure_request_context(user):
         yield
 
 
-def _get_current_year_number(database_version_id: int) -> int:
-    year_feature = YearFeature.query.filter_by(
-        database_version_id=database_version_id,
-        name="Текущий",
-    ).first()
+def _get_current_year_number(database_version_id: int, source_version_id: int | None = None) -> int:
+    """
+    Возвращает номер текущего года для версии.
+    Если указан source_version_id, ищем признак "текущий год" и год в исходной версии.
+    """
+    lookup_version_id = source_version_id or database_version_id
+
+    year_feature = (
+        YearFeature.query.filter(
+            YearFeature.database_version_id == lookup_version_id,
+            YearFeature.name.ilike("текущий год"),
+        ).first()
+    )
     if not year_feature:
         year_feature = (
-            YearFeature.query.filter_by(database_version_id=database_version_id)
+            YearFeature.query.filter_by(database_version_id=lookup_version_id)
             .filter(YearFeature.name.ilike("%текущ%"))
             .order_by(YearFeature.id.asc())
             .first()
@@ -152,12 +174,32 @@ def _get_current_year_number(database_version_id: int) -> int:
     if not year_feature:
         raise ValueError("Не найден признак года с названием «Текущий» для выбранной версии.")
     current_year = Year.query.filter_by(
-        database_version_id=database_version_id,
+        database_version_id=lookup_version_id,
         id_year_feature=year_feature.id,
     ).first()
-    if not current_year:
-        raise ValueError("Не найден текущий год для выбранной версии.")
-    return current_year.number
+    if current_year:
+        return current_year.number
+
+    # Fallback 1: используем YearService (если есть) и выводим текущий год как year_sipr_start - 1
+    year_service = (
+        YearService.query.filter_by(database_version_id=lookup_version_id).first()
+    )
+    if year_service and year_service.year_sipr_start:
+        try:
+            return int(year_service.year_sipr_start) - 1
+        except Exception:
+            pass
+
+    # Fallback 2: берем последний доступный год в версии
+    last_year = (
+        Year.query.filter_by(database_version_id=lookup_version_id)
+        .order_by(Year.number.desc())
+        .first()
+    )
+    if last_year:
+        return last_year.number
+
+    raise ValueError("Не найден текущий год для выбранной версии.")
 
 
 def _federal_district_payload(district: FederalDistrict) -> dict[str, Any]:
@@ -867,11 +909,12 @@ def snapshot_territories_for_version(
     database_version_id: int,
     user,
     do_commit: bool = True,
+    source_version_id: int | None = None,
 ) -> dict[str, int]:
     """
     Полный цикл для территорий: указанная версия + текущий год.
     """
-    current_year = _get_current_year_number(database_version_id)
+    current_year = _get_current_year_number(database_version_id, source_version_id)
     return snapshot_territories(
         database_version_id=database_version_id,
         year=current_year,
@@ -884,11 +927,12 @@ def snapshot_energy_systems_for_version(
     database_version_id: int,
     user,
     do_commit: bool = True,
+    source_version_id: int | None = None,
 ) -> dict[str, int]:
     """
     Полный цикл для энергосистем: указанная версия + текущий год.
     """
-    current_year = _get_current_year_number(database_version_id)
+    current_year = _get_current_year_number(database_version_id, source_version_id)
     return snapshot_energy_systems(
         database_version_id=database_version_id,
         year=current_year,
@@ -901,11 +945,12 @@ def snapshot_station_machine_types_for_version(
     database_version_id: int,
     user,
     do_commit: bool = True,
+    source_version_id: int | None = None,
 ) -> dict[str, int]:
     """
     Полный цикл для типов станций/агрегатов: указанная версия + текущий год.
     """
-    current_year = _get_current_year_number(database_version_id)
+    current_year = _get_current_year_number(database_version_id, source_version_id)
     return snapshot_station_machine_types(
         database_version_id=database_version_id,
         year=current_year,
@@ -918,11 +963,12 @@ def snapshot_fuels_for_version(
     database_version_id: int,
     user,
     do_commit: bool = True,
+    source_version_id: int | None = None,
 ) -> dict[str, int]:
     """
     Полный цикл для топлива: указанная версия + текущий год.
     """
-    current_year = _get_current_year_number(database_version_id)
+    current_year = _get_current_year_number(database_version_id, source_version_id)
     return snapshot_fuels(
         database_version_id=database_version_id,
         year=current_year,

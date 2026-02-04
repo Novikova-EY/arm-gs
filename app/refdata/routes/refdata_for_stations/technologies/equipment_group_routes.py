@@ -97,10 +97,22 @@ def equipment_group_list():
         # Удаление записей
         if equipment_group_delete:
             try:
-                delete_equipment_group_service(equipment_group_delete, user)
-                deleted_ids = {int(item) for item in equipment_group_delete if item}
-                flash("Записи типов групп оборудования успешно удалены.", "success")
-            except Exception as e:
+                delete_result = delete_equipment_group_service(equipment_group_delete, user)
+                deleted_ids = set(delete_result.get("deleted_ids", []))
+                if delete_result.get("deleted", 0) > 0:
+                    flash("Записи типов групп оборудования успешно удалены.", "success")
+                if delete_result.get("blocked"):
+                    blocked_names = delete_result.get("blocked_names", [])
+                    flash(
+                        "Некоторые записи не удалены, так как используются в сборных группах оборудования: "
+                        + ", ".join(blocked_names),
+                        "warning",
+                    )
+                if delete_result.get("not_found"):
+                    flash(f"Не найдены ID: {delete_result.get('not_found')}", "warning")
+                if delete_result.get("invalid"):
+                    flash(f"Некорректные ID: {delete_result.get('invalid')}", "warning")
+            except Exception:
                 flash("Ошибка удаления записей.", "danger")
         # Обновление данных в базе
         try:

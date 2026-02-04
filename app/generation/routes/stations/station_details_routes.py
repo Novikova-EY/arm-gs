@@ -40,11 +40,15 @@ from sqlalchemy import or_, and_
 from app.logs.models.log_model import Log
 from datetime import timezone
 from zoneinfo import ZoneInfo
+import uuid
 from app.common.services.database_version_filter import (
     filter_by_db_version,
     filter_by_explicit_db_version,
     get_current_db_version_id,
+    set_db_version_on_create,
 )
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 
 MOSCOW = ZoneInfo("Europe/Moscow")
 
@@ -61,8 +65,10 @@ from app.common.services.get_services.energy_systems.union_energy_system_get_ser
     get_ues_to_res_ids_map,
 )
 from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
-    get_regional_energy_system_list_full,
+    get_regional_energy_system_choices,
     get_regional_energy_systems_map,
+    get_res_to_ues_id_map,
+    get_res_to_est_id_map,
 )
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
@@ -187,11 +193,8 @@ def _format_logs_for_display(logs):
 
 def _load_station_with_version(query_factory, requested_version_id):
     """
-    Возвращает станцию и фактический ID версии (None, если базовая),
-    с попыткой fallback на базовую версию, если запись для текущей версии отсутствует.
-    
-    Сначала ищет станцию по ID без фильтра по версии, чтобы проверить её существование.
-    Затем проверяет соответствие версии и делает fallback при необходимости.
+    Возвращает станцию и фактический ID версии (None, если базовая).
+    Без fallback: если запись отсутствует в запрошенной версии, возвращает None.
     """
     def _apply_version_filter(q, version_id):
         if not hasattr(Station, "database_version_id"):
@@ -200,32 +203,17 @@ def _load_station_with_version(query_factory, requested_version_id):
             return q.filter(Station.database_version_id.is_(None))
         return q.filter(Station.database_version_id == version_id)
 
-    # Сначала проверяем, существует ли станция вообще (без фильтра по версии)
-    # Это нужно для диагностики: если станция не существует, вернем None
-    base_query = query_factory()
-    station_any_version = base_query.first()
-    
-    if not station_any_version:
-        # Станция с таким ID не существует вообще
-        return None, None
-
     # Если запрашивается базовая версия (None)
     if requested_version_id is None:
         station = _apply_version_filter(query_factory(), None).first()
         if station:
             return station, station.database_version_id
-        # Если станция существует, но не в базовой версии, возвращаем её
-        return station_any_version, station_any_version.database_version_id
+        return None, None
 
     # Ищем станцию в запрошенной версии
     station = _apply_version_filter(query_factory(), requested_version_id).first()
     if station:
         return station, station.database_version_id
-
-    # Fallback: если станция существует, но не в запрошенной версии,
-    # возвращаем её (возможно, она из другой версии или базовой)
-    if station_any_version:
-        return station_any_version, station_any_version.database_version_id
 
     return None, requested_version_id
 
@@ -289,17 +277,6 @@ def station_details(station_id):
     if not station:
         abort(404)
     
-    # Проверяем, соответствует ли версия станции текущей версии БД
-    if current_version_id is not None and station_version_id != current_version_id:
-        # Станция найдена, но не в текущей версии БД
-        flash(
-            f"Внимание: Станция '{station.name}' не найдена в текущей версии базы данных. "
-            f"Отображаются данные из другой версии.",
-            "warning"
-        )
-
-    station.machines = _filter_items_by_version(station.machines, station_version_id)
-
     station.machines = _filter_items_by_version(station.machines, station_version_id)
     
     # Диагностика для понимания объема данных
@@ -397,19 +374,20 @@ def station_details(station_id):
     union_energy_system_names = get_union_energy_systems_map()
     regional_energy_system_mapping = get_ues_to_res_ids_map()
 
-    regional_energy_system_list = get_regional_energy_system_list_full()
+    # Список (id, name) — без ORM, чтобы избежать DetachedInstanceError при кэше
+    regional_energy_system_choices = get_regional_energy_system_choices()
     regional_energy_system_names = get_regional_energy_systems_map()
 
     # Карта для автоподстановки ОЭС и типа энергосистемы по выбранной РЭС
     res_auto_map = {}
-    for res in regional_energy_system_list:
-        ues_name = res.union_energy_system.name if res.union_energy_system else "Нет данных"
-        est_name = (
-            res.union_energy_system.energy_system_type.name
-            if res.union_energy_system and res.union_energy_system.energy_system_type
-            else "Нет данных"
-        )
-        res_auto_map[res.id] = {
+    res_to_ues = get_res_to_ues_id_map()
+    res_to_est = get_res_to_est_id_map()
+    for res_id, _res_name in regional_energy_system_choices:
+        ues_id = res_to_ues.get(res_id)
+        est_id = res_to_est.get(res_id)
+        ues_name = union_energy_system_names.get(ues_id, "Нет данных") if ues_id else "Нет данных"
+        est_name = energy_system_type_names.get(est_id, "Нет данных") if est_id else "Нет данных"
+        res_auto_map[res_id] = {
             "union_energy_system": ues_name,
             "energy_system_type": est_name,
         }
@@ -423,25 +401,26 @@ def station_details(station_id):
     # Заполняем список субъектов РФ с фильтрацией по версии БД
     # regional_district_list теперь содержит кортежи (id, name) вместо ORM-объектов
     form.id_regional_district.choices = regional_district_list
-    # Список региональных энергосистем для выпадающего списка (id, name)
-    form.id_regional_energy_system.choices = [
-        (0, "не указано"),
-        *[(res.id, res.name) for res in regional_energy_system_list],
-    ]
+    # Список региональных энергосистем для выпадающего списка (id, name) — только из БД по текущей версии.
+    # Приводим к кортежам (int, str), т.к. get_regional_energy_system_choices() возвращает Row-объекты.
+    form.id_regional_energy_system.choices = [(int(r[0]), r[1]) for r in regional_energy_system_choices]
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     form.id_station_group.choices = choices_cache.get_choices(StationGroup, StationGroup.id)
     
-    # Заполняем список типов станций с фильтрацией по версии БД
-    form.id_station_type.choices = choices_cache.get_choices(StationType, StationType.id)
     form_machines.id_gen_company.choices = choices_cache.get_choices_with_default(
         GenCompany,
         GenCompany.id,
         default_text="не указано"
     )
 
-    # Используем кэшированные энергоузлы с фильтрацией по версии БД
-    energy_units = form_data['energy_units']
-    form.id_energy_unit.choices = choices_cache.get_choices(EnergyUnit, EnergyUnit.id)
+    def _get_versioned_choices(model_class, order_by_field, version_id, name_field="name"):
+        query = model_class.query.order_by(order_by_field)
+        query = filter_by_explicit_db_version(query, model_class, version_id)
+        return [(item.id, getattr(item, name_field)) for item in query.all()]
+
+    # Для форм используем choices в версии станции (иначе валидатор ругается на "невалидный выбор")
+    form.id_station_type.choices = _get_versioned_choices(StationType, StationType.id, station_version_id)
+    form.id_energy_unit.choices = _get_versioned_choices(EnergyUnit, EnergyUnit.id, station_version_id)
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -518,6 +497,8 @@ def station_details(station_id):
         # Обработка отправки основной формы станции
         # ВАЖНО: Обрабатываем только если НЕ было удаления агрегатов
         elif is_station_form:
+            # Привязываем форму к POST-данным, иначе поля (в т.ч. id_energy_unit) остаются пустыми
+            form.process(formdata=request.form)
             print(f"[DEBUG] Форма станции отправлена. id_energy_unit.data = {form.id_energy_unit.data}, id_station_type.data = {form.id_station_type.data}")
             print(f"[DEBUG] Валидация формы: validate() = {form.validate()}, validate_on_submit() = {form.validate_on_submit()}")
             if not form.validate():
@@ -577,6 +558,25 @@ def station_details(station_id):
     
     edit_roles = ['admin', 'generation-admin', 'generation-editor']
     can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+
+    # Группы оборудования станции (по версии)
+    target_version_id = current_version_id if current_version_id is not None else station_version_id
+
+    equipment_group_set_links_query = (
+        EquipmentGroupSetStation.query.options(
+            selectinload(EquipmentGroupSetStation.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group)
+        )
+        .filter(EquipmentGroupSetStation.station_id == station.id)
+    )
+    equipment_group_set_links_query = filter_by_explicit_db_version(
+        equipment_group_set_links_query, EquipmentGroupSetStation, target_version_id
+    )
+    equipment_group_set_links = equipment_group_set_links_query.all()
+
+    available_group_sets_query = filter_by_explicit_db_version(
+        EquipmentGroupSet.query, EquipmentGroupSet, target_version_id
+    )
+    available_equipment_group_sets = available_group_sets_query.order_by(EquipmentGroupSet.name).all()
     
     initial_machines_tbody_html = None
     if request.method == "GET" and not can_edit:
@@ -606,11 +606,13 @@ def station_details(station_id):
         machine_tes_types_map=machine_tes_types_map,
         federal_districts=federal_district_list,
         regional_districts_list=regional_district_list,
-        regional_energy_systems_list=regional_energy_system_list,
+        regional_energy_systems_list=[{"id": res_id, "name": res_name} for res_id, res_name in regional_energy_system_choices],
         union_energy_systems=union_energy_system_list,
         energy_system_types=energy_system_type_list,
         station_logs=station_logs_formatted,
         can_edit=can_edit,
+        equipment_group_set_links=equipment_group_set_links,
+        available_equipment_group_sets=available_equipment_group_sets,
         initial_machines_tbody_html=initial_machines_tbody_html,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
@@ -653,7 +655,14 @@ def station_logs(station_id):
     """AJAX endpoint для загрузки всех логов станции."""
     from flask import jsonify
     
-    station = Station.query.get_or_404(station_id)
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return Station.query.filter_by(id=station_id)
+
+    station, _ = _load_station_with_version(_station_query, current_version_id)
+    if not station:
+        abort(404)
     
     # Получаем параметр offset для пагинации
     offset = request.args.get("offset", 0, type=int)
@@ -687,6 +696,208 @@ def station_logs(station_id):
         'total': total_count,
         'has_more': (offset + len(logs_formatted)) < total_count
     })
+
+
+@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/add", methods=["POST"])
+@login_required
+@handle_stale_data
+def add_station_equipment_group_set(station_id):
+    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    if not can_edit:
+        abort(403)
+
+    group_set_id = request.form.get("equipment_group_set_id", type=int)
+    if not group_set_id:
+        flash("Выберите группу оборудования.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return Station.query.filter_by(id=station_id)
+
+    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    if not station:
+        abort(404)
+
+    target_version_id = current_version_id if current_version_id is not None else station_version_id
+
+    group_set_query = EquipmentGroupSet.query.filter_by(id=group_set_id)
+    group_set_query = filter_by_explicit_db_version(group_set_query, EquipmentGroupSet, target_version_id)
+    group_set = group_set_query.first()
+    if not group_set:
+        flash("Группа оборудования не найдена для текущей версии БД.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    link_query = EquipmentGroupSetStation.query.filter_by(
+        station_id=station.id,
+        equipment_group_set_id=group_set.id,
+    )
+    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
+    if link_query.first():
+        flash("Станция уже связана с этой группой оборудования.", "info")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    link = EquipmentGroupSetStation(
+        equipment_group_set_id=group_set.id,
+        station_id=station.id,
+    )
+    set_db_version_on_create(link)
+    db.session.add(link)
+    db.session.commit()
+
+    flash("Станция связана с группой оборудования.", "success")
+    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+
+@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/<int:group_set_id>/rename", methods=["POST"])
+@login_required
+@handle_stale_data
+def rename_station_equipment_group_set(station_id, group_set_id):
+    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    if not can_edit:
+        abort(403)
+
+    new_name = (request.form.get("equipment_group_set_name") or "").strip()
+    if not new_name:
+        flash("Название группы не может быть пустым.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return Station.query.filter_by(id=station_id)
+
+    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    if not station:
+        abort(404)
+
+    target_version_id = current_version_id if current_version_id is not None else station_version_id
+
+    link_query = EquipmentGroupSetStation.query.filter_by(
+        station_id=station.id,
+        equipment_group_set_id=group_set_id,
+    )
+    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
+    link = link_query.first()
+    if not link:
+        flash("Группа не связана с этой станцией.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    group_set_query = EquipmentGroupSet.query.filter_by(id=group_set_id)
+    group_set_query = filter_by_explicit_db_version(group_set_query, EquipmentGroupSet, target_version_id)
+    group_set = group_set_query.first()
+    if not group_set:
+        flash("Группа оборудования не найдена для текущей версии БД.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    # Ищем существующую группу с таким названием (в рамках версии и типа группы)
+    existing_query = EquipmentGroupSet.query.filter_by(
+        name=new_name,
+        id_equipment_group=group_set.id_equipment_group,
+    )
+    existing_query = filter_by_explicit_db_version(existing_query, EquipmentGroupSet, target_version_id)
+    existing = existing_query.first()
+
+    if existing and existing.id != group_set.id:
+        # Переназначаем агрегаты станции на существующую группу
+        Machine.query.filter(
+            Machine.id_station == station.id,
+            Machine.equipment_group_set_id == group_set.id,
+        ).update({"equipment_group_set_id": existing.id})
+
+        # Удаляем старую связь и создаем новую при необходимости
+        db.session.delete(link)
+        existing_link_query = EquipmentGroupSetStation.query.filter_by(
+            station_id=station.id,
+            equipment_group_set_id=existing.id,
+        )
+        existing_link_query = filter_by_explicit_db_version(existing_link_query, EquipmentGroupSetStation, target_version_id)
+        if not existing_link_query.first():
+            new_link = EquipmentGroupSetStation(
+                equipment_group_set_id=existing.id,
+                station_id=station.id,
+            )
+            set_db_version_on_create(new_link)
+            db.session.add(new_link)
+
+        # Удаляем старую группу, если больше не используется
+        has_links = EquipmentGroupSetStation.query.filter_by(
+            equipment_group_set_id=group_set.id
+        ).first()
+        has_machines = Machine.query.filter_by(
+            equipment_group_set_id=group_set.id
+        ).first()
+        if not has_links and not has_machines:
+            db.session.delete(group_set)
+
+        db.session.commit()
+        flash("Станция привязана к существующей группе оборудования.", "success")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    # Обновляем имя текущей группы
+    group_set.name = new_name
+    if not group_set.external_code:
+        version_token = group_set.database_version_id if group_set.database_version_id is not None else "null"
+        eg_id = group_set.id_equipment_group or 0
+        key = f"equipment_group_set|name|{new_name}|equipment_group_id|{eg_id}|db_version|{version_token}"
+        group_set.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, key))
+    db.session.commit()
+
+    flash("Название группы оборудования обновлено.", "success")
+    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+
+@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/<int:group_set_id>/remove", methods=["POST"])
+@login_required
+@handle_stale_data
+def remove_station_equipment_group_set(station_id, group_set_id):
+    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    if not can_edit:
+        abort(403)
+
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return Station.query.filter_by(id=station_id)
+
+    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    if not station:
+        abort(404)
+
+    target_version_id = current_version_id if current_version_id is not None else station_version_id
+
+    link_query = EquipmentGroupSetStation.query.filter_by(
+        station_id=station.id,
+        equipment_group_set_id=group_set_id,
+    )
+    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
+    link = link_query.first()
+    if not link:
+        flash("Связь со станцией не найдена.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    # Запрещаем удалять связь, если есть агрегаты в этой группе для станции
+    machine_exists = (
+        Machine.query
+        .filter(
+            Machine.id_station == station.id,
+            Machine.equipment_group_set_id == group_set_id,
+        )
+        .first()
+    )
+    if machine_exists:
+        flash("Нельзя удалить связь: есть агрегаты в этой группе.", "warning")
+        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+
+    db.session.delete(link)
+    db.session.commit()
+
+    flash("Связь со станцией удалена.", "success")
+    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
 
 
 @station_bp.route("/station_details_tbody/<int:station_id>", methods=["GET"])

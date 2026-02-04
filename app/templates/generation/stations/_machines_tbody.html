@@ -28,7 +28,7 @@
     <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
-        <td class="rowspan-td" rowspan="3">
+        <td class="rowspan-td col-machine-name" rowspan="3">
             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                 {{ machine.machine_name }}
             </a>
@@ -143,7 +143,7 @@
         <tr class="text-center machine-row" style="vertical-align: middle; font-size: 1.15rem;">
             <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_group}}</td>
             <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
-            <td>
+            <td class="col-machine-name">
                 <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
                     {{ machine.machine_name }}
                 </a>
@@ -226,7 +226,7 @@
 
     {% for pgu in machine.pgu_machines %}
     <tr class="text-center small text-muted" style="vertical-align: middle; font-size: 1.15rem;">
-        <td>
+        <td class="col-machine-name">
             <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=pgu.id, **request.args) }}" class="text-decoration-none">
                 {{ pgu.machine_name }}
             </a>

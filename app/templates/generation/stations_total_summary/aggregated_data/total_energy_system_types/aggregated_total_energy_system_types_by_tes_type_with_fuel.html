@@ -1,0 +1,53 @@
+{# --- Разбивка по видам топлива на уровне типа ТЭС (только для не-КЭС/не-ТЭЦ) --- #}
+{% for fuel_type_id, fuel_type_name in fuel_type_list.items() %}
+    {% set has_fuels = total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust
+                        .get(tes_type_id or 0, {})
+                        .get(fuel_type_id, {}) %}
+
+    {% if has_fuels %}
+        <tr class="table-danger text-center total-power-row" style="vertical-align: middle;">
+            <td class="total-row-cell" rowspan="3" style="font-weight: bold; padding-left: 12cm;">
+                {{ fuel_type_name }}
+            </td>
+            <td class="fw-bold">Руст</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_ust_value = total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust.get(tes_type_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_ust_value is none or p_ust_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ust_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+
+        <tr class="table-danger text-center p-ogr-row">
+            <td class="fw-bold">Рогр</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_ogr_value = total_energy_system_types_by_tes_types_with_fuel_yearly_p_ogr.get(tes_type_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_ogr_value is none or p_ogr_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_ogr_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+
+        <tr class="table-danger text-center p-rasp-row">
+            <td class="fw-bold">Ррасп</td>
+            {% for y in range(start_year, end_year + 1) %}
+                <td class="power-column">
+                    {% set p_rasp_value = total_energy_system_types_by_tes_types_with_fuel_yearly_p_rasp.get(tes_type_id or 0, {}).get(fuel_type_id, {}).get(y, 0) %}
+                    {% if p_rasp_value is none or p_rasp_value == 0 %}
+                        &mdash;
+                    {% else %}
+                        {{ p_rasp_value | format_decimal }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endif %}
+{% endfor %}

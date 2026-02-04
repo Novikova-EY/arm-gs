@@ -62,7 +62,7 @@
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
                     {% if machine.tes_machine_type.name and machine.tes_machine_type.name|lower != 'не указано' %}
-                        {{ machine.tes_machine_type.name }}
+                        <span style="white-space: pre-line;">{{ machine.tes_machine_type.name }}</span>
                     {% else %}
                         &mdash;
                     {% endif %}
@@ -198,7 +198,7 @@
             <td>
                 {% if machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
                     {% if machine.tes_machine_type.name and machine.tes_machine_type.name|lower != 'не указано' %}
-                        {{ machine.tes_machine_type.name }}
+                        <span style="white-space: pre-line;">{{ machine.tes_machine_type.name }}</span>
                     {% else %}
                         &mdash;
                     {% endif %}
@@ -270,7 +270,7 @@
                 <td>
                     {% if pgu_machine.pgu_tes_machine_type and pgu_machine.pgu_tes_machine_type.id != 0 %}
                         {% if pgu_machine.pgu_tes_machine_type.name and pgu_machine.pgu_tes_machine_type.name|lower != 'не указано' %}
-                            {{ pgu_machine.pgu_tes_machine_type.name }}
+                            <span style="white-space: pre-line;">{{ pgu_machine.pgu_tes_machine_type.name }}</span>
                         {% else %}
                             &mdash;
                         {% endif %}

@@ -4,6 +4,8 @@
 # --- Территории ---
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.organizations.department_model import Department
+from app.refdata.models.organizations.business_unit_model import BusinessUnit
 
 # --- Энергосистемы ---
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem

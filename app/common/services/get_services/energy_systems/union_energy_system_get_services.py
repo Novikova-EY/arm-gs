@@ -14,15 +14,12 @@ from app.refdata.models.energy_systems.regional_energy_system_model import Regio
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_union_energy_system_list_full():
-    """Получает полный список ОЭС."""
+    """Получает полный список ОЭС. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = UnionEnergySystem.query
-    
     if current_version:
         query = query.filter(UnionEnergySystem.database_version_id == current_version)
-    
     return (
         query
         .order_by(
@@ -70,28 +67,22 @@ def get_union_energy_systems_list() -> List[UnionEnergySystem]:
     )
 
 
-@lru_cache(maxsize=1)
 def get_union_energy_systems_map() -> Dict[int, str]:
-    """Возвращает отображение {ОЭС.id: ОЭС.name} для всех ОЭС (кэшируется)."""
+    """Возвращает отображение {ОЭС.id: ОЭС.name}. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = UnionEnergySystem.query.with_entities(UnionEnergySystem.id, UnionEnergySystem.name)
-    
     if current_version:
         query = query.filter(UnionEnergySystem.database_version_id == current_version)
-    
     rows = query.order_by(UnionEnergySystem.id).all()
     return {id_: name for id_, name in rows}
 
 
-@lru_cache(maxsize=1)
 def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]} (кэшируется)."""
+    """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id)
-    
     if current_version:
         query = query.filter(RegionalEnergySystem.database_version_id == current_version)
-    
     pairs = query.order_by(RegionalEnergySystem.id_union_energy_system, RegionalEnergySystem.id).all()
     acc: dict[int, list[int]] = defaultdict(list)
     for ues_id, res_id in pairs:
@@ -100,23 +91,17 @@ def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
     return dict(acc)
 
 
-@lru_cache(maxsize=1)
 def get_res_to_ues_id_map() -> Dict[int, int]:
-    """Возвращает отображение {РЭС.id: ОЭС.id} (кэшируется)."""
+    """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = db.session.query(RegionalEnergySystem.id, RegionalEnergySystem.id_union_energy_system)
-    
     if current_version:
         query = query.filter(RegionalEnergySystem.database_version_id == current_version)
-    
     pairs = query.filter(RegionalEnergySystem.id_union_energy_system.isnot(None)).all()
     return {res_id: ues_id for res_id, ues_id in pairs}
 
 
 def invalidate_ues_lookups_cache() -> None:
-    get_union_energy_systems_map.cache_clear()
-    get_ues_to_res_ids_map.cache_clear()
-    get_res_to_ues_id_map.cache_clear()
     get_ues_to_est_id_map.cache_clear()
     get_ues_to_rd_ids_map.cache_clear()
     get_ues_to_fd_ids_map.cache_clear()

@@ -286,8 +286,10 @@ def create_app():
         from app.generation.models.document import (
             document_model,
         )
-        from app.refdata.models.fuels import (
-            station_equpment_group_model,
+        from app.fuel.models import (
+            fue_equipment_group_set_model,
+            fue_equipment_group_set_station_model,
+            external_mapping,
         )
 
         # Проброс мапперов

@@ -18,14 +18,10 @@ from app.common.services.database_version_filter import filter_by_db_version
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_regional_district_list_full():
-    """Получает полный список субъектов РФ."""
+    """Получает полный список субъектов РФ. Без кэша — версия из текущего запроса (filter_by_db_version)."""
     query = RegionalDistrict.query
-    # Фильтрация по версии БД
     query = filter_by_db_version(query, RegionalDistrict)
-    # Извлекаем только нужные поля, чтобы избежать DetachedInstanceError
-    # Преобразуем Row объекты в обычные кортежи для совместимости с WTForms
     rows = (
         query
         .with_entities(RegionalDistrict.id, RegionalDistrict.name)

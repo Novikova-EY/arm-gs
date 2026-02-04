@@ -153,27 +153,58 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
 
         feature_id_mapping = dict(zip(old_feature_ids, new_feature_ids))
 
-        years_query = text(f"""
-            INSERT INTO {SCHEMA_REFDATA}.gs_years (number, id_year_feature, database_version_id)
-            SELECT
-                y.number,
-                :new_feature_id,
-                :target_version_id
-            FROM {SCHEMA_REFDATA}.gs_years y
-            WHERE y.database_version_id = :source_version_id
-              AND y.id_year_feature = :old_feature_id
-        """)
-
-        for old_id, new_id in feature_id_mapping.items():
-            db.session.execute(
-                years_query,
-                {
-                    "source_version_id": source_version_id,
-                    "target_version_id": target_version_id,
-                    "old_feature_id": old_id,
-                    "new_feature_id": new_id,
-                },
+        if feature_id_mapping:
+            values_clause = ", ".join(
+                f"(:old_id_{idx}, :new_id_{idx})"
+                for idx, _ in enumerate(feature_id_mapping.items())
             )
+            params = {
+                "source_version_id": source_version_id,
+                "target_version_id": target_version_id,
+            }
+            for idx, (old_id, new_id) in enumerate(feature_id_mapping.items()):
+                params[f"old_id_{idx}"] = old_id
+                params[f"new_id_{idx}"] = new_id
+
+            years_query = text(f"""
+                WITH feature_map(old_id, new_id) AS (
+                    VALUES {values_clause}
+                ),
+                source_years AS (
+                    SELECT y.number, y.id_year_feature
+                    FROM {SCHEMA_REFDATA}.gs_years y
+                    WHERE y.database_version_id = :source_version_id
+                ),
+                ranked_years AS (
+                    SELECT
+                        sy.number,
+                        sy.id_year_feature,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY sy.number
+                            ORDER BY sy.id_year_feature ASC
+                        ) AS rn
+                    FROM source_years sy
+                ),
+                target_years AS (
+                    SELECT y.number
+                    FROM {SCHEMA_REFDATA}.gs_years y
+                )
+                INSERT INTO {SCHEMA_REFDATA}.gs_years (number, id_year_feature, database_version_id)
+                SELECT
+                    ry.number,
+                    fm.new_id,
+                    :target_version_id
+                FROM ranked_years ry
+                JOIN feature_map fm ON fm.old_id = ry.id_year_feature
+                WHERE ry.rn = 1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM target_years ty
+                      WHERE ty.number = ry.number
+                  )
+            """)
+
+            db.session.execute(years_query, params)
 
         # Копируем YearService (период СиПР) для указанной версии
         source_service = (

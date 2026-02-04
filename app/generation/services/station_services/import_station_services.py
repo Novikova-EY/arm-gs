@@ -1,6 +1,7 @@
 from app.extensions import db
 import pandas as pd
 from sqlalchemy import func
+import numbers
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from app.logs.services.logging_service import log_to_db
 import logging
@@ -11,6 +12,7 @@ from app.logs.services.field_names_ru import format_field_change
 from app.common.services.help_services import (
     _replace_quotes_sequentially,
     _clean_name,
+    _clean_multiline_text,
 )
 from app.common.services.database_version_filter import (
     set_db_version_on_create,
@@ -448,8 +450,34 @@ def resolve_fuel(value):
 
 
 def to_decimal(val, digits=15):
+    """
+    Приводит значение из Excel к Decimal с фиксированной точностью.
+    Важно: используем аккуратную обработку float, чтобы не терять точность,
+    если в ячейке было больше знаков после запятой, чем показывает формат.
+    Для float: только точное целое (50.0) приводим к 50; значения вида 49.99999999999999 не округляем.
+    """
+    if val is None:
+        return Decimal(0)
+    if isinstance(val, float) and pd.isna(val):
+        return Decimal(0)
+    if isinstance(val, str) and val.strip() == "":
+        return Decimal(0)
     try:
-        return Decimal(str(val)).quantize(Decimal(f"1.{'0'*digits}"), rounding=ROUND_HALF_UP)
+        if isinstance(val, Decimal):
+            dec_val = val
+        elif isinstance(val, float):
+            # Только точное целое (50.0 → 50); 49.99999999999999 оставляем как есть
+            if val == int(val):
+                dec_val = Decimal(int(val))
+            else:
+                dec_val = Decimal.from_float(val)
+        elif isinstance(val, int):
+            dec_val = Decimal(val)
+        elif isinstance(val, str):
+            dec_val = Decimal(val.strip().replace(",", "."))
+        else:
+            dec_val = Decimal(str(val))
+        return dec_val.quantize(Decimal(f"1.{'0'*digits}"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError, TypeError):
         return Decimal(0)
     
@@ -600,14 +628,20 @@ def handle_station(row, user):
 
 # Вспомогательная функция: создание или обновление агрегата
 def handle_machine(row, current_station, user):
-    machine_name = _clean_name(row['machine_name'])
+    machine_name = _clean_multiline_text(row['machine_name'])
 
     machine_group = row.get('machine_group')
     if pd.isna(machine_group) or machine_group in [None, 'nan', 'NaN', '']:
         machine_group = ""
     else:
-        if isinstance(machine_group, (int, float)):
-            machine_group = str(int(machine_group)) if machine_group.is_integer() else str(machine_group)
+        if isinstance(machine_group, numbers.Integral):
+            machine_group = str(int(machine_group))
+        elif isinstance(machine_group, numbers.Real):
+            machine_group = (
+                str(int(machine_group))
+                if float(machine_group).is_integer()
+                else str(machine_group)
+            )
         else:
             machine_group = str(machine_group).strip()
 
@@ -615,8 +649,14 @@ def handle_machine(row, current_station, user):
     if pd.isna(machine_number) or machine_number in [None, 'nan', 'NaN', '']:
         machine_number = ""
     else:
-        if isinstance(machine_number, (int, float)):
-            machine_number = str(int(machine_number)) if machine_number.is_integer() else str(machine_number)
+        if isinstance(machine_number, numbers.Integral):
+            machine_number = str(int(machine_number))
+        elif isinstance(machine_number, numbers.Real):
+            machine_number = (
+                str(int(machine_number))
+                if float(machine_number).is_integer()
+                else str(machine_number)
+            )
         else:
             machine_number = str(machine_number).strip()
 

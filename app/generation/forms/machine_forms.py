@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import Form, StringField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField, DecimalField
+from wtforms import Form, StringField, TextAreaField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField, DecimalField
 from wtforms.validators import DataRequired, Optional, NumberRange, Length
 from app.validators.validate_year_or_date import validate_year_or_date
 from decimal import Decimal
@@ -44,9 +44,9 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
-    machine_name = StringField(
+    machine_name = TextAreaField(
         'Название агрегата',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[DataRequired(), Length(max=1024)]
     )
 
     machine_group = StringField(
@@ -127,7 +127,7 @@ class MachineFilterForm(FlaskForm):
 
     note = StringField(
         'Примечание',
-        validators=[Optional(), Length(max=80)]
+        validators=[Optional(), Length(max=512)]
     )
 
     change_document = StringField(
@@ -180,9 +180,9 @@ class PGUMachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=80)]
     )
 
-    machine_name = StringField(
+    machine_name = TextAreaField(
         'Название агрегата',
-        validators=[DataRequired(), Length(max=80)]
+        validators=[DataRequired(), Length(max=1024)]
     )
 
     powers = FieldList(FormField(PGUMachinePowerForm), min_entries=0)
@@ -230,7 +230,7 @@ class PGUMachineFilterForm(FlaskForm):
 
     note = StringField(
         'Примечание',
-        validators=[Optional(), Length(max=80)]
+        validators=[Optional(), Length(max=512)]
     )
 
 
@@ -271,9 +271,9 @@ class MachinePowerForm(FlaskForm):
         csrf = False  # Отключаем CSRF для вложенной формы
 
     year = IntegerField('Год', render_kw={'readonly': True})
-    p_ust = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
-    p_ogr = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
-    p_rasp = DecimalField('Pуст', validators=[Optional()], places=2, default=0)
+    p_ust = DecimalField('Pуст', validators=[Optional()], places=15, default=0)
+    p_ogr = DecimalField('Pуст', validators=[Optional()], places=15, default=0)
+    p_rasp = DecimalField('Pуст', validators=[Optional()], places=15, default=0)
 
 
 class MachineFuelForm(FlaskForm):

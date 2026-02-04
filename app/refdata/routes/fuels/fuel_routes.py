@@ -248,8 +248,6 @@ def add_fuel():
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
     topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
     topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
-    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
-    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
 
     # Подготовка данных для формы с фильтрацией по версии БД
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
@@ -355,6 +353,8 @@ def export_fuel():
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_filter         = request.args.get("fuel_filter", "").strip()
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
+    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
+    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
 
     try:
         # Получение данных для экспорта
@@ -386,7 +386,7 @@ def export_fuel():
             max_age=0,
         )
 
-    except Exception as e:
-        current_app.logger.error(f"Ошибка экспорта: {e}")
+    except Exception:
+        current_app.logger.exception("Ошибка экспорта топлива")
         flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
         return redirect(url_for("refdata_bp.fuel_list"))

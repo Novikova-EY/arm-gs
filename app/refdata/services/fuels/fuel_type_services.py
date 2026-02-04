@@ -64,7 +64,7 @@ def fuel_type_query(
     """ Базовый запрос для выборки видов топлива с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "topl_nazvl"}
+    allowed_sort_by = {"id", "name", "topl_nazvl", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -84,12 +84,26 @@ def fuel_type_query(
     # Сортировка
     if sort_by == "name":
         sort_col = FuelType.name
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
     elif sort_by == "topl_nazvl":
         sort_col = FuelType.topl_nazvl
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    elif sort_by == "display_order":
+        # Сортируем по порядку отображения, значения NULL в конце
+        if sort_dir == "desc":
+            query = query.order_by(
+                (FuelType.display_order.is_(None)),
+                FuelType.display_order.desc(),
+            )
+        else:
+            query = query.order_by(
+                (FuelType.display_order.is_(None)),
+                FuelType.display_order.asc(),
+            )
     else:
+        # sort_by == "id" или "number"
         sort_col = FuelType.id
-
-    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
 
@@ -136,6 +150,7 @@ def update_fuel_type_service(data, user):
             fuel_type_id = record.get("fuel_type_id")
             name = (record.get("name") or "").strip()
             topl_nazvl = (record.get("topl_nazvl") or "").strip() or None
+            display_order = record.get("display_order")
 
             if not name:
                 log_to_db(
@@ -164,6 +179,20 @@ def update_fuel_type_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
+            # Проверка уникальности display_order
+            if display_order is not None and display_order != obj.display_order:
+                q_display = (
+                    apply_version_filter(FuelType.query, FuelType)
+                    .filter(
+                        FuelType.display_order == display_order,
+                        FuelType.id != fuel_type_id,
+                    )
+                )
+                if q_display.first():
+                    raise ValueError(
+                        f"Запись с порядком отображения «{display_order}» уже существует."
+                    )
+
             changes = []
 
             if name != (obj.name or "").strip():
@@ -177,9 +206,17 @@ def update_fuel_type_service(data, user):
                         obj.topl_nazvl or "не указано",
                         topl_nazvl or "не указано",
                         "fuel_type",
-                    )
+                )
                 )
                 obj.topl_nazvl = topl_nazvl
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(
+                    f"Порядок отображения: {old_val} → {new_val}"
+                )
+                obj.display_order = display_order
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -242,6 +279,7 @@ def add_fuel_type_service(data, user):
         with db.session.no_autoflush:
             for record in data:
                 name = (record.get("name") or "").strip()
+                display_order = record.get("display_order")
                 if not name:
                     log_to_db(
                         user, 
@@ -256,7 +294,20 @@ def add_fuel_type_service(data, user):
                 if dup:
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
-                obj = FuelType(name=name)
+                # Проверка уникальности display_order при создании
+                if display_order is not None:
+                    dup_display = (
+                        apply_version_filter(FuelType.query, FuelType)
+                        .filter(FuelType.display_order == display_order)
+                        .with_for_update()
+                        .first()
+                    )
+                    if dup_display:
+                        raise ValueError(
+                            f"Запись с порядком отображения «{display_order}» уже существует."
+                        )
+
+                obj = FuelType(name=name, display_order=display_order)
                 set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
@@ -446,16 +497,31 @@ def export_fuel_type_service(
     df = pd.DataFrame(data)
 
     # Создание Excel и авто-ширина столбцов
-    output = BytesIO()
     sheet_name = "Виды топлива"
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False, sheet_name=sheet_name)
-        ws = writer.sheets[sheet_name]
 
-        # Автоподбор ширины с аккуратным лимитом
-        for i, col in enumerate(df.columns):
-            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
-            ws.set_column(i, i, min(max_len + 2, 60))
+    def _write_excel(buffer, engine_name):
+        with pd.ExcelWriter(buffer, engine=engine_name) as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            ws = writer.sheets[sheet_name]
+
+            # Автоподбор ширины с аккуратным лимитом
+            for i, col in enumerate(df.columns):
+                max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+                ws.set_column(i, i, min(max_len + 2, 60))
+
+    output = BytesIO()
+    try:
+        _write_excel(output, "xlsxwriter")
+    except Exception as e:
+        # Резервный engine на случай проблем с xlsxwriter
+        log_to_db(
+            user,
+            "Переход на openpyxl при экспорте видов топлива",
+            f"xlsxwriter error: {e}",
+            entity_type="fuel_type",
+        )
+        output = BytesIO()
+        _write_excel(output, "openpyxl")
 
     output.seek(0)
     log_to_db(user, "Экспорт таблицы видов топлива в Excel завершен", f"Экспортировано записей: {len(data)}", entity_type="fuel_type")

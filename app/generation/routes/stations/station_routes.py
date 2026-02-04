@@ -3,7 +3,7 @@
 from config import Config
 from app.extensions import db
 from flask import (
-    render_template, request, redirect, url_for, flash, session, jsonify, current_app
+    render_template, request, redirect, url_for, flash, session, jsonify, current_app, abort
 )
 from sqlalchemy.orm import joinedload
 from collections import defaultdict
@@ -185,6 +185,12 @@ def station_list():
 @station_bp.route('/stations/add', methods=['GET', 'POST'])
 @login_required
 def add_station():
+    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    if not can_edit:
+        flash("Недостаточно прав для добавления электростанции.", "warning")
+        return redirect(url_for("station_bp.station_list"))
+
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта форма создания новой электростанции")
 

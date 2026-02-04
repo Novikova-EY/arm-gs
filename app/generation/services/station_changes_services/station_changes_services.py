@@ -1003,6 +1003,7 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
         return
 
     # Собираем мощности по годам в словарь (на случай дублей по году берём последнюю)
+    # rounding_digits: 0 = не округлять, -1 = целое число, >0 = знаков после запятой
     year_to_power: dict[int, float] = {}
     for mp in machine.machine_powers:
         y = getattr(mp, "year_number", None)
@@ -1010,7 +1011,13 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
             continue
         if y < start_year - 1 or y > end_year + 1:
             continue
-        year_to_power[int(y)] = round(float(getattr(mp, "p_ust", 0) or 0), rounding_digits)
+        p_ust_val = float(getattr(mp, "p_ust", 0) or 0)
+        if rounding_digits == 0:
+            year_to_power[int(y)] = p_ust_val
+        elif rounding_digits == -1:
+            year_to_power[int(y)] = round(p_ust_val)
+        else:
+            year_to_power[int(y)] = round(p_ust_val, rounding_digits)
 
     if not year_to_power:
         return

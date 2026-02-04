@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if machine and machine.machine_number %}№{{ machine.machine_number }} {{ machine.machine_name }}{% else %}Новый агрегат{% endif %} ({{ station.name }}){% endblock %}
+{% block title %}{% if machine and machine.machine_number %}№{{ machine.machine_number }} {{ machine.machine_name }}{% elif machine and machine.machine_name %}{{ machine.machine_name }}{% else %}Новый агрегат{% endif %} ({{ station.name }}){% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -87,9 +87,9 @@
                                     <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.machine_name(class="form-control fw-bold") }}
+                                            {{ main_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
-                                            {{ main_form.machine_name.data if main_form.machine_name.data else '—' }}
+                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -156,8 +156,8 @@
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_equipment_group(class="form-select") }}
                                         {% else %}
-                                            {% if machine.station_equipment_group and machine.station_equipment_group.equipment_group %}
-                                                {{ machine.station_equipment_group.equipment_group.name }}
+                                            {% if machine.equipment_group_set and machine.equipment_group_set.equipment_group %}
+                                                {{ machine.equipment_group_set.equipment_group.name }}
                                             {% else %}
                                                 {{ machine.equipment_group.name if machine.equipment_group else '—' }}
                                             {% endif %}
@@ -431,8 +431,11 @@
                                 <th style="width: 50px; text-align: center;">
                                     {{ year }}
                                     <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                                        {% if year_features[year] is defined %}
-                                            {{ year_features[year] }}
+                                        {% set year_feature_label = year_features.get(year) %}
+                                        {% if year_feature_label %}
+                                            {{ year_feature_label }}
+                                        {% else %}
+                                            &mdash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -490,8 +493,11 @@
                             <th style="width: 50px; text-align: center;">
                                 {{ year }}
                                 <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                                    {% if year_features[year] is defined %}
-                                        {{ year_features[year] }}
+                                    {% set year_feature_label = year_features.get(year) %}
+                                    {% if year_feature_label %}
+                                        {{ year_feature_label }}
+                                    {% else %}
+                                        &mdash;
                                     {% endif %}
                                 </div>
                             </th>
@@ -581,8 +587,11 @@
                                 <th style="width: 50px; text-align: center;">
                                     {{ year }}
                                     <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                                        {% if year_features[year] is defined %}
-                                            {{ year_features[year] }}
+                                        {% set year_feature_label = year_features.get(year) %}
+                                        {% if year_feature_label %}
+                                            {{ year_feature_label }}
+                                        {% else %}
+                                            &mdash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -629,8 +638,11 @@
                                 <th style="width: 50px; text-align: center;">
                                     {{ year }}
                                     <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
-                                        {% if year_features[year] is defined %}
-                                            {{ year_features[year] }}
+                                        {% set year_feature_label = year_features.get(year) %}
+                                        {% if year_feature_label %}
+                                            {{ year_feature_label }}
+                                        {% else %}
+                                            &mdash;
                                         {% endif %}
                                     </div>
                                 </th>
@@ -2078,6 +2090,20 @@ document.addEventListener("DOMContentLoaded", function () {
     text-align: left;
     vertical-align: top;
     line-height: 1.5;
+}
+
+/* Название агрегата: поддержка переносов */
+.machine-name-textarea {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-height: 2.6em;
+    resize: vertical;
+}
+.machine-name-display {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .document-link {

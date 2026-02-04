@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Группы оборудования{% endblock %}
+{% block title %}Типы групп оборудования{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container mt-2">
 
-    <h1 class="text-center mb-4">Список групп оборудования</h1>
+    <h1 class="text-center mb-4">Список типов групп оборудования</h1>
 
     <form method="GET"
         action="{{ url_for('refdata_bp.equipment_group_list') }}"
@@ -21,7 +21,7 @@
                             {{ form.equipment_group_filter(
                             class="form-control",
                             value=equipment_group_filter or '',
-                            placeholder="Поиск по группам оборудования"
+                            placeholder="Поиск по типам групп оборудования"
                         ) }}
                     </div>
 
@@ -159,7 +159,7 @@
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
-                                    Группа оборудования
+                                    Тип группы оборудования
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
@@ -278,7 +278,7 @@
                                                                 sort_by=sort_by,
                                                                 sort_dir=sort_dir) }}" 
                                                                 class="dropdown-item">
-                                                        Все типы технологий
+                                                        Все типы доступностей технологий
                                                     </a>
                                                 </li>
                                                 {% for id, name in technology_availabilities %}
@@ -430,7 +430,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Группа оборудования
+                                Тип группы оборудования
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -549,7 +549,7 @@
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
-                                                    Все типы технологий
+                                                    Все типы доступностей технологий
                                                 </a>
                                             </li>
                                             {% for id, name in technology_availabilities %}

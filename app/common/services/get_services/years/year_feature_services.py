@@ -14,43 +14,44 @@ from app.refdata.models.years.year_model import Year
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_year_feature_list():
-    """Получает список признаков годов для текущей версии."""
+    """Получает список признаков годов для текущей версии. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = YearFeature.query
-    
     if current_version:
         query = query.filter(YearFeature.database_version_id == current_version)
-    
     return query.order_by(YearFeature.name.asc()).all()
 
 
-@lru_cache(maxsize=1)
 def get_year_feature_id_dict():
-    """Возвращает словарь {id: name} признаков годов для текущей версии."""
+    """Возвращает словарь {id: name} признаков годов для текущей версии. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()
     query = YearFeature.query
-    
     if current_version:
         query = query.filter(YearFeature.database_version_id == current_version)
-    
     features = query.all()
     return {feature.id: feature.name for feature in features}
 
 
-@lru_cache(maxsize=1)
 def get_year_feature_dict():
     """Возвращает словарь {year_number: year_feature_name} для текущей версии."""
     current_version = get_current_version()
+    return get_year_feature_dict_for_version(current_version)
+
+
+@lru_cache(maxsize=64)
+def get_year_feature_dict_for_version(version_id: int | None):
+    """Возвращает словарь {year_number: year_feature_name} для указанной версии."""
     query = (
         db.session.query(Year.number, YearFeature.name)
         .join(YearFeature, Year.id_year_feature == YearFeature.id)
     )
-    
-    if current_version:
-        query = query.filter(Year.database_version_id == current_version)
-    
+    if version_id:
+        query = query.filter(
+            (Year.database_version_id == version_id)
+            | (YearFeature.database_version_id == version_id)
+            | (YearFeature.database_version_id.is_(None))
+        )
     rows = query.all()
     return {number: name for number, name in rows}
 

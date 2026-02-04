@@ -4,6 +4,8 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
 <!-- Индикатор загрузки для per_page=all -->
 <div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
@@ -37,9 +39,11 @@
 
                 
                 <!-- Кнопка добавления электростанции -->
-                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                    ➕ Добавить электростанцию
-                </a>
+                {% if can_edit %}
+                    <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                        ➕ Добавить электростанцию
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>

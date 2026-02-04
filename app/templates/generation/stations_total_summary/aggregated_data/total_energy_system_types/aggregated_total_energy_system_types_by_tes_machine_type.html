@@ -54,6 +54,7 @@
                 {% endfor %}
             </tr>
 
+            {# Разбивка по топливу под типами агрегатов (ПСУ, ПГУ, ГТУ, ГПА) — для всех типов ТЭС #}
             {% include 'generation/stations_total_summary/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_by_tes_machine_type_with_fuel.html' %}
 
         {% endif %}

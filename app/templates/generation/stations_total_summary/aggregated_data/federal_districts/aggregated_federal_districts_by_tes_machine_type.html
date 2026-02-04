@@ -57,6 +57,7 @@
                 {% endfor %}
             </tr>
 
+            {# Разбивка по топливу под типами агрегатов (ПСУ, ПГУ, ГТУ, ГПА) — для всех типов ТЭС #}
             {% include 'generation/stations_total_summary/aggregated_data/federal_districts/aggregated_federal_districts_by_tes_machine_type_with_fuel.html' %}
 
         {% endif %}

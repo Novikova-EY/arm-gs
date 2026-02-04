@@ -183,9 +183,7 @@ def update_current_year(version_id, new_year, user):
         # Сбрасываем кэши справочных get-сервисов, чтобы обновления признаков сразу отражались в UI
         try:
             from app.common.services.get_services.years.year_feature_services import (
-                get_year_feature_list,
-                get_year_feature_id_dict,
-                get_year_feature_dict,
+                get_year_feature_dict_for_version,
             )
             from app.common.services.get_services.years.years_get_services import (
                 get_year_list_full,
@@ -195,9 +193,7 @@ def update_current_year(version_id, new_year, user):
                 _get_sipr_end_year_for_version,
             )
 
-            get_year_feature_list.cache_clear()
-            get_year_feature_id_dict.cache_clear()
-            get_year_feature_dict.cache_clear()
+            get_year_feature_dict_for_version.cache_clear()
             get_year_list_full.cache_clear()
             _get_filter_start_year_for_version.cache_clear()
             _get_filter_end_year_for_version.cache_clear()

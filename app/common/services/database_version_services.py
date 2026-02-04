@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
-from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA
 import os
 from datetime import datetime
 from flask import current_app, g
@@ -408,25 +408,30 @@ def add_version_service(data, user):
                 # Пустая версия: справочники не копируются, снимки не создаем.
                 continue
             snapshot_stats[new_version_id] = {}
+            snapshot_source_version_id = refdata_source_id if refdata_source_id else None
             snapshot_stats[new_version_id]["territories"] = snapshot_territories_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["energy_systems"] = snapshot_energy_systems_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["station_machine_types"] = snapshot_station_machine_types_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["fuels"] = snapshot_fuels_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
 
         # Коммитим ВСЁ разом: и создание версии, и копирование данных
@@ -469,7 +474,7 @@ def add_version_service(data, user):
         parent_version_ids.clear()
         refdata_source_version_ids.clear()
         extend_years_list.clear()
-        quick_fix_seq(SCHEMA_GENERATION, "database_versions")
+        quick_fix_seq(SCHEMA_REFDATA, "gs_database_versions")
         _do_insert()
         
         # Копирование данных после retry
@@ -546,25 +551,30 @@ def add_version_service(data, user):
                 # Пустая версия: справочники не копируются, снимки не создаем.
                 continue
             snapshot_stats[new_version_id] = {}
+            snapshot_source_version_id = refdata_source_id if refdata_source_id else None
             snapshot_stats[new_version_id]["territories"] = snapshot_territories_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["energy_systems"] = snapshot_energy_systems_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["station_machine_types"] = snapshot_station_machine_types_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
             snapshot_stats[new_version_id]["fuels"] = snapshot_fuels_for_version(
                 database_version_id=new_version_id,
                 user=user,
                 do_commit=False,
+                source_version_id=snapshot_source_version_id,
             )
 
         # Коммитим всё разом после retry
@@ -985,6 +995,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     # а таблицы в ней имеют префикс gs_. Используем значения из config.
     ref_schema = SCHEMA_REFDATA
     gen_schema = SCHEMA_GENERATION
+    fuel_schema = SCHEMA_FUEL
     
     # ЭТАП 1: Полностью независимые таблицы (без внешних ключей на другие таблицы)
     log_to_db(
@@ -1304,11 +1315,21 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 ]
             },
             {
-                'schema': gen_schema,
-                'table': 'station_equipment_groups',
+                'schema': fuel_schema,
+                'table': 'gs_fue_equipment_group_sets',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
                     {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
+                ]
+            },
+            {
+                'schema': fuel_schema,
+                'table': 'gs_fue_equipment_group_set_stations',
+                'dependencies': [
+                    {
+                        'fk': 'equipment_group_set_id',
+                        'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
+                    },
+                    {'fk': 'station_id', 'ref_table': f'{gen_schema}.stations'}
                 ]
             },
             {
@@ -1324,7 +1345,10 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
                     {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'},
                     {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'},
-                    {'fk': 'station_equipment_group_id', 'ref_table': f'{gen_schema}.station_equipment_groups'}
+                    {
+                        'fk': 'equipment_group_set_id',
+                        'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
+                    }
                 ]
             },
             {
@@ -1855,9 +1879,10 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
     # Таблицы generation с зависимостями в порядке иерархии
     dependent_generation_tables = [
         {
+            'schema': gen_schema,
             'table': 'stations',
             'dependencies': [
-                {'fk': 'id_station_group', 'ref_table': 'gs_gen.station_groups'},
+                {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.station_groups'},
                 {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
                 {'fk': 'id_energy_unit', 'ref_table': 'refdata.energy_units'},
                 {'fk': 'id_station_type', 'ref_table': 'refdata.station_types'},
@@ -1865,15 +1890,35 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
             ]
         },
         {
-            'table': 'station_powers',
+            'schema': fuel_schema,
+            'table': 'gs_fue_equipment_group_sets',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
+                {'fk': 'id_equipment_group', 'ref_table': 'refdata.equipment_groups'}
             ]
         },
         {
+            'schema': fuel_schema,
+            'table': 'gs_fue_equipment_group_set_stations',
+            'dependencies': [
+                {
+                    'fk': 'equipment_group_set_id',
+                    'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
+                },
+                {'fk': 'station_id', 'ref_table': f'{gen_schema}.stations'}
+            ]
+        },
+        {
+            'schema': gen_schema,
+            'table': 'station_powers',
+            'dependencies': [
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
+            ]
+        },
+        {
+            'schema': gen_schema,
             'table': 'machines',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'},
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
                 {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
                 {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
@@ -1885,58 +1930,65 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'machine_powers',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'}
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'machine_fuels',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
                 {'fk': 'id_fuel', 'ref_table': 'refdata.fuels'}
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'machine_tes_types',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': 'gs_gen.machines'},
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
                 {'fk': 'id_tes_type', 'ref_table': 'refdata.tes_types'}
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'pgu_machines',
             'dependencies': [
-                {'fk': 'id_parent_machine', 'ref_table': 'gs_gen.machines'},
+                {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.machines'},
                 {'fk': 'id_pgu_tes_machine_type', 'ref_table': 'refdata.pgu_tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'pgu_machine_powers',
             'dependencies': [
-                {'fk': 'id_pgu_machine', 'ref_table': 'gs_gen.pgu_machines'}
+                {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.pgu_machines'}
             ]
         },
         {
+            'schema': gen_schema,
             'table': 'boilers',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': 'gs_gen.stations'}
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
             ]
         }
     ]
     
     # Копируем таблицы generation с зависимостями
     for table_info in dependent_generation_tables:
+        schema = table_info.get('schema', gen_schema)
         table = table_info['table']
         
         try:
             with db.session.begin_nested():
                 # Копируем данные таблицы (пока со старыми FK)
-                copied, mapping = _copy_table_with_mapping('generation', table, source_version_id, target_version_id, user)
+                copied, mapping = _copy_table_with_mapping(schema, table, source_version_id, target_version_id, user)
                 total_copied += copied
                 if mapping:
-                    id_mappings[f"gs_gen.{table}"] = mapping
+                    id_mappings[f"{schema}.{table}"] = mapping
                 
                 # Обновляем foreign key согласно зависимостям
                 for dep in table_info['dependencies']:
@@ -1946,7 +1998,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
                     if ref_table in id_mappings:
                         ref_mapping = id_mappings[ref_table]
                         _update_foreign_keys_in_table(
-                            'generation', table, fk_column, ref_mapping, target_version_id, user
+                            schema, table, fk_column, ref_mapping, target_version_id, user
                         )
                     
         except Exception as e:
@@ -2187,20 +2239,28 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         entity_id=target_version_id
     )
     
+    gen_schema = SCHEMA_GENERATION
+    fuel_schema = SCHEMA_FUEL
+
     # Таблицы для копирования из схемы generation (в порядке зависимостей)
     # ВАЖНО: Порядок должен соответствовать иерархии зависимостей!
     generation_tables = [
-        'station_groups',      # 1. Сначала группы станций (независимые)
-        'stations',            # 2. Затем станции (зависят от групп станций)
-        'station_powers',      # 3. Мощности станций (зависят от станций)
-        'machines',            # 4. Машины (зависят от станций)
-        'machine_powers',      # 5. Мощности машин (зависят от машин)
-        'machine_fuels',       # 6. Топливо машин (зависят от машин)
-        'machine_tes_types',   # 7. Типы ТЭС машин (зависят от машин)
-        'pgu_machines',        # 8. ПГУ машины (зависят от машин)
-        'pgu_machine_powers',  # 9. Мощности ПГУ машин (зависят от ПГУ машин)
-        'boilers',             # 10. Котлы (зависят от станций)
-        'documents_kommod'     # 11. Документы (независимые)
+        'station_groups',            # 1. Сначала группы станций (независимые)
+        'stations',                  # 2. Затем станции (зависят от групп станций)
+        'station_powers',            # 5. Мощности станций (зависят от станций)
+        'machines',                  # 6. Машины (зависят от станций)
+        'machine_powers',            # 7. Мощности машин (зависят от машин)
+        'machine_fuels',             # 8. Топливо машин (зависят от машин)
+        'machine_tes_types',         # 9. Типы ТЭС машин (зависят от машин)
+        'pgu_machines',              # 10. ПГУ машины (зависят от машин)
+        'pgu_machine_powers',        # 11. Мощности ПГУ машин (зависят от ПГУ машин)
+        'boilers',                   # 12. Котлы (зависят от станций)
+        'documents_kommod'           # 13. Документы (независимые)
+    ]
+
+    fuel_tables = [
+        'gs_fue_equipment_group_sets',      # 3. Сборные группы оборудования
+        'gs_fue_equipment_group_set_stations',  # 4. Связи групп оборудования со станциями
     ]
     
     # Таблицы для копирования из схемы refdata
@@ -2238,11 +2298,11 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
     ]
     
     # Объединяем списки таблиц со схемами
-    tables_to_copy = [
-        ('generation', table) for table in generation_tables
-    ] + [
-        ('refdata', table) for table in refdata_tables
-    ]
+    tables_to_copy = (
+        [(gen_schema, table) for table in generation_tables]
+        + [(fuel_schema, table) for table in fuel_tables]
+        + [("refdata", table) for table in refdata_tables]
+    )
     
     total_copied = 0
     
@@ -3419,70 +3479,71 @@ def _delete_version_data_staged(version_id, user):
     
     # ЭТАП 8: Таблицы с максимальными зависимостями (удаляем первыми)
     stage8_tables = [
-        ('generation', 'pgu_machine_powers')
+        (SCHEMA_GENERATION, 'pgu_machine_powers')
     ]
     
     # ЭТАП 7: Таблицы, зависящие от machines
     stage7_tables = [
-        ('generation', 'machine_powers'),
-        ('generation', 'machine_fuels'),
-        ('generation', 'machine_tes_types'),
-        ('generation', 'pgu_machines')
+        (SCHEMA_GENERATION, 'machine_powers'),
+        (SCHEMA_GENERATION, 'machine_fuels'),
+        (SCHEMA_GENERATION, 'machine_tes_types'),
+        (SCHEMA_GENERATION, 'pgu_machines')
     ]
     
     # ЭТАП 6: Таблицы, зависящие от stations
     stage6_tables = [
-        ('generation', 'station_powers'),
-        ('generation', 'machines'),
-        ('generation', 'station_equipment_groups'),
-        ('generation', 'boilers')
+        (SCHEMA_GENERATION, 'machines'),
+        (SCHEMA_FUEL, 'gs_fue_equipment_group_set_stations'),
+        (SCHEMA_FUEL, 'gs_fue_equipment_group_sets'),
+        (SCHEMA_GENERATION, 'station_powers'),
+        (SCHEMA_GENERATION, 'boilers')
     ]
     
     # ЭТАП 5: Таблицы generation с зависимостями
     stage5_tables = [
-        ('generation', 'stations')
+        (SCHEMA_GENERATION, 'stations')
     ]
     
     # ЭТАП 4: Таблицы с зависимостями от ЭТАПОВ 1-3
     stage4_tables = [
-        ('refdata', 'energy_areas'),
-        ('refdata', 'energy_units')
+        (SCHEMA_REFDATA, 'energy_areas'),
+        (SCHEMA_REFDATA, 'energy_units')
     ]
     
     # ЭТАП 3: Таблицы с зависимостями от ЭТАПОВ 1-2
     stage3_tables = [
-        ('refdata', 'regional_districts'),
-        ('refdata', 'regional_energy_systems')
+        (SCHEMA_REFDATA, 'gs_regional_districts'),
+        (SCHEMA_REFDATA, 'regional_energy_systems')
     ]
     
     # ЭТАП 2: Таблицы с зависимостями от ЭТАПА 1
     stage2_tables = [
-        ('refdata', 'union_energy_systems'),
-        ('refdata', 'synchronous_areas'),
-        ('refdata', 'energy_zones'),
-        ('refdata', 'federal_districts')
+        (SCHEMA_REFDATA, 'union_energy_systems'),
+        (SCHEMA_REFDATA, 'synchronous_areas'),
+        (SCHEMA_REFDATA, 'energy_zones'),
+        (SCHEMA_REFDATA, 'federal_districts')
     ]
     
     # ЭТАП 1: Полностью независимые таблицы (удаляем последними)
     stage1_tables = [
-        ('refdata', 'station_types'),
-        ('refdata', 'machine_types'),
-        ('refdata', 'tes_types'),
-        ('refdata', 'tes_machine_types'),
-        ('refdata', 'pgu_tes_machine_types'),
-        ('refdata', 'condition_types'),
-        ('refdata', 'technology_types'),
-        ('refdata', 'technology_availabilities'),
-        ('refdata', 'equipment_groups'),
-        ('refdata', 'energy_system_types'),
-        ('refdata', 'fuel_categories'),
-        ('refdata', 'fuel_types'),
-        ('refdata', 'fuels'),
-        ('refdata', 'gs_companies'),
-        ('refdata', 'year_features'),  # Годы features теперь версионируются
-        ('refdata', 'years'),  # Годы теперь версионируются
-        ('generation', 'station_groups'),
-        ('generation', 'documents_kommod')
+        (SCHEMA_REFDATA, 'station_types'),
+        (SCHEMA_REFDATA, 'machine_types'),
+        (SCHEMA_REFDATA, 'tes_types'),
+        (SCHEMA_REFDATA, 'tes_machine_types'),
+        (SCHEMA_REFDATA, 'pgu_tes_machine_types'),
+        (SCHEMA_REFDATA, 'condition_types'),
+        (SCHEMA_REFDATA, 'technology_types'),
+        (SCHEMA_REFDATA, 'technology_availabilities'),
+        (SCHEMA_REFDATA, 'equipment_groups'),
+        (SCHEMA_REFDATA, 'energy_system_types'),
+        (SCHEMA_REFDATA, 'fuel_categories'),
+        (SCHEMA_REFDATA, 'fuel_types'),
+        (SCHEMA_REFDATA, 'fuels'),
+        (SCHEMA_REFDATA, 'gs_companies'),
+        (SCHEMA_REFDATA, 'year_features'),  # Годы features теперь версионируются
+        (SCHEMA_REFDATA, 'years'),  # Годы теперь версионируются
+        (SCHEMA_GENERATION, 'station_groups'),
+        (SCHEMA_GENERATION, 'documents_kommod')
     ]
     
     # Объединяем все этапы в обратном порядке (от 8 к 1)
@@ -3593,26 +3654,26 @@ def _delete_version_data_staged(version_id, user):
         check_assoc_query = text("""
             SELECT COUNT(*) 
             FROM information_schema.tables 
-            WHERE table_schema = 'refdata' 
+            WHERE table_schema = :schema_name
               AND table_name = 'regional_district_regional_energy_system'
         """)
         
-        result = db.session.execute(check_assoc_query)
+        result = db.session.execute(check_assoc_query, {"schema_name": SCHEMA_REFDATA})
         if result.scalar() > 0:
             # Проверяем наличие поля database_version_id
             check_column_query = text("""
                 SELECT COUNT(*) 
                 FROM information_schema.columns 
-                WHERE table_schema = 'refdata' 
+                WHERE table_schema = :schema_name
                   AND table_name = 'regional_district_regional_energy_system'
                   AND column_name = 'database_version_id'
             """)
             
-            result = db.session.execute(check_column_query)
+            result = db.session.execute(check_column_query, {"schema_name": SCHEMA_REFDATA})
             if result.scalar() > 0:
                 # Подсчитываем записи
-                count_query = text("""
-                    SELECT COUNT(*) FROM refdata.regional_district_regional_energy_system 
+                count_query = text(f"""
+                    SELECT COUNT(*) FROM {SCHEMA_REFDATA}.regional_district_regional_energy_system 
                     WHERE database_version_id = :version_id
                 """)
                 
@@ -3622,8 +3683,8 @@ def _delete_version_data_staged(version_id, user):
                 if records_count > 0:
                     # Удаляем записи в отдельной транзакции
                     try:
-                        delete_query = text("""
-                            DELETE FROM refdata.regional_district_regional_energy_system 
+                        delete_query = text(f"""
+                            DELETE FROM {SCHEMA_REFDATA}.regional_district_regional_energy_system 
                             WHERE database_version_id = :version_id
                         """)
                         
@@ -3633,7 +3694,9 @@ def _delete_version_data_staged(version_id, user):
                         
                         # Коммитим изменения
                         db.session.commit()
-                        current_app.logger.info(f"✅ Удалено {deleted_count} записей из ассоциативной таблицы refdata.regional_district_regional_energy_system")
+                        current_app.logger.info(
+                            f"✅ Удалено {deleted_count} записей из ассоциативной таблицы refdata.regional_district_regional_energy_system"
+                        )
                         
                     except Exception as delete_error:
                         # Откатываем транзакцию
@@ -3697,6 +3760,9 @@ def _delete_version_data(version_id, user):
         entity_id=version_id
     )
     
+    gen_schema = SCHEMA_GENERATION
+    fuel_schema = SCHEMA_FUEL
+
     # Таблицы для удаления из схемы generation (в порядке зависимостей - сначала дочерние)
     # ВАЖНО: Порядок имеет значение из-за внешних ключей!
     generation_tables = [
@@ -3712,6 +3778,11 @@ def _delete_version_data(version_id, user):
         'stations',            # Станции (зависят от групп станций)
         'station_groups',      # Группы станций
         'documents_kommod'     # Документы
+    ]
+
+    fuel_tables = [
+        'gs_fue_equipment_group_set_stations',  # Связи групп оборудования со станциями
+        'gs_fue_equipment_group_sets',          # Сборные группы оборудования
     ]
     
     # Таблицы для удаления из схемы refdata
@@ -3736,7 +3807,7 @@ def _delete_version_data(version_id, user):
         'regional_energy_systems',
         # Территории
         'federal_districts',
-        'regional_districts',
+        'gs_regional_districts',
         # Генерирующие компании
         'gs_companies',
         # Топливо
@@ -3749,11 +3820,11 @@ def _delete_version_data(version_id, user):
     ]
     
     # Объединяем списки таблиц со схемами
-    tables_to_delete = [
-        ('generation', table) for table in generation_tables
-    ] + [
-        ('refdata', table) for table in refdata_tables
-    ]
+    tables_to_delete = (
+        [(gen_schema, table) for table in generation_tables]
+        + [(fuel_schema, table) for table in fuel_tables]
+        + [(SCHEMA_REFDATA, table) for table in refdata_tables]
+    )
     
     total_deleted = 0
     

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Справочники из БД Топлива{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-4">
+    <div class="container mt-5 mb-5">
+        <h2 class="text-center align-middle">Справочники из БД Топлива</h2>
+        <div class="container mb-3">
+            <div class="row align-items-start mb-3">
+                <h4 class="text-center mt-4">Справочники территорий и энергосистем РФ</h4>
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Объединенные энергосистемы
+                    </a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_federal_district_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Федеральные округа
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col-12">
+                    <a href="{{ url_for('fuel_bp.fuel_gen_company_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Генерирующие компании
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col-12">
+                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Субъекты РФ, региональные энергосистемы и энергорайоны
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_department_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Департаменты
+                    </a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_business_unit_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Бизнес единицы
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col-12">
+                    <a href="{{ url_for('fuel_bp.fuel_economic_region_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Экономические районы
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}{% endblock %}

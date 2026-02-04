@@ -43,6 +43,18 @@
     max-width: 180px;
 }
 
+/* Название агрегата: даем больше ширины и перенос */
+.machines-table .col-machine-name {
+    min-width: 260px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-indent: 0;
+}
+.machines-table .col-machine-name a {
+    text-indent: 0;
+}
+
 /* Примечание: переносимый текст, показываем полностью */
 .machines-table th.col-note,
 .machines-table td.col-note {
@@ -91,6 +103,16 @@
 .machines-table tbody td.col-note {
     text-align: left;
     padding: 10px 8px;
+}
+
+/* Название группы оборудования: крупнее и слева */
+.equipment-group-name {
+    text-align: left;
+    font-size: 1.1rem;
+}
+.equipment-group-name input[type="text"] {
+    text-align: left;
+    font-size: 1.1rem;
 }
 
 /* Стили для полей ввода */
@@ -417,22 +439,126 @@
                 </div>
             </div>
         </form>
-        
-        <!-- Таблица с агрегатами (Machines) -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0 ms-3">Агрегаты станции</h3>
-            {% if can_edit %}
-                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
-                    ➕ Добавить агрегат
-                </a>
-            {% endif %}
-        </div>
-        
-        <!-- Фильтры -->
+
+        <!-- Группы оборудования станции -->
         <div class="container-fluid">
             <div class="row g-3">
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center w-100 mb-2">
+                        <h4 class="mb-0 ms-3">Группы оборудования</h4>
+                        {% if can_edit %}
+                            <button type="button"
+                                    class="btn btn-outline-success text-dark"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#equipment-group-add-row"
+                                    aria-controls="equipment-group-add-row"
+                                    aria-expanded="false">
+                                ➕ Добавить группу оборудования
+                            </button>
+                        {% endif %}
+                    </div>
+                    {% if equipment_group_set_links or can_edit %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100">
+                                <thead class="table-success">
+                                    <tr>
+                                        <th>Группа оборудования</th>
+                                        <th class="text-center">Тип</th>
+                                        {% if can_edit %}
+                                        <th class="text-center" style="width: 220px;">Действия</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for link in equipment_group_set_links %}
+                                        {% set gs = link.equipment_group_set %}
+                                        <tr>
+                                            <td class="equipment-group-name">
+                                                {% if can_edit %}
+                                                    <form method="POST" action="{{ url_for('station_bp.rename_station_equipment_group_set', station_id=station.id, group_set_id=gs.id, **request.args) }}" class="d-flex gap-2 align-items-center" id="rename-group-set-{{ gs.id }}">
+                                                        {{ form.csrf_token }}
+                                                        <input type="text" name="equipment_group_set_name" class="form-control" value="{{ gs.name if gs and gs.name else '' }}" placeholder="Название группы">
+                                                    </form>
+                                                {% else %}
+                                                    {{ gs.name if gs and gs.name else '—' }}
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">{{ gs.equipment_group.name if gs and gs.equipment_group else '—' }}</td>
+                                            {% if can_edit %}
+                                            <td class="text-center">
+                                                <div class="d-flex gap-2 justify-content-center">
+                                                    <button type="submit" class="btn btn-outline-primary btn-sm" form="rename-group-set-{{ gs.id }}">
+                                                        Сохранить
+                                                    </button>
+                                                    <form method="POST" action="{{ url_for('station_bp.remove_station_equipment_group_set', station_id=station.id, group_set_id=gs.id, **request.args) }}">
+                                                        {{ form.csrf_token }}
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Удалить связь со станцией?');">
+                                                            Удалить
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                            {% endif %}
+                                        </tr>
+                                    {% endfor %}
+                                    {% if not equipment_group_set_links %}
+                                        <tr>
+                                            <td colspan="{{ 2 + (1 if can_edit else 0) }}" class="text-center text-muted">
+                                                Нет привязанных групп оборудования.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                    {% if can_edit %}
+                                        <tr id="equipment-group-add-row" class="collapse">
+                                            <td colspan="3">
+                                                <form method="POST" action="{{ url_for('station_bp.add_station_equipment_group_set', station_id=station.id, **request.args) }}" class="row g-2 align-items-center">
+                                                    {{ form.csrf_token }}
+                                                    <div class="col-12 col-md-8">
+                                                        <select class="form-select gen-company-select equipment-group-set-select" name="equipment_group_set_id" id="equipmentGroupSetSelect" data-placeholder="Выберите группу (начните вводить для поиска)" {% if not available_equipment_group_sets %}disabled{% endif %}>
+                                                            <option value="">Выберите группу оборудования…</option>
+                                                            {% for gs in available_equipment_group_sets %}
+                                                                <option value="{{ gs.id }}">{{ gs.name if gs.name else ('Группа #' ~ gs.id) }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12 col-md-4">
+                                                        <button type="submit" class="btn btn-outline-primary w-100" {% if not available_equipment_group_sets %}disabled{% endif %}>
+                                                            ➕ Добавить группу
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                                {% if not available_equipment_group_sets %}
+                                                    <div class="text-muted mt-2">Нет доступных групп для добавления.</div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-muted mb-3">Нет привязанных групп оборудования.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+        
+        <!-- Таблица с агрегатами (Machines) -->
+        <div class="container-fluid">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="mb-0 ms-3">Агрегаты станции</h3>
+                        {% if can_edit %}
+                            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
+                                ➕ Добавить агрегат
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Фильтры -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
 
                         <!-- Левая группа кнопок -->
                         <form method="GET" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="d-flex align-items-center gap-2" id="yearForm">
@@ -496,9 +622,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
         <form method="POST" action="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" id="machinesForm">
             {{ form.hidden_tag() }}
@@ -560,6 +683,8 @@
                 {% endif %}
             </div>
         </form>
+                </div>
+            </div>
         </div>
     </body>
 
@@ -686,18 +811,21 @@
         const $ = window.jQuery;
         if (typeof $ !== 'function' || !$.fn || !$.fn.select2) return;
 
-        // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
-        $(document).on('focus', '.gen-company-select', function () {
-            const $el = $(this);
-            if ($el.data('select2')) return;
+        function initSelect2($el) {
+            if (!$el || !$el.length || $el.data('select2')) return;
             performance.mark && performance.mark('select2-init-start');
 
+            const placeholder = $el.data('placeholder') || "Выберите компанию (начните вводить для поиска)";
+            const dropdownParent = $el.hasClass('equipment-group-set-select')
+                ? $el.closest('.card-body')
+                : $el.closest('.table-responsive');
+
             $el.select2({
-                placeholder: "Выберите компанию (начните вводить для поиска)",
+                placeholder,
                 allowClear: true,
                 width: 'resolve',
                 dropdownAutoWidth: false,
-                dropdownParent: $el.closest('.table-responsive'),
+                dropdownParent,
                 minimumResultsForSearch: 0,
                 matcher: function (params, data) {
                     if (!params.term || params.term.trim() === '') return data;
@@ -733,6 +861,35 @@
             performance.measure && performance.measure('select2-init', 'select2-init-start', 'select2-init-end');
             const m = performance.getEntriesByName && performance.getEntriesByName('select2-init').pop();
             if (m) console.log('select2 init:', Math.round(m.duration), 'ms');
+        }
+
+        // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
+        $(document).on('focus', '.gen-company-select, .equipment-group-set-select', function () {
+            initSelect2($(this));
+        });
+
+        // Инициализируем список групп сразу, чтобы поиск работал без фокуса в инпуте
+        const $groupSelect = $('#equipmentGroupSetSelect');
+        if ($groupSelect.length) {
+            initSelect2($groupSelect);
+        }
+    })();
+</script>
+
+<script>
+    // Автозакрытие строки добавления группы после отправки формы
+    (function () {
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form || !form.action || form.action.indexOf('/add_station_equipment_group_set') === -1) return;
+            const row = document.getElementById('equipment-group-add-row');
+            if (!row) return;
+            if (window.bootstrap && typeof window.bootstrap.Collapse === 'function') {
+                const collapse = window.bootstrap.Collapse.getOrCreateInstance(row, { toggle: false });
+                collapse.hide();
+            } else {
+                row.classList.remove('show');
+            }
         });
     })();
 </script>
