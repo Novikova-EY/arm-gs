@@ -59,13 +59,13 @@ def equipment_group_query(
         equipment_group_filter=None, 
         technology_type_filter=None, 
         technology_availability_filter=None, 
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc"):
     """ Базовый запрос для выборки типов групп оборудования с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id", "name", "technology_type", "technology_availability", "display_order", "number"}
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -156,7 +156,7 @@ def get_equipment_group_list(
     equipment_group_filter=None,
     technology_type_filter=None,
     technology_availability_filter=None,
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список типов групп оборудования с пагинацией, фильтрацией и сортировкой. """
     
@@ -528,7 +528,7 @@ def export_equipment_group_service(
     equipment_group_filter=None,
     technology_type_filter=None,
     technology_availability_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc",):
     """ Экспортирует данные типов групп оборудования в Excel. """
 

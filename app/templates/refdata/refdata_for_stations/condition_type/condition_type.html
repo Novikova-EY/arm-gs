@@ -21,7 +21,7 @@
                         {{ form.condition_type_filter(
                             class="form-control",
                             value=condition_type_filter or '',
-                            placeholder="Поиск по видам топлива"
+                            placeholder="Поиск по типам состояния"
                         ) }}
                     </div>
 
@@ -118,7 +118,7 @@
                                 </a>
                             </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                        <!-- Шапка таблицы. Столбец "Тип состояния" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.condition_type_list', 
                                         page=pagination.page, 
@@ -127,7 +127,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид топлива
+                                        Тип состояния
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -152,7 +152,7 @@
                                 <input type="hidden" name="condition_type_ids[]" value="{{ condition_type.id }}">
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Тип топлива" -->
+                            <!-- Строки таблицы. Столбец "Тип состояния" -->
                             <td>
                                 <input type="text" name="condition_type_names[]" class="form-control" value="{{ condition_type.name }}">
                             </td>
@@ -197,7 +197,7 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                        <!-- Шапка таблицы. Столбец "Тип состояния" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.condition_type_list', 
                                         page=pagination.page, 
@@ -206,7 +206,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид топлива
+                                Тип состояния
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -228,7 +228,7 @@
                             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                         </td>
 
-                        <!-- Строки таблицы. Столбец "Вид топлива" -->
+                        <!-- Строки таблицы. Столбец "Тип состояния" -->
                         <td> {{ condition_type.name }} </td>
                     </tr>
                     {% else %}

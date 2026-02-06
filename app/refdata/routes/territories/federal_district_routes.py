@@ -45,14 +45,14 @@ def federal_district_list():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 25, type=int)
     federal_district_filter = request.args.get("federal_district_filter", "").strip()
-    sort_by = request.args.get("sort_by", "id")
+    sort_by = request.args.get("sort_by", "display_order")
     sort_dir = request.args.get("sort_dir", "asc")
 
     if request.method == "POST":
         # Обновление параметров из формы
         page = request.form.get("page", 1, type=int)
         per_page = request.form.get("per_page", 25, type=int)
-        sort_by = request.form.get("sort_by", "id")
+        sort_by = request.form.get("sort_by", "display_order")
         sort_dir = request.form.get("sort_dir", "asc")
         federal_district_filter = request.form.get("federal_district_filter", "").strip()
 
@@ -186,7 +186,7 @@ def add_federal_district():
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
     per_page                    = request.args.get("per_page", 25, type=int)
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     federal_district_filter     = request.args.get("federal_district_filter", "").strip()
 
@@ -288,7 +288,7 @@ def export_federal_district():
 
     user = session.get('username', 'Неизвестный пользователь')
     
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     federal_district_filter     = request.args.get("federal_district_filter", "").strip()
 

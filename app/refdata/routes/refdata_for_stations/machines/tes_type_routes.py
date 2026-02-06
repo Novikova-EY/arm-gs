@@ -29,6 +29,13 @@ from app.refdata.services.refdata_for_stations.machines.tes_type_services import
 from app.logs.services.logging_service import log_to_db
 
 
+def _normalize_filter(value):
+    """Нормализует строку фильтра: пустые/None/'None' -> None."""
+    if value in (None, "", "None"):
+        return None
+    return value
+
+
 @refdata_bp.route("/tes_type", methods=["GET", "POST"])
 @login_required
 def tes_type_list():
@@ -47,21 +54,22 @@ def tes_type_list():
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
-    tes_type_filter    = request.args.get("tes_type_filter")
+    tes_type_filter    = _normalize_filter(request.args.get("tes_type_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
         per_page            = request.form.get("per_page", 25, type=int)
-        sort_by             = request.form.get("sort_by", "id")
+        sort_by             = request.form.get("sort_by", "display_order")
         sort_dir            = request.form.get("sort_dir", "asc")
-        tes_type_filter    = request.form.get("tes_type_filter")
+        tes_type_filter    = _normalize_filter(request.form.get("tes_type_filter"))
 
         # Получение данных из формы
         tes_type_ids       = request.form.getlist("tes_ids[]")
         tes_type_names     = request.form.getlist("tes_type_names[]")
+        tes_type_orders    = request.form.getlist("display_orders[]")
         tes_type_delete    = request.form.getlist("tes_type_delete[]")
   
         deleted_ids = set()
@@ -87,12 +95,25 @@ def tes_type_list():
            
            # Формирование данных для обновления
             tes_type_data = []
-            for tes_type_id, tes_type_name in zip(tes_type_ids, tes_type_names):
+            for tes_type_id, tes_type_name, display_order in zip(
+                tes_type_ids, tes_type_names, tes_type_orders
+            ):
                 if tes_type_id and int(tes_type_id) in deleted_ids:
                     continue
+                try:
+                    parsed_display_order = int(display_order) if display_order and str(display_order).strip() else None
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки порядка отображения для записи c ID={tes_type_id}: "
+                            f"значение «{display_order}» не является целым числом."
+                        )
+                    )
+
                 tes_type_data.append({
                     "tes_type_id": int(tes_type_id) if tes_type_id else None,
                     "name": tes_type_name.strip(),
+                    "display_order": parsed_display_order,
                 })
             
             if not tes_type_data:
@@ -163,7 +184,7 @@ def add_tes_type():
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     tes_type_filter    = request.args.get("tes_type_filter", "").strip()
 
@@ -232,7 +253,7 @@ def export_tes_type():
 
     user = session.get('username', 'Неизвестный пользователь')
 
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     tes_type_filter    = request.args.get("tes_type_filter")
 

@@ -15,6 +15,8 @@ class TesType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Порядок отображения в справочнике
+    display_order = db.Column(db.Integer, nullable=True)
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

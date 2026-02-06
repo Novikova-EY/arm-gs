@@ -311,9 +311,23 @@ def get_stations_list(
         )
 
     if filters.get("date_modernization_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"])
-        )
+        years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
+        if years:
+            try:
+                years_int = [int(y) for y in years]
+            except ValueError:
+                years_int = []
+            if years_int:
+                # Фильтруем по ожидаемому году вывода или по году из последней даты перемаркировки
+                from sqlalchemy import or_
+                machine_query = machine_query.filter(
+                    or_(
+                        Machine.date_decompressing_expected.in_(years_int),
+                        Machine.date_relabing_fact.op("~")(
+                            "(" + "|".join(str(y) for y in years_int) + ")"
+                        ),
+                    )
+                )
 
     # 2. Subquery с подходящими агрегатами
     machine_subquery = machine_query.subquery()
@@ -1631,9 +1645,22 @@ def get_next_station_info(current_page, per_page, filters):
             )
         
         if filters.get("date_modernization_expected_filter"):
-            machine_query = machine_query.filter(
-                Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"])
-            )
+            years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
+            if years:
+                try:
+                    years_int = [int(y) for y in years]
+                except ValueError:
+                    years_int = []
+                if years_int:
+                    from sqlalchemy import or_
+                    machine_query = machine_query.filter(
+                        or_(
+                            Machine.date_decompressing_expected.in_(years_int),
+                            Machine.date_relabing_fact.op("~")(
+                                "(" + "|".join(str(y) for y in years_int) + ")"
+                            ),
+                        )
+                    )
         
         # 2. Subquery с подходящими агрегатами
         machine_subquery = machine_query.subquery()
@@ -1872,9 +1899,22 @@ def get_filtered_station_ids(filters):
         )
 
     if filters.get("date_modernization_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"])
-        )
+        years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
+        if years:
+            try:
+                years_int = [int(y) for y in years]
+            except ValueError:
+                years_int = []
+            if years_int:
+                from sqlalchemy import or_
+                machine_query = machine_query.filter(
+                    or_(
+                        Machine.date_decompressing_expected.in_(years_int),
+                        Machine.date_relabing_fact.op("~")(
+                            "(" + "|".join(str(y) for y in years_int) + ")"
+                        ),
+                    )
+                )
 
     machine_subquery = machine_query.subquery()
 
@@ -1961,7 +2001,7 @@ def get_station_ids_for_aggregation(stations_on_page, should_show_totals, filter
     
     if should_show_totals.get('aggregate_full_dataset'):
         # Последняя страница: агрегаты должны учитывать все станции текущей выборки
-        print("[AGG DEBUG] aggregate_full_dataset=True → запрашиваем все станции по фильтрам")
+        print("[AGG DEBUG] aggregate_full_dataset=True -> запрашиваем все станции по фильтрам")
         return get_filtered_station_ids(filters)
     
     # Для корректных агрегатов нужно оперировать только станциями, прошедшими все фильтры
@@ -2534,7 +2574,11 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     
     station_type_query = StationType.query
     station_type_query = filter_by_db_version(station_type_query, StationType)
-    station_type_names = station_type_query.order_by(StationType.id.asc()).all()
+    station_type_names = station_type_query.order_by(
+        StationType.display_order.asc().nullslast(),
+        StationType.name.asc(),
+        StationType.id.asc(),
+    ).all()
     station_type_list = {st.id: st.name for st in station_type_names}
 
     # Получаем остальные справочники заново, чтобы избежать DetachedInstanceError
@@ -2559,13 +2603,21 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     # Типы ТЭС
     tes_type_query = TesType.query
     tes_type_query = filter_by_db_version(tes_type_query, TesType)
-    tes_type_names = tes_type_query.order_by(TesType.id.asc()).all()
+    tes_type_names = tes_type_query.order_by(
+        TesType.display_order.asc().nullslast(),
+        TesType.name.asc(),
+        TesType.id.asc(),
+    ).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
     # Типы машин ТЭС
     tes_machine_type_query = TesMachineType.query
     tes_machine_type_query = filter_by_db_version(tes_machine_type_query, TesMachineType)
-    tes_machine_type_names = tes_machine_type_query.order_by(TesMachineType.id.asc()).all()
+    tes_machine_type_names = tes_machine_type_query.order_by(
+        TesMachineType.display_order.asc().nullslast(),
+        TesMachineType.name.asc(),
+        TesMachineType.id.asc(),
+    ).all()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
     # Типы машин ПГУ-ТЭС

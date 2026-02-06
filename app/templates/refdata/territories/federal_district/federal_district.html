@@ -286,6 +286,25 @@
                             </a>
                         </th>
 
+                        <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.federal_district_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        federal_district_filter=federal_district_filter, 
+                                        sort_by='display_order', 
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        
                         <!-- Шапка таблицы. Столбец "Наименование ФО" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.federal_district_list', 
@@ -304,7 +323,7 @@
                                 {% endif %}
                             </a>
                         </th>
-
+                        
                         <!-- Шапка таблицы. Столбец "Наименование полное ФО" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.federal_district_list', 
@@ -323,7 +342,7 @@
                                 {% endif %}
                             </a>
                         </th>
-
+                        
                         <!-- Шапка таблицы. Столбец "Наименование сокращенное ФО" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.federal_district_list', 
@@ -354,12 +373,17 @@
                                 {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td class="text-center">
+                                {{ federal_district.display_order if federal_district.display_order is not none else '' }}
+                            </td>
+                            
                             <!-- Строки таблицы. Столбец "Наименование " -->
                             <td> {{ federal_district.name }} </td>
-
+                            
                             <!-- Строки таблицы. Столбец "Наименование полное федерального округа" -->
                             <td> {{ federal_district.name_full }} </td>
-
+                            
                             <!-- Строки таблицы. Столбец "Наименование сокращенное федерального округа" -->
                             <td> {{ federal_district.name_abr }} </td>
                         </tr>

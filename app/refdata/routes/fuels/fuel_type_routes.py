@@ -50,7 +50,7 @@ def fuel_type_list():
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_type_filter    = _normalize_filter(request.args.get("fuel_type_filter"))
     topl_nazvl_filter   = _normalize_filter(request.args.get("topl_nazvl_filter"))
@@ -59,7 +59,7 @@ def fuel_type_list():
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
         per_page            = request.form.get("per_page", 25, type=int)
-        sort_by             = request.form.get("sort_by", "id")
+        sort_by             = request.form.get("sort_by", "display_order")
         sort_dir            = request.form.get("sort_dir", "asc")
         fuel_type_filter    = _normalize_filter(request.form.get("fuel_type_filter"))
         topl_nazvl_filter   = _normalize_filter(request.form.get("topl_nazvl_filter"))
@@ -210,7 +210,7 @@ def add_fuel_type():
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
     topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
@@ -313,7 +313,7 @@ def export_fuel_type():
 
     user = session.get('username', 'Неизвестный пользователь')
 
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
     topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()

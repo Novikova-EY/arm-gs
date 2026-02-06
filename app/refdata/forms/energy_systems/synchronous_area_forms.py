@@ -1,6 +1,6 @@
 """Формы для «Синхронные зоны»."""
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, HiddenField
+from wtforms import StringField, SelectField, HiddenField, IntegerField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 
@@ -30,6 +30,12 @@ class SynchronousAreaFilterForm(FlaskForm):
     )
 
     synchronous_area_delete = HiddenField("Удалить")
+
+    # Порядок отображения (для единообразия с другими справочниками; в списке редактируется напрямую)
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional()],
+    )
 
     # Фильтр
     synchronous_area_filter = StringField(

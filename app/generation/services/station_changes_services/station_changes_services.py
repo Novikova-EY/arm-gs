@@ -1769,7 +1769,11 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     federal_district_query = FederalDistrict.query
     federal_district_query = filter_by_db_version(federal_district_query, FederalDistrict)
-    federal_district_objects = federal_district_query.order_by(FederalDistrict.id.asc()).all()
+    federal_district_objects = federal_district_query.order_by(
+        FederalDistrict.display_order.asc().nullslast(),
+        FederalDistrict.name.asc(),
+        FederalDistrict.id.asc(),
+    ).all()
     federal_district_list = [
         {"id": fd.id, "name": fd.name}
         for fd in federal_district_objects
@@ -1798,17 +1802,29 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     station_type_query = StationType.query
     station_type_query = filter_by_db_version(station_type_query, StationType)
-    station_type_names = station_type_query.order_by(StationType.id.asc()).all()
+    station_type_names = station_type_query.order_by(
+        StationType.display_order.asc().nullslast(),
+        StationType.name.asc(),
+        StationType.id.asc(),
+    ).all()
     station_type_list = {st.id: st.name for st in station_type_names}
 
     tes_type_query = TesType.query
     tes_type_query = filter_by_db_version(tes_type_query, TesType)
-    tes_type_names = tes_type_query.order_by(TesType.id.asc()).all()
+    tes_type_names = tes_type_query.order_by(
+        TesType.display_order.asc().nullslast(),
+        TesType.name.asc(),
+        TesType.id.asc(),
+    ).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
     tes_machine_type_query = TesMachineType.query
     tes_machine_type_query = filter_by_db_version(tes_machine_type_query, TesMachineType)
-    tes_machine_type_names = tes_machine_type_query.order_by(TesMachineType.id.asc()).all()
+    tes_machine_type_names = tes_machine_type_query.order_by(
+        TesMachineType.display_order.asc().nullslast(),
+        TesMachineType.name.asc(),
+        TesMachineType.id.asc(),
+    ).all()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 
     pgu_tes_machine_type_query = PGUTesMachineType.query
@@ -1818,7 +1834,11 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     fuel_type_query = FuelType.query
     fuel_type_query = filter_by_db_version(fuel_type_query, FuelType)
-    fuel_type_names = fuel_type_query.order_by(FuelType.id.asc()).all()
+    fuel_type_names = fuel_type_query.order_by(
+        FuelType.display_order.asc().nullslast(),
+        FuelType.name.asc(),
+        FuelType.id.asc(),
+    ).all()
     fuel_type_list = {ft.id: ft.name for ft in fuel_type_names}
 
     machine_tes_types_map = get_current_machine_tes_types_map()

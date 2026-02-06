@@ -119,12 +119,14 @@ def export_totals_summary_to_excel(
         synchronous_area_aggregates = build_synchronous_area_aggregates(all_aggregations)
         federal_district_aggregates = build_federal_district_aggregates(all_aggregations)
     
-        # Получаем списки для имен
+        # Получаем списки для имен (порядок типов энергосистем уже по display_order
+        # внутри get_energy_system_type_list_full, поэтому сохраняем его как есть)
         energy_system_type_list = get_energy_system_type_list_full()
         energy_system_type_names = get_energy_system_type_map()
-        sorted_energy_system_type_ids = sorted([est.id for est in energy_system_type_list if est.id])
+        sorted_energy_system_type_ids = [est.id for est in energy_system_type_list if est.id]
 
-        # Синхронные зоны: имена + порядок как на экране (Калининградская область первой)
+        # Синхронные зоны: имена + порядок как на экране (display_order из get_synchronous_area_list_full,
+        # при этом Калининградская область всегда первой)
         synchronous_area_list = get_synchronous_area_list_full()
         synchronous_area_names = {sa.id: sa.name for sa in synchronous_area_list if sa.id}
         _sa_ids = [sa.id for sa in synchronous_area_list if sa.id and sa.id > 0]
@@ -149,22 +151,14 @@ def export_totals_summary_to_excel(
                 if _sid and _sid > 0 and ("калининград" in _name_l):
                     _kaliningrad_ids.append(_sid)
         _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
-        _rest_ids = sorted([i for i in _sa_ids if i not in set(_kaliningrad_ids)])
+        # Остальные зоны — в порядке display_order, как вернул сервис
+        _rest_ids = [i for i in _sa_ids if i not in set(_kaliningrad_ids)]
         sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
 
-        # Федеральные округа: список + имена (порядок: display_order ASC)
+        # Федеральные округа: список + имена (порядок: display_order ASC уже в get_federal_district_list_full)
         federal_district_list = get_federal_district_list_full()
         federal_district_names = get_federal_districts_map()
-        _fd_sorted = sorted(
-            federal_district_list,
-            key=lambda fd: (
-                fd.display_order is None,
-                fd.display_order if fd.display_order is not None else 0,
-                (fd.name or ""),
-                fd.id or 0,
-            ),
-        )
-        sorted_federal_district_ids = [fd.id for fd in _fd_sorted if fd.id and fd.id > 0]
+        sorted_federal_district_ids = [fd.id for fd in federal_district_list if fd.id and fd.id > 0]
         
         # Формируем should_show_totals в зависимости от выбранных типов агрегации
         should_show_totals = {
@@ -194,20 +188,39 @@ def export_totals_summary_to_excel(
             if f"sync_area_{sa_id}" in aggregation_types:
                 should_show_totals["synchronous_areas"][sa_id] = True
         
-        # Получаем типы для шаблона
+        # Получаем типы для шаблона (в порядке display_order, затем по имени и ID)
         station_type_query = StationType.query
         station_type_query = filter_by_db_version(station_type_query, StationType)
-        station_type_names = station_type_query.order_by(StationType.id.asc()).all()
+        station_type_names = station_type_query.order_by(
+            StationType.display_order.asc().nullslast(),
+            StationType.name.asc(),
+            StationType.id.asc(),
+        ).all()
         station_type_list = {st.id: st.name for st in station_type_names}
         
         tes_type_query = TesType.query
         tes_type_query = filter_by_db_version(tes_type_query, TesType)
-        tes_type_names = tes_type_query.order_by(TesType.id.asc()).all()
+        tes_type_names = tes_type_query.order_by(
+            TesType.display_order.asc().nullslast(),
+            TesType.name.asc(),
+            TesType.id.asc(),
+        ).all()
         tes_type_list = {tt.id: tt.name for tt in tes_type_names}
         
+        # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС)
+        tes_type_ids_no_fuel_breakdown = [
+            tt_id
+            for tt_id, tt_name in tes_type_list.items()
+            if tt_name and ("ТЭЦ" in tt_name or "КЭС" in tt_name)
+        ]
+
         tes_machine_type_query = TesMachineType.query
         tes_machine_type_query = filter_by_db_version(tes_machine_type_query, TesMachineType)
-        tes_machine_type_names = tes_machine_type_query.order_by(TesMachineType.id.asc()).all()
+        tes_machine_type_names = tes_machine_type_query.order_by(
+            TesMachineType.display_order.asc().nullslast(),
+            TesMachineType.name.asc(),
+            TesMachineType.id.asc(),
+        ).all()
         tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
         
         fuel_type_query = FuelType.query
@@ -770,13 +783,13 @@ def export_totals_summary_to_excel(
                             for year, val in st_dict_rasp.get(st_id, {}).items():
                                 vie_aggregated["p_rasp"][year] += val or Decimal(0)
 
-                station_type_items_sorted = sorted(
-                    st_dict.items(),
-                    key=lambda item: (
-                        station_type_order(station_type_list.get(item[0], f"id={item[0]}")),
-                        station_type_list.get(item[0], "")
-                    )
-                )
+                # Порядок типов станций как в station_type_list (display_order),
+                # только фильтруем по имеющимся данным st_dict
+                station_type_items_sorted = [
+                    (st_id, st_dict.get(st_id, {}))
+                    for st_id in station_type_list.keys()
+                    if st_id in st_dict
+                ]
 
                 # Типы станций (без ВЭС/СЭС)
                 for station_type_id, st_years in station_type_items_sorted:
@@ -925,13 +938,13 @@ def export_totals_summary_to_excel(
                         for year, val in st_dict_rasp.get(st_id, {}).items():
                             vie_aggregated["p_rasp"][year] += val or Decimal(0)
 
-            station_type_items_sorted = sorted(
-                st_dict.items(),
-                key=lambda item: (
-                    station_type_order(station_type_list.get(item[0], f"id={item[0]}")),
-                    station_type_list.get(item[0], "")
-                )
-            )
+            # Порядок типов станций как в station_type_list (display_order),
+            # только те, для которых есть данные
+            station_type_items_sorted = [
+                (st_id, st_dict.get(st_id, {}))
+                for st_id in station_type_list.keys()
+                if st_id in st_dict
+            ]
 
             # Типы станций (без ВЭС/СЭС)
             for station_type_id, st_years in station_type_items_sorted:
@@ -1101,14 +1114,13 @@ def export_totals_summary_to_excel(
                         for year, val in st_dict_rasp.get(st_id, {}).items():
                             vie_aggregated["p_rasp"][year] += val or Decimal(0)
             
-            # Сортируем типы станций
-            station_type_items_sorted = sorted(
-                st_dict.items(),
-                key=lambda item: (
-                    station_type_order(station_type_list.get(item[0], f"id={item[0]}")),
-                    station_type_list.get(item[0], "")
-                )
-            )
+            # Порядок типов станций как в station_type_list (display_order),
+            # только те, для которых есть данные
+            station_type_items_sorted = [
+                (st_id, st_dict.get(st_id, {}))
+                for st_id in station_type_list.keys()
+                if st_id in st_dict
+            ]
             
             # Записываем типы станций (АЭС, ГЭС, ГАЭС, ТЭС) - исключая ВЭС и СЭС
             for station_type_id, st_years in station_type_items_sorted:
@@ -1129,148 +1141,124 @@ def export_totals_summary_to_excel(
                     st_p_ust, st_p_ogr, st_p_rasp, row_format, num_row_format, rowspan, indent_level=0
                 )
                 
-                # Если это ТЭС, добавляем разбивку по типам ТЭС
+                # Если это ТЭС, добавляем разбивку по типам ТЭС (как в HTML-шаблоне)
                 if station_type_id == tes_id:
-                    # Получаем типы ТЭС из by_tes_machine_types для данного типа станции
-                    # Структура: es_type_id -> station_type_id -> tes_type_id -> machine_type_id -> year
-                    # Нужно получить уникальные tes_type_id и агрегировать по годам
-                    tes_types_for_station = {}
-                    tes_types_for_station_ogr = {}
-                    tes_types_for_station_rasp = {}
-                    
-                    station_tes_machine_dict = by_tes_machine_types_p_ust.get(es_type_id, {}).get(station_type_id, {})
-                    station_tes_machine_dict_ogr = by_tes_machine_types_p_ogr.get(es_type_id, {}).get(station_type_id, {})
-                    station_tes_machine_dict_rasp = by_tes_machine_types_p_rasp.get(es_type_id, {}).get(station_type_id, {})
-                    
-                    # Агрегируем по типам ТЭС
-                    for tes_type_id, machine_dict in station_tes_machine_dict.items():
+                    es_tes_types_p_ust = by_tes_types_p_ust.get(es_type_id, {}) or {}
+                    es_tes_types_p_ogr = by_tes_types_p_ogr.get(es_type_id, {}) or {}
+                    es_tes_types_p_rasp = by_tes_types_p_rasp.get(es_type_id, {}) or {}
+
+                    es_tes_machine_p_ust = by_tes_machine_types_p_ust.get(es_type_id, {}) or {}
+                    es_tes_machine_p_ogr = by_tes_machine_types_p_ogr.get(es_type_id, {}) or {}
+                    es_tes_machine_p_rasp = by_tes_machine_types_p_rasp.get(es_type_id, {}) or {}
+
+                    es_tes_machine_with_fuel_p_ust = by_tes_machine_types_with_fuel_p_ust.get(es_type_id, {}) or {}
+                    es_tes_machine_with_fuel_p_ogr = by_tes_machine_types_with_fuel_p_ogr.get(es_type_id, {}) or {}
+                    es_tes_machine_with_fuel_p_rasp = by_tes_machine_types_with_fuel_p_rasp.get(es_type_id, {}) or {}
+
+                    # Типы ТЭС в порядке tes_type_list (display_order)
+                    for tes_type_id, tes_type_name in tes_type_list.items():
                         if tes_type_id is None:
                             continue
-                        
-                        tes_types_for_station[tes_type_id] = defaultdict(lambda: Decimal(0))
-                        for machine_type_id, years_dict in machine_dict.items():
-                            for year, val in years_dict.items():
-                                tes_types_for_station[tes_type_id][year] += val or Decimal(0)
-                        
-                        tes_types_for_station_ogr[tes_type_id] = defaultdict(lambda: Decimal(0))
-                        machine_dict_ogr = station_tes_machine_dict_ogr.get(tes_type_id, {})
-                        for machine_type_id, years_dict in machine_dict_ogr.items():
-                            for year, val in years_dict.items():
-                                tes_types_for_station_ogr[tes_type_id][year] += val or Decimal(0)
-                        
-                        tes_types_for_station_rasp[tes_type_id] = defaultdict(lambda: Decimal(0))
-                        machine_dict_rasp = station_tes_machine_dict_rasp.get(tes_type_id, {})
-                        for machine_type_id, years_dict in machine_dict_rasp.items():
-                            for year, val in years_dict.items():
-                                tes_types_for_station_rasp[tes_type_id][year] += val or Decimal(0)
-                    
-                    for tes_type_id, tt_years in tes_types_for_station.items():
-                        if tes_type_id is None:
+                        if (tes_type_name or "").lower() == "не указано":
                             continue
-                        
-                        tes_type_name = tes_type_list.get(tes_type_id, f"id={tes_type_id}")
-                        if "не указано" in tes_type_name.lower():
+
+                        tes_years = es_tes_types_p_ust.get(tes_type_id, {})
+                        if not tes_years:
                             continue
-                        
+
                         rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                        tt_p_ust = dict(tt_years)
-                        tt_p_ogr = dict(tes_types_for_station_ogr.get(tes_type_id, {}))
-                        tt_p_rasp = dict(tes_types_for_station_rasp.get(tes_type_id, {}))
-                        
+                        tes_p_ust = tes_years
+                        tes_p_ogr = es_tes_types_p_ogr.get(tes_type_id, {})
+                        tes_p_rasp = es_tes_types_p_rasp.get(tes_type_id, {})
+
                         current_row = write_power_row_with_separate_dicts(
-                            current_row, 0, tes_type_name,
-                            tt_p_ust, tt_p_ogr, tt_p_rasp, row_format, num_row_format, rowspan, indent_level=1
+                            current_row,
+                            0,
+                            tes_type_name,
+                            tes_p_ust,
+                            tes_p_ogr,
+                            tes_p_rasp,
+                            row_format,
+                            num_row_format,
+                            rowspan,
+                            indent_level=1,
                         )
-                        
-                        # Разбивка по типам агрегатов
-                        mt_dict = by_tes_machine_types_p_ust.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {})
-                        mt_dict_ogr = by_tes_machine_types_p_ogr.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {})
-                        mt_dict_rasp = by_tes_machine_types_p_rasp.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {})
-                        
-                        for machine_type_id, mt_years in mt_dict.items():
+
+                        # Типы агрегатов ТЭС
+                        mt_dict = es_tes_machine_p_ust.get(tes_type_id, {}) or {}
+                        mt_dict_ogr = es_tes_machine_p_ogr.get(tes_type_id, {}) or {}
+                        mt_dict_rasp = es_tes_machine_p_rasp.get(tes_type_id, {}) or {}
+
+                        for machine_type_id, machine_type_name in tes_machine_type_list.items():
                             if machine_type_id is None:
                                 continue
-                            
-                            machine_type_name = tes_machine_type_list.get(machine_type_id, f"id={machine_type_id}")
-                            if "не указано" in machine_type_name.lower():
+                            if (machine_type_name or "").lower() == "не указано":
                                 continue
-                            
+
+                            mt_years = mt_dict.get(machine_type_id, {})
+                            if not mt_years:
+                                continue
+
                             rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                             mt_p_ust = mt_years
                             mt_p_ogr = mt_dict_ogr.get(machine_type_id, {})
                             mt_p_rasp = mt_dict_rasp.get(machine_type_id, {})
-                            
+
                             current_row = write_power_row_with_separate_dicts(
-                                current_row, 0, machine_type_name,
-                                mt_p_ust, mt_p_ogr, mt_p_rasp, row_format, num_row_format, rowspan, indent_level=2
+                                current_row,
+                                0,
+                                machine_type_name,
+                                mt_p_ust,
+                                mt_p_ogr,
+                                mt_p_rasp,
+                                row_format,
+                                num_row_format,
+                                rowspan,
+                                indent_level=2,
                             )
-                            
-                            # Разбивка по типам топлива
-                            fuel_dict = by_tes_machine_types_with_fuel_p_ust.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                            fuel_dict_ogr = by_tes_machine_types_with_fuel_p_ogr.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                            fuel_dict_rasp = by_tes_machine_types_with_fuel_p_rasp.get(es_type_id, {}).get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                            
-                            for fuel_type_id, fuel_years in fuel_dict.items():
-                                if fuel_type_id is None:
+
+                            fuel_dict = (
+                                es_tes_machine_with_fuel_p_ust.get(tes_type_id, {})
+                                .get(machine_type_id, {})
+                                or {}
+                            )
+                            fuel_dict_ogr = (
+                                es_tes_machine_with_fuel_p_ogr.get(tes_type_id, {})
+                                .get(machine_type_id, {})
+                                or {}
+                            )
+                            fuel_dict_rasp = (
+                                es_tes_machine_with_fuel_p_rasp.get(tes_type_id, {})
+                                .get(machine_type_id, {})
+                                or {}
+                            )
+
+                            for fuel_type_id, fuel_name in fuel_type_items_sorted:
+                                fuel_years = fuel_dict.get(fuel_type_id)
+                                if not fuel_years:
                                     continue
-                                
-                                fuel_type_name = fuel_type_list.get(fuel_type_id, f"id={fuel_type_id}")
-                                
+
                                 rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                                 fuel_p_ust = fuel_years
                                 fuel_p_ogr = fuel_dict_ogr.get(fuel_type_id, {})
                                 fuel_p_rasp = fuel_dict_rasp.get(fuel_type_id, {})
-                                
+
                                 current_row = write_power_row_with_separate_dicts(
-                                    current_row, 0, fuel_type_name,
-                                    fuel_p_ust, fuel_p_ogr, fuel_p_rasp, row_format, num_row_format, rowspan, indent_level=3
+                                    current_row,
+                                    0,
+                                    fuel_name,
+                                    fuel_p_ust,
+                                    fuel_p_ogr,
+                                    fuel_p_rasp,
+                                    row_format,
+                                    num_row_format,
+                                    rowspan,
+                                    indent_level=3,
                                 )
             
-            # Разбивка по типам ТЭС на уровне энергосистемы (после ГАЭС, перед ВИЭ)
-            es_tes_types_p_ust = by_tes_types_p_ust.get(es_type_id, {})
-            es_tes_types_p_ogr = by_tes_types_p_ogr.get(es_type_id, {})
-            es_tes_types_p_rasp = by_tes_types_p_rasp.get(es_type_id, {})
-            
-            if es_tes_types_p_ust:
-                for tes_type_id, tes_years in es_tes_types_p_ust.items():
-                    if tes_type_id is None:
-                        continue
-                    
-                    tes_type_name = tes_type_list.get(tes_type_id, f"id={tes_type_id}")
-                    if "не указано" in tes_type_name.lower():
-                        continue
-                    
-                    rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                    tes_p_ust = tes_years
-                    tes_p_ogr = es_tes_types_p_ogr.get(tes_type_id, {})
-                    tes_p_rasp = es_tes_types_p_rasp.get(tes_type_id, {})
-                    
-                    current_row = write_power_row_with_separate_dicts(
-                        current_row, 0, tes_type_name,
-                        tes_p_ust, tes_p_ogr, tes_p_rasp, row_format, num_row_format, rowspan, indent_level=1
-                    )
-                    
-                    # Разбивка по типам топлива для типа ТЭС на уровне энергосистемы
-                    es_tes_types_with_fuel_p_ust = energy_system_type_aggregates.get("energy_system_types_by_tes_types_with_fuel_yearly_p_ust", {}).get(es_type_id, {}).get(tes_type_id, {})
-                    es_tes_types_with_fuel_p_ogr = energy_system_type_aggregates.get("energy_system_types_by_tes_types_with_fuel_yearly_p_ogr", {}).get(es_type_id, {}).get(tes_type_id, {})
-                    es_tes_types_with_fuel_p_rasp = energy_system_type_aggregates.get("energy_system_types_by_tes_types_with_fuel_yearly_p_rasp", {}).get(es_type_id, {}).get(tes_type_id, {})
-                    
-                    if es_tes_types_with_fuel_p_ust:
-                        # Важно: сортировка топлива всегда одинаковая (по справочнику: id, затем name)
-                        for fuel_type_id, fuel_type_name in fuel_type_items_sorted:
-                            fuel_years = es_tes_types_with_fuel_p_ust.get(fuel_type_id)
-                            if not fuel_years:
-                                continue
-
-                            rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                            fuel_p_ust = fuel_years
-                            fuel_p_ogr = es_tes_types_with_fuel_p_ogr.get(fuel_type_id, {})
-                            fuel_p_rasp = es_tes_types_with_fuel_p_rasp.get(fuel_type_id, {})
-
-                            current_row = write_power_row_with_separate_dicts(
-                                current_row, 0, fuel_type_name,
-                                fuel_p_ust, fuel_p_ogr, fuel_p_rasp, row_format, num_row_format, rowspan, indent_level=2
-                            )
+            # Дополнительная "плоская" разбивка по типам ТЭС на уровне энергосистемы
+            # в HTML-шаблоне не отображается, поэтому опускаем её в Excel,
+            # чтобы структура и порядок полностью совпадали со страницей.
             
             # Добавляем суммарную строку ВИЭ (если есть)
             if vie_aggregated["p_ust"]:
@@ -1357,13 +1345,13 @@ def export_totals_summary_to_excel(
                                 vie_aggregated_russia["p_rasp"][year] += val or Decimal(0)
                 
                 # Обрабатываем типы станций для России (структура плоская, без es_type_id)
-                station_type_items_sorted = sorted(
-                    total_by_st_p_ust.items(),
-                    key=lambda item: (
-                        station_type_order(station_type_list.get(item[0], f"id={item[0]}")),
-                        station_type_list.get(item[0], "")
-                    )
-                )
+                # Порядок типов станций как в station_type_list (display_order),
+                # только те, для которых есть данные
+                station_type_items_sorted = [
+                    (st_id, total_by_st_p_ust.get(st_id, {}))
+                    for st_id in station_type_list.keys()
+                    if st_id in total_by_st_p_ust
+                ]
                 
                 # Записываем типы станций для России (АЭС, ГЭС, ГАЭС, ТЭС) - исключая ВЭС и СЭС
                 for station_type_id, st_years in station_type_items_sorted:
@@ -1384,150 +1372,143 @@ def export_totals_summary_to_excel(
                         st_p_ust, st_p_ogr, st_p_rasp, russia_format, russia_num_format, rowspan, indent_level=0
                     )
                     
-                    # Если это ТЭС, добавляем разбивку по типам ТЭС
+                    # Если это ТЭС, добавляем разбивку по типам ТЭС (как в HTML-шаблоне для России)
                     if station_type_id == tes_id:
-                        # Получаем типы ТЭС из total_by_tes_machine_types для данного типа станции
-                        # Структура: station_type_id -> tes_type_id -> machine_type_id -> year
-                        # Нужно получить уникальные tes_type_id и агрегировать по годам
-                        tes_types_for_station = {}
-                        tes_types_for_station_ogr = {}
-                        tes_types_for_station_rasp = {}
-                        
-                        station_tes_machine_dict = total_by_tes_machine_types_p_ust.get(station_type_id, {})
-                        station_tes_machine_dict_ogr = total_by_tes_machine_types_p_ogr.get(station_type_id, {})
-                        station_tes_machine_dict_rasp = total_by_tes_machine_types_p_rasp.get(station_type_id, {})
-                        
-                        # Агрегируем по типам ТЭС
-                        for tes_type_id, machine_dict in station_tes_machine_dict.items():
+                        total_tes_types_p_ust = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_types_yearly_p_ust", {}
+                        ) or {}
+                        total_tes_types_p_ogr = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_types_yearly_p_ogr", {}
+                        ) or {}
+                        total_tes_types_p_rasp = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_types_yearly_p_rasp", {}
+                        ) or {}
+
+                        total_tes_machine_p_ust = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_yearly_p_ust", {}
+                        ) or {}
+                        total_tes_machine_p_ogr = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_yearly_p_ogr", {}
+                        ) or {}
+                        total_tes_machine_p_rasp = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_yearly_p_rasp", {}
+                        ) or {}
+
+                        total_tes_machine_fuel_p_ust = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ust", {}
+                        ) or {}
+                        total_tes_machine_fuel_p_ogr = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_ogr", {}
+                        ) or {}
+                        total_tes_machine_fuel_p_rasp = total_energy_system_type_aggregates.get(
+                            "total_energy_system_types_by_tes_machine_types_with_fuel_yearly_p_rasp", {}
+                        ) or {}
+
+                        # Типы ТЭС в порядке tes_type_list (display_order)
+                        for tes_type_id, tes_type_name in tes_type_list.items():
                             if tes_type_id is None:
                                 continue
-                            
-                            tes_types_for_station[tes_type_id] = defaultdict(lambda: Decimal(0))
-                            for machine_type_id, years_dict in machine_dict.items():
-                                for year, val in years_dict.items():
-                                    tes_types_for_station[tes_type_id][year] += val or Decimal(0)
-                            
-                            tes_types_for_station_ogr[tes_type_id] = defaultdict(lambda: Decimal(0))
-                            machine_dict_ogr = station_tes_machine_dict_ogr.get(tes_type_id, {})
-                            for machine_type_id, years_dict in machine_dict_ogr.items():
-                                for year, val in years_dict.items():
-                                    tes_types_for_station_ogr[tes_type_id][year] += val or Decimal(0)
-                            
-                            tes_types_for_station_rasp[tes_type_id] = defaultdict(lambda: Decimal(0))
-                            machine_dict_rasp = station_tes_machine_dict_rasp.get(tes_type_id, {})
-                            for machine_type_id, years_dict in machine_dict_rasp.items():
-                                for year, val in years_dict.items():
-                                    tes_types_for_station_rasp[tes_type_id][year] += val or Decimal(0)
-                        
-                        for tes_type_id, tt_years in tes_types_for_station.items():
-                            if tes_type_id is None:
+                            if (tes_type_name or "").lower() == "не указано":
                                 continue
-                            
-                            tes_type_name = tes_type_list.get(tes_type_id, f"id={tes_type_id}")
-                            if "не указано" in tes_type_name.lower():
+
+                            tes_years = total_tes_types_p_ust.get(tes_type_id)
+                            if not tes_years:
                                 continue
-                            
+
                             rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                            tt_p_ust = dict(tt_years)
-                            tt_p_ogr = dict(tes_types_for_station_ogr.get(tes_type_id, {}))
-                            tt_p_rasp = dict(tes_types_for_station_rasp.get(tes_type_id, {}))
-                            
+                            tes_p_ust = tes_years
+                            tes_p_ogr = total_tes_types_p_ogr.get(tes_type_id, {})
+                            tes_p_rasp = total_tes_types_p_rasp.get(tes_type_id, {})
+
                             current_row = write_power_row_with_separate_dicts(
-                                current_row, 0, tes_type_name,
-                                tt_p_ust, tt_p_ogr, tt_p_rasp, russia_format, russia_num_format, rowspan, indent_level=1
+                                current_row,
+                                0,
+                                tes_type_name,
+                                tes_p_ust,
+                                tes_p_ogr,
+                                tes_p_rasp,
+                                russia_format,
+                                russia_num_format,
+                                rowspan,
+                                indent_level=1,
                             )
-                            
-                            # Разбивка по типам агрегатов для России
-                            # Структура: station_type_id -> tes_type_id -> machine_type_id -> year
-                            mt_dict = total_by_tes_machine_types_p_ust.get(station_type_id, {}).get(tes_type_id, {})
-                            mt_dict_ogr = total_by_tes_machine_types_p_ogr.get(station_type_id, {}).get(tes_type_id, {})
-                            mt_dict_rasp = total_by_tes_machine_types_p_rasp.get(station_type_id, {}).get(tes_type_id, {})
-                            
-                            for machine_type_id, mt_years in mt_dict.items():
+
+                            # Типы агрегатов ТЭС
+                            mt_dict = total_tes_machine_p_ust.get(tes_type_id, {}) or {}
+                            mt_dict_ogr = total_tes_machine_p_ogr.get(tes_type_id, {}) or {}
+                            mt_dict_rasp = total_tes_machine_p_rasp.get(tes_type_id, {}) or {}
+
+                            for machine_type_id, machine_type_name in tes_machine_type_list.items():
                                 if machine_type_id is None:
                                     continue
-                                
-                                machine_type_name = tes_machine_type_list.get(machine_type_id, f"id={machine_type_id}")
-                                if "не указано" in machine_type_name.lower():
+                                if (machine_type_name or "").lower() == "не указано":
                                     continue
-                                
+
+                                mt_years = mt_dict.get(machine_type_id)
+                                if not mt_years:
+                                    continue
+
                                 rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                                 mt_p_ust = mt_years
                                 mt_p_ogr = mt_dict_ogr.get(machine_type_id, {})
                                 mt_p_rasp = mt_dict_rasp.get(machine_type_id, {})
-                                
+
                                 current_row = write_power_row_with_separate_dicts(
-                                    current_row, 0, machine_type_name,
-                                    mt_p_ust, mt_p_ogr, mt_p_rasp, russia_format, russia_num_format, rowspan, indent_level=2
+                                    current_row,
+                                    0,
+                                    machine_type_name,
+                                    mt_p_ust,
+                                    mt_p_ogr,
+                                    mt_p_rasp,
+                                    russia_format,
+                                    russia_num_format,
+                                    rowspan,
+                                    indent_level=2,
                                 )
-                                
-                                # Разбивка по типам топлива для России
-                                # Структура: station_type_id -> tes_type_id -> machine_type_id -> fuel_type_id -> year
-                                fuel_dict = total_by_tes_machine_types_with_fuel_p_ust.get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                                fuel_dict_ogr = total_by_tes_machine_types_with_fuel_p_ogr.get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                                fuel_dict_rasp = total_by_tes_machine_types_with_fuel_p_rasp.get(station_type_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                                
-                                for fuel_type_id, fuel_years in fuel_dict.items():
-                                    if fuel_type_id is None:
+
+                                # Топливо под агрегатом
+                                fuel_dict = (
+                                    total_tes_machine_fuel_p_ust.get(tes_type_id, {})
+                                    .get(machine_type_id, {})
+                                    or {}
+                                )
+                                fuel_dict_ogr = (
+                                    total_tes_machine_fuel_p_ogr.get(tes_type_id, {})
+                                    .get(machine_type_id, {})
+                                    or {}
+                                )
+                                fuel_dict_rasp = (
+                                    total_tes_machine_fuel_p_rasp.get(tes_type_id, {})
+                                    .get(machine_type_id, {})
+                                    or {}
+                                )
+
+                                for fuel_type_id, fuel_name in fuel_type_items_sorted:
+                                    fuel_years = fuel_dict.get(fuel_type_id)
+                                    if not fuel_years:
                                         continue
-                                    
-                                    fuel_type_name = fuel_type_list.get(fuel_type_id, f"id={fuel_type_id}")
-                                    
+
                                     rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
                                     fuel_p_ust = fuel_years
                                     fuel_p_ogr = fuel_dict_ogr.get(fuel_type_id, {})
                                     fuel_p_rasp = fuel_dict_rasp.get(fuel_type_id, {})
-                                    
+
                                     current_row = write_power_row_with_separate_dicts(
-                                        current_row, 0, fuel_type_name,
-                                        fuel_p_ust, fuel_p_ogr, fuel_p_rasp, russia_format, russia_num_format, rowspan, indent_level=3
+                                        current_row,
+                                        0,
+                                        fuel_name,
+                                        fuel_p_ust,
+                                        fuel_p_ogr,
+                                        fuel_p_rasp,
+                                        russia_format,
+                                        russia_num_format,
+                                        rowspan,
+                                        indent_level=3,
                                     )
                 
-                # Разбивка по типам ТЭС на уровне России (после ГАЭС, перед ВИЭ)
-                total_tes_types_p_ust = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_yearly_p_ust", {})
-                total_tes_types_p_ogr = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_yearly_p_ogr", {})
-                total_tes_types_p_rasp = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_yearly_p_rasp", {})
-                
-                if total_tes_types_p_ust:
-                    for tes_type_id, tes_years in total_tes_types_p_ust.items():
-                        if tes_type_id is None:
-                            continue
-                        
-                        tes_type_name = tes_type_list.get(tes_type_id, f"id={tes_type_id}")
-                        if "не указано" in tes_type_name.lower():
-                            continue
-                        
-                        rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                        tes_p_ust = tes_years
-                        tes_p_ogr = total_tes_types_p_ogr.get(tes_type_id, {})
-                        tes_p_rasp = total_tes_types_p_rasp.get(tes_type_id, {})
-                        
-                        current_row = write_power_row_with_separate_dicts(
-                            current_row, 0, tes_type_name,
-                            tes_p_ust, tes_p_ogr, tes_p_rasp, russia_format, russia_num_format, rowspan, indent_level=1
-                        )
-                        
-                        # Разбивка по типам топлива для типа ТЭС на уровне России
-                        total_tes_types_with_fuel_p_ust = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_with_fuel_yearly_p_ust", {}).get(tes_type_id, {})
-                        total_tes_types_with_fuel_p_ogr = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_with_fuel_yearly_p_ogr", {}).get(tes_type_id, {})
-                        total_tes_types_with_fuel_p_rasp = total_energy_system_type_aggregates.get("total_energy_system_types_by_tes_types_with_fuel_yearly_p_rasp", {}).get(tes_type_id, {})
-                        
-                        if total_tes_types_with_fuel_p_ust:
-                            # Важно: сортировка топлива всегда одинаковая (по справочнику: id, затем name)
-                            for fuel_type_id, fuel_type_name in fuel_type_items_sorted:
-                                fuel_years = total_tes_types_with_fuel_p_ust.get(fuel_type_id)
-                                if not fuel_years:
-                                    continue
-
-                                rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0)
-                                fuel_p_ust = fuel_years
-                                fuel_p_ogr = total_tes_types_with_fuel_p_ogr.get(fuel_type_id, {})
-                                fuel_p_rasp = total_tes_types_with_fuel_p_rasp.get(fuel_type_id, {})
-
-                                current_row = write_power_row_with_separate_dicts(
-                                    current_row, 0, fuel_type_name,
-                                    fuel_p_ust, fuel_p_ogr, fuel_p_rasp, russia_format, russia_num_format, rowspan, indent_level=2
-                                )
+                # Дополнительная "плоская" разбивка по типам ТЭС на уровне России
+                # в HTML-шаблоне не отображается, поэтому опускаем её в Excel,
+                # чтобы структура и порядок полностью совпадали со страницей.
                 
                 # Добавляем суммарную строку ВИЭ для России (если есть)
                 if vie_aggregated_russia["p_ust"]:

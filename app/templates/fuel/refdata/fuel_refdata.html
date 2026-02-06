@@ -5,11 +5,11 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-4">
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
     <div class="container mt-5 mb-5">
         <h2 class="text-center align-middle">Справочники из БД Топлива</h2>
         <div class="container mb-3">
             <div class="row align-items-start mb-3">
-                <h4 class="text-center mt-4">Справочники территорий и энергосистем РФ</h4>
                 <div class="col">
                     <a href="{{ url_for('fuel_bp.fuel_union_energy_system_list') }}" class="btn btn-outline-primary fs-4 w-100">
                         Объединенные энергосистемы
@@ -18,13 +18,6 @@
                 <div class="col">
                     <a href="{{ url_for('fuel_bp.fuel_federal_district_list') }}" class="btn btn-outline-primary fs-4 w-100">
                         Федеральные округа
-                    </a>
-                </div>
-            </div>
-            <div class="row align-items-start mb-3">
-                <div class="col-12">
-                    <a href="{{ url_for('fuel_bp.fuel_gen_company_list') }}" class="btn btn-outline-primary fs-4 w-100">
-                        Генерирующие компании
                     </a>
                 </div>
             </div>
@@ -48,9 +41,33 @@
                 </div>
             </div>
             <div class="row align-items-start mb-3">
-                <div class="col-12">
+                <div class="col-md-6 mb-2 mb-md-0">
+                    <a href="{{ url_for('fuel_bp.fuel_gen_company_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Генерирующие компании
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Генерирующие компании (филиалы)
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col-md-6 mb-2 mb-md-0">
+                    <a href="{{ url_for('fuel_bp.fuel_cities_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Города
+                    </a>
+                </div>
+                <div class="col-md-6">
                     <a href="{{ url_for('fuel_bp.fuel_economic_region_list') }}" class="btn btn-outline-primary fs-4 w-100">
                         Экономические районы
+                    </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <div class="col-12">
+                    <a href="{{ url_for('fuel_bp.fuel_equipment_group_list') }}" class="btn btn-outline-primary fs-4 w-100">
+                        Типы оборудования
                     </a>
                 </div>
             </div>

@@ -35,14 +35,24 @@ from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
 from app.fuel.models.external_mapping.fue_em_gen_company_model import (
     GenCompanyExternalMapping,
 )
+from app.fuel.models.external_mapping.fue_em_gen_company_branch_model import (
+    GenCompanyBranchExternalMapping,
+)
+from app.fuel.models.external_mapping.fue_em_cities_model import CitiesExternalMapping
+from app.fuel.models.external_mapping.fue_em_equipment_group_model import (
+    EquipmentGroupExternalMapping,
+)
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
-from app.refdata.models.organizations.department_model import Department
-from app.refdata.models.organizations.business_unit_model import BusinessUnit
+from app.fuel.refdata.models.organizations.department_model import Department
+from app.fuel.refdata.models.organizations.business_unit_model import BusinessUnit
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
+    EquipmentGroup,
+)
 
 
 def _clean_text(value: object) -> str:
@@ -109,6 +119,30 @@ def _normalize_column_name(value: object) -> str:
         .replace("-", "")
         .replace("_", "")
     )
+
+
+def _normalize_decimal(value: object) -> tuple[object | None, bool]:
+    """
+    Нормализует числовое значение (поддерживает +/-, запятую как десятичный разделитель).
+    Возвращает (Decimal|None, валидно ли значение). Пустые значения считаются валидными.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None, True
+    if isinstance(value, (int, float)):
+        # float -> Decimal через строку, чтобы сохранить формат 1.0 -> 1.0
+        return Decimal(str(value)), True
+
+    raw = str(value).strip().replace("\u00a0", " ").replace("\xa0", " ")
+    if raw == "":
+        return None, True
+    raw = raw.replace(" ", "")
+    raw = raw.replace(",", ".")
+    try:
+        return Decimal(raw), True
+    except (InvalidOperation, ValueError):
+        return None, False
 
 
 def _apply_column_aliases(df: pd.DataFrame, aliases: dict[str, list[str]]) -> pd.DataFrame:
@@ -435,6 +469,14 @@ def _build_gen_company_name_map(current_version_id: int | None):
     return _build_name_map_for_rows(rows, ["name"])
 
 
+def _build_equipment_group_name_map(current_version_id: int | None):
+    query = filter_by_explicit_db_version(
+        EquipmentGroup.query, EquipmentGroup, current_version_id
+    )
+    rows = query.all()
+    return _build_name_map_for_rows(rows, ["name"])
+
+
 def import_federal_district_mappings_from_excel(file, user: str):
     logger = current_app.logger
     filename = getattr(file, "filename", None)
@@ -747,6 +789,491 @@ def import_gen_company_mappings_from_excel(file, user: str):
 
     logger.info(
         "[IMPORT_GEN_COMPANY_MAPPINGS] done user=%s processed=%s created=%s updated=%s errors=%s",
+        user,
+        processed,
+        created,
+        updated,
+        len(errors),
+    )
+
+    return {
+        "processed_rows": processed,
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+        "errors_count": len(errors),
+        "message": message,
+    }
+
+
+def import_equipment_group_mappings_from_excel(file, user: str):
+    """
+    Импорт сопоставлений типов групп оборудования из Excel.
+    Ожидаемые колонки:
+    - name         — наименование типа группы оборудования в АРМ (для поиска EquipmentGroup.name)
+    - name_topl    — наименование из БД Топливо (текст)
+    - code_topl    — код из БД Топливо (целое)
+    - type_topl    — тип из БД Топливо (целое)
+    - tm_topl      — текстовое поле
+    - n1_topl      — целое
+    - n2_topl      — целое
+    - p1_topl      — целое
+    - p2_topl      — целое
+    - gruppa_oborud_topl — текстовое поле
+    """
+    logger = current_app.logger
+    filename = getattr(file, "filename", None)
+
+    logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_MAPPINGS] start user=%s filename=%s", user, filename
+    )
+
+    xls = pd.ExcelFile(file)
+    sheet_name = xls.sheet_names[0]
+    df = xls.parse(sheet_name, header=0)
+    df = df.dropna(how="all")
+    df = _apply_column_aliases(
+        df,
+        {
+            "name": ["name", "наименование", "название", "name_equipment_group"],
+            "name_topl": ["nametopl", "name_t", "name_topl", "название_топливо"],
+            "code_topl": ["code_topl", "code", "код", "id_topl", "id"],
+            "type_topl": ["type_topl", "type", "тип"],
+            "tm_topl": ["tm_topl", "tm", "тм"],
+            "n1_topl": ["n1_topl", "n1"],
+            "n2_topl": ["n2_topl", "n2"],
+            "p1_topl": ["p1_topl", "p1"],
+            "p2_topl": ["p2_topl", "p2"],
+            "gruppa_oborud_topl": [
+                "gruppa_oborud_topl",
+                "gr_oborud",
+                "group_equipment",
+                "группа_оборудования",
+            ],
+        },
+    )
+
+    required_columns = {
+        "name",
+        "name_topl",
+        "code_topl",
+        "type_topl",
+        "tm_topl",
+        "n1_topl",
+        "n2_topl",
+        "p1_topl",
+        "p2_topl",
+        "gruppa_oborud_topl",
+    }
+    missing = sorted([c for c in required_columns if c not in df.columns])
+    if missing:
+        raise ValueError(
+            "Неверный шаблон файла: отсутствуют обязательные колонки "
+            f"{missing}. Ожидаются: name, name_topl, code_topl, type_topl, tm_topl, "
+            "n1_topl, n2_topl, p1_topl, p2_topl, gruppa_oborud_topl."
+        )
+
+    current_version_id = get_current_db_version_id()
+    name_map, duplicates = _build_equipment_group_name_map(current_version_id)
+
+    existing = EquipmentGroupExternalMapping.query.all()
+    by_uuid: dict[str, EquipmentGroupExternalMapping] = {}
+    by_unmatched_key: dict[
+        tuple[str, str, str, str, str], EquipmentGroupExternalMapping
+    ] = {}
+    for m in existing:
+        if m.equipment_group_ref_uuid and m.equipment_group_ref_uuid not in by_uuid:
+            by_uuid[m.equipment_group_ref_uuid] = m
+            continue
+        if not m.equipment_group_ref_uuid:
+            key = (
+                _clean_text(m.name_topl),
+                _clean_text(m.gruppa_oborud_topl),
+                _clean_text(m.code_topl),
+                _clean_text(m.type_topl),
+                _clean_text(m.tm_topl),
+            )
+            by_unmatched_key.setdefault(key, m)
+    by_unmatched_key = {
+        (
+            _clean_text(m.name_topl),
+            _clean_text(m.gruppa_oborud_topl),
+            _clean_text(m.code_topl),
+            _clean_text(m.type_topl),
+            _clean_text(m.tm_topl),
+        ): m
+        for m in existing
+        if not m.equipment_group_ref_uuid
+    }
+
+    created = 0
+    updated = 0
+    errors: list[str] = []
+    processed = 0
+
+    for index, row in df.iterrows():
+        if row.isnull().all():
+            continue
+
+        processed += 1
+
+        local_name = _clean_text(row.get("name"))
+        normalized_local = _normalize_name(local_name) if local_name else ""
+
+        name_topl = _clean_text(row.get("name_topl"))
+        code_raw = row.get("code_topl")
+        type_raw = row.get("type_topl")
+        n1_raw = row.get("n1_topl")
+        n2_raw = row.get("n2_topl")
+        p1_raw = row.get("p1_topl")
+        p2_raw = row.get("p2_topl")
+        tm_topl = _clean_text(row.get("tm_topl"))
+        gruppa_oborud_topl = _clean_text(row.get("gruppa_oborud_topl"))
+
+        code_text, code_ok = _normalize_integer_only(code_raw)
+        type_text, type_ok = _normalize_integer_only(type_raw)
+        n1_text, n1_ok = _normalize_integer_only(n1_raw)
+        n2_text, n2_ok = _normalize_integer_only(n2_raw)
+        p1_text, p1_ok = _normalize_integer_only(p1_raw)
+        p2_text, p2_ok = _normalize_integer_only(p2_raw)
+
+        if not code_ok:
+            errors.append(
+                f"Строка {index + 1}: code_topl должно быть целым числом. Значение очищено."
+            )
+            code_text = ""
+        if not type_ok:
+            errors.append(
+                f"Строка {index + 1}: type_topl должно быть целым числом. Значение очищено."
+            )
+            type_text = ""
+        if not n1_ok:
+            errors.append(
+                f"Строка {index + 1}: n1_topl должно быть целым числом. Значение очищено."
+            )
+            n1_text = ""
+        if not n2_ok:
+            errors.append(
+                f"Строка {index + 1}: n2_topl должно быть целым числом. Значение очищено."
+            )
+            n2_text = ""
+        if not p1_ok:
+            errors.append(
+                f"Строка {index + 1}: p1_topl должно быть целым числом. Значение очищено."
+            )
+            p1_text = ""
+        if not p2_ok:
+            errors.append(
+                f"Строка {index + 1}: p2_topl должно быть целым числом. Значение очищено."
+            )
+            p2_text = ""
+
+        if normalized_local and normalized_local in duplicates:
+            errors.append(
+                f"Строка {index + 1}: неоднозначное соответствие для '{local_name}'."
+            )
+            continue
+
+        equipment_group = name_map.get(normalized_local) if normalized_local else None
+
+        code_value = int(code_text) if code_text else None
+        type_value = int(type_text) if type_text else None
+        n1_value = int(n1_text) if n1_text else None
+        n2_value = int(n2_text) if n2_text else None
+        p1_value = int(p1_text) if p1_text else None
+        p2_value = int(p2_text) if p2_text else None
+
+        key = (
+            _clean_text(name_topl),
+            _clean_text(gruppa_oborud_topl),
+            _clean_text(code_value),
+            _clean_text(type_value),
+            _clean_text(tm_topl),
+        )
+
+        if not equipment_group:
+            if not any(key):
+                errors.append(
+                    f"Строка {index + 1}: пустые данные, невозможно сохранить."
+                )
+                continue
+
+            existing_unmatched = by_unmatched_key.get(key)
+            if existing_unmatched:
+                changed = False
+                if name_topl and existing_unmatched.name_topl != name_topl:
+                    existing_unmatched.name_topl = name_topl
+                    changed = True
+                if code_value is not None and existing_unmatched.code_topl != code_value:
+                    existing_unmatched.code_topl = code_value
+                    changed = True
+                if type_value is not None and existing_unmatched.type_topl != type_value:
+                    existing_unmatched.type_topl = type_value
+                    changed = True
+                if tm_topl and existing_unmatched.tm_topl != tm_topl:
+                    existing_unmatched.tm_topl = tm_topl
+                    changed = True
+                if (
+                    gruppa_oborud_topl
+                    and existing_unmatched.gruppa_oborud_topl != gruppa_oborud_topl
+                ):
+                    existing_unmatched.gruppa_oborud_topl = gruppa_oborud_topl
+                    changed = True
+                if n1_value is not None and existing_unmatched.n1_topl != n1_value:
+                    existing_unmatched.n1_topl = n1_value
+                    changed = True
+                if n2_value is not None and existing_unmatched.n2_topl != n2_value:
+                    existing_unmatched.n2_topl = n2_value
+                    changed = True
+                if p1_value is not None and existing_unmatched.p1_topl != p1_value:
+                    existing_unmatched.p1_topl = p1_value
+                    changed = True
+                if p2_value is not None and existing_unmatched.p2_topl != p2_value:
+                    existing_unmatched.p2_topl = p2_value
+                    changed = True
+                if changed:
+                    updated += 1
+            else:
+                mapping = EquipmentGroupExternalMapping(
+                    equipment_group_ref_uuid=None,
+                    name_topl=name_topl or None,
+                    code_topl=code_value,
+                    type_topl=type_value,
+                    tm_topl=tm_topl or None,
+                    n1_topl=n1_value,
+                    n2_topl=n2_value,
+                    p1_topl=p1_value,
+                    p2_topl=p2_value,
+                    gruppa_oborud_topl=gruppa_oborud_topl or None,
+                )
+                db.session.add(mapping)
+                db.session.flush()
+                created += 1
+                by_unmatched_key[key] = mapping
+
+            if not local_name:
+                errors.append(f"Строка {index + 1}: отсутствует name.")
+            else:
+                errors.append(
+                    f"Строка {index + 1}: тип группы оборудования '{local_name}' не найден."
+                )
+            continue
+
+        existing_mapping = by_uuid.get(equipment_group.ref_uuid)
+        if existing_mapping:
+            changed = False
+            if name_topl and existing_mapping.name_topl != name_topl:
+                existing_mapping.name_topl = name_topl
+                changed = True
+            if code_value is not None and existing_mapping.code_topl != code_value:
+                existing_mapping.code_topl = code_value
+                changed = True
+            if type_value is not None and existing_mapping.type_topl != type_value:
+                existing_mapping.type_topl = type_value
+                changed = True
+            if tm_topl and existing_mapping.tm_topl != tm_topl:
+                existing_mapping.tm_topl = tm_topl
+                changed = True
+            if (
+                gruppa_oborud_topl
+                and existing_mapping.gruppa_oborud_topl != gruppa_oborud_topl
+            ):
+                existing_mapping.gruppa_oborud_topl = gruppa_oborud_topl
+                changed = True
+            if n1_value is not None and existing_mapping.n1_topl != n1_value:
+                existing_mapping.n1_topl = n1_value
+                changed = True
+            if n2_value is not None and existing_mapping.n2_topl != n2_value:
+                existing_mapping.n2_topl = n2_value
+                changed = True
+            if p1_value is not None and existing_mapping.p1_topl != p1_value:
+                existing_mapping.p1_topl = p1_value
+                changed = True
+            if p2_value is not None and existing_mapping.p2_topl != p2_value:
+                existing_mapping.p2_topl = p2_value
+                changed = True
+            if changed:
+                updated += 1
+            continue
+
+        mapping = EquipmentGroupExternalMapping(
+            equipment_group_ref_uuid=equipment_group.ref_uuid,
+            name_topl=name_topl or None,
+            code_topl=code_value,
+            type_topl=type_value,
+            tm_topl=tm_topl or None,
+            n1_topl=n1_value,
+            n2_topl=n2_value,
+            p1_topl=p1_value,
+            p2_topl=p2_value,
+            gruppa_oborud_topl=gruppa_oborud_topl or None,
+        )
+        db.session.add(mapping)
+        db.session.flush()
+        created += 1
+        by_uuid[equipment_group.ref_uuid] = mapping
+
+    if created or updated:
+        db.session.commit()
+
+    if processed == 0:
+        raise ValueError("Файл не содержит данных для загрузки.")
+
+    message = (
+        "Импорт сопоставлений типов групп оборудования завершен: "
+        f"обработано {processed}, создано {created}, обновлено {updated}, "
+        f"ошибок {len(errors)}."
+    )
+
+    logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_MAPPINGS] done user=%s processed=%s "
+        "created=%s updated=%s errors=%s",
+        user,
+        processed,
+        created,
+        updated,
+        len(errors),
+    )
+
+    return {
+        "processed_rows": processed,
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+        "errors_count": len(errors),
+        "message": message,
+    }
+
+
+def import_gen_company_branch_mappings_from_excel(file, user: str):
+    """
+    Импорт сопоставлений филиалов генерирующих компаний из Excel.
+    Ожидаемые колонки: code_topl, name_topl, name.
+    Поле name сопоставляется с GenCompany.name (по нормализованному совпадению).
+    """
+    logger = current_app.logger
+    filename = getattr(file, "filename", None)
+
+    logger.info(
+        "[IMPORT_GEN_COMPANY_BRANCH_MAPPINGS] start user=%s filename=%s", user, filename
+    )
+
+    xls = pd.ExcelFile(file)
+    sheet_name = xls.sheet_names[0]
+    df = xls.parse(sheet_name, header=0)
+    df = df.dropna(how="all")
+    df = _apply_column_aliases(
+        df,
+        {
+            "code_topl": ["code_topl", "code", "код", "id_topl", "id"],
+            "name_topl": ["nametopl", "name_t", "name_topl", "название_топливо"],
+            "name": ["name", "наименование", "название", "name_gen_company"],
+        },
+    )
+
+    required_columns = {"code_topl", "name_topl", "name"}
+    missing = sorted([c for c in required_columns if c not in df.columns])
+    if missing:
+        raise ValueError(
+            "Неверный шаблон файла: отсутствуют обязательные колонки "
+            f"{missing}. Ожидаются: code_topl, name_topl, name."
+        )
+
+    current_version_id = get_current_db_version_id()
+    name_map, duplicates = _build_gen_company_name_map(current_version_id)
+
+    existing = GenCompanyBranchExternalMapping.query.all()
+    # Ключ для поиска существующей строки: (external_id, external_name, local_name)
+    by_key: dict[tuple[str, str, str], GenCompanyBranchExternalMapping] = {
+        (
+            _clean_text(m.external_id),
+            _clean_text(m.external_name),
+            _clean_text(m.local_name),
+        ): m
+        for m in existing
+    }
+
+    created = 0
+    updated = 0
+    errors: list[str] = []
+    processed = 0
+
+    for index, row in df.iterrows():
+        if row.isnull().all():
+            continue
+
+        processed += 1
+        external_id = _normalize_external_id(row.get("code_topl"))
+        external_name = _clean_text(row.get("name_topl"))
+        local_name = _clean_text(row.get("name"))
+        normalized_local = _normalize_name(local_name) if local_name else ""
+
+        if not any([external_id, external_name, local_name]):
+            errors.append(
+                f"Строка {index + 1}: пустые данные, невозможно сохранить."
+            )
+            continue
+
+        if normalized_local and normalized_local in duplicates:
+            errors.append(
+                f"Строка {index + 1}: неоднозначное соответствие для '{local_name}'."
+            )
+            gen_company = None
+        else:
+            gen_company = name_map.get(normalized_local) if normalized_local else None
+
+        key = (_clean_text(external_id), _clean_text(external_name), _clean_text(local_name))
+        record = by_key.get(key)
+
+        if record:
+            changed = False
+            target_uuid = gen_company.ref_uuid if gen_company else None
+            if record.gen_company_ref_uuid != target_uuid:
+                record.gen_company_ref_uuid = target_uuid
+                changed = True
+            # Нормализуем сохранение строковых полей (если поменялись)
+            if external_id and record.external_id != external_id:
+                record.external_id = external_id
+                changed = True
+            if external_name and record.external_name != external_name:
+                record.external_name = external_name
+                changed = True
+            if local_name and record.local_name != local_name:
+                record.local_name = local_name
+                changed = True
+            if changed:
+                updated += 1
+        else:
+            mapping = GenCompanyBranchExternalMapping(
+                gen_company_ref_uuid=gen_company.ref_uuid if gen_company else None,
+                external_id=external_id or None,
+                external_name=external_name or None,
+                local_name=local_name or None,
+            )
+            db.session.add(mapping)
+            db.session.flush()
+            created += 1
+            by_key[key] = mapping
+
+        if not local_name:
+            errors.append(f"Строка {index + 1}: отсутствует name.")
+        elif not gen_company and normalized_local and normalized_local not in duplicates:
+            errors.append(f"Строка {index + 1}: компания '{local_name}' не найдена.")
+
+    if created or updated:
+        db.session.commit()
+
+    if processed == 0:
+        raise ValueError("Файл не содержит данных для загрузки.")
+
+    message = (
+        "Импорт сопоставлений генерирующих компаний (филиалы) завершен: "
+        f"обработано {processed}, создано {created}, обновлено {updated}, "
+        f"ошибок {len(errors)}."
+    )
+
+    logger.info(
+        "[IMPORT_GEN_COMPANY_BRANCH_MAPPINGS] done user=%s processed=%s created=%s updated=%s errors=%s",
         user,
         processed,
         created,
@@ -1366,6 +1893,181 @@ def import_territories_energy_from_excel(file, user: str):
     logger.info(
         "[IMPORT_TERR_ENERGY] done user=%s processed=%s created=%s "
         "updated=%s errors=%s",
+        user,
+        processed,
+        created,
+        updated,
+        len(errors),
+    )
+
+    return {
+        "processed_rows": processed,
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+        "errors_count": len(errors),
+        "message": message,
+    }
+
+
+def import_cities_from_excel(file, user: str):
+    """
+    Импорт справочника "Города" из Excel.
+    Ожидаемые колонки: code_topl, name_topl, naselenie, gilfond, obesp_cts, dprom_ao, dgkh_ao, obl.
+
+    Форматы:
+    - code_topl, obl: целое число
+    - naselenie, gilfond: числовой (+/- допускается)
+    - name_topl, obesp_cts, dprom_ao, dgkh_ao: текст
+    """
+    logger = current_app.logger
+    filename = getattr(file, "filename", None)
+    logger.info("[IMPORT_CITIES] start user=%s filename=%s", user, filename)
+
+    xls = pd.ExcelFile(file)
+    sheet_name = xls.sheet_names[0]
+    df = xls.parse(sheet_name, header=0)
+    df = df.dropna(how="all")
+
+    df = _apply_column_aliases(
+        df,
+        {
+            "code_topl": ["code", "код", "id_topl", "id"],
+            "name_topl": ["name_t", "nametopl", "название_топливо", "наименование"],
+            "naselenie": ["население", "population"],
+            "gilfond": ["жилфонд", "housing"],
+            "obesp_cts": ["obespcts", "обесп_цтс", "обеспеченность_цтс"],
+            "dprom_ao": ["dpromao", "дпром_ао"],
+            "dgkh_ao": ["dgkhao", "дгкх_ао"],
+            "obl": ["обл", "region", "obl_topl"],
+        },
+    )
+
+    required_columns = {
+        "code_topl",
+        "name_topl",
+        "naselenie",
+        "gilfond",
+        "obesp_cts",
+        "dprom_ao",
+        "dgkh_ao",
+        "obl",
+    }
+    missing = sorted([c for c in required_columns if c not in df.columns])
+    if missing:
+        found_columns = [str(col) for col in df.columns]
+        found_preview = ", ".join(found_columns[:25])
+        if len(found_columns) > 25:
+            found_preview += ", ..."
+        raise ValueError(
+            "Неверный шаблон файла: отсутствуют обязательные колонки "
+            f"{missing}. Найдены колонки: {found_preview}"
+        )
+
+    existing = CitiesExternalMapping.query.all()
+    by_code: dict[int, CitiesExternalMapping] = {
+        int(m.code_topl): m for m in existing if m.code_topl is not None
+    }
+
+    created = 0
+    updated = 0
+    errors: list[str] = []
+    processed = 0
+
+    for index, row in df.iterrows():
+        if row.isnull().all():
+            continue
+        processed += 1
+
+        code_raw = row.get("code_topl")
+        code_text, code_ok = _normalize_integer_only(code_raw)
+        if not code_ok or not code_text:
+            errors.append(f"Строка {index + 1}: code_topl должен быть целым числом.")
+            continue
+        code_topl = int(code_text)
+
+        obl_raw = row.get("obl")
+        obl_text, obl_ok = _normalize_integer_only(obl_raw)
+        if not obl_ok:
+            errors.append(f"Строка {index + 1}: obl должен быть целым числом. Значение очищено.")
+            obl_text = ""
+        obl_value = int(obl_text) if obl_text else None
+
+        nas_value, nas_ok = _normalize_decimal(row.get("naselenie"))
+        if not nas_ok:
+            errors.append(
+                f"Строка {index + 1}: naselenie должно быть числом (+/- допускается). Значение очищено."
+            )
+            nas_value = None
+
+        gil_value, gil_ok = _normalize_decimal(row.get("gilfond"))
+        if not gil_ok:
+            errors.append(
+                f"Строка {index + 1}: gilfond должно быть числом (+/- допускается). Значение очищено."
+            )
+            gil_value = None
+
+        name_topl = _clean_text(row.get("name_topl")) or None
+        obesp_cts = _clean_text(row.get("obesp_cts")) or None
+        dprom_ao = _clean_text(row.get("dprom_ao")) or None
+        dgkh_ao = _clean_text(row.get("dgkh_ao")) or None
+
+        record = by_code.get(code_topl)
+        if record:
+            changed = False
+            if record.name_topl != name_topl:
+                record.name_topl = name_topl
+                changed = True
+            if record.naselenie != nas_value:
+                record.naselenie = nas_value
+                changed = True
+            if record.gilfond != gil_value:
+                record.gilfond = gil_value
+                changed = True
+            if record.obesp_cts != obesp_cts:
+                record.obesp_cts = obesp_cts
+                changed = True
+            if record.dprom_ao != dprom_ao:
+                record.dprom_ao = dprom_ao
+                changed = True
+            if record.dgkh_ao != dgkh_ao:
+                record.dgkh_ao = dgkh_ao
+                changed = True
+            if record.obl != obl_value:
+                record.obl = obl_value
+                changed = True
+            if changed:
+                updated += 1
+            continue
+
+        mapping = CitiesExternalMapping(
+            code_topl=code_topl,
+            name_topl=name_topl,
+            naselenie=nas_value,
+            gilfond=gil_value,
+            obesp_cts=obesp_cts,
+            dprom_ao=dprom_ao,
+            dgkh_ao=dgkh_ao,
+            obl=obl_value,
+        )
+        db.session.add(mapping)
+        db.session.flush()
+        created += 1
+        by_code[code_topl] = mapping
+
+    if created or updated:
+        db.session.commit()
+
+    if processed == 0:
+        raise ValueError("Файл не содержит данных для загрузки.")
+
+    message = (
+        "Импорт справочника 'Города' завершен: "
+        f"обработано {processed}, создано {created}, обновлено {updated}, "
+        f"ошибок {len(errors)}."
+    )
+    logger.info(
+        "[IMPORT_CITIES] done user=%s processed=%s created=%s updated=%s errors=%s",
         user,
         processed,
         created,

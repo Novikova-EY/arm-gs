@@ -247,6 +247,10 @@ FUEL_COLUMN_PATTERNS = (
 
 FUEL_NAME_ALIASES = {
     "газ": ["газ", "природный газ"],
+    # Для значения в Excel "газ попут" используем FuelType "газ попутный"
+    # (далее через общую логику resolve_fuel будет выбран Fuel вида
+    # "газ естественный попутный" в текущей версии БД).
+    "газ попут": ["газ попутный"],
     "уголь": ["уголь", "каменный уголь", "бурый уголь"],
     "прочее": ["прочее"],
 }
@@ -327,6 +331,55 @@ def resolve_fuel(value):
         return None
 
     cleaned_norm = cleaned.strip().lower()
+
+    # Спец-кейс для "газ попут": в разных версиях БД могут существовать
+    # два очень похожих типа топлива ("газ попут" и "газ попутный").
+    # Нам нужно жёстко привязаться к текущей версии БД и, по возможности,
+    # выбирать FuelType "газ попутный" и одно из его топлив.
+    if cleaned_norm == "газ попут":
+        try:
+            # Ищем подходящий FuelType в ТЕКУЩЕЙ версии БД
+            candidate_types = (
+                versioned_query(FuelType)
+                .filter(
+                    _fuel_type_name_sql_normalized().in_(
+                        ["газ попутный", "газ попут"]
+                    )
+                )
+                .all()
+            )
+
+            chosen_type = None
+            # 1) Приоритет — "газ попутный"
+            for ft in candidate_types:
+                if ft.name.strip().lower() == "газ попутный":
+                    chosen_type = ft
+                    break
+            # 2) Если нет — берём "газ попут"
+            if not chosen_type and candidate_types:
+                chosen_type = candidate_types[0]
+
+            if chosen_type:
+                fuel = (
+                    versioned_query(Fuel)
+                    .filter(Fuel.id_fuel_type == chosen_type.id)
+                    .order_by(Fuel.id.asc())
+                    .first()
+                )
+                if fuel:
+                    _get_logger().info(
+                        "[IMPORT] Топливо '%s' сопоставлено через FuelType='%s' -> Fuel(id=%s, name=%s)",
+                        value,
+                        chosen_type.name,
+                        fuel.id,
+                        fuel.name,
+                    )
+                    return fuel
+        except Exception:
+            _get_logger().exception(
+                "[IMPORT] Ошибка при спец-сопоставлении топлива '%s' (газ попут)",
+                value,
+            )
 
     fuel = versioned_query(Fuel).filter(_fuel_name_sql_normalized() == cleaned_norm).first()
     if fuel:
@@ -466,11 +519,11 @@ def to_decimal(val, digits=15):
         if isinstance(val, Decimal):
             dec_val = val
         elif isinstance(val, float):
-            # Только точное целое (50.0 → 50); 49.99999999999999 оставляем как есть
-            if val == int(val):
-                dec_val = Decimal(int(val))
-            else:
-                dec_val = Decimal.from_float(val)
+            # При чтении из Excel pandas обычно даёт float, у которого
+            # строковое представление соответствует «человеческому» виду ячейки.
+            # Поэтому конвертируем через str(val), чтобы 9.2 и 9,2
+            # попадали в БД именно как 9.2, а не 9.199999999999.
+            dec_val = Decimal(str(val))
         elif isinstance(val, int):
             dec_val = Decimal(val)
         elif isinstance(val, str):
@@ -738,6 +791,11 @@ def handle_machine(row, current_station, user):
         for field in date_fields:
             update_if_changed(machine, field, safe_date(row.get(field)), changes)
 
+        # Если указана фактическая дата вывода из эксплуатации — ожидаемый год не заполняем
+        date_decompressing_fact_val = safe_date(row.get('date_decompressing_fact'))
+        if date_decompressing_fact_val and machine.date_decompressing_expected:
+            update_if_changed(machine, 'date_decompressing_expected', None, changes)
+
         if not pd.isna(row.get('note')):
             note_val = _clean_name(row['note'])
             update_if_changed(machine, 'note', note_val, changes)
@@ -763,7 +821,7 @@ def handle_machine(row, current_station, user):
             date_joining_expected=safe_date(row.get('date_joining_expected')),
             date_joining_fact=safe_date(row.get('date_joining_fact')),
             date_detatchment_fact=safe_date(row.get('date_detatchment_fact')),
-            date_decompressing_expected=safe_date(row.get('date_decompressing_expected')),
+            date_decompressing_expected=None if safe_date(row.get('date_decompressing_fact')) else safe_date(row.get('date_decompressing_expected')),
             date_decompressing_fact=safe_date(row.get('date_decompressing_fact')),
             date_modernization_expected=safe_date(row.get('date_modernization_expected')),
             date_relabing_fact=safe_date(row.get('date_relabing_fact')),
@@ -1198,8 +1256,8 @@ def update_machine_commission_status(machine, start_year, end_year, user):
         curr = powers_by_year.get(year, 0)
         next_ = powers_by_year.get(year + 1, 0)
 
-        # 🔻 Плановый вывод
-        if curr and not next_ and not machine.date_decompressing_expected:
+        # 🔻 Плановый вывод (не заполняем ожидаемый год, если уже есть фактическая дата)
+        if curr and not next_ and not machine.date_decompressing_expected and not machine.date_decompressing_fact:
             machine.date_decompressing_expected = year
             db.session.add(machine)
             log_to_db(

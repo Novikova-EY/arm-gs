@@ -35,13 +35,13 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 
 def tes_machine_type_query(
         tes_machine_type_filter=None, 
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc"):
     """ Базовый запрос для выборки типов агрегатов ТЭС с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name"}
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    allowed_sort_by = {"id", "name", "display_order", "number"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -57,10 +57,23 @@ def tes_machine_type_query(
     # Сортировка
     if sort_by == "name":
         sort_col = TesMachineType.name
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    elif sort_by == "display_order":
+        # Сортировка по порядку отображения, значения NULL в конце
+        if sort_dir == "desc":
+            query = query.order_by(
+                (TesMachineType.display_order.is_(None)),
+                TesMachineType.display_order.desc(),
+            )
+        else:
+            query = query.order_by(
+                (TesMachineType.display_order.is_(None)),
+                TesMachineType.display_order.asc(),
+            )
     else:
+        # sort_by == "id" или "number"
         sort_col = TesMachineType.id
-
-    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
 
@@ -70,7 +83,7 @@ def get_tes_machine_type_list(
     page, 
     per_page, 
     tes_machine_type_filter=None, 
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список типов агрегатов ТЭС с пагинацией, фильтрацией и сортировкой. """
     
@@ -105,6 +118,7 @@ def update_tes_machine_type_service(data, user):
         for record in data:
             tes_machine_type_id = record.get("tes_machine_type_id")
             name = (record.get("name") or "").strip()
+            display_order = record.get("display_order")
 
             if not name:
                 log_to_db(
@@ -133,11 +147,31 @@ def update_tes_machine_type_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
 
+            # Проверка уникальности display_order
+            if display_order is not None and display_order != obj.display_order:
+                q_display = (
+                    apply_version_filter(TesMachineType.query, TesMachineType)
+                    .filter(
+                        TesMachineType.display_order == display_order,
+                        TesMachineType.id != tes_machine_type_id,
+                    )
+                )
+                if q_display.first():
+                    raise ValueError(
+                        f"Запись с порядком отображения «{display_order}» уже существует."
+                    )
+
             changes = []
 
             if name != (obj.name or ""):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "tes_machine_type"))
                 obj.name = name
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
+                obj.display_order = display_order
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -199,6 +233,7 @@ def add_tes_machine_type_service(data, user):
             # Итерация по входным данным (валидация/применение)
             for record in data:
                 name = (record.get("name") or "").strip()
+                display_order = record.get("display_order")
                 if not name:
                     log_to_db(
                         user, 
@@ -214,8 +249,21 @@ def add_tes_machine_type_service(data, user):
                 if dup:
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
+                # Проверяем уникальность display_order при создании
+                if display_order is not None:
+                    dup_display = (
+                        apply_version_filter(TesMachineType.query, TesMachineType)
+                        .filter(TesMachineType.display_order == display_order)
+                        .with_for_update()
+                        .first()
+                    )
+                    if dup_display:
+                        raise ValueError(
+                            f"Запись с порядком отображения «{display_order}» уже существует."
+                        )
+
                 # Создаем новую запись
-                obj = TesMachineType(name=name)
+                obj = TesMachineType(name=name, display_order=display_order)
                 set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
@@ -333,7 +381,7 @@ def delete_tes_machine_type_service(ids, user):
 def export_tes_machine_type_service(
     user,
     tes_machine_type_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc",):
     """ Экспортирует данные типов агрегатов ТЭС в Excel. """
 

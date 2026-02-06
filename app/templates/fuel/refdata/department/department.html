@@ -6,6 +6,8 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
 
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
+
     <h1 class="text-center mb-4">Список департаментов (связь с БД Топливо)</h1>
 
     <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">

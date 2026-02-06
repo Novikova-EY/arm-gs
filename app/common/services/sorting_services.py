@@ -10,8 +10,7 @@ def fuel_type_object_sort_key(ft: Any) -> Tuple[Any, ...]:
     Sort key for FuelType-like objects.
 
     Rules:
-    - id=0 ("не указано") first (keeps existing UI semantics)
-    - then by display_order (NULLs last)
+    - by display_order (NULLs last)
     - then by name (case-insensitive)
     - then by id
     """
@@ -20,7 +19,6 @@ def fuel_type_object_sort_key(ft: Any) -> Tuple[Any, ...]:
     name = getattr(ft, "name", None)
 
     return (
-        ft_id != 0,
         display_order is None,
         display_order if display_order is not None else 0,
         (name or "").strip().lower(),
@@ -52,7 +50,6 @@ def fuel_type_id_sort_key(
         name = (id_to_name.get(ft_id) or "").strip().lower()
 
     return (
-        ft_id != 0,
         display_order is None,
         display_order if display_order is not None else 0,
         name,

@@ -46,7 +46,7 @@ def synchronous_area_list():
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
     per_page                    = request.args.get("per_page", 25, type=int)
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
 
@@ -54,7 +54,7 @@ def synchronous_area_list():
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
         per_page                    = request.form.get("per_page", 25, type=int)
-        sort_by                     = request.form.get("sort_by", "id")
+        sort_by                     = request.form.get("sort_by", "display_order")
         sort_dir                    = request.form.get("sort_dir", "asc")
         synchronous_area_filter     = request.form.get("synchronous_area_filter", "").strip()
 
@@ -62,6 +62,7 @@ def synchronous_area_list():
         synchronous_area_ids        = request.form.getlist("synchronous_area_ids[]")
         synchronous_area_numbers    = request.form.getlist("synchronous_area_numbers[]")
         synchronous_area_names      = request.form.getlist("synchronous_area_names[]")
+        synchronous_area_orders     = request.form.getlist("display_orders[]")
         synchronous_area_delete     = request.form.getlist("synchronous_area_delete[]")
   
         deleted_ids = set()
@@ -88,16 +89,27 @@ def synchronous_area_list():
 
            # Формирование данных для обновления
             synchronous_area_data = []
-            for synchronous_area_id, synchronous_area_number, synchronous_area_name in zip(
-                synchronous_area_ids, synchronous_area_numbers, synchronous_area_names
+            for synchronous_area_id, synchronous_area_number, synchronous_area_name, display_order in zip(
+                synchronous_area_ids, synchronous_area_numbers, synchronous_area_names, synchronous_area_orders
             ):
                 if synchronous_area_id and int(synchronous_area_id) in deleted_ids:
                     continue
+                try:
+                    parsed_display_order = int(display_order) if display_order and str(display_order).strip() else None
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки порядка отображения для записи c ID={synchronous_area_id}: "
+                            f"значение «{display_order}» не является целым числом."
+                        )
+                    )
+
                 try:
                     synchronous_area_data.append({
                         "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
                         "number": synchronous_area_number.strip(),
                         "name": synchronous_area_name.strip(),
+                        "display_order": parsed_display_order,
                     })
                 except ValueError as e:
                     raise ValueError(
@@ -176,7 +188,7 @@ def add_synchronous_area():
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
     per_page                    = request.args.get("per_page", 25, type=int)
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
 
@@ -245,7 +257,7 @@ def export_synchronous_area():
 
     user = session.get('username', 'Неизвестный пользователь')
     
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     synchronous_area_filter     = request.args.get("synchronous_area_filter", "").strip()
 

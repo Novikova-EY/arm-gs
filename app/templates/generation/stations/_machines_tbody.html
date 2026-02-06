@@ -46,7 +46,7 @@
         </td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—'}}</td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—'}}</td>
-        <td class="rowspan-td col-modernization" rowspan="3">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—'}}</td>
+        <td class="rowspan-td col-modernization" rowspan="3">{{ machine.modernization_display if machine.modernization_display else '—'}}</td>
         
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
         <td class="rowspan-td" rowspan="3">

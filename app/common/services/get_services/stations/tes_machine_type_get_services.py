@@ -19,8 +19,9 @@ def get_tes_machine_type_list_full():
     return (
         query
         .order_by(
-            (TesMachineType.id != 0),
-            TesMachineType.name.asc()
+            TesMachineType.display_order.asc().nullslast(),
+            TesMachineType.name.asc(),
+            TesMachineType.id.asc(),
         )
         .all()
     )

@@ -59,13 +59,13 @@ def _invalidate_fuel_type_caches() -> None:
 def fuel_type_query(
         fuel_type_filter=None, 
         topl_nazvl_filter=None,
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc"):
     """ Базовый запрос для выборки видов топлива с фильтрацией и сортировкой. """
 
     # Валидация сортировки
     allowed_sort_by = {"id", "name", "topl_nazvl", "display_order", "number"}
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -113,7 +113,7 @@ def get_fuel_type_list(
     per_page, 
     fuel_type_filter=None, 
     topl_nazvl_filter=None,
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список видов топлива с пагинацией, фильтрацией и сортировкой. """
     
@@ -457,7 +457,7 @@ def export_fuel_type_service(
     user,
     fuel_type_filter=None,
     topl_nazvl_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc",):
     """ Экспортирует данные видов топлива в Excel. """
 

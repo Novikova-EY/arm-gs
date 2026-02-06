@@ -6,6 +6,8 @@ from datetime import datetime
 from types import SimpleNamespace
 from io import BytesIO
 
+from app.extensions import db
+
 from . import fuel_bp
 
 from app.generation.forms.station_forms import StationFilterForm
@@ -41,10 +43,13 @@ from app.fuel.services.import_fuel_refdata_services import (
     import_union_energy_system_mappings_from_excel,
     import_federal_district_mappings_from_excel,
     import_gen_company_mappings_from_excel,
+    import_gen_company_branch_mappings_from_excel,
     import_department_mappings_from_excel,
     import_business_unit_mappings_from_excel,
     import_economic_region_mappings_from_excel,
     import_territories_energy_from_excel,
+    import_cities_from_excel,
+    import_equipment_group_mappings_from_excel,
 )
 from app.fuel.services.import_stations_equipment_groups_services import (
     import_station_equipment_groups_from_excel,
@@ -62,6 +67,9 @@ from app.refdata.forms.organizations.department_forms import DepartmentFilterFor
 from app.refdata.forms.organizations.business_unit_forms import BusinessUnitFilterForm
 from app.refdata.forms.organizations.economic_region_forms import (
     EconomicRegionFilterForm,
+)
+from app.refdata.forms.refdata_for_stations.technologies.equipment_group_forms import (
+    EquipmentGroupFilterForm,
 )
 from app.refdata.services.energy_systems.union_energy_system_services import (
     get_union_energy_system_list,
@@ -93,6 +101,10 @@ from app.refdata.services.organizations.economic_region_services import (
     export_economic_region_mappings_service,
     economic_region_query,
 )
+from app.refdata.services.refdata_for_stations.technologies.equipment_group_services import (
+    get_equipment_group_list,
+    equipment_group_query,
+)
 from app.common.models.pagination import Pagination
 from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
     UnionEnergySystemExternalMapping,
@@ -103,9 +115,13 @@ from app.fuel.models.external_mapping.fue_em_federal_district_model import (
 from app.fuel.models.external_mapping.fue_em_gen_company_model import (
     GenCompanyExternalMapping,
 )
+from app.fuel.models.external_mapping.fue_em_gen_company_branch_model import (
+    GenCompanyBranchExternalMapping,
+)
 from app.fuel.models.external_mapping.fue_em_department_model import (
     DepartmentExternalMapping,
 )
+from app.fuel.models.external_mapping.fue_em_cities_model import CitiesExternalMapping
 from app.fuel.models.external_mapping.fue_em_business_unit_model import (
     BusinessUnitExternalMapping,
 )
@@ -117,6 +133,13 @@ from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
 )
 from app.fuel.models.external_mapping.fue_em_economic_region_model import (
     EconomicRegionExternalMapping,
+)
+from app.fuel.models.external_mapping.fue_em_equipment_group_model import (
+    EquipmentGroupExternalMapping,
+)
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
+    EquipmentGroup,
 )
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import (
@@ -798,6 +821,168 @@ def fuel_gen_company_list():
     )
 
 
+@fuel_bp.route("/refdata/equipment_group", methods=["GET"])
+@login_required
+def fuel_equipment_group_list():
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(
+        user,
+        "Открыта страница типов групп оборудования (Топливо)",
+        entity_type="equipment_group",
+    )
+
+    form = EquipmentGroupFilterForm()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+    sort_by = request.args.get("sort_by", "id")
+    sort_dir = request.args.get("sort_dir", "asc")
+    equipment_group_filter = request.args.get("equipment_group_filter", "").strip()
+
+    mapping_sort_fields = {
+        "code_topl",
+        "name_topl",
+        "type_topl",
+        "tm_topl",
+        "n1_topl",
+        "n2_topl",
+        "p1_topl",
+        "p2_topl",
+        "gruppa_oborud_topl",
+    }
+    display_rows = None
+    if sort_by in mapping_sort_fields:
+        query = equipment_group_query(
+            equipment_group_filter=equipment_group_filter,
+            technology_type_filter=None,
+            technology_availability_filter=None,
+            sort_by="id",
+            sort_dir="asc",
+        )
+        all_items = query.all()
+    else:
+        pagination = get_equipment_group_list(
+            page=page,
+            per_page=per_page,
+            equipment_group_filter=equipment_group_filter,
+            technology_type_filter=None,
+            technology_availability_filter=None,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+        all_items = pagination.items
+
+    mappings = EquipmentGroupExternalMapping.query.order_by(
+        EquipmentGroupExternalMapping.id.desc()
+    ).all()
+    mapping_by_eg = {}
+    unmatched_mappings = []
+    for mapping in mappings:
+        if mapping.equipment_group_ref_uuid:
+            if mapping.equipment_group_ref_uuid not in mapping_by_eg:
+                mapping_by_eg[mapping.equipment_group_ref_uuid] = mapping
+        else:
+            unmatched_mappings.append(mapping)
+
+    if sort_by in mapping_sort_fields:
+
+        def _sort_key(row):
+            mapping = row.mapping
+            value = getattr(mapping, sort_by, None) if mapping else None
+            return _sort_text_value(value)
+
+        rows = [
+            SimpleNamespace(eg=eg, mapping=mapping_by_eg.get(eg.ref_uuid))
+            for eg in all_items
+        ]
+        rows.extend([SimpleNamespace(eg=None, mapping=m) for m in unmatched_mappings])
+        rows.sort(key=_sort_key, reverse=(sort_dir == "desc"))
+        total = len(rows)
+        pagination = Pagination(page=page, per_page=per_page, total=total)
+        start = (page - 1) * per_page
+        end = start + per_page
+        display_rows = rows[start:end]
+
+    return render_template(
+        "fuel/refdata/equipment_group/equipment_group.html",
+        form=form,
+        equipment_group_list=pagination.items if sort_by not in mapping_sort_fields else [],
+        pagination=pagination,
+        equipment_group_filter=equipment_group_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        per_page=per_page,
+        mapping_by_eg=mapping_by_eg,
+        unmatched_mappings=unmatched_mappings,
+        display_rows=display_rows,
+    )
+
+
+@fuel_bp.route("/refdata/gen_company_branch", methods=["GET"])
+@login_required
+def fuel_gen_company_branch_list():
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(
+        user,
+        "Открыта страница генерирующих компаний (филиалы) (Топливо)",
+        entity_type="gen_company_branch",
+    )
+
+    form = GenCompanyFilterForm()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+    sort_by = request.args.get("sort_by", "id")
+    sort_dir = request.args.get("sort_dir", "asc")
+    gen_company_branch_filter = request.args.get("gen_company_branch_filter", "").strip()
+
+    allowed_sort = {"id", "external_id", "external_name", "local_name"}
+    if sort_by not in allowed_sort:
+        sort_by = "id"
+    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
+
+    query = GenCompanyBranchExternalMapping.query
+    if gen_company_branch_filter:
+        like_term = f"%{gen_company_branch_filter}%"
+        query = query.filter(
+            or_(
+                GenCompanyBranchExternalMapping.external_id.ilike(like_term),
+                GenCompanyBranchExternalMapping.external_name.ilike(like_term),
+                GenCompanyBranchExternalMapping.local_name.ilike(like_term),
+                GenCompanyBranchExternalMapping.gen_company_ref_uuid.ilike(like_term),
+            )
+        )
+
+    sort_col = getattr(GenCompanyBranchExternalMapping, sort_by, GenCompanyBranchExternalMapping.id)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    items = pagination.items or []
+
+    # Подтягиваем GenCompany по ref_uuid (текущая версия с учетом фильтрации по версии)
+    current_version_id = get_current_db_version_id()
+    uuids = {m.gen_company_ref_uuid for m in items if m.gen_company_ref_uuid}
+    gc_by_uuid = {}
+    if uuids:
+        gc_query = GenCompany.query.filter(GenCompany.ref_uuid.in_(list(uuids)))
+        gc_query = filter_by_explicit_db_version(gc_query, GenCompany, current_version_id)
+        for gc in gc_query.all():
+            if gc.ref_uuid and gc.ref_uuid not in gc_by_uuid:
+                gc_by_uuid[gc.ref_uuid] = gc
+
+    rows = [SimpleNamespace(mapping=m, gc=gc_by_uuid.get(m.gen_company_ref_uuid)) for m in items]
+
+    return render_template(
+        "fuel/refdata/gen_company_branch/gen_company_branch.html",
+        form=form,
+        rows=rows,
+        pagination=pagination,
+        gen_company_branch_filter=gen_company_branch_filter,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        per_page=per_page,
+    )
+
+
 @fuel_bp.route("/refdata/department", methods=["GET"])
 @login_required
 def fuel_department_list():
@@ -833,6 +1018,67 @@ def fuel_department_list():
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page,
+    )
+
+
+@fuel_bp.route("/refdata/cities", methods=["GET"])
+@login_required
+def fuel_cities_list():
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(
+        user,
+        "Открыта страница городов (Топливо)",
+        entity_type="cities",
+    )
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+    sort_by = request.args.get("sort_by", "code_topl")
+    sort_dir = request.args.get("sort_dir", "asc")
+    cities_filter = request.args.get("cities_filter", "").strip()
+
+    allowed_sort = {
+        "id",
+        "code_topl",
+        "name_topl",
+        "naselenie",
+        "gilfond",
+        "obesp_cts",
+        "dprom_ao",
+        "dgkh_ao",
+        "obl",
+    }
+    if sort_by not in allowed_sort:
+        sort_by = "code_topl"
+    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
+
+    query = CitiesExternalMapping.query
+    if cities_filter:
+        like_term = f"%{cities_filter}%"
+        query = query.filter(
+            or_(
+                func.cast(CitiesExternalMapping.code_topl, db.String).ilike(like_term),
+                CitiesExternalMapping.name_topl.ilike(like_term),
+                CitiesExternalMapping.obesp_cts.ilike(like_term),
+                CitiesExternalMapping.dprom_ao.ilike(like_term),
+                CitiesExternalMapping.dgkh_ao.ilike(like_term),
+                func.cast(CitiesExternalMapping.obl, db.String).ilike(like_term),
+            )
+        )
+
+    sort_col = getattr(CitiesExternalMapping, sort_by, CitiesExternalMapping.code_topl)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    items = pagination.items or []
+
+    return render_template(
+        "fuel/refdata/cities/cities.html",
+        items=items,
+        pagination=pagination,
+        per_page=per_page,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        cities_filter=cities_filter,
     )
 
 
@@ -1020,6 +1266,82 @@ def import_fuel_gen_company_mappings():
     return redirect(url_for("fuel_bp.fuel_gen_company_list"))
 
 
+@fuel_bp.route("/refdata/equipment_group/import", methods=["POST"])
+@login_required
+def import_fuel_equipment_group_mappings():
+    user = session.get("username", "Неизвестный пользователь")
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(url_for("fuel_bp.fuel_equipment_group_list"))
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_equipment_group_list"))
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_equipment_group_list"))
+
+    try:
+        result = import_equipment_group_mappings_from_excel(file, user)
+        flash(result["message"], "warning" if result.get("errors_count") else "success")
+        if result.get("errors"):
+            for error in result["errors"][:5]:
+                flash(error, "warning")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        current_app.logger.error(
+            f"Ошибка импорта сопоставлений типов групп оборудования: {exc}"
+        )
+        flash("Ошибка импорта данных.", "danger")
+
+    return redirect(url_for("fuel_bp.fuel_equipment_group_list"))
+
+
+@fuel_bp.route("/refdata/gen_company_branch/import", methods=["POST"])
+@login_required
+def import_fuel_gen_company_branch_mappings():
+    user = session.get("username", "Неизвестный пользователь")
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(url_for("fuel_bp.fuel_gen_company_branch_list"))
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_gen_company_branch_list"))
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_gen_company_branch_list"))
+
+    try:
+        result = import_gen_company_branch_mappings_from_excel(file, user)
+        flash(result["message"], "warning" if result.get("errors_count") else "success")
+        if result.get("errors"):
+            for error in result["errors"][:5]:
+                flash(error, "warning")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        current_app.logger.error(
+            f"Ошибка импорта сопоставлений генерирующих компаний (филиалы): {exc}"
+        )
+        flash("Ошибка импорта данных.", "danger")
+
+    return redirect(url_for("fuel_bp.fuel_gen_company_branch_list"))
+
+
 @fuel_bp.route("/refdata/department/import", methods=["POST"])
 @login_required
 def import_fuel_department_mappings():
@@ -1054,6 +1376,42 @@ def import_fuel_department_mappings():
         flash("Ошибка импорта данных.", "danger")
 
     return redirect(url_for("fuel_bp.fuel_department_list"))
+
+
+@fuel_bp.route("/refdata/cities/import", methods=["POST"])
+@login_required
+def import_fuel_cities():
+    user = session.get("username", "Неизвестный пользователь")
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(url_for("fuel_bp.fuel_cities_list"))
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_cities_list"))
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.fuel_cities_list"))
+
+    try:
+        result = import_cities_from_excel(file, user)
+        flash(result["message"], "warning" if result.get("errors_count") else "success")
+        if result.get("errors"):
+            for error in result["errors"][:5]:
+                flash(error, "warning")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        current_app.logger.error(f"Ошибка импорта городов: {exc}")
+        flash("Ошибка импорта данных.", "danger")
+
+    return redirect(url_for("fuel_bp.fuel_cities_list"))
 
 
 @fuel_bp.route("/refdata/business_unit/import", methods=["POST"])
@@ -1281,6 +1639,79 @@ def export_fuel_gen_company():
         return redirect(url_for("fuel_bp.fuel_gen_company_list"))
 
 
+@fuel_bp.route("/refdata/gen_company_branch/export", methods=["GET"])
+@login_required
+def export_fuel_gen_company_branch():
+    user = session.get("username", "Неизвестный пользователь")
+
+    sort_by = request.args.get("sort_by", "id")
+    sort_dir = request.args.get("sort_dir", "asc")
+    gen_company_branch_filter = request.args.get("gen_company_branch_filter", "").strip()
+
+    allowed_sort = {"id", "external_id", "external_name", "local_name"}
+    if sort_by not in allowed_sort:
+        sort_by = "id"
+    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
+
+    query = GenCompanyBranchExternalMapping.query
+    if gen_company_branch_filter:
+        like_term = f"%{gen_company_branch_filter}%"
+        query = query.filter(
+            or_(
+                GenCompanyBranchExternalMapping.external_id.ilike(like_term),
+                GenCompanyBranchExternalMapping.external_name.ilike(like_term),
+                GenCompanyBranchExternalMapping.local_name.ilike(like_term),
+                GenCompanyBranchExternalMapping.gen_company_ref_uuid.ilike(like_term),
+            )
+        )
+
+    sort_col = getattr(GenCompanyBranchExternalMapping, sort_by, GenCompanyBranchExternalMapping.id)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    items = query.all()
+
+    current_version_id = get_current_db_version_id()
+    uuids = {m.gen_company_ref_uuid for m in items if m.gen_company_ref_uuid}
+    gc_by_uuid = {}
+    if uuids:
+        gc_query = GenCompany.query.filter(GenCompany.ref_uuid.in_(list(uuids)))
+        gc_query = filter_by_explicit_db_version(gc_query, GenCompany, current_version_id)
+        for gc in gc_query.all():
+            if gc.ref_uuid and gc.ref_uuid not in gc_by_uuid:
+                gc_by_uuid[gc.ref_uuid] = gc
+
+    data = []
+    for m in items:
+        gc = gc_by_uuid.get(m.gen_company_ref_uuid)
+        data.append(
+            {
+                "code_topl": m.external_id or "",
+                "name_topl": m.external_name or "",
+                "name": m.local_name or "",
+                "UUID генерирующей компании": gc.ref_uuid if gc else "",
+                "ID генерирующей компании (текущая версия)": gc.id if gc else "",
+                "Наименование генерирующей компании в АРМ": gc.name if gc else "",
+            }
+        )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="GenCompanyBranch")
+    output.seek(0)
+
+    log_to_db(
+        user,
+        "Выгрузка сопоставлений генерирующих компаний (филиалы) в Excel",
+        entity_type="gen_company_branch",
+    )
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="gen_company_branch.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @fuel_bp.route("/refdata/department/export", methods=["GET"])
 @login_required
 def export_fuel_department():
@@ -1317,6 +1748,76 @@ def export_fuel_department():
         flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
         return redirect(url_for("fuel_bp.fuel_department_list"))
 
+
+@fuel_bp.route("/refdata/cities/export", methods=["GET"])
+@login_required
+def export_fuel_cities():
+    user = session.get("username", "Неизвестный пользователь")
+    cities_filter = request.args.get("cities_filter", "").strip()
+    sort_by = request.args.get("sort_by", "code_topl")
+    sort_dir = request.args.get("sort_dir", "asc")
+
+    allowed_sort = {
+        "id",
+        "code_topl",
+        "name_topl",
+        "naselenie",
+        "gilfond",
+        "obesp_cts",
+        "dprom_ao",
+        "dgkh_ao",
+        "obl",
+    }
+    if sort_by not in allowed_sort:
+        sort_by = "code_topl"
+    sort_dir = "desc" if (sort_dir or "").lower() == "desc" else "asc"
+
+    query = CitiesExternalMapping.query
+    if cities_filter:
+        like_term = f"%{cities_filter}%"
+        query = query.filter(
+            or_(
+                func.cast(CitiesExternalMapping.code_topl, db.String).ilike(like_term),
+                CitiesExternalMapping.name_topl.ilike(like_term),
+                CitiesExternalMapping.obesp_cts.ilike(like_term),
+                CitiesExternalMapping.dprom_ao.ilike(like_term),
+                CitiesExternalMapping.dgkh_ao.ilike(like_term),
+                func.cast(CitiesExternalMapping.obl, db.String).ilike(like_term),
+            )
+        )
+
+    sort_col = getattr(CitiesExternalMapping, sort_by, CitiesExternalMapping.code_topl)
+    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+    rows = query.all()
+
+    data = []
+    for row in rows:
+        data.append(
+            {
+                "code_topl": row.code_topl,
+                "name_topl": row.name_topl or "",
+                "naselenie": float(row.naselenie) if row.naselenie is not None else None,
+                "gilfond": float(row.gilfond) if row.gilfond is not None else None,
+                "obesp_cts": row.obesp_cts or "",
+                "dprom_ao": row.dprom_ao or "",
+                "dgkh_ao": row.dgkh_ao or "",
+                "obl": row.obl,
+            }
+        )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Cities")
+    output.seek(0)
+
+    log_to_db(user, "Выгрузка справочника городов в Excel", entity_type="cities")
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="cities.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 @fuel_bp.route("/refdata/business_unit/export", methods=["GET"])
 @login_required

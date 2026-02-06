@@ -5,6 +5,7 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
     <h1 class="text-center mb-4">Субъекты РФ, региональные энергосистемы и энергорайоны</h1>
 
     <div class="mb-4">

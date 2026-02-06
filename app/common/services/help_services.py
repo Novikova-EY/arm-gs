@@ -201,6 +201,12 @@ def convert_to_date(value):
         except ValueError:
             pass
 
+        # dd-mm-yyyy
+        try:
+            return datetime.strptime(value, "%d-%m-%Y").date()
+        except ValueError:
+            pass
+
         # yyyy-mm-dd
         try:
             return datetime.strptime(value, "%Y-%m-%d").date()
@@ -208,3 +214,37 @@ def convert_to_date(value):
             pass
 
     return None
+
+
+def normalize_date_list(value: str) -> Optional[str]:
+    """
+    Нормализует список дат в строке к единому формату 'YYYY-MM-DD',
+    разделённому запятыми.
+
+    Примеры:
+    - "01-10-2002, 01.10.2025" -> "2002-10-01, 2025-10-01"
+    - "2020; 2021-02-05"        -> "2020-01-01, 2021-02-05"
+    """
+    if not value:
+        return None
+
+    parts = re.split(r"[;,]", str(value))
+    normalized = []
+
+    for raw in parts:
+        token = raw.strip()
+        if not token:
+            continue
+
+        dt = convert_to_date(token)
+        if dt is None:
+            # Если не смогли распарсить — сохраняем как есть,
+            # чтобы не потерять ввод пользователя
+            normalized.append(token)
+        else:
+            normalized.append(dt.strftime("%Y-%m-%d"))
+
+    if not normalized:
+        return None
+
+    return ", ".join(normalized)

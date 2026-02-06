@@ -44,11 +44,15 @@ from app.common.services.help_services import (
     convert_to_date,
     rounded_decimal,
     format_decimal_for_display,
+    normalize_date_list,
 )
 from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
 )
-from app.common.services.choices_cache_service import choices_cache
+from app.common.services.database_version_services import (
+    get_current_version_year_range_from_name,
+)
+from app.common.services.choices_cache_service import choices_cache, ChoicesCacheService
 from app.common.services.database_version_filter import set_db_version_on_create, filter_by_db_version
 from app.common.services.cache_services import CacheService
 
@@ -91,6 +95,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
     year_dict = {y.number: y for y in years}
     year_features = get_year_feature_dict()
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
     perf_mark("years_load")
     
     # Устанавливаем year вручную для всех machine_powers, machine_fuels, machine_tes_types
@@ -251,6 +256,8 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         "pgu_machines_form": pgu_machines_form,
         "pgu_machines": pgu_machines,
         "year_features": year_features,
+        "version_year_start": version_year_start,
+        "version_year_end": version_year_end,
         "all_documents": all_documents,
     }
 
@@ -304,7 +311,36 @@ def _validate_power_ranges(advanced_form, formdata):
             current = to_decimal(raw_value)
             original = to_decimal(orig_value)
 
-            if current != original and current is not None and current < 0:
+            # Если в форме нет *_orig, считаем, что мы не знаем исходное значение
+            # и НЕ блокируем сохранение (это важно для старых/негативных значений,
+            # загруженных из БД, когда hidden‑поля еще не были добавлены).
+            is_orig_missing = orig_value in (None, "", "—", "-")
+
+            # Отрицательные значения в Рогр не блокируют сохранение:
+            # показываем только предупреждение и не добавляем ошибку поля.
+            if (
+                field_name == "p_ogr"
+                and current is not None
+                and current < 0
+                and not is_orig_missing
+                and current != original
+            ):
+                flash(
+                    "Введено отрицательное значение Рогр. "
+                    "Сохранение выполнено, но проверьте корректность ограничения мощности.",
+                    "warning",
+                )
+                continue
+
+            # Для Руст и Ррасп продолжаем блокировать действительно новые отрицательные
+            # значения, если известно исходное.
+            if (
+                field_name in ("p_ust", "p_rasp")
+                and not is_orig_missing
+                and current != original
+                and current is not None
+                and current < 0
+            ):
                 field.errors.append("Number must be at least 0.")
                 has_errors = True
 
@@ -449,7 +485,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print(f"[DEBUG] Ошибка валидации: tes_types entries: {len(advanced_form.tes_types.entries)}")
         print(f"[DEBUG] Ошибка валидации: fuels entries: {len(advanced_form.fuels.entries)}")
         flash(
-            "Ошибка в заполнении формы. Обязательные поля: Название агрегата, Организация-собственник.",
+            "Ошибка в заполнении формы.",
             "danger",
         )
         # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
@@ -560,21 +596,39 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                 machine.equipment_group_set_id = None
 
         date_fields = [
-            "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
-            "date_detatchment_fact", "date_decompressing_expected", "date_decompressing_fact",
-            "date_modernization_expected", "date_relabing_fact", "date_update_fact",
+            "date_exploitation",
+            "date_commission_fact",
+            "date_joining_expected",
+            "date_joining_fact",
+            "date_detatchment_fact",
+            "date_decompressing_expected",
+            "date_decompressing_fact",
+            "date_modernization_expected",
+            "date_relabing_fact",
+            "date_update_fact",
         ]
 
         for fld in date_fields:
             raw_form_value = getattr(main_form, fld).data
+
             if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
                 new_val = int(raw_form_value) if raw_form_value else None
+            elif fld in {"date_relabing_fact", "date_update_fact"}:
+                # Для полей с несколькими датами нормализуем список дат в единый формат
+                new_val = normalize_date_list(raw_form_value) if raw_form_value else None
             else:
                 new_val = convert_to_date(raw_form_value)
 
             old_val = getattr(machine, fld) if not is_new else None
-            old_val_str = old_val.strftime("%Y-%m-%d") if isinstance(old_val, (date, datetime)) else str(old_val) if old_val else None
-            new_val_str = new_val.strftime("%Y-%m-%d") if isinstance(new_val, (date, datetime)) else str(new_val) if new_val else None
+            if isinstance(old_val, (date, datetime)):
+                old_val_str = old_val.strftime("%Y-%m-%d")
+            else:
+                old_val_str = str(old_val) if old_val is not None else None
+
+            if isinstance(new_val, (date, datetime)):
+                new_val_str = new_val.strftime("%Y-%m-%d")
+            else:
+                new_val_str = str(new_val) if new_val is not None else None
 
             if is_new:
                 # Для нового агрегата просто устанавливаем значения
@@ -938,7 +992,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
 
     if not pgu_form.validate():
         flash(
-            "Ошибка в заполнении формы. Обязательные поля: Название агрегата, Организация-собственник.",
+            "Ошибка в заполнении формы.",
             "danger",
         )
         return render_template(
@@ -1019,21 +1073,39 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
 
             # Логирование изменений дат
             date_fields = [
-                "date_exploitation", "date_commission_fact", "date_joining_expected", "date_joining_fact",
-                "date_detatchment_fact", "date_decompressing_expected", "date_decompressing_fact",
-                "date_modernization_expected", "date_relabing_fact", "date_update_fact",
+                "date_exploitation",
+                "date_commission_fact",
+                "date_joining_expected",
+                "date_joining_fact",
+                "date_detatchment_fact",
+                "date_decompressing_expected",
+                "date_decompressing_fact",
+                "date_modernization_expected",
+                "date_relabing_fact",
+                "date_update_fact",
             ]
 
             for fld in date_fields:
                 raw_form_value = getattr(pgu_form, fld).data
+
                 if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
                     new_val = int(raw_form_value) if raw_form_value else None
+                elif fld in {"date_relabing_fact", "date_update_fact"}:
+                    # Для полей с несколькими датами нормализуем список дат в единый формат
+                    new_val = normalize_date_list(raw_form_value) if raw_form_value else None
                 else:
                     new_val = convert_to_date(raw_form_value)
 
                 old_val = getattr(pgu_machine, fld) if not is_new else None
-                old_val_str = old_val.strftime("%Y-%m-%d") if isinstance(old_val, (date, datetime)) else str(old_val) if old_val else None
-                new_val_str = new_val.strftime("%Y-%m-%d") if isinstance(new_val, (date, datetime)) else str(new_val) if new_val else None
+                if isinstance(old_val, (date, datetime)):
+                    old_val_str = old_val.strftime("%Y-%m-%d")
+                else:
+                    old_val_str = str(old_val) if old_val is not None else None
+
+                if isinstance(new_val, (date, datetime)):
+                    new_val_str = new_val.strftime("%Y-%m-%d")
+                else:
+                    new_val_str = str(new_val) if new_val is not None else None
 
                 if is_new:
                     if new_val:
@@ -1181,8 +1253,9 @@ def _clear_choices_cache():
 def clear_machine_choices_cache():
     """Публичная функция для очистки кэша choices из других модулей"""
     _clear_choices_cache()
-    # Также очищаем CacheService для унификации
+    # Также очищаем базовый кэш и глобальный кэш выборок, чтобы обновились все справочники
     CacheService.clear_cache()
+    ChoicesCacheService.clear_cache()
 
 def _fill_main_form_choices(form):
     """Заполняет choices для основной формы с использованием унифицированного кэширования"""
@@ -1547,9 +1620,31 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
         return all(not is_positive_power(power) for _, power in powers_sequence[start_index + 1 :])
 
     years_by_ust = sorted(
-        [(mp.year.number, mp.p_ust) for mp in machine.machine_powers if isinstance(mp.p_ust, Decimal) and mp.year is not None],
+        [
+            (mp.year.number, mp.p_ust)
+            for mp in machine.machine_powers
+            if isinstance(mp.p_ust, Decimal) and mp.year is not None
+        ],
         key=lambda t: t[0],
     )
+
+    # Ограничиваем расчёт только годами с признаком "план"
+    try:
+        plan_years_set = {
+            y
+            for y, name in (year_features or {}).items()
+            if str(name or "").strip().lower() == "план"
+        }
+    except Exception:
+        plan_years_set = set()
+
+    if plan_years_set:
+        years_by_ust = [(y, p) for y, p in years_by_ust if y in plan_years_set]
+
+    # Дополнительно ограничиваем верхнюю границу годом из названия версии БД (если удалось его распарсить)
+    _, version_year_end = get_current_version_year_range_from_name()
+    if version_year_end:
+        years_by_ust = [(y, p) for y, p in years_by_ust if y <= version_year_end]
     if not years_by_ust:
         return
 

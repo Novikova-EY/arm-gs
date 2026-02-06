@@ -327,17 +327,19 @@ function initializeStationFilters() {
         emptyOpt.value = '';
         frag.appendChild(emptyOpt);
 
-        // UX: "не указано" всегда должно быть первым пунктом.
-        // Порядок, который приходит с бэка, может отличаться (например, для ОЭС).
-        const sortedItems = [...(allItems || [])].sort((a, b) => {
-            const an = String(a?.name ?? '').trim().toLowerCase();
-            const bn = String(b?.name ?? '').trim().toLowerCase();
-            const aIsNA = an === 'не указано';
-            const bIsNA = bn === 'не указано';
-            if (aIsNA && !bIsNA) return -1;
-            if (!aIsNA && bIsNA) return 1;
-            return an.localeCompare(bn, 'ru', { sensitivity: 'base' });
+        // UX: "не указано" всегда первым, остальное — в том порядке, как пришло с бэка
+        const items = [...(allItems || [])];
+        const naItems = [];
+        const otherItems = [];
+        items.forEach(item => {
+            const name = String(item?.name ?? '').trim().toLowerCase();
+            if (name === 'не указано') {
+                naItems.push(item);
+            } else {
+                otherItems.push(item);
+            }
         });
+        const sortedItems = naItems.concat(otherItems);
 
         sortedItems.forEach(item => {
             const itemId = Number(item.id);

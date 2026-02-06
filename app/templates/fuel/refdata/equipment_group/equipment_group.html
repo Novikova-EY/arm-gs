@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block title %}Типы групп оборудования (связь с БД Топливо){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
+
+    <h1 class="text-center mb-4">Список типов групп оборудования (связь с БД Топливо)</h1>
+
+    <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+        <form id="equipmentGroupImportForm"
+              action="{{ url_for('fuel_bp.import_fuel_equipment_group_mappings') }}"
+              method="POST"
+              enctype="multipart/form-data"
+              class="d-inline-block">
+            {{ form.csrf_token }}
+            <input type="file"
+                   name="file"
+                   id="equipmentGroupMappingImportFile"
+                   class="d-none"
+                   accept=".xlsx,.xls"
+                   onchange="document.getElementById('equipmentGroupImportForm').submit()">
+            <label for="equipmentGroupMappingImportFile" class="btn btn-outline-primary fw-bold">
+                Загрузить из Excel
+            </label>
+        </form>
+
+        <select name="per_page"
+                form="filterForm"
+                class="form-select d-inline-block w-auto"
+                onchange="document.getElementById('filterForm').page.value=1; document.getElementById('filterForm').submit()">
+            <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+    </div>
+
+    <form method="GET"
+          action="{{ url_for('fuel_bp.fuel_equipment_group_list') }}"
+          class="mb-3"
+          id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.equipment_group_filter(
+                            class="form-control",
+                            value=equipment_group_filter,
+                            placeholder="Поиск по типам групп оборудования"
+                        ) }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                        Поиск
+                    </button>
+
+                    <a href="{{ url_for('fuel_bp.fuel_equipment_group_list') }}"
+                       class="btn btn-outline-secondary fw-bold"
+                       data-no-preloader>
+                        Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4 text-lg-end"></div>
+        </div>
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered">
+
+            <thead>
+                <tr class="table-success" style="word-wrap: break-word;">
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='code_topl',
+                                            sort_dir='asc' if sort_by != 'code_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            code_topl
+                            {% if sort_by == 'code_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='name_topl',
+                                            sort_dir='asc' if sort_by != 'name_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            name_topl
+                            {% if sort_by == 'name_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='type_topl',
+                                            sort_dir='asc' if sort_by != 'type_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            type_topl
+                            {% if sort_by == 'type_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='tm_topl',
+                                            sort_dir='asc' if sort_by != 'tm_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            tm_topl
+                            {% if sort_by == 'tm_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='n1_topl',
+                                            sort_dir='asc' if sort_by != 'n1_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            n1_topl
+                            {% if sort_by == 'n1_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='n2_topl',
+                                            sort_dir='asc' if sort_by != 'n2_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            n2_topl
+                            {% if sort_by == 'n2_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='p1_topl',
+                                            sort_dir='asc' if sort_by != 'p1_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            p1_topl
+                            {% if sort_by == 'p1_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='p2_topl',
+                                            sort_dir='asc' if sort_by != 'p2_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            p2_topl
+                            {% if sort_by == 'p2_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            sort_by='gruppa_oborud_topl',
+                                            sort_dir='asc' if sort_by != 'gruppa_oborud_topl' or sort_dir == 'desc' else 'desc') }}"
+                           class="text-black">
+                            gruppa_oborud_topl
+                            {% if sort_by == 'gruppa_oborud_topl' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        UUID типа группы оборудования
+                    </th>
+
+                    <th class="text-center align-middle">
+                        ID типа группы оборудования (текущая версия)
+                    </th>
+
+                    <th class="text-center align-middle">
+                        Наименование типа группы оборудования в АРМ
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% if display_rows %}
+                    {% for row in display_rows %}
+                        {% set equipment_group = row.eg %}
+                        {% set mapping = row.mapping %}
+                        <tr class="align-middle text-center">
+                            <td>{{ mapping.code_topl if mapping and mapping.code_topl is not none else '' }}</td>
+                            <td>{{ mapping.name_topl if mapping and mapping.name_topl else '' }}</td>
+                            <td>{{ mapping.type_topl if mapping and mapping.type_topl is not none else '' }}</td>
+                            <td>{{ mapping.tm_topl if mapping and mapping.tm_topl else '' }}</td>
+                            <td>{{ mapping.n1_topl if mapping and mapping.n1_topl is not none else '' }}</td>
+                            <td>{{ mapping.n2_topl if mapping and mapping.n2_topl is not none else '' }}</td>
+                            <td>{{ mapping.p1_topl if mapping and mapping.p1_topl is not none else '' }}</td>
+                            <td>{{ mapping.p2_topl if mapping and mapping.p2_topl is not none else '' }}</td>
+                            <td>{{ mapping.gruppa_oborud_topl if mapping and mapping.gruppa_oborud_topl else '' }}</td>
+                            <td>{{ equipment_group.ref_uuid if equipment_group else '—' }}</td>
+                            <td>{{ equipment_group.id if equipment_group else '—' }}</td>
+                            <td>{{ equipment_group.name if equipment_group else '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="12" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    {% for equipment_group in equipment_group_list %}
+                        <tr class="align-middle text-center">
+                            {% set mapping = mapping_by_eg.get(equipment_group.ref_uuid) %}
+                            <td>{{ mapping.code_topl if mapping and mapping.code_topl is not none else '' }}</td>
+                            <td>{{ mapping.name_topl if mapping and mapping.name_topl else '' }}</td>
+                            <td>{{ mapping.type_topl if mapping and mapping.type_topl is not none else '' }}</td>
+                            <td>{{ mapping.tm_topl if mapping and mapping.tm_topl else '' }}</td>
+                            <td>{{ mapping.n1_topl if mapping and mapping.n1_topl is not none else '' }}</td>
+                            <td>{{ mapping.n2_topl if mapping and mapping.n2_topl is not none else '' }}</td>
+                            <td>{{ mapping.p1_topl if mapping and mapping.p1_topl is not none else '' }}</td>
+                            <td>{{ mapping.p2_topl if mapping and mapping.p2_topl is not none else '' }}</td>
+                            <td>{{ mapping.gruppa_oborud_topl if mapping and mapping.gruppa_oborud_topl else '' }}</td>
+                            <td>{{ equipment_group.ref_uuid }}</td>
+                            <td>{{ equipment_group.id }}</td>
+                            <td>{{ equipment_group.name }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="12" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        {% include 'fuel/refdata/equipment_group/equipment_group_pagination.html' %}
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}
+

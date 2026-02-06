@@ -22,8 +22,9 @@ def get_fuel_type_list_full():
     return (
         query
         .order_by(
-            (FuelType.id != 0),
-            FuelType.name.asc()
+            FuelType.display_order.asc().nullslast(),
+            FuelType.name.asc(),
+            FuelType.id.asc(),
         )
         .all()
     )
@@ -41,7 +42,11 @@ def get_fuel_type_list():
     return (
         query
         .filter(FuelType.id.isnot(None), FuelType.id > 0)
-        .order_by(FuelType.name.asc())
+        .order_by(
+            FuelType.display_order.asc().nullslast(),
+            FuelType.name.asc(),
+            FuelType.id.asc(),
+        )
     )
 
 

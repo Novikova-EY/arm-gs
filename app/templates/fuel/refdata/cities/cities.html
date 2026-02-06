@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Города (БД Топливо){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
+
+    <h1 class="text-center mb-4">Города (БД Топливо)</h1>
+
+    <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+        <form id="citiesImportForm"
+            action="{{ url_for('fuel_bp.import_fuel_cities') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="d-inline-block">
+            <input type="file"
+                name="file"
+                id="citiesImportFile"
+                class="d-none"
+                accept=".xlsx,.xls"
+                onchange="document.getElementById('citiesImportForm').submit()">
+            <label for="citiesImportFile" class="btn btn-outline-primary fw-bold">
+                Загрузить из Excel
+            </label>
+        </form>
+
+        <a class="btn btn-warning fw-bold"
+            href="{{ url_for('fuel_bp.export_fuel_cities',
+                                cities_filter=cities_filter or '',
+                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            target="_blank" rel="noopener">
+            Экспорт в Excel
+        </a>
+
+        <select name="per_page"
+                form="filterForm"
+                class="form-select d-inline-block w-auto"
+                onchange="document.getElementById('filterForm').page.value=1; document.getElementById('filterForm').submit()">
+            <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+    </div>
+
+    <form method="GET"
+        action="{{ url_for('fuel_bp.fuel_cities_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        <input class="form-control"
+                               name="cities_filter"
+                               value="{{ cities_filter }}"
+                               placeholder="Поиск по code_topl, name_topl, obesp_cts, dprom_ao, dgkh_ao, obl">
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('fuel_bp.fuel_cities_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4 text-lg-end"></div>
+        </div>
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered">
+            <thead>
+                <tr class="table-success" style="word-wrap: break-word;">
+                    {% set cols = [
+                        ('code_topl','code_topl'),
+                        ('name_topl','name_topl'),
+                        ('naselenie','naselenie'),
+                        ('gilfond','gilfond'),
+                        ('obesp_cts','obesp_cts'),
+                        ('dprom_ao','dprom_ao'),
+                        ('dgkh_ao','dgkh_ao'),
+                        ('obl','obl')
+                    ] %}
+                    {% for key,label in cols %}
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('fuel_bp.fuel_cities_list',
+                                                page=pagination.page,
+                                                per_page=per_page,
+                                                cities_filter=cities_filter,
+                                                sort_by=key,
+                                                sort_dir='asc' if sort_by != key or sort_dir == 'desc' else 'desc') }}"
+                                class="text-black">
+                                {{ label }}
+                                {% if sort_by == key %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in items %}
+                    <tr class="align-middle text-center">
+                        <td>{{ row.code_topl if row.code_topl is not none else '' }}</td>
+                        <td>{{ row.name_topl if row.name_topl else '' }}</td>
+                        <td>{{ row.naselenie if row.naselenie is not none else '' }}</td>
+                        <td>{{ row.gilfond if row.gilfond is not none else '' }}</td>
+                        <td>{{ row.obesp_cts if row.obesp_cts else '' }}</td>
+                        <td>{{ row.dprom_ao if row.dprom_ao else '' }}</td>
+                        <td>{{ row.dgkh_ao if row.dgkh_ao else '' }}</td>
+                        <td>{{ row.obl if row.obl is not none else '' }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        {% include 'fuel/refdata/cities/cities_pagination.html' %}
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}
+

@@ -51,7 +51,7 @@ def union_energy_system_list():
     # Получение параметров запроса
     page                        = request.args.get("page", 1, type=int)
     per_page                    = request.args.get("per_page", 25, type=int)
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
@@ -60,7 +60,7 @@ def union_energy_system_list():
         # Обновление параметров из формы
         page                        = request.form.get("page", 1, type=int)
         per_page                    = request.form.get("per_page", 25, type=int)
-        sort_by                     = request.form.get("sort_by", "id")
+        sort_by                     = request.form.get("sort_by", "display_order")
         sort_dir                    = request.form.get("sort_dir", "asc")
         union_energy_system_filter  = request.form.get("union_energy_system_filter", "").strip()
         energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
@@ -201,7 +201,7 @@ def add_union_energy_system():
     # Сохранение текущих фильтров и параметров отображения
     page                        = request.args.get("page", 1, type=int)
     per_page                    = request.args.get("per_page", 25, type=int)
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()
@@ -312,7 +312,7 @@ def export_union_energy_system():
 
     user = session.get('username', 'Неизвестный пользователь')
     
-    sort_by                     = request.args.get("sort_by", "id")
+    sort_by                     = request.args.get("sort_by", "display_order")
     sort_dir                    = request.args.get("sort_dir", "asc")
     union_energy_system_filter  = request.args.get("union_energy_system_filter", "").strip()
     energy_system_type_filter   = request.args.get("energy_system_type_filter", "").strip()

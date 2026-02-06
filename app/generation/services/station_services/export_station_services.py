@@ -242,10 +242,16 @@ def attach_all_aggregates(data, rows):
         for tmt in tes_machine_type_names
     }
 
-    fuel_type_names = get_fuel_type_list_full()
+    from app.common.services.sorting_services import sort_fuel_type_objects
+    fuel_type_objects = sort_fuel_type_objects(get_fuel_type_list_full())
     data["fuel_type_name"] = {
         ft.id: ft.name
-        for ft in fuel_type_names
+        for ft in fuel_type_objects
+    }
+    # Сохраняем порядок display_order для последующей сортировки агрегатов по типам топлива
+    data["fuel_type_display_order"] = {
+        ft.id: getattr(ft, "display_order", None)
+        for ft in fuel_type_objects
     }
 
     # Дополняем словари имён для уровней иерархии (для экспорта)
@@ -392,9 +398,26 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         tes_machine_type_names = get_tes_machine_type_list_full()
         data["tes_machine_type_name"] = {tmt.id: tmt.name for tmt in tes_machine_type_names}
     
+    # Типы топлива и их порядок отображения (display_order) всегда синхронизируем с БД,
+    # чтобы сортировка агрегатов по видам топлива в Excel совпадала с UI.
+    from app.common.services.sorting_services import sort_fuel_type_objects
+    fuel_type_objects_for_order = sort_fuel_type_objects(get_fuel_type_list_full())
+
+    # Если имён ещё нет в data – заполняем их по отсортированному списку.
     if "fuel_type_name" not in data:
-        fuel_type_names = get_fuel_type_list_full()
-        data["fuel_type_name"] = {ft.id: ft.name for ft in fuel_type_names}
+        data["fuel_type_name"] = {
+            ft.id: ft.name
+            for ft in fuel_type_objects_for_order
+            if getattr(ft, "id", None) is not None
+        }
+
+    # Всегда создаём / обновляем отображаемый порядок по display_order,
+    # чтобы fuel_type_id_sort_key мог его использовать.
+    data["fuel_type_display_order"] = {
+        ft.id: getattr(ft, "display_order", None)
+        for ft in fuel_type_objects_for_order
+        if getattr(ft, "id", None) is not None
+    }
     
     if "energy_unit_name" not in data:
         try:
@@ -430,6 +453,19 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             data["energy_system_type_name"] = build_name_lookup(energy_system_type_list, ("name_full", "name"))
         except Exception:
             data["energy_system_type_name"] = {}
+
+    # Списки ID в порядке display_order (как на странице),
+    # чтобы все агрегированные строки в Excel шли в том же порядке.
+    station_type_ordered_ids = [
+        st.id for st in get_station_type_list_full() if getattr(st, "id", None) is not None
+    ]
+    tes_type_ordered_ids = [
+        tt.id for tt in get_tes_type_list_full() if getattr(tt, "id", None) is not None
+    ]
+    tes_machine_type_ordered_ids = [
+        tmt.id for tmt in get_tes_machine_type_list_full() if getattr(tmt, "id", None) is not None
+    ]
+
     print(f"[EXPORT] Создание словарей имён: {time.time() - t2:.2f}с")
 
     # 📦 Формируем все словари агрегатов для шаблона
@@ -830,27 +866,14 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                     for year, val in station_type_dict_rasp.get(st_id, {}).items():
                         vie_aggregated["p_rasp"][year] += val or Decimal(0)
 
-        # Сортировка типов станций: АЭС, ГЭС, ГАЭС, ТЭС (ВИЭ добавим отдельно ниже)
-        def station_type_order(name: str) -> int:
-            n = (name or "").lower()
-            if "аэс" in n:
-                return 0
-            if "гэс" in n and "гаэс" not in n:
-                return 1
-            if "гаэс" in n:
-                return 2
-            if "тэс" in n:
-                return 3
-            return 9
-
-        # Преобразуем в отсортированный список пар (id, данные)
-        station_type_items_sorted = sorted(
-            station_type_dict.items(),
-            key=lambda item: (
-                station_type_order(station_type_names.get(item[0], f"id={item[0]}")),
-                station_type_names.get(item[0], "")
-            )
-        )
+        # Порядок типов станций как на экране:
+        # используем display_order (через station_type_ordered_ids),
+        # а не "жёсткое" правило по подстрокам ("АЭС/ГЭС/ГАЭС/ТЭС").
+        station_type_items_sorted = [
+            (st_id, station_type_dict.get(st_id, {}))
+            for st_id in station_type_ordered_ids
+            if st_id in station_type_dict
+        ]
 
         for station_type_id, st_years in station_type_items_sorted:
             if station_type_id is None:
@@ -938,7 +961,12 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                     tes_type_dict_ogr = tes_type_data_ogr.get(level_id, {})
                     tes_type_dict_rasp = tes_type_data_rasp.get(level_id, {})
 
-                for tes_type_id, tt_years in tes_type_dict.items():
+                # Типы ТЭС выводим в порядке display_order (tes_type_ordered_ids),
+                # отфильтровывая только те, по которым есть данные в агрегатах.
+                for tes_type_id in tes_type_ordered_ids:
+                    tt_years = tes_type_dict.get(tes_type_id)
+                    if not tt_years:
+                        continue
                     if tes_type_id is None:
                         continue
 
@@ -1063,7 +1091,12 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         tes_machine_type_data_ogr = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                         tes_machine_type_data_rasp = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                    for machine_type_id, mt_years in mt_dict.items():
+                    # Типы агрегатов ТЭС также сортируем по display_order
+                    # (tes_machine_type_ordered_ids), чтобы порядок совпадал со страницей.
+                    for machine_type_id in tes_machine_type_ordered_ids:
+                        mt_years = mt_dict.get(machine_type_id)
+                        if not mt_years:
+                            continue
                         if machine_type_id is None:
                             continue
                         machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
@@ -1390,8 +1423,21 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     rows = [row for row in rows if not _row_has_unset_value(row)]
     while rows and _is_effectively_empty_row(rows[-1]):
         rows.pop()
-    while len(rows) > 1 and rows[-1] == rows[-2]:
-        rows.pop()
+
+    # Защитное удаление полностью дублирующихся подряд строк (например, повторяющихся
+    # строк с располагаемой мощностью по одному и тому же типу станции / энергосистемы).
+    # Логика формирования агрегатов местами сложная и в редких случаях может
+    # сформировать одинаковые строки дважды, поэтому здесь аккуратно очищаем только
+    # ПОЛНЫЕ дубликаты, не затрагивая реальные данные.
+    deduped_rows = []
+    prev_row = None
+    for row in rows:
+        if row == prev_row:
+            # пропускаем точный дубликат предыдущей строки
+            continue
+        deduped_rows.append(row)
+        prev_row = row
+    rows = deduped_rows
 
     print(f"[EXPORT] Формирование строк данных: {time.time() - t4:.2f}с, всего строк: {len(rows)}")
 

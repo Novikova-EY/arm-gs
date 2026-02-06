@@ -34,7 +34,7 @@ from app.common.services.database_version_filter import apply_version_filter, se
 
 def federal_district_query(
     federal_district_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc",
 ):
     """ Базовый запрос для выборки списка федеральных округов с фильтрацией и сортировкой. """
@@ -51,7 +51,7 @@ def federal_district_query(
         "external_id",
         "external_name",
     }
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -155,7 +155,7 @@ def get_federal_district_list(
     page, 
     per_page, 
     federal_district_filter=None, 
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"
 ):
     """ Получает список федеральных округов с пагинацией, фильтрацией и сортировкой. """
@@ -539,7 +539,7 @@ def import_federal_district_service(file, user):
 def export_federal_district_service(
         user, 
         federal_district_filter=None, 
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc"):
     """ Экспортирует данные ФО в Excel. """
 

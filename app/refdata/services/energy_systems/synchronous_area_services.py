@@ -44,13 +44,13 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 
 def synchronous_area_query(
     synchronous_area_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc"):
     """ Базовый запрос для выборки частей энергосистемы России с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name"}
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    allowed_sort_by = {"id", "name", "display_order", "number"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -68,11 +68,23 @@ def synchronous_area_query(
         )
 
     # Сортировка
-    if sort_by in ["name"]:
-        sort_field = getattr(SynchronousArea, sort_by)
+    if sort_by == "name":
+        sort_field = SynchronousArea.name
         query = query.order_by(sort_field.desc() if sort_dir == "desc" else sort_field.asc())
-
+    elif sort_by == "display_order":
+        # Сортируем по порядку отображения, значения NULL в конце
+        if sort_dir == "desc":
+            query = query.order_by(
+                (SynchronousArea.display_order.is_(None)),
+                SynchronousArea.display_order.desc(),
+            )
+        else:
+            query = query.order_by(
+                (SynchronousArea.display_order.is_(None)),
+                SynchronousArea.display_order.asc(),
+            )
     else:
+        # sort_by == "id" или "number"
         query = query.order_by(SynchronousArea.id.desc() if sort_dir == "desc" else SynchronousArea.id.asc())
 
     # Исключаем запись "Не указано" (id=0)
@@ -86,7 +98,7 @@ def get_synchronous_area_list(
     page, 
     per_page, 
     synchronous_area_filter=None, 
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список синхронных зон с пагинацией, фильтрацией и сортировкой."""
     
@@ -121,6 +133,7 @@ def update_synchronous_area_service(data, user):
             synchronous_area_id = record.get("synchronous_area_id")
             number = record.get("number")
             name = record.get("name")
+            display_order = record.get("display_order")
 
             # Проверки на валидность данных
             if not name:
@@ -158,6 +171,20 @@ def update_synchronous_area_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с номером «{number}» уже существует.")
 
+            # Проверка уникальности display_order
+            if display_order is not None and display_order != obj.display_order:
+                q_display = (
+                    apply_version_filter(SynchronousArea.query, SynchronousArea)
+                    .filter(
+                        SynchronousArea.display_order == display_order,
+                        SynchronousArea.id != synchronous_area_id,
+                    )
+                )
+                if q_display.first():
+                    raise ValueError(
+                        f"Запись с порядком отображения «{display_order}» уже существует."
+                    )
+
             changes = []
                 
             if name != (obj.name or ""):
@@ -169,6 +196,12 @@ def update_synchronous_area_service(data, user):
                 new_val = number if number is not None else "не указано"
                 changes.append(f"Номер: {old_val} → {new_val}")
                 obj.number = number
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
+                obj.display_order = display_order
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -233,6 +266,7 @@ def add_synchronous_area_service(data, user):
             for record in data:
                 number = (record.get("number") or "").strip()
                 name = (record.get("name") or "").strip()
+                display_order = record.get("display_order")
 
                 # Проверка на наличие необходимых данных
                 if not name:
@@ -257,10 +291,24 @@ def add_synchronous_area_service(data, user):
                 if dup_full:
                     raise ValueError(f"Запись с полным наименованием «{number}» уже существует.")
 
+                # Проверяем уникальность display_order при создании
+                if display_order is not None:
+                    dup_display = (
+                        apply_version_filter(SynchronousArea.query, SynchronousArea)
+                        .filter(SynchronousArea.display_order == display_order)
+                        .with_for_update()
+                        .first()
+                    )
+                    if dup_display:
+                        raise ValueError(
+                            f"Запись с порядком отображения «{display_order}» уже существует."
+                        )
+
                 # Создаем новую запись
                 obj = SynchronousArea(
                     name=name,
                     number=number or None,
+                    display_order=display_order,
                 )
                 set_db_version_on_create(obj)
                 db.session.add(obj)
@@ -379,7 +427,7 @@ def delete_synchronous_area_service(ids, user):
 
 def export_synchronous_area_service(
         user, 
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc",
         synchronous_area_filter=None, 
         ):

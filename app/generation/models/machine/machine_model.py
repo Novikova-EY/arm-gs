@@ -184,11 +184,11 @@ class Machine(db.Model, VersionedModelMixin):
     # ожидаемый год модернизации
     date_modernization_expected = db.Column(db.Integer, nullable=True)
     
-    # фактическая дата перемаркировки
-    date_relabing_fact = db.Column(db.String(10), nullable=True)
+    # фактическая дата перемаркировки (может содержать несколько дат)
+    date_relabing_fact = db.Column(db.String(255), nullable=True)
     
-    # фактическая дата уточнения
-    date_update_fact = db.Column(db.String(10), nullable=True)
+    # фактическая дата уточнения (может содержать несколько дат)
+    date_update_fact = db.Column(db.String(255), nullable=True)
 
     # примечание
     note = db.Column(db.String(512), nullable=True)
@@ -224,6 +224,32 @@ class Machine(db.Model, VersionedModelMixin):
     @group_rowspan.setter
     def group_rowspan(self, value):
         self._group_rowspan = value
+
+    @property
+    def modernization_display(self) -> str | None:
+        """
+        Отображаемое значение для колонки 'Модерн.' на station_list:
+        - год из ожидаемой модернизации (date_modernization_expected)
+        - и год из последней даты перемаркировки (date_relabing_fact), если есть
+        Формат: "YYYY / YYYY" или один год, если второй отсутствует.
+        """
+        from app.common.services.help_services import normalize_date_list, convert_to_date
+
+        parts: list[str] = []
+
+        if self.date_modernization_expected:
+            parts.append(str(self.date_modernization_expected))
+
+        if self.date_relabing_fact:
+            # Берём последнюю дату из нормализованного списка и вытаскиваем из неё год
+            normalized = normalize_date_list(self.date_relabing_fact)
+            if normalized:
+                last_token = [t.strip() for t in normalized.split(",") if t.strip()][-1]
+                dt = convert_to_date(last_token)
+                if dt is not None:
+                    parts.append(str(dt.year))
+
+        return " / ".join(parts) if parts else None
 
     @property
     def fuel_rowspan(self):

@@ -22,8 +22,9 @@ def get_synchronous_area_list_full():
     return (
         query
         .order_by(
-            (SynchronousArea.id != 0),
-            SynchronousArea.name.asc()
+            SynchronousArea.display_order.asc().nullslast(),
+            SynchronousArea.name.asc(),
+            SynchronousArea.id.asc(),
         )
         .all()
     )
@@ -41,7 +42,11 @@ def get_synchronous_area_list():
     return (
         query
         .filter(SynchronousArea.id.isnot(None), SynchronousArea.id > 0)
-        .order_by(SynchronousArea.name.asc())
+        .order_by(
+            SynchronousArea.display_order.asc().nullslast(),
+            SynchronousArea.name.asc(),
+            SynchronousArea.id.asc(),
+        )
     )
 
 

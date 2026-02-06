@@ -44,7 +44,11 @@ def get_union_energy_system_list():
     return (
         query
         .filter(UnionEnergySystem.id.isnot(None), UnionEnergySystem.id > 0)
-        .order_by(UnionEnergySystem.name.asc())
+        .order_by(
+            UnionEnergySystem.display_order.asc().nullslast(),
+            UnionEnergySystem.name.asc(),
+            UnionEnergySystem.id.asc(),
+        )
     )
 
 
@@ -62,7 +66,11 @@ def get_union_energy_systems_list() -> List[UnionEnergySystem]:
             selectinload(UnionEnergySystem.regional_energy_systems)
             .load_only(RegionalEnergySystem.id, RegionalEnergySystem.name)
         )
-        .order_by(UnionEnergySystem.id)
+        .order_by(
+            UnionEnergySystem.display_order.asc().nullslast(),
+            UnionEnergySystem.name.asc(),
+            UnionEnergySystem.id.asc(),
+        )
         .all()
     )
 

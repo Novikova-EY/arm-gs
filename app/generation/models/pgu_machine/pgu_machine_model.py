@@ -77,8 +77,10 @@ class PGUMachine(db.Model, VersionedModelMixin):
     date_decompressing_expected = db.Column(db.Integer, nullable=True)
     date_decompressing_fact = db.Column(db.String(10), nullable=True)
     date_modernization_expected = db.Column(db.Integer, nullable=True)
-    date_relabing_fact = db.Column(db.String(10), nullable=True)
-    date_update_fact = db.Column(db.String(10), nullable=True)
+
+    # Поля могут содержать несколько дат в текстовом формате
+    date_relabing_fact = db.Column(db.String(255), nullable=True)
+    date_update_fact = db.Column(db.String(255), nullable=True)
     note = db.Column(db.String(512), nullable=True)
     year_modern = db.Column(db.String(10), nullable=True)
     year_demontaz = db.Column(db.String(10), nullable=True)

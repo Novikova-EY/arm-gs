@@ -21,8 +21,9 @@ def get_tes_type_list_full():
     return (
         query
         .order_by(
-            (TesType.id != 0),
-            TesType.name.asc()
+            TesType.display_order.asc().nullslast(),
+            TesType.name.asc(),
+            TesType.id.asc(),
         )
         .all()
     )
@@ -40,7 +41,11 @@ def get_tes_type_list():
     return (
         query
         .filter(TesType.id.isnot(None), TesType.id > 0)
-        .order_by(TesType.name.asc())
+        .order_by(
+            TesType.display_order.asc().nullslast(),
+            TesType.name.asc(),
+            TesType.id.asc(),
+        )
         .all()
     )
 

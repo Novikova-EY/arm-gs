@@ -124,28 +124,16 @@ def totals_summary():
     synchronous_area_aggregates = build_synchronous_area_aggregates(data)
     federal_district_aggregates = build_federal_district_aggregates(data)
 
-    # Список федеральных округов (порядок: display_order ASC)
+    # Список федеральных округов (порядок: display_order ASC уже реализован в get_federal_district_list_full)
     federal_district_list = get_federal_district_list_full()
     federal_district_names = get_federal_districts_map()
-    _fd_sorted = sorted(
-        federal_district_list,
-        key=lambda fd: (
-            fd.display_order is None,
-            fd.display_order if fd.display_order is not None else 0,
-            (fd.name or ""),
-            fd.id or 0,
-        ),
-    )
-    sorted_federal_district_ids = [fd.id for fd in _fd_sorted if fd.id]
+    sorted_federal_district_ids = [fd.id for fd in federal_district_list if fd.id]
 
-    # Получаем список типов энергосистем
+    # Получаем список типов энергосистем (порядок уже по display_order в get_energy_system_type_list_full)
     energy_system_type_list = get_energy_system_type_list_full()
     energy_system_type_names = get_energy_system_type_map()
-
-    # Сортируем типы энергосистем по ID (это объекты, а не словари)
-    sorted_energy_system_type_ids = sorted(
-        [est.id for est in energy_system_type_list if est.id]
-    )
+    # Сохраняем порядок, пришедший из сервиса
+    sorted_energy_system_type_ids = [est.id for est in energy_system_type_list if est.id]
     
     # Получаем список синхронных зон
     synchronous_area_list = get_synchronous_area_list_full()
@@ -158,9 +146,7 @@ def totals_summary():
     ]
     synchronous_area_names = {sa.id: sa.name for sa in synchronous_area_list if sa.id}
     
-    # Сортируем синхронные зоны:
-    # - синхронная зона Калининградской области (по названию) всегда первой
-    # - далее по ID (исключаем id=0 если есть)
+    # ID синхронных зон в порядке display_order (как вернул get_synchronous_area_list_full)
     _sa_ids = [sa.id for sa in synchronous_area_list if sa.id and sa.id > 0]
     _kaliningrad_ids = []
 
@@ -192,7 +178,8 @@ def totals_summary():
                 _kaliningrad_ids.append(_sid)
 
     _kaliningrad_ids = sorted(set([i for i in _kaliningrad_ids if i in set(_sa_ids)]))
-    _rest_ids = sorted([i for i in _sa_ids if i not in set(_kaliningrad_ids)])
+    # Остальные зоны — в исходном порядке (display_order)
+    _rest_ids = [i for i in _sa_ids if i not in set(_kaliningrad_ids)]
     sorted_synchronous_area_ids = _kaliningrad_ids + _rest_ids
 
     # Получаем типы станций для шаблона
@@ -208,13 +195,23 @@ def totals_summary():
 
     station_type_query = StationType.query
     station_type_query = filter_by_db_version(station_type_query, StationType)
-    station_type_names = station_type_query.order_by(StationType.id.asc()).all()
+    # Сортируем типы станций по display_order, затем по имени и ID
+    station_type_names = station_type_query.order_by(
+        StationType.display_order.asc().nullslast(),
+        StationType.name.asc(),
+        StationType.id.asc(),
+    ).all()
     station_type_list = {st.id: st.name for st in station_type_names}
 
     # Получаем типы ТЭС для шаблона
     tes_type_query = TesType.query
     tes_type_query = filter_by_db_version(tes_type_query, TesType)
-    tes_type_names = tes_type_query.order_by(TesType.id.asc()).all()
+    # Сортируем типы ТЭС по display_order, затем по имени и ID
+    tes_type_names = tes_type_query.order_by(
+        TesType.display_order.asc().nullslast(),
+        TesType.name.asc(),
+        TesType.id.asc(),
+    ).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
     # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС); для остальных (ДЭС, ДГА и т.д.) — показывать
@@ -229,8 +226,11 @@ def totals_summary():
     tes_machine_type_query = filter_by_db_version(
         tes_machine_type_query, TesMachineType
     )
+    # Сортируем типы агрегатов ТЭС по display_order, затем по имени и ID
     tes_machine_type_names = tes_machine_type_query.order_by(
-        TesMachineType.id.asc()
+        TesMachineType.display_order.asc().nullslast(),
+        TesMachineType.name.asc(),
+        TesMachineType.id.asc(),
     ).all()
     tes_machine_type_list = {tmt.id: tmt.name for tmt in tes_machine_type_names}
 

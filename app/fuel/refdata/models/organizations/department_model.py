@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Department model (Департамент).
+Department model (Департамент) для подсистемы топлива.
 """
 from sqlalchemy.sql import func
 from app.extensions import db
@@ -60,3 +60,4 @@ class Department(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
 
     def __repr__(self) -> str:
         return f"<Department id={self.id} name={self.name!r}>"
+

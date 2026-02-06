@@ -111,14 +111,8 @@
                                         {% else %}
                                             {% if machine and machine.gen_company %}
                                                 {{ machine.gen_company.name }}
-                                                {% if machine.gen_company.id %}
-                                                    <span class="text-muted small">ID {{ machine.gen_company.id }}</span>
-                                                {% endif %}
                                             {% elif fallback_gen_company and fallback_gen_company.applied %}
                                                 {{ fallback_gen_company.name or 'не указано' }}
-                                                {% if fallback_gen_company.id %}
-                                                    <span class="text-muted small">ID {{ fallback_gen_company.id }}</span>
-                                                {% endif %}
                                             {% else %}
                                                 не указано
                                             {% endif %}
@@ -134,7 +128,7 @@
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_energy_area(class="form-select") }}
                                         {% else %}
-                                            {{ machine.gen_company.name if machine.gen_company else '—' }}
+                                            {% if station.energy_unit and (station.energy_unit.name or '')|lower not in ('не указано', 'не указан') %}{{ station.energy_unit.name }}{% else %}—{% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -211,7 +205,7 @@
 
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
+                                    <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.date_exploitation(class="form-control") }}
@@ -312,7 +306,9 @@
                                     <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_update_fact(class="form-control") }}
+                                            {{ main_form.date_update_fact(
+                                                class="form-control",
+                                            ) }}
                                         {% else %}
                                             {{ main_form.date_update_fact.data if main_form.date_update_fact.data else '—' }}
                                         {% endif %}
@@ -322,7 +318,9 @@
                                     <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_relabing_fact(class="form-control") }}
+                                            {{ main_form.date_relabing_fact(
+                                                class="form-control",
+                                            ) }}
                                         {% else %}
                                             {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
                                         {% endif %}
@@ -357,7 +355,8 @@
 
                                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                                 <select name="end_year" id="end_year" class="form-select">
-                                    {% for year in range(2022, 2043) %}
+                                    {% set max_end_year = version_year_end if version_year_end else 2042 %}
+                                    {% for year in range(2022, max_end_year + 1) %}
                                         <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
@@ -509,6 +508,9 @@
                             <td class="first-column fw-bold" style="width: 50px;">Руст</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
+                                <input type="hidden"
+                                       class="year-feature"
+                                       value="{{ year_features.get(p.year.data)|default('', true) }}">
                                 <td class="power-column align-middle text-center">
                                     <input type="hidden"
                                         name="{{ p.p_ust.name }}_orig"
@@ -1576,14 +1578,15 @@ document.addEventListener("DOMContentLoaded", function () {
     function autoFillDatesFromPowers() {
         // Получаем все поля p_ust
         const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
-        
+
         if (rustInputs.length === 0) {
             return;
         }
-        
+
         // Получаем годы из скрытых полей или из start_year/end_year
         let yearInputs = Array.from(document.querySelectorAll(".total-power-row input[type=\"hidden\"][name*=\"year\"]"));
-        
+        const yearFeatureInputs = Array.from(document.querySelectorAll(".total-power-row input.year-feature"));
+
         // Если скрытых полей нет или их количество не совпадает, используем start_year
         if (yearInputs.length === 0 || yearInputs.length !== rustInputs.length) {
             const startYearEl = document.getElementById("start_year");
@@ -1601,29 +1604,42 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
         }
-        
-        // Собираем массив {year, power} для всех годов
+
+        // Собираем массив {year, power, isPlan} для всех годов
         const powersByYear = [];
         for (let i = 0; i < rustInputs.length && i < yearInputs.length; i++) {
             const year = parseInt(yearInputs[i].value);
             if (isNaN(year)) continue;
             const powerValue = parsePowerValue(rustInputs[i].value);
             const power = (powerValue !== null && powerValue !== undefined && !isNaN(powerValue) && powerValue > 0) ? powerValue : 0;
-            powersByYear.push({ year: year, power: power });
+            let featureRaw = "";
+            if (yearFeatureInputs[i]) {
+                featureRaw = String(yearFeatureInputs[i].value || "");
+            }
+            const isPlan = featureRaw.trim().toLowerCase() === "план";
+            powersByYear.push({ year: year, power: power, isPlan: isPlan });
         }
-        
+
+        // Оставляем для автозаполнения только годы с признаком "план"
+        const planPowers = powersByYear.filter(item => item.isPlan);
+
+        // Если нет ни одного планового года — не рассчитываем ожидаемые годы автоматически
+        if (planPowers.length === 0) {
+            return;
+        }
+
         // Получаем поля дат
         const dateExploitationExpectedField = document.querySelector('input[name*="date_exploitation_expected"]');
         const dateDecompressingExpectedField = document.querySelector('input[name*="date_decompressing_expected"]');
         const dateModernizationExpectedField = document.querySelector('input[name*="date_modernization_expected"]');
         const dateExploitationField = document.querySelector('input[name*="date_exploitation"]');
-        
+
         // Логика 1: Ожидаемый год вывода из эксплуатации
         // Если p_ust[N] != 0 и p_ust[N+1] == 0, то date_decompressing_expected = N+1 (первый год с нулевой мощностью)
         let decompYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const current = powersByYear[i];
-            const next = powersByYear[i + 1];
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const current = planPowers[i];
+            const next = planPowers[i + 1];
             if (current.power > 0 && next.power === 0) {
                 decompYear = next.year;
                 break; // Берем первый такой случай
@@ -1635,9 +1651,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Логика 2: Ожидаемый год ввода в эксплуатацию
         // Если p_ust[N] == 0 и p_ust[N+1] != 0, то date_exploitation_expected = N+1
         let explExpectedYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const current = powersByYear[i];
-            const next = powersByYear[i + 1];
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const current = planPowers[i];
+            const next = planPowers[i + 1];
             if (current.power === 0 && next.power > 0) {
                 explExpectedYear = next.year;
                 break; // Берем первый такой случай
@@ -1648,9 +1664,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Логика 3: Ожидаемый год модернизации
         // Если p_ust[N] != 0 и p_ust[N+1] != 0 и p_ust[N+1] != p_ust[N], то date_modernization_expected = N+1
         let modernYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const current = powersByYear[i];
-            const next = powersByYear[i + 1];
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const current = planPowers[i];
+            const next = planPowers[i + 1];
             if (current.power > 0 && next.power > 0 && Math.abs(current.power - next.power) > 0.001) {
                 modernYear = next.year;
                 break; // Берем первый такой случай

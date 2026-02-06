@@ -1,7 +1,10 @@
 from flask_wtf import FlaskForm
 from wtforms import Form, StringField, TextAreaField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField, DecimalField
 from wtforms.validators import DataRequired, Optional, NumberRange, Length
-from app.validators.validate_year_or_date import validate_year_or_date
+from app.validators.validate_year_or_date import (
+    validate_year_or_date,
+    validate_year_or_date_list,
+)
 from decimal import Decimal
 
 class MachineFilterForm(FlaskForm):
@@ -118,11 +121,11 @@ class MachineFilterForm(FlaskForm):
     )
     date_relabing_fact = StringField(
         'Фактическая дата перемаркировки',
-        validators=[Optional(), Length(max=80), validate_year_or_date]
+        validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
     date_update_fact = StringField(
         'Фактическая дата уточнения',
-        validators=[Optional(), Length(max=80), validate_year_or_date]
+        validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
 
     note = StringField(
@@ -221,11 +224,11 @@ class PGUMachineFilterForm(FlaskForm):
     )
     date_relabing_fact = StringField(
         'Фактическая дата перемаркировки',
-        validators=[Optional(), Length(max=80), validate_year_or_date]
+        validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
     date_update_fact = StringField(
         'Фактическая дата уточнения',
-        validators=[Optional(), Length(max=80), validate_year_or_date]
+        validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
 
     note = StringField(

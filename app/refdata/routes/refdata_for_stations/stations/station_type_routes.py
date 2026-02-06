@@ -29,6 +29,13 @@ from app.refdata.services.refdata_for_stations.stations.station_type_services im
 from app.logs.services.logging_service import log_to_db
 
 
+def _normalize_filter(value):
+    """Нормализует строку фильтра: пустые/None/'None' -> None."""
+    if value in (None, "", "None"):
+        return None
+    return value
+
+
 @refdata_bp.route("/station_type", methods=["GET", "POST"])
 @login_required
 def station_type_list():
@@ -47,21 +54,22 @@ def station_type_list():
     page                = request.args.get("page", 1, type=int)
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
-    station_type_filter    = request.args.get("station_type_filter")
+    station_type_filter    = _normalize_filter(request.args.get("station_type_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
         per_page            = request.form.get("per_page", 25, type=int)
-        sort_by             = request.form.get("sort_by", "id")
+        sort_by             = request.form.get("sort_by", "display_order")
         sort_dir            = request.form.get("sort_dir", "asc")
-        station_type_filter    = request.form.get("station_type_filter")
+        station_type_filter    = _normalize_filter(request.form.get("station_type_filter"))
 
         # Получение данных из формы
         station_type_ids       = request.form.getlist("station_ids[]")
         station_type_names     = request.form.getlist("station_type_names[]")
+        station_type_orders    = request.form.getlist("display_orders[]")
         station_type_delete    = request.form.getlist("station_type_delete[]")
   
         deleted_ids = set()
@@ -87,12 +95,25 @@ def station_type_list():
            
            # Формирование данных для обновления
             station_type_data = []
-            for station_type_id, station_type_name in zip(station_type_ids, station_type_names):
+            for station_type_id, station_type_name, display_order in zip(
+                station_type_ids, station_type_names, station_type_orders
+            ):
                 if station_type_id and int(station_type_id) in deleted_ids:
                     continue
+                try:
+                    parsed_display_order = int(display_order) if display_order and str(display_order).strip() else None
+                except ValueError as e:
+                    raise ValueError(
+                        (
+                            f"Ошибка обработки порядка отображения для записи c ID={station_type_id}: "
+                            f"значение «{display_order}» не является целым числом."
+                        )
+                    )
+
                 station_type_data.append({
                     "station_type_id": int(station_type_id) if station_type_id else None,
                     "name": station_type_name.strip(),
+                    "display_order": parsed_display_order,
                 })
             
             if not station_type_data:
@@ -163,7 +184,7 @@ def add_station_type():
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     station_type_filter    = request.args.get("station_type_filter", "").strip()
 
@@ -232,7 +253,7 @@ def export_station_type():
 
     user = session.get('username', 'Неизвестный пользователь')
 
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     station_type_filter    = request.args.get("station_type_filter")
 

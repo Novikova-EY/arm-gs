@@ -69,7 +69,7 @@ def equipment_group_list():
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
     per_page                        = request.args.get("per_page", 25, type=int)
-    sort_by                         = request.args.get("sort_by", "id")
+    sort_by                         = request.args.get("sort_by", "display_order")
     sort_dir                        = request.args.get("sort_dir", "asc")
     equipment_group_filter          = _normalize_filter(request.args.get("equipment_group_filter"))
     technology_type_filter          = _normalize_filter(request.args.get("technology_type_filter"))
@@ -79,7 +79,7 @@ def equipment_group_list():
         # Обновление параметров из формы
         page                            = request.form.get("page", 1, type=int)
         per_page                        = request.form.get("per_page", 25, type=int)
-        sort_by                         = request.form.get("sort_by", "id")
+        sort_by                         = request.form.get("sort_by", "display_order")
         sort_dir                        = request.form.get("sort_dir", "asc")
         equipment_group_filter          = _normalize_filter(request.form.get("equipment_group_filter"))
         technology_type_filter          = _normalize_filter(request.form.get("technology_type_filter"))
@@ -240,7 +240,7 @@ def add_equipment_group():
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     equipment_group_filter    = request.args.get("equipment_group_filter", "").strip()
     technology_type_filter    = request.args.get("technology_type_filter", "").strip()
@@ -315,7 +315,7 @@ def export_equipment_group():
 
     user = session.get('username', 'Неизвестный пользователь')
 
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     equipment_group_filter    = request.args.get("equipment_group_filter")
     technology_type_filter    = request.args.get("technology_type_filter")

@@ -2,7 +2,7 @@
 """
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, HiddenField, SelectField
+from wtforms import StringField, HiddenField, SelectField, IntegerField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 
 
@@ -19,6 +19,12 @@ class TesMachineTypeFilterForm(FlaskForm):
         ],
     )
     delete = HiddenField("Удалить")
+
+    # Порядок отображения (для единообразия с другими справочниками; в списке редактируется напрямую)
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional()],
+    )
 
     # Фильтр
     tes_machine_type_filter = StringField(

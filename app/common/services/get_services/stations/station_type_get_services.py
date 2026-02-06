@@ -19,8 +19,9 @@ def get_station_type_list_full():
     return (
         query
         .order_by(
-            (StationType.id != 0),
-            StationType.name.asc()
+            StationType.display_order.asc().nullslast(),
+            StationType.name.asc(),
+            StationType.id.asc(),
         )
         .all()
     )
@@ -38,6 +39,10 @@ def get_station_type_list():
     return (
         query
         .filter(StationType.id.isnot(None), StationType.id > 0)
-        .order_by(StationType.name.asc())
+        .order_by(
+            StationType.display_order.asc().nullslast(),
+            StationType.name.asc(),
+            StationType.id.asc(),
+        )
         .all()
     )

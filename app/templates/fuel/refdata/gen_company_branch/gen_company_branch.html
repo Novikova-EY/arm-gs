@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Генерирующие компании (филиалы) — связь с БД Топливо{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+    {% include 'fuel/refdata/_fuel_refdata_nav.html' %}
+
+    <h1 class="text-center mb-4">Генерирующие компании (филиалы) — связь с БД Топливо</h1>
+
+    <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap align-items-center">
+        <form id="genCompanyBranchImportForm"
+            action="{{ url_for('fuel_bp.import_fuel_gen_company_branch_mappings') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="d-inline-block">
+            {{ form.csrf_token }}
+            <input type="file"
+                name="file"
+                id="genCompanyBranchMappingImportFile"
+                class="d-none"
+                accept=".xlsx,.xls"
+                onchange="document.getElementById('genCompanyBranchImportForm').submit()">
+            <label for="genCompanyBranchMappingImportFile" class="btn btn-outline-primary fw-bold">
+                Загрузить из Excel
+            </label>
+        </form>
+
+        <a class="btn btn-warning fw-bold"
+            href="{{ url_for('fuel_bp.export_fuel_gen_company_branch',
+                                gen_company_branch_filter=gen_company_branch_filter or '',
+                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            target="_blank" rel="noopener">
+            Экспорт в Excel
+        </a>
+
+        <select name="per_page"
+                form="filterForm"
+                class="form-select d-inline-block w-auto"
+                onchange="document.getElementById('filterForm').page.value=1; document.getElementById('filterForm').submit()">
+            <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+            <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+            <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+            <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+        </select>
+    </div>
+
+    <form method="GET"
+        action="{{ url_for('fuel_bp.fuel_gen_company_branch_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        <input
+                            type="text"
+                            name="gen_company_branch_filter"
+                            class="form-control"
+                            value="{{ gen_company_branch_filter }}"
+                            placeholder="Поиск по code_topl / name_topl / name / компании в АРМ">
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary fw-bold"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list') }}"
+                            class="btn btn-outline-secondary fw-bold"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4 text-lg-end"></div>
+        </div>
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered">
+
+            <thead>
+                <tr class="table-success" style="word-wrap: break-word;">
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            gen_company_branch_filter=gen_company_branch_filter,
+                                            sort_by='external_id',
+                                            sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            code_topl
+                            {% if sort_by == 'external_id' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            gen_company_branch_filter=gen_company_branch_filter,
+                                            sort_by='external_name',
+                                            sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            name_topl
+                            {% if sort_by == 'external_name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            gen_company_branch_filter=gen_company_branch_filter,
+                                            sort_by='local_name',
+                                            sort_dir='asc' if sort_by != 'local_name' or sort_dir == 'desc' else 'desc') }}"
+                            class="text-black">
+                            name
+                            {% if sort_by == 'local_name' %}
+                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+
+                    <th class="text-center align-middle">
+                        UUID ген. компании
+                    </th>
+                    <th class="text-center align-middle">
+                        ID ген. компании (текущая версия)
+                    </th>
+                    <th class="text-center align-middle">
+                        Наименование в АРМ
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in rows %}
+                    {% set mapping = row.mapping %}
+                    {% set gen_company = row.gc %}
+                    <tr class="align-middle text-center">
+                        {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
+                        <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
+                        <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
+                        <td>{{ mapping.local_name if mapping and mapping.local_name else '' }}</td>
+                        <td>{{ gen_company.ref_uuid if gen_company else '—' }}</td>
+                        <td>{{ gen_company.id if gen_company else '—' }}</td>
+                        <td>{{ gen_company.name if gen_company else '—' }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        {% include 'fuel/refdata/gen_company_branch/gen_company_branch_pagination.html' %}
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}
+

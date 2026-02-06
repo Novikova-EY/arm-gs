@@ -421,16 +421,16 @@
                             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                         </td>
 
-                        <!-- Строки таблицы. Столбец "Тип топлива" -->
-                        <td> {{ fuel_type.name }} </td>
-
                         <!-- Строки таблицы. Столбец "Порядок отображения" -->
                         <td class="text-center">
                             {{ fuel_type.display_order if fuel_type.display_order is not none else '' }}
                         </td>
 
-                    <!-- Строки таблицы. Столбец "Короткое наименование" -->
-                    <td> {{ fuel_type.topl_nazvl or '' }} </td>
+                        <!-- Строки таблицы. Столбец "Тип топлива" -->
+                        <td> {{ fuel_type.name }} </td>
+
+                        <!-- Строки таблицы. Столбец "Короткое наименование" -->
+                        <td> {{ fuel_type.topl_nazvl or '' }} </td>
 
                     
                     </tr>

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-BusinessUnit model (Бизнес единица).
+BusinessUnit model (Бизнес единица) для подсистемы топлива.
 """
 from sqlalchemy.sql import func
 from app.extensions import db
@@ -60,3 +60,4 @@ class BusinessUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
 
     def __repr__(self) -> str:
         return f"<BusinessUnit id={self.id} name={self.name!r}>"
+

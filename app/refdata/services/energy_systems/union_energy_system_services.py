@@ -45,7 +45,7 @@ from app.common.services.database_version_filter import apply_version_filter, se
 def union_energy_system_query(
     union_energy_system_filter=None,
     energy_system_type_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc"):
     """ Базовый запрос для выборки списка ОЭС с фильтрацией и сортировкой. """
 
@@ -63,7 +63,7 @@ def union_energy_system_query(
         "external_nameoes",
         "external_abbr",
     }
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -187,7 +187,7 @@ def get_union_energy_system_list(
     per_page, 
     union_energy_system_filter=None, 
     energy_system_type_filter=None, 
-    sort_by="id", 
+    sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список ОЭС с пагинацией, фильтрацией и сортировкой. """
     
@@ -664,7 +664,7 @@ def export_union_energy_system_service(
         user, 
         union_energy_system_filter=None, 
         energy_system_type_filter=None, 
-        sort_by="id", 
+        sort_by="display_order", 
         sort_dir="asc"):
     """ Экспортирует данные списка ОЭС в Excel. """
 

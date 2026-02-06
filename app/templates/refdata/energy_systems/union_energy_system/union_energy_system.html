@@ -354,6 +354,27 @@
                             </a>
                         </th>
 
+                        <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.union_energy_system_list', 
+                                                page=pagination.page, 
+                                                per_page=per_page, 
+                                                union_energy_system_filter=union_energy_system_filter, 
+                                                energy_system_type_filter=energy_system_type_filter,
+                                                sort_by='display_order', 
+                                                sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                                class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        
                         <!-- Шапка таблицы. Столбец "Наименование ОЭС" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.union_energy_system_list', 
@@ -469,12 +490,17 @@
                                 {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td class="text-center">
+                                {{ union_energy_system.display_order if union_energy_system.display_order is not none else '' }}
+                            </td>
+                            
                             <!-- Строки таблицы. Столбец "Наименование ОЭС" -->
                             <td>{{ union_energy_system.name }}</td>
-
+                            
                             <!-- Строки таблицы. Столбец "Полное наименование ОЭС" -->
                             <td>{{ union_energy_system.name_full }}</td>
-
+                            
                             <!-- Строки таблицы. Столбец "Тип энергосистемы" -->
                             <td>{{ union_energy_system.energy_system_type.name if union_energy_system.energy_system_type else '—' }}</td>
                         </tr>

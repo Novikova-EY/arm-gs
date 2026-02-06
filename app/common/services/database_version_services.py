@@ -4226,6 +4226,43 @@ def get_current_version():
     return None
 
 
+def get_current_version_year_range_from_name():
+    """
+    Пытается извлечь диапазон годов (start_year, end_year) из названия
+    текущей версии БД, например:
+    - "СиПР 2025-2031"
+    - "ГС 2025-2042"
+    Возвращает кортеж (start_year, end_year) или (None, None), если распарсить не удалось.
+    """
+    from flask import g  # безопасно, функция используется в контексте запроса
+
+    try:
+        version_id = get_current_version()
+        if not version_id:
+            return None, None
+
+        version = db.session.get(DatabaseVersion, version_id)
+        if not version or not version.name:
+            return None, None
+
+        name = str(version.name)
+        # Ищем шаблон "YYYY-YYYY" (в любом месте строки)
+        m = re.search(r"(\d{4})\s*-\s*(\d{4})", name)
+        if not m:
+            return None, None
+
+        y1 = int(m.group(1))
+        y2 = int(m.group(2))
+        if y1 < 1900 or y2 < 1900:
+            return None, None
+
+        start_year = min(y1, y2)
+        end_year = max(y1, y2)
+        return start_year, end_year
+    except Exception:
+        return None, None
+
+
 def set_active_version(version_id, user):
     """Устанавливает версию как активную."""
     from flask import session

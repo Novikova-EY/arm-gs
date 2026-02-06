@@ -108,6 +108,26 @@
                                 №
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.synchronous_area_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Наименование энергозоны" -->
                             <th class="align-middle text-center">
                                 <a href="{{ url_for('refdata_bp.synchronous_area_list', 
@@ -141,6 +161,19 @@
                                 <td class="text-center">
                                     {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                                     <input type="hidden" name="synchronous_area_ids[]" value="{{ synchronous_area.id }}"/>
+                                    <input type="hidden" name="synchronous_area_numbers[]" value="{{ synchronous_area.number or '' }}"/>
+                                </td>
+
+                                <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                                <td>
+                                    <input 
+                                        type="number" 
+                                        name="display_orders[]" 
+                                        class="form-control text-center" 
+                                        value="{{ synchronous_area.display_order if synchronous_area.display_order is not none else '' }}"
+                                        style="width: 100%;"
+                                        min="0" step="1" placeholder=""
+                                    >
                                 </td>
                                 
                                 <!-- Строки таблицы. Столбец "Наименование синхронной зоны" -->
@@ -191,6 +224,26 @@
                                     {% endif %}
                                 </a>
                             </th>
+
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.synchronous_area_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
                         
                             <!-- Шапка таблицы. Столбец "Наименование энергозоны" -->
                             <th class="align-middle text-center">
@@ -221,6 +274,11 @@
                                 <!-- Строки таблицы. Столбец "№" -->
                                 <td class="text-center">
                                     {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                </td>
+
+                                <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                                <td class="text-center">
+                                    {{ synchronous_area.display_order if synchronous_area.display_order is not none else '' }}
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Наименование синхронной зоны" -->

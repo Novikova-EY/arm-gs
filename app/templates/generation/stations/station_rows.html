@@ -48,7 +48,7 @@
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.date_modernization_expected or '—' }}
+                {{ machine.modernization_display or '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -184,7 +184,7 @@
             </td>
 
             <td >
-                {{ machine.date_modernization_expected or '—' }}
+                {{ machine.modernization_display or '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">

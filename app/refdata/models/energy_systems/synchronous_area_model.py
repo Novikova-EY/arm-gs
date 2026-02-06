@@ -15,6 +15,8 @@ class SynchronousArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixi
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # Порядок отображения в справочнике
+    display_order = db.Column(db.Integer, nullable=True)
     number = db.Column(db.String(256), unique=True, nullable=True, index=True)
     name = db.Column(db.String(256), unique=True, nullable=False, index=True)
 

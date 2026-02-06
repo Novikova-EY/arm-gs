@@ -128,7 +128,7 @@
 
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
+                                    <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_exploitation(class="form-control") }}
@@ -194,7 +194,9 @@
                                     <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_relabing_fact(class="form-control") }}
+                                            {{ pgu_form.date_relabing_fact(
+                                                class="form-control",
+                                            ) }}
                                         {% else %}
                                             {{ pgu_form.date_relabing_fact.data if pgu_form.date_relabing_fact.data else '—' }}
                                         {% endif %}
@@ -204,7 +206,9 @@
                                     <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_update_fact(class="form-control") }}
+                                            {{ pgu_form.date_update_fact(
+                                                class="form-control",
+                                            ) }}
                                         {% else %}
                                             {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '—' }}
                                         {% endif %}
