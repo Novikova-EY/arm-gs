@@ -32,6 +32,7 @@ from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 
@@ -48,7 +49,10 @@ from app.refdata.models.territories.federal_district_model import FederalDistric
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 # Сервисы
-from app.common.services.database_version_services import get_current_version
+from app.common.services.database_version_services import (
+    get_current_version,
+    get_current_version_year_range_from_name,
+)
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
     get_year_feature_dict,
@@ -125,7 +129,7 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_regional_districts_by_tes_types_with_fuel,
     aggregate_regional_districts_by_tes_machine_types,
     aggregate_regional_districts_by_tes_machine_types_with_fuel,
-    )
+)
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_regional_energy_systems import (
     aggregate_power_by_regional_energy_systems,
     aggregate_regional_energy_systems_by_station_types,
@@ -134,7 +138,7 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_regional_energy_systems_by_tes_types_with_fuel,
     aggregate_regional_energy_systems_by_tes_machine_types,
     aggregate_regional_energy_systems_by_tes_machine_types_with_fuel,
-    )
+)
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_union_energy_systems import (
     aggregate_power_by_union_energy_systems,
     aggregate_union_energy_systems_by_station_types,
@@ -143,7 +147,7 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_union_energy_systems_by_tes_types_with_fuel,
     aggregate_union_energy_systems_by_tes_machine_types,
     aggregate_union_energy_systems_by_tes_machine_types_with_fuel,
-    )
+)
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_energy_system_types import (
     aggregate_power_by_energy_system_types,
     aggregate_energy_system_types_by_station_types,
@@ -152,7 +156,7 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_energy_system_types_by_tes_types_with_fuel,
     aggregate_energy_system_types_by_tes_machine_types,
     aggregate_energy_system_types_by_tes_machine_types_with_fuel,
-    )
+)
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_total_energy_system_types import (
     aggregate_power_by_total_energy_system_types,
     aggregate_total_energy_system_types_by_station_types,
@@ -161,7 +165,73 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_total_energy_system_types_by_tes_types_with_fuel,
     aggregate_total_energy_system_types_by_tes_machine_types,
     aggregate_total_energy_system_types_by_tes_machine_types_with_fuel,
-    )
+)
+
+
+def _apply_machine_display_names(machines, year_features=None):
+    """
+    Вычисляет отображаемое название агрегата (Machine.display_name) по той же логике,
+    что и карточка агрегата (machine_details):
+    - базовое имя: MachineName за год версии БД, иначе Machine.machine_name;
+    - если в плановом периоде есть отличающееся имя, добавляем его в скобках:
+      "<текущ. год> (<перспективный период>)".
+    """
+    if not machines:
+        return
+
+    # Собираем ID агрегатов
+    machine_ids = [m.id for m in machines if getattr(m, "id", None)]
+    if not machine_ids:
+        return
+
+    # ВАЖНО: берём MachineName БЕЗ фильтра по версии БД,
+    # ровно как в handle_machine_get (карточка агрегата),
+    # чтобы логика формирования названия была идентичной.
+    names_query = MachineName.query.filter(MachineName.id_machine.in_(machine_ids))
+    names_by_machine = defaultdict(dict)
+    for mn in names_query.all():
+        if mn.year_number is None or not mn.name:
+            continue
+        names_by_machine[mn.id_machine][mn.year_number] = mn.name.strip()
+
+    # Признаки годов (план/факт) — как в handle_machine_get
+    if year_features is None:
+        year_features = get_year_feature_dict()
+
+    # Диапазон лет текущей версии (берём конец как текущий год версии, как в карточке)
+    _, version_year_end = get_current_version_year_range_from_name()
+
+    for m in machines:
+        machine_names = names_by_machine.get(getattr(m, "id", None), {})
+
+        # Базовое имя: MachineName за год версии или Machine.machine_name
+        base_name = None
+        if version_year_end is not None:
+            current_name = machine_names.get(version_year_end)
+            if current_name:
+                base_name = current_name.strip()
+        if not base_name and getattr(m, "machine_name", None):
+            base_name = (m.machine_name or "").strip()
+
+        display_name = base_name
+
+        # Ищем отличающееся имя в плановом периоде (полностью копируем логику handle_machine_get):
+        # перебираем ВСЕ годы с признаком "план" и берём первое отличающееся название.
+        if base_name and machine_names:
+            for y in sorted(machine_names.keys()):
+                label = year_features.get(y)
+                if not label or "план" not in str(label).strip().lower():
+                    continue
+                plan_name = machine_names.get(y)
+                if not plan_name:
+                    continue
+                plan_name = plan_name.strip()
+                if plan_name and plan_name.lower() != base_name.lower():
+                    display_name = f"{base_name} ({plan_name})"
+                    break
+
+        # Сохраняем вычисленное имя на объекте агрегата (runtime-атрибут)
+        setattr(m, "display_name", display_name)
 from app.generation.services.station_services.aggregation_station_services.optimized_aggregation import (
     aggregate_all_at_once,
     )
@@ -297,37 +367,21 @@ def get_stations_list(
             )
         )
 
-    if filters.get("date_exploitation_filter"):
-        machine_query = machine_query.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-
-    if filters.get("date_decompressing_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"])
-        )
-
-    if filters.get("date_modernization_expected_filter"):
-        years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
-        if years:
-            try:
-                years_int = [int(y) for y in years]
-            except ValueError:
-                years_int = []
-            if years_int:
-                # Фильтруем по ожидаемому году вывода или по году из последней даты перемаркировки
-                from sqlalchemy import or_
-                machine_query = machine_query.filter(
-                    or_(
-                        Machine.date_decompressing_expected.in_(years_int),
-                        Machine.date_relabing_fact.op("~")(
-                            "(" + "|".join(str(y) for y in years_int) + ")"
-                        ),
-                    )
-                )
+    from app.generation.services.station_services.filters_services import (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    )
+    for build_fn in (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    ):
+        cond = build_fn(Machine, filters)
+        if cond is not None:
+            machine_query = machine_query.filter(cond)
 
     # 2. Subquery с подходящими агрегатами
     machine_subquery = machine_query.subquery()
@@ -415,6 +469,7 @@ def get_stations_list(
             filters.get("tes_machine_type_filter"),
             filters.get("fuel_type_filter"),
             filters.get("fuel_check"),
+            filters.get("date_commission_filter"),
             filters.get("date_exploitation_filter"),
             filters.get("date_decompressing_expected_filter"),
             filters.get("date_modernization_expected_filter"),
@@ -836,9 +891,14 @@ def get_stations_list(
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
     ).filter(
         Machine.id.in_(
-            db.session.query(machine_subquery.c.id).filter(machine_subquery.c.id_station.in_(final_station_ids))
+            db.session.query(machine_subquery.c.id).filter(
+                machine_subquery.c.id_station.in_(final_station_ids)
+            )
         )
     ).all()
+
+    # Применяем логику отображаемого названия агрегата (как в карточке агрегата)
+    _apply_machine_display_names(filtered_machines)
 
     # 8. Привязка агрегатов к станциям
     from collections import defaultdict
@@ -888,23 +948,21 @@ def get_stations_list_with_pgu_machines(
             Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
         )
 
-    if filters.get("date_exploitation_filter"):
-        machine_query = machine_query.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-
-    if filters.get("date_decompressing_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"])
-        )
-
-    if filters.get("date_modernization_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"])
-        )
+    from app.generation.services.station_services.filters_services import (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    )
+    for build_fn in (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    ):
+        cond = build_fn(Machine, filters)
+        if cond is not None:
+            machine_query = machine_query.filter(cond)
 
     machine_station_rows = machine_query.all()
     machine_station_ids = [row[1] for row in machine_station_rows if row[1] is not None]
@@ -1086,6 +1144,9 @@ def get_stations_list_with_pgu_machines(
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
     ).filter(Machine.id.in_(filtered_machine_ids)).all()
+
+    # Применяем логику отображаемого названия агрегата (как в карточке агрегата)
+    _apply_machine_display_names(filtered_machines)
 
     pgu_machines = PGUMachine.query.join(PGUMachine.parent_machine).filter(
         PGUMachine.parent_machine.has(Machine.id_station.in_(paged_station_ids))
@@ -1631,36 +1692,21 @@ def get_next_station_info(current_page, per_page, filters):
                 Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
             )
         
-        if filters.get("date_exploitation_filter"):
-            machine_query = machine_query.filter(
-                or_(
-                    Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                    Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-                )
-            )
-        
-        if filters.get("date_decompressing_expected_filter"):
-            machine_query = machine_query.filter(
-                Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"])
-            )
-        
-        if filters.get("date_modernization_expected_filter"):
-            years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
-            if years:
-                try:
-                    years_int = [int(y) for y in years]
-                except ValueError:
-                    years_int = []
-                if years_int:
-                    from sqlalchemy import or_
-                    machine_query = machine_query.filter(
-                        or_(
-                            Machine.date_decompressing_expected.in_(years_int),
-                            Machine.date_relabing_fact.op("~")(
-                                "(" + "|".join(str(y) for y in years_int) + ")"
-                            ),
-                        )
-                    )
+        from app.generation.services.station_services.filters_services import (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+        )
+        for build_fn in (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+        ):
+            cond = build_fn(Machine, filters)
+            if cond is not None:
+                machine_query = machine_query.filter(cond)
         
         # 2. Subquery с подходящими агрегатами
         machine_subquery = machine_query.subquery()
@@ -1885,36 +1931,21 @@ def get_filtered_station_ids(filters):
             Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
         )
 
-    if filters.get("date_exploitation_filter"):
-        machine_query = machine_query.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-
-    if filters.get("date_decompressing_expected_filter"):
-        machine_query = machine_query.filter(
-            Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"])
-        )
-
-    if filters.get("date_modernization_expected_filter"):
-        years = [y for y in filters["date_modernization_expected_filter"] if y not in (None, "")]
-        if years:
-            try:
-                years_int = [int(y) for y in years]
-            except ValueError:
-                years_int = []
-            if years_int:
-                from sqlalchemy import or_
-                machine_query = machine_query.filter(
-                    or_(
-                        Machine.date_decompressing_expected.in_(years_int),
-                        Machine.date_relabing_fact.op("~")(
-                            "(" + "|".join(str(y) for y in years_int) + ")"
-                        ),
-                    )
-                )
+    from app.generation.services.station_services.filters_services import (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    )
+    for build_fn in (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    ):
+        cond = build_fn(Machine, filters)
+        if cond is not None:
+            machine_query = machine_query.filter(cond)
 
     machine_subquery = machine_query.subquery()
 

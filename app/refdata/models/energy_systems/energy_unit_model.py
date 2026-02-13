@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EnergyUnit model (Энергоузел).
+EnergyUnit model (Энергорайон).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
@@ -16,6 +16,11 @@ class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(256), nullable=False, index=True)
+
+    # Полное наименование в родительном падеже
+    name_rp = db.Column(db.String(255), nullable=False)
+    # Полное наименование в дательном падеже
+    name_dp = db.Column(db.String(255), nullable=False)
 
     # FK -> RegionalDistrict
     id_regional_district = db.Column(

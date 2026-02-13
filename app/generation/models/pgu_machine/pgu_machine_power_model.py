@@ -37,8 +37,8 @@ class PGUMachinePower(db.Model):
     )
     pgu_machine = db.relationship('PGUMachine', back_populates='pgu_machine_powers')
 
-    # Установленная мощность (по году)
-    p_ust = db.Column(Numeric(25, 15), nullable=True)
+    # Установленная мощность (по году, до 16 знаков после запятой)
+    p_ust = db.Column(Numeric(25, 16), nullable=True)
 
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

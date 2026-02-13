@@ -156,9 +156,18 @@ class Machine(db.Model, VersionedModelMixin):
         cascade="all, delete-orphan",
         foreign_keys='MachineTesType.id_machine',
     )
+    machine_names = db.relationship(
+        'MachineName',
+        back_populates='machine_name_rel',
+        cascade="all, delete-orphan",
+        foreign_keys='MachineName.id_machine',
+    )
 
     # фактический год ввода в эксплуатацию
     date_exploitation = db.Column(db.Integer, nullable=True)
+
+    # фактический год ввода в работу
+    date_commission_year = db.Column(db.Integer, nullable=True)
 
     # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
@@ -218,6 +227,47 @@ class Machine(db.Model, VersionedModelMixin):
 
     # ----- Runtime helpers (не маппятся в БД) -----
     @property
+    def commission_display(self) -> str | int | None:
+        """
+        Отображаемое значение для колонки 'Ввод в работу' на station_list:
+        Machine.date_commission_year или Machine.date_exploitation_expected.
+        """
+        if self.date_commission_year is not None:
+            return self.date_commission_year
+        if self.date_exploitation_expected is not None:
+            return self.date_exploitation_expected
+        return None
+
+    @property
+    def exploitation_display(self) -> int | None:
+        """
+        Отображаемое значение для колонки 'Ввод в экспл.' на station_list:
+        - фактический год ввода в эксплуатацию (date_exploitation), если указан;
+        - иначе ожидаемый год ввода в эксплуатацию (date_exploitation_expected).
+        """
+        if self.date_exploitation is not None:
+            return self.date_exploitation
+        if self.date_exploitation_expected is not None:
+            return self.date_exploitation_expected
+        return None
+
+    @property
+    def decompressing_display(self) -> str | int | None:
+        """
+        Отображаемое значение для колонки 'Вывод из экспл.' на station_list:
+        Machine.date_decompressing_fact (год) или Machine.date_decompressing_expected.
+        """
+        from app.common.services.help_services import convert_to_date
+
+        if self.date_decompressing_fact:
+            dt = convert_to_date(self.date_decompressing_fact)
+            if dt is not None:
+                return dt.year
+        if self.date_decompressing_expected is not None:
+            return self.date_decompressing_expected
+        return None
+
+    @property
     def group_rowspan(self):
         return getattr(self, "_group_rowspan", None)
 
@@ -225,31 +275,57 @@ class Machine(db.Model, VersionedModelMixin):
     def group_rowspan(self, value):
         self._group_rowspan = value
 
+    def _relabing_year_for_display(self, dt) -> int | None:
+        """
+        Для date_relabing_fact: если дата 01.01.год, то отображаемый год = год-1.
+        Иначе — год как есть.
+        """
+        if dt is None:
+            return None
+        if dt.month == 1 and dt.day == 1:
+            return dt.year - 1
+        return dt.year
+
     @property
     def modernization_display(self) -> str | None:
         """
-        Отображаемое значение для колонки 'Модерн.' на station_list:
-        - год из ожидаемой модернизации (date_modernization_expected)
-        - и год из последней даты перемаркировки (date_relabing_fact), если есть
-        Формат: "YYYY / YYYY" или один год, если второй отсутствует.
+        Отображаемое значение для колонки 'Модерн.' на station_list.
+
+        Требование:
+        - показывать один год:
+          * либо ожидаемый год модернизации (date_modernization_expected),
+          * либо максимальный год, полученный из поля фактической даты(дат) перемаркировки
+            (date_relabing_fact) с учётом правила:
+              - если дата 01.01.год → отображаемый год = год-1.
+        - если есть и ожидаемый год модернизации, и годы из перемаркировок,
+          берём максимальный год из всех.
         """
         from app.common.services.help_services import normalize_date_list, convert_to_date
 
-        parts: list[str] = []
+        years: list[int] = []
 
-        if self.date_modernization_expected:
-            parts.append(str(self.date_modernization_expected))
+        # 1) ожидаемый год модернизации
+        if self.date_modernization_expected is not None:
+            years.append(self.date_modernization_expected)
 
+        # 2) годы из фактических дат перемаркировки (может быть несколько дат)
         if self.date_relabing_fact:
-            # Берём последнюю дату из нормализованного списка и вытаскиваем из неё год
             normalized = normalize_date_list(self.date_relabing_fact)
             if normalized:
-                last_token = [t.strip() for t in normalized.split(",") if t.strip()][-1]
-                dt = convert_to_date(last_token)
-                if dt is not None:
-                    parts.append(str(dt.year))
+                tokens = [t.strip() for t in normalized.split(",") if t.strip()]
+                for token in tokens:
+                    dt = convert_to_date(token)
+                    if dt is None:
+                        continue
+                    display_year = self._relabing_year_for_display(dt)
+                    if display_year is not None:
+                        years.append(display_year)
 
-        return " / ".join(parts) if parts else None
+        if not years:
+            return None
+
+        # Возвращаем максимальный год среди всех возможных источников
+        return str(max(years))
 
     @property
     def fuel_rowspan(self):
@@ -270,11 +346,73 @@ class Machine(db.Model, VersionedModelMixin):
 
     @property
     def primary_fuel_type(self):
-        fuel_names = {
-            mf.fuel.fuel_type.name
-            for mf in self.machine_fuels
-            if mf.fuel and mf.fuel.fuel_type and mf.fuel.fuel_type.name.lower() != "не указано"
-        }
+        """
+        Основной тип топлива агрегата для сводной таблицы.
+
+        Логика:
+        - учитываем только годы, где есть ненулевая мощность (p_ust/p_ogr/p_rasp);
+        - игнорируем техническое значение «не указано»;
+        - если по всем годам только «не указано» при нулевых мощностях — считаем, что топлива нет.
+        """
+        from decimal import Decimal, InvalidOperation
+        from app.common.services.database_version_filter import get_current_db_version_id
+
+        current_version_id = get_current_db_version_id()
+
+        def _is_zero_or_none(value) -> bool:
+            if value is None:
+                return True
+            try:
+                return Decimal(value) == 0
+            except (InvalidOperation, TypeError):
+                try:
+                    return float(value) == 0.0
+                except (TypeError, ValueError):
+                    return False
+
+        # Карта мощностей по годам с учётом версии БД
+        powers_by_year: dict[int, object] = {}
+        for mp in getattr(self, "machine_powers", []) or []:
+            if current_version_id is not None:
+                if getattr(mp, "database_version_id", None) != current_version_id:
+                    continue
+            else:
+                if getattr(mp, "database_version_id", None) is not None:
+                    continue
+            if mp.year_number is not None:
+                powers_by_year[mp.year_number] = mp
+
+        def _has_nonzero_power(year: int) -> bool:
+            mp = powers_by_year.get(year)
+            if mp is None:
+                return False
+            return not (
+                _is_zero_or_none(getattr(mp, "p_ust", None))
+                and _is_zero_or_none(getattr(mp, "p_ogr", None))
+                and _is_zero_or_none(getattr(mp, "p_rasp", None))
+            )
+
+        fuel_names = set()
+        for mf in self.machine_fuels:
+            # Фильтрация по версии БД
+            if current_version_id is not None:
+                if getattr(mf, "database_version_id", None) != current_version_id:
+                    continue
+            else:
+                if getattr(mf, "database_version_id", None) is not None:
+                    continue
+
+            year = getattr(mf, "year_number", None)
+            if not year or not _has_nonzero_power(year):
+                # Нет ненулевой мощности в этом году — топливо считаем неиспользуемым
+                continue
+
+            fuel_obj = getattr(mf, "fuel", None)
+            fuel_type = getattr(fuel_obj, "fuel_type", None) if fuel_obj else None
+            fuel_type_name = getattr(fuel_type, "name", None)
+            if fuel_type_name and fuel_type_name.lower() != "не указано":
+                fuel_names.add(fuel_type_name)
+
         return ", ".join(sorted(fuel_names)) if fuel_names else None
 
     @property
@@ -286,26 +424,87 @@ class Machine(db.Model, VersionedModelMixin):
         - если выбрана версия, берём только записи с этим database_version_id;
         - если версия не выбрана, берём только записи без версии (NULL).
         """
+        from decimal import Decimal, InvalidOperation
         from app.common.services.database_version_filter import get_current_db_version_id
+        from app.common.services.choices_cache_service import choices_cache
+        from app.refdata.models.fuels.fuel_model import Fuel
 
         current_version_id = get_current_db_version_id()
-        result = {}
+        result: dict[int, str] = {}
+
+        def _is_zero_or_none(value) -> bool:
+            if value is None:
+                return True
+            try:
+                return Decimal(value) == 0
+            except (InvalidOperation, TypeError):
+                try:
+                    return float(value) == 0.0
+                except (TypeError, ValueError):
+                    return False
+
+        # Карта мощностей по годам для оценки «есть ли реальная мощность»
+        powers_by_year: dict[int, object] = {}
+        for mp in getattr(self, "machine_powers", []) or []:
+            if current_version_id is not None:
+                if getattr(mp, "database_version_id", None) != current_version_id:
+                    continue
+            else:
+                if getattr(mp, "database_version_id", None) is not None:
+                    continue
+            if mp.year_number is not None:
+                powers_by_year[mp.year_number] = mp
+
+        def _has_nonzero_power(year: int) -> bool:
+            mp = powers_by_year.get(year)
+            if mp is None:
+                return False
+            return not (
+                _is_zero_or_none(getattr(mp, "p_ust", None))
+                and _is_zero_or_none(getattr(mp, "p_ogr", None))
+                and _is_zero_or_none(getattr(mp, "p_rasp", None))
+            )
+
+        # Определяем ID «технического» топлива "не указано" (если оно есть в справочнике)
+        try:
+            fuel_names = dict(choices_cache.get_choices(Fuel, Fuel.id))
+            default_fuel_id = None
+            for value, label in fuel_names.items():
+                if isinstance(label, str) and label.strip().lower() == "не указано":
+                    default_fuel_id = value
+                    break
+        except Exception:
+            default_fuel_id = None
 
         for mf in self.machine_fuels:
             # Фильтрация по версии БД
             if current_version_id is not None:
-                if mf.database_version_id != current_version_id:
+                if getattr(mf, "database_version_id", None) != current_version_id:
                     continue
             else:
                 # При отсутствии выбранной версии показываем только записи без версии
-                if mf.database_version_id is not None:
+                if getattr(mf, "database_version_id", None) is not None:
                     continue
 
-            if mf.year_number and mf.fuel and mf.fuel.fuel_type:
-                fuel_type_name = mf.fuel.fuel_type.name
-                # Пропускаем "Не указано"
-                if fuel_type_name and fuel_type_name.lower() != "не указано":
-                    result[mf.year_number] = fuel_type_name
+            year = getattr(mf, "year_number", None)
+            fuel_obj = getattr(mf, "fuel", None)
+            fuel_type = getattr(fuel_obj, "fuel_type", None) if fuel_obj else None
+            if not year or not fuel_type:
+                continue
+
+            # Если по году все мощности = 0 и топливо установлено в техническое "не указано",
+            # трактуем это как отсутствие топлива (прочерк в таблице).
+            if default_fuel_id is not None and getattr(mf, "id_fuel", None) == default_fuel_id:
+                if not _has_nonzero_power(year):
+                    continue
+
+            fuel_type_name = getattr(fuel_type, "name", None)
+            if not fuel_type_name:
+                continue
+
+            # Для всех остальных случаев (в т.ч. когда "не указано" выбрано при ненулевой мощности)
+            # используем наименование типа топлива как есть (часто это "прочее").
+            result[year] = fuel_type_name
 
         return result
 

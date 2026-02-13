@@ -219,18 +219,21 @@ def get_station_changes_list(
             )
         )
 
-    if filters.get("date_exploitation_filter"):
-        base_machine_filters.append(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-
-    if filters.get("date_decompressing_expected_filter"):
-        base_machine_filters.append(
-            Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"])
-        )
+    from app.generation.services.station_services.filters_services import (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    )
+    for build_fn in (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    ):
+        cond = build_fn(Machine, filters)
+        if cond is not None:
+            base_machine_filters.append(cond)
 
     # 2. Агрегаты по вводу/выводу
     query_input_output = db.session.query(

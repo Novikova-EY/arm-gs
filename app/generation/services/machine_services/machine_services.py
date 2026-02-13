@@ -17,6 +17,7 @@ from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
+from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.document.document_model import Document
@@ -48,6 +49,7 @@ from app.common.services.help_services import (
 )
 from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
+    get_year_list_full,
 )
 from app.common.services.database_version_services import (
     get_current_version_year_range_from_name,
@@ -78,7 +80,8 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     if machine_id == 0:
         machine = None
     else:
-        # Оптимизированная загрузка агрегата с связанными данными (eager loading коллекций)
+        # Загружаем только "узкие" связи агрегата; тяжёлые коллекции подгружаем отдельными
+        # отфильтрованными запросами ниже.
         machine = Machine.query.options(
             db.joinedload(Machine.condition_type),
             db.joinedload(Machine.gen_company),
@@ -86,66 +89,65 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
             db.joinedload(Machine.tes_machine_type),
             db.joinedload(Machine.equipment_group),
             db.joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
-            db.joinedload(Machine.machine_powers),
-            db.joinedload(Machine.machine_fuels),
-            db.joinedload(Machine.machine_tes_types),
         ).get_or_404(machine_id)
+    perf_mark("machine_load")
 
-    # Оптимизированная загрузка годов одним запросом
-    years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
-    year_dict = {y.number: y for y in years}
+    # Лёгкая инициализация годов: вместо тяжёлого get_year_list_full()
+    # просто фиксируем диапазон отображаемых лет для шаблона.
+    # Это убирает медленный запрос к таблице Year на каждом открытии карточки агрегата.
+    years = list(range(start_year, end_year + 1))
+    perf_mark("years_query")
+
     year_features = get_year_feature_dict()
+    perf_mark("year_features")
+
     version_year_start, version_year_end = get_current_version_year_range_from_name()
-    perf_mark("years_load")
-    
-    # Устанавливаем year вручную для всех machine_powers, machine_fuels, machine_tes_types
-    if machine is not None:
-        # Собираем все year_number из machine_powers, machine_fuels, machine_tes_types
-        year_numbers_for_machine = set()
-        for mp in machine.machine_powers:
-            if mp.year_number:
-                year_numbers_for_machine.add(mp.year_number)
-        for mf in machine.machine_fuels:
-            if mf.year_number:
-                year_numbers_for_machine.add(mf.year_number)
-        for mt in machine.machine_tes_types:
-            if mt.year_number:
-                year_numbers_for_machine.add(mt.year_number)
-        
-        # Загружаем только нужные годы
-        if year_numbers_for_machine:
-            missing_years = year_numbers_for_machine - set(year_dict.keys())
-            if missing_years:
-                missing_years_list = Year.query.filter(Year.number.in_(missing_years)).all()
-                for y in missing_years_list:
-                    year_dict[y.number] = y
-        
-        # Устанавливаем year
-        for mp in machine.machine_powers:
-            if mp.year_number and mp.year_number in year_dict:
-                mp.year = year_dict[mp.year_number]
-        for mf in machine.machine_fuels:
-            if mf.year_number and mf.year_number in year_dict:
-                mf.year = year_dict[mf.year_number]
-        for mt in machine.machine_tes_types:
-            if mt.year_number and mt.year_number in year_dict:
-                mt.year = year_dict[mt.year_number]
+    perf_mark("version_range")
 
     # Если это новый агрегат, создаем пустые словари
     if machine is None:
         machine_powers = {}
         machine_fuels = {}
         machine_tes_types = {}
+        machine_names = {}
     else:
-        # Фильтруем записи с None.year для предотвращения AttributeError
-        # Логируем записи с проблемами для отладки
-        for mp in machine.machine_powers:
-            if mp.year is None:
-                print(f"[WARNING] MachinePower ID={mp.id} has None.year for machine_id={mp.id_machine}")
-        
-        machine_powers = {mp.year.number: mp for mp in machine.machine_powers if mp.year is not None}
-        machine_fuels = {mf.year.number: mf for mf in machine.machine_fuels if mf.year is not None}
-        machine_tes_types = {mt.year.number: mt for mt in machine.machine_tes_types if mt.year is not None}
+        # Отдельные оптимизированные запросы по годам и агрегату
+        powers_q = (
+            MachinePower.query
+            .filter_by(id_machine=machine.id)
+            .filter(
+                MachinePower.year_number >= start_year,
+                MachinePower.year_number <= end_year,
+            )
+        )
+        machine_powers = {mp.year_number: mp for mp in powers_q.all()}
+
+        fuels_q = (
+            MachineFuel.query
+            .filter_by(id_machine=machine.id)
+            .filter(
+                MachineFuel.year_number >= start_year,
+                MachineFuel.year_number <= end_year,
+            )
+        )
+        machine_fuels = {mf.year_number: mf for mf in fuels_q.all()}
+
+        tes_q = (
+            MachineTesType.query
+            .filter_by(id_machine=machine.id)
+            .filter(
+                MachineTesType.year_number >= start_year,
+                MachineTesType.year_number <= end_year,
+            )
+        )
+        machine_tes_types = {mt.year_number: mt for mt in tes_q.all()}
+
+        names_q = MachineName.query.filter_by(id_machine=machine.id)
+        machine_names = {
+            mn.year_number: mn
+            for mn in names_q.all()
+            if mn.year_number is not None
+        }
 
     main_form = MachineFilterForm(prefix="main_", obj=machine)
     advanced_form = EditMachineForm(prefix="adv_")
@@ -224,6 +226,11 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         fuel_entry.year.data = year_num
         fuel_entry.fuel_type.data = id_fuel
 
+        name_entry = advanced_form.machine_names.append_entry()
+        name_entry.year.data = year_num
+        mn = machine_names.get(year_num) if machine_names else None
+        name_entry.year_name.data = (mn.name if mn and mn.name else None) or ""
+
     # Устанавливаем choices для всех записей после создания всех entries
     print(f"[DEBUG] Количество tes_types entries: {len(advanced_form.tes_types.entries)}")
     print(f"[DEBUG] Количество fuels entries: {len(advanced_form.fuels.entries)}")
@@ -231,6 +238,43 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     # Заполняем choices для всех entries через единую функцию
     _fill_advanced_form_choices(advanced_form)
     perf_mark("advanced_fill")
+
+    # Для ТЭС, ГЭС и ГАЭС формируем "Название агрегата" на основе:
+    # - имени текущего года версии БД
+    # - и, при отличии, имени в плановом периоде: "<текущ. год> (<перспективный период>)"
+    try:
+        st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
+    except Exception:
+        st_name = ""
+    is_tes_or_ges = st_name in ("тэс", "гэс", "гаэс")
+    if is_tes_or_ges and machine is not None and version_year_end is not None:
+        # Базовое имя: из MachineName за год версии, иначе из Machine.machine_name
+        base_name = None
+        mn_current = machine_names.get(version_year_end) if machine_names else None
+        if mn_current and mn_current.name:
+            base_name = mn_current.name.strip()
+        elif machine.machine_name:
+            base_name = machine.machine_name.strip()
+
+        display_name = base_name
+
+        # Ищем отличающееся имя в плановом периоде (год с признаком "план" и другим названием)
+        if base_name and year_features:
+            # сортируем по возрастанию года
+            for y in sorted(machine_names.keys()):
+                label = year_features.get(y)
+                if not label or "план" not in str(label).strip().lower():
+                    continue
+                mn_plan = machine_names.get(y)
+                if not mn_plan or not mn_plan.name:
+                    continue
+                plan_name = mn_plan.name.strip()
+                if plan_name and plan_name.lower() != base_name.lower():
+                    display_name = f"{base_name} ({plan_name})"
+                    break
+
+        if display_name:
+            main_form.machine_name.data = display_name
 
     # В GET не коммитим изменения — исключаем дорогостоящие записи и блокировки
 
@@ -597,6 +641,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         date_fields = [
             "date_exploitation",
+            "date_exploitation_expected",
             "date_commission_fact",
             "date_joining_expected",
             "date_joining_fact",
@@ -608,16 +653,28 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             "date_update_fact",
         ]
 
+        # Годы диапазона текущей версии БД — нужны для ограничений по ожидаемому году вывода
+        version_year_start, version_year_end = get_current_version_year_range_from_name()
+
         for fld in date_fields:
             raw_form_value = getattr(main_form, fld).data
 
-            if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
+            if fld in {"date_exploitation", "date_exploitation_expected", "date_decompressing_expected", "date_modernization_expected"}:
                 new_val = int(raw_form_value) if raw_form_value else None
             elif fld in {"date_relabing_fact", "date_update_fact"}:
                 # Для полей с несколькими датами нормализуем список дат в единый формат
                 new_val = normalize_date_list(raw_form_value) if raw_form_value else None
             else:
                 new_val = convert_to_date(raw_form_value)
+
+            # Ограничение: ожидаемый год вывода из эксплуатации не может быть > последнего года версии БД
+            if (
+                fld == "date_decompressing_expected"
+                and isinstance(new_val, int)
+                and version_year_end is not None
+                and new_val > version_year_end
+            ):
+                new_val = None
 
             old_val = getattr(machine, fld) if not is_new else None
             if isinstance(old_val, (date, datetime)):
@@ -641,6 +698,22 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     changes.append(f"{fld}: {old_val_str} → {new_val_str}")
                     setattr(machine, fld, new_val)
 
+        # Отдельная обработка поля year-ввода в работу (целое число, не дата)
+        raw_commission_year = main_form.date_commission_year.data
+        new_commission_year = int(raw_commission_year) if raw_commission_year else None
+        old_commission_year = getattr(machine, "date_commission_year", None) if not is_new else None
+        old_commission_year_str = str(old_commission_year) if old_commission_year is not None else None
+        new_commission_year_str = str(new_commission_year) if new_commission_year is not None else None
+
+        if is_new:
+            if new_commission_year is not None:
+                changes.append(f"date_commission_year: {new_commission_year_str}")
+            setattr(machine, "date_commission_year", new_commission_year)
+        else:
+            if old_commission_year_str != new_commission_year_str:
+                changes.append(f"date_commission_year: {old_commission_year_str} → {new_commission_year_str}")
+                setattr(machine, "date_commission_year", new_commission_year)
+
         # Для нового агрегата нужно flush, чтобы получить machine.id
         if is_new:
             db.session.flush()
@@ -649,6 +722,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         powers_map = {mp.year.number: mp for mp in machine.machine_powers if mp.year is not None}
         tes_map = {mt.year.number: mt for mt in machine.machine_tes_types if mt.year is not None}
         fuel_map = {mf.year.number: mf for mf in machine.machine_fuels if mf.year is not None}
+        names_map = {mn.year_number: mn for mn in machine.machine_names if mn.year_number is not None}
         
         # Флаг для отслеживания изменений в связанных сущностях
         related_entities_changed = False
@@ -656,6 +730,17 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         # Получаем объекты Year для создания связанных записей
         years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
         year_dict = {y.number: y for y in years}
+
+        # Определяем тип станции и "текущий год" версии БД
+        try:
+            st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
+        except Exception:
+            st_name = ''
+        is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
+        version_year_start, version_year_end = get_current_version_year_range_from_name()
+        current_year_for_version = version_year_end
+        # Последнее ненулевое "эффективное" название для автозаполнения (как для мощностей)
+        last_effective_name = None
 
         for i, year_num in enumerate(range(start_year, end_year + 1)):
             # Проверяем только powers, так как это основная таблица для всех типов станций
@@ -684,7 +769,14 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                 db.session.add(mf)
                 fuel_map[year_num] = mf
 
+            if year_num not in names_map:
+                mn_obj = MachineName(id_machine=machine.id, year_number=year_num)
+                set_db_version_on_create(mn_obj)
+                db.session.add(mn_obj)
+                names_map[year_num] = mn_obj
+
             mp, mt, mf = powers_map[year_num], tes_map[year_num], fuel_map[year_num]
+            mn_obj = names_map[year_num]
 
             # Получаем raw значения из формы для определения, были ли поля изменены пользователем
             p_ust_raw = advanced_form.powers[i].p_ust.data
@@ -764,7 +856,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     new_fuel = None
 
             # Обрабатываем типы ТЭС и топливо только для ТЭС станций
-            # Распознаем ТЭС по id или по названию типа станции
+            # Распознаем тип станции по названию
             try:
                 st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
             except Exception:
@@ -807,7 +899,64 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                             changes.append(f"Топливо: {year_num} год - {old_fuel_name} → {new_fuel_name}")
                         mf.id_fuel = new_fuel
                         related_entities_changed = True
-        
+
+            # Название по году (machine_names)
+            if i < len(advanced_form.machine_names):
+                raw_name = (advanced_form.machine_names[i].year_name.data or "").strip() or None
+
+                # Для нового агрегата ТЭС/ГЭС, если для "текущего года" название по годам не задано,
+                # автоматически подставляем общее machine_name
+                if (
+                    is_new
+                    and is_tes_or_ges
+                    and current_year_for_version is not None
+                    and year_num == current_year_for_version
+                    and not raw_name
+                ):
+                    raw_name = (machine.machine_name or "").strip() or None
+
+                # Логика как для мощности:
+                # - если пользователь ввёл новое название в каком‑то году, протягиваем его на все последующие годы;
+                # - значения для годов > текущего года версии БД не сохраняем.
+                if is_tes_or_ges and current_year_for_version is not None:
+                    if year_num > current_year_for_version:
+                        effective_name = None
+                    else:
+                        if raw_name:
+                            last_effective_name = raw_name
+                        effective_name = last_effective_name if last_effective_name else raw_name
+                else:
+                    # Для остальных типов станций — без автоподстановки, по году
+                    effective_name = raw_name
+
+                old_name = mn_obj.name if mn_obj.name else None
+                if old_name != effective_name:
+                    mn_obj.name = effective_name
+                    flag_modified(mn_obj, "name")
+                    if is_new and effective_name:
+                        changes.append(f"Название по году {year_num}: {effective_name}")
+                    elif not is_new:
+                        changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
+                    related_entities_changed = True
+
+        # Для ТЭС, ГЭС и ГАЭС поле Machine.machine_name синхронизируем с тем,
+        # что пользователь видит в карточке агрегата (main_form.machine_name):
+        # "<текущ. год> (<перспективный период>)"
+        try:
+            st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
+        except Exception:
+            st_name = ''
+        is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
+        if is_tes_or_ges:
+            # Берём уже сформированное отображаемое имя из основной формы
+            final_name = (main_form.machine_name.data or '').strip() if hasattr(main_form, "machine_name") else None
+
+            if final_name and final_name != (machine.machine_name or None):
+                changes.append(
+                    f"machine_name: {(machine.machine_name or '—')} → {final_name}"
+                )
+                machine.machine_name = final_name
+
         # Если изменились связанные сущности, обновляем Machine для инкремента version
         if related_entities_changed:
             from sqlalchemy.sql import func
@@ -869,6 +1018,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             powers_map=powers_map,
             tes_map=tes_map,
             fuel_map=fuel_map,
+            names_map=names_map,
         )
         recalculate_station_power(station, start_year, end_year)
         recalculate_machine_years_by_p_ust(machine, changes, year_features)
@@ -1492,6 +1642,7 @@ def autofill_tes_and_fuel_chain(
     powers_map=None,
     tes_map=None,
     fuel_map=None,
+    names_map=None,
 ):
     """
     Автоматически заполняет тип ТЭС и топливо по принципу цепной передачи:
@@ -1550,6 +1701,8 @@ def autofill_tes_and_fuel_chain(
         tes_map = {mt.year.number: mt for mt in machine.machine_tes_types if mt.year is not None}
     if fuel_map is None:
         fuel_map = {mf.year.number: mf for mf in machine.machine_fuels if mf.year is not None}
+    if names_map is None:
+        names_map = {mn.year_number: mn for mn in getattr(machine, "machine_names", []) if mn.year_number is not None}
 
     fuel_names = dict(choices_cache.get_choices(Fuel, Fuel.id))
     tes_names = dict(choices_cache.get_choices(TesType, TesType.id))
@@ -1563,6 +1716,7 @@ def autofill_tes_and_fuel_chain(
         mp = powers_map[year_num]
         mt = tes_map[year_num]
         mf = fuel_map[year_num]
+        mn = names_map.get(year_num)
 
         p_ust = mp.p_ust or Decimal(0)
         p_ogr = mp.p_ogr or Decimal(0)
@@ -1585,7 +1739,20 @@ def autofill_tes_and_fuel_chain(
                     old_fuel_name = fuel_names.get(mf.id_fuel, f"[{mf.id_fuel}]")
                     changes.append(f"Топливо: {year_num} год - {old_fuel_name} → не указано")
                     mf.id_fuel = new_fuel_type
-                    flash(f"🧠 {year_num} год: Топливо установлено: 'не указано' (все мощности = 0)", "info")
+                    flash(
+                        f"🧠 {year_num} год: Топливо установлено: 'не указано' (все мощности = 0)",
+                        "info",
+                    )
+
+            # Если по году все мощности равны нулю, дополнительно очищаем название по году
+            if mn is not None and (mn.name or "").strip():
+                old_name = mn.name.strip()
+                mn.name = ""
+                changes.append(f"Название по году: {year_num} год - {old_name} → —")
+                # Обновляем форму, если соответствующая запись существует
+                j = year_num - start_year
+                if 0 <= j < len(advanced_form.machine_names):
+                    advanced_form.machine_names[j].year_name.data = ""
         else:
             if is_empty_choice(mt.id_tes_type, tes_default_id) and not is_empty_choice(prev_tes_type, tes_default_id):
                 tes_name = tes_names.get(prev_tes_type, f"[{prev_tes_type}]")
@@ -1732,7 +1899,8 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     elif selected_kind == "modern":
         if machine.date_modernization_expected != selected_year:
             changes.append(f"Год модернизации: {machine.date_modernization_expected} → {selected_year}")
-            flash(f"🧠 Ожидаемый год модернизации автоматически определен: {selected_year}", "info")
+            # Синее информационное сообщение при автоматическом расчёте года модернизации
+            flash(f"Ожидаемый год модернизации автоматически определён: {selected_year}", "primary")
             machine.date_modernization_expected = selected_year
         if machine.date_decompressing_expected is not None:
             changes.append(f"Год вывода: {machine.date_decompressing_expected} → —")

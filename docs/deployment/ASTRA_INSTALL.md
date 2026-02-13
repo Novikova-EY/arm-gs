@@ -98,18 +98,18 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.38
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.41
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.38 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.41 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.38_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.41_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 GnT8xs!
 ```
 ---
@@ -120,7 +120,7 @@ GnT8xs!
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.38_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.41_amd64.deb || sudo apt -f install
 GnT8xs!
 sudo systemctl restart generation-app
 sudo nginx -t && sudo systemctl reload nginx
@@ -156,7 +156,7 @@ flask db merge heads -m "merge heads"
 flask db upgrade
 ```
 
-- Для обновления соберите новый пакет с версией `1.0.38`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.38_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.41`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.41_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 
@@ -253,3 +253,23 @@ sudo ss -tulpn | grep :80
 - **Приложение не стартует** — смотрите логи `journalctl -u generation-app -b` и убедитесь, что `app.env` содержит корректный DSN и секреты.
 - **Ошибка подключения к БД** — убедитесь, что PostgreSQL запущен (`sudo systemctl status postgresql`), база данных создана, и параметры в `/etc/generation-app/app.env` соответствуют реальным.
 - **Ошибка подключения к Redis** — проверьте, что Redis запущен (`sudo systemctl status redis-server`) и слушает на `127.0.0.1:6379`.
+
+
+sudo mkdir -p /etc/systemd/system/generation-app.service.d
+printf '[Service]\nEnvironment="STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES=Амурская область,Еврейская АО,Пензенская область,Республика Карелия"\n' | sudo tee /etc/systemd/system/generation-app.service.d/override.conf
+sudo systemctl daemon-reload
+sudo systemctl restart generation-app
+
+SELECT id, name, name_full
+FROM gs_sys.gs_regional_districts
+WHERE name IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область,Республика Карелия')
+   OR name_full IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область,Республика Карелия');
+
+DROP INDEX IF EXISTS gs_gen.uq_station_name_district_version;
+DROP INDEX IF EXISTS uq_station_name_district_version;
+
+CREATE UNIQUE INDEX uq_station_name_district_version
+ON gs_gen.stations (name, id_regional_district, database_version_id)
+WHERE id_regional_district NOT IN (12,2,43,677,647,367,377,407,547,557,587,598,54,637,688);
+
+sudo systemctl restart generation-app

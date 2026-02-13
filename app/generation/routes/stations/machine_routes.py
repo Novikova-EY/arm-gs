@@ -279,6 +279,8 @@ def machine_details(station_id, machine_id):
             end_year=end_year,
             rounding_digits=rounding_digits,
             year_features=result['year_features'],
+            version_year_start=result.get('version_year_start'),
+            version_year_end=result.get('version_year_end'),
             machine_logs=machine_logs,
             all_documents=result['all_documents'],
             fallback_gen_company=result.get('fallback_gen_company'),

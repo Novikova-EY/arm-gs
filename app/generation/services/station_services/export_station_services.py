@@ -2105,6 +2105,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
                         full_note = ". ".join(note_parts)
 
+                        # Значения мощности — без округления; отображение 1 знак после запятой задаётся форматом ячейки в Excel
                         row = {
                             "Электростанция": machine.machine_group,
                             "Генерирующая компания": "",
@@ -2112,7 +2113,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                             "Тип генерирующего оборудования": machine.machine_name,
                             "Вид топлива": machine.fuel_so if getattr(machine, 'fuel_so', 0) else "–",
                             **{
-                                year: round(machine_power_data.get(year), 1)
+                                year: machine_power_data.get(year)
                                 if machine_power_data.get(year) is not None and machine_power_data.get(year) != 0
                                 else None
                                 for year in all_years
@@ -2132,13 +2133,14 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     # Сумма считается из агрегатов, которые реально попали в таблицу.
                     # Если в каком-то году суммарная мощность равна нулю или отсутствует,
                     # ячейка должна быть пустой.
+                    # Итого по станции — без округления; отображение 1 знак после запятой — формат ячейки в Excel
                     total_year_values = {}
                     for year in all_years:
                         p_ust = station_total_p_ust_from_machines.get(year, 0)
                         if p_ust is None or p_ust == 0:
                             total_year_values[year] = None
                         else:
-                            total_year_values[year] = round(p_ust, 1)
+                            total_year_values[year] = p_ust
 
                     total_row = {
                         "Электростанция": "Установленная мощность, всего",
@@ -2371,6 +2373,24 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 for idx in range(1, len(all_years)):  # Пропускаем первый год
                     col_num = num_cols + idx
                     worksheet.set_column(col_num, col_num, 8, power_number_format)
+
+                # Перезаписываем ячейки мощности сырыми значениями (без округления pandas),
+                # формат 0.0 уже задан на столбец — в ячейке хранится полная точность, отображается 1 знак
+                for row_idx in range(len(df_export)):
+                    data_idx = row_idx if (note_row_df_index is None or row_idx < note_row_df_index) else row_idx + 1
+                    if data_idx >= len(data):
+                        continue
+                    row_data = data[data_idx]
+                    for year in all_years:
+                        if year not in df_export.columns:
+                            continue
+                        col_idx = df_export.columns.get_loc(year)
+                        value = row_data.get(year)
+                        if value is not None:
+                            try:
+                                worksheet.write_number(6 + row_idx, col_idx, float(value), power_number_format)
+                            except (TypeError, ValueError):
+                                pass
 
                 # Добавляем "Примечание" в 1 строке
                 worksheet.merge_range(4, num_cols + len(all_years), 5, num_cols + len(all_years), "Примечание", text_center_format)

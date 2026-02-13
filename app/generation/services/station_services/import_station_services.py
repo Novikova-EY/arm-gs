@@ -502,27 +502,96 @@ def resolve_fuel(value):
     return None
 
 
-def to_decimal(val, digits=15):
+def _decimal_places_from_excel_format(fmt):
     """
-    Приводит значение из Excel к Decimal с фиксированной точностью.
-    Важно: используем аккуратную обработку float, чтобы не терять точность,
-    если в ячейке было больше знаков после запятой, чем показывает формат.
-    Для float: только точное целое (50.0) приводим к 50; значения вида 49.99999999999999 не округляем.
+    По коду формата Excel (number_format) возвращает число знаков после запятой
+    или None, если не удалось определить (например, General).
+    """
+    if not fmt or fmt == "General":
+        return None
+    fmt = str(fmt).strip()
+    # Ищем блок с десятичной точкой: после точки идут 0, #, ? — их количество и есть знаки
+    m = re.search(r"\.([0#?]+)", fmt)
+    if m:
+        return min(len(m.group(1)), 16)
+    return None
+
+
+def _rewrite_power_columns_from_excel_format(file, df, sheet_name, power_col_names):
+    """
+    Перезаписывает колонки мощностей в df значениями, округлёнными по формату
+    ячейки Excel (number_format). Формат файла не меняется — только способ чтения.
+    """
+    try:
+        import openpyxl
+    except ImportError:
+        return
+    file.seek(0)
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=False)
+    if sheet_name not in wb.sheetnames:
+        wb.close()
+        return
+    ws = wb[sheet_name]
+    # Заголовок — первая строка
+    header = [cell.value for cell in ws[1]]
+    col_name_to_idx = {}
+    for j, val in enumerate(header):
+        if val is not None:
+            col_name_to_idx[val] = j + 1
+            col_name_to_idx[str(val)] = j + 1
+    power_cols = [c for c in df.columns if c in power_col_names or str(c) in power_col_names]
+    if not power_cols:
+        wb.close()
+        return
+    for row_idx in range(len(df)):
+        ws_row = row_idx + 2
+        for col_name in power_cols:
+            col_idx = col_name_to_idx.get(col_name) or col_name_to_idx.get(str(col_name))
+            if col_idx is None:
+                continue
+            cell = ws.cell(row=ws_row, column=col_idx)
+            val = cell.value
+            if val is None or (isinstance(val, float) and pd.isna(val)):
+                continue
+            if isinstance(val, str):
+                df.iloc[row_idx, df.columns.get_loc(col_name)] = val
+                continue
+            if not isinstance(val, (int, float)):
+                continue
+            fmt = getattr(cell, "number_format", None) or "General"
+            decimals = _decimal_places_from_excel_format(fmt)
+            if decimals is None:
+                decimals = 14
+            dec_val = Decimal(str(val)).quantize(
+                Decimal("1." + "0" * decimals), rounding=ROUND_HALF_UP
+            )
+            df.iloc[row_idx, df.columns.get_loc(col_name)] = str(dec_val)
+    wb.close()
+    file.seek(0)
+
+
+def to_decimal(val, max_digits: int = 16):
+    """
+    Приводит значение к Decimal, сохраняя ровно столько знаков после запятой,
+    сколько в исходном значении (от 0 до max_digits): ни больше, ни меньше.
+    
+    - Строка: по строке определяем количество знаков после запятой и квантуем
+      ровно до этого (пустая строка, "nan", "—" → 0).
+    - Число (float/int): по представлению определяем число знаков после запятой,
+      ограничиваем max_digits и квантуем (для чисел, пришедших не из строки).
     """
     if val is None:
         return Decimal(0)
     if isinstance(val, float) and pd.isna(val):
         return Decimal(0)
-    if isinstance(val, str) and val.strip() == "":
-        return Decimal(0)
+    if isinstance(val, str):
+        s = val.strip()
+        if s in ("", "nan", "NaN", "—", "-", "–"):
+            return Decimal(0)
     try:
         if isinstance(val, Decimal):
             dec_val = val
         elif isinstance(val, float):
-            # При чтении из Excel pandas обычно даёт float, у которого
-            # строковое представление соответствует «человеческому» виду ячейки.
-            # Поэтому конвертируем через str(val), чтобы 9.2 и 9,2
-            # попадали в БД именно как 9.2, а не 9.199999999999.
             dec_val = Decimal(str(val))
         elif isinstance(val, int):
             dec_val = Decimal(val)
@@ -530,15 +599,32 @@ def to_decimal(val, digits=15):
             dec_val = Decimal(val.strip().replace(",", "."))
         else:
             dec_val = Decimal(str(val))
-        return dec_val.quantize(Decimal(f"1.{'0'*digits}"), rounding=ROUND_HALF_UP)
+
+        scale: int
+        if isinstance(val, str):
+            s = val.strip().replace(",", ".")
+            if "." in s:
+                frac = s.split(".", 1)[1].rstrip("0")
+                scale = len(frac)
+            else:
+                scale = 0
+            scale = min(scale, max_digits)
+        else:
+            raw_scale = -dec_val.as_tuple().exponent if dec_val.as_tuple().exponent < 0 else 0
+            scale = min(raw_scale, max_digits)
+
+        if scale <= 0:
+            return dec_val.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        quant = Decimal("1." + "0" * scale)
+        return dec_val.quantize(quant, rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError, TypeError):
         return Decimal(0)
     
 def normalize(v):
     if isinstance(v, Decimal):
-        return round(v, 15)  # согласуем с точностью БД (Numeric(25, 15))
+        return round(v, 16)  # согласуем с точностью БД (Numeric(25, 16))
     if isinstance(v, float):
-        return round(v, 15)
+        return round(v, 16)
     if isinstance(v, str) and v.strip().isdigit():
         return int(v.strip())
     try:
@@ -1314,8 +1400,15 @@ def import_station_list_from_excel(file, user):
         logger.error("[IMPORT_STATIONS] sheet 'список' not found. sheets=%s", xls.sheet_names)
         raise ValueError("В файле отсутствует лист 'список'.")
 
+    start_year, end_year = 2021, 2031
+    power_col_names = {f"p_{y}" for y in range(start_year, end_year + 1)} | {
+        str(y) for y in range(start_year, end_year + 1)
+    }
     df = xls.parse('список', header=0)
     df = df.dropna(how='all')
+    # По формату ячеек Excel перезаписываем колонки мощностей округлёнными строками
+    # (формат файла не меняется — читаем number_format через openpyxl).
+    _rewrite_power_columns_from_excel_format(file, df, 'список', power_col_names)
     original_columns = list(df.columns)
     df = _apply_station_import_column_aliases(df)
     normalized_columns = list(df.columns)
@@ -1339,7 +1432,6 @@ def import_station_list_from_excel(file, user):
 
     current_station = None
     current_machine = None
-    start_year, end_year = 2021, 2031
 
     processed_rows = 0
     skipped_empty_rows = 0

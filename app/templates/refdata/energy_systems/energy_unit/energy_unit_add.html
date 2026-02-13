@@ -32,6 +32,28 @@
             {% endif %}
         </div>
 
+        <!-- Энергорайон (род. пад.) -->
+        <div class="mb-3">
+            <strong for="name_rp" class="form-label">Энергорайон (род. пад.)</strong>
+            {{ form.name_rp(class="form-control", id="name_rp") }}
+            {% if form.name_rp.errors %}
+                <div class="text-danger">
+                    {{ form.name_rp.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Энергорайон (предл. пад.) -->
+        <div class="mb-3">
+            <strong for="name_dp" class="form-label">Энергорайон (предл. пад.)</strong>
+            {{ form.name_dp(class="form-control", id="name_dp") }}
+            {% if form.name_dp.errors %}
+                <div class="text-danger">
+                    {{ form.name_dp.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
         <!-- Выбор Субъекта РФ -->
         <div class="mb-3">
             <strong for="regional_district" class="form-label">Субъект РФ</strong>

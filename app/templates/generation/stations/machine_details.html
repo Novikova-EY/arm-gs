@@ -208,6 +208,17 @@
                                     <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {{ main_form.date_commission_year(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_commission_year.data if main_form.date_commission_year.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.date_exploitation(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
@@ -479,6 +490,59 @@
                 </div>
             {% endif %}
 
+            {# Таблица с названиями для ТЭС, ГЭС и ГАЭС #}
+            {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
+            <!-- Таблица «Название агрегата» -->
+            <div class="table-responsive">
+                <table id="machine-names-table" class="table table-hover table-striped table-bordered machines-table">
+                    <thead class="table-success">
+                        <tr class="text-center fw-bold align-middle">
+                            <th colspan="{{ end_year - start_year + 2 }}">Название агрегата</th>
+                        </tr>
+                        <tr class="text-center align-middle">
+                            <th class="first-column" style="width: 50px;"></th>
+                            {% for year in range(start_year, end_year + 1) %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-center text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    {% set year_feature_label = year_features.get(year) %}
+                                    {% if year_feature_label %}
+                                        {{ year_feature_label }}
+                                    {% else %}
+                                        &mdash;
+                                    {% endif %}
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Текущий год версии БД для использования в JS -->
+                        <input type="hidden" id="machine_names_current_year" value="{{ version_year_end or '' }}">
+                        <tr class="text-center align-middle">
+                            <td class="first-column fw-bold" style="width: 50px;">Название</td>
+                            {% for nm in advanced_form.machine_names %}
+                                {{ nm.year(type="hidden") }}
+                                <td class="align-middle text-center">
+                                    {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                        <input type="text"
+                                            name="{{ nm.year_name.name }}"
+                                            value="{{ nm.year_name.data or '' }}"
+                                            data-year="{{ nm.year.data }}"
+                                            data-feature="{{ year_features.get(nm.year.data) or '' }}"
+                                            class="text-center form-control"
+                                            maxlength="1024">
+                                    {% else %}
+                                        <span>{{ nm.year_name.data if nm.year_name.data else '—' }}</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
             <!-- Таблица с агрегатами (Machines) -->
             <div class="table-responsive">
                 <table class="table table-hover table-striped table-bordered machines-table">
@@ -610,7 +674,10 @@
                                             {{ t.tes_type(
                                                 class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
-                                                **{"data-original-value": t.tes_type.data}
+                                                **{
+                                                    "data-original-value": t.tes_type.data,
+                                                    "data-year": t.year.data
+                                                }
                                             ) }}
                                         {% else %}
                                             {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
@@ -653,7 +720,7 @@
                         </thead>
                         <tbody>
                             <tr class="text-center align-middle">
-                                <td class="first-column fw-bold" style="width: 50px;">Тип топлива</td>
+                                <td class="first-column fw-bold" style="width: 50px;">Вид топлива</td>
                                 {% for f in advanced_form.fuels %}
                                     {{ f.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
@@ -661,7 +728,10 @@
                                             {{ f.fuel_type(
                                                 class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
-                                                **{"data-original-value": f.fuel_type.data}
+                                                **{
+                                                    "data-original-value": f.fuel_type.data,
+                                                    "data-year": f.year.data
+                                                }
                                             ) }}
                                         {% else %}
                                             {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
@@ -696,6 +766,9 @@
         </form>     
     </div>  
 </div>
+
+<!-- Максимальный год версии БД — для ограничений по годам в JS -->
+<input type="hidden" id="db_version_max_year" value="{{ version_year_end or '' }}">
 
 
 <!-- jQuery и Select2 уже подключены в base.html -->
@@ -1154,30 +1227,8 @@ document.addEventListener("DOMContentLoaded", function () {
     equalizeColumnWidth();
     window.addEventListener('resize', equalizeColumnWidth);
 
-    // --- Установка годов из URL или localStorage ---
+    // --- Параметры округления из URL / localStorage ---
     const urlParams = new URLSearchParams(window.location.search);
-    const hasStartInUrl = urlParams.has("start_year");
-    const hasEndInUrl = urlParams.has("end_year");
-    const startYear = urlParams.get("start_year") || localStorage.getItem("start_year");
-    const endYear = urlParams.get("end_year") || localStorage.getItem("end_year");
-
-    if (startYear) document.getElementById("start_year").value = startYear;
-    if (endYear) document.getElementById("end_year").value = endYear;
-
-    // Если годовые параметры пришли только из localStorage, перезагружаем страницу с ними,
-    // чтобы таблицы строились по тем же годам, что и выбранные фильтры.
-    if ((!hasStartInUrl || !hasEndInUrl) && startYear && endYear) {
-        const url = new URL(window.location.href);
-        url.searchParams.set("start_year", startYear);
-        url.searchParams.set("end_year", endYear);
-        url.searchParams.set("page", 1);
-        if (url.toString() !== window.location.href) {
-            window.location.replace(url.toString());
-            return;
-        }
-    }
-
-    // --- Состояние чекбоксов и округления из localStorage ---
     const roundingFromURL = urlParams.get("rounding_digits");
     const roundingSelect = document.getElementById("rounding_digits");
 
@@ -1284,44 +1335,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // --- Автозаполнение мощностей по строке и flash-сообщение ---
     function showPowerFlashMessage() {
-        // Контейнер, как в base.html для flash-сообщений
-        let wrapper = document.getElementById("flash-wrapper");
-        if (!wrapper) {
-            wrapper = document.createElement("div");
-            wrapper.id = "flash-wrapper";
-            wrapper.className = "position-fixed top-0 start-50 translate-middle-x mt-5 z-3";
-            wrapper.style.maxWidth = "1500px";
-            wrapper.style.width = "90%";
-            document.body.appendChild(wrapper);
-        }
-
-        const alert = document.createElement("div");
-        alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
-        alert.setAttribute("role", "alert");
-        alert.textContent = "Значение мощности применено ко всем последующим годам в этой строке.";
-
-        const closeBtn = document.createElement("button");
-        closeBtn.type = "button";
-        closeBtn.className = "btn-close";
-        closeBtn.setAttribute("data-bs-dismiss", "alert");
-        closeBtn.setAttribute("aria-label", "Закрыть");
-        closeBtn.addEventListener("click", function () {
-            alert.remove();
-        });
-
-        alert.appendChild(closeBtn);
-        wrapper.appendChild(alert);
-
-        setTimeout(function () {
-            alert.classList.remove("show");
-            alert.classList.add("fade");
-            setTimeout(function () {
-                alert.remove();
-            }, 200);
-        }, 5000);
+        // Функция оставлена пустой, чтобы не показывать флэш-сообщение.
     }
 
     function attachPowerAutoFill() {
+        // Максимальный допустимый год по версии БД
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" &&
+            !isNaN(maxVersionYear) &&
+            maxVersionYear > 0;
+
+        // Годы по столбцам (общие для всех строк мощности)
+        let columnYears = [];
+        const yearInputs = Array.from(
+            document.querySelectorAll(
+                '.total-power-row input[type="hidden"][name*="year"]'
+            )
+        );
+        if (yearInputs.length) {
+            yearInputs.forEach((inp) => {
+                const y = parseInt(inp.value || "0", 10);
+                columnYears.push(isNaN(y) ? null : y);
+            });
+        } else {
+            const startYearEl = document.getElementById("start_year");
+            const endYearEl = document.getElementById("end_year");
+            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
+            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
+            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
+                for (let y = startYear; y <= endYear; y++) {
+                    columnYears.push(y);
+                }
+            }
+        }
+
         const powerRows = document.querySelectorAll(
             ".machines-table .total-power-row, " +
             ".machines-table .p-ogr-row, " +
@@ -1338,29 +1389,150 @@ document.addEventListener("DOMContentLoaded", function () {
             if (isRustRow) {
                 const raspRow = document.querySelector(".p-rasp-row");
                 if (raspRow) {
-                    raspRowInputs = Array.from(raspRow.querySelectorAll('input[type="text"]'));
+                    raspRowInputs = Array.from(
+                        raspRow.querySelectorAll('input[type="text"]')
+                    );
                 }
             }
+
+            const yearsMatchInputs =
+                columnYears.length && columnYears.length === inputs.length;
 
             inputs.forEach(function (input, index) {
                 input.addEventListener("change", function () {
                     const value = this.value;
 
-                    // Продление значения по текущей строке (со следующего года до конца периода)
+                    // Продление значения по текущей строке, но не дальше maxVersionYear
                     for (let i = index + 1; i < inputs.length; i++) {
+                        if (hasMaxVersionYear && yearsMatchInputs) {
+                            const y = columnYears[i];
+                            if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) {
+                                break;
+                            }
+                        }
                         inputs[i].value = value;
                     }
 
                     // Дополнительная логика: при заполнении Руст заполняем Ррасп = Руст
-                    // и продлеваем это значение до конца периода
+                    // и продлеваем это значение, но не дальше maxVersionYear
                     if (isRustRow && raspRowInputs.length) {
+                        const raspYearsMatch =
+                            columnYears.length &&
+                            columnYears.length === raspRowInputs.length;
                         for (let i = index; i < raspRowInputs.length; i++) {
+                            if (hasMaxVersionYear && raspYearsMatch) {
+                                const y = columnYears[i];
+                                if (
+                                    typeof y === "number" &&
+                                    !isNaN(y) &&
+                                    y > maxVersionYear
+                                ) {
+                                    break;
+                                }
+                            }
                             raspRowInputs[i].value = value;
                         }
                     }
 
                     showPowerFlashMessage();
                 });
+            });
+        });
+    }
+
+    // --- Пересборка поля "Название агрегата" (основное) из таблицы названий по годам ---
+    function recomputeMachineNameFromYearNames(inputs) {
+        const machineNameTextarea = document.querySelector(".machine-name-textarea");
+        if (!machineNameTextarea) return;  // режим только просмотра
+
+        let baseName = null;
+        let planName = null;
+        let planYear = null;
+
+        // Базовое имя: первое непустое название НЕ из планового года
+        inputs.forEach(function (input) {
+            if (baseName) return;
+            const feature = (input.dataset.feature || "").toLowerCase();
+            const value = (input.value || "").trim();
+            if (!value) return;
+            if (feature.includes("план")) return;
+            baseName = value;
+        });
+
+        // Если нет неплановых, берём просто первое непустое
+        if (!baseName) {
+            inputs.forEach(function (input) {
+                if (baseName) return;
+                const value = (input.value || "").trim();
+                if (value) baseName = value;
+            });
+        }
+
+        if (!baseName) {
+            machineNameTextarea.value = "";
+            return;
+        }
+
+        // Перспективное имя: первое непустое название с признаком "план", отличающееся от базового
+        inputs.forEach(function (input) {
+            if (planName) return;
+            const feature = (input.dataset.feature || "").toLowerCase();
+            const value = (input.value || "").trim();
+            const year = parseInt(input.dataset.year || "0", 10);
+            if (!value) return;
+            if (!feature.includes("план")) return;
+            if (value.toLowerCase() === baseName.toLowerCase()) return;
+            planName = value;
+            planYear = !isNaN(year) && year > 0 ? year : null;
+        });
+
+        const displayName = planName ? (baseName + " (" + planName + ")") : baseName;
+        machineNameTextarea.value = displayName;
+    }
+
+    // --- Автозаполнение названий агрегатов по строке (как у мощностей) ---
+    function attachNamesAutoFill() {
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" &&
+            !isNaN(maxVersionYear) &&
+            maxVersionYear > 0;
+
+        // Все инпуты с названиями по годам в таблице "Название агрегата"
+        const inputs = Array.from(
+            document.querySelectorAll('#machine-names-table tbody tr td input[type="text"]')
+        );
+        if (!inputs.length) {
+            return;
+        }
+
+        // Пересобрать "Название агрегата" один раз при загрузке
+        recomputeMachineNameFromYearNames(inputs);
+
+        inputs.forEach(function (input, index) {
+            input.addEventListener("input", function () {
+                // При любом изменении названия по году пересчитываем ожидаемые даты
+                autoFillDatesFromPowers();
+            });
+            input.addEventListener("change", function () {
+                const value = this.value;
+                // Продление значения по строке (со следующего года до конца периода)
+                for (let i = index + 1; i < inputs.length; i++) {
+                    if (hasMaxVersionYear) {
+                        const colYear = parseInt(inputs[i].dataset.year || "0", 10);
+                        if (!isNaN(colYear) && colYear > maxVersionYear) {
+                            break;
+                        }
+                    }
+                    inputs[i].value = value;
+                }
+                // Пересобираем основное поле Machine.machine_name по новой логике
+                recomputeMachineNameFromYearNames(inputs);
+                // И ещё раз пересчитываем ожидаемые даты с учетом "протянутых" названий
+                autoFillDatesFromPowers();
             });
         });
     }
@@ -1445,31 +1617,7 @@ document.addEventListener("DOMContentLoaded", function () {
             wrapper.style.width = "90%";
             document.body.appendChild(wrapper);
         }
-
-        const alert = document.createElement("div");
-        alert.className = "alert alert-info alert-dismissible fade show fs-5 fw-bold text-center shadow-lg p-4";
-        alert.setAttribute("role", "alert");
-        alert.textContent = "Рогр автоматически пересчитан как Руст минус Ррасп.";
-
-        const closeBtn = document.createElement("button");
-        closeBtn.type = "button";
-        closeBtn.className = "btn-close";
-        closeBtn.setAttribute("data-bs-dismiss", "alert");
-        closeBtn.setAttribute("aria-label", "Закрыть");
-        closeBtn.addEventListener("click", function () {
-            alert.remove();
-        });
-
-        alert.appendChild(closeBtn);
-        wrapper.appendChild(alert);
-
-        setTimeout(function () {
-            alert.classList.remove("show");
-            alert.classList.add("fade");
-            setTimeout(function () {
-                alert.remove();
-            }, 200);
-        }, 5000);
+        // Сообщение о пересчёте Рогр убрано по требованию.
     }
 
     // Пересчёт Рогр как Руст - Ррасп (по всем годам)
@@ -1574,141 +1722,295 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // --- Автозаполнение дат на основе мощностей Руст ---
+    // --- Автозаполнение дат на основе мощностей Руст и изменений названий ---
     function autoFillDatesFromPowers() {
-        // Получаем все поля p_ust
-        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        const rustInputs = Array.from(
+            document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]")
+        );
+        if (!rustInputs.length) return;
 
-        if (rustInputs.length === 0) {
-            return;
-        }
+        // Годы для каждой колонки
+        let yearInputs = Array.from(
+            document.querySelectorAll('.total-power-row input[type="hidden"][name*="year"]')
+        );
+        const yearFeatureInputs = Array.from(
+            document.querySelectorAll('.total-power-row input.year-feature')
+        );
 
-        // Получаем годы из скрытых полей или из start_year/end_year
-        let yearInputs = Array.from(document.querySelectorAll(".total-power-row input[type=\"hidden\"][name*=\"year\"]"));
-        const yearFeatureInputs = Array.from(document.querySelectorAll(".total-power-row input.year-feature"));
-
-        // Если скрытых полей нет или их количество не совпадает, используем start_year
         if (yearInputs.length === 0 || yearInputs.length !== rustInputs.length) {
             const startYearEl = document.getElementById("start_year");
-            if (startYearEl) {
-                const startYear = parseInt(startYearEl.value);
-                if (!isNaN(startYear)) {
-                    yearInputs = [];
-                    for (let i = 0; i < rustInputs.length; i++) {
-                        yearInputs.push({ value: String(startYear + i) });
-                    }
-                } else {
-                    return;
-                }
-            } else {
-                return;
+            if (!startYearEl) return;
+            const startYear = parseInt(startYearEl.value, 10);
+            if (isNaN(startYear)) return;
+            yearInputs = [];
+            for (let i = 0; i < rustInputs.length; i++) {
+                yearInputs.push({ value: String(startYear + i) });
             }
         }
 
-        // Собираем массив {year, power, isPlan} для всех годов
+        // Строим массив {year, power, isPlan, isCurrent}
         const powersByYear = [];
         for (let i = 0; i < rustInputs.length && i < yearInputs.length; i++) {
-            const year = parseInt(yearInputs[i].value);
+            const year = parseInt(yearInputs[i].value, 10);
             if (isNaN(year)) continue;
+
             const powerValue = parsePowerValue(rustInputs[i].value);
-            const power = (powerValue !== null && powerValue !== undefined && !isNaN(powerValue) && powerValue > 0) ? powerValue : 0;
+            const power =
+                powerValue !== null &&
+                powerValue !== undefined &&
+                !isNaN(powerValue) &&
+                powerValue > 0
+                    ? powerValue
+                    : 0;
+
             let featureRaw = "";
             if (yearFeatureInputs[i]) {
                 featureRaw = String(yearFeatureInputs[i].value || "");
             }
-            const isPlan = featureRaw.trim().toLowerCase() === "план";
-            powersByYear.push({ year: year, power: power, isPlan: isPlan });
+            const featureNorm = featureRaw.trim().toLowerCase();
+            const isPlan = featureNorm === "план";
+            const isCurrent =
+                featureNorm === "текущий (оценка)" || featureNorm === "текущий(оценка)";
+
+            powersByYear.push({ year, power, isPlan, isCurrent });
         }
 
-        // Оставляем для автозаполнения только годы с признаком "план"
-        const planPowers = powersByYear.filter(item => item.isPlan);
+        // Подготовка данных по названиям агрегата по годам
+        const nameInputs = Array.from(
+            document.querySelectorAll(
+                'input[name*="machine_names-"][name*="year_name"]'
+            )
+        );
+        const namesByYear = [];
+        nameInputs.forEach((input) => {
+            const year = parseInt(input.dataset.year || "0", 10);
+            if (isNaN(year) || year <= 0) return;
+            const nameValue = (input.value || "").trim();
+            const featureNorm = String(input.dataset.feature || "")
+                .trim()
+                .toLowerCase();
+            const isPlanName = featureNorm.includes("план");
+            namesByYear.push({
+                year,
+                name: nameValue,
+                isPlanName,
+            });
+        });
 
-        // Если нет ни одного планового года — не рассчитываем ожидаемые годы автоматически
-        if (planPowers.length === 0) {
-            return;
-        }
+        // Определяем период для анализа модернизации по названиям:
+        // от (текущий календарный год - 1) до максимального года в данных.
+        const currentCalendarYear = new Date().getFullYear();
+        const modernizationWindowStart = currentCalendarYear - 1;
+        let maxAvailableYear = null;
+        powersByYear.forEach((p) => {
+            if (maxAvailableYear === null || p.year > maxAvailableYear) {
+                maxAvailableYear = p.year;
+            }
+        });
+        namesByYear.forEach((n) => {
+            if (maxAvailableYear === null || n.year > maxAvailableYear) {
+                maxAvailableYear = n.year;
+            }
+        });
 
-        // Получаем поля дат
-        const dateExploitationExpectedField = document.querySelector('input[name*="date_exploitation_expected"]');
-        const dateDecompressingExpectedField = document.querySelector('input[name*="date_decompressing_expected"]');
-        const dateModernizationExpectedField = document.querySelector('input[name*="date_modernization_expected"]');
-        const dateExploitationField = document.querySelector('input[name*="date_exploitation"]');
+        const planPowers = powersByYear.filter((item) => item.isPlan);
+        if (!planPowers.length) return;
 
-        // Логика 1: Ожидаемый год вывода из эксплуатации
-        // Если p_ust[N] != 0 и p_ust[N+1] == 0, то date_decompressing_expected = N+1 (первый год с нулевой мощностью)
+        const dateExploitationExpectedField = document.querySelector(
+            'input[name*="date_exploitation_expected"]'
+        );
+        const dateDecompressingExpectedField = document.querySelector(
+            'input[name*="date_decompressing_expected"]'
+        );
+        const dateModernizationExpectedField = document.querySelector(
+            'input[name*="date_modernization_expected"]'
+        );
+        const dateExploitationField = document.querySelector(
+            'input[name*="date_exploitation"]'
+        );
+
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+
+        // --- 1. Ожидаемый год вывода: >0 → 0 ---
         let decompYear = null;
         for (let i = 0; i < planPowers.length - 1; i++) {
-            const current = planPowers[i];
+            const curr = planPowers[i];
             const next = planPowers[i + 1];
-            if (current.power > 0 && next.power === 0) {
+            if (curr.power > 0 && next.power === 0) {
                 decompYear = next.year;
-                break; // Берем первый такой случай
+                break;
             }
         }
-        // ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей (ввод/вывод/модернизация).
-        // Приоритет: вывод -> ввод -> модернизация.
-        
-        // Логика 2: Ожидаемый год ввода в эксплуатацию
-        // Если p_ust[N] == 0 и p_ust[N+1] != 0, то date_exploitation_expected = N+1
-        let explExpectedYear = null;
-        for (let i = 0; i < planPowers.length - 1; i++) {
-            const current = planPowers[i];
-            const next = planPowers[i + 1];
-            if (current.power === 0 && next.power > 0) {
-                explExpectedYear = next.year;
-                break; // Берем первый такой случай
-            }
-        }
-        // (значение применим позже, после выбора приоритета)
-        
-        // Логика 3: Ожидаемый год модернизации
-        // Если p_ust[N] != 0 и p_ust[N+1] != 0 и p_ust[N+1] != p_ust[N], то date_modernization_expected = N+1
-        let modernYear = null;
-        for (let i = 0; i < planPowers.length - 1; i++) {
-            const current = planPowers[i];
-            const next = planPowers[i + 1];
-            if (current.power > 0 && next.power > 0 && Math.abs(current.power - next.power) > 0.001) {
-                modernYear = next.year;
-                break; // Берем первый такой случай
-            }
-        }
-        // (значение применим позже, после выбора приоритета)
-
-        // Выбираем единственное поле по приоритету событий мощности
-        const selectedKind =
-            (decompYear !== null) ? "decomp" :
-            (explExpectedYear !== null) ? "expl" :
-            (modernYear !== null) ? "modern" :
-            null;
-
-        function clearField(field) {
-            if (field) field.value = "";
-        }
-
-        if (selectedKind === "decomp") {
-            if (dateDecompressingExpectedField) dateDecompressingExpectedField.value = decompYear;
-            clearField(dateExploitationExpectedField);
-            clearField(dateModernizationExpectedField);
-        } else if (selectedKind === "expl") {
-            if (dateExploitationExpectedField) dateExploitationExpectedField.value = explExpectedYear;
-            clearField(dateDecompressingExpectedField);
-            clearField(dateModernizationExpectedField);
-        } else if (selectedKind === "modern") {
-            if (dateModernizationExpectedField) dateModernizationExpectedField.value = modernYear;
-            clearField(dateDecompressingExpectedField);
-            clearField(dateExploitationExpectedField);
-        }
-        
-        // Дополнительно: Год ввода в эксплуатацию (если не задан)
-        // Первый год с ненулевой мощностью
-        if (dateExploitationField && (!dateExploitationField.value || dateExploitationField.value.trim() === '')) {
-            for (let i = 0; i < powersByYear.length; i++) {
-                if (powersByYear[i].power > 0) {
-                    dateExploitationField.value = powersByYear[i].year;
+        if (decompYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (curr.isCurrent && next.isPlan && curr.power > 0 && next.power === 0) {
+                    decompYear = next.year;
                     break;
                 }
             }
         }
+        if (decompYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (next.isCurrent && curr.power > 0 && next.power === 0) {
+                    decompYear = next.year;
+                    break;
+                }
+            }
+        }
+
+        if (dateDecompressingExpectedField) {
+            const hasMax =
+                typeof maxVersionYear === "number" &&
+                !isNaN(maxVersionYear) &&
+                maxVersionYear > 0;
+            const safeDecompYear =
+                hasMax && decompYear !== null && decompYear > maxVersionYear
+                    ? null
+                    : decompYear;
+            dateDecompressingExpectedField.value =
+                safeDecompYear !== null ? String(safeDecompYear) : "";
+        }
+
+        // --- 2. Ожидаемый год ввода: 0 → >0 ---
+        let explExpectedYear = null;
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const curr = planPowers[i];
+            const next = planPowers[i + 1];
+            if (curr.power === 0 && next.power > 0) {
+                explExpectedYear = next.year;
+                break;
+            }
+        }
+        if (explExpectedYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (curr.isCurrent && next.isPlan && curr.power === 0 && next.power > 0) {
+                    explExpectedYear = next.year;
+                    break;
+                }
+            }
+        }
+        if (explExpectedYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (next.isCurrent && curr.power === 0 && next.power > 0) {
+                    explExpectedYear = next.year;
+                    break;
+                }
+            }
+        }
+
+        if (dateExploitationExpectedField) {
+            dateExploitationExpectedField.value =
+                explExpectedYear !== null ? String(explExpectedYear) : "";
+        }
+
+        // --- 3. Ожидаемый год модернизации по мощности: >0 → >0 и изменилось ---
+        let modernYearByPower = null;
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const curr = planPowers[i];
+            const next = planPowers[i + 1];
+            if (curr.power > 0 && next.power > 0 && Math.abs(curr.power - next.power) > 0.001) {
+                modernYearByPower = next.year;
+                break;
+            }
+        }
+        if (modernYearByPower === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (
+                    curr.isCurrent &&
+                    next.isPlan &&
+                    curr.power > 0 &&
+                    next.power > 0 &&
+                    Math.abs(curr.power - next.power) > 0.001
+                ) {
+                    modernYearByPower = next.year;
+                    break;
+                }
+            }
+        }
+        if (modernYearByPower === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (
+                    next.isCurrent &&
+                    curr.power > 0 &&
+                    next.power > 0 &&
+                    Math.abs(curr.power - next.power) > 0.001
+                ) {
+                    modernYearByPower = next.year;
+                    break;
+                }
+            }
+        }
+
+        // --- 3b. Ожидаемый год модернизации по изменению названия ---
+        // Смотрим изменения названия в окне [modernizationWindowStart; maxAvailableYear].
+        let modernYearByName = null;
+        if (namesByYear.length && maxAvailableYear !== null) {
+            const sortedNames = namesByYear.slice().sort((a, b) => a.year - b.year);
+            let prevName = null;
+
+            for (let i = 0; i < sortedNames.length; i++) {
+                const { year, name } = sortedNames[i];
+                if (year < modernizationWindowStart) {
+                    // До окна — только обновляем предыдущее имя
+                    if (name) {
+                        prevName = name.toLowerCase();
+                    }
+                    continue;
+                }
+
+                const currentName = (name || "").trim().toLowerCase();
+                if (!currentName) {
+                    // Пустое имя не считаем модернизацией
+                    continue;
+                }
+
+                if (prevName && currentName !== prevName) {
+                    modernYearByName = year;
+                    break;
+                }
+
+                if (currentName) {
+                    prevName = currentName;
+                }
+            }
+        }
+
+        // Итоговый год модернизации: минимальный из вариантов по мощности и по названию.
+        let selectedModernYear = null;
+        if (modernYearByPower !== null && modernYearByName !== null) {
+            selectedModernYear = Math.min(modernYearByPower, modernYearByName);
+        } else if (modernYearByPower !== null) {
+            selectedModernYear = modernYearByPower;
+        } else if (modernYearByName !== null) {
+            selectedModernYear = modernYearByName;
+        }
+
+        if (dateModernizationExpectedField) {
+            dateModernizationExpectedField.value =
+                selectedModernYear !== null ? String(selectedModernYear) : "";
+        }
+
+        // --- 4. Фактический год ввода НЕ заполняем автоматически ---
+        // Ранее здесь автоматически подставлялся первый год с ненулевой мощностью
+        // в поле "Фактический год ввода в эксплуатацию" (`date_exploitation`).
+        // Теперь фактический год вводится пользователем вручную, а ожидания
+        // рассчитываются отдельно (и заполняются в `date_exploitation_expected`).
+        // Поэтому оставляем `date_exploitation` без автозаполнения.
     }
     
     function attachDatesAutoFill() {
@@ -1752,7 +2054,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
-        if (!tesTypeSelects.length && !fuelTypeSelects.length) return;
+        const nameInputs = Array.from(document.querySelectorAll('input[name*="machine_names-"][name*="year_name"]'));
+        if (!tesTypeSelects.length && !fuelTypeSelects.length && !nameInputs.length) return;
 
         rustInputs.forEach(function (rustInput, index) {
             const powerValue = parsePowerValue(rustInput.value);
@@ -1761,6 +2064,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (tesTypeSelects[index]) setSelectValue(tesTypeSelects[index], 0);
             if (fuelTypeSelects[index]) setSelectValue(fuelTypeSelects[index], 0);
+            // Дополнительно: очищаем "Название по году" при нулевой мощности
+            if (nameInputs[index]) {
+                nameInputs[index].value = "";
+            }
         });
     }
 
@@ -1783,12 +2090,40 @@ document.addEventListener("DOMContentLoaded", function () {
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
 
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" &&
+            !isNaN(maxVersionYear) &&
+            maxVersionYear > 0;
+
+        function getYearForSelect(selectEl) {
+            if (!selectEl) return null;
+            // Приоритетно берём год из data-year на самом select
+            if (selectEl.dataset && selectEl.dataset.year) {
+                const yData = parseInt(selectEl.dataset.year || "0", 10);
+                if (!isNaN(yData)) return yData;
+            }
+            const td = selectEl.closest("td");
+            if (!td) return null;
+            const hidden = td.querySelector('input[type="hidden"][name*="year"]');
+            if (!hidden) return null;
+            const y = parseInt(hidden.value || "0", 10);
+            return isNaN(y) ? null : y;
+        }
+
         tesTypeSelects.forEach(function (select, index) {
             select.addEventListener("change", function (event) {
                 if (this.dataset && this.dataset.autofilling === "1") return;
                 if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
                 for (let i = index + 1; i < tesTypeSelects.length; i++) {
+                    if (hasMaxVersionYear) {
+                        const y = getYearForSelect(tesTypeSelects[i]);
+                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
+                    }
                     if (tesTypeSelects[i].dataset && tesTypeSelects[i].dataset.userSet === "1") continue;
                     setSelectValue(tesTypeSelects[i], value);
                 }
@@ -1801,6 +2136,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (event && event.isTrusted) this.dataset.userSet = "1";
                 const value = this.value;
                 for (let i = index + 1; i < fuelTypeSelects.length; i++) {
+                    if (hasMaxVersionYear) {
+                        const y = getYearForSelect(fuelTypeSelects[i]);
+                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
+                    }
                     if (fuelTypeSelects[i].dataset && fuelTypeSelects[i].dataset.userSet === "1") continue;
                     setSelectValue(fuelTypeSelects[i], value);
                 }
@@ -1817,10 +2156,52 @@ document.addEventListener("DOMContentLoaded", function () {
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
         if (!tesTypeSelects.length && !fuelTypeSelects.length) return;
 
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" &&
+            !isNaN(maxVersionYear) &&
+            maxVersionYear > 0;
+
+        let columnYears = [];
+        const yearInputs = Array.from(
+            document.querySelectorAll(
+                '.total-power-row input[type="hidden"][name*="year"]'
+            )
+        );
+        if (yearInputs.length) {
+            yearInputs.forEach((inp) => {
+                const y = parseInt(inp.value || "0", 10);
+                columnYears.push(isNaN(y) ? null : y);
+            });
+        } else {
+            const startYearEl = document.getElementById("start_year");
+            const endYearEl = document.getElementById("end_year");
+            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
+            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
+            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
+                for (let y = startYear; y <= endYear; y++) {
+                    columnYears.push(y);
+                }
+            }
+        }
+
+        const yearsMatch =
+            columnYears.length && columnYears.length === rustInputs.length;
+
         let prevTes = null;
         let prevFuel = null;
 
         for (let i = 0; i < rustInputs.length; i++) {
+            if (hasMaxVersionYear && yearsMatch) {
+                const y = columnYears[i];
+                if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) {
+                    break;
+                }
+            }
+
             const powerValue = parsePowerValue(rustInputs[i].value);
             const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
 
@@ -1865,6 +2246,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     attachPowerAutoFill();
+    attachNamesAutoFill();
     attachOgrAutoCalc();
     attachDatesAutoFill();
     attachTesAndFuelAutoEmpty();
@@ -1895,14 +2277,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const hasUrlParam = (name) => urlParams.has(name) && urlParams.get(name).trim() !== "";
 
     // Только если параметра нет в URL, берем из localStorage
-    if (!hasUrlParam("start_year") && localStorage.getItem("start_year")) {
-        startYearSelect.value = localStorage.getItem("start_year");
-    }
-
-    if (!hasUrlParam("end_year") && localStorage.getItem("end_year")) {
-        endYearSelect.value = localStorage.getItem("end_year");
-    }
-
     if (!hasUrlParam("rounding_digits") && localStorage.getItem("rounding_digits")) {
         roundingDigitsSelect.value = localStorage.getItem("rounding_digits");
     }
@@ -2308,6 +2682,72 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 <script>
+// Автозаполнение "Год ввода в работу" по "Фактической дате ввода в работу"
+document.addEventListener('DOMContentLoaded', function() {
+    // Учитываем WTForms prefix и возможные варианты ID/name
+    const dateCommissionFactInput =
+        document.getElementById('date_commission_fact') ||
+        document.querySelector('[name$="date_commission_fact"]');
+
+    const dateCommissionYearInput =
+        document.getElementById('date_commission_year') ||
+        document.querySelector('[name$="date_commission_year"]');
+
+    if (dateCommissionFactInput && dateCommissionYearInput) {
+        const updateCommissionYear = () => {
+            const raw = (dateCommissionFactInput.value || '').trim();
+            if (!raw) {
+                return;
+            }
+
+            let year = null;
+            let month = null;
+            let day = null;
+
+            // 1. Пытаемся вытащить полный паттерн ДД.ММ.ГГГГ
+            const dotMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (dotMatch) {
+                day = parseInt(dotMatch[1], 10);
+                month = parseInt(dotMatch[2], 10);
+                year = parseInt(dotMatch[3], 10);
+            }
+
+            // 2. Пытаемся вытащить паттерн ГГГГ-ММ-ДД
+            if (!year) {
+                const dashMatch = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                if (dashMatch) {
+                    year = parseInt(dashMatch[1], 10);
+                    month = parseInt(dashMatch[2], 10);
+                    day = parseInt(dashMatch[3], 10);
+                }
+            }
+
+            // 3. Если не нашли полную дату, но есть 4‑значный год
+            if (!year) {
+                const yearMatch = raw.match(/(\d{4})/);
+                if (yearMatch) {
+                    year = parseInt(yearMatch[1], 10);
+                }
+            }
+
+            if (!year) {
+                return;
+            }
+
+            // Правило 01.01.ГГГГ -> год - 1
+            if (day === 1 && month === 1) {
+                year = year - 1;
+            }
+
+            dateCommissionYearInput.value = year.toString();
+        };
+
+        dateCommissionFactInput.addEventListener('input', updateCommissionYear);
+        dateCommissionFactInput.addEventListener('change', updateCommissionYear);
+        dateCommissionFactInput.addEventListener('blur', updateCommissionYear);
+    }
+});
+
 // Загрузка дополнительных логов агрегата
 document.addEventListener('DOMContentLoaded', function() {
     const loadMoreBtn = document.getElementById('load-more-machine-logs');

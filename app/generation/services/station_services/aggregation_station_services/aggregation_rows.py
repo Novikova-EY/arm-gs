@@ -196,27 +196,22 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_direct = query_direct.filter(Machine.id_condition_type == filters["condition_type_filter"])
         query_via_district = query_via_district.filter(Machine.id_condition_type == filters["condition_type_filter"])
 
-    if filters.get("date_exploitation_filter"):
-        query_direct = query_direct.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-        query_via_district = query_via_district.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
-            )
-        )
-
-    if filters.get("date_decompressing_expected_filter"):
-        query_direct = query_direct.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
-        query_via_district = query_via_district.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
-
-    if filters.get("date_modernization_expected_filter"):
-        query_direct = query_direct.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
-        query_via_district = query_via_district.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
+    from app.generation.services.station_services.filters_services import (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    )
+    for build_fn in (
+        build_date_commission_filter,
+        build_date_exploitation_filter,
+        build_date_decompressing_filter,
+        build_date_modernization_filter,
+    ):
+        cond = build_fn(Machine, filters)
+        if cond is not None:
+            query_direct = query_direct.filter(cond)
+            query_via_district = query_via_district.filter(cond)
 
     # Проверка топлива (должно совпадать с логикой station_list):
     # показываем строки только для "проблемных" агрегатов:
@@ -461,17 +456,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         pgu_query_direct = pgu_query_direct.filter(PGUMachine.id_condition_type == filters["condition_type_filter"])
         pgu_query_via_district = pgu_query_via_district.filter(PGUMachine.id_condition_type == filters["condition_type_filter"])
 
-    if filters.get("date_exploitation_filter"):
-        pgu_query_direct = pgu_query_direct.filter(PGUMachine.date_exploitation.in_(filters["date_exploitation_filter"]))
-        pgu_query_via_district = pgu_query_via_district.filter(PGUMachine.date_exploitation.in_(filters["date_exploitation_filter"]))
-
-    if filters.get("date_decompressing_expected_filter"):
-        pgu_query_direct = pgu_query_direct.filter(PGUMachine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
-        pgu_query_via_district = pgu_query_via_district.filter(PGUMachine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
-
-    if filters.get("date_modernization_expected_filter"):
-        pgu_query_direct = pgu_query_direct.filter(PGUMachine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
-        pgu_query_via_district = pgu_query_via_district.filter(PGUMachine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
+    from app.generation.services.station_services.filters_services import build_date_filters_for_pgu
+    for cond in build_date_filters_for_pgu(PGUMachine, filters):
+        pgu_query_direct = pgu_query_direct.filter(cond)
+        pgu_query_via_district = pgu_query_via_district.filter(cond)
 
     # Проверка топлива: применяем к родительской машине (Machine),
     # чтобы ПГУ учитывались только у "проблемных" агрегатов.

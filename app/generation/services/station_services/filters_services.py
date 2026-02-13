@@ -24,6 +24,26 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
 )
 
+def _parse_year_filter(raw_list):
+    """
+    Парсит список значений фильтра по году. '' -> None (не указано), '2020' -> 2020.
+    Возвращает None если список пуст.
+    """
+    if not raw_list:
+        return None
+    result = []
+    for v in raw_list:
+        s = str(v).strip() if v is not None else ""
+        if s == "":
+            result.append(None)
+        else:
+            try:
+                result.append(int(s))
+            except (ValueError, TypeError):
+                pass
+    return result if result else None
+
+
 def extract_filters_from_args(args):
     # Нормализуем condition_type_filter: парсим int, игнорируем None/0
     condition_type = args.get("condition_type_filter", type=int)
@@ -53,9 +73,10 @@ def extract_filters_from_args(args):
         "fuel_type_filter": _fuel_type_filter,
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
         "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
-        "date_exploitation_filter": args.getlist("date_exploitation_filter", type=int),
-        "date_decompressing_expected_filter": args.getlist("date_decompressing_expected_filter", type=int),
-        "date_modernization_expected_filter": args.getlist("date_modernization_expected_filter", type=int),
+        "date_commission_filter": _parse_year_filter(args.getlist("date_commission_filter")),
+        "date_exploitation_filter": _parse_year_filter(args.getlist("date_exploitation_filter")),
+        "date_decompressing_expected_filter": _parse_year_filter(args.getlist("date_decompressing_expected_filter")),
+        "date_modernization_expected_filter": _parse_year_filter(args.getlist("date_modernization_expected_filter")),
         "sort_by": args.get("sort_by", "id"),
         "sort_dir": args.get("sort_dir", "asc"),
         # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
@@ -65,6 +86,200 @@ def extract_filters_from_args(args):
 
 def extract_filters_from_form(form):
     return extract_filters_from_args(form)
+
+
+def _build_year_filter_clause(column_or_pair, values, include_null_cond=None):
+    """
+    Строит условие фильтра по годам с поддержкой «не указано».
+    column_or_pair: одна колонка или or_(col1, col2) для OR по двум полям.
+    values: список [2020, None, 2021] — года и/или None для «не указано».
+    include_null_cond: условие для «не указано» (and_(col1.is_(None), col2.is_(None))).
+    """
+    years_only = [y for y in values if y is not None]
+    include_null = None in values
+    conds = []
+    if years_only:
+        if hasattr(column_or_pair, "in_"):
+            conds.append(column_or_pair.in_(years_only))
+        else:
+            conds.append(column_or_pair)
+    if include_null and include_null_cond:
+        conds.append(include_null_cond)
+    if not conds:
+        return None
+    return or_(*conds)
+
+
+def build_date_commission_filter(machine_cls, filters):
+    """Фильтр «Ввод в работу»: date_commission_year или date_exploitation_expected."""
+    vals = filters.get("date_commission_filter")
+    if not vals:
+        return None
+    years_only = [y for y in vals if y is not None]
+    include_null = None in vals
+    conds = []
+    if years_only:
+        conds.append(
+            or_(
+                machine_cls.date_commission_year.in_(years_only),
+                machine_cls.date_exploitation_expected.in_(years_only),
+            )
+        )
+    if include_null:
+        conds.append(
+            and_(
+                machine_cls.date_commission_year.is_(None),
+                machine_cls.date_exploitation_expected.is_(None),
+            )
+        )
+    return or_(*conds) if conds else None
+
+
+def build_date_exploitation_filter(machine_cls, filters):
+    """Фильтр «Ввод в экспл.»: date_exploitation или date_exploitation_expected."""
+    vals = filters.get("date_exploitation_filter")
+    if not vals:
+        return None
+    years_only = [y for y in vals if y is not None]
+    include_null = None in vals
+    conds = []
+    if years_only:
+        conds.append(
+            or_(
+                machine_cls.date_exploitation.in_(years_only),
+                machine_cls.date_exploitation_expected.in_(years_only),
+            )
+        )
+    if include_null:
+        conds.append(
+            and_(
+                machine_cls.date_exploitation.is_(None),
+                machine_cls.date_exploitation_expected.is_(None),
+            )
+        )
+    return or_(*conds) if conds else None
+
+
+def build_date_decompressing_filter(machine_cls, filters):
+    """Фильтр «Вывод из экспл.»: date_decompressing_fact (год) или date_decompressing_expected."""
+    vals = filters.get("date_decompressing_expected_filter")
+    if not vals:
+        return None
+    years_only = [y for y in vals if y is not None]
+    include_null = None in vals
+    conds = []
+    if years_only:
+        fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+        conds.append(
+            or_(
+                machine_cls.date_decompressing_expected.in_(years_only),
+                machine_cls.date_decompressing_fact.op("~")(fact_regex),
+            )
+        )
+    if include_null:
+        conds.append(
+            and_(
+                machine_cls.date_decompressing_fact.is_(None),
+                machine_cls.date_decompressing_expected.is_(None),
+            )
+        )
+    return or_(*conds) if conds else None
+
+
+def build_date_modernization_filter(machine_cls, filters):
+    """Фильтр «Модерн.»: date_modernization_expected или date_relabing_fact (правило 01.01.год → год-1)."""
+    vals = filters.get("date_modernization_expected_filter")
+    if not vals:
+        return None
+    years_only = [y for y in vals if y is not None]
+    include_null = None in vals
+    conds = []
+    if years_only:
+        pats = []
+        for y in years_only:
+            pats.append(rf"01\.01\.{y + 1}\b")
+            pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+        conds.append(
+            or_(
+                machine_cls.date_modernization_expected.in_(years_only),
+                machine_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
+            )
+        )
+    if include_null:
+        conds.append(
+            and_(
+                machine_cls.date_modernization_expected.is_(None),
+                machine_cls.date_relabing_fact.is_(None),
+            )
+        )
+    return or_(*conds) if conds else None
+
+
+def build_date_filters_for_pgu(pgu_cls, filters):
+    """
+    Применяет фильтры по датам для PGUMachine (нет date_commission_year, date_exploitation_expected).
+    Возвращает список условий для добавления в query.
+    """
+    conds = []
+    vals = filters.get("date_exploitation_filter")
+    if vals:
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(pgu_cls.date_exploitation.in_(years_only))
+        if include_null:
+            parts.append(pgu_cls.date_exploitation.is_(None))
+        if parts:
+            conds.append(or_(*parts))
+    vals = filters.get("date_decompressing_expected_filter")
+    if vals:
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+            parts.append(
+                or_(
+                    pgu_cls.date_decompressing_expected.in_(years_only),
+                    pgu_cls.date_decompressing_fact.op("~")(fact_regex),
+                )
+            )
+        if include_null:
+            parts.append(
+                and_(
+                    pgu_cls.date_decompressing_fact.is_(None),
+                    pgu_cls.date_decompressing_expected.is_(None),
+                )
+            )
+        if parts:
+            conds.append(or_(*parts))
+    vals = filters.get("date_modernization_expected_filter")
+    if vals:
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            pats = []
+            for y in years_only:
+                pats.append(rf"01\.01\.{y + 1}\b")
+                pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+            parts.append(
+                or_(
+                    pgu_cls.date_modernization_expected.in_(years_only),
+                    pgu_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
+                )
+            )
+        if include_null:
+            parts.append(
+                and_(
+                    pgu_cls.date_modernization_expected.is_(None),
+                    pgu_cls.date_relabing_fact.is_(None),
+                )
+            )
+        if parts:
+            conds.append(or_(*parts))
+    return conds
 
 
 def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict):
@@ -108,20 +323,103 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
             )
         )
 
-    # Фильтрация по датам (ввода, вывода, модернизации)
-    if filters.get("date_exploitation_filter"):
-        query = query.filter(
-            or_(
-                Machine.date_exploitation.in_(filters["date_exploitation_filter"]),
-                Machine.date_exploitation_expected.in_(filters["date_exploitation_filter"]),
+    # Фильтрация по датам (ввода в работу, ввода в экспл., вывода, модернизации)
+    if filters.get("date_commission_filter"):
+        vals = filters["date_commission_filter"]
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        conds = []
+        if years_only:
+            conds.append(
+                or_(
+                    Machine.date_commission_year.in_(years_only),
+                    Machine.date_exploitation_expected.in_(years_only),
+                )
             )
-        )
+        if include_null:
+            conds.append(
+                and_(
+                    Machine.date_commission_year.is_(None),
+                    Machine.date_exploitation_expected.is_(None),
+                )
+            )
+        if conds:
+            query = query.filter(or_(*conds))
+
+    if filters.get("date_exploitation_filter"):
+        vals = filters["date_exploitation_filter"]
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        conds = []
+        if years_only:
+            conds.append(
+                or_(
+                    Machine.date_exploitation.in_(years_only),
+                    Machine.date_exploitation_expected.in_(years_only),
+                )
+            )
+        if include_null:
+            conds.append(
+                and_(
+                    Machine.date_exploitation.is_(None),
+                    Machine.date_exploitation_expected.is_(None),
+                )
+            )
+        if conds:
+            query = query.filter(or_(*conds))
 
     if filters.get("date_decompressing_expected_filter"):
-        query = query.filter(Machine.date_decompressing_expected.in_(filters["date_decompressing_expected_filter"]))
+        vals = filters["date_decompressing_expected_filter"]
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        conds = []
+        if years_only:
+            # date_decompressing_fact — строка (DD.MM.YYYY), date_decompressing_expected — int
+            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+            conds.append(
+                or_(
+                    Machine.date_decompressing_expected.in_(years_only),
+                    Machine.date_decompressing_fact.op("~")(fact_regex),
+                )
+            )
+        if include_null:
+            conds.append(
+                and_(
+                    Machine.date_decompressing_fact.is_(None),
+                    Machine.date_decompressing_expected.is_(None),
+                )
+            )
+        if conds:
+            query = query.filter(or_(*conds))
 
     if filters.get("date_modernization_expected_filter"):
-        query = query.filter(Machine.date_modernization_expected.in_(filters["date_modernization_expected_filter"]))
+        vals = filters["date_modernization_expected_filter"]
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        conds = []
+        if years_only:
+            # date_modernization_expected или date_relabing_fact (правило: 01.01.год → год-1)
+            # Для года Y: date_modernization_expected=Y ИЛИ date_relabing_fact содержит дату,
+            # отображаемую как Y: 01.01.(Y+1) или иная дата в году Y (но не 01.01.Y)
+            pats = []
+            for y in years_only:
+                pats.append(rf"01\.01\.{y + 1}\b")  # 01.01.(Y+1) → отображается Y
+                pats.append(rf"(?<!01\.01\.){y}(?!\d)")  # год Y не в контексте 01.01.Y
+            conds.append(
+                or_(
+                    Machine.date_modernization_expected.in_(years_only),
+                    Machine.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
+                )
+            )
+        if include_null:
+            conds.append(
+                and_(
+                    Machine.date_modernization_expected.is_(None),
+                    Machine.date_relabing_fact.is_(None),
+                )
+            )
+        if conds:
+            query = query.filter(or_(*conds))
 
     machines = query.all()
 
@@ -175,6 +473,7 @@ def get_filtered_station_ids(
     regional_energy_system_filter=None,
     federal_district_filter=None,
     regional_district_filter=None,
+    date_commission_filter=None,
     date_exploitation_filter=None,
 ):
 
@@ -182,7 +481,10 @@ def get_filtered_station_ids(
     query = db.session.query(Station.id)
     
     # Если нужны фильтры по агрегатам, делаем join
-    needs_machine_join = bool(tes_type_filter or tes_machine_type_filter or gen_company_filter or condition_type_filter or date_exploitation_filter)
+    needs_machine_join = bool(
+        tes_type_filter or tes_machine_type_filter or gen_company_filter or condition_type_filter
+        or date_commission_filter or date_exploitation_filter
+    )
     if needs_machine_join:
         query = query.join(Station.machines)
 
@@ -412,6 +714,7 @@ def has_any_filters(args):
         args.getlist('tes_machine_type_filter'),
         args.getlist('fuel_type_filter'),
         # Фильтры по датам
+        args.getlist('date_commission_filter'),
         args.getlist('date_exploitation_filter'),
         args.getlist('date_decompressing_expected_filter'),
         args.getlist('date_modernization_expected_filter'),

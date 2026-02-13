@@ -6,6 +6,7 @@ from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.machine.machine_name_model import MachineName
 
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower

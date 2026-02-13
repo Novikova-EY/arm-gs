@@ -11,7 +11,7 @@
     <td class="text-center align-middle" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.gen_companies if station.gen_companies else '—' }}
     </td>
-    <td class="text-center align-middle" colspan="{{ 3 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
+    <td class="text-center align-middle" colspan="{{ 4 + 2 * (end_year - start_year) }}" style="vertical-align: middle; font-weight: bold;">
     </td>
     <td class="text-center align-middle" style="vertical-align: middle; font-weight: bold;">
         {{ station.note if station.note }}
@@ -40,11 +40,15 @@
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.date_exploitation or '—' }}
+                {{ machine.commission_display or '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.date_decompressing_expected or '—' }}
+                {{ machine.exploitation_display or '—' }}
+            </td>
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {{ machine.decompressing_display or '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -176,11 +180,15 @@
             </td>
 
             <td >
-                {{ machine.date_exploitation or '—' }}
+                {{ machine.commission_display or '—' }}
             </td>
 
             <td >
-                {{ machine.date_decompressing_expected or '—' }}
+                {{ machine.exploitation_display or '—' }}
+            </td>
+
+            <td >
+                {{ machine.decompressing_display or '—' }}
             </td>
 
             <td >

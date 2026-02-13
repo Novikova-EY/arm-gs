@@ -57,7 +57,7 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="11">Электростанция</th>
+                    <th colspan="12">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                     <th rowspan="2" style="width: 200px;">Примечание</th>
@@ -67,12 +67,66 @@
                     <th style="width: 80px;">cт. №</th>
                     <th style="width: 200px;">Тип агрегата</th>
 
-                    <!-- Год ввода в эксплуатацию -->
+                    <!-- Год ввода в работу (date_commission_year или date_exploitation_expected) -->
                     <th style="width: 80px; text-align: center;">
                         <div class="d-flex align-items-center justify-content-center gap-1">
                             <div class="dropdown">
                                 <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
                                     <strong>Ввод в <br>работу</strong>
+                                    {% if request.args.getlist('date_commission_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="date_commission_filter"
+                                                value=""
+                                                {% if '' in request.args.getlist('date_commission_filter') %}checked{% endif %}>
+                                            не указано
+                                        </label>
+                                    </li>
+                                    {% for year in range(1950, end_year + 1) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="date_commission_filter"
+                                                    value="{{ year }}"
+                                                    {% if year|string in request.args.getlist('date_commission_filter') %}checked{% endif %}>
+                                                {{ year }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
+                                                data-filter-name="date_commission_filter">
+                                            Сбросить
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary filter-apply-btn"
+                                                data-filter-name="date_commission_filter">
+                                            Ок
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('date_commission_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
+                                    type="button" 
+                                    data-filter-name="date_commission_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </th>
+
+                    <!-- Год ввода в эксплуатацию (date_exploitation или date_exploitation_expected) -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                                    <strong>Ввод в <br>экспл.</strong>
                                     {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                                 </button>
                                 <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">

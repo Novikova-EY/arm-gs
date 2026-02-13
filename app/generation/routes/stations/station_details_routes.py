@@ -1,7 +1,7 @@
 from app.generation.routes.stations import station_bp
 from app.extensions import db
 from config import Config
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify, abort, make_response
 )
@@ -103,6 +103,7 @@ from app.generation.services.station_services.station_services import (
     update_station_from_form_service,
     delete_machines_service,
     update_machines_from_form_service,
+    _apply_machine_display_names,
 )
 from app.generation.services.station_services.import_station_services import (
     import_station_list_from_excel, 
@@ -914,25 +915,37 @@ def station_details_tbody(station_id):
     end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.args.get("rounding_digits", 0, type=int)
 
-    # Обновляем кэш раз в минуту через bucket
-    cache_bucket = int(time.time() // 120)
-    
     # Проверяем права пользователя
     edit_roles = ['admin', 'generation-admin', 'generation-editor']
     can_edit = any(role in current_user.role_names for role in edit_roles) if current_user.is_authenticated else False
 
     current_version_id = get_current_db_version_id()
-    html = _render_machines_tbody_cached(
-        station_id,
-        start_year,
-        end_year,
-        rounding_digits,
-        can_edit,
-        cache_bucket,
-        current_version_id,
-    )
-    resp = make_response(html)
-    resp.headers["Cache-Control"] = "public, max-age=120"
+    if can_edit:
+        # Для редакторов отключаем кэш tbody, чтобы новые агрегаты появлялись сразу
+        html = _render_machines_tbody(
+            station_id,
+            start_year,
+            end_year,
+            rounding_digits,
+            can_edit,
+            current_version_id,
+        )
+        resp = make_response(html)
+        resp.headers["Cache-Control"] = "no-store"
+    else:
+        # Обновляем кэш раз в минуту через bucket
+        cache_bucket = int(time.time() // 120)
+        html = _render_machines_tbody_cached(
+            station_id,
+            start_year,
+            end_year,
+            rounding_digits,
+            can_edit,
+            cache_bucket,
+            current_version_id,
+        )
+        resp = make_response(html)
+        resp.headers["Cache-Control"] = "public, max-age=120"
     
     elapsed = time.time() - start_time
     print(f"[TIME] station_details_tbody (ID: {station_id}) заняла: {elapsed:.2f} сек")
@@ -963,6 +976,24 @@ def _render_machines_tbody_cached(
     # version_id участвует в ключе LRU-кэша (для читаемости подавляем предупреждение об использовании)
     _ = version_id
 
+    return _render_machines_tbody(
+        station_id,
+        start_year,
+        end_year,
+        rounding_digits,
+        can_edit,
+        version_id,
+    )
+
+
+def _render_machines_tbody(
+    station_id: int,
+    start_year: int,
+    end_year: int,
+    rounding_digits: int,
+    can_edit: bool,
+    version_id: Optional[int],
+) -> str:
     def _station_tbody_query():
         return (
             db.session.query(Station)
@@ -985,6 +1016,8 @@ def _render_machines_tbody_cached(
     fuels_by_machine_year = {}
 
     if machine_ids:
+        # Суммируем в Decimal, чтобы избежать артефактов float (18,779999999998)
+        _agg_decimal = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
         # MachinePower
         mp_query = (
             db.session.query(MachinePower)
@@ -996,13 +1029,22 @@ def _render_machines_tbody_cached(
         for mp in mp_list:
             y = mp.year_number
             powers_by_machine_year.setdefault(mp.id_machine, {})[y] = mp
-            agg = powers_by_year.setdefault(y, {"p_ust": 0, "p_ogr": 0, "p_rasp": 0})
+            agg = _agg_decimal[y]
             if mp.p_ust:
-                agg["p_ust"] += float(mp.p_ust)
+                agg["p_ust"] += Decimal(str(mp.p_ust))
             if mp.p_ogr:
-                agg["p_ogr"] += float(mp.p_ogr)
+                agg["p_ogr"] += Decimal(str(mp.p_ogr))
             if mp.p_rasp:
-                agg["p_rasp"] += float(mp.p_rasp)
+                agg["p_rasp"] += Decimal(str(mp.p_rasp))
+        # Округляем итоги до rounding_digits (при 0 — до 2 знаков, как на station_list)
+        _digits = rounding_digits if rounding_digits > 0 else 2
+        _quant = Decimal("1." + "0" * _digits)
+        for y, data in _agg_decimal.items():
+            powers_by_year[y] = {
+                "p_ust": float(data["p_ust"].quantize(_quant, rounding=ROUND_HALF_UP)),
+                "p_ogr": float(data["p_ogr"].quantize(_quant, rounding=ROUND_HALF_UP)),
+                "p_rasp": float(data["p_rasp"].quantize(_quant, rounding=ROUND_HALF_UP)),
+            }
 
         # MachineFuel
         mf_query = (
@@ -1071,6 +1113,9 @@ def _render_machines_tbody_cached(
 
     # Временно «подкладываем» атрибут для совместимости с шаблоном
     station.powers_by_year = powers_by_year
+
+    # Вычисляем отображаемое название агрегата (как на карточке агрегата)
+    _apply_machine_display_names(station.machines)
     # Прикрепляем срезы к машинам
     for m in station.machines:
         m.machine_powers = list((powers_by_machine_year.get(m.id, {}) or {}).values())
@@ -1084,10 +1129,10 @@ def _render_machines_tbody_cached(
             m.base_rows = 1
 
     from app.common.services.help_services import format_decimal_for_display
-    
+
     def format_decimal_with_rounding(value):
         return format_decimal_for_display(value, digits=rounding_digits)
-    
+
     gen_company_choices = [(0, "не указано")] + [
         (gc.id, gc.name) for gc in get_gen_company_list_full()
     ]

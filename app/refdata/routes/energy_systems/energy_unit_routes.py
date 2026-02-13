@@ -79,10 +79,18 @@ def energy_unit_list():
         # Получение данных из формы
         energy_unit_ids             = request.form.getlist("energy_unit_ids[]")
         energy_unit_names           = request.form.getlist("energy_unit_names[]")
+        energy_unit_names_rp        = request.form.getlist("energy_unit_names_rp[]")
+        energy_unit_names_dp        = request.form.getlist("energy_unit_names_dp[]")
         regional_energy_system_ids  = request.form.getlist("regional_energy_system_ids[]")
         regional_district_ids       = request.form.getlist("regional_district_ids[]")
         energy_unit_delete          = request.form.getlist("energy_unit_delete[]")
-        
+        # Подстраховка: если форма без новых столбцов (старая версия)
+        n = len(energy_unit_names)
+        if len(energy_unit_names_rp) < n:
+            energy_unit_names_rp = list(energy_unit_names_rp) + [""] * (n - len(energy_unit_names_rp))
+        if len(energy_unit_names_dp) < n:
+            energy_unit_names_dp = list(energy_unit_names_dp) + [""] * (n - len(energy_unit_names_dp))
+
         deleted_ids = set()
         # Удаление записей
         if energy_unit_delete:
@@ -111,8 +119,8 @@ def energy_unit_list():
             
            # Формирование данных для обновления
             energy_unit_data = []
-            for energy_unit_id, energy_unit_name, regional_district_id, regional_energy_system_id in zip(
-                energy_unit_ids, energy_unit_names, regional_district_ids, regional_energy_system_ids
+            for energy_unit_id, energy_unit_name, name_rp, name_dp, regional_district_id, regional_energy_system_id in zip(
+                energy_unit_ids, energy_unit_names, energy_unit_names_rp, energy_unit_names_dp, regional_district_ids, regional_energy_system_ids
             ):
                 if energy_unit_id and int(energy_unit_id) in deleted_ids:
                     continue
@@ -120,6 +128,8 @@ def energy_unit_list():
                     energy_unit_data.append({
                         "energy_unit_id": int(energy_unit_id) if energy_unit_id else None,
                         "name": energy_unit_name.strip(),
+                        "name_rp": (name_rp or "").strip() if name_rp is not None else "",
+                        "name_dp": (name_dp or "").strip() if name_dp is not None else "",
                         "regional_district_id": int(regional_district_id) if regional_district_id else None,
                         "regional_energy_system_id": int(regional_energy_system_id) if regional_energy_system_id else None,
                     })
@@ -264,6 +274,8 @@ def add_energy_unit():
             # Добавление новой записи
             payload = [{
                     "name": form.name.data,
+                    "name_rp": form.name_rp.data or form.name.data,
+                    "name_dp": form.name_dp.data or form.name.data,
                     "regional_district_id": form.regional_district.data,
                     "regional_energy_system_id": form.regional_energy_system.data
             }]

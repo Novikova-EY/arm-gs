@@ -637,7 +637,8 @@
                             <th rowspan="2" style="width: 80px;">cт.№</th>
                             <th rowspan="2" style="width: 150px;">Тип агрегата</th>
                             <th rowspan="2" class="col-owner">Собственник</th>
-                            <th rowspan="2" style="width: 80px;">Год ввода</th>
+                            <th rowspan="2" style="width: 80px;">Год ввода в работу</th>
+                            <th rowspan="2" style="width: 80px;">Год ввода в экспл.</th>
                             <th rowspan="2" style="width: 80px;">Год вывода</th>
                             <th rowspan="2" class="col-modernization">Модерни<br>зация</th>
                             <th rowspan="2" style="width: 80px;">Тип ТЭС</th>
@@ -665,7 +666,7 @@
                             {{ initial_machines_tbody_html | safe }}
                         {% else %}
                             <tr>
-                                <td colspan="{{ 13 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
+                                <td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
                                     <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
                                     Загрузка агрегатов...
                                 </td>
@@ -1447,7 +1448,7 @@
         const tbody = document.getElementById('machines-tbody');
         if (tbody) {
             // Показываем спиннер
-            tbody.innerHTML = `<tr><td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="{{ 15 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
             tbody.dataset.loaded = '0';
             
             // Загружаем новые данные

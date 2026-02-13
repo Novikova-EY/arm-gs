@@ -39,10 +39,10 @@ class MachinePower(db.Model):
     )
     machine_power = db.relationship('Machine', back_populates='machine_powers')
 
-    # Мощности
-    p_ust = db.Column(Numeric(25, 15))
-    p_ogr = db.Column(Numeric(25, 15))
-    p_rasp = db.Column(Numeric(25, 15))
+    # Мощности (до 16 знаков после запятой для согласования с импортом Excel)
+    p_ust = db.Column(Numeric(25, 16))
+    p_ogr = db.Column(Numeric(25, 16))
+    p_rasp = db.Column(Numeric(25, 16))
 
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

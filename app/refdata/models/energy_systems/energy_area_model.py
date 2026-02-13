@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EnergyArea model (Энергорайон).
+EnergyArea model (Энергоузел).
 """
 from sqlalchemy.sql import func
 from app.extensions import db

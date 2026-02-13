@@ -233,6 +233,8 @@ def update_energy_unit_service(data, user):
         for record in data:
             energy_unit_id = record.get("energy_unit_id")
             name = record.get("name")
+            name_rp = (record.get("name_rp") or "").strip() or name
+            name_dp = (record.get("name_dp") or "").strip() or name
             regional_district_id = record.get("regional_district_id")
             regional_energy_system_id = record.get("regional_energy_system_id")
 
@@ -275,6 +277,12 @@ def update_energy_unit_service(data, user):
             if name != (obj.name or ""):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "energy_unit"))
                 obj.name = name
+            if name_rp != (obj.name_rp or ""):
+                changes.append(format_field_change("name_rp", obj.name_rp or "не указано", name_rp, "energy_unit"))
+                obj.name_rp = name_rp
+            if name_dp != (obj.name_dp or ""):
+                changes.append(format_field_change("name_dp", obj.name_dp or "не указано", name_dp, "energy_unit"))
+                obj.name_dp = name_dp
 
             # Проверка наличия субъекта РФ
             if "regional_district_id" in record:
@@ -366,6 +374,8 @@ def add_energy_unit_service(data, user):
             # Итерация по входным данным (валидация/применение)
             for record in data:
                 name = (record.get("name") or "").strip()
+                name_rp = (record.get("name_rp") or name or "").strip()
+                name_dp = (record.get("name_dp") or name or "").strip()
                 regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
                 regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
 
@@ -398,6 +408,8 @@ def add_energy_unit_service(data, user):
                 # Создаем новую запись
                 obj = EnergyUnit(
                     name=name,
+                    name_rp=name_rp,
+                    name_dp=name_dp,
                     id_regional_district=rd_obj.id,
                     id_regional_energy_system=res_obj.id,
                 )
@@ -563,9 +575,11 @@ def export_energy_unit_service(
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Энергоузел": o.name,
+            "Энергорайон": o.name,
+            "Энергорайон (род. пад.)": o.name_rp or "",
+            "Энергорайон (предл. пад.)": o.name_dp or "",
             "Субъект РФ": o.regional_district.name if o.regional_district else "Не указан",
-            "Региональная энергосистема": o.regional_energy_system.name if o.regional_energy_system.name else "Не указана",
+            "Региональная энергосистема": o.regional_energy_system.name if o.regional_energy_system else "Не указана",
             "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указана",
         })
 

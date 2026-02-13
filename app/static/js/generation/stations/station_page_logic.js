@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // === 2. Обработка фильтров в dropdown
     function setupDropdownCheckboxFilters() {
         // Список фильтров, которые требуют подтверждения (ОК/Отмена)
-        const dateFilters = ['date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
+        const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
         
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
             menu.addEventListener('change', e => {
@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // === 2.1. Обработка фильтров с подтверждением (ОК/Отмена) для дат
     function setupDateFilterDropdowns() {
-        const dateFilters = ['date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
+        const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
         
         // Сохраняем исходное состояние чекбоксов при открытии dropdown
         document.querySelectorAll('.date-filter-dropdown').forEach(menu => {

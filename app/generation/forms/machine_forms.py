@@ -87,6 +87,10 @@ class MachineFilterForm(FlaskForm):
         'Фактический год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
+    date_commission_year = StringField(
+        'Фактический год ввода в работу',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
     date_exploitation_expected = StringField(
         'Ожидаемый год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
@@ -293,9 +297,17 @@ class MachineTesTypeForm(FlaskForm):
     tes_type = SelectField('Тип ТЭС', coerce=int, validators=[Optional()])
 
 
+class MachineNameForm(FlaskForm):
+    class Meta:
+        csrf = False
+    year = IntegerField('Год', render_kw={'readonly': True})
+    year_name = StringField('Название по году', validators=[Optional(), Length(max=1024)])
+
+
 class EditMachineForm(FlaskForm):
     powers = FieldList(FormField(MachinePowerForm), min_entries=0)
     fuels = FieldList(FormField(MachineFuelForm), min_entries=0)
     tes_types = FieldList(FormField(MachineTesTypeForm), min_entries=0)
+    machine_names = FieldList(FormField(MachineNameForm), min_entries=0)
 
 

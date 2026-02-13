@@ -76,6 +76,20 @@ class AddEnergyUnitForm(FlaskForm):
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )
+    name_rp = StringField(
+        "Энергорайон (род. пад.)",
+        validators=[
+            DataRequired(message="Поле «Энергорайон (род. пад.)» обязательно."),
+            Length(min=2, max=255, message="Длина от 2 до 255 символов."),
+        ],
+    )
+    name_dp = StringField(
+        "Энергорайон (предл. пад.)",
+        validators=[
+            DataRequired(message="Поле «Энергорайон (предл. пад.)» обязательно."),
+            Length(min=2, max=255, message="Длина от 2 до 255 символов."),
+        ],
+    )
     regional_district = SelectField(
         "Субъект РФ",
         choices=[],

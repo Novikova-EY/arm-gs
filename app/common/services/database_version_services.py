@@ -4236,30 +4236,80 @@ def get_current_version_year_range_from_name():
     """
     from flask import g  # безопасно, функция используется в контексте запроса
 
+    # Используем тот же механизм, что и фильтры данных,
+    # чтобы учитывать выбранную пользователем версию (из сессии/контекста).
+    from app.common.services.database_version_filter import get_current_db_version_id
+    version_id = get_current_db_version_id()
+    if not version_id:
+        print("[DB_VERSION] get_current_version_year_range_from_name: version_id is None")
+        return None, None
+
     try:
-        version_id = get_current_version()
-        if not version_id:
-            return None, None
-
         version = db.session.get(DatabaseVersion, version_id)
-        if not version or not version.name:
+        if not version:
+            print(f"[DB_VERSION] get_current_version_year_range_from_name: version missing for id={version_id}")
             return None, None
 
-        name = str(version.name)
-        # Ищем шаблон "YYYY-YYYY" (в любом месте строки)
-        m = re.search(r"(\d{4})\s*-\s*(\d{4})", name)
-        if not m:
+        # 1) Пытаемся распарсить годы из НОМЕРА версии (version_number) — там они зашиты явно.
+        raw_version_number = (version.version_number or "").strip()
+        print(f"[DB_VERSION] Parsing years from version_number: id={version_id}, version_number={raw_version_number!r}")
+
+        dash_class = r"-\u2010-\u2015\u2212"
+        m = re.search(r"(\d{4})\s*[" + dash_class + r"]\s*(\d{4})", raw_version_number)
+
+        y1 = y2 = None
+
+        if m:
+            y1 = int(m.group(1))
+            y2 = int(m.group(2))
+            print(f"[DB_VERSION] Matched explicit range in version_number: {y1}-{y2}")
+        else:
+            years = re.findall(r"\d{4}", raw_version_number)
+            print(f"[DB_VERSION] Fallback years from version_number: {years}")
+            if len(years) >= 2:
+                try:
+                    y1 = int(years[0])
+                    y2 = int(years[1])
+                    print(f"[DB_VERSION] Using fallback years from version_number: {y1}, {y2}")
+                except ValueError:
+                    y1 = y2 = None
+
+        # 2) Если из version_number не получилось, пробуем старую логику по имени версии.
+        if y1 is None or y2 is None:
+            name = str(version.name or "").strip()
+            print(f"[DB_VERSION] Parsing years from name as fallback: id={version_id}, name={name!r}")
+            m = re.search(r"(\d{4})\s*[" + dash_class + r"]\s*(\d{4})", name)
+            if m:
+                y1 = int(m.group(1))
+                y2 = int(m.group(2))
+                print(f"[DB_VERSION] Matched explicit range in name: {y1}-{y2}")
+            else:
+                years = re.findall(r"\d{4}", name)
+                print(f"[DB_VERSION] Fallback years from name: {years}")
+                if len(years) >= 2:
+                    try:
+                        y1 = int(years[0])
+                        y2 = int(years[1])
+                        print(f"[DB_VERSION] Using fallback years from name: {y1}, {y2}")
+                    except ValueError:
+                        y1 = y2 = None
+
+        if y1 is None or y2 is None:
+            print(f"[DB_VERSION] Failed to parse years for version id={version_id}")
             return None, None
 
-        y1 = int(m.group(1))
-        y2 = int(m.group(2))
         if y1 < 1900 or y2 < 1900:
+            print(f"[DB_VERSION] Parsed years out of range: {y1}, {y2}")
             return None, None
 
         start_year = min(y1, y2)
         end_year = max(y1, y2)
+        print(f"[DB_VERSION] Final year range: {start_year}-{end_year}")
         return start_year, end_year
-    except Exception:
+    except Exception as exc:
+        import traceback
+        print(f"[DB_VERSION] Exception in get_current_version_year_range_from_name: {exc}")
+        traceback.print_exc()
         return None, None
 
 
