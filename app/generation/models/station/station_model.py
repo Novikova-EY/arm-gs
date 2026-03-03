@@ -7,16 +7,16 @@ Station model (Электростанция).
 import uuid
 from sqlalchemy import event
 from sqlalchemy.sql import func
-from sqlalchemy.schema import UniqueConstraint, Index
+from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 
-class Station(db.Model, VersionedModelMixin):
+class Station(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'stations'
     __table_args__ = (
-        UniqueConstraint('name', 'id_regional_district', name='uq_station_name_district'),
         Index('ix_station_id_regional_district', 'id_regional_district'),
         Index('ix_station_name', 'name'),
         Index('ix_station_external_code', 'external_code'),

@@ -49,6 +49,21 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             return model_cls.database_version_id.is_(None)
         return model_cls.database_version_id == current_version_id
 
+    def _version_cond_power(model_cls):
+        """
+        Условие для MachinePower/PGUMachinePower: версия или NULL.
+        Родитель (Machine) уже отфильтрован по версии, поэтому NULL в дочерней
+        таблице считаем legacy-данными той же версии.
+        """
+        if not hasattr(model_cls, "database_version_id"):
+            return literal(True)
+        if current_version_id is None:
+            return model_cls.database_version_id.is_(None)
+        return or_(
+            model_cls.database_version_id == current_version_id,
+            model_cls.database_version_id.is_(None),
+        )
+
     # ---------------- Обычные агрегаты (машины) ----------------
     # Разделяем выборку на 2 части:
     # 1) Станции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
@@ -106,16 +121,14 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.isnot(None),
             MachinePower.year_number.between(start_year, end_year),
-            _version_cond(MachinePower),
+            _version_cond_power(MachinePower),
         )
     )
 
-    # Фильтрация по текущей версии БД
+    # Фильтрация по текущей версии БД.
+    # Региональные справочники (РЭС, ОЭС, типы) не фильтруем — они общие,
+    # Station.id_regional_energy_system ссылается на них независимо от версии.
     query_direct = filter_by_db_version(query_direct, Station)
-    query_direct = filter_by_db_version(query_direct, RegionalDistrict)
-    query_direct = filter_by_db_version(query_direct, RegionalEnergySystem)
-    query_direct = filter_by_db_version(query_direct, UnionEnergySystem)
-    query_direct = filter_by_db_version(query_direct, EnergySystemType)
 
     # 2) Связь через субъект РФ (fallback для станций без прямой РЭС)
     query_via_district = (
@@ -168,16 +181,12 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.is_(None),
             MachinePower.year_number.between(start_year, end_year),
-            _version_cond(MachinePower),
+            _version_cond_power(MachinePower),
         )
     )
 
-    # Фильтрация по текущей версии БД
+    # Фильтрация по текущей версии БД (территориальные справочники не фильтруем — см. query_direct)
     query_via_district = filter_by_db_version(query_via_district, Station)
-    query_via_district = filter_by_db_version(query_via_district, RegionalDistrict)
-    query_via_district = filter_by_db_version(query_via_district, RegionalEnergySystem)
-    query_via_district = filter_by_db_version(query_via_district, UnionEnergySystem)
-    query_via_district = filter_by_db_version(query_via_district, EnergySystemType)
 
     # Общие фильтры по машинам (для обеих частей)
     if filters.get("tes_type_filter"):
@@ -366,16 +375,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.isnot(None),
             PGUMachinePower.year_number.between(start_year, end_year),
-            _version_cond(PGUMachinePower),
+            _version_cond_power(PGUMachinePower),
             _version_cond(PGUMachine),
         )
     )
 
+    # Территориальные справочники не фильтруем по версии (общие для всех версий)
     pgu_query_direct = filter_by_db_version(pgu_query_direct, Station)
-    pgu_query_direct = filter_by_db_version(pgu_query_direct, RegionalDistrict)
-    pgu_query_direct = filter_by_db_version(pgu_query_direct, RegionalEnergySystem)
-    pgu_query_direct = filter_by_db_version(pgu_query_direct, UnionEnergySystem)
-    pgu_query_direct = filter_by_db_version(pgu_query_direct, EnergySystemType)
 
     # 2) Fallback через субъект РФ для ПГУ
     pgu_query_via_district = (
@@ -428,16 +434,12 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.is_(None),
             PGUMachinePower.year_number.between(start_year, end_year),
-            _version_cond(PGUMachinePower),
+            _version_cond_power(PGUMachinePower),
             _version_cond(PGUMachine),
         )
     )
 
     pgu_query_via_district = filter_by_db_version(pgu_query_via_district, Station)
-    pgu_query_via_district = filter_by_db_version(pgu_query_via_district, RegionalDistrict)
-    pgu_query_via_district = filter_by_db_version(pgu_query_via_district, RegionalEnergySystem)
-    pgu_query_via_district = filter_by_db_version(pgu_query_via_district, UnionEnergySystem)
-    pgu_query_via_district = filter_by_db_version(pgu_query_via_district, EnergySystemType)
 
     # Те же фильтры, что и для обычных агрегатов
     if filters.get("tes_type_filter"):

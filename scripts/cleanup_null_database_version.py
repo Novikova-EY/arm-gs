@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app  # noqa: E402
 from app.extensions import db  # noqa: E402
-from config import SCHEMA_REFDATA, SCHEMA_GENERATION, SCHEMA_FUEL  # noqa: E402
+from config import SCHEMA_REFDATA, SCHEMA_GENERATION, SCHEMA_FUEL, SCHEMA_LOGS  # noqa: E402
 
 
 def _table_has_version_column(schema, table):
@@ -82,6 +82,7 @@ def main():
             (SCHEMA_GENERATION, "machine_powers"),
             (SCHEMA_GENERATION, "machine_fuels"),
             (SCHEMA_GENERATION, "machine_tes_types"),
+            (SCHEMA_GENERATION, "machine_names"),
             (SCHEMA_GENERATION, "pgu_machines"),
         ]
         stage6_tables = [
@@ -126,8 +127,10 @@ def main():
             (SCHEMA_REFDATA, "gs_companies"),
             (SCHEMA_REFDATA, "gs_year_features"),
             (SCHEMA_REFDATA, "gs_years"),
+            (SCHEMA_REFDATA, "gs_year_service"),
             (SCHEMA_GENERATION, "station_groups"),
             (SCHEMA_GENERATION, "documents_kommod"),
+            (SCHEMA_LOGS, "logs"),
         ]
 
         all_stages = [

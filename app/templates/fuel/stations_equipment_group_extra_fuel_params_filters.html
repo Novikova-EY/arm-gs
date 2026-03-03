@@ -1,0 +1,7 @@
+{# Фильтры для страницы "Топливные параметры групп оборудования (дополнительные)" #}
+{% set filters_action = url_for('fuel_bp.stations_equipment_group_extra_fuel_params') %}
+{% set import_redirect_endpoint = 'fuel_bp.stations_equipment_group_extra_fuel_params' %}
+{% set use_single_year = true %}
+{% set show_fuel_params_import = false %}
+{% set selected_year = selected_year|default(start_year)|default(end_year) %}
+{% include 'fuel/station_filters.html' %}

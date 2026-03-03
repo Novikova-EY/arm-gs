@@ -61,7 +61,7 @@
                             name="gen_company_branch_filter"
                             class="form-control"
                             value="{{ gen_company_branch_filter }}"
-                            placeholder="Поиск по code_topl / name_topl / name / компании в АРМ">
+                            placeholder="Поиск по code / name / компании в АРМ">
                     </div>
 
                     <button type="submit"
@@ -90,6 +90,10 @@
         <table class="table table-hover table-striped table-bordered">
 
             <thead>
+                <tr class="table-success">
+                    <th colspan="2" class="text-center align-middle">Модуль «Топливо»</th>
+                    <th colspan="3" class="text-center align-middle">Модуль «Генерация»</th>
+                </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
                     <th class="text-center align-middle">
                         <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list',
@@ -99,7 +103,7 @@
                                             sort_by='external_id',
                                             sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            code_topl
+                            Номер<br><span class="text-muted small">(code)</span>
                             {% if sort_by == 'external_id' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -114,7 +118,7 @@
                                             sort_by='external_name',
                                             sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            name_topl
+                            Наименование<br><span class="text-muted small">(name)</span>
                             {% if sort_by == 'external_name' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -122,28 +126,13 @@
                     </th>
 
                     <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_gen_company_branch_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            gen_company_branch_filter=gen_company_branch_filter,
-                                            sort_by='local_name',
-                                            sort_dir='asc' if sort_by != 'local_name' or sort_dir == 'desc' else 'desc') }}"
-                            class="text-black">
-                            name
-                            {% if sort_by == 'local_name' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        UUID ген. компании
+                        UUID
                     </th>
                     <th class="text-center align-middle">
-                        ID ген. компании (текущая версия)
+                        ID (текущая версия)
                     </th>
                     <th class="text-center align-middle">
-                        Наименование в АРМ
+                        Наименование
                     </th>
                 </tr>
             </thead>
@@ -156,14 +145,13 @@
                         {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
                         <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
                         <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
-                        <td>{{ mapping.local_name if mapping and mapping.local_name else '' }}</td>
                         <td>{{ gen_company.ref_uuid if gen_company else '—' }}</td>
                         <td>{{ gen_company.id if gen_company else '—' }}</td>
                         <td>{{ gen_company.name if gen_company else '—' }}</td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
+                        <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                     </tr>
                 {% endfor %}
             </tbody>

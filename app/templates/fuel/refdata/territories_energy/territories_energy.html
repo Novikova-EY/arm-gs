@@ -85,6 +85,33 @@
                 <table class="table table-hover table-striped table-bordered">
                     <thead>
                         <tr class="table-success">
+                            <th colspan="14" class="text-center align-middle">Модуль «Топливо»</th>
+                            <th colspan="4" class="text-center align-middle">Модуль «Генерация»</th>
+                        </tr>
+                        <tr class="table-success">
+                            {% for label, col in [
+                                ('Название','name_ext'),('АО','ao'),('Номер','obl'),('Alph','alph'),
+                                ('Департамент','dep'),('ОЭС','oes'),('Экономический район','er'),
+                                ('terr_belyaev','terr_belyaev'),('teo90','teo90'),('Федеральный округ','fo'),
+                                ('Сокр.','abbr'),('РЭУ','reu'),('pter','pter'),('Ключевое слово','keyword')
+                            ] %}
+                                <th class="text-center align-middle">
+                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
+                                                        page=pagination.page,
+                                                        per_page=per_page,
+                                                        sort_by=col,
+                                                        sort_dir='asc' if sort_by != col or sort_dir == 'desc' else 'desc') }}"
+                                        class="text-black">
+                                        {{ label }}<br><span class="text-muted small">({{ col }})</span>
+                                        {% if sort_by == col %}
+                                            {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                        {% endif %}
+                                    </a>
+                                </th>
+                            {% endfor %}
+                            <th class="text-center align-middle">
+                                Номер энергозоны
+                            </th>
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
                                                     page=pagination.page,
@@ -92,7 +119,7 @@
                                                     sort_by='regional_district_name',
                                                     sort_dir='asc' if sort_by != 'regional_district_name' or sort_dir == 'desc' else 'desc') }}"
                                     class="text-black">
-                                    Субъект РФ в АРМ
+                                    Субъект РФ
                                     {% if sort_by == 'regional_district_name' %}
                                         {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}
@@ -105,7 +132,7 @@
                                                     sort_by='regional_energy_system_name',
                                                     sort_dir='asc' if sort_by != 'regional_energy_system_name' or sort_dir == 'desc' else 'desc') }}"
                                     class="text-black">
-                                    Региональная энергосистема в АРМ
+                                    Региональная энергосистема
                                     {% if sort_by == 'regional_energy_system_name' %}
                                         {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}
@@ -118,56 +145,39 @@
                                                     sort_by='energy_zone_name',
                                                     sort_dir='asc' if sort_by != 'energy_zone_name' or sort_dir == 'desc' else 'desc') }}"
                                     class="text-black">
-                                    Энергорайон в АРМ
+                                    Энергорайон
                                     {% if sort_by == 'energy_zone_name' %}
                                         {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}
                                 </a>
                             </th>
-                            {% for col in [
-                                'name_topl','ao_topl','obl_topl','alph_topl','dep_topl','oes_topl','er_topl',
-                                'terr_belyaev_topl','teo90_topl','fo_topl','abbr_topl','reu_topl','pter_topl','keyword_topl'
-                            ] %}
-                                <th class="text-center align-middle">
-                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
-                                                        page=pagination.page,
-                                                        per_page=per_page,
-                                                        sort_by=col,
-                                                        sort_dir='asc' if sort_by != col or sort_dir == 'desc' else 'desc') }}"
-                                        class="text-black">
-                                        {{ col }}
-                                        {% if sort_by == col %}
-                                            {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                                        {% endif %}
-                                    </a>
-                                </th>
-                            {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in items %}
                             <tr class="align-middle text-center">
+                                <td>{{ row.name_ext or '' }}</td>
+                                <td>{{ row.ao or '' }}</td>
+                                <td>{{ row.obl or '' }}</td>
+                                <td>{{ row.alph or '' }}</td>
+                                <td>{{ row.dep_name or row.dep or '' }}</td>
+                                <td>{{ row.oes_name or row.oes or '' }}</td>
+                                <td>{{ row.er_name or row.er or '' }}</td>
+                                <td>{{ row.terr_belyaev or '' }}</td>
+                                <td>{{ row.teo90 or '' }}</td>
+                                <td>{{ row.fo_name or row.fo or '' }}</td>
+                                <td>{{ row.abbr or '' }}</td>
+                                <td>{{ row.reu or '' }}</td>
+                                <td>{{ row.pter or '' }}</td>
+                                <td>{{ row.keyword or '' }}</td>
+                                <td>{{ row.energy_zone_by_subject_number or '' }}</td>
                                 <td>{{ row.regional_district_name or '' }}</td>
                                 <td>{{ row.regional_energy_system_name or '' }}</td>
                                 <td>{{ row.energy_zone_name or '' }}</td>
-                                <td>{{ row.name_topl or '' }}</td>
-                                <td>{{ row.ao_topl or '' }}</td>
-                                <td>{{ row.obl_topl or '' }}</td>
-                                <td>{{ row.alph_topl or '' }}</td>
-                                <td>{{ row.dep_topl_name or row.dep_topl or '' }}</td>
-                                <td>{{ row.oes_topl_name or row.oes_topl or '' }}</td>
-                                <td>{{ row.er_topl_name or row.er_topl or '' }}</td>
-                                <td>{{ row.terr_belyaev_topl or '' }}</td>
-                                <td>{{ row.teo90_topl or '' }}</td>
-                                <td>{{ row.fo_topl_name or row.fo_topl or '' }}</td>
-                                <td>{{ row.abbr_topl or '' }}</td>
-                                <td>{{ row.reu_topl or '' }}</td>
-                                <td>{{ row.pter_topl or '' }}</td>
-                                <td>{{ row.keyword_topl or '' }}</td>
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="17" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="18" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>

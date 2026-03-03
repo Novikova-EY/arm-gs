@@ -59,8 +59,6 @@ DB_DRIVER = os.getenv("DB_DRIVER", "psycopg2")
 SECRET_KEY = os.getenv('SECRET_KEY', 'cVX84FQ5P0!mXnUwZ@sRek#bLgdpN9Yz')
 SCHEMA_AUTH = _normalize_schema_name(os.getenv("SCHEMA_AUTH"), "gs_auth")
 SCHEMA_LOGS = _normalize_schema_name(os.getenv("SCHEMA_LOGS"), "gs_logs")
-# После миграции 7e4b6c9f1a23 схема refdata была переименована в gs_sys.
-# Поэтому значение по умолчанию изменено на gs_sys.
 SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
 SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
 SCHEMA_FUEL = _normalize_schema_name(os.getenv("SCHEMA_FUEL"), "gs_fue")
@@ -71,9 +69,6 @@ DB_SEARCH_PATH = _normalize_search_path(
 )
 STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
     os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
-)
-STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES = _parse_str_set(
-    os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES", "Амурская область")
 )
 STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS = _parse_str_set(
     os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS", "")
@@ -123,9 +118,6 @@ class Config:
     )
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
         os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
-    )
-    STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES = _parse_str_set(
-        os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES", "Амурская область")
     )
     STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS = _parse_str_set(
         os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS", "")

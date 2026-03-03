@@ -18,6 +18,7 @@ from app.refdata.models.energy_systems.energy_system_type_model import EnergySys
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.years.year_model import Year
 from app.common.services.database_version_filter import filter_by_db_version, get_current_db_version_id
+from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 
 
 def is_current_version(entity) -> bool:
@@ -261,6 +262,9 @@ def fetch_machines_with_rowspans(
         selectinload(Machine.machine_fuels)
             .selectinload(MachineFuel.fuel)
             .selectinload(Fuel.fuel_type),
+        joinedload(Machine.machine_fuel_param).joinedload(
+            MachineFuelParam.equipment_group_sets
+        ),
     ).filter(Machine.id_station.in_(station_ids)).all()
 
     # Сначала фильтруем внутренние коллекции по версии БД (важно для primary_fuel_type)

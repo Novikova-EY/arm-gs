@@ -20,7 +20,7 @@ class FuelType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
 
     # Название типа топлива из базы Топливо
-    topl_nazvl = db.Column(db.String(80), nullable=True)
+    nazvl = db.Column(db.String(80), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

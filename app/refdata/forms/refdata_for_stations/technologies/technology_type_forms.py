@@ -2,7 +2,7 @@
 """
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, HiddenField, SelectField
+from wtforms import StringField, HiddenField, SelectField, IntegerField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 
 
@@ -46,6 +46,11 @@ class AddTechnologyTypeForm(FlaskForm):
             DataRequired(message="Поле «Тип технологии» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
+    )
+
+    display_order = IntegerField(
+        "Порядок отображения",
+        validators=[Optional(), NumberRange(min=0)],
     )
 
 

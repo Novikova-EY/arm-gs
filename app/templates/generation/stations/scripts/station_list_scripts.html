@@ -37,11 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const collapse = new bootstrap.Collapse(collapseEl, {
-        toggle: false  // <--- не раскрывать автоматически
+        toggle: false
     });
 
-    // 🔹 Если есть активные фильтры — открываем и подсвечиваем
-    if (hasActiveFilters) {
+    // 🔹 Блок фильтров открыт по умолчанию — подсвечиваем и подгружаем скрипт
+    if (collapseEl.classList.contains("show")) {
         collapse.show();
         highlightButton();
         loadFiltersScript();
@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <!-- Скрипт для загрузки страницы с заданным количеством знаков после запятой -->
 <script>
-    document.getElementById('rounding_digits').addEventListener('change', function() {
+    document.getElementById('rounding_digits')?.addEventListener('change', function() {
         const selectedRounding = this.value;
         const url = new URL(window.location.href);
         url.searchParams.set('rounding_digits', selectedRounding);

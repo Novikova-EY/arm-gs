@@ -60,7 +60,7 @@
                         {{ form.department_filter(
                             class="form-control",
                             value=department_filter,
-                            placeholder="Поиск по dep_topl или name_topl"
+                            placeholder="Поиск по dep или name"
                         ) }}
                     </div>
 
@@ -93,8 +93,11 @@
         <table class="table table-hover table-striped table-bordered">
 
             <thead>
+                <tr class="table-success">
+                    <th colspan="2" class="text-center align-middle">Модуль «Топливо»</th>
+                </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
-                    <!-- Шапка таблицы. Столбец "dep_topl" -->
+                    <!-- Шапка таблицы. Столбец "dep" -->
                     <th class="text-center align-middle">
                         <a href="{{ url_for('fuel_bp.fuel_department_list',
                                             page=pagination.page,
@@ -103,14 +106,14 @@
                                             sort_by='external_id',
                                             sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            dep_topl
+                            Номер<br><span class="text-muted small">(dep)</span>
                             {% if sort_by == 'external_id' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
                     </th>
 
-                    <!-- Шапка таблицы. Столбец "name_topl" -->
+                    <!-- Шапка таблицы. Столбец "name" -->
                     <th class="text-center align-middle">
                         <a href="{{ url_for('fuel_bp.fuel_department_list',
                                             page=pagination.page,
@@ -119,7 +122,7 @@
                                             sort_by='external_name',
                                             sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            name_topl
+                            Наименование<br><span class="text-muted small">(name)</span>
                             {% if sort_by == 'external_name' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -132,11 +135,11 @@
             <tbody>
                 {% for mapping in mappings %}
                     <tr class="align-middle text-center">
-                        <!-- Строки таблицы. Столбец "dep_topl" -->
+                        <!-- Строки таблицы. Столбец "dep" -->
                         {% set external_id = (mapping.external_id|string) if mapping and mapping.external_id is not none else '' %}
                         <td>{{ external_id[:-2] if external_id.endswith('.0') and external_id[:-2].isdigit() else external_id }}</td>
 
-                        <!-- Строки таблицы. Столбец "name_topl" -->
+                        <!-- Строки таблицы. Столбец "name" -->
                         <td>{{ mapping.external_name if mapping and mapping.external_name else '' }}</td>
                     </tr>
                 {% else %}

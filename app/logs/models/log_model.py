@@ -7,8 +7,9 @@ Log model (Аудит действий).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_LOGS, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class Log(db.Model):
+class Log(db.Model, AuditMixin):
     __tablename__ = 'logs'
     __table_args__ = {"schema": SCHEMA_LOGS}
 

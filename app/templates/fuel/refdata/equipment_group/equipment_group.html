@@ -28,6 +28,14 @@
             </label>
         </form>
 
+        <a class="btn btn-warning fw-bold"
+            href="{{ url_for('fuel_bp.export_fuel_equipment_group',
+                                equipment_group_filter=equipment_group_filter or '',
+                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            target="_blank" rel="noopener">
+            Экспорт в Excel
+        </a>
+
         <select name="per_page"
                 form="filterForm"
                 class="form-select d-inline-block w-auto"
@@ -81,17 +89,21 @@
         <table class="table table-hover table-striped table-bordered">
 
             <thead>
+                <tr class="table-success">
+                    <th colspan="9" class="text-center align-middle">Модуль «Топливо»</th>
+                    <th colspan="3" class="text-center align-middle">Модуль «Генерация»</th>
+                </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
                     <th class="text-center align-middle">
                         <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='code_topl',
-                                            sort_dir='asc' if sort_by != 'code_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='code',
+                                            sort_dir='asc' if sort_by != 'code' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            code_topl
-                            {% if sort_by == 'code_topl' %}
+                            Номер<br><span class="text-muted small">(code)</span>
+                            {% if sort_by == 'code' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -105,7 +117,7 @@
                                             sort_by='name_topl',
                                             sort_dir='asc' if sort_by != 'name_topl' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            name_topl
+                            Название<br><span class="text-muted small">(name_topl)</span>
                             {% if sort_by == 'name_topl' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -117,11 +129,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='type_topl',
-                                            sort_dir='asc' if sort_by != 'type_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='type_',
+                                            sort_dir='asc' if sort_by != 'type_' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            type_topl
-                            {% if sort_by == 'type_topl' %}
+                            Тип<br><span class="text-muted small">(type)</span>
+                            {% if sort_by == 'type_' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -132,11 +144,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='tm_topl',
-                                            sort_dir='asc' if sort_by != 'tm_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='tm',
+                                            sort_dir='asc' if sort_by != 'tm' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            tm_topl
-                            {% if sort_by == 'tm_topl' %}
+                            Типы турбин<br><span class="text-muted small">(tm)</span>
+                            {% if sort_by == 'tm' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -147,11 +159,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='n1_topl',
-                                            sort_dir='asc' if sort_by != 'n1_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='n1',
+                                            sort_dir='asc' if sort_by != 'n1' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            n1_topl
-                            {% if sort_by == 'n1_topl' %}
+                            n1<br><span class="text-muted small">(n1)</span>
+                            {% if sort_by == 'n1' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -162,11 +174,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='n2_topl',
-                                            sort_dir='asc' if sort_by != 'n2_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='n2',
+                                            sort_dir='asc' if sort_by != 'n2' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            n2_topl
-                            {% if sort_by == 'n2_topl' %}
+                            n2<br><span class="text-muted small">(n2)</span>
+                            {% if sort_by == 'n2' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -177,11 +189,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='p1_topl',
-                                            sort_dir='asc' if sort_by != 'p1_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='p1',
+                                            sort_dir='asc' if sort_by != 'p1' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            p1_topl
-                            {% if sort_by == 'p1_topl' %}
+                            p1<br><span class="text-muted small">(p1)</span>
+                            {% if sort_by == 'p1' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -192,11 +204,11 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='p2_topl',
-                                            sort_dir='asc' if sort_by != 'p2_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='p2',
+                                            sort_dir='asc' if sort_by != 'p2' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            p2_topl
-                            {% if sort_by == 'p2_topl' %}
+                            p2<br><span class="text-muted small">(p2)</span>
+                            {% if sort_by == 'p2' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
@@ -207,26 +219,26 @@
                                             page=pagination.page,
                                             per_page=per_page,
                                             equipment_group_filter=equipment_group_filter,
-                                            sort_by='gruppa_oborud_topl',
-                                            sort_dir='asc' if sort_by != 'gruppa_oborud_topl' or sort_dir == 'desc' else 'desc') }}"
+                                            sort_by='gruppa_oborud',
+                                            sort_dir='asc' if sort_by != 'gruppa_oborud' or sort_dir == 'desc' else 'desc') }}"
                            class="text-black">
-                            gruppa_oborud_topl
-                            {% if sort_by == 'gruppa_oborud_topl' %}
+                            Наименование<br><span class="text-muted small">(gruppa_oborud)</span>
+                            {% if sort_by == 'gruppa_oborud' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
                         </a>
                     </th>
 
                     <th class="text-center align-middle">
-                        UUID типа группы оборудования
+                        UUID
                     </th>
 
                     <th class="text-center align-middle">
-                        ID типа группы оборудования (текущая версия)
+                        ID (текущая версия)
                     </th>
 
                     <th class="text-center align-middle">
-                        Наименование типа группы оборудования в АРМ
+                        Наименование
                     </th>
                 </tr>
             </thead>
@@ -237,15 +249,15 @@
                         {% set equipment_group = row.eg %}
                         {% set mapping = row.mapping %}
                         <tr class="align-middle text-center">
-                            <td>{{ mapping.code_topl if mapping and mapping.code_topl is not none else '' }}</td>
+                            <td>{{ mapping.code if mapping and mapping.code is not none else '' }}</td>
                             <td>{{ mapping.name_topl if mapping and mapping.name_topl else '' }}</td>
-                            <td>{{ mapping.type_topl if mapping and mapping.type_topl is not none else '' }}</td>
-                            <td>{{ mapping.tm_topl if mapping and mapping.tm_topl else '' }}</td>
-                            <td>{{ mapping.n1_topl if mapping and mapping.n1_topl is not none else '' }}</td>
-                            <td>{{ mapping.n2_topl if mapping and mapping.n2_topl is not none else '' }}</td>
-                            <td>{{ mapping.p1_topl if mapping and mapping.p1_topl is not none else '' }}</td>
-                            <td>{{ mapping.p2_topl if mapping and mapping.p2_topl is not none else '' }}</td>
-                            <td>{{ mapping.gruppa_oborud_topl if mapping and mapping.gruppa_oborud_topl else '' }}</td>
+                            <td>{{ mapping.type_ if mapping and mapping.type_ is not none else '' }}</td>
+                            <td>{{ mapping.tm if mapping and mapping.tm else '' }}</td>
+                            <td>{{ mapping.n1 if mapping and mapping.n1 is not none else '' }}</td>
+                            <td>{{ mapping.n2 if mapping and mapping.n2 is not none else '' }}</td>
+                            <td>{{ mapping.p1 if mapping and mapping.p1 is not none else '' }}</td>
+                            <td>{{ mapping.p2 if mapping and mapping.p2 is not none else '' }}</td>
+                            <td>{{ mapping.gruppa_oborud if mapping and mapping.gruppa_oborud else '' }}</td>
                             <td>{{ equipment_group.ref_uuid if equipment_group else '—' }}</td>
                             <td>{{ equipment_group.id if equipment_group else '—' }}</td>
                             <td>{{ equipment_group.name if equipment_group else '—' }}</td>
@@ -259,15 +271,15 @@
                     {% for equipment_group in equipment_group_list %}
                         <tr class="align-middle text-center">
                             {% set mapping = mapping_by_eg.get(equipment_group.ref_uuid) %}
-                            <td>{{ mapping.code_topl if mapping and mapping.code_topl is not none else '' }}</td>
+                            <td>{{ mapping.code if mapping and mapping.code is not none else '' }}</td>
                             <td>{{ mapping.name_topl if mapping and mapping.name_topl else '' }}</td>
-                            <td>{{ mapping.type_topl if mapping and mapping.type_topl is not none else '' }}</td>
-                            <td>{{ mapping.tm_topl if mapping and mapping.tm_topl else '' }}</td>
-                            <td>{{ mapping.n1_topl if mapping and mapping.n1_topl is not none else '' }}</td>
-                            <td>{{ mapping.n2_topl if mapping and mapping.n2_topl is not none else '' }}</td>
-                            <td>{{ mapping.p1_topl if mapping and mapping.p1_topl is not none else '' }}</td>
-                            <td>{{ mapping.p2_topl if mapping and mapping.p2_topl is not none else '' }}</td>
-                            <td>{{ mapping.gruppa_oborud_topl if mapping and mapping.gruppa_oborud_topl else '' }}</td>
+                            <td>{{ mapping.type_ if mapping and mapping.type_ is not none else '' }}</td>
+                            <td>{{ mapping.tm if mapping and mapping.tm else '' }}</td>
+                            <td>{{ mapping.n1 if mapping and mapping.n1 is not none else '' }}</td>
+                            <td>{{ mapping.n2 if mapping and mapping.n2 is not none else '' }}</td>
+                            <td>{{ mapping.p1 if mapping and mapping.p1 is not none else '' }}</td>
+                            <td>{{ mapping.p2 if mapping and mapping.p2 is not none else '' }}</td>
+                            <td>{{ mapping.gruppa_oborud if mapping and mapping.gruppa_oborud else '' }}</td>
                             <td>{{ equipment_group.ref_uuid }}</td>
                             <td>{{ equipment_group.id }}</td>
                             <td>{{ equipment_group.name }}</td>

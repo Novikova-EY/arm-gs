@@ -1,5 +1,1 @@
-# -*- coding: utf-8 -*-
-"""
-Refdata models, связанные с подсистемой учета топлива.
-"""
-
+# Fuel refdata module - справочники топлива для раздела fuel

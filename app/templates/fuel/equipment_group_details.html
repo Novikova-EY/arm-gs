@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}Группа оборудования {{ group_display_name }} ({{ station.name }}){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div class="container-fluid mt-4 machine-details-page">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="container-fluid">
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Карточка группы оборудования
+                <span class="readonly-indicator ms-3">Режим просмотра</span>
+            </h2>
+        </div>
+
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
+            <strong>{{ station.name }}</strong>
+        </a>
+        <span class="mx-2">→</span>
+        <strong class="fs-3">{{ group_display_name }}</strong>
+
+        <!-- Блок выбора годов (как на station_details) -->
+        <form method="GET" action="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id) }}" class="d-flex align-items-center gap-2 ms-3" id="yearForm">
+            {% for key, value in request.args.items() %}
+                {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+
+            <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+            <select name="start_year" id="start_year" class="form-select" style="width: auto;">
+                {% for year in range(2021, 2043) %}
+                <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+            <select name="end_year" id="end_year" class="form-select" style="width: auto;">
+                {% for year in range(2022, 2043) %}
+                <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-outline-success">Применить</button>
+        </form>
+
+        <!-- Основные параметры: строки по годам -->
+        <div class="card mb-3 border-0 shadow-none mt-3">
+            <div class="card-header fw-bold bg-transparent border-0 pt-0">Основные параметры</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 120px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px;">{{ y }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in main_params_grid %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column fw-semibold text-start">{{ label }}</td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    <td class="power-column">{{ v if v is not none else '—' }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица 1: NUST, nr, E, EOTP, EURT, EUST, Q, TURT, TUST — строки по годам -->
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">Параметры NUST, nr, E, EOTP, EURT, EUST, Q, TURT, TUST</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px;">{{ y }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table1_params_grid %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column fw-semibold text-start">{{ label }}</td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    <td class="power-column">{{ v if v is not none else '—' }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица 2: B, GAZ, ... — строки по годам -->
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">Параметры топлива по бассейнам и прочие</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px;">{{ y }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table2_params_grid %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column fw-semibold text-start">{{ label }}</td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    <td class="power-column">{{ v if v is not none else '—' }}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .machine-details-page a.mb-3.fs-3.d-inline-block { font-size: 2rem !important; }
+    .machine-details-page .card.mb-3.border-0.shadow-none .card-body { font-size: 1.05rem; }
+    .machine-details-page .fw-semibold { font-size: 1.1em; }
+    .machine-details-page table { font-size: 1.05rem; }
+    .machine-details-page thead th { font-size: 1.08rem; }
+    .machine-details-page table tbody td { font-size: 1.15rem; }
+    .readonly-indicator {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        vertical-align: middle;
+        gap: 0.5rem;
+    }
+    .readonly-indicator::before { content: "👁️"; font-size: 1rem; }
+    /* Стили таблиц как на machine_details */
+    .machine-details-page .equipment-group-tables {
+        width: 100%;
+        table-layout: fixed;
+    }
+    .machine-details-page .equipment-group-tables .year-header,
+    .machine-details-page .equipment-group-tables .power-column,
+    .machine-details-page .equipment-group-tables .first-column {
+        text-align: center;
+        vertical-align: middle;
+        word-wrap: break-word;
+        white-space: normal;
+        padding: 12px 8px;
+    }
+    .machine-details-page .equipment-group-tables .first-column {
+        text-align: left;
+    }
+    .machine-details-page .equipment-group-tables .year-header {
+        width: auto;
+    }
+    .machine-details-page .equipment-group-tables td,
+    .machine-details-page .equipment-group-tables th {
+        word-wrap: break-word !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+    }
+</style>
+
+{% endif %}
+{% endblock %}

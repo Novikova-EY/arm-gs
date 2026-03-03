@@ -88,6 +88,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_current_year,
     get_filter_start_year,
     get_filter_end_year,
+    get_year_feature_dict,
 )
 from app.common.services.get_services.gen_companies.gen_company_get_services import (
     get_gen_company_list_full,
@@ -131,10 +132,10 @@ def _format_logs_for_display(logs):
     if version_ids:
         # Используем оптимизированный запрос с загрузкой только нужных полей
         try:
-            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.name).filter(
+            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).filter(
                 DatabaseVersion.id.in_(version_ids)
             ).all()
-            versions_map = {v.id: v.name for v in versions}
+            versions_map = {v.id: v.version_number for v in versions}
         except Exception:
             # Если ошибка - просто показываем ID версии вместо названия
             versions_map = {vid: str(vid) for vid in version_ids}
@@ -539,10 +540,11 @@ def station_details(station_id):
     # Загружаем и форматируем логи ТОЛЬКО для GET запросов (для POST не нужны, т.к. идет редирект)
     station_logs_formatted = []
     if request.method == "GET":
+        # Условие по action с именем станции убрано: имена вроде "Артемовская ТЭЦ"
+        # являются подстроками других ("Артемовская ТЭЦ-2"), что даёт ложные совпадения.
         logs_filter = or_(
             and_(Log.entity_type == "station", Log.entity_id == station.id),
             Log.details.ilike(f"%station_id={station.id}%"),
-            Log.action.ilike(f"%станции%{station.name}%")
         )
 
         station_logs_raw = (
@@ -595,6 +597,7 @@ def station_details(station_id):
     print(f"[RENDER START] Агрегатов: {machines_count}, Лет: {years_range}, Ячеек: {cells_count}, Логов: {logs_count}")
 
     # Render template (measure render time separately)
+    year_features = get_year_feature_dict()
     html = render_template(
         "generation/stations/station_details.html",
         form=form,
@@ -615,6 +618,7 @@ def station_details(station_id):
         equipment_group_set_links=equipment_group_set_links,
         available_equipment_group_sets=available_equipment_group_sets,
         initial_machines_tbody_html=initial_machines_tbody_html,
+        year_features=year_features,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
         res_auto_map=res_auto_map,
@@ -669,10 +673,11 @@ def station_logs(station_id):
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
     
+    # Условие по action с именем станции убрано — имена вроде "Артемовская ТЭЦ"
+    # могут быть подстроками других ("Артемовская ТЭЦ-2"), что даёт ложные совпадения.
     logs_filter = or_(
         and_(Log.entity_type == "station", Log.entity_id == station.id),
         Log.details.ilike(f"%station_id={station.id}%"),
-        Log.action.ilike(f"%станции%{station.name}%")
     )
 
     logs_query = (

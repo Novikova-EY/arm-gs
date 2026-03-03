@@ -27,19 +27,6 @@
                             {% endif %}
                         </div>
 
-                        <!-- Поле "Название версии" -->
-                        <div class="mb-3">
-                            {{ form.name.label(class="form-label fw-bold") }}
-                            {{ form.name(class="form-control", placeholder="Введите название версии") }}
-                            {% if form.name.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.name.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-
                         <!-- Поле "Описание" -->
                         <div class="mb-3">
                             {{ form.description.label(class="form-label fw-bold") }}

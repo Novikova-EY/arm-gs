@@ -60,8 +60,8 @@ def fuel_list():
     if fuel_filter is not None:
         fuel_filter = fuel_filter.strip()
     fuel_type_filter    = _normalize_filter(request.args.get("fuel_type_filter"))
-    topl_nazvl_filter   = _normalize_filter(request.args.get("topl_nazvl_filter"))
-    topl_kmbur_filter   = _normalize_filter(request.args.get("topl_kmbur_filter"))
+    nazvl_filter   = _normalize_filter(request.args.get("nazvl_filter"))
+    kmbur_filter   = _normalize_filter(request.args.get("kmbur_filter"))
 
     if request.method == "POST":       
         # Обновление параметров из формы
@@ -73,15 +73,15 @@ def fuel_list():
         if fuel_filter is not None:
             fuel_filter = fuel_filter.strip()
         fuel_type_filter    = _normalize_filter(request.form.get("fuel_type_filter"))
-        topl_nazvl_filter   = _normalize_filter(request.form.get("topl_nazvl_filter"))
-        topl_kmbur_filter   = _normalize_filter(request.form.get("topl_kmbur_filter"))
+        nazvl_filter   = _normalize_filter(request.form.get("nazvl_filter"))
+        kmbur_filter   = _normalize_filter(request.form.get("kmbur_filter"))
 
         # Получение данных из формы
         fuel_ids = request.form.getlist("fuel_ids[]")
         fuel_names = request.form.getlist("fuel_names[]")
         fuel_types = request.form.getlist("fuel_types[]")
-        fuel_topl_nazvl = request.form.getlist("fuel_topl_nazvl[]")
-        fuel_topl_kmbur = request.form.getlist("fuel_topl_kmbur[]")
+        fuel_nazvl = request.form.getlist("fuel_nazvl[]")
+        fuel_kmbur = request.form.getlist("fuel_kmbur[]")
         fuel_delete = request.form.getlist("fuel_delete[]")
   
         deleted_ids = set()
@@ -103,19 +103,19 @@ def fuel_list():
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
-                                        topl_kmbur_filter=topl_kmbur_filter,
+                                        nazvl_filter=nazvl_filter,
+                                        kmbur_filter=kmbur_filter,
                                         sort_by=sort_by, 
                                         sort_dir=sort_dir))
            
            # Формирование данных для обновления
             fuel_data = []
-            for fuel_id, fuel_name, fuel_type, topl_nazvl, topl_kmbur in zip(
+            for fuel_id, fuel_name, fuel_type, nazvl, kmbur in zip(
                 fuel_ids,
                 fuel_names,
                 fuel_types,
-                fuel_topl_nazvl,
-                fuel_topl_kmbur,
+                fuel_nazvl,
+                fuel_kmbur,
             ):
                 if fuel_id and int(fuel_id) in deleted_ids:
                     continue
@@ -124,8 +124,8 @@ def fuel_list():
                     "name": fuel_name.strip(),
                     # Ключ должен соответствовать ожидаемому в update_fuel_service ("fuel_type_id")
                     "fuel_type_id": int(fuel_type) if fuel_type else None,
-                    "topl_nazvl": (topl_nazvl or "").strip(),
-                    "topl_kmbur": (topl_kmbur or "").strip(),
+                    "nazvl": (nazvl or "").strip(),
+                    "kmbur": (kmbur or "").strip(),
                 })
             
             if not fuel_data:
@@ -134,8 +134,8 @@ def fuel_list():
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
-                                        topl_kmbur_filter=topl_kmbur_filter,
+                                        nazvl_filter=nazvl_filter,
+                                        kmbur_filter=kmbur_filter,
                                         sort_by=sort_by, 
                                         sort_dir=sort_dir))
 
@@ -160,8 +160,8 @@ def fuel_list():
                                 per_page=per_page, 
                                 fuel_filter=fuel_filter,
                                 fuel_type_filter=fuel_type_filter,
-                                topl_nazvl_filter=topl_nazvl_filter,
-                                topl_kmbur_filter=topl_kmbur_filter,
+                                nazvl_filter=nazvl_filter,
+                                kmbur_filter=kmbur_filter,
                                 sort_by=sort_by, 
                                 sort_dir=sort_dir))
 
@@ -170,35 +170,35 @@ def fuel_list():
                               per_page, 
                               fuel_filter,
                               fuel_type_filter,
-                              topl_nazvl_filter,
-                              topl_kmbur_filter,
+                              nazvl_filter,
+                              kmbur_filter,
                               sort_by, 
                               sort_dir)
 
-    topl_nazvl_values = [
+    nazvl_values = [
         row[0] for row in (
             fuel_query(
                 fuel_filter=fuel_filter,
                 fuel_type_filter=fuel_type_filter,
             )
-            .with_entities(Fuel.topl_nazvl)
+            .with_entities(Fuel.nazvl)
             .order_by(None)
             .distinct()
-            .order_by(Fuel.topl_nazvl.asc())
+            .order_by(Fuel.nazvl.asc())
             .all()
         )
         if row[0]
     ]
-    topl_kmbur_values = [
+    kmbur_values = [
         row[0] for row in (
             fuel_query(
                 fuel_filter=fuel_filter,
                 fuel_type_filter=fuel_type_filter,
             )
-            .with_entities(Fuel.topl_kmbur)
+            .with_entities(Fuel.kmbur)
             .order_by(None)
             .distinct()
-            .order_by(Fuel.topl_kmbur.asc())
+            .order_by(Fuel.kmbur.asc())
             .all()
         )
         if row[0]
@@ -216,10 +216,10 @@ def fuel_list():
         fuel_types=form.fuel_type.choices,
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
-        topl_kmbur_filter=topl_kmbur_filter,
-        topl_nazvl_values=topl_nazvl_values,
-        topl_kmbur_values=topl_kmbur_values,
+        nazvl_filter=nazvl_filter,
+        kmbur_filter=kmbur_filter,
+        nazvl_values=nazvl_values,
+        kmbur_values=kmbur_values,
         sort_by=sort_by,
         sort_dir=sort_dir,
         per_page=per_page
@@ -246,8 +246,8 @@ def add_fuel():
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_filter         = request.args.get("fuel_filter", "").strip()
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
-    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
-    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
+    nazvl_filter   = request.args.get("nazvl_filter", "").strip()
+    kmbur_filter   = request.args.get("kmbur_filter", "").strip()
 
     # Подготовка данных для формы с фильтрацией по версии БД
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
@@ -268,8 +268,8 @@ def add_fuel():
             total_records = fuel_query(
                                 fuel_filter, 
                                 fuel_type_filter,
-                                topl_nazvl_filter,
-                                topl_kmbur_filter).count()
+                                nazvl_filter,
+                                kmbur_filter).count()
             last_page = (total_records + per_page - 1) // per_page
             
             # Корректировка текущей страницы, если она больше последней
@@ -283,8 +283,8 @@ def add_fuel():
                 sort_dir=sort_dir,
                 fuel_filter=fuel_filter,
                 fuel_type_filter=fuel_type_filter,
-                topl_nazvl_filter=topl_nazvl_filter,
-                topl_kmbur_filter=topl_kmbur_filter,
+                nazvl_filter=nazvl_filter,
+                kmbur_filter=kmbur_filter,
             ))
 
         except ValueError as e:
@@ -306,8 +306,8 @@ def add_fuel():
         fuel_types=form.fuel_type.choices,
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
-        topl_kmbur_filter=topl_kmbur_filter,
+        nazvl_filter=nazvl_filter,
+        kmbur_filter=kmbur_filter,
     )
 
 
@@ -353,8 +353,8 @@ def export_fuel():
     sort_dir            = request.args.get("sort_dir", "asc")
     fuel_filter         = request.args.get("fuel_filter", "").strip()
     fuel_type_filter    = request.args.get("fuel_type_filter", "").strip()
-    topl_nazvl_filter   = request.args.get("topl_nazvl_filter", "").strip()
-    topl_kmbur_filter   = request.args.get("topl_kmbur_filter", "").strip()
+    nazvl_filter   = request.args.get("nazvl_filter", "").strip()
+    kmbur_filter   = request.args.get("kmbur_filter", "").strip()
 
     try:
         # Получение данных для экспорта
@@ -364,8 +364,8 @@ def export_fuel():
                         sort_dir=sort_dir,
                         fuel_filter=fuel_filter,
                         fuel_type_filter=fuel_type_filter,
-                        topl_nazvl_filter=topl_nazvl_filter,
-                        topl_kmbur_filter=topl_kmbur_filter,
+                        nazvl_filter=nazvl_filter,
+                        kmbur_filter=kmbur_filter,
         )
 
         # Проверка наличия данных

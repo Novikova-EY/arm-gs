@@ -8,8 +8,9 @@ from sqlalchemy import Numeric
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class MachinePower(db.Model):
+class MachinePower(db.Model, AuditMixin):
     __tablename__ = 'machine_powers'
     __table_args__ = (
         Index('ix_machine_power_id_machine', 'id_machine'),

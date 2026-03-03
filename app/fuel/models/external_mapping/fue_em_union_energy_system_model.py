@@ -4,9 +4,10 @@ UnionEnergySystemExternalMapping model (связь ОЭС с внешними и
 """
 from app.extensions import db
 from config import SCHEMA_FUE_EM
+from app.common.models.audit_mixin import AuditMixin
 
 
-class UnionEnergySystemExternalMapping(db.Model):
+class UnionEnergySystemExternalMapping(db.Model, AuditMixin):
     __tablename__ = "gs_fue_em_union_energy_system"
     __table_args__ = ({"schema": SCHEMA_FUE_EM},)
 

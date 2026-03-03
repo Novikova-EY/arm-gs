@@ -4,9 +4,10 @@ EconomicRegionExternalMapping model (связь экономических ра�
 """
 from app.extensions import db
 from config import SCHEMA_FUE_EM
+from app.common.models.audit_mixin import AuditMixin
 
 
-class EconomicRegionExternalMapping(db.Model):
+class EconomicRegionExternalMapping(db.Model, AuditMixin):
     __tablename__ = "gs_fue_em_economic_region"
     __table_args__ = ({"schema": SCHEMA_FUE_EM},)
 

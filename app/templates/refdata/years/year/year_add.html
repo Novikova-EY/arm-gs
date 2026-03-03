@@ -26,17 +26,11 @@
 
         <div class="mb-3">
             <label for="year_feature" class="form-label">Признак года</label>
-            {{ form.year_feature(class="form-control", id="year_feature") }}
+            {{ form.year_feature(class="form-select", id="year_feature") }}
             {% if form.year_feature.errors %}
                 <div class="text-danger">{{ form.year_feature.errors|join(', ') }}</div>
             {% endif %}
         </div>
-
-        <datalist id="year_feature_list">
-            {% for fid, fname in year_feature_choices %}
-                <option value="{{ fname }}"></option>
-            {% endfor %}
-        </datalist>
 
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Добавить</button>

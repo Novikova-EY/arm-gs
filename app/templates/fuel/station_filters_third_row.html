@@ -2,30 +2,41 @@
 <div class="col-12 mb-2">
     <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-3 mb-2">
 
-        <!-- Левая часть: выбор годов -->
+        <!-- Левая часть: выбор годов (может быть скрыта) -->
         <div class="d-flex align-items-center gap-2">
             <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2" id="yearForm">
                 {% for key, value in request.args.items() %}
-                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
+                    {% if key != "per_page" and key != "start_year" and key != "end_year" and key != "year" %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
 
-                <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-                <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
-                    {% for year in range(2021, 2043) %}
-                    <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
-                    {% endfor %}
-                </select>
+                {% if not hide_year_range|default(false) %}
+                    {% if use_single_year|default(false) %}
+                    <label for="year" class="mb-0" style="white-space: nowrap;">Год:</label>
+                    <select name="year" id="year" class="form-select" onchange="this.form.submit()">
+                        {% for y in range(2021, 2043) %}
+                        <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                        {% for year in range(2021, 2043) %}
+                        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
 
-                <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-                <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
-                    {% for year in range(2022, 2043) %}
-                    <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
-                    {% endfor %}
-                </select>
+                    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                        {% for year in range(2022, 2043) %}
+                        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
 
-                <button type="submit" class="btn btn-outline-success">Применить</button>
+                    <button type="submit" class="btn btn-outline-success">Применить</button>
+                    {% endif %}
+                {% endif %}
 
                 <div class="filter-item">
                     <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger w-100">Сбросить</a>
@@ -36,6 +47,7 @@
         <!-- Пагинация -->
         <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="min-width: 200px;">
             {% if per_page is not none %}
+                {% set pagination_endpoint = import_redirect_endpoint | default('fuel_bp.stations_equipment_groups') %}
                 {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
         </div>

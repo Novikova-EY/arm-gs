@@ -58,13 +58,13 @@ def _invalidate_fuel_type_caches() -> None:
 
 def fuel_type_query(
         fuel_type_filter=None, 
-        topl_nazvl_filter=None,
+        nazvl_filter=None,
         sort_by="display_order", 
         sort_dir="asc"):
     """ Базовый запрос для выборки видов топлива с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "topl_nazvl", "display_order", "number"}
+    allowed_sort_by = {"id", "name", "nazvl", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -79,14 +79,14 @@ def fuel_type_query(
     # Фильтрация
     if fuel_type_filter:
         query = query.filter(FuelType.name.ilike(f"%{fuel_type_filter}%"))
-    if topl_nazvl_filter:
-        query = query.filter(FuelType.topl_nazvl.ilike(f"%{topl_nazvl_filter}%"))
+    if nazvl_filter:
+        query = query.filter(FuelType.nazvl.ilike(f"%{nazvl_filter}%"))
     # Сортировка
     if sort_by == "name":
         sort_col = FuelType.name
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
-    elif sort_by == "topl_nazvl":
-        sort_col = FuelType.topl_nazvl
+    elif sort_by == "nazvl":
+        sort_col = FuelType.nazvl
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
     elif sort_by == "display_order":
         # Сортируем по порядку отображения, значения NULL в конце
@@ -112,7 +112,7 @@ def get_fuel_type_list(
     page, 
     per_page, 
     fuel_type_filter=None, 
-    topl_nazvl_filter=None,
+    nazvl_filter=None,
     sort_by="display_order", 
     sort_dir="asc"):
     """ Получает список видов топлива с пагинацией, фильтрацией и сортировкой. """
@@ -120,7 +120,7 @@ def get_fuel_type_list(
     # Базовый запрос
     query = fuel_type_query(
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
+        nazvl_filter=nazvl_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -149,7 +149,7 @@ def update_fuel_type_service(data, user):
         for record in data:
             fuel_type_id = record.get("fuel_type_id")
             name = (record.get("name") or "").strip()
-            topl_nazvl = (record.get("topl_nazvl") or "").strip() or None
+            nazvl = (record.get("nazvl") or "").strip() or None
             display_order = record.get("display_order")
 
             if not name:
@@ -199,16 +199,16 @@ def update_fuel_type_service(data, user):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "fuel_type"))
                 obj.name = name
 
-            if topl_nazvl != obj.topl_nazvl:
+            if nazvl != obj.nazvl:
                 changes.append(
                     format_field_change(
-                        "topl_nazvl",
-                        obj.topl_nazvl or "не указано",
-                        topl_nazvl or "не указано",
+                        "nazvl",
+                        obj.nazvl or "не указано",
+                        nazvl or "не указано",
                         "fuel_type",
+                    )
                 )
-                )
-                obj.topl_nazvl = topl_nazvl
+                obj.nazvl = nazvl
 
             if display_order != obj.display_order:
                 old_val = obj.display_order if obj.display_order is not None else "не указано"
@@ -456,7 +456,7 @@ def import_fuel_type_service(file, user):
 def export_fuel_type_service(
     user,
     fuel_type_filter=None,
-    topl_nazvl_filter=None,
+    nazvl_filter=None,
     sort_by="display_order",
     sort_dir="asc",):
     """ Экспортирует данные видов топлива в Excel. """
@@ -465,7 +465,7 @@ def export_fuel_type_service(
     log_to_db(user, "Параметры экспорта",
         (
             f"Фильтр по столбцу: Наименование вида топлива = {fuel_type_filter},"
-            f"Фильтр по столбцу: Наименование БД Топливо = {topl_nazvl_filter},"
+            f"Фильтр по столбцу: Наименование БД Топливо = {nazvl_filter},"
             f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
         ), entity_type="fuel_type"
     )
@@ -473,7 +473,7 @@ def export_fuel_type_service(
     # Базовый запрос
     query = fuel_type_query(
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
+        nazvl_filter=nazvl_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -482,13 +482,14 @@ def export_fuel_type_service(
     items = query.all()
     log_to_db(user, "Получение данных завершено", f"Найдено записей: {len(items)}", entity_type="fuel_type")
 
-    # Подготовка данных для Excel
+    # Подготовка данных для Excel (названия столбцов как на экране)
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Наименование": _dash(o.name),
-            "Наименование БД Топливо": _dash(o.topl_nazvl),
+            "Порядок отображения": o.display_order if o.display_order is not None else "",
+            "Тип топлива": _dash(o.name),
+            "Наименование в БД Топливо": _dash(o.nazvl),
         })
 
     log_to_db(user, "Подготовка данных для экспорта таблицы видов топлива в Excel",

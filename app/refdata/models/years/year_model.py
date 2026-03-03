@@ -11,10 +11,17 @@ from app.common.models.versioned_model import VersionedModelMixin
 
 class Year(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'gs_years'
-    __table_args__ = {
-        "schema": SCHEMA_REFDATA,
-        "extend_existing": True
-    }
+    __table_args__ = (
+        db.UniqueConstraint(
+            "number",
+            "database_version_id",
+            name="uq_gs_years_number_version",
+        ),
+        {
+            "schema": SCHEMA_REFDATA,
+            "extend_existing": True,
+        },
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     number = db.Column(db.Integer, nullable=False, index=True)

@@ -62,20 +62,28 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
     sorted_energy_system_type_ids = sorted(grouped_stations.keys())
     
     # Собираем все ID станций для загрузки station_equipment_groups
-    all_station_ids = []
+    all_station_ids = set()
     for es_type_group in grouped_stations.values():
         for ues_group in es_type_group.values():
             for res_group in ues_group.values():
                 for rd_group in res_group.values():
                     for eu_group in rd_group.values():
                         for station in eu_group:
-                            if station.id not in all_station_ids:
-                                all_station_ids.append(station.id)
+                            all_station_ids.add(station.id)
     
     # Загружаем station_equipment_groups и machines для всех станций
     if all_station_ids:
         stations_with_relations = db.session.query(Station).options(
             selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.equipment_group),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.territories_energy_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.department_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.union_energy_system_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.economic_region_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.federal_district_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.gen_company_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.gen_company_branch_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.business_unit_external_mapping),
+            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.cities_external_mapping),
             selectinload(Station.machines),
             selectinload(Station.regional_district),
         ).filter(Station.id.in_(all_station_ids)).all()
@@ -100,11 +108,10 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
     ws = wb.active
     ws.title = "Группы оборудования"
     
-    # Определяем столбцы (как на экране + добавляем ID)
+    # Определяем столбцы: сначала технические id, затем как на экране
     columns = [
-        "ID группы оборудования",
-        "ID станции",
-        "ID агрегата",
+        "id_station",
+        "id_machine",
         "Группа оборудования",
         "Станция",
         "Тип",
@@ -115,33 +122,35 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "main",
         "d",
         "r",
-        "form",
-        "type",
-        "vedomstvo",
-        "obl",
-        "dep",
-        "oes",
-        "er",
-        "fo",
-        "numb",
-        "tm",
-        "n1",
-        "n2",
-        "p1",
-        "p2",
-        "ordnumb",
-        "addr",
-        "note",
-        "codegor",
-        "be",
-        "gk",
-        "gkf",
+        "forem",
+        "Ведомство",
+        "Субъект РФ",
+        "Департамент",
+        "ОЭС",
+        "Экономический район",
+        "Федеральный округ",
+        "Код станции",
+        "Типы турбин",
+        "Мощность блока (вар. 1)",
+        "Мощность блока (вар. 2)",
+        "Давление пара (вар. 1)",
+        "Давление пара (вар. 2)",
+        "Порядковый номер станции",
+        "Адрес",
+        "Примечание",
+        "Код города",
+        "Тип генерирующей компании",
+        "Генерирующая компания",
+        "Филиал ГК",
     ]
     
     # Заголовки
     header_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
     header_font = Font(bold=True, size=11)
     header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+    # Предварительно считаем максимальные длины по заголовкам
+    max_lengths = [len(str(col)) if col is not None else 0 for col in columns]
     
     for col_num, column_title in enumerate(columns, 1):
         cell = ws.cell(row=1, column=col_num)
@@ -159,12 +168,18 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         
         # Строка с типом энергосистемы
         row = [None] * len(columns)
-        row[3] = es_type_name  # Группа оборудования
+        row[2] = es_type_name  # Группа оборудования
+        for idx, value in enumerate(row):
+            if value is None:
+                continue
+            length = len(str(value))
+            if length > max_lengths[idx]:
+                max_lengths[idx] = length
         ws.append(row)
         
         # Стиль для заголовков иерархии
-        ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
-        cell = ws.cell(row=current_row, column=4)
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
+        cell = ws.cell(row=current_row, column=1)
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal="center", vertical="center")
         current_row += 1
@@ -181,10 +196,16 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             
             # Строка с объединенной энергосистемой
             row = [None] * len(columns)
-            row[3] = ues_name
+            row[2] = ues_name
+            for idx, value in enumerate(row):
+                if value is None:
+                    continue
+                length = len(str(value))
+                if length > max_lengths[idx]:
+                    max_lengths[idx] = length
             ws.append(row)
-            ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
-            cell = ws.cell(row=current_row, column=4)
+            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
+            cell = ws.cell(row=current_row, column=1)
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="solid")
             cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -197,10 +218,16 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                 
                 # Строка с региональной энергосистемой
                 row = [None] * len(columns)
-                row[3] = res_name
+                row[2] = res_name
+                for idx, value in enumerate(row):
+                    if value is None:
+                        continue
+                    length = len(str(value))
+                    if length > max_lengths[idx]:
+                        max_lengths[idx] = length
                 ws.append(row)
-                ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
-                cell = ws.cell(row=current_row, column=4)
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
+                cell = ws.cell(row=current_row, column=1)
                 cell.font = Font(bold=True)
                 cell.fill = PatternFill(start_color="CCFFFF", end_color="CCFFFF", fill_type="solid")
                 cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -214,10 +241,16 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                     if rd_name and rd_name.lower() != "не указано":
                         # Строка с региональным округом
                         row = [None] * len(columns)
-                        row[3] = rd_name
+                        row[2] = rd_name
+                        for idx, value in enumerate(row):
+                            if value is None:
+                                continue
+                            length = len(str(value))
+                            if length > max_lengths[idx]:
+                                max_lengths[idx] = length
                         ws.append(row)
-                        ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
-                        cell = ws.cell(row=current_row, column=4)
+                        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
+                        cell = ws.cell(row=current_row, column=1)
                         cell.font = Font(bold=True)
                         cell.fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
                         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -231,10 +264,16 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         if eu_name and eu_name.lower() != "не указано":
                             # Строка с энергоузлом
                             row = [None] * len(columns)
-                            row[3] = eu_name
+                            row[2] = eu_name
+                            for idx, value in enumerate(row):
+                                if value is None:
+                                    continue
+                                length = len(str(value))
+                                if length > max_lengths[idx]:
+                                    max_lengths[idx] = length
                             ws.append(row)
-                            ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
-                            cell = ws.cell(row=current_row, column=4)
+                            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
+                            cell = ws.cell(row=current_row, column=1)
                             cell.font = Font(bold=True)
                             cell.fill = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")
                             cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -260,9 +299,15 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                 ]
                                 if not filtered_machines:
                                     row = [None] * len(columns)
-                                    row[3] = "Нет агрегатов для отображения"
+                                    row[2] = "Нет агрегатов для отображения"
+                                    for idx, value in enumerate(row):
+                                        if value is None:
+                                            continue
+                                        length = len(str(value))
+                                        if length > max_lengths[idx]:
+                                            max_lengths[idx] = length
                                     ws.append(row)
-                                    ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
+                                    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
                                     current_row += 1
                                     continue
                                 
@@ -304,83 +349,86 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                         group_name = group_set.equipment_group.name if hasattr(group_set.equipment_group, 'name') else '—'
                                     
                                     seg_name = group_set.name if group_set and hasattr(group_set, 'name') and group_set.name else '—'
-                                    group_set_id = group_set.id if group_set else None
                                     
                                     first_group_row = None
                                     
                                     for machine in group_list:
                                         row = [None] * len(columns)
 
-                                        row[1] = station_id
-                                        row[0] = group_set_id
+                                        # id станции и агрегата
+                                        row[0] = station_id
+                                        row[1] = getattr(machine, "id", None)
+
                                         if station_first_row is None:
                                             station_first_row = current_row
-                                            row[4] = station_name
+                                            row[3] = station_name
 
-                                        row[2] = machine.id
-                                        row[6] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
-                                        row[7] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
+                                        row[5] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
+                                        row[6] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
                                         
                                         if first_group_row is None:
                                             first_group_row = current_row
-                                            row[3] = seg_name
-                                            row[5] = group_name
+                                            row[2] = seg_name
+                                            row[4] = group_name
                                             
                                             if group_set:
-                                                row[8] = group_set.niv if hasattr(group_set, 'niv') and group_set.niv else '—'
-                                                row[9] = group_set.comp if hasattr(group_set, 'comp') and group_set.comp else '—'
-                                                row[10] = group_set.main if hasattr(group_set, 'main') and group_set.main else '—'
-                                                row[11] = group_set.d if hasattr(group_set, 'd') and group_set.d else '—'
-                                                row[12] = group_set.r if hasattr(group_set, 'r') and group_set.r else '—'
-                                                row[13] = group_set.form if hasattr(group_set, 'form') and group_set.form else '—'
-                                                row[14] = group_set.type if hasattr(group_set, 'type') and group_set.type else '—'
-                                                row[15] = group_set.vedomstvo if hasattr(group_set, 'vedomstvo') and group_set.vedomstvo else '—'
-                                                row[16] = group_set.obl if hasattr(group_set, 'obl') and group_set.obl else '—'
-                                                row[17] = group_set.dep if hasattr(group_set, 'dep') and group_set.dep else '—'
-                                                row[18] = group_set.oes if hasattr(group_set, 'oes') and group_set.oes else '—'
-                                                row[19] = group_set.er if hasattr(group_set, 'er') and group_set.er else '—'
-                                                row[20] = group_set.fo if hasattr(group_set, 'fo') and group_set.fo else '—'
-                                                row[21] = group_set.numb if hasattr(group_set, 'numb') and group_set.numb else '—'
-                                                row[22] = group_set.tm if hasattr(group_set, 'tm') and group_set.tm else '—'
-                                                row[23] = group_set.n1 if hasattr(group_set, 'n1') and group_set.n1 else '—'
-                                                row[24] = group_set.n2 if hasattr(group_set, 'n2') and group_set.n2 else '—'
-                                                row[25] = group_set.p1 if hasattr(group_set, 'p1') and group_set.p1 else '—'
-                                                row[26] = group_set.p2 if hasattr(group_set, 'p2') and group_set.p2 else '—'
-                                                row[27] = group_set.ordnumb if hasattr(group_set, 'ordnumb') and group_set.ordnumb else '—'
-                                                row[28] = group_set.addr if hasattr(group_set, 'addr') and group_set.addr else '—'
-                                                row[29] = group_set.note if hasattr(group_set, 'note') and group_set.note else '—'
-                                                row[30] = group_set.codegor if hasattr(group_set, 'codegor') and group_set.codegor else '—'
-                                                row[31] = group_set.be if hasattr(group_set, 'be') and group_set.be else '—'
-                                                row[32] = group_set.gk if hasattr(group_set, 'gk') and group_set.gk else '—'
-                                                row[33] = group_set.gkf if hasattr(group_set, 'gkf') and group_set.gkf else '—'
+                                                row[7] = group_set.niv if hasattr(group_set, 'niv') and group_set.niv else '—'
+                                                row[8] = group_set.comp if hasattr(group_set, 'comp') and group_set.comp else '—'
+                                                row[9] = group_set.main if hasattr(group_set, 'main') and group_set.main else '—'
+                                                d_val = group_set.d if hasattr(group_set, 'd') and group_set.d else None
+                                                r_val = group_set.r if hasattr(group_set, 'r') and group_set.r else None
+                                                forem_val = group_set.forem if hasattr(group_set, 'forem') and group_set.forem else None
+                                                row[10] = "да" if d_val is not None and str(d_val) == "1" else (d_val or "—")
+                                                row[11] = "да" if r_val is not None and str(r_val) == "1" else (r_val or "—")
+                                                row[12] = "да" if forem_val is not None and str(forem_val) == "1" else (forem_val or "—")
+
+                                                _vedomstvo = group_set.vedomstvo if hasattr(group_set, 'vedomstvo') and group_set.vedomstvo else None
+                                                if _vedomstvo and str(_vedomstvo) == "1":
+                                                    row[13] = "станция\nотрасли"
+                                                elif _vedomstvo and str(_vedomstvo) == "2":
+                                                    row[13] = "пром.\nпредприятие"
+                                                else:
+                                                    row[13] = _vedomstvo or "—"
+
+                                                terr_mapping = getattr(group_set, 'territories_energy_external_mapping', None)
+                                                row[14] = (terr_mapping.external_name or group_set.obl) if terr_mapping and terr_mapping.external_name else (group_set.obl if hasattr(group_set, 'obl') and group_set.obl else '—')
+                                                dep_mapping = getattr(group_set, 'department_external_mapping', None)
+                                                row[15] = (dep_mapping.external_name or group_set.dep) if dep_mapping and dep_mapping.external_name else (group_set.dep if hasattr(group_set, 'dep') and group_set.dep else '—')
+                                                ues_mapping = getattr(group_set, 'union_energy_system_external_mapping', None)
+                                                row[16] = (ues_mapping.external_nameoes or group_set.oes) if ues_mapping and ues_mapping.external_nameoes else (group_set.oes if hasattr(group_set, 'oes') and group_set.oes else '—')
+                                                er_mapping = getattr(group_set, 'economic_region_external_mapping', None)
+                                                row[17] = (er_mapping.external_name or group_set.er) if er_mapping and er_mapping.external_name else (group_set.er if hasattr(group_set, 'er') and group_set.er else '—')
+                                                fd_mapping = getattr(group_set, 'federal_district_external_mapping', None)
+                                                row[18] = group_set.numb if hasattr(group_set, 'numb') and group_set.numb else '—'
+                                                row[19] = group_set.tm if hasattr(group_set, 'tm') and group_set.tm else '—'
+                                                row[20] = group_set.n1 if hasattr(group_set, 'n1') and group_set.n1 else '—'
+                                                row[21] = group_set.n2 if hasattr(group_set, 'n2') and group_set.n2 else '—'
+                                                row[22] = group_set.p1 if hasattr(group_set, 'p1') and group_set.p1 else '—'
+                                                row[23] = group_set.p2 if hasattr(group_set, 'p2') and group_set.p2 else '—'
+                                                row[24] = group_set.ordnumb if hasattr(group_set, 'ordnumb') and group_set.ordnumb else '—'
+                                                row[25] = group_set.addr if hasattr(group_set, 'addr') and group_set.addr else '—'
+                                                row[26] = group_set.note if hasattr(group_set, 'note') and group_set.note else '—'
+                                                row[27] = (
+                                                    group_set.cities_external_mapping.name
+                                                    if group_set and getattr(group_set, 'cities_external_mapping', None) and group_set.cities_external_mapping
+                                                    else (group_set.codegor if hasattr(group_set, 'codegor') and group_set.codegor else '—')
+                                                )
+                                                bu_mapping = getattr(group_set, 'business_unit_external_mapping', None)
+                                                row[28] = (bu_mapping.external_name or group_set.be) if bu_mapping else (group_set.be if hasattr(group_set, 'be') and group_set.be else '—')
+                                                gk_mapping = getattr(group_set, 'gen_company_external_mapping', None)
+                                                row[29] = (gk_mapping.external_name or group_set.gk) if gk_mapping and gk_mapping.external_name else (group_set.gk if hasattr(group_set, 'gk') and group_set.gk else '—')
+                                                gkf_mapping = getattr(group_set, 'gen_company_branch_external_mapping', None)
+                                                row[30] = (gkf_mapping.external_name or group_set.gkf) if gkf_mapping and gkf_mapping.external_name else (group_set.gkf if hasattr(group_set, 'gkf') and group_set.gkf else '—')
                                             else:
-                                                row[8] = '—'
-                                                row[9] = '—'
-                                                row[10] = '—'
-                                                row[11] = '—'
-                                                row[12] = '—'
-                                                row[13] = '—'
-                                                row[14] = '—'
-                                                row[15] = '—'
-                                                row[16] = '—'
-                                                row[17] = '—'
-                                                row[18] = '—'
-                                                row[19] = '—'
-                                                row[20] = '—'
-                                                row[21] = '—'
-                                                row[22] = '—'
-                                                row[23] = '—'
-                                                row[24] = '—'
-                                                row[25] = '—'
-                                                row[26] = '—'
-                                                row[27] = '—'
-                                                row[28] = '—'
-                                                row[29] = '—'
-                                                row[30] = '—'
-                                                row[31] = '—'
-                                                row[32] = '—'
-                                                row[33] = '—'
+                                                for col_idx in range(7, len(columns)):
+                                                    row[col_idx] = "—"
                                         
+                                        for idx, value in enumerate(row):
+                                            if value is None:
+                                                continue
+                                            length = len(str(value))
+                                            if length > max_lengths[idx]:
+                                                max_lengths[idx] = length
                                         ws.append(row)
                                         current_row += 1
                                     
@@ -389,12 +437,12 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                         last_row = current_row - 1
                                         if last_row > first_group_row:
                                             # Группа оборудования, Тип
-                                            ws.merge_cells(start_row=first_group_row, start_column=4,
-                                                          end_row=last_row, end_column=4)
-                                            ws.merge_cells(start_row=first_group_row, start_column=6,
-                                                          end_row=last_row, end_column=6)
-                                            # Поля StationEquipmentGroup (от niv=9 до gkf=34)
-                                            for col in range(9, len(columns) + 1):
+                                            ws.merge_cells(start_row=first_group_row, start_column=3,
+                                                          end_row=last_row, end_column=3)
+                                            ws.merge_cells(start_row=first_group_row, start_column=5,
+                                                          end_row=last_row, end_column=5)
+                                            # Поля StationEquipmentGroup (от niv до gkf)
+                                            for col in range(8, len(columns) + 1):
                                                 ws.merge_cells(start_row=first_group_row, start_column=col,
                                                               end_row=last_row, end_column=col)
                                 
@@ -403,35 +451,42 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                     no_group_first_row = None
                                     for machine in machines_without_group:
                                         row = [None] * len(columns)
-                                        row[1] = station_id
-                                        row[0] = None
+
+                                        # id станции и агрегата
+                                        row[0] = station_id
+                                        row[1] = getattr(machine, "id", None)
+
                                         if station_first_row is None:
                                             station_first_row = current_row
-                                            row[4] = station_name
+                                            row[3] = station_name
 
-                                        row[2] = machine.id
-                                        row[6] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
-                                        row[7] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
+                                        row[5] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
+                                        row[6] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
                                         
                                         if no_group_first_row is None:
                                             no_group_first_row = current_row
-                                            row[0] = None
-                                            row[3] = '—'
-                                            row[5] = '—'
-                                            for col_idx in range(8, len(columns)):
+                                            row[2] = '—'
+                                            row[4] = '—'
+                                            for col_idx in range(7, len(columns)):
                                                 row[col_idx] = '—'
                                         
+                                        for idx, value in enumerate(row):
+                                            if value is None:
+                                                continue
+                                            length = len(str(value))
+                                            if length > max_lengths[idx]:
+                                                max_lengths[idx] = length
                                         ws.append(row)
                                         current_row += 1
                                     
                                     if no_group_first_row is not None and len(machines_without_group) > 1:
                                         last_row = current_row - 1
                                         if last_row > no_group_first_row:
-                                            ws.merge_cells(start_row=no_group_first_row, start_column=4,
-                                                          end_row=last_row, end_column=4)
-                                            ws.merge_cells(start_row=no_group_first_row, start_column=6,
-                                                          end_row=last_row, end_column=6)
-                                            for col in range(9, len(columns) + 1):
+                                            ws.merge_cells(start_row=no_group_first_row, start_column=3,
+                                                          end_row=last_row, end_column=3)
+                                            ws.merge_cells(start_row=no_group_first_row, start_column=5,
+                                                          end_row=last_row, end_column=5)
+                                            for col in range(8, len(columns) + 1):
                                                 ws.merge_cells(start_row=no_group_first_row, start_column=col,
                                                               end_row=last_row, end_column=col)
                                 
@@ -439,27 +494,26 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                 if station_first_row is not None and total_machines > 1:
                                     station_last_row = current_row - 1
                                     if station_last_row > station_first_row:
-                                        ws.merge_cells(start_row=station_first_row, start_column=5,
-                                                      end_row=station_last_row, end_column=5)
+                                        ws.merge_cells(start_row=station_first_row, start_column=4,
+                                                      end_row=station_last_row, end_column=4)
                             
                             else:
                                 row = [None] * len(columns)
-                                row[3] = "Нет агрегатов для отображения"
+                                row[2] = "Нет агрегатов для отображения"
+                                for idx, value in enumerate(row):
+                                    if value is None:
+                                        continue
+                                    length = len(str(value))
+                                    if length > max_lengths[idx]:
+                                        max_lengths[idx] = length
                                 ws.append(row)
-                                ws.merge_cells(start_row=current_row, start_column=4, end_row=current_row, end_column=len(columns))
+                                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
                                 current_row += 1
     
-    # Автоподбор ширины столбцов
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            except:
-                pass
+    # Автоподбор ширины столбцов (по предвычисленным длинам)
+    for col_idx, max_length in enumerate(max_lengths, start=1):
         adjusted_width = min(max_length + 2, 60)
+        column_letter = get_column_letter(col_idx)
         ws.column_dimensions[column_letter].width = adjusted_width
     
     # Сохраняем в BytesIO

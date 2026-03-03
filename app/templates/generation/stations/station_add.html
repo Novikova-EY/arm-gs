@@ -21,8 +21,9 @@
 
     <h2 class="mb-4">Создание новой электростанции</h2>
     
-    <form method="POST">
+    <form method="POST" id="addStationForm">
         {{ form.hidden_tag() }}
+        {{ form.confirm_duplicate() }}
         <div class="container-fluid mt-4">
             <div class="d-flex gap-4 justify-content-start">
                 <div class="card mb-4 w-50">
@@ -46,6 +47,30 @@
             </div>
         </div>
     </form>
+</div>
+
+{# Модальное окно подтверждения при дубликате станции #}
+<div class="modal fade" id="duplicateConfirmModal" tabindex="-1" aria-labelledby="duplicateConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content p-3">
+            <div class="modal-header border-0 pb-2">
+                <h4 class="modal-title text-danger fw-bold display-6" id="duplicateConfirmModalLabel">Внимание</h4>
+                <button type="button" class="btn-close btn-close-lg" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="text-danger fw-bold text-uppercase mb-4" style="font-size: 1.75rem;">
+                    Такая станция уже существует на территории данного субъекта РФ.
+                </p>
+                <p class="mb-0" style="font-size: 1.35rem;">
+                    Вы уверены, что хотите создать ещё одну станцию с таким же названием?
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-3">
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger btn-lg" id="confirmCreateDuplicateBtn">Да, создать станцию</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -98,10 +123,29 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initSelect2Fields);
     } else {
-        // DOM уже загружен
         initSelect2Fields();
     }
 })();
+
+{% if show_duplicate_confirm %}
+// Показать модальное окно подтверждения дубликата
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        var modalEl = document.getElementById('duplicateConfirmModal');
+        var formEl = document.getElementById('addStationForm');
+        var confirmBtn = document.getElementById('confirmCreateDuplicateBtn');
+        if (modalEl && formEl && confirmBtn) {
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            confirmBtn.addEventListener('click', function() {
+                var input = formEl.querySelector('[name="confirm_duplicate"]');
+                if (input) input.value = '1';
+                formEl.submit();
+            });
+        }
+    });
+})();
+{% endif %}
 </script>
 
 {% endif %}

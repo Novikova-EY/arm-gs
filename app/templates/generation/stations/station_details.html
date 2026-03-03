@@ -653,11 +653,21 @@
                         <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                             <!-- Столбцы для годов с start_year по end_year + 1 -->
                             {% for year in range(start_year, end_year + 1) %}
-                                <th>{{ year }}</th>
+                                <th style="width: 50px; text-align: center;">
+                                    {{ year }}
+                                    {% if year_features and year_features.get(year) %}
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">{{ year_features.get(year) }}</div>
+                                    {% endif %}
+                                </th>
                             {% endfor %}
                             <!-- Столбцы для годов с start_year по end_year + 1 -->
                             {% for year in range(start_year, end_year + 1) %}
-                                <th>{{ year }}</th>
+                                <th style="width: 50px; text-align: center;">
+                                    {{ year }}
+                                    {% if year_features and year_features.get(year) %}
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">{{ year_features.get(year) }}</div>
+                                    {% endif %}
+                                </th>
                             {% endfor %}
                         </tr>
                     </thead>

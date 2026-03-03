@@ -1032,6 +1032,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             if not has_nonzero_values(fuel_years):
                                 continue
                             fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
+                            # Для ДЭС не показываем разбивку по виду топлива «не указано»
+                            if "дэс" in tes_type_lower and fuel_type_name and "не указано" in fuel_type_name.lower():
+                                continue
                             row_fuel = {
                                 "Электростанция": f"         {fuel_type_name}",
                                 " ": "",
@@ -1091,16 +1094,21 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         tes_machine_type_data_ogr = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                         tes_machine_type_data_rasp = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
+                    # Для ДЭС не показываем вложенность ниже видов топлива (типы агрегатов и их разбивку),
+                    # иначе дублируется «прочее» под «прочее»
+                    skip_machine_types_for_tes = "дэс" in tes_type_lower
+
                     # Типы агрегатов ТЭС также сортируем по display_order
                     # (tes_machine_type_ordered_ids), чтобы порядок совпадал со страницей.
-                    for machine_type_id in tes_machine_type_ordered_ids:
-                        mt_years = mt_dict.get(machine_type_id)
-                        if not mt_years:
-                            continue
-                        if machine_type_id is None:
-                            continue
-                        machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
-                        row_mt = {
+                    if not skip_machine_types_for_tes:
+                        for machine_type_id in tes_machine_type_ordered_ids:
+                            mt_years = mt_dict.get(machine_type_id)
+                            if not mt_years:
+                                continue
+                            if machine_type_id is None:
+                                continue
+                            machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
+                            row_mt = {
                                 "Электростанция": f"         {machine_type_name}",
                                 " ": "",
                                 "Генерирующая компания": "",
@@ -1111,67 +1119,81 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 "Тип агрегата ТЭС": "",
                                 "Примечание": ""
                             }
-                        for year in range(start_year, end_year + 1):
-                            row_mt[str(year)] = round_val(mt_years.get(year)) if mt_years.get(year) is not None else None
-                            row_mt[f"Топливо {year}"] = None
-                        rows.append(row_mt)
-
-                        if show_p_ogr:
-                            row_ogr = {k: "" for k in row_mt}
-                            row_ogr["Тип мощности"] = "Рогр"
                             for year in range(start_year, end_year + 1):
-                                if level_key == "russia":
-                                    val = tes_machine_type_data_ogr.get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                else:
-                                    val = tes_machine_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                row_ogr[str(year)] = round_val(val) if val is not None else None
-                            rows.append(row_ogr)
+                                row_mt[str(year)] = round_val(mt_years.get(year)) if mt_years.get(year) is not None else None
+                                row_mt[f"Топливо {year}"] = None
+                            rows.append(row_mt)
 
-                        if show_p_rasp:
-                            row_rasp = {k: "" for k in row_mt}
-                            row_rasp["Тип мощности"] = "Ррасп"
-                            for year in range(start_year, end_year + 1):
-                                if level_key == "russia":
-                                    val = tes_machine_type_data_rasp.get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                else:
-                                    val = tes_machine_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
-                                row_rasp[str(year)] = round_val(val) if val is not None else None
-                            rows.append(row_rasp)
-
-                        # Для "russia" данные хранятся без level_id
-                        if level_key == "russia":
-                            fuel_dict = fuel_type_data.get(tes_type_id, {}).get(machine_type_id, {})
-                            # Для России извлекаем данные по текущей версии
                             if show_p_ogr:
-                                all_fuel_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {})
-                                fuel_type_data_ogr = all_fuel_data_ogr.get(current_version_id, all_fuel_data_ogr.get(1, {})) if isinstance(all_fuel_data_ogr, dict) and all_fuel_data_ogr else {}
-                            else:
-                                fuel_type_data_ogr = {}
-                            if show_p_rasp:
-                                all_fuel_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {})
-                                fuel_type_data_rasp = all_fuel_data_rasp.get(current_version_id, all_fuel_data_rasp.get(1, {})) if isinstance(all_fuel_data_rasp, dict) and all_fuel_data_rasp else {}
-                            else:
-                                fuel_type_data_rasp = {}
-                        else:
-                            fuel_dict = fuel_type_data.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
-                            fuel_type_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
-                            fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
+                                row_ogr = {k: "" for k in row_mt}
+                                row_ogr["Тип мощности"] = "Рогр"
+                                for year in range(start_year, end_year + 1):
+                                    if level_key == "russia":
+                                        val = tes_machine_type_data_ogr.get(tes_type_id, {}).get(machine_type_id, {}).get(year)
+                                    else:
+                                        val = tes_machine_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
+                                    row_ogr[str(year)] = round_val(val) if val is not None else None
+                                rows.append(row_ogr)
 
-                        from app.common.services.sorting_services import fuel_type_id_sort_key
-                        _id_to_order = data.get("fuel_type_display_order", {}) or {}
-                        _id_to_name = fuel_type_names or {}
-                        for fuel_type_id, fuel_years in sorted(
-                            fuel_dict.items(),
-                            key=lambda kv: fuel_type_id_sort_key(
-                                kv[0],
-                                id_to_display_order=_id_to_order,
-                                id_to_name=_id_to_name,
-                            ),
-                        ):
-                            if fuel_type_id is None:
-                                continue
-                            fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
-                            row_ft = {
+                            if show_p_rasp:
+                                row_rasp = {k: "" for k in row_mt}
+                                row_rasp["Тип мощности"] = "Ррасп"
+                                for year in range(start_year, end_year + 1):
+                                    if level_key == "russia":
+                                        val = tes_machine_type_data_rasp.get(tes_type_id, {}).get(machine_type_id, {}).get(year)
+                                    else:
+                                        val = tes_machine_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(year)
+                                    row_rasp[str(year)] = round_val(val) if val is not None else None
+                                rows.append(row_rasp)
+
+                            # Для "russia" данные хранятся без level_id
+                            if level_key == "russia":
+                                fuel_dict = fuel_type_data.get(tes_type_id, {}).get(machine_type_id, {})
+                                # Для России извлекаем данные по текущей версии
+                                if show_p_ogr:
+                                    all_fuel_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {})
+                                    fuel_type_data_ogr = all_fuel_data_ogr.get(current_version_id, all_fuel_data_ogr.get(1, {})) if isinstance(all_fuel_data_ogr, dict) and all_fuel_data_ogr else {}
+                                else:
+                                    fuel_type_data_ogr = {}
+                                if show_p_rasp:
+                                    all_fuel_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {})
+                                    fuel_type_data_rasp = all_fuel_data_rasp.get(current_version_id, all_fuel_data_rasp.get(1, {})) if isinstance(all_fuel_data_rasp, dict) and all_fuel_data_rasp else {}
+                                else:
+                                    fuel_type_data_rasp = {}
+                            else:
+                                fuel_dict = fuel_type_data.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {})
+                                fuel_type_data_ogr = data[config["fuel_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
+                                fuel_type_data_rasp = data[config["fuel_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
+
+                            # Для ДЭС: если в machine_type есть топливо «не указано» (= «прочее» по смыслу),
+                            # не показываем разбивку по топливу вообще — иначе дублируется «прочее»
+                            if "дэс" in (tes_type_name or "").lower() and fuel_dict:
+                                _fn = fuel_type_names.get
+                                has_ne_ukazano = any(
+                                    "не указано" in (_fn(fid, "") or "").lower() or "не указан" in (_fn(fid, "") or "").lower()
+                                    for fid in fuel_dict if fid is not None
+                                )
+                                if has_ne_ukazano:
+                                    continue
+
+                            from app.common.services.sorting_services import fuel_type_id_sort_key
+                            _id_to_order = data.get("fuel_type_display_order", {}) or {}
+                            _id_to_name = fuel_type_names or {}
+                            for fuel_type_id, fuel_years in sorted(
+                                fuel_dict.items(),
+                                key=lambda kv: fuel_type_id_sort_key(
+                                    kv[0],
+                                    id_to_display_order=_id_to_order,
+                                    id_to_name=_id_to_name,
+                                ),
+                            ):
+                                if fuel_type_id is None:
+                                    continue
+                                fuel_type_name = fuel_type_names.get(fuel_type_id, f"id={fuel_type_id}")
+                                # Для ДЭС не показываем разбивку по виду топлива «не указано»
+                                if "дэс" in (tes_type_name or "").lower() and fuel_type_name and "не указано" in fuel_type_name.lower():
+                                    continue
+                                row_ft = {
                                     "Электростанция": f"            {fuel_type_name}",
                                     " ": "",
                                     "Генерирующая компания": "",
@@ -1182,32 +1204,32 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                     "Тип агрегата ТЭС": "",
                                     "Примечание": ""
                                 }
-                            for year in range(start_year, end_year + 1):
-                                row_ft[str(year)] = round_val(fuel_years.get(year)) if fuel_years.get(year) is not None else None
-                                row_ft[f"Топливо {year}"] = None
-                            rows.append(row_ft)
-
-                            if show_p_ogr:
-                                row_ogr = {k: "" for k in row_ft}
-                                row_ogr["Тип мощности"] = "Рогр"
                                 for year in range(start_year, end_year + 1):
-                                    if level_key == "russia":
-                                        val = fuel_type_data_ogr.get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    else:
-                                        val = fuel_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    row_ogr[str(year)] = round_val(val) if val is not None else None
-                                rows.append(row_ogr)
+                                    row_ft[str(year)] = round_val(fuel_years.get(year)) if fuel_years.get(year) is not None else None
+                                    row_ft[f"Топливо {year}"] = None
+                                rows.append(row_ft)
 
-                            if show_p_rasp:
-                                row_rasp = {k: "" for k in row_ft}
-                                row_rasp["Тип мощности"] = "Ррасп"
-                                for year in range(start_year, end_year + 1):
-                                    if level_key == "russia":
-                                        val = fuel_type_data_rasp.get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    else:
-                                        val = fuel_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
-                                    row_rasp[str(year)] = round_val(val) if val is not None else None
-                                rows.append(row_rasp)
+                                if show_p_ogr:
+                                    row_ogr = {k: "" for k in row_ft}
+                                    row_ogr["Тип мощности"] = "Рогр"
+                                    for year in range(start_year, end_year + 1):
+                                        if level_key == "russia":
+                                            val = fuel_type_data_ogr.get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
+                                        else:
+                                            val = fuel_type_data_ogr.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
+                                        row_ogr[str(year)] = round_val(val) if val is not None else None
+                                    rows.append(row_ogr)
+
+                                if show_p_rasp:
+                                    row_rasp = {k: "" for k in row_ft}
+                                    row_rasp["Тип мощности"] = "Ррасп"
+                                    for year in range(start_year, end_year + 1):
+                                        if level_key == "russia":
+                                            val = fuel_type_data_rasp.get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
+                                        else:
+                                            val = fuel_type_data_rasp.get(level_id, {}).get(tes_type_id, {}).get(machine_type_id, {}).get(fuel_type_id, {}).get(year)
+                                        row_rasp[str(year)] = round_val(val) if val is not None else None
+                                    rows.append(row_rasp)
 
         # Добавляем ВИЭ (сумма ВЭС+СЭС) после разбивок по ТЭС
         if vie_station_type_ids and any(vie_aggregated["p_ust"].values()):
@@ -1380,8 +1402,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             # Показываем итого по энергоузлу только если энергоузел отображается
                             if show_energy_unit and show_totals:
                                 add_named_total_row(eu_id, "energy_unit", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-                        # Показываем итого по субъекту только если в региональной энергосистеме больше одного субъекта
-                        if show_totals and len(res_group) > 1:
+                        # Показываем итого по субъекту всегда при включённых суммах
+                        # (ранее: только если в РЭС > 1 субъекта — из-за этого не выгружались строки ПСУ с топливом)
+                        if show_totals:
                             add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
                     if show_totals:
                         add_named_total_row(res_id, "regional_energy_system", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
@@ -1401,10 +1424,31 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         raise
 
     def _row_has_unset_value(row):
+        """Удаляем строки-заголовки с «не указано». Исключение: строки агрегатов по виду топлива «не указано»
+        для ДЭС — их удаляем всегда (дублируют «прочее»), остальные с данными по мощности оставляем."""
+        electro_val = row.get("Электростанция") or ""
+        electro_str = str(electro_val).strip()
+        electro_lower = electro_str.lower()
+        tip_moshnosti = row.get("Тип мощности") or ""
+
+        # Строки разбивки по виду топлива «не указано» (агрегаты с Руст/Рогр/Ррасп) — удаляем всегда,
+        # т.к. для ДЭС «не указано» = «прочее» и создаёт некорректное дублирование группировок
+        if tip_moshnosti in ("Руст", "Рогр", "Ррасп") and ("не указано" in electro_lower or "не указан" in electro_lower):
+            return True  # Удаляем строку разбивки по топливу «не указано»
+
         for value in row.values():
             if isinstance(value, str):
                 value_lower = value.strip().lower()
                 if any(token in value_lower for token in ("не указано", "не указан", "не указана")):
+                    # Не удаляем строки с полезными данными по годам (Руст, Рогр, Ррасп)
+                    year_cols = [str(y) for y in range(start_year, end_year + 1)]
+                    has_power_data = any(
+                        row.get(col) not in (None, 0, "") and row.get(col) != 0.0
+                        for col in year_cols
+                        if col in row
+                    )
+                    if has_power_data:
+                        return False  # Оставляем строку с данными по мощности
                     return True
         return False
 

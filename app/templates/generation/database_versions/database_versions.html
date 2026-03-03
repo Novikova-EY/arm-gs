@@ -21,7 +21,7 @@
                         {{ form.version_filter(
                             class="form-control",
                             value=version_filter or '',
-                            placeholder="Поиск по названию или описанию"
+                            placeholder="Поиск по номеру или описанию"
                         ) }}
                     </div>
 
@@ -41,29 +41,29 @@
 
             <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
             <div class="col-12 col-lg-4 text-lg-end">
-                <!-- Кнопки управления кэшем -->
+                <!-- Кнопки управления кэшем (только для admin) -->
+                {% if current_user.is_admin %}
                 <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
-                    {% if current_user.has_admin %}
                     <button type="button" 
                             class="btn btn-outline-danger fw-bold" 
                             onclick="clearReferenceCache()" 
                             title="Очистить кэш справочников">
                         📚 Очистка кэша справочников
                     </button>
-                    {% endif %}
                     <button type="button" 
                             class="btn btn-outline-warning fw-bold" 
                             onclick="clearStationCache()" 
                             title="Очистить кэш станций">
                         🗑️ Очистить кэш станций
                     </button>
-                <button type="button" 
-                        class="btn btn-outline-info fw-bold" 
-                        onclick="refreshStationCache()" 
-                        title="Обновить кэш станций">
-                    🔄 Обновить кэш
-                </button>
+                    <button type="button" 
+                            class="btn btn-outline-info fw-bold" 
+                            onclick="refreshStationCache()" 
+                            title="Обновить кэш станций">
+                        🔄 Обновить кэш
+                    </button>
                 </div>
+                {% endif %}
 
                 <select name="per_page"
                         class="form-select d-inline-block w-auto"
@@ -154,28 +154,8 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Название версии" -->
-                        <th class="text-center align-middle">
-                            <a href="{{ url_for('station_bp.database_versions', 
-                                        page=pagination.page, 
-                                        per_page=per_page, 
-                                        version_filter=version_filter,
-                                        sort_by='name', 
-                                        sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
-                                        class="text-black">
-                                Название
-                                {% if sort_by == 'name' %}
-                                    {% if sort_dir == 'asc' %}
-                                        ▲
-                                    {% else %}
-                                        ▼
-                                    {% endif %}
-                                {% endif %}
-                            </a>
-                        </th>
-
                         <!-- Шапка таблицы. Столбец "Описание" -->
-                        <th class="text-center align-middle">Описание</th>
+                        <th class="text-center align-middle" style="min-width: 440px;">Описание</th>
 
                         <!-- Шапка таблицы. Столбец "Создана на основе" -->
                         <th class="text-center align-middle">Создана на основе</th>
@@ -233,8 +213,15 @@
                         <!-- Шапка таблицы. Столбец выбора версии пользователем -->
                         <th class="text-center align-middle">Текущая версия</th>
 
-                        <!-- Шапка таблицы. Столбец "Удалить" -->
+                        <!-- Шапка таблицы. Столбец "Глобально активная" (только для admin) -->
+                        {% if current_user.is_admin %}
+                        <th class="text-center align-middle">Глобально активная</th>
+                        {% endif %}
+
+                        <!-- Шапка таблицы. Столбец "Удалить" (доступен только admin) -->
+                        {% if current_user.is_admin %}
                         <th class="text-center align-middle">Удалить</th>
+                        {% endif %}
                         </tr>
                     </thead>
 
@@ -257,21 +244,15 @@
                                        required>
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Название версии" -->
-                            <td>
-                                <input type="text" name="version_names[]" class="form-control" 
-                                       value="{{ version.name }}" required>
-                            </td>
-
                             <!-- Строки таблицы. Столбец "Описание" -->
-                            <td>
+                            <td style="min-width: 440px; white-space: normal; word-wrap: break-word;">
                                 <textarea name="version_descriptions[]" class="form-control" rows="2">{{ version.description or '' }}</textarea>
                             </td>
 
                             <!-- Строки таблицы. Столбец "Создана на основе" -->
                             <td class="text-center align-middle">
                                 {% if version.parent_version %}
-                                    Версия {{ version.parent_version.version_number }}: {{ version.parent_version.name }}
+                                    {{ version.parent_version.version_number }}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -298,7 +279,7 @@
                                         class="btn btn-sm btn-info"
                                         formaction="{{ url_for('station_bp.load_version_snapshot_route', version_id=version.id) }}"
                                         formmethod="post"
-                                        onclick="return showLoadSnapshotOverlay('{{ version.name }}');">
+                                        onclick="return showLoadSnapshotOverlay('{{ version.version_number }}');">
                                     📥 Загрузить
                                 </button>
                             </td>
@@ -311,7 +292,7 @@
                                         class="btn btn-sm btn-primary"
                                         formaction="{{ url_for('station_bp.save_version_snapshot_route', version_id=version.id) }}"
                                         formmethod="post"
-                                        onclick="return showSaveSnapshotOverlay('{{ version.name }}');">
+                                        onclick="return showSaveSnapshotOverlay('{{ version.version_number }}');">
                                     💾 Сохранить
                                 </button>
                             </td>
@@ -334,7 +315,25 @@
                                 </div>
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Удалить" -->
+                            <!-- Строки таблицы. Столбец "Глобально активная" (только для admin) -->
+                            {% if current_user.is_admin %}
+                            <td class="text-center align-middle">
+                                {% if version.is_active %}
+                                    <span class="badge bg-success">Активна</span>
+                                {% else %}
+                                    <button type="submit"
+                                            class="btn btn-sm btn-outline-success"
+                                            formaction="{{ url_for('station_bp.set_active_version_route_v2', version_id=version.id) }}"
+                                            formmethod="post"
+                                            title="Сделать глобально активной версией по умолчанию для всех пользователей">
+                                        Сделать активной
+                                    </button>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+
+                            <!-- Строки таблицы. Столбец "Удалить" (только для admin) -->
+                            {% if current_user.is_admin %}
                             <td class="text-center align-middle">
                                 {% if not version.is_active %}
                                     <input type="checkbox" name="version_delete[]" value="{{ version.id }}" class="form-check-input" onchange="checkDeleteButtons()">
@@ -342,21 +341,24 @@
                                     <span class="text-muted">—</span>
                                 {% endif %}
                             </td>
+                            {% endif %}
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="11" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="{% if current_user.is_admin %}11{% else %}7{% endif %}" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <!-- Кнопка удаления выбранных версий -->
+            <!-- Кнопка удаления выбранных версий (только для admin) -->
+            {% if current_user.is_admin %}
             <div class="d-flex justify-content-end mt-3 mb-3">
                 <button type="submit" class="btn btn-danger" id="deleteBtn" name="action" value="delete" style="display: none;">
                     Удалить выбранные версии
                 </button>
             </div>
+            {% endif %}
         </form>
     {% else %}
         <!-- Для пользователей без прав администратора: только просмотр -->
@@ -370,8 +372,7 @@
                     <tr>
                         <th class="text-center align-middle">№</th>
                         <th class="text-center align-middle">Номер версии</th>
-                        <th class="text-center align-middle">Название</th>
-                        <th class="text-center align-middle">Описание</th>
+                        <th class="text-center align-middle" style="min-width: 440px;">Описание</th>
                         <th class="text-center align-middle">Создана на основе</th>
                         <th class="text-center align-middle">Создал / Дата создания</th>
                         <th class="text-center align-middle">Дата обновления</th>
@@ -383,11 +384,10 @@
                     <tr {% if version.is_active %}class="table-info"{% endif %}>
                         <td class="text-center">{{ loop.index + (pagination.page - 1) * pagination.per_page }}</td>
                         <td class="text-center">{{ version.version_number }}</td>
-                        <td>{{ version.name }}</td>
-                        <td>{{ version.description or '-' }}</td>
+                        <td style="min-width: 440px; white-space: normal; word-wrap: break-word;">{{ version.description or '-' }}</td>
                         <td class="text-center">
                             {% if version.parent_version %}
-                                Версия {{ version.parent_version.version_number }}: {{ version.parent_version.name }}
+                                {{ version.parent_version.version_number }}
                             {% else %}
                                 —
                             {% endif %}
@@ -420,7 +420,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8" class="text-center">Нет данных для отображения</td>
+                        <td colspan="7" class="text-center">Нет данных для отображения</td>
                     </tr>
                     {% endfor %}
                 </tbody>

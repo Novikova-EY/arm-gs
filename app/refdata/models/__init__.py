@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # Регистрируем ВСЕ модели refdata в одном месте, чтобы they were mapped.
 
+# --- Организации ---
+from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
+
 # --- Территории ---
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict

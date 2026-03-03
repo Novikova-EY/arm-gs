@@ -6,8 +6,9 @@ StationGroup model (Группа станций).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class StationGroup(db.Model):
+class StationGroup(db.Model, AuditMixin):
     __tablename__ = 'station_groups'
     __table_args__ = {"schema": SCHEMA_GENERATION}
 

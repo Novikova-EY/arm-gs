@@ -7,8 +7,9 @@ from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class MachineTesType(db.Model):
+class MachineTesType(db.Model, AuditMixin):
     __tablename__ = 'machine_tes_types'
     __table_args__ = (
         Index('ix_machine_tes_type_id_machine', 'id_machine'),

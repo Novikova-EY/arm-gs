@@ -45,24 +45,26 @@ def technology_type_list():
 
     # Получение параметров запроса
     page                = request.args.get("page", 1, type=int)
-    page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
-    technology_type_filter    = request.args.get("technology_type_filter")
+    _tf = request.args.get("technology_type_filter") or ""
+    technology_type_filter    = "" if str(_tf) == "None" else str(_tf)
 
     if request.method == "POST":       
         # Обновление параметров из формы
         page                = request.form.get("page", 1, type=int)
         per_page            = request.form.get("per_page", 25, type=int)
-        sort_by             = request.form.get("sort_by", "id")
+        sort_by             = request.form.get("sort_by", "display_order")
         sort_dir            = request.form.get("sort_dir", "asc")
-        technology_type_filter    = request.form.get("technology_type_filter")
+        _tf = request.form.get("technology_type_filter") or ""
+        technology_type_filter    = "" if _tf == "None" else _tf.strip()
 
         # Получение данных из формы
         technology_type_ids       = request.form.getlist("technology_ids[]")
         technology_type_names     = request.form.getlist("technology_type_names[]")
         technology_type_delete    = request.form.getlist("technology_type_delete[]")
+        display_orders            = request.form.getlist("display_orders[]")
   
         deleted_ids = set()
         # Удаление записей
@@ -86,13 +88,22 @@ def technology_type_list():
                                         sort_dir=sort_dir))
            
            # Формирование данных для обновления
+            n = len(technology_type_ids)
+            display_orders_padded = (display_orders + [""] * n)[:n]  # дополняем пустыми до n
             technology_type_data = []
-            for technology_type_id, technology_type_name in zip(technology_type_ids, technology_type_names):
+            for technology_type_id, technology_type_name, display_order in zip(
+                technology_type_ids, technology_type_names, display_orders_padded
+            ):
                 if technology_type_id and int(technology_type_id) in deleted_ids:
                     continue
+                try:
+                    do_val = int(display_order) if display_order and str(display_order).strip() else None
+                except (TypeError, ValueError):
+                    do_val = None
                 technology_type_data.append({
                     "technology_type_id": int(technology_type_id) if technology_type_id else None,
                     "name": technology_type_name.strip(),
+                    "display_order": do_val,
                 })
             
             if not technology_type_data:
@@ -163,7 +174,7 @@ def add_technology_type():
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)
     per_page            = request.args.get("per_page", 25, type=int)
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_type_filter    = request.args.get("technology_type_filter", "").strip()
 
@@ -175,13 +186,20 @@ def add_technology_type():
                 for error in errors:
                     flash(f"Ошибка в поле '{getattr(form, field).label.text}': {error}", "danger")
             return render_template(
-                "refdata/technologies/technology_type/technology_type_add.html",
-                form=form
+                "refdata/refdata_for_stations/technologies/technology_type/technology_type_add.html",
+                form=form,
+                page=page,
+                per_page=per_page,
+                sort_by=sort_by,
+                sort_dir=sort_dir,
+                technology_type_filter=technology_type_filter,
             )
         
         try:
+            display_order = form.display_order.data  # IntegerField: None если пусто
             payload = [{
                 "name": (form.name.data or "").strip(),
+                "display_order": display_order,
             }]
 
             # Добавление новой записи через сервис
@@ -190,7 +208,7 @@ def add_technology_type():
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = technology_type_query(
-                                technology_type_filter).count()
+                                technology_type_filter=technology_type_filter).count()
             last_page = (total_records + per_page - 1) // per_page
             
             # Корректировка текущей страницы, если она больше последней
@@ -232,7 +250,7 @@ def export_technology_type():
 
     user = session.get('username', 'Неизвестный пользователь')
 
-    sort_by             = request.args.get("sort_by", "id")
+    sort_by             = request.args.get("sort_by", "display_order")
     sort_dir            = request.args.get("sort_dir", "asc")
     technology_type_filter    = request.args.get("technology_type_filter")
 

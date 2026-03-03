@@ -5,14 +5,14 @@ Database Version model (Версия базы данных).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class DatabaseVersion(db.Model):
+class DatabaseVersion(db.Model, AuditMixin):
     __tablename__ = 'gs_database_versions'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     version_number = db.Column(db.String(30), unique=True, nullable=False, index=True)
-    name = db.Column(db.String(255), unique=True, nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
     is_active = db.Column(db.Boolean, default=False, nullable=False, index=True)
     
@@ -40,6 +40,6 @@ class DatabaseVersion(db.Model):
     )
 
     def __repr__(self) -> str:
-        return f"<DatabaseVersion id={self.id} version_number={self.version_number} name={self.name!r} is_active={self.is_active}>"
+        return f"<DatabaseVersion id={self.id} version_number={self.version_number!r} is_active={self.is_active}>"
 
 

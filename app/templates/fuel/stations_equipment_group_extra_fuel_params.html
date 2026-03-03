@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+
+{% block title %}Топливные параметры групп оборудования (дополнительные){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Топливные параметры групп оборудования (дополнительные)</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_equipment_group_extra_fuel_params_filters.html' %}
+
+{% set extra_fuel_param_columns = [
+    ('name', 'Наименование', false),
+    ('gaz_prir', 'gaz_prir', true), ('gazpp', 'gazpp', true), ('disel', 'disel', true), ('maztop', 'maztop', true),
+    ('gtt', 'gtt', true), ('nft_proch', 'nft_proch', true), ('domen_g', 'domen_g', true), ('koks_g', 'koks_g', true),
+    ('prochgaz', 'prochgaz', true), ('tvproch', 'tvproch', true), ('szh_gaz', 'szh_gaz', true), ('inoe', 'inoe', true),
+    ('nazar', 'nazar', true), ('ibor', 'ibor', true), ('berez', 'berez', true), ('per', 'per', true),
+    ('irbei', 'irbei', true), ('kansk', 'kansk', true), ('gusin', 'gusin', true), ('tugn', 'tugn', true),
+    ('okino', 'okino', true), ('azey', 'azey', true), ('mug', 'mug', true), ('cher', 'cher', true),
+    ('jer', 'jer', true), ('karab', 'karab', true), ('vork', 'vork', true), ('intin', 'intin', true),
+    ('sver', 'sver', true), ('chel', 'chel', true), ('kizel', 'kizel', true), ('har', 'har', true),
+    ('urt', 'urt', true), ('tataur', 'tataur', true), ('tarbag', 'tarbag', true), ('zab_kam', 'zab_kam', true),
+    ('rai', 'rai', true), ('erk', 'erk', true), ('ogodj', 'ogodj', true), ('svo', 'svo', true),
+    ('bikin', 'bikin', true), ('razdol', 'razdol', true), ('hankai', 'hankai', true), ('neru', 'neru', true),
+    ('zyryan', 'zyryan', true), ('pyak', 'pyak', true), ('kuzngd', 'kuzngd', true), ('kuznt', 'kuznt', true),
+    ('kuznss', 'kuznss', true), ('kuznun', 'kuznun', true), ('bering', 'bering', true), ('anad', 'anad', true),
+    ('ekib', 'ekib', true), ('maikub', 'maikub', true), ('karag', 'karag', true), ('karajyra', 'karajyra', true),
+    ('teniz', 'teniz', true),
+    ('numb1120', 'NUMB1120', false), ('numb1', 'numb1', false),
+] %}
+{% set column_count = extra_fuel_param_columns|length + 1 %}
+
+    <table class="table table-hover table-striped table-bordered table-responsive">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th colspan="{{ column_count }}">Модуль «Топливо» (дополнительные параметры)</th>
+            </tr>
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="width: 120px;">Группа оборудования</th>
+                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                <th style="width: 70px;">{{ label }}<br><span class="text-muted small">({{ attr }})</span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+            {% for es_type_id in sorted_energy_system_type_ids %}
+                {% set es_type_group = stations_grouped[es_type_id] %}
+                {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ energy_system_type_names[es_type_id] }}</td>
+                    </tr>
+                {% endif %}
+
+                {% for ues in union_energy_system_list %}
+                    {% set ues_id = ues.id %}
+                    {% set ues_group = es_type_group.get(ues_id) %}
+                    {% if ues_group %}
+                    {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ union_energy_system_names[ues_id] }}</td>
+                        </tr>
+                    {% endif %}
+
+                    {% for res_id, res_group in ues_group.items() %}
+                        {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">{{ regional_energy_system_names[res_id] }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% for rd_id, rd_group in res_group.items() %}
+                            {% set rd_name = regional_district_names.get(rd_id) %}
+                            {% if rd_name and rd_name|lower != 'не указано' %}
+                            {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan="{{ column_count }}">{{ rd_name }}</td>
+                                </tr>
+                            {% endif %}
+                            {% endif %}
+
+                            {% for eu_id, eu_group in rd_group.items() %}
+                                {% set eu_name = energy_unit_names.get(eu_id) %}
+                                {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                {% if not skip_eu %}
+                                {% if eu_name and eu_name|lower != 'не указано' %}
+                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ column_count }}">{{ eu_name }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% endif %}
+                                {% endif %}
+
+                                {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
+                                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
+                                        {% set seg = link.equipment_group_set %}
+                                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
+                                        {% set ns = namespace(params_in_range=[]) %}
+                                        {% for p in (seg.extra_fuel_params if seg else []) %}
+                                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
+                                                {% set _ = ns.params_in_range.append(p) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% set params_in_range = ns.params_in_range %}
+                                        {% if params_in_range %}
+                                            {% for param in params_in_range|sort(attribute='year_number') %}
+                                            <tr class="text-center align-middle">
+                                                <td>
+                                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ seg.name if seg and seg.name else group_name }}
+                                                    </a>
+                                                </td>
+                                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                                <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                                {% endfor %}
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr class="text-center align-middle">
+                                                <td>
+                                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ seg.name if seg and seg.name else group_name }}
+                                                    </a>
+                                                </td>
+                                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                                <td>—</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+                {% for station in stations %}
+                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
+                        {% set seg = link.equipment_group_set %}
+                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
+                        {% set ns = namespace(params_in_range=[]) %}
+                        {% for p in (seg.extra_fuel_params if seg else []) %}
+                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
+                                {% set _ = ns.params_in_range.append(p) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set params_in_range = ns.params_in_range %}
+                        {% if params_in_range %}
+                            {% for param in params_in_range|sort(attribute='year_number') %}
+                            <tr class="text-center align-middle">
+                                <td>
+                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                        {{ seg.name if seg and seg.name else group_name }}
+                                    </a>
+                                </td>
+                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="text-center align-middle">
+                                <td>
+                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                        {{ seg.name if seg and seg.name else group_name }}
+                                    </a>
+                                </td>
+                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                <td>—</td>
+                                {% endfor %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                {% if not stations %}
+                <tr>
+                    <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                </tr>
+                {% endif %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="mt-2">
+        {% if per_page is not none %}
+            {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_extra_fuel_params' %}
+            {% include 'generation/includes/pagination_station.html' %}
+        {% endif %}
+    </div>
+    </div>
+</div>
+{% endif %}
+
+<script id="initial-state-json" type="application/json">
+    { "hasActiveFilters": {{ has_active_filters | tojson }} }
+</script>
+
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+{% include 'generation/stations/scripts/station_list_scripts.html' %}
+
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }, 500);
+    });
+</script>
+{% endblock %}

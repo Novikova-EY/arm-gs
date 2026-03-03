@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+
+{% block title %}Топливные параметры групп оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<!-- Индикатор загрузки для per_page=all -->
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Топливные параметры групп оборудования</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_equipment_group_fuel_params_filters.html' %}
+
+{# Порядок столбцов как в модели EquipmentGroupFuelParam (без year_number). Формат названий как на stations_turbines: "Название<br><span class="text-muted small">(attr)</span>" #}
+{% set fuel_param_columns = [
+    ('name', 'Наименование', false),
+    ('nust', 'Руст', true), ('nr', 'Ррасп', true),
+    ('e', 'Выр', true), ('ewtp', 'Этц', true), ('eotp', 'Отпуск ээ', true), ('eurt', 'Уд.расх ээ', true), ('eust', 'Расх топ ээ', true), ('snk', 'СН, %', true),
+    ('q', 'Отпуск, Гкал', true), ('qotr', 'Отраб', true), ('turt', 'Уд.расх тэ', true), ('tust', 'Расх топ тэ', true), ('sn_t', 'СН, кВтч/Гкал', true),
+    ('b', 'Расх топл.', true),
+    ('gaz', 'Газ', true), ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf', 'Торф', true), ('slan', 'Сланцы', true),
+    ('proch', 'Прочее', true), ('ugol', 'Уголь', true), ('don', 'Дон', true), ('podm', 'Подм', true), ('pech', 'Печ', true),
+    ('arkt', 'Арктикуголь', true), ('kuzn', 'Кузбасс', true), ('ural', 'Урал', true), ('bashk', 'Башкортостан', true), ('kazah', 'Казахстан', true),
+    ('kan', 'Канск', true), ('tung', 'Тунгусск', true), ('irkut', 'Иркутск', true), ('hak', 'Хакасия', true), ('tuv', 'Тува', true),
+    ('bur', 'Бурятия', true), ('chit', 'Чита', true), ('yakut', 'Якутия', true), ('amur', 'Амур', true), ('urg', 'Юрга', true),
+    ('ushum', 'Ушумун', true), ('prim', 'Приморье', true), ('mag', 'Магадан', true), ('chukot', 'Чукотка', true), ('kamch', 'Камчатка', true),
+    ('sah', 'Сахалин', true),
+    ('nt', 'Тепл. мощн. отборов', true), ('nt_sum', 'Сумма NT', true),
+    ('numb1120', 'Код станции', false), ('numb1', 'Номер', false),
+    ('obor', 'OBOR', false), ('ved', 'VED', false), ('ved_cyrillic', 'вед', false), ('obl', 'OBL', false), ('dep', 'DEP', false),
+    ('oes', 'OES', false), ('ees', 'EES', false), ('er', 'ER', false), ('gk', 'GK', false), ('be', 'BE', false)
+] %}
+{% set column_count = fuel_param_columns|length + 1 %}
+
+    <table class="table table-hover table-striped table-bordered table-responsive">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th colspan="{{ column_count }}">Модуль «Топливо»</th>
+            </tr>
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="width: 120px;">Группа оборудования</th>
+                {% for attr, label, is_numeric in fuel_param_columns %}
+                <th style="width: 80px;">{{ label }}<br><span class="text-muted small">({{ attr }})</span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {# Защита от дублей отображения: запоминаем уже выведенные строки по ключу (link.id, year_number, numb1120, numb1) #}
+            {% set seen_rows = namespace(keys=[]) %}
+            {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+            {% for es_type_id in sorted_energy_system_type_ids %}
+                {% set es_type_group = stations_grouped[es_type_id] %}
+                {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ energy_system_type_names[es_type_id] }}</td>
+                    </tr>
+                {% endif %}
+
+                {% for ues in union_energy_system_list %}
+                    {% set ues_id = ues.id %}
+                    {% set ues_group = es_type_group.get(ues_id) %}
+                    {% if ues_group %}
+                    {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ union_energy_system_names[ues_id] }}</td>
+                        </tr>
+                    {% endif %}
+
+                    {% for res_id, res_group in ues_group.items() %}
+                        {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">{{ regional_energy_system_names[res_id] }}</td>
+                            </tr>
+                        {% endif %}
+
+                        {% for rd_id, rd_group in res_group.items() %}
+                            {% set rd_name = regional_district_names.get(rd_id) %}
+                            {% if rd_name and rd_name|lower != 'не указано' %}
+                            {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan="{{ column_count }}">{{ rd_name }}</td>
+                                </tr>
+                            {% endif %}
+                            {% endif %}
+
+                            {% for eu_id, eu_group in rd_group.items() %}
+                                {% set eu_name = energy_unit_names.get(eu_id) %}
+                                {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                {% if not skip_eu %}
+                                {% if eu_name and eu_name|lower != 'не указано' %}
+                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ column_count }}">{{ eu_name }}</td>
+                                    </tr>
+                                {% endif %}
+                                {% endif %}
+                                {% endif %}
+
+                                {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
+                                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
+                                        {% set seg = link.equipment_group_set %}
+                                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
+                                        {% set ns = namespace(params_in_range=[]) %}
+                                        {% for p in link.fuel_params %}
+                                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
+                                                {% set _ = ns.params_in_range.append(p) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% set params_in_range = ns.params_in_range %}
+                                        {% if params_in_range %}
+                                            {% for param in params_in_range|sort(attribute='year_number') %}
+                                                {% set row_key = (link.id, param.year_number, param.numb1120, param.numb1) %}
+                                                {% if row_key not in seen_rows.keys %}
+                                                    {% set _ = seen_rows.keys.append(row_key) %}
+                                                    <tr class="text-center align-middle">
+                                                        <td>
+                                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                                {{ seg.name if seg and seg.name else group_name }}
+                                                            </a>
+                                                        </td>
+                                                        {% for attr, label, is_numeric in fuel_param_columns %}
+                                                        <td>{% if attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                                        {% endfor %}
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr class="text-center align-middle">
+                                                <td>
+                                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ seg.name if seg and seg.name else group_name }}
+                                                    </a>
+                                                </td>
+                                                {% for attr, label, is_numeric in fuel_param_columns %}
+                                                <td>—</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+                {% for station in stations %}
+                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
+                        {% set seg = link.equipment_group_set %}
+                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
+                        {% set ns = namespace(params_in_range=[]) %}
+                        {% for p in link.fuel_params %}
+                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
+                                {% set _ = ns.params_in_range.append(p) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set params_in_range = ns.params_in_range %}
+                        {% if params_in_range %}
+                            {% for param in params_in_range|sort(attribute='year_number') %}
+                                {% set row_key = (link.id, param.year_number, param.numb1120, param.numb1) %}
+                                {% if row_key not in seen_rows.keys %}
+                                    {% set _ = seen_rows.keys.append(row_key) %}
+                                    <tr class="text-center align-middle">
+                                        <td>
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                {{ seg.name if seg and seg.name else group_name }}
+                                            </a>
+                                        </td>
+                                        {% for attr, label, is_numeric in fuel_param_columns %}
+                                        <td>{% if attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <tr class="text-center align-middle">
+                                <td>
+                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                        {{ seg.name if seg and seg.name else group_name }}
+                                    </a>
+                                </td>
+                                {% for attr, label, is_numeric in fuel_param_columns %}
+                                <td>—</td>
+                                {% endfor %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                {% if not stations %}
+                <tr>
+                    <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                </tr>
+                {% endif %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="mt-2">
+        {% if per_page is not none %}
+            {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_fuel_params' %}
+            {% include 'generation/includes/pagination_station.html' %}
+        {% endif %}
+    </div>
+    </div>
+</div>
+{% endif %}
+
+<script id="initial-state-json" type="application/json">
+    { "hasActiveFilters": {{ has_active_filters | tojson }} }
+</script>
+
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+{% include 'generation/stations/scripts/station_list_scripts.html' %}
+
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }, 500);
+    });
+</script>
+{% endblock %}

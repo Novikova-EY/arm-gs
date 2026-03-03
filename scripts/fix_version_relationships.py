@@ -56,9 +56,9 @@ def main():
                     print(f"Версия с ID {version_id} не найдена")
                     return 1
                 
-                print(f"Исправление связей для версии: {version.name} (v{version.version_number})")
+                print(f"Исправление связей для версии: {version.version_number} (v{version.version_number})")
                 fix_version_relationships(version_id, system_user)
-                print(f"✅ Версия {version.name} успешно исправлена")
+                print(f"✅ Версия {version.version_number} успешно исправлена")
                 
             except Exception as e:
                 print(f"❌ Ошибка исправления версии {version_id}: {e}")
@@ -81,13 +81,13 @@ def main():
             
             for version in versions:
                 try:
-                    print(f"Исправление версии: {version.name} (v{version.version_number})...")
+                    print(f"Исправление версии: {version.version_number} (v{version.version_number})...")
                     fix_version_relationships(version.id, system_user)
-                    print(f"✅ Версия {version.name} успешно исправлена")
+                    print(f"✅ Версия {version.version_number} успешно исправлена")
                     success_count += 1
                     
                 except Exception as e:
-                    print(f"❌ Ошибка исправления версии {version.name}: {e}")
+                    print(f"❌ Ошибка исправления версии {version.version_number}: {e}")
                     error_count += 1
             
             print(f"\nРезультат:")

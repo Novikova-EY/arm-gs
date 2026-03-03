@@ -117,10 +117,10 @@ def export_economic_region_mappings_service(
     for mapping in items:
         data.append(
             {
-                "ID в БД Топливо": _dash(
+                "Номер (er)": _dash(
                     _normalize_external_id(mapping.external_id) if mapping else None
                 ),
-                "Название в БД Топливо": _dash(
+                "Наименование (name)": _dash(
                     mapping.external_name if mapping else None
                 ),
             }

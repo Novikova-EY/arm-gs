@@ -65,6 +65,7 @@
         <input type="hidden" name="page"                    value="{{ pagination.page if pagination else 1 }}">
         <input type="hidden" name="sort_by"                 value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"                value="{{ sort_dir }}">
+        <input type="hidden" name="technology_type_filter"  value="{{ technology_type_filter or '' }}">
     </form>
 
     <!-- Таблица данных -->
@@ -76,7 +77,7 @@
             <input type="hidden" name="per_page"            value="{{ per_page }}">
             <input type="hidden" name="sort_by"             value="{{ sort_by }}">
             <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
-            <input type="hidden" name="technology_type_filter"    value="{{ technology_type_filter }}">
+            <input type="hidden" name="technology_type_filter"    value="{{ technology_type_filter or '' }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -110,6 +111,26 @@
                                             class="text-black">
                                     №
                                     {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.technology_type_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            technology_type_filter=technology_type_filter,
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
                                         {% else %}
@@ -154,6 +175,16 @@
                                 <input type="hidden" name="technology_ids[]" value="{{ technology_type.id }}">
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td>
+                                <input type="number"
+                                    name="display_orders[]"
+                                    class="form-control text-center"
+                                    value="{{ technology_type.display_order if technology_type.display_order is not none else '' }}"
+                                    style="width: 100%;"
+                                    min="0" step="1" placeholder="">
+                            </td>
+
                             <!-- Строки таблицы. Столбец "Тип технологии" -->
                             <td>
                                 <input type="text" name="technology_type_names[]" class="form-control" value="{{ technology_type.name }}">
@@ -166,7 +197,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -190,6 +221,26 @@
                                         class="text-black">
                                 №
                                 {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.technology_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        technology_type_filter=technology_type_filter,
+                                        sort_by='display_order', 
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
                                     {% else %}
@@ -230,12 +281,17 @@
                             {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                         </td>
 
-                        <!-- Строки таблицы. Столбец "Тип агрегата" -->
+                        <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                        <td class="text-center">
+                            {{ technology_type.display_order if technology_type.display_order is not none else '—' }}
+                        </td>
+
+                        <!-- Строки таблицы. Столбец "Тип технологии" -->
                         <td> {{ technology_type.name }} </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                        <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
                     </tr>
                     {% endfor %}
                 </tbody>

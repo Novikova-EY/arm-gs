@@ -751,13 +751,13 @@ def export_union_energy_system_service(
         mapping = row.mapping
         ues = row.ues
         data.append({
-            "ID в БД Топливо": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
-            "Название в БД Топливо": _dash(mapping.external_name if mapping else None),
-            "Наименование ОЭС в БД Топливо": _dash(mapping.external_nameoes if mapping else None),
-            "Сокр. ОЭС в БД Топливо": _dash(mapping.external_abbr if mapping else None),
-            "UUID ОЭС": _dash(ues.ref_uuid if ues else None),
-            "ID ОЭС (текущая версия)": _dash(ues.id if ues else None),
-            "Наименование ОЭС в АРМ": _dash(ues.name if ues else None),
+            "Номер (oes)": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "Название (name)": _dash(mapping.external_name if mapping else None),
+            "Наименование (nameoes)": _dash(mapping.external_nameoes if mapping else None),
+            "Сокр. ОЭС (abbr)": _dash(mapping.external_abbr if mapping else None),
+            "UUID": _dash(ues.ref_uuid if ues else None),
+            "ID ОЭС": _dash(ues.id if ues else None),
+            "Наименование": _dash(ues.name if ues else None),
         })
 
     log_to_db(

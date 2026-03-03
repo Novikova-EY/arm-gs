@@ -4,9 +4,10 @@ GenCompanyExternalMapping model (связь генерирующих компа�
 """
 from app.extensions import db
 from config import SCHEMA_FUE_EM
+from app.common.models.audit_mixin import AuditMixin
 
 
-class GenCompanyExternalMapping(db.Model):
+class GenCompanyExternalMapping(db.Model, AuditMixin):
     __tablename__ = "gs_fue_em_gen_company"
     __table_args__ = ({"schema": SCHEMA_FUE_EM},)
 

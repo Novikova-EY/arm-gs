@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Р”РѕР±Р°РІРёС‚СЊ РЅРѕРІС‹Р№ С‚РёРї С‚РѕРїР»РёРІР°{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Р”РѕР±Р°РІРёС‚СЊ С‚РёРї С‚РѕРїР»РёРІР°</h2>
+
+      <form action="{{ url_for('fuel_bp.fuel_refdata_add_fuel_type') }}" method="POST">
+        {{ form.hidden_tag() }}
+
+        <!-- РЎРєСЂС‹С‚С‹Рµ РїРѕР»СЏ РІРѕР·РІСЂР°С‚Р° -->
+        <input type="hidden" name="page"                value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page"            value="{{ per_page }}">
+        <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+        <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">РўРёРї С‚РѕРїР»РёРІР°</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Р”РѕР±Р°РІРёС‚СЊ</button>
+            <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_type_list',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                fuel_type_filter=fuel_type_filter,
+                                ) }}" 
+                                class="btn btn-secondary">
+                        РћС‚РјРµРЅР°
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}

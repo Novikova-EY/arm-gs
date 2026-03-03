@@ -67,8 +67,17 @@
             <div class="row align-items-start mb-3">
                 <div class="col-12">
                     <a href="{{ url_for('fuel_bp.fuel_equipment_group_list') }}" class="btn btn-outline-primary fs-4 w-100">
-                        Типы оборудования
+                        Типы групп оборудования
                     </a>
+                </div>
+            </div>
+            <div class="row align-items-start mb-3">
+                <h4 class="text-center mt-4">Справочники топлива</h4>
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы топлива</a>
+                </div>
+                <div class="col">
+                    <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list') }}" class="btn btn-outline-primary fs-4 w-100">Виды топлива</a>
                 </div>
             </div>
         </div>

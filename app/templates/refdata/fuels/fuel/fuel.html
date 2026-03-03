@@ -46,8 +46,8 @@
                     href="{{ url_for('refdata_bp.export_fuel',
                                         fuel_filter=fuel_filter or '',
                                         fuel_type_filter=fuel_type_filter or '',
-                                        topl_nazvl_filter=topl_nazvl_filter or '',
-                                        topl_kmbur_filter=topl_kmbur_filter or '',
+                                        nazvl_filter=nazvl_filter or '',
+                                        kmbur_filter=kmbur_filter or '',
                                         sort_by=sort_by, sort_dir=sort_dir) }}"
                     target="_blank" rel="noopener">
                     Экспорт в Excel
@@ -69,8 +69,8 @@
         <input type="hidden" name="sort_by"             value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
         <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
-        <input type="hidden" name="topl_nazvl_filter"   value="{{ topl_nazvl_filter }}">
-        <input type="hidden" name="topl_kmbur_filter"   value="{{ topl_kmbur_filter }}">
+        <input type="hidden" name="nazvl_filter"   value="{{ nazvl_filter }}">
+        <input type="hidden" name="kmbur_filter"   value="{{ kmbur_filter }}">
     </form>
 
     <!-- Таблица данных -->
@@ -84,8 +84,8 @@
             <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
             <input type="hidden" name="fuel_filter"         value="{{ fuel_filter }}">
             <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
-            <input type="hidden" name="topl_nazvl_filter"   value="{{ topl_nazvl_filter }}">
-            <input type="hidden" name="topl_kmbur_filter"   value="{{ topl_kmbur_filter }}">
+            <input type="hidden" name="nazvl_filter"   value="{{ nazvl_filter }}">
+            <input type="hidden" name="kmbur_filter"   value="{{ kmbur_filter }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -100,8 +100,8 @@
                                     sort_dir=sort_dir,
                                     fuel_filter=fuel_filter,
                                     fuel_type_filter=fuel_type_filter,
-                                    topl_nazvl_filter=topl_nazvl_filter,
-                                    topl_kmbur_filter=topl_kmbur_filter,
+                                    nazvl_filter=nazvl_filter,
+                                    kmbur_filter=kmbur_filter,
                             ) }}" class="btn btn-primary">
                     Добавить новую запись
                 </a>
@@ -118,8 +118,8 @@
                                             per_page=per_page, 
                                             fuel_filter=fuel_filter,
                                             fuel_type_filter=fuel_type_filter,
-                                            topl_nazvl_filter=topl_nazvl_filter,
-                                            topl_kmbur_filter=topl_kmbur_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
                                             sort_by='number', 
                                             sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
@@ -141,8 +141,8 @@
                                             per_page=per_page, 
                                             fuel_filter=fuel_filter, 
                                             fuel_type_filter=fuel_type_filter,
-                                            topl_nazvl_filter=topl_nazvl_filter,
-                                            topl_kmbur_filter=topl_kmbur_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
@@ -165,8 +165,8 @@
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
                                                     fuel_type_filter=fuel_type_filter,
-                                                    topl_nazvl_filter=topl_nazvl_filter,
-                                                    topl_kmbur_filter=topl_kmbur_filter,
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
                                                     per_page=per_page,
                                                     sort_by='fuel_type', 
                                                     sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
@@ -196,8 +196,8 @@
                                                             page=pagination.page, 
                                                             fuel_filter=fuel_filter,
                                                             fuel_type_filter='',
-                                                            topl_nazvl_filter=topl_nazvl_filter,
-                                                            topl_kmbur_filter=topl_kmbur_filter,
+                                                            nazvl_filter=nazvl_filter,
+                                                            kmbur_filter=kmbur_filter,
                                                             per_page=per_page,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
@@ -211,8 +211,8 @@
                                                         page=pagination.page, 
                                                         fuel_filter=fuel_filter,
                                                         fuel_type_filter=id,
-                                                        topl_nazvl_filter=topl_nazvl_filter,
-                                                        topl_kmbur_filter=topl_kmbur_filter,
+                                                        nazvl_filter=nazvl_filter,
+                                                        kmbur_filter=kmbur_filter,
                                                         per_page=per_page,
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" class="dropdown-item">
@@ -234,13 +234,13 @@
                                                     per_page=per_page, 
                                                     fuel_filter=fuel_filter, 
                                                     fuel_type_filter=fuel_type_filter,
-                                                    topl_nazvl_filter=topl_nazvl_filter,
-                                                    topl_kmbur_filter=topl_kmbur_filter,
-                                                    sort_by='topl_nazvl', 
-                                                    sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
+                                                    sort_by='nazvl', 
+                                                    sort_dir='asc' if sort_by != 'nazvl' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="text-black">
                                             Наименование в БД Топливо
-                                            {% if sort_by == 'topl_nazvl' %}
+                                            {% if sort_by == 'nazvl' %}
                                                 {% if sort_dir == 'asc' %}
                                                     ▲
                                                 {% else %}
@@ -264,23 +264,23 @@
                                                             per_page=per_page, 
                                                             fuel_filter=fuel_filter, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter='',
-                                                            topl_kmbur_filter=topl_kmbur_filter,
+                                                            nazvl_filter='',
+                                                            kmbur_filter=kmbur_filter,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
                                                     Все наименования
                                                 </a>
                                             </li>
-                                            {% for value in topl_nazvl_values %}
+                                            {% for value in nazvl_values %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.fuel_list', 
                                                                 page=pagination.page, 
                                                                 per_page=per_page, 
                                                                 fuel_filter=fuel_filter, 
                                                                 fuel_type_filter=fuel_type_filter,
-                                                                topl_nazvl_filter=value,
-                                                                topl_kmbur_filter=topl_kmbur_filter,
+                                                                nazvl_filter=value,
+                                                                kmbur_filter=kmbur_filter,
                                                                 sort_by=sort_by,
                                                                 sort_dir=sort_dir) }}" 
                                                                 class="dropdown-item">
@@ -302,13 +302,13 @@
                                                     per_page=per_page, 
                                                     fuel_filter=fuel_filter, 
                                                     fuel_type_filter=fuel_type_filter,
-                                                    topl_nazvl_filter=topl_nazvl_filter,
-                                                    topl_kmbur_filter=topl_kmbur_filter,
-                                                    sort_by='topl_kmbur', 
-                                                    sort_dir='asc' if sort_by != 'topl_kmbur' or sort_dir == 'desc' else 'desc') }}" 
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
+                                                    sort_by='kmbur', 
+                                                    sort_dir='asc' if sort_by != 'kmbur' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="text-black">
                                             Тип угольного топлива
-                                            {% if sort_by == 'topl_kmbur' %}
+                                            {% if sort_by == 'kmbur' %}
                                                 {% if sort_dir == 'asc' %}
                                                     ▲
                                                 {% else %}
@@ -332,23 +332,23 @@
                                                             per_page=per_page, 
                                                             fuel_filter=fuel_filter, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter=topl_nazvl_filter,
-                                                            topl_kmbur_filter='',
+                                                            nazvl_filter=nazvl_filter,
+                                                            kmbur_filter='',
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
                                                     Все типы угольного топива
                                                 </a>
                                             </li>
-                                            {% for value in topl_kmbur_values %}
+                                            {% for value in kmbur_values %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.fuel_list', 
                                                                 page=pagination.page, 
                                                                 per_page=per_page, 
                                                                 fuel_filter=fuel_filter, 
                                                                 fuel_type_filter=fuel_type_filter,
-                                                                topl_nazvl_filter=topl_nazvl_filter,
-                                                                topl_kmbur_filter=value,
+                                                                nazvl_filter=nazvl_filter,
+                                                                kmbur_filter=value,
                                                                 sort_by=sort_by,
                                                                 sort_dir=sort_dir) }}" 
                                                                 class="dropdown-item">
@@ -395,12 +395,12 @@
 
                                 <!-- Строки таблицы. Столбец "Короткое наименование" -->
                                 <td>
-                                    <input type="text" name="fuel_topl_nazvl[]" class="form-control" value="{{ fuel.topl_nazvl or '' }}">
+                                    <input type="text" name="fuel_nazvl[]" class="form-control" value="{{ fuel.nazvl or '' }}">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Тип угольного топлива" -->
                                 <td>
-                                    <input type="text" name="fuel_topl_kmbur[]" class="form-control" value="{{ fuel.topl_kmbur or '' }}">
+                                    <input type="text" name="fuel_kmbur[]" class="form-control" value="{{ fuel.kmbur or '' }}">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
@@ -430,8 +430,8 @@
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter,
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
-                                        topl_kmbur_filter=topl_kmbur_filter,
+                                        nazvl_filter=nazvl_filter,
+                                        kmbur_filter=kmbur_filter,
                                         sort_by='number', 
                                         sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -453,8 +453,8 @@
                                         per_page=per_page, 
                                         fuel_filter=fuel_filter, 
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
-                                        topl_kmbur_filter=topl_kmbur_filter,
+                                        nazvl_filter=nazvl_filter,
+                                        kmbur_filter=kmbur_filter,
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -477,8 +477,8 @@
                                                 page=pagination.page, 
                                                 fuel_filter=fuel_filter,
                                                 fuel_type_filter=fuel_type_filter,
-                                                topl_nazvl_filter=topl_nazvl_filter,
-                                                topl_kmbur_filter=topl_kmbur_filter,
+                                                nazvl_filter=nazvl_filter,
+                                                kmbur_filter=kmbur_filter,
                                                 per_page=per_page,
                                                 sort_by='fuel_type', 
                                                 sort_dir='asc' if sort_by != 'fuel_type' or sort_dir == 'desc' else 'desc') }}" 
@@ -508,8 +508,8 @@
                                                         page=pagination.page, 
                                                         fuel_filter=fuel_filter,
                                                         fuel_type_filter='',
-                                                        topl_nazvl_filter=topl_nazvl_filter,
-                                                        topl_kmbur_filter=topl_kmbur_filter,
+                                                        nazvl_filter=nazvl_filter,
+                                                        kmbur_filter=kmbur_filter,
                                                         per_page=per_page,
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" 
@@ -523,8 +523,8 @@
                                                     page=pagination.page, 
                                                     fuel_filter=fuel_filter,
                                                     fuel_type_filter=id,
-                                                    topl_nazvl_filter=topl_nazvl_filter,
-                                                    topl_kmbur_filter=topl_kmbur_filter,
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
                                                     per_page=per_page,
                                                     sort_by=sort_by,
                                                     sort_dir=sort_dir) }}" class="dropdown-item">
@@ -546,13 +546,13 @@
                                                 per_page=per_page, 
                                                 fuel_filter=fuel_filter, 
                                                 fuel_type_filter=fuel_type_filter,
-                                                topl_nazvl_filter=topl_nazvl_filter,
-                                                topl_kmbur_filter=topl_kmbur_filter,
-                                                sort_by='topl_nazvl', 
-                                                sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                nazvl_filter=nazvl_filter,
+                                                kmbur_filter=kmbur_filter,
+                                                sort_by='nazvl', 
+                                                sort_dir='asc' if sort_by != 'nazvl' or sort_dir == 'desc' else 'desc') }}" 
                                                 class="text-black">
                                         Наименование в БД Топливо
-                                        {% if sort_by == 'topl_nazvl' %}
+                                        {% if sort_by == 'nazvl' %}
                                             {% if sort_dir == 'asc' %}
                                                 ▲
                                             {% else %}
@@ -576,23 +576,23 @@
                                                         per_page=per_page, 
                                                         fuel_filter=fuel_filter, 
                                                         fuel_type_filter=fuel_type_filter,
-                                                        topl_nazvl_filter='',
-                                                        topl_kmbur_filter=topl_kmbur_filter,
+                                                        nazvl_filter='',
+                                                        kmbur_filter=kmbur_filter,
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" 
                                                         class="dropdown-item">
                                                 Все наименования
                                             </a>
                                         </li>
-                                        {% for value in topl_nazvl_values %}
+                                        {% for value in nazvl_values %}
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.fuel_list', 
                                                             page=pagination.page, 
                                                             per_page=per_page, 
                                                             fuel_filter=fuel_filter, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter=value,
-                                                            topl_kmbur_filter=topl_kmbur_filter,
+                                                            nazvl_filter=value,
+                                                            kmbur_filter=kmbur_filter,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
@@ -614,13 +614,13 @@
                                                 per_page=per_page, 
                                                 fuel_filter=fuel_filter, 
                                                 fuel_type_filter=fuel_type_filter,
-                                                topl_nazvl_filter=topl_nazvl_filter,
-                                                topl_kmbur_filter=topl_kmbur_filter,
-                                                sort_by='topl_kmbur', 
-                                                sort_dir='asc' if sort_by != 'topl_kmbur' or sort_dir == 'desc' else 'desc') }}" 
+                                                nazvl_filter=nazvl_filter,
+                                                kmbur_filter=kmbur_filter,
+                                                sort_by='kmbur', 
+                                                sort_dir='asc' if sort_by != 'kmbur' or sort_dir == 'desc' else 'desc') }}" 
                                                 class="text-black">
                                         Тип угольного топлива
-                                        {% if sort_by == 'topl_kmbur' %}
+                                        {% if sort_by == 'kmbur' %}
                                             {% if sort_dir == 'asc' %}
                                                 ▲
                                             {% else %}
@@ -644,23 +644,23 @@
                                                         per_page=per_page, 
                                                         fuel_filter=fuel_filter, 
                                                         fuel_type_filter=fuel_type_filter,
-                                                        topl_nazvl_filter=topl_nazvl_filter,
-                                                        topl_kmbur_filter='',
+                                                        nazvl_filter=nazvl_filter,
+                                                        kmbur_filter='',
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" 
                                                         class="dropdown-item">
                                                 Все типы угольного топлива
                                             </a>
                                         </li>
-                                        {% for value in topl_kmbur_values %}
+                                        {% for value in kmbur_values %}
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.fuel_list', 
                                                             page=pagination.page, 
                                                             per_page=per_page, 
                                                             fuel_filter=fuel_filter, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter=topl_nazvl_filter,
-                                                            topl_kmbur_filter=value,
+                                                            nazvl_filter=nazvl_filter,
+                                                            kmbur_filter=value,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
@@ -691,10 +691,10 @@
                             <td class="text-center align-middle"> {{ fuel.fuel_type.name }} </td>
 
                             <!-- Строки таблицы. Столбец "Короткое наименование" -->
-                            <td> {{ fuel.topl_nazvl or '' }} </td>
+                            <td> {{ fuel.nazvl or '' }} </td>
 
                             <!-- Строки таблицы. Столбец "Тип угольного топлива" -->
-                            <td> {{ fuel.topl_kmbur or '' }} </td>
+                            <td> {{ fuel.kmbur or '' }} </td>
 
                         </tr>
                     {% else %}

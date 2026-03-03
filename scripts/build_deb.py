@@ -215,6 +215,15 @@ def patch_control_version(build_dir: Path, version: str) -> None:
     control_path.write_text(control_text.replace("__VERSION__", version), encoding="utf-8")
 
 
+def normalize_debian_scripts_line_endings(build_dir: Path) -> None:
+    """CRLF в скриптах DEBIAN ломает bash на Linux (cd /tmp\\r, upgrade\\r и т.д.)."""
+    for script_name in ("postinst", "postrm", "prerm", "preinst"):
+        script_path = build_dir / "DEBIAN" / script_name
+        if script_path.exists():
+            text = script_path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+            script_path.write_text(text, encoding="utf-8")
+
+
 def make_scripts_executable(build_dir: Path) -> None:
     for script_name in ("postinst", "postrm", "prerm"):
         script_path = build_dir / "DEBIAN" / script_name
@@ -269,6 +278,7 @@ def main() -> int:
     copy_payload(payload_root)
     copy_static_files(build_dir)
     patch_control_version(build_dir, version)
+    normalize_debian_scripts_line_endings(build_dir)
     make_scripts_executable(build_dir)
     output_path = build_package(build_dir, version, args.dpkg)
     print(f"Готово: {output_path}")

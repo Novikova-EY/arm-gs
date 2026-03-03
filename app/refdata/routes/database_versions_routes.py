@@ -8,6 +8,8 @@ import os
 
 from flask_login import login_required, current_user
 
+from app.auth.routes.decorators import roles_required
+
 # Блюпринт
 from app.generation.routes.stations import station_bp
 
@@ -80,21 +82,28 @@ def database_versions():
         # Получение данных из формы
         version_ids         = request.form.getlist("version_ids[]")
         version_numbers     = request.form.getlist("version_numbers[]")
-        version_names       = request.form.getlist("version_names[]")
         version_descriptions= request.form.getlist("version_descriptions[]")
         version_delete      = request.form.getlist("version_delete[]")
   
         deleted_ids = set()
-        # Удаление записей
+        # Удаление записей (только для admin)
         if version_delete:
+            if not current_user.is_admin:
+                flash("Удаление версий доступно только администратору.", "danger")
+                return redirect(url_for("station_bp.database_versions",
+                                        page=page,
+                                        per_page=per_page,
+                                        version_filter=version_filter,
+                                        sort_by=sort_by,
+                                        sort_dir=sort_dir))
             try:
                 result = delete_version_service(version_delete, user)
                 deleted_ids = {int(item) for item in version_delete if item}
                 
                 # Формируем подробное сообщение об удалении
                 message_parts = [f"Удалено версий: {result['deleted']}"]
-                if result.get('deleted_names'):
-                    message_parts.append(f"Названия: {', '.join(result['deleted_names'])}")
+                if result.get('deleted_version_numbers'):
+                    message_parts.append(f"Номера версий: {', '.join(result['deleted_version_numbers'])}")
                 if result.get('total_data_deleted', 0) > 0:
                     message_parts.append(f"Удалено записей данных: {result['total_data_deleted']}")
                 if result.get('not_found'):
@@ -110,7 +119,7 @@ def database_versions():
         
         # Обновление данных в базе
         try:
-            if not version_ids or not version_names or not version_numbers:
+            if not version_ids or not version_numbers:
                 if not deleted_ids:
                     flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("station_bp.database_versions", 
@@ -122,14 +131,13 @@ def database_versions():
            
            # Формирование данных для обновления
             version_data = []
-            for vid, vnum, vname, vdesc in zip(version_ids, version_numbers, version_names, version_descriptions):
+            for vid, vnum, vdesc in zip(version_ids, version_numbers, version_descriptions):
                 if vid and int(vid) in deleted_ids:
                     continue
                 version_number = (vnum or "").strip()
                 version_data.append({
                     "version_id": int(vid) if vid else None,
                     "version_number": version_number or None,
-                    "name": vname.strip(),
                     "description": vdesc.strip() if vdesc else "",
                 })
             
@@ -235,11 +243,11 @@ def add_database_version():
         ('empty', 'Новая пустая версия')
     ]
     form.parent_version_id.choices = base_parent_choices + [
-        (str(v.id), f"Версия {v.version_number}: {v.name}")
+        (str(v.id), f"Версия {v.version_number}")
         for v in all_versions
     ]
     form.refdata_source_version_id.choices = [('', 'Выберите версию для копирования')] + [
-        (str(v.id), f"Версия {v.version_number}: {v.name}")
+        (str(v.id), f"Версия {v.version_number}")
         for v in all_versions
     ]
 
@@ -336,7 +344,6 @@ def add_database_version():
             
             payload = [{
                 "version_number": (form.version_number.data or "").strip(),
-                "name": (form.name.data or "").strip(),
                 "description": (form.description.data or "").strip(),
                 "parent_version_id": parent_id,
                 "refdata_source_version_id": refdata_source_id,
@@ -353,13 +360,13 @@ def add_database_version():
                     extend_years = form.extend_years.data or 0
                     if extend_years and extend_years > 0:
                         flash(
-                            f"Новая версия успешно создана на основе версии {parent.version_number}: {parent.name}. "
+                            f"Новая версия успешно создана на основе версии {parent.version_number}. "
                             f"Данные скопированы и период продлён на {extend_years} лет.",
                             "success",
                         )
                     else:
                         flash(
-                            f"Новая версия успешно создана на основе версии {parent.version_number}: {parent.name}. Данные скопированы.",
+                            f"Новая версия успешно создана на основе версии {parent.version_number}. Данные скопированы.",
                             "success",
                         )
                 else:
@@ -367,7 +374,7 @@ def add_database_version():
             elif create_mode == 'empty' and refdata_source_id:
                 ref_parent = DatabaseVersion.query.get(refdata_source_id)
                 if ref_parent:
-                    flash(f"Новая версия создана как пустая, но справочники скопированы из версии {ref_parent.version_number}: {ref_parent.name}.", "success")
+                    flash(f"Новая версия создана как пустая, но справочники скопированы из версии {ref_parent.version_number}.", "success")
                 else:
                     flash("Новая версия успешно добавлена.", "success")
             elif create_mode == 'empty':
@@ -458,6 +465,7 @@ def export_database_versions():
 
 @station_bp.route("/set_active_version/<int:version_id>", methods=["POST"], endpoint="set_active_version_route_v2")
 @login_required
+@roles_required(["admin"])
 def set_active_version_route(version_id):
     """Маршрут для установки активной версии БД."""
     
@@ -465,7 +473,7 @@ def set_active_version_route(version_id):
     
     try:
         version = set_active_version(version_id, user)
-        flash(f"Версия '{version.name}' (v{version.version_number}) установлена как активная.", "success")
+        flash(f"Версия v{version.version_number} установлена как активная.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
@@ -477,6 +485,7 @@ def set_active_version_route(version_id):
 
 @station_bp.route("/save_version_snapshot/<int:version_id>", methods=["POST"], endpoint="save_version_snapshot_route_v2")
 @login_required
+@roles_required(["admin"])
 def save_version_snapshot_route(version_id):
     """Маршрут для сохранения снимка версии БД."""
     
@@ -484,7 +493,7 @@ def save_version_snapshot_route(version_id):
     
     try:
         version = save_version_snapshot(version_id, user)
-        flash(f"Снимок версии '{version.name}' (v{version.version_number}) успешно сохранен.", "success")
+        flash(f"Снимок версии v{version.version_number} успешно сохранен.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
@@ -496,6 +505,7 @@ def save_version_snapshot_route(version_id):
 
 @station_bp.route("/load_version_snapshot/<int:version_id>", methods=["POST"], endpoint="load_version_snapshot_route_v2")
 @login_required
+@roles_required(["admin"])
 def load_version_snapshot_route(version_id):
     """Маршрут для загрузки снимка версии БД."""
     
@@ -503,7 +513,7 @@ def load_version_snapshot_route(version_id):
     
     try:
         version = load_version_snapshot(version_id, user)
-        flash(f"Снимок версии '{version.name}' (v{version.version_number}) успешно загружен.", "success")
+        flash(f"Снимок версии v{version.version_number} успешно загружен.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
@@ -623,7 +633,7 @@ def set_session_version_route(version_id):
             set_session_version(version_id)
             flash(
                 f"Для пользователя {user} установлена версия БД "
-                f"«{version.name}» (v{version.version_number}).",
+                f"v{version.version_number}.",
                 "success",
             )
     except Exception as e:
@@ -643,7 +653,9 @@ from collections import Counter
 from datetime import datetime
 import os
 
-from flask_login import login_required
+from flask_login import login_required, current_user
+
+from app.auth.routes.decorators import roles_required
 
 # Блюпринт
 from app.generation.routes.stations import station_bp
@@ -715,19 +727,26 @@ def database_versions():
         # Получение данных из формы
         version_ids         = request.form.getlist("version_ids[]")
         version_numbers     = request.form.getlist("version_numbers[]")
-        version_names       = request.form.getlist("version_names[]")
         version_descriptions= request.form.getlist("version_descriptions[]")
         version_delete      = request.form.getlist("version_delete[]")
   
-        # Удаление записей
+        # Удаление записей (только для admin)
         if version_delete:
+            if not current_user.is_admin:
+                flash("Удаление версий доступно только администратору.", "danger")
+                return redirect(url_for("station_bp.database_versions",
+                                        page=page,
+                                        per_page=per_page,
+                                        version_filter=version_filter,
+                                        sort_by=sort_by,
+                                        sort_dir=sort_dir))
             try:
                 result = delete_version_service(version_delete, user)
                 
                 # Формируем подробное сообщение об удалении
                 message_parts = [f"Удалено версий: {result['deleted']}"]
-                if result.get('deleted_names'):
-                    message_parts.append(f"Названия: {', '.join(result['deleted_names'])}")
+                if result.get('deleted_version_numbers'):
+                    message_parts.append(f"Номера версий: {', '.join(result['deleted_version_numbers'])}")
                 if result.get('total_data_deleted', 0) > 0:
                     message_parts.append(f"Удалено записей данных: {result['total_data_deleted']}")
                 if result.get('not_found'):
@@ -749,7 +768,7 @@ def database_versions():
         
         # Обновление данных в базе
         try:
-            if not version_ids or not version_names or not version_numbers:
+            if not version_ids or not version_numbers:
                 flash("Данные для обновления отсутствуют.", "info")
                 return redirect(url_for("station_bp.database_versions", 
                                         page=page, 
@@ -760,12 +779,11 @@ def database_versions():
            
            # Формирование данных для обновления
             version_data = []
-            for vid, vnum, vname, vdesc in zip(version_ids, version_numbers, version_names, version_descriptions):
+            for vid, vnum, vdesc in zip(version_ids, version_numbers, version_descriptions):
                 version_number = (vnum or "").strip()
                 version_data.append({
                     "version_id": int(vid) if vid else None,
                     "version_number": version_number or None,
-                    "name": vname.strip(),
                     "description": vdesc.strip() if vdesc else "",
                 })
             
@@ -854,11 +872,11 @@ def add_database_version():
         ('empty', 'Новая пустая версия')
     ]
     form.parent_version_id.choices = base_parent_choices + [
-        (str(v.id), f"Версия {v.version_number}: {v.name}")
+        (str(v.id), f"Версия {v.version_number}")
         for v in all_versions
     ]
     form.refdata_source_version_id.choices = [('', 'Выберите версию для копирования')] + [
-        (str(v.id), f"Версия {v.version_number}: {v.name}")
+        (str(v.id), f"Версия {v.version_number}")
         for v in all_versions
     ]
 
@@ -931,7 +949,6 @@ def add_database_version():
             
             payload = [{
                 "version_number": (form.version_number.data or "").strip(),
-                "name": (form.name.data or "").strip(),
                 "description": (form.description.data or "").strip(),
                 "parent_version_id": parent_id,
                 "refdata_source_version_id": refdata_source_id,
@@ -950,7 +967,7 @@ def add_database_version():
             elif create_mode == 'empty' and refdata_source_id:
                 ref_parent = DatabaseVersion.query.get(refdata_source_id)
                 if ref_parent:
-                    flash(f"Новая версия создана как пустая, но справочники скопированы из версии {ref_parent.version_number}: {ref_parent.name}.", "success")
+                    flash(f"Новая версия создана как пустая, но справочники скопированы из версии {ref_parent.version_number}.", "success")
                 else:
                     flash("Новая версия успешно добавлена.", "success")
             elif create_mode == 'empty':
@@ -1047,7 +1064,7 @@ def set_active_version_route(version_id):
     
     try:
         version = set_active_version(version_id, user)
-        flash(f"Версия '{version.name}' (v{version.version_number}) установлена как активная.", "success")
+        flash(f"Версия v{version.version_number} установлена как активная.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
@@ -1059,6 +1076,7 @@ def set_active_version_route(version_id):
 
 @station_bp.route("/save_version_snapshot/<int:version_id>", methods=["POST"])
 @login_required
+@roles_required(["admin"])
 def save_version_snapshot_route(version_id):
     """Маршрут для сохранения снимка версии БД."""
     
@@ -1066,7 +1084,7 @@ def save_version_snapshot_route(version_id):
     
     try:
         version = save_version_snapshot(version_id, user)
-        flash(f"Снимок версии '{version.name}' (v{version.version_number}) успешно сохранен.", "success")
+        flash(f"Снимок версии v{version.version_number} успешно сохранен.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:
@@ -1078,6 +1096,7 @@ def save_version_snapshot_route(version_id):
 
 @station_bp.route("/load_version_snapshot/<int:version_id>", methods=["POST"])
 @login_required
+@roles_required(["admin"])
 def load_version_snapshot_route(version_id):
     """Маршрут для загрузки снимка версии БД."""
     
@@ -1085,7 +1104,7 @@ def load_version_snapshot_route(version_id):
     
     try:
         version = load_version_snapshot(version_id, user)
-        flash(f"Снимок версии '{version.name}' (v{version.version_number}) успешно загружен.", "success")
+        flash(f"Снимок версии v{version.version_number} успешно загружен.", "success")
     except ValueError as e:
         flash(str(e), "danger")
     except Exception as e:

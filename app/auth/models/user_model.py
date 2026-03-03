@@ -11,8 +11,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from config import SCHEMA_AUTH, SCHEMA_REFDATA
 from app.auth.models.user_role_model import user_roles
+from app.common.models.audit_mixin import AuditMixin
 
-class User(db.Model, UserMixin):
+class User(db.Model, UserMixin, AuditMixin):
     __tablename__ = 'users'
     __table_args__ = {"schema": SCHEMA_AUTH}
 

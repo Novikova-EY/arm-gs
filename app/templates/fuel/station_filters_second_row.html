@@ -6,7 +6,6 @@
 
             <!-- Левая часть (экспорт) -->
             <div class="d-flex gap-2">
-
                 <!-- Экспорт в Excel -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_groups') }}" id="exportExcelFormFull">
                     {% for key, value in request.args.items() %}
@@ -21,25 +20,51 @@
             <!-- Правая часть (импорт) -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 {% if current_user.has_admin %}
-                <!-- Импорт -->
-                <form action="{{ url_for('station_bp.import_station_list_from_excel_routes') }}"
+                {% if show_fuel_params_import|default(false) %}
+                <!-- Загрузка данных БД Топливо в EquipmentGroupFuelParam (связь по numb1120 = EquipmentGroupSet.numb) -->
+                <form action="{{ url_for('fuel_bp.import_equipment_group_fuel_params') }}"
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center">
                     {{ form.csrf_token }}
-                    <input type="file" name="file" class="form-control me-2">
-                    <button type="submit" class="btn btn-outline-danger" style="white-space: nowrap;">
-                        Импорт
-                    </button>
-                </form>
-                <form action="{{ url_for('fuel_bp.import_stations_equipment_groups') }}"
-                    method="POST" enctype="multipart/form-data"
-                    class="d-flex align-items-center">
-                    {{ form.csrf_token }}
-                    <input type="file" name="file" class="form-control me-2">
+                    <input type="hidden" name="year" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="form-control me-2" accept=".xlsx,.xls">
                     <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;">
-                        Загрузка групп оборудования
+                        Загрузка данных БД Топливо
                     </button>
                 </form>
+                {% else %}
+                <!-- Загрузка данных БД Топливо (страница groups или turbines) -->
+                <form action="{{ import_fuel_db_action|default(url_for('fuel_bp.import_fuel_db_equipment_groups')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importFuelDbForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="redirect_to" value="{{ import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') }}">
+                    {% for key, value in request.args.items() %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls" style="max-width: 220px;" required>
+                    <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelDbBtn">
+                        Загрузка данных БД Топливо
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importFuelDbForm');
+                    var btn = document.getElementById('importFuelDbBtn');
+                    if (form && btn) {
+                        form.addEventListener('submit', function() {
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% endif %}
                 {% endif %}
             </div>
 

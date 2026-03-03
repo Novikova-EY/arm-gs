@@ -286,6 +286,7 @@ def create_app():
         from app.generation.models.document import (
             document_model,
         )
+        from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import (
             fue_equipment_group_set_model,
             fue_equipment_group_set_station_model,
@@ -521,6 +522,11 @@ def create_app():
     # Фильтр форматирования чисел
     from app.common.services.help_services import format_decimal_for_display
 
+    @app.template_filter("get_attr")
+    def get_attr_filter(obj, attr):
+        """Возвращает getattr(obj, attr, None) для динамического доступа к атрибутам в шаблонах."""
+        return getattr(obj, attr, None)
+
     @app.template_filter("format_decimal")
     def format_decimal_filter(value):
         from flask import request
@@ -638,6 +644,19 @@ def create_app():
         return db.session.get(User, int(user_id))
     
     # Error handlers для детального логирования
+    @app.errorhandler(404)
+    def not_found(error):
+        """Логирование 404 для отладки (например, при загрузке из Excel)."""
+        from flask import has_request_context
+        if has_request_context():
+            app.logger.warning(
+                "404 Not Found: %s %s (Referer: %s)",
+                request.method,
+                request.url,
+                request.referrer or "(none)",
+            )
+        return error
+
     @app.errorhandler(500)
     def internal_error(error):
         """Обработчик Internal Server Error."""
@@ -666,9 +685,13 @@ def create_app():
     def handle_exception(error):
         """Обработчик всех необработанных исключений."""
         import traceback
+        from flask import has_request_context
+
         app.logger.error('='*60)
         app.logger.error(f'Unhandled Exception: {type(error).__name__}')
         app.logger.error(f'Message: {str(error)}')
+        if has_request_context():
+            app.logger.error(f'Request URL: {request.method} {request.url}')
         app.logger.error('Traceback:')
         app.logger.error(traceback.format_exc())
         app.logger.error('='*60)

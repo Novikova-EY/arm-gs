@@ -1,3 +1,6 @@
 {# Фильтры для страницы "Группы оборудования электростанций" #}
 {% set filters_action = url_for('fuel_bp.stations_equipment_groups') %}
+{% set import_redirect_endpoint = 'fuel_bp.stations_equipment_groups' %}
+{% set import_fuel_db_action = url_for('fuel_bp.import_fuel_db_equipment_groups') %}
+{% set hide_year_range = true %}
 {% include 'fuel/station_filters.html' %}

@@ -7,9 +7,10 @@ from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 
-class PGUMachine(db.Model, VersionedModelMixin):
+class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'pgu_machines'
     __table_args__ = (
         Index('ix_pgu_machine_id_parent_machine', 'id_parent_machine'),
@@ -100,3 +101,21 @@ class PGUMachine(db.Model, VersionedModelMixin):
 
     def __repr__(self) -> str:
         return f"<PGUMachine id={self.id} name={self.machine_name!r} parent_id={self.id_parent_machine}>"
+
+    @property
+    def decompressing_display(self) -> str | int | None:
+        """
+        Отображаемое значение для колонки 'Год вывода' на station_details:
+        либо date_decompressing_expected, либо год из date_decompressing_fact (01.01.год → год-1).
+        """
+        from app.common.services.help_services import convert_to_date
+
+        if self.date_decompressing_fact:
+            dt = convert_to_date(self.date_decompressing_fact)
+            if dt is not None:
+                if dt.month == 1 and dt.day == 1:
+                    return dt.year - 1
+                return dt.year
+        if self.date_decompressing_expected is not None:
+            return self.date_decompressing_expected
+        return None

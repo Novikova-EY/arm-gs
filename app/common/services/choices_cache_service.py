@@ -3,8 +3,11 @@
 Универсальный сервис кэширования для выпадающих списков с фильтрацией по версии БД.
 """
 
+import logging
 from functools import lru_cache
 from typing import List, Tuple, Any
+
+logger = logging.getLogger(__name__)
 from app.extensions import db
 from app.common.services.database_version_filter import (
     filter_by_db_version,
@@ -57,12 +60,10 @@ class ChoicesCacheService:
         versioned_key = cls._build_versioned_cache_key(cache_key)
 
         if versioned_key not in cls._cache:
-            print(f"[CHOICES_CACHE] Загружаем {versioned_key} из БД (с фильтрацией по версии)")
+            logger.debug("[CHOICES_CACHE] Загружаем %s из БД (с фильтрацией по версии)", versioned_key)
             query = model_class.query.order_by(order_by_field)
             query = filter_by_db_version(query, model_class)
             cls._cache[versioned_key] = [(item.id, getattr(item, name_field)) for item in query.all()]
-        else:
-            print(f"[CHOICES_CACHE] Используем кэшированные {versioned_key}: {len(cls._cache[versioned_key])} записей")
             
         return cls._cache[versioned_key]
     
@@ -114,10 +115,10 @@ class ChoicesCacheService:
             keys_to_delete = [key for key in cls._cache.keys() if key.startswith(f"{cache_key}_ver_")]
             for key in keys_to_delete:
                 cls._cache.pop(key, None)
-                print(f"[CHOICES_CACHE] Очищен кэш для {key}")
+                logger.debug("[CHOICES_CACHE] Очищен кэш для %s", key)
         else:
             cls._cache.clear()
-            print(f"[CHOICES_CACHE] Очищен весь кэш")
+            logger.debug("[CHOICES_CACHE] Очищен весь кэш")
     
     @classmethod
     def invalidate_cache(cls, cache_key: str):

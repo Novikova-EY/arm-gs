@@ -11,17 +11,25 @@
         {{ form.hidden_tag() }}
 
         <!-- Скрытые поля возврата -->
-        <input type="hidden" name="page"                  value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="page"                  value="{{ page if page else 1 }}">
         <input type="hidden" name="per_page"              value="{{ per_page }}">
         <input type="hidden" name="sort_by"               value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"              value="{{ sort_dir }}">
-        <input type="hidden" name="technology_type_filter"   value="{{ technology_type_filter }}">
+        <input type="hidden" name="technology_type_filter"   value="{{ technology_type_filter or '' }}">
 
         <div class="mb-3">
             <label for="name" class="form-label">Тип технологии</label>
             {{ form.name(class="form-control", id="name") }}
             {% if form.name.errors %}
                 <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="display_order" class="form-label">Порядок отображения</label>
+            {{ form.display_order(class="form-control", id="display_order", type="number", min="0", placeholder="") }}
+            {% if form.display_order.errors %}
+                <div class="text-danger">{{ form.display_order.errors|join(', ') }}</div>
             {% endif %}
         </div>
 

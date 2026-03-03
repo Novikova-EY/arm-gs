@@ -23,7 +23,6 @@ from app.common.services.help_services import (
 )
 from app.common.services.tranzaction_services import (
     _commit_with_retry,
-    _locked_get,
     no_autoflush,
     quick_fix_seq,
 )
@@ -39,6 +38,17 @@ from app.logs.services.logging_service import log_to_db
 from app.logs.models.log_model import Log
 
 
+def _is_in_failed_sql_transaction(exc: Exception) -> bool:
+    """Проверяет, является ли исключение InFailedSqlTransaction (25P02) PostgreSQL."""
+    while exc:
+        if getattr(exc, "pgcode", None) == "25P02":
+            return True
+        if "InFailedSqlTransaction" in type(exc).__name__ or "25P02" in str(exc):
+            return True
+        exc = getattr(exc, "__cause__", None) or getattr(exc, "orig", None)
+    return False
+
+
 def version_query(
         version_filter=None, 
         sort_by="version_number", 
@@ -46,7 +56,7 @@ def version_query(
     """ Базовый запрос для выборки версий с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "version_number", "name", "created_at", "updated_at"}
+    allowed_sort_by = {"id", "version_number", "created_at", "updated_at"}
     sort_by = sort_by if sort_by in allowed_sort_by else "version_number"
 
     sort_dir = (sort_dir or "desc").lower()
@@ -61,22 +71,22 @@ def version_query(
     if version_filter:
         query = query.filter(
             or_(
-                DatabaseVersion.name.ilike(f"%{version_filter}%"),
+                DatabaseVersion.version_number.ilike(f"%{version_filter}%"),
                 DatabaseVersion.description.ilike(f"%{version_filter}%")
             )
         )
 
     # Сортировка
-    if sort_by == "name":
-        sort_col = DatabaseVersion.name
+    if sort_by == "version_number":
+        sort_col = DatabaseVersion.version_number
     elif sort_by == "created_at":
         sort_col = DatabaseVersion.created_at
     elif sort_by == "updated_at":
         sort_col = DatabaseVersion.updated_at
-    elif sort_by == "version_number":
-        sort_col = DatabaseVersion.version_number
-    else:
+    elif sort_by == "id":
         sort_col = DatabaseVersion.id
+    else:
+        sort_col = DatabaseVersion.version_number
 
     query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
@@ -133,17 +143,7 @@ def update_version_service(data, user):
         for record in data:
             version_id = record.get("version_id")
             version_number = _validate_version_number(record.get("version_number"))
-            name = (record.get("name") or "").strip()
             description = (record.get("description") or "").strip()
-
-            if not name:
-                log_to_db(
-                    user, 
-                    "Ошибка валидации", 
-                    f"Запись: {record}", 
-                    entity_type="database_version",
-                    entity_id=version_id)
-                raise ValueError(f"Поле 'name' обязательно для заполнения.")
 
             obj = db.session.get(DatabaseVersion, version_id)
             if not obj:
@@ -155,14 +155,6 @@ def update_version_service(data, user):
                     entity_id=version_id)
                 raise ValueError(f"Запись с ID «{version_id}» не найдена.")
 
-            # Проверка уникальности name
-            if name != (obj.name or ""):
-                q = (DatabaseVersion.query
-                     .filter(DatabaseVersion.name == name,
-                             DatabaseVersion.id != version_id))
-                if q.first():
-                    raise ValueError(f"Версия с названием «{name}» уже существует.")
-
             # Проверка уникальности version_number
             if version_number != obj.version_number:
                 q = (DatabaseVersion.query
@@ -172,10 +164,6 @@ def update_version_service(data, user):
                     raise ValueError(f"Версия с номером «{version_number}» уже существует.")
 
             changes = {}
-
-            if name != (obj.name or ""):
-                changes["Название"] = f"{_dash(obj.name)} → {name}"
-                obj.name = name
 
             if version_number != obj.version_number:
                 changes["Номер версии"] = f"{obj.version_number} → {version_number}"
@@ -189,7 +177,7 @@ def update_version_service(data, user):
             if changes:
                 log_to_db(
                     user, 
-                    f"Обновлена версия: {name}",
+                    f"Обновлена версия: {version_number}",
                     f"Изменения = {changes}", 
                     entity_type="database_version", 
                     entity_id=version_id)
@@ -260,25 +248,10 @@ def add_version_service(data, user):
         with db.session.no_autoflush:
             for record in data:
                 version_number = _validate_version_number(record.get("version_number"))
-                name = (record.get("name") or "").strip()
                 description = (record.get("description") or "").strip()
                 parent_version_id = record.get("parent_version_id")
                 refdata_source_version_id = record.get("refdata_source_version_id")
                 extend_years = record.get("extend_years")
-
-                if not name:
-                    log_to_db(
-                        user, 
-                        "Ошибка валидации", 
-                        f"Запись: {record}", 
-                        entity_type="database_version")
-                    raise ValueError("Каждая запись должна содержать 'name'.")
-
-                dup_name = (DatabaseVersion.query
-                            .filter(DatabaseVersion.name == name)
-                            .with_for_update().first())
-                if dup_name:
-                    raise ValueError(f"Версия с названием «{name}» уже существует.")
 
                 dup_number = (DatabaseVersion.query
                               .filter(DatabaseVersion.version_number == version_number)
@@ -299,10 +272,10 @@ def add_version_service(data, user):
 
                 obj = DatabaseVersion(
                     version_number=version_number,
-                    name=name,
                     description=description if description else None,
                     parent_version_id=parent_version_id if parent_version_id else None
                 )
+                obj.created_by = user
                 db.session.add(obj)
                 db.session.flush()
                 
@@ -323,7 +296,7 @@ def add_version_service(data, user):
                 log_to_db(
                     user, 
                     "Создана версия БД", 
-                    f"Номер: {version_number}, Название: {name}, ID: {obj.id}, Родительская версия: {parent_version_id or 'Нет'}",
+                    f"Номер: {version_number}, ID: {obj.id}, Родительская версия: {parent_version_id or 'Нет'}",
                     entity_type="database_version", 
                     entity_id=obj.id)
 
@@ -338,9 +311,12 @@ def add_version_service(data, user):
             extend_years = extend_years_list[idx] if idx < len(extend_years_list) else None
             if parent_id:
                 try:
-                    _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
-                    # Копируем данные годов из родительской версии
+                    # Копируем данные годов первыми — до массового копирования справочников.
+                    # Если _copy_version_data_staged падает на одной из таблиц (несмотря на SAVEPOINT),
+                    # транзакция может оказаться в состоянии aborted, и последующие запросы
+                    # получают InFailedSqlTransaction. Копирование year_features до этого устраняет проблему.
                     copy_year_data_from_version(parent_id, new_version_id, user, do_commit=False)
+                    _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
 
                     # При необходимости — продлеваем период и размножаем данные последнего года на новые годы
                     if extend_years is not None and extend_years > 0:
@@ -364,6 +340,7 @@ def add_version_service(data, user):
                     raise ValueError(f"Ошибка копирования данных: {e}") from e
             elif refdata_source_id:
                 try:
+                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                     _copy_version_data_staged(
                         refdata_source_id,
                         new_version_id,
@@ -371,7 +348,6 @@ def add_version_service(data, user):
                         do_commit=False,
                         copy_mode="refdata_only"
                     )
-                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                 except Exception as e:
                     log_to_db(
                         user,
@@ -391,7 +367,12 @@ def add_version_service(data, user):
                 elif "2024" in str(data[0].get("name", "")):
                     target_year = 2024
                 
-                create_year_version_data(new_version_id, target_year, user)
+                if not create_year_version_data(new_version_id, target_year, user):
+                    db.session.rollback()
+                    raise ValueError(
+                        "Не удалось создать базовые данные годов для пустой версии. "
+                        "Проверьте логи."
+                    )
         
         # Исторический снимок территорий для каждой созданной версии (в рамках общей транзакции)
         from app.refdata.services.history.refdata_history_services import (
@@ -484,9 +465,8 @@ def add_version_service(data, user):
             extend_years = extend_years_list[idx] if idx < len(extend_years_list) else None
             if parent_id:
                 try:
-                    _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
-                    # Копируем данные годов из родительской версии
                     copy_year_data_from_version(parent_id, new_version_id, user, do_commit=False)
+                    _copy_version_data_staged(parent_id, new_version_id, user, do_commit=False)
 
                     if extend_years is not None and extend_years > 0:
                         extend_version_period_by_copying_last_year(
@@ -508,6 +488,7 @@ def add_version_service(data, user):
                     raise ValueError(f"Ошибка копирования данных: {e}") from e
             elif refdata_source_id:
                 try:
+                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                     _copy_version_data_staged(
                         refdata_source_id,
                         new_version_id,
@@ -515,7 +496,6 @@ def add_version_service(data, user):
                         do_commit=False,
                         copy_mode="refdata_only"
                     )
-                    copy_year_data_from_version(refdata_source_id, new_version_id, user, do_commit=False)
                 except Exception as e:
                     log_to_db(
                         user,
@@ -534,7 +514,12 @@ def add_version_service(data, user):
                 elif "2024" in str(data[0].get("name", "")):
                     target_year = 2024
                 
-                create_year_version_data(new_version_id, target_year, user)
+                if not create_year_version_data(new_version_id, target_year, user):
+                    db.session.rollback()
+                    raise ValueError(
+                        "Не удалось создать базовые данные годов для пустой версии. "
+                        "Проверьте логи."
+                    )
         
         # Исторический снимок территорий для каждой созданной версии (в рамках общей транзакции)
         from app.refdata.services.history.refdata_history_services import (
@@ -612,10 +597,22 @@ def add_version_service(data, user):
         return created_ids[0] if len(created_ids) == 1 else created_ids
     except Exception as e:
         db.session.rollback()
+        err_msg = str(e)
+        # InFailedSqlTransaction (25P02) — симптом: транзакция уже прервана более ранней ошибкой
+        if _is_in_failed_sql_transaction(e):
+            log_to_db(
+                user,
+                "Ошибка сохранения новой версии БД (транзакция прервана ранее)",
+                f"{err_msg}. Проверьте логи — первая ошибка могла возникнуть при копировании таблиц.",
+                entity_type="database_version")
+            raise ValueError(
+                f"Ошибка сохранения новой версии БД: транзакция прервана на предыдущем шаге. "
+                f"Исходная ошибка: {err_msg}. Проверьте логи и целостность данных версии-источника."
+            ) from e
         log_to_db(
             user, 
             "Ошибка сохранения новой версии БД", 
-            str(e), 
+            err_msg, 
             entity_type="database_version")
         raise ValueError(f"Ошибка сохранения новой версии БД: {e}") from e
 
@@ -644,7 +641,8 @@ def _get_max_generation_data_year(version_id: int) -> Optional[int]:
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_powers     WHERE database_version_id = :vid), 0),
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.pgu_machine_powers WHERE database_version_id = :vid), 0),
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_fuels      WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_tes_types  WHERE database_version_id = :vid), 0)
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_tes_types  WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_names     WHERE database_version_id = :vid), 0)
         ) AS max_year
     """)
     try:
@@ -763,6 +761,13 @@ def extend_version_period_by_copying_last_year(
             "key_cols": ["id_machine", "id_tes_type"],
             "select_cols": ["id_machine", "id_tes_type"],
             "insert_cols": ["year_number", "id_machine", "id_tes_type", "database_version_id"],
+        },
+        # machine_names: названия агрегатов по годам
+        {
+            "table": f"{SCHEMA_GENERATION}.machine_names",
+            "key_cols": ["id_machine"],
+            "select_cols": ["id_machine", "name"],
+            "insert_cols": ["year_number", "id_machine", "name", "database_version_id"],
         },
     ]
 
@@ -1016,7 +1021,6 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         (ref_schema, 'gs_condition_types'),
         (ref_schema, 'gs_technology_types'),
         (ref_schema, 'gs_technology_availabilities'),
-        (ref_schema, 'gs_equipment_groups'),
         (ref_schema, 'gs_energy_system_types'),
         (ref_schema, 'gs_fuel_categories'),
         (ref_schema, 'gs_fuel_types'),
@@ -1060,6 +1064,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     stage2_tables = [
         {
             'schema': ref_schema,
+            'table': 'gs_equipment_groups',
+            'dependencies': [
+                {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
+                {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'}
+            ]
+        },
+        {
+            'schema': ref_schema,
             'table': 'gs_union_energy_systems',
             'dependencies': []  # Независимая, но копируем во 2 этапе для логической группировки
         },
@@ -1084,6 +1096,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     for table_info in stage2_tables:
         schema = table_info['schema']
         table = table_info['table']
+        dependencies = table_info.get('dependencies', [])
         
         try:
             with db.session.begin_nested():
@@ -1092,6 +1105,17 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 if mapping:
                     id_mappings[f"{schema}.{table}"] = mapping
                     current_app.logger.info(f"✅ Скопирована таблица {schema}.{table}: {copied} записей")
+                
+                # Обновляем foreign key согласно зависимостям
+                for dep in dependencies:
+                    fk_column = dep['fk']
+                    ref_table = dep['ref_table']
+                    if ref_table in id_mappings:
+                        ref_mapping = id_mappings[ref_table]
+                        _update_foreign_keys_in_table(
+                            schema, table, fk_column, ref_mapping, target_version_id, user
+                        )
+                        current_app.logger.info(f"🔄 Обновлены FK {schema}.{table}.{fk_column} -> {ref_table}")
         except Exception as e:
             current_app.logger.error(f"Ошибка копирования таблицы {schema}.{table}: {e}")
             log_to_db(
@@ -1254,6 +1278,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 'dependencies': [
                     {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.station_groups'},
                     {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'},
+                    {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_regional_energy_systems'},
                     {'fk': 'id_energy_unit', 'ref_table': f'{ref_schema}.gs_energy_units'},
                     {'fk': 'id_station_type', 'ref_table': f'{ref_schema}.gs_station_types'},
                     {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'}
@@ -1427,6 +1452,13 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 'dependencies': [
                     {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
                     {'fk': 'id_tes_type', 'ref_table': f'{ref_schema}.gs_tes_types'}
+                ]
+            },
+            {
+                'schema': gen_schema,
+                'table': 'machine_names',
+                'dependencies': [
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
                 ]
             },
             {
@@ -1954,6 +1986,13 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         },
         {
             'schema': gen_schema,
+            'table': 'machine_names',
+            'dependencies': [
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
+            ]
+        },
+        {
+            'schema': gen_schema,
             'table': 'pgu_machines',
             'dependencies': [
                 {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.machines'},
@@ -2192,7 +2231,6 @@ def _update_foreign_keys_in_table(schema, table, fk_column, ref_mapping, target_
                     WHERE {schema}.{table}.database_version_id = :target_version_id
                       AND {schema}.{table}.{fk_column} = t.old_fk
                 """)
-                
                 result = db.session.execute(update_query, {"target_version_id": target_version_id})
                 updated_count = result.rowcount
                 
@@ -2219,6 +2257,9 @@ def _update_foreign_keys_in_table(schema, table, fk_column, ref_mapping, target_
             entity_type="database_version",
             entity_id=target_version_id
         )
+        # Важно: пробрасываем исключение, иначе транзакция остаётся в состоянии aborted
+        # и последующие запросы падают с InFailedSqlTransaction
+        raise
 
 
 def _copy_version_data(source_version_id, target_version_id, user, do_commit=True):
@@ -2252,6 +2293,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         'machine_powers',            # 7. Мощности машин (зависят от машин)
         'machine_fuels',             # 8. Топливо машин (зависят от машин)
         'machine_tes_types',         # 9. Типы ТЭС машин (зависят от машин)
+        'machine_names',             # 9a. Названия агрегатов по годам (зависят от машин)
         'pgu_machines',              # 10. ПГУ машины (зависят от машин)
         'pgu_machine_powers',        # 11. Мощности ПГУ машин (зависят от ПГУ машин)
         'boilers',                   # 12. Котлы (зависят от станций)
@@ -3487,7 +3529,9 @@ def _delete_version_data_staged(version_id, user):
         (SCHEMA_GENERATION, 'machine_powers'),
         (SCHEMA_GENERATION, 'machine_fuels'),
         (SCHEMA_GENERATION, 'machine_tes_types'),
-        (SCHEMA_GENERATION, 'pgu_machines')
+        (SCHEMA_GENERATION, 'machine_names'),
+        (SCHEMA_GENERATION, 'pgu_machines'),
+        (SCHEMA_FUEL, 'gs_fue_machine_fuel_param'),  # Топливные параметры агрегатов
     ]
     
     # ЭТАП 6: Таблицы, зависящие от stations
@@ -3495,6 +3539,7 @@ def _delete_version_data_staged(version_id, user):
         (SCHEMA_GENERATION, 'machines'),
         (SCHEMA_FUEL, 'gs_fue_equipment_group_set_stations'),
         (SCHEMA_FUEL, 'gs_fue_equipment_group_sets'),
+        (SCHEMA_FUEL, 'gs_fue_equipment_group_fuel_param'),  # Параметры топлива групп оборудования
         (SCHEMA_GENERATION, 'station_powers'),
         (SCHEMA_GENERATION, 'boilers')
     ]
@@ -3505,43 +3550,49 @@ def _delete_version_data_staged(version_id, user):
     ]
     
     # ЭТАП 4: Таблицы с зависимостями от ЭТАПОВ 1-3
+    # Таблицы refdata после миграции ff9f0f8940c8 имеют префикс gs_
     stage4_tables = [
-        (SCHEMA_REFDATA, 'energy_areas'),
-        (SCHEMA_REFDATA, 'energy_units')
+        (SCHEMA_REFDATA, 'gs_energy_areas'),
+        (SCHEMA_REFDATA, 'gs_energy_units')
     ]
     
     # ЭТАП 3: Таблицы с зависимостями от ЭТАПОВ 1-2
     stage3_tables = [
         (SCHEMA_REFDATA, 'gs_regional_districts'),
-        (SCHEMA_REFDATA, 'regional_energy_systems')
+        (SCHEMA_REFDATA, 'gs_regional_energy_systems')
     ]
     
     # ЭТАП 2: Таблицы с зависимостями от ЭТАПА 1
     stage2_tables = [
-        (SCHEMA_REFDATA, 'union_energy_systems'),
-        (SCHEMA_REFDATA, 'synchronous_areas'),
-        (SCHEMA_REFDATA, 'energy_zones'),
-        (SCHEMA_REFDATA, 'federal_districts')
+        (SCHEMA_REFDATA, 'gs_union_energy_systems'),
+        (SCHEMA_REFDATA, 'gs_synchronous_areas'),
+        (SCHEMA_REFDATA, 'gs_energy_zones'),
+        (SCHEMA_REFDATA, 'gs_federal_districts')
     ]
     
     # ЭТАП 1: Полностью независимые таблицы (удаляем последними)
     stage1_tables = [
-        (SCHEMA_REFDATA, 'station_types'),
-        (SCHEMA_REFDATA, 'machine_types'),
-        (SCHEMA_REFDATA, 'tes_types'),
-        (SCHEMA_REFDATA, 'tes_machine_types'),
-        (SCHEMA_REFDATA, 'pgu_tes_machine_types'),
-        (SCHEMA_REFDATA, 'condition_types'),
-        (SCHEMA_REFDATA, 'technology_types'),
-        (SCHEMA_REFDATA, 'technology_availabilities'),
-        (SCHEMA_REFDATA, 'equipment_groups'),
-        (SCHEMA_REFDATA, 'energy_system_types'),
-        (SCHEMA_REFDATA, 'fuel_categories'),
-        (SCHEMA_REFDATA, 'fuel_types'),
-        (SCHEMA_REFDATA, 'fuels'),
+        (SCHEMA_REFDATA, 'gs_station_types'),
+        (SCHEMA_REFDATA, 'gs_machine_types'),
+        (SCHEMA_REFDATA, 'gs_tes_types'),
+        (SCHEMA_REFDATA, 'gs_tes_machine_types'),
+        (SCHEMA_REFDATA, 'gs_pgu_tes_machine_types'),
+        (SCHEMA_REFDATA, 'gs_condition_types'),
+        (SCHEMA_REFDATA, 'gs_technology_types'),
+        (SCHEMA_REFDATA, 'gs_technology_availabilities'),
+        (SCHEMA_REFDATA, 'gs_equipment_groups'),
+        (SCHEMA_REFDATA, 'gs_energy_system_types'),
+        (SCHEMA_REFDATA, 'gs_fuel_categories'),
+        (SCHEMA_REFDATA, 'gs_fuel_types'),
+        (SCHEMA_REFDATA, 'gs_fuels'),
         (SCHEMA_REFDATA, 'gs_companies'),
-        (SCHEMA_REFDATA, 'year_features'),  # Годы features теперь версионируются
-        (SCHEMA_REFDATA, 'years'),  # Годы теперь версионируются
+        (SCHEMA_REFDATA, 'gs_year_features'),
+        (SCHEMA_REFDATA, 'gs_years'),
+        (SCHEMA_REFDATA, 'gs_year_service'),  # Сервис управления годами СиПР
+        (SCHEMA_REFDATA, 'gs_refdata_entity_years'),  # История справочников — годы
+        (SCHEMA_REFDATA, 'gs_refdata_entities'),  # История справочников — сущности
+        (SCHEMA_REFDATA, 'gs_departments'),  # Подразделения
+        (SCHEMA_REFDATA, 'gs_business_units'),  # Бизнес-единицы
         (SCHEMA_GENERATION, 'station_groups'),
         (SCHEMA_GENERATION, 'documents_kommod')
     ]
@@ -3650,30 +3701,31 @@ def _delete_version_data_staged(version_id, user):
     current_app.logger.info("🔄 Удаление ассоциативных таблиц")
     
     try:
-        # Проверяем и удаляем ассоциативную таблицу regional_district_regional_energy_system
+        # После миграции ff9f0f8940c8 таблица переименована в gs_regional_district_regional_energy_system
+        assoc_table = 'gs_regional_district_regional_energy_system'
         check_assoc_query = text("""
             SELECT COUNT(*) 
             FROM information_schema.tables 
             WHERE table_schema = :schema_name
-              AND table_name = 'regional_district_regional_energy_system'
+              AND table_name = :table_name
         """)
         
-        result = db.session.execute(check_assoc_query, {"schema_name": SCHEMA_REFDATA})
+        result = db.session.execute(check_assoc_query, {"schema_name": SCHEMA_REFDATA, "table_name": assoc_table})
         if result.scalar() > 0:
             # Проверяем наличие поля database_version_id
             check_column_query = text("""
                 SELECT COUNT(*) 
                 FROM information_schema.columns 
                 WHERE table_schema = :schema_name
-                  AND table_name = 'regional_district_regional_energy_system'
+                  AND table_name = :table_name
                   AND column_name = 'database_version_id'
             """)
             
-            result = db.session.execute(check_column_query, {"schema_name": SCHEMA_REFDATA})
+            result = db.session.execute(check_column_query, {"schema_name": SCHEMA_REFDATA, "table_name": assoc_table})
             if result.scalar() > 0:
                 # Подсчитываем записи
                 count_query = text(f"""
-                    SELECT COUNT(*) FROM {SCHEMA_REFDATA}.regional_district_regional_energy_system 
+                    SELECT COUNT(*) FROM {SCHEMA_REFDATA}.{assoc_table} 
                     WHERE database_version_id = :version_id
                 """)
                 
@@ -3684,7 +3736,7 @@ def _delete_version_data_staged(version_id, user):
                     # Удаляем записи в отдельной транзакции
                     try:
                         delete_query = text(f"""
-                            DELETE FROM {SCHEMA_REFDATA}.regional_district_regional_energy_system 
+                            DELETE FROM {SCHEMA_REFDATA}.{assoc_table} 
                             WHERE database_version_id = :version_id
                         """)
                         
@@ -3695,7 +3747,7 @@ def _delete_version_data_staged(version_id, user):
                         # Коммитим изменения
                         db.session.commit()
                         current_app.logger.info(
-                            f"✅ Удалено {deleted_count} записей из ассоциативной таблицы refdata.regional_district_regional_energy_system"
+                            f"✅ Удалено {deleted_count} записей из ассоциативной таблицы {SCHEMA_REFDATA}.{assoc_table}"
                         )
                         
                     except Exception as delete_error:
@@ -3709,17 +3761,17 @@ def _delete_version_data_staged(version_id, user):
                         # Логируем ошибку
                         log_to_db(
                             user,
-                            f"Ошибка удаления ассоциативной таблицы refdata.regional_district_regional_energy_system",
+                            f"Ошибка удаления ассоциативной таблицы {assoc_table}",
                             f"Версия {version_id}: {str(delete_error)}",
                             entity_type="database_version",
                             entity_id=version_id
                         )
                 else:
-                    current_app.logger.info("📋 Ассоциативная таблица refdata.regional_district_regional_energy_system: нет данных для удаления")
+                    current_app.logger.info(f"📋 Ассоциативная таблица {SCHEMA_REFDATA}.{assoc_table}: нет данных для удаления")
             else:
-                current_app.logger.info("⚠️ Ассоциативная таблица refdata.regional_district_regional_energy_system не имеет поля database_version_id")
+                current_app.logger.info(f"⚠️ Ассоциативная таблица {assoc_table} не имеет поля database_version_id")
         else:
-            current_app.logger.info("📋 Ассоциативная таблица refdata.regional_district_regional_energy_system не существует")
+            current_app.logger.info(f"📋 Ассоциативная таблица {assoc_table} не существует")
             
     except Exception as e:
         current_app.logger.error(f"❌ Ошибка при проверке ассоциативных таблиц: {e}")
@@ -3770,6 +3822,7 @@ def _delete_version_data(version_id, user):
         'machine_powers',      # Мощности машин (зависят от машин)
         'machine_fuels',       # Топливо машин (зависят от машин)
         'machine_tes_types',   # Типы ТЭС машин (зависят от машин)
+        'machine_names',      # Названия агрегатов по годам (зависят от машин)
         'pgu_machine_powers',  # Мощности ПГУ машин (зависят от ПГУ машин)
         'pgu_machines',        # ПГУ машины (зависят от машин)
         'machines',            # Машины (зависят от станций)
@@ -3924,7 +3977,7 @@ def delete_version_service(ids, user):
         entity_type="database_version")
 
     successful_deletes = 0
-    deleted_names = []
+    deleted_version_numbers = []
     not_found = []
     invalid = []
     active_versions = []
@@ -3944,20 +3997,22 @@ def delete_version_service(ids, user):
                 entity_id=version_id)
             continue
 
-        obj = _locked_get(DatabaseVersion, vid)
+        # Не используем _locked_get (FOR UPDATE) - при удалении блокировка может вызывать зависание
+        # из-за ожидания других транзакций. Достаточно обычного получения записи.
+        obj = DatabaseVersion.query.filter_by(id=vid).first()
         if obj:
             # Проверка, не является ли версия активной
             if obj.is_active:
-                active_versions.append(f"{obj.name} (v{obj.version_number})")
+                active_versions.append(f"v{obj.version_number}")
                 log_to_db(
                     user, 
                     "Попытка удаления активной версии БД", 
-                    f"Версия {obj.name} (v{obj.version_number}) является активной и не может быть удалена.", 
+                    f"Версия v{obj.version_number} является активной и не может быть удалена.", 
                     entity_type="database_version", 
                     entity_id=vid)
                 continue
             
-            name = obj.name or f"ID={vid}"
+            version_display = obj.version_number or f"ID={vid}"
             
             # Сначала удаляем все данные, связанные с этой версией
             try:
@@ -3965,14 +4020,14 @@ def delete_version_service(ids, user):
                 total_data_deleted += data_deleted
                 log_to_db(
                     user, 
-                    f"Удалены данные версии БД: {name}", 
+                    f"Удалены данные версии БД: v{version_display}", 
                     f"ID={vid}, удалено записей: {data_deleted}", 
                     entity_type="database_version", 
                     entity_id=vid)
             except Exception as e:
                 log_to_db(
                     user, 
-                    f"Ошибка удаления данных версии БД: {name}", 
+                    f"Ошибка удаления данных версии БД: v{version_display}", 
                     f"ID={vid}, ошибка: {str(e)}", 
                     entity_type="database_version", 
                     entity_id=vid)
@@ -4020,12 +4075,12 @@ def delete_version_service(ids, user):
             # Удаляем саму запись версии
             db.session.delete(obj)
             successful_deletes += 1
-            deleted_names.append(name)
+            deleted_version_numbers.append(version_display)
             deleted_version_ids.append(vid)
             log_to_db(
                 user, 
                 "Удалена версия БД", 
-                f"{name}", 
+                f"v{version_display}", 
                 entity_type="database_version", 
                 entity_id=vid)
         else:
@@ -4043,8 +4098,8 @@ def delete_version_service(ids, user):
         _commit_with_retry()
 
         parts = [f"Удалено версий: {successful_deletes}"]
-        if deleted_names:
-            parts.append(f"Названия: {deleted_names}")
+        if deleted_version_numbers:
+            parts.append(f"Номера версий: {deleted_version_numbers}")
         if total_data_deleted > 0:
             parts.append(f"Удалено записей данных: {total_data_deleted}")
         if not_found:
@@ -4070,7 +4125,7 @@ def delete_version_service(ids, user):
 
         return {
             "deleted": successful_deletes,
-            "deleted_names": deleted_names,
+            "deleted_version_numbers": deleted_version_numbers,
             "total_data_deleted": total_data_deleted,
             "not_found": not_found,
             "invalid": invalid,
@@ -4118,12 +4173,11 @@ def export_version_service(
         # Информация о родительской версии
         parent_info = "-"
         if o.parent_version:
-            parent_info = f"Версия {o.parent_version.version_number}: {o.parent_version.name}"
+            parent_info = f"Версия {o.parent_version.version_number}"
         
         data.append({
             "№": idx,
             "Номер версии": o.version_number,
-            "Название": _dash(o.name),
             "Описание": _dash(o.description),
             "Создана на основе": parent_info,
             "Активна": "Да" if o.is_active else "Нет",
@@ -4274,23 +4328,23 @@ def get_current_version_year_range_from_name():
                 except ValueError:
                     y1 = y2 = None
 
-        # 2) Если из version_number не получилось, пробуем старую логику по имени версии.
+        # 2) Если из version_number не получилось, пробуем description.
         if y1 is None or y2 is None:
-            name = str(version.name or "").strip()
-            print(f"[DB_VERSION] Parsing years from name as fallback: id={version_id}, name={name!r}")
-            m = re.search(r"(\d{4})\s*[" + dash_class + r"]\s*(\d{4})", name)
+            fallback_text = str(version.description or "").strip()
+            print(f"[DB_VERSION] Parsing years from description as fallback: id={version_id}")
+            m = re.search(r"(\d{4})\s*[" + dash_class + r"]\s*(\d{4})", fallback_text)
             if m:
                 y1 = int(m.group(1))
                 y2 = int(m.group(2))
-                print(f"[DB_VERSION] Matched explicit range in name: {y1}-{y2}")
+                print(f"[DB_VERSION] Matched explicit range in description: {y1}-{y2}")
             else:
-                years = re.findall(r"\d{4}", name)
-                print(f"[DB_VERSION] Fallback years from name: {years}")
+                years = re.findall(r"\d{4}", fallback_text)
+                print(f"[DB_VERSION] Fallback years from description: {years}")
                 if len(years) >= 2:
                     try:
                         y1 = int(years[0])
                         y2 = int(years[1])
-                        print(f"[DB_VERSION] Using fallback years from name: {y1}, {y2}")
+                        print(f"[DB_VERSION] Using fallback years from description: {y1}, {y2}")
                     except ValueError:
                         y1 = y2 = None
 
@@ -4420,7 +4474,7 @@ def set_active_version(version_id, user):
     
     log_to_db(
         user, 
-        f"Установлена активная версия БД: {version.name} (v{version.version_number})",
+        f"Установлена активная версия БД: v{version.version_number}",
         f"ID: {version_id}",
         entity_type="database_version",
         entity_id=version_id
@@ -4491,7 +4545,7 @@ def save_version_snapshot(version_id, user):
     
     log_to_db(
         user,
-        f"Начало сохранения снимка версии БД: {version.name} (v{version.version_number})",
+        f"Начало сохранения снимка версии БД: v{version.version_number}",
         f"ID: {version_id}",
         entity_type="database_version",
         entity_id=version_id
@@ -4549,7 +4603,7 @@ def save_version_snapshot(version_id, user):
             env["PGPASSWORD"] = db_pass
         
         # Выполнение pg_dump
-        current_app.logger.info(f"Запуск pg_dump для версии {version.name}")
+        current_app.logger.info(f"Запуск pg_dump для версии {version.version_number}")
         result = subprocess.run(
             cmd,
             env=env,
@@ -4575,7 +4629,7 @@ def save_version_snapshot(version_id, user):
         size_mb = version.snapshot_size / (1024 * 1024)
         log_to_db(
             user,
-            f"Снимок версии БД успешно создан: {version.name} (v{version.version_number})",
+            f"Снимок версии БД успешно создан: v{version.version_number}",
             f"Файл: {backup_file}, Размер: {size_mb:.2f} МБ",
             entity_type="database_version",
             entity_id=version_id
@@ -4587,7 +4641,7 @@ def save_version_snapshot(version_id, user):
         error_msg = "Превышено время ожидания создания бэкапа (>1 час)"
         log_to_db(
             user,
-            f"Ошибка создания снимка версии БД: {version.name}",
+            f"Ошибка создания снимка версии БД: {version.version_number}",
             error_msg,
             entity_type="database_version",
             entity_id=version_id
@@ -4597,7 +4651,7 @@ def save_version_snapshot(version_id, user):
         error_msg = str(e)
         log_to_db(
             user,
-            f"Ошибка создания снимка версии БД: {version.name}",
+            f"Ошибка создания снимка версии БД: {version.version_number}",
             error_msg,
             entity_type="database_version",
             entity_id=version_id
@@ -4626,7 +4680,7 @@ def fix_version_relationships(version_id, user):
     
     log_to_db(
         user,
-        f"Начало исправления связей для версии: {version.name} (v{version.version_number})",
+        f"Начало исправления связей для версии: v{version.version_number}",
         f"ID: {version_id}",
         entity_type="database_version",
         entity_id=version_id
@@ -4643,7 +4697,7 @@ def fix_version_relationships(version_id, user):
         
         log_to_db(
             user,
-            f"Исправление связей для версии завершено: {version.name} (v{version.version_number})",
+            f"Исправление связей для версии завершено: v{version.version_number}",
             f"ID: {version_id}",
             entity_type="database_version",
             entity_id=version_id
@@ -4656,7 +4710,7 @@ def fix_version_relationships(version_id, user):
         error_msg = str(e)
         log_to_db(
             user,
-            f"Ошибка исправления связей для версии: {version.name}",
+            f"Ошибка исправления связей для версии: {version.version_number}",
             error_msg,
             entity_type="database_version",
             entity_id=version_id
@@ -4801,14 +4855,14 @@ def load_version_snapshot(version_id, user):
         raise ValueError(f"Версия с ID {version_id} не найдена.")
     
     if not version.snapshot_path:
-        raise ValueError(f"У версии {version.name} нет сохраненного снимка.")
+        raise ValueError(f"У версии {version.version_number} нет сохраненного снимка.")
     
     if not os.path.exists(version.snapshot_path):
         raise ValueError(f"Файл снимка не найден: {version.snapshot_path}")
     
     log_to_db(
         user,
-        f"Начало загрузки снимка версии БД: {version.name} (v{version.version_number})",
+        f"Начало загрузки снимка версии БД: v{version.version_number}",
         f"ВНИМАНИЕ: Все данные в БД будут заменены! Файл: {version.snapshot_path}",
         entity_type="database_version",
         entity_id=version_id
@@ -4933,7 +4987,7 @@ def load_version_snapshot(version_id, user):
             env["PGPASSWORD"] = db_pass
         
         # Выполнение pg_restore со streaming вывода, чтобы избежать блокировки буфера
-        current_app.logger.info(f"Запуск pg_restore для версии {version.name}")
+        current_app.logger.info(f"Запуск pg_restore для версии {version.version_number}")
         process = subprocess.Popen(
             cmd,
             env=env,
@@ -5021,7 +5075,7 @@ def load_version_snapshot(version_id, user):
         
         log_to_db(
             user,
-            f"Снимок версии БД успешно загружен: {version.name} (v{version.version_number})",
+            f"Снимок версии БД успешно загружен: v{version.version_number}",
             f"Файл: {version.snapshot_path}",
             entity_type="database_version",
             entity_id=version_id
@@ -5039,7 +5093,7 @@ def load_version_snapshot(version_id, user):
         error_msg = "Превышено время ожидания восстановления из бэкапа (>1 час)"
         log_to_db(
             user,
-            f"Ошибка загрузки снимка версии БД: {version.name}",
+            f"Ошибка загрузки снимка версии БД: {version.version_number}",
             error_msg,
             entity_type="database_version",
             entity_id=version_id
@@ -5049,7 +5103,7 @@ def load_version_snapshot(version_id, user):
         error_msg = str(e)
         log_to_db(
             user,
-            f"Ошибка загрузки снимка версии БД: {version.name}",
+            f"Ошибка загрузки снимка версии БД: {version.version_number}",
             error_msg,
             entity_type="database_version",
             entity_id=version_id

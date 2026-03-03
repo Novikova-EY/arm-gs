@@ -217,6 +217,9 @@ class StationFilterForm(FlaskForm):
 
 
 class AddStationForm(FlaskForm):
+    # Подтверждение создания при дубликате
+    confirm_duplicate = HiddenField(default="", validators=[Optional()])
+
     # Основные поля
     name = StringField(
         'Наименование (основное)',

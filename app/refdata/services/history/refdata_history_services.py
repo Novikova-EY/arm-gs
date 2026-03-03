@@ -59,6 +59,21 @@ def _get_or_create_refdata_entity(
     ref_uuid: str | None,
 ) -> RefdataEntity:
     entity = None
+
+    # Учитываем уже созданные (но не зафлашенные) записи в рамках текущей сессии,
+    # чтобы избежать дублирования ref_uuid при no_autoflush (создание версии БД).
+    for obj in db.session.new:
+        if not isinstance(obj, RefdataEntity):
+            continue
+        if ref_uuid and obj.ref_uuid == ref_uuid:
+            return obj
+        if (
+            obj.entity_type == entity_type
+            and obj.entity_id == entity_id
+            and obj.database_version_id == database_version_id
+        ):
+            return obj
+
     if ref_uuid:
         entity = RefdataEntity.query.filter_by(ref_uuid=ref_uuid).first()
     if not entity:
@@ -154,23 +169,17 @@ def _ensure_request_context(user):
 def _get_current_year_number(database_version_id: int, source_version_id: int | None = None) -> int:
     """
     Возвращает номер текущего года для версии.
-    Если указан source_version_id, ищем признак "текущий год" и год в исходной версии.
+    Если указан source_version_id, ищем признак года (Текущий, текущий год, текущий (оценка)) в исходной версии.
     """
     lookup_version_id = source_version_id or database_version_id
 
+    # Единый поиск по подстроке — поддерживаем разные варианты названий в БД
     year_feature = (
-        YearFeature.query.filter(
-            YearFeature.database_version_id == lookup_version_id,
-            YearFeature.name.ilike("текущий год"),
-        ).first()
+        YearFeature.query.filter_by(database_version_id=lookup_version_id)
+        .filter(YearFeature.name.ilike("%текущ%"))
+        .order_by(YearFeature.id.asc())
+        .first()
     )
-    if not year_feature:
-        year_feature = (
-            YearFeature.query.filter_by(database_version_id=lookup_version_id)
-            .filter(YearFeature.name.ilike("%текущ%"))
-            .order_by(YearFeature.id.asc())
-            .first()
-        )
     if not year_feature:
         raise ValueError("Не найден признак года с названием «Текущий» для выбранной версии.")
     current_year = Year.query.filter_by(

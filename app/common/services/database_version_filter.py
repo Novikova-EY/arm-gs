@@ -30,30 +30,40 @@ def _debug(message: str) -> None:
 def get_current_db_version_id():
     """
     Получает ID текущей активной версии БД из контекста Flask или из БД.
-    
+    Активная версия должна быть установлена всегда: при отсутствии is_active=True
+    используется версия по умолчанию (из конфига или последняя по номеру).
+
     Returns:
-        int or None: ID активной версии или None, если версия не установлена
+        int or None: ID активной версии или None, если версий в БД нет вообще
     """
     from flask import g, has_app_context
-    
+
     # Проверяем, что мы в контексте приложения
     if not has_app_context():
-        # Если не в контексте приложения, берем напрямую из БД
+        # Вне Flask (Celery, скрипты): активная версия, иначе версия по умолчанию
         from app.common.models.database_version_model import DatabaseVersion
+        from app.common.services.database_version_services import get_default_version
         active_version = DatabaseVersion.query.filter_by(is_active=True).first()
-        return active_version.id if active_version else None
-    
-    # Сначала проверяем контекст Flask
+        if active_version:
+            return active_version.id
+        default_version = get_default_version()
+        return default_version.id if default_version else None
+
+    # Сначала проверяем контекст Flask (middleware уже мог установить)
     if hasattr(g, 'current_db_version'):
         return g.current_db_version
-    
-    # Если не найдено в контексте, берем из БД
+
+    # Берём из БД: активная версия, иначе версия по умолчанию
     from app.common.models.database_version_model import DatabaseVersion
+    from app.common.services.database_version_services import get_default_version
     active_version = DatabaseVersion.query.filter_by(is_active=True).first()
     if active_version:
         g.current_db_version = active_version.id
         return active_version.id
-    
+    default_version = get_default_version()
+    if default_version:
+        g.current_db_version = default_version.id
+        return default_version.id
     return None
 
 
@@ -91,8 +101,7 @@ def filter_by_db_version(query, model_class):
             model_class.database_version_id == current_version_id
         )
     elif current_version_id is None and hasattr(model_class, 'database_version_id'):
-        # Если версия не установлена, показываем только записи без версии (NULL)
-        # Это предотвращает показ записей из неактивных версий
+        # Только когда версий в БД нет вообще: показываем записи без версии (NULL)
         _debug(f"[DB_VERSION] applying filter: {model_name}.database_version_id IS NULL")
         query = query.filter(model_class.database_version_id.is_(None))
     else:

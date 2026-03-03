@@ -5,11 +5,11 @@
         <!-- Левая группа кнопок -->
         <div class="d-flex gap-2 align-items-center">
             <button id="filtersToggleBtn"
-                    class="btn {% if has_active_filters %}btn-warning{% else %}btn-outline-secondary{% endif %} text-dark{% if not has_active_filters %} collapsed{% endif %}"
+                    class="btn {% if has_active_filters %}btn-warning{% else %}btn-primary{% endif %} text-white"
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#filtersCollapse"
-                    aria-expanded="{{ 'true' if has_active_filters else 'false' }}"
+                    aria-expanded="true"
                     aria-controls="filtersCollapse">
                 🔍 Фильтры / Поиск
             </button>
@@ -39,6 +39,20 @@
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
+
+            {% if show_fuel_params_import|default(false) %}
+            <!-- Выбор знаков после запятой (только на странице топливных параметров) -->
+            <div class="d-flex align-items-center gap-1">
+                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>
+                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;">
+                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
+            {% endif %}
         </form>
     </div>
 </div>

@@ -45,7 +45,7 @@
                 <a class="btn btn-warning fw-bold"
                     href="{{ url_for('refdata_bp.export_fuel_type',
                                         fuel_type_filter=fuel_type_filter or '',
-                                        topl_nazvl_filter=topl_nazvl_filter or '',
+                                        nazvl_filter=nazvl_filter or '',
                                         sort_by=sort_by, sort_dir=sort_dir) }}"
                     target="_blank" rel="noopener">
                     Экспорт в Excel
@@ -66,7 +66,7 @@
         <input type="hidden" name="page"                    value="{{ pagination.page if pagination else 1 }}">
         <input type="hidden" name="sort_by"                 value="{{ sort_by }}">
         <input type="hidden" name="sort_dir"                value="{{ sort_dir }}">
-        <input type="hidden" name="topl_nazvl_filter"       value="{{ topl_nazvl_filter or '' }}">
+        <input type="hidden" name="nazvl_filter"       value="{{ nazvl_filter or '' }}">
     </form>
 
     <!-- Таблица данных -->
@@ -79,7 +79,7 @@
             <input type="hidden" name="sort_by"             value="{{ sort_by }}">
             <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
             <input type="hidden" name="fuel_type_filter"    value="{{ fuel_type_filter }}">
-            <input type="hidden" name="topl_nazvl_filter"   value="{{ topl_nazvl_filter or '' }}">
+            <input type="hidden" name="nazvl_filter"   value="{{ nazvl_filter or '' }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
@@ -93,7 +93,7 @@
                                     sort_by=sort_by,
                                     sort_dir=sort_dir,
                                     fuel_type_filter=fuel_type_filter,
-                                    topl_nazvl_filter=topl_nazvl_filter,
+                                    nazvl_filter=nazvl_filter,
                                 ) }}" class="btn btn-primary">
                     Добавить новую запись
                 </a>
@@ -109,7 +109,7 @@
                                             page=pagination.page, 
                                             per_page=per_page, 
                                             fuel_type_filter=fuel_type_filter,
-                                            topl_nazvl_filter=topl_nazvl_filter,
+                                            nazvl_filter=nazvl_filter,
                                             sort_by='number', 
                                             sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
@@ -130,7 +130,7 @@
                                             page=pagination.page, 
                                             per_page=per_page, 
                                             fuel_type_filter=fuel_type_filter,
-                                            topl_nazvl_filter=topl_nazvl_filter,
+                                            nazvl_filter=nazvl_filter,
                                             sort_by='display_order', 
                                             sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
@@ -151,7 +151,7 @@
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        nazvl_filter=nazvl_filter,
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -174,12 +174,12 @@
                                                     page=pagination.page, 
                                                     per_page=per_page, 
                                                     fuel_type_filter=fuel_type_filter,
-                                                    topl_nazvl_filter=topl_nazvl_filter,
-                                                    sort_by='topl_nazvl', 
-                                                    sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                    nazvl_filter=nazvl_filter,
+                                                    sort_by='nazvl', 
+                                                    sort_dir='asc' if sort_by != 'nazvl' or sort_dir == 'desc' else 'desc') }}" 
                                                     class="text-black">
                                             Наименование в БД Топливо
-                                            {% if sort_by == 'topl_nazvl' %}
+                                            {% if sort_by == 'nazvl' %}
                                                 {% if sort_dir == 'asc' %}
                                                     ▲
                                                 {% else %}
@@ -202,20 +202,20 @@
                                                             page=pagination.page, 
                                                             per_page=per_page, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter='',
+                                                            nazvl_filter='',
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
                                                     Все наименования
                                                 </a>
                                             </li>
-                                            {% for value in topl_nazvl_values %}
+                                            {% for value in nazvl_values %}
                                                 <li>
                                                     <a href="{{ url_for('refdata_bp.fuel_type_list', 
                                                                 page=pagination.page, 
                                                                 per_page=per_page, 
                                                                 fuel_type_filter=fuel_type_filter,
-                                                                topl_nazvl_filter=value,
+                                                                nazvl_filter=value,
                                                                 sort_by=sort_by,
                                                                 sort_dir=sort_dir) }}" 
                                                                 class="dropdown-item">
@@ -262,7 +262,7 @@
 
                             <!-- Строки таблицы. Столбец "Короткое наименование" -->
                             <td>
-                                <input type="text" name="fuel_type_topl_nazvl[]" class="form-control" value="{{ fuel_type.topl_nazvl or '' }}">
+                                <input type="text" name="fuel_type_nazvl[]" class="form-control" value="{{ fuel_type.nazvl or '' }}">
                             </td>
 
                             <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
@@ -291,7 +291,7 @@
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        nazvl_filter=nazvl_filter,
                                         sort_by='number', 
                                         sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -312,7 +312,7 @@
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        nazvl_filter=nazvl_filter,
                                         sort_by='display_order', 
                                         sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -333,7 +333,7 @@
                                         page=pagination.page, 
                                         per_page=per_page, 
                                         fuel_type_filter=fuel_type_filter,
-                                        topl_nazvl_filter=topl_nazvl_filter,
+                                        nazvl_filter=nazvl_filter,
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
@@ -356,12 +356,12 @@
                                                 page=pagination.page, 
                                                 per_page=per_page, 
                                                 fuel_type_filter=fuel_type_filter,
-                                                topl_nazvl_filter=topl_nazvl_filter,
-                                                sort_by='topl_nazvl', 
-                                                sort_dir='asc' if sort_by != 'topl_nazvl' or sort_dir == 'desc' else 'desc') }}" 
+                                                nazvl_filter=nazvl_filter,
+                                                sort_by='nazvl', 
+                                                sort_dir='asc' if sort_by != 'nazvl' or sort_dir == 'desc' else 'desc') }}" 
                                                 class="text-black">
                                         Наименование в БД Топливо
-                                        {% if sort_by == 'topl_nazvl' %}
+                                        {% if sort_by == 'nazvl' %}
                                             {% if sort_dir == 'asc' %}
                                                 ▲
                                             {% else %}
@@ -384,20 +384,20 @@
                                                         page=pagination.page, 
                                                         per_page=per_page, 
                                                         fuel_type_filter=fuel_type_filter,
-                                                        topl_nazvl_filter='',
+                                                        nazvl_filter='',
                                                         sort_by=sort_by,
                                                         sort_dir=sort_dir) }}" 
                                                         class="dropdown-item">
                                                 Все наименования
                                             </a>
                                         </li>
-                                        {% for value in topl_nazvl_values %}
+                                        {% for value in nazvl_values %}
                                             <li>
                                                 <a href="{{ url_for('refdata_bp.fuel_type_list', 
                                                             page=pagination.page, 
                                                             per_page=per_page, 
                                                             fuel_type_filter=fuel_type_filter,
-                                                            topl_nazvl_filter=value,
+                                                            nazvl_filter=value,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" 
                                                             class="dropdown-item">
@@ -430,7 +430,7 @@
                         <td> {{ fuel_type.name }} </td>
 
                         <!-- Строки таблицы. Столбец "Короткое наименование" -->
-                        <td> {{ fuel_type.topl_nazvl or '' }} </td>
+                        <td> {{ fuel_type.nazvl or '' }} </td>
 
                     
                     </tr>

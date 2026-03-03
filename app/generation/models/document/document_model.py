@@ -5,8 +5,9 @@ Document model (Номативный документ).
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 
-class Document(db.Model):
+class Document(db.Model, AuditMixin):
     __tablename__ = 'documents_kommod'
     __table_args__ = {"schema": SCHEMA_GENERATION}
 

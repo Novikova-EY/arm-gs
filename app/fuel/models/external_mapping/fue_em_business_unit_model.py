@@ -4,9 +4,10 @@ BusinessUnitExternalMapping model (связь бизнес единиц с вн�
 """
 from app.extensions import db
 from config import SCHEMA_FUE_EM
+from app.common.models.audit_mixin import AuditMixin
 
 
-class BusinessUnitExternalMapping(db.Model):
+class BusinessUnitExternalMapping(db.Model, AuditMixin):
     __tablename__ = "gs_fue_em_business_unit"
     __table_args__ = ({"schema": SCHEMA_FUE_EM},)
 

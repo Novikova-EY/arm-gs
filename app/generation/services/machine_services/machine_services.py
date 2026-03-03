@@ -659,6 +659,10 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         for fld in date_fields:
             raw_form_value = getattr(main_form, fld).data
 
+            # Если указана фактическая дата вывода из эксплуатации, ожидаемый год вывода должен быть пустым
+            if fld == "date_decompressing_expected" and main_form.date_decompressing_fact.data:
+                raw_form_value = None
+
             if fld in {"date_exploitation", "date_exploitation_expected", "date_decompressing_expected", "date_modernization_expected"}:
                 new_val = int(raw_form_value) if raw_form_value else None
             elif fld in {"date_relabing_fact", "date_update_fact"}:
@@ -1860,7 +1864,20 @@ def recalculate_machine_years_by_p_ust(machine, changes, year_features):
     # 2) ввод (0 -> >0)
     # 3) модернизация (>0 -> >0 и изменилось значение)
     # ============================================================
-    effective_decomp_year = new_decomp_year if (new_decomp_year is not None and new_decomp_year < Config.END_YEAR) else None
+    # Если указана фактическая дата вывода, ожидаемый год не автоопределяем по мощности
+    has_decompressing_fact = bool(
+        getattr(machine, "date_decompressing_fact", None)
+        and str(machine.date_decompressing_fact or "").strip()
+    )
+    effective_decomp_year = (
+        new_decomp_year
+        if (
+            new_decomp_year is not None
+            and new_decomp_year < Config.END_YEAR
+            and not has_decompressing_fact
+        )
+        else None
+    )
 
     selected_kind = None
     selected_year = None

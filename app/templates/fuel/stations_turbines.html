@@ -1,0 +1,629 @@
+{% extends 'base.html' %}
+
+{% block title %}Турбины электростанций{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<!-- Индикатор загрузки для per_page=all -->
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных по станциям...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    {# Скроллим весь блок страницы: при прокрутке скрывается всё над шапкой таблицы #}
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Левая группа кнопок -->
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Турбины электростанций</h2>
+            </div>
+
+            <!-- Правая группа: чекбоксы и подсветка -->
+            <div class="d-flex align-items-center gap-2 ms-auto">
+
+                
+                <!-- Кнопка добавления электростанции -->
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_turbines_filters.html' %}
+
+{% set column_count = 16 %}
+
+    <!-- Таблица с данными -->
+        <table class="table table-hover table-striped table-bordered table-responsive">
+
+            <!-- Шапка таблицы с данными -->
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th colspan="6">Модуль «Генерация»</th>
+                    <th colspan="10">Модуль «Топливо»</th>
+                </tr>
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th style="width: 120px;">Группа оборудования</th>
+                    <th style="width: 220px;">Станция</th>
+                    <th style="width: 50px;">Тип</th>
+                    <th style="width: 80px;">cт. №</th>
+                    <th style="width: 200px;">Тип агрегата</th>
+                    <th style="width: 80px;">Год ввода в эксплуатацию</th>
+                    <th style="width: 80px;">Код станции<br><span class="text-muted small">(numb1120)</span></th>
+                    <th style="width: 100px;">Название станции<br><span class="text-muted small">(stname)</span></th>
+                    <th style="width: 80px;">Группа оборудования<br><span class="text-muted small">(grcode)</span></th>
+                    <th style="width: 80px;">Порядковый номер<br><span class="text-muted small">(numb)</span></th>
+                    <th style="width: 80px;">Номер агрегата<br><span class="text-muted small">(stnumb)</span></th>
+                    <th style="width: 100px;">Тип (марка) оборудования<br><span class="text-muted small">(opesname)</span></th>
+                    <th style="width: 80px;">Тепловая мощность отборов<br><span class="text-muted small">(nt)</span></th>
+                    <th style="width: 80px;">Год ввода в эксплуатацию<br><span class="text-muted small">(yearin)</span></th>
+                    <th style="width: 80px;">Год демонтажа<br><span class="text-muted small">(dem)</span></th>
+                    <th style="width: 80px;">Примечание<br><span class="text-muted small">(note)</span></th>
+                </tr>
+            </thead>
+
+            <!-- Данные таблицы-->
+            <tbody>
+                {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+                {% for es_type_id in sorted_energy_system_type_ids %}
+                    {% set es_type_group = stations_grouped[es_type_id] %}
+
+                    {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                        <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">
+                                {{ energy_system_type_names[es_type_id] }}
+                            </td>
+                        </tr>
+                    {% endif %}
+
+                    {% for ues in union_energy_system_list %}
+                        {% set ues_id = ues.id %}
+                        {% set ues_group = es_type_group.get(ues_id) %}
+                        {% if ues_group %}
+
+                        {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                            <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">
+                                    {{ union_energy_system_names[ues_id] }}
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        {% for res_id, res_group in ues_group.items() %}
+                            {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                                <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan="{{ column_count }}">
+                                        {{ regional_energy_system_names[res_id] }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+
+                                    {% for rd_id, rd_group in res_group.items() %}
+                                {% set rd_name = regional_district_names.get(rd_id) %}
+                                {% if rd_name and rd_name|lower != 'не указано' %}
+                                    {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                            <td colspan="{{ column_count }}">
+                                                {{ rd_name }}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+
+                                    {% for eu_id, eu_group in rd_group.items() %}
+                                        {% set eu_name = energy_unit_names.get(eu_id) %}
+                                        {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                        {% if not skip_eu %}
+                                            {% if eu_name and eu_name|lower != 'не указано' %}
+                                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                                        <td colspan="{{ column_count }}">
+                                                            {{ eu_name }}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+
+                                        {% set group_counts = namespace(values={}) %}
+                                        {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
+                                            {% if station.machines %}
+                                                {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                                                {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                                    {% set equipment_group_id = group.grouper %}
+                                                    {% set seg_list = station.equipment_group_sets
+                                                        | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                                        | list %}
+                                                    {% set seg = (
+                                                        group.list[0].equipment_group_set
+                                                        if group.list and group.list[0].equipment_group_set
+                                                        else (seg_list[0] if seg_list else None)
+                                                    ) %}
+                                                    {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
+                                                    {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
+                                                    {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                                    {% set current = group_counts.values.get(group_key, 0) %}
+                                                    {% set _ = group_counts.values.update({group_key: current + (group.list|length)}) %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% set rendered_groups = namespace(values=[]) %}
+
+                                        {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
+                                            {% if station.machines %}
+                                                {% set total_machines = station.machines | length %}
+                                                {% set station_cell = namespace(printed=false) %}
+                                                {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                                                {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
+                                                {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                                    {% set equipment_group_id = group.grouper %}
+                                                    {% set seg_list = station.equipment_group_sets
+                                                        | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                                        | list %}
+                                                    {% set seg = (
+                                                        group.list[0].equipment_group_set
+                                                        if group.list and group.list[0].equipment_group_set
+                                                        else (seg_list[0] if seg_list else None)
+                                                    ) %}
+                                                    {% set link_list = (
+                                                        seg.station_links
+                                                        | selectattr('station_id', 'equalto', station.id)
+                                                        | list
+                                                    ) if seg and seg.station_links else [] %}
+                                                    {% set link = link_list[0] if link_list else None %}
+                                                    {% set group_name = (
+                                                        seg.equipment_group.name
+                                                        if seg and seg.equipment_group
+                                                        else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                                    ) %}
+                                                    {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
+                                                    {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
+                                                    {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                                    {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
+                                                    {% set is_new_group = group_key not in rendered_groups.values %}
+                                                    {% for machine in group.list %}
+                                                        {% set tp = machine.machine_fuel_param %}
+                                                        <tr class="text-center align-middle">
+                                                            {% if loop.first %}
+                                                                {% if is_new_group %}
+                                                                    <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                                {% endif %}
+                                                                {% if not station_cell.printed %}
+                                                                    <td rowspan="{{ total_machines }}">
+                                                                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                                                            {{ station.name }}
+                                                                        </a>
+                                                                    </td>
+                                                                    {% set station_cell.printed = true %}
+                                                                {% endif %}
+                                                                {% if is_new_group %}
+                                                                    <td rowspan="{{ group_rowspan }}">{{ group_name }}</td>
+                                                                    {% set _ = rendered_groups.values.append(group_key) %}
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        <td>{{ machine.machine_number or '—' }}</td>
+                                                        <td>
+                                                            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                                {{ machine.machine_name or '—' }}
+                                                            </a>
+                                                        </td>
+                                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
+                                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
+                                                        <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
+                                                        <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                        <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
+                                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
+                                                        <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
+                                                        <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
+                                                        <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
+                                                        <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                                {% if machines_without_group %}
+                                                    {% for machine in machines_without_group %}
+                                                        {% set tp = machine.machine_fuel_param %}
+                                                        <tr class="text-center align-middle">
+                                                            {% if loop.first %}
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                                {% if not station_cell.printed %}
+                                                                    <td rowspan="{{ total_machines }}">
+                                                                        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                                                            {{ station.name }}
+                                                                        </a>
+                                                                    </td>
+                                                                    {% set station_cell.printed = true %}
+                                                                {% endif %}
+                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
+                                                            {% endif %}
+                                                            <td>{{ machine.machine_number or '—' }}</td>
+                                                            <td>
+                                                                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                                    {{ machine.machine_name or '—' }}
+                                                                </a>
+                                                            </td>
+                                                            <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
+                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
+                                                            <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
+                                                            <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                            <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
+                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
+                                                            <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
+                                                            <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
+                                                            <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
+                                                            <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="{{ column_count }}" class="text-center text-muted">Нет агрегатов для отображения</td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+
+                        {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+
+                {% endfor %}
+                {% else %}
+                    {% set group_counts = namespace(values={}) %}
+                    {% for station in stations %}
+                        {% if station.machines %}
+                            {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                            {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                {% set equipment_group_id = group.grouper %}
+                                {% set seg_list = station.equipment_group_sets
+                                    | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                    | list %}
+                                {% set seg = (
+                                    group.list[0].equipment_group_set
+                                    if group.list and group.list[0].equipment_group_set
+                                    else (seg_list[0] if seg_list else None)
+                                ) %}
+                                {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
+                                {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
+                                {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                {% set current = group_counts.values.get(group_key, 0) %}
+                                {% set _ = group_counts.values.update({group_key: current + (group.list|length)}) %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    {% set rendered_groups = namespace(values=[]) %}
+
+                    {% for station in stations %}
+                        {% if station.machines %}
+                            {% set total_machines = station.machines | length %}
+                            {% set station_cell = namespace(printed=false) %}
+                            {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
+                            {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
+                            {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
+                                {% set equipment_group_id = group.grouper %}
+                                {% set seg_list = station.equipment_group_sets
+                                    | selectattr('id_equipment_group', 'equalto', equipment_group_id)
+                                    | list %}
+                                {% set seg = (
+                                    group.list[0].equipment_group_set
+                                    if group.list and group.list[0].equipment_group_set
+                                    else (seg_list[0] if seg_list else None)
+                                ) %}
+                                {% set link_list = (
+                                    seg.station_links
+                                    | selectattr('station_id', 'equalto', station.id)
+                                    | list
+                                ) if seg and seg.station_links else [] %}
+                                {% set link = link_list[0] if link_list else None %}
+                                {% set group_name = (
+                                    seg.equipment_group.name
+                                    if seg and seg.equipment_group
+                                    else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
+                                ) %}
+                                {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
+                                {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
+                                {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
+                                {% set is_new_group = group_key not in rendered_groups.values %}
+                                {% for machine in group.list %}
+                                    {% set tp = machine.machine_fuel_param %}
+                                    <tr class="text-center align-middle">
+                                        {% if loop.first %}
+                                            {% if is_new_group %}
+                                                <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                            {% endif %}
+                                            {% if not station_cell.printed %}
+                                                <td rowspan="{{ total_machines }}">
+                                                    <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ station.name }}
+                                                    </a>
+                                                </td>
+                                                {% set station_cell.printed = true %}
+                                            {% endif %}
+                                            {% if is_new_group %}
+                                                <td rowspan="{{ group_rowspan }}">{{ group_name }}</td>
+                                                {% set _ = rendered_groups.values.append(group_key) %}
+                                            {% endif %}
+                                        {% endif %}
+                                    <td>{{ machine.machine_number or '—' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                            {{ machine.machine_name or '—' }}
+                                        </a>
+                                    </td>
+                                    <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
+                                                            <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
+                                                            <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
+                                                            <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                            <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
+                                                            <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
+                                                            <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
+                                                            <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                            <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
+                                                            <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
+                                                            <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                {% endfor %}
+                                                {% if machines_without_group %}
+                                {% for machine in machines_without_group %}
+                                    {% set tp = machine.machine_fuel_param %}
+                                    <tr class="text-center align-middle">
+                                        {% if loop.first %}
+                                            <td rowspan="{{ machines_without_group|length }}">—</td>
+                                            {% if not station_cell.printed %}
+                                                <td rowspan="{{ total_machines }}">
+                                                    <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                                        {{ station.name }}
+                                                    </a>
+                                                </td>
+                                                {% set station_cell.printed = true %}
+                                            {% endif %}
+                                            <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        {% endif %}
+                                        <td>{{ machine.machine_number or '—' }}</td>
+                                        <td>
+                                            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                                                {{ machine.machine_name or '—' }}
+                                            </a>
+                                        </td>
+                                        <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
+                                        <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
+                                        <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
+                                        <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                        <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
+                                        <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
+                                        <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
+                                        <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                        <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
+                                        <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
+                                        <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endif %}
+                        {% else %}
+                            <tr>
+                                <td colspan="{{ column_count }}" class="text-center text-muted">Нет агрегатов для отображения</td>
+                            </tr>
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+            
+        </table>
+
+        <!-- Пагинация (скрывается при прокрутке вниз) -->
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_turbines' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script id="initial-state-json" type="application/json">
+    {
+        "hasActiveFilters": {{ has_active_filters | tojson }}
+    }
+</script>
+
+<!-- Данные фильтров (для первой строки) -->
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<!-- jQuery и Select2 уже подключены в base.html -->
+
+<!-- Каскадные фильтры ОЭС/ФО/РЭС/субъекты (как на station_list) -->
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
+
+<!-- Функции управления кэшем -->
+<script>
+function clearStationCache() {
+    if (confirm('Вы уверены, что хотите очистить кэш станций? Это может временно замедлить загрузку страницы.')) {
+        fetch('{{ url_for("station_bp.clear_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Кэш станций успешно очищен', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при очистке кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при очистке кэша:', error);
+            showNotification('Ошибка при очистке кэша', 'error');
+        });
+    }
+}
+
+function refreshStationCache() {
+    if (confirm('Вы уверены, что хотите обновить кэш станций? Это может занять некоторое время.')) {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        fetch('{{ url_for("station_bp.refresh_station_cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            
+            if (data.success) {
+                showNotification('Кэш станций успешно обновлен', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showNotification('Ошибка при обновлении кэша: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при обновлении кэша:', error);
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            showNotification('Ошибка при обновлении кэша', 'error');
+        });
+    }
+}
+
+function showNotification(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
+{% include 'generation/stations/scripts/station_list_scripts.html' %}
+
+<!-- Скрываем индикатор загрузки после полной загрузки -->
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 500);
+    });
+</script>
+
+<!-- Скрипт для сброса отдельных фильтров в шапке таблицы -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.filter-clear-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const filterName = this.getAttribute('data-filter-name');
+                if (!filterName) return;
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.delete(filterName);
+                urlParams.set('page', '1');
+                const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                window.location.href = newUrl;
+            });
+        });
+    });
+</script>
+
+{% endblock %}

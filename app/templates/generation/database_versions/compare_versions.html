@@ -28,7 +28,7 @@
                                     <option value="">-- Выберите версию --</option>
                                     {% for version in versions %}
                                     <option value="{{ version.id }}">
-                                        v{{ version.version_number }} - {{ version.name }}
+                                        v{{ version.version_number }}
                                         {% if version.is_active %}(Активна){% endif %}
                                     </option>
                                     {% endfor %}
@@ -45,7 +45,7 @@
                                     <option value="">-- Выберите версию --</option>
                                     {% for version in versions %}
                                     <option value="{{ version.id }}">
-                                        v{{ version.version_number }} - {{ version.name }}
+                                        v{{ version.version_number }}
                                         {% if version.is_active %}(Активна){% endif %}
                                     </option>
                                     {% endfor %}

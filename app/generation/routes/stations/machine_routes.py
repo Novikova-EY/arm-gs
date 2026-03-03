@@ -52,10 +52,10 @@ def _format_logs_for_display(logs):
     if version_ids:
         # Используем оптимизированный запрос с загрузкой только нужных полей
         try:
-            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.name).filter(
+            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).filter(
                 DatabaseVersion.id.in_(version_ids)
             ).all()
-            versions_map = {v.id: v.name for v in versions}
+            versions_map = {v.id: v.version_number for v in versions}
         except Exception:
             # Если ошибка - просто показываем ID версии вместо названия
             versions_map = {vid: str(vid) for vid in version_ids}

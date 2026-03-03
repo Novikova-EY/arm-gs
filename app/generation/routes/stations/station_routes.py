@@ -1,4 +1,4 @@
-"""Маршруты страницы «Электростанции Российской Федерации»."""
+"""Маршруты страницы «Электростанции»."""
 
 from config import Config
 from app.extensions import db
@@ -8,7 +8,9 @@ from flask import (
 from sqlalchemy.orm import joinedload
 from collections import defaultdict
 
-from flask_login import login_required, current_user 
+from flask_login import login_required, current_user
+
+from app.auth.routes.decorators import roles_required
 
 # Блюпринт
 from . import station_bp
@@ -221,15 +223,25 @@ def add_station():
             form.id_regional_district.data = not_specified_rd_id
 
     if form.validate_on_submit():
+        force_create = request.form.get("confirm_duplicate") in ("1", "true", "True")
         try:
             new_station = add_station_service(
                 user=user,
                 name=form.name.data,
                 id_regional_district=form.id_regional_district.data,
                 id_station_type=form.id_station_type.data,
+                force_create=force_create,
             )
             flash("Новая станция успешно создана!", "success")
             return redirect(url_for("station_bp.station_details", station_id=new_station.id))
+        except ValueError as e:
+            if str(e) == "STATION_DUPLICATE":
+                return render_template(
+                    "generation/stations/station_add.html",
+                    form=form,
+                    show_duplicate_confirm=True,
+                )
+            flash(str(e), "danger")
         except Exception as e:
             flash(f"Ошибка при создании станции: {str(e)}", "danger")
 
@@ -305,6 +317,7 @@ def get_energy_system_data(regional_district_id):
 
 @station_bp.route('/clear_cache', methods=['POST'])
 @login_required
+@roles_required(["admin"])
 def clear_station_cache():
     """Очищает кэш станций."""
     try:
@@ -334,6 +347,7 @@ def clear_station_cache():
 
 @station_bp.route('/refresh_cache', methods=['POST'])
 @login_required
+@roles_required(["admin"])
 def refresh_station_cache():
     """Принудительно обновляет кэш станций."""
     try:
@@ -362,14 +376,9 @@ def refresh_station_cache():
 
 @station_bp.route('/clear_refdata_cache', methods=['POST'])
 @login_required
+@roles_required(["admin"])
 def clear_refdata_cache():
     """Очищает кэш справочников (choices_cache)."""
-    if not getattr(current_user, "has_admin", False):
-        return jsonify({
-            'success': False,
-            'message': 'Недостаточно прав',
-        }), 403
-
     try:
         choices_cache.clear_cache()
         _render_machines_tbody_cached.cache_clear()

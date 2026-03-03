@@ -200,8 +200,9 @@ def add_year():
     year_filter = request.args.get("year_filter", "").strip()
 
     # Dropdown признаков года (по версии)
-    year_feature_choices = choices_cache.get_choices(YearFeature, YearFeature.name)
-    form.year_feature.choices = year_feature_choices
+    form.year_feature.choices = choices_cache.get_choices_with_default(
+        YearFeature, YearFeature.name, default_text="Выберите признак года"
+    )
 
     if request.method == "POST" and form.validate_on_submit():
         try:

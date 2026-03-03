@@ -92,6 +92,17 @@ function initializeStationFilters() {
             actions.appendChild(clearBtn);
             menu.appendChild(actions);
 
+            // Поле поиска по буквам в выпадающем списке
+            const searchWrap = document.createElement('div');
+            searchWrap.className = 'mb-2';
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control form-control-sm';
+            searchInput.placeholder = 'Поиск...';
+            searchInput.setAttribute('autocomplete', 'off');
+            searchWrap.appendChild(searchInput);
+            menu.appendChild(searchWrap);
+
             const list = document.createElement('div');
             list.className = 'd-flex flex-column gap-1';
 
@@ -123,12 +134,25 @@ function initializeStationFilters() {
                 });
 
                 const text = document.createElement('span');
-                text.textContent = (opt.textContent || '').trim();
+                const optText = (opt.textContent || '').trim();
+                text.textContent = optText;
+                item.setAttribute('data-search-text', optText.toLowerCase());
 
                 item.appendChild(cb);
                 item.appendChild(text);
                 list.appendChild(item);
             });
+
+            function applyFilter() {
+                const q = (searchInput.value || '').trim().toLowerCase();
+                list.querySelectorAll('[data-search-text]').forEach(el => {
+                    const match = !q || (el.getAttribute('data-search-text') || '').includes(q);
+                    el.classList.toggle('d-none', !match);
+                });
+            }
+            searchInput.addEventListener('input', applyFilter);
+            searchInput.addEventListener('keyup', applyFilter);
+            searchInput.addEventListener('keydown', function (e) { e.stopPropagation(); });
 
             menu.appendChild(list);
             setButtonText();
@@ -159,7 +183,8 @@ function initializeStationFilters() {
             allowClear: true,
             width: '100%',
             closeOnSelect: false,
-            minimumResultsForSearch: Infinity
+            minimumResultsForSearch: 0,  // Поиск по буквам в выпадающем списке
+            language: { noResults: () => 'Ничего не найдено', searching: () => 'Поиск...' }
         });
     }
 

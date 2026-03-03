@@ -74,9 +74,8 @@ def totals_summary():
                 pass  # Игнорируем невалидные sync_area_
     aggregation_types = filtered_aggregation_types
     if not aggregation_types:
-        # Если пользователь снял все кнопки агрегации (aggregation_type отсутствует) — оставляем пусто.
-        # ЕЭС по умолчанию включаем только при первом "чистом" заходе без query-параметров.
-        aggregation_types = ["ees"] if len(request.args) == 0 else []
+        # Если не выбран ни один тип агрегации — показываем ЕЭС по умолчанию.
+        aggregation_types = ["ees"]
 
     try:
         rounding_digits = int(request.args.get("rounding_digits", 1))

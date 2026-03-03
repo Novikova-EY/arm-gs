@@ -64,14 +64,14 @@ def init_database_version_middleware(app):
         if active_version:
             g.current_db_version = active_version.id
             if not request.endpoint or not request.endpoint.startswith('static'):
-                current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена активная версия: {active_version.id} ({active_version.name})")
+                current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена активная версия: {active_version.id} (v{active_version.version_number})")
         else:
             # Если активной версии нет, используем версию по умолчанию
             default_version = get_default_version()
             if default_version:
                 g.current_db_version = default_version.id
                 if not request.endpoint or not request.endpoint.startswith('static'):
-                    current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена версия по умолчанию: {default_version.id} ({default_version.name})")
+                    current_app.logger.debug(f"[VERSION_MIDDLEWARE] Установлена версия по умолчанию: {default_version.id} (v{default_version.version_number})")
             else:
                 # Если версии по умолчанию нет, работаем со всеми данными (None)
                 g.current_db_version = None
@@ -146,7 +146,17 @@ def set_session_version(version_id):
         
         # Обновляем текущий контекст
         g.current_db_version = version_id
-        
+
+        # Очищаем все кэши: агрегации, отсортированные списки, позиции страниц
+        # Иначе возможны данные от предыдущей версии БД
+        try:
+            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
+            clear_aggregation_cache()
+        except Exception as e:
+            current_app.logger.warning(
+                f"[VERSION_MIDDLEWARE] Ошибка при очистке кэшей агрегации: {e}"
+            )
+
         # Дополнительная проверка: убеждаемся, что значение действительно сохранилось
         if version_id is not None and session.get('current_db_version') != version_id:
             current_app.logger.error(

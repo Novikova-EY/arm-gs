@@ -124,8 +124,8 @@ def export_department_mappings_service(
     for mapping in mappings:
         data.append(
             {
-                "dep_topl": _dash(_normalize_external_id(mapping.external_id)),
-                "name_topl": _dash(mapping.external_name),
+                "Номер (dep)": _dash(_normalize_external_id(mapping.external_id)),
+                "Наименование (name)": _dash(mapping.external_name),
             }
         )
 

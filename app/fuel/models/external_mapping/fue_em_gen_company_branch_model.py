@@ -2,15 +2,16 @@
 """
 GenCompanyBranchExternalMapping model (связь филиалов генерирующих компаний с внешними идентификаторами).
 
-Ожидаемые поля загрузки: code_topl, name_topl, name.
+Ожидаемые поля загрузки: code, name (внешние), name (локальное).
 Поле `name` используется для поиска и сопоставления с GenCompany.name.
 """
 
 from app.extensions import db
 from config import SCHEMA_FUE_EM
+from app.common.models.audit_mixin import AuditMixin
 
 
-class GenCompanyBranchExternalMapping(db.Model):
+class GenCompanyBranchExternalMapping(db.Model, AuditMixin):
     __tablename__ = "gs_fue_em_gen_company_branch"
     __table_args__ = ({"schema": SCHEMA_FUE_EM},)
 

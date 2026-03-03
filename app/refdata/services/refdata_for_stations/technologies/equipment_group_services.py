@@ -13,6 +13,10 @@ from app.refdata.models.refdata_for_stations.technologies.equipment_group_model 
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import TechnologyType
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import TechnologyAvailability
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.generation.models.machine.machine_model import Machine
+from app.fuel.models.external_mapping.fue_em_equipment_group_model import (
+    EquipmentGroupExternalMapping,
+)
 
 # Сервисы
 from app.common.services.get_services.refdata_for_stations.technologies.technology_type_get_services import (
@@ -53,6 +57,23 @@ def _equipment_group_dup_query(name, technology_type_id, exclude_id=None):
     if exclude_id is not None:
         query = query.filter(EquipmentGroup.id != exclude_id)
     return query
+
+
+def _find_replacement_equipment_group(obj, exclude_id):
+    """
+    Ищет дубликат по названию для переназначения ссылок.
+    Берём любую другую запись с таким же name (во всех версиях),
+    с минимальным id.
+    """
+    return (
+        EquipmentGroup.query
+        .filter(
+            EquipmentGroup.name == obj.name,
+            EquipmentGroup.id != exclude_id,
+        )
+        .order_by(EquipmentGroup.id.asc())
+        .first()
+    )
 
 
 def equipment_group_query(
@@ -456,16 +477,47 @@ def delete_equipment_group_service(ids, user):
                 .first()
                 is not None
             )
-            if has_group_sets:
-                name = obj.name or f"ID={equipment_group_id}"
-                blocked_ids.append(equipment_group_id)
-                blocked_names.append(name)
-                log_to_db(
-                    user,
-                    "Запрещено удаление типа группы оборудования",
-                    f"Используется в сборных группах оборудования: {name}",
-                    entity_type="equipment_group",
-                    entity_id=equipment_group_id)
+            has_machines = (
+                db.session.query(Machine.id)
+                .filter(Machine.id_equipment_group == equipment_group_id)
+                .first()
+                is not None
+            )
+            if has_group_sets or has_machines:
+                replacement = _find_replacement_equipment_group(obj, equipment_group_id)
+                if replacement:
+                    # Переназначаем ссылки на дубликат и удаляем
+                    n_sets = (
+                        db.session.query(EquipmentGroupSet)
+                        .filter(EquipmentGroupSet.id_equipment_group == equipment_group_id)
+                        .update({"id_equipment_group": replacement.id})
+                    )
+                    n_machines = (
+                        db.session.query(Machine)
+                        .filter(Machine.id_equipment_group == equipment_group_id)
+                        .update({"id_equipment_group": replacement.id})
+                    )
+                    name = obj.name or f"ID={equipment_group_id}"
+                    log_to_db(
+                        user,
+                        "Удаление с переназначением на дубликат",
+                        f"{name} (id={equipment_group_id}): переназначено {n_sets} сборных групп, {n_machines} машин на id={replacement.id}",
+                        entity_type="equipment_group",
+                        entity_id=equipment_group_id)
+                    db.session.delete(obj)
+                    successful_deletes += 1
+                    deleted_names.append(name)
+                    deleted_ids.append(equipment_group_id)
+                else:
+                    name = obj.name or f"ID={equipment_group_id}"
+                    blocked_ids.append(equipment_group_id)
+                    blocked_names.append(name)
+                    log_to_db(
+                        user,
+                        "Запрещено удаление типа группы оборудования",
+                        f"Используется в сборных группах оборудования: {name}",
+                        entity_type="equipment_group",
+                        entity_id=equipment_group_id)
                 continue
 
             name = obj.name or f"ID={equipment_group_id}"
@@ -596,4 +648,111 @@ def export_equipment_group_service(
         "Экспорт таблицы типов групп оборудования в Excel завершен", 
         f"Экспортировано записей: {len(data)}", 
         entity_type="equipment_group")
+    return output
+
+
+def export_equipment_group_mappings_service(
+        user,
+        equipment_group_filter=None,
+        sort_by="id",
+        sort_dir="asc"):
+    """Экспортирует сопоставления типов групп оборудования с БД Топливо в Excel (по принципу gen_company)."""
+    log_to_db(
+        user,
+        "Начата выгрузка сопоставлений типов групп оборудования (Топливо)",
+        entity_type="equipment_group",
+    )
+    log_to_db(
+        user,
+        "Параметры экспорта",
+        (
+            f"Фильтр по типам групп оборудования = {equipment_group_filter}, "
+            f"Сортировка = {sort_by}, направление = {sort_dir}."
+        ),
+        entity_type="equipment_group",
+    )
+
+    query = equipment_group_query(
+        equipment_group_filter=equipment_group_filter,
+        technology_type_filter=None,
+        technology_availability_filter=None,
+        sort_by=sort_by if sort_by in {"id", "name", "display_order"} else "id",
+        sort_dir=sort_dir,
+    )
+    items = query.all()
+
+    mapping_sort_fields = {
+        "code", "name_topl", "type_", "tm", "n1", "n2", "p1", "p2", "gruppa_oborud"
+    }
+    mappings = EquipmentGroupExternalMapping.query.order_by(
+        EquipmentGroupExternalMapping.id.desc()
+    ).all()
+    mapping_by_uuid = {}
+    unmatched_mappings = []
+    for mapping in mappings:
+        if mapping.equipment_group_ref_uuid:
+            if mapping.equipment_group_ref_uuid not in mapping_by_uuid:
+                mapping_by_uuid[mapping.equipment_group_ref_uuid] = mapping
+        else:
+            unmatched_mappings.append(mapping)
+
+    rows = [
+        {"eg": eg, "mapping": mapping_by_uuid.get(eg.ref_uuid)}
+        for eg in items
+    ]
+
+    if sort_by in mapping_sort_fields:
+        rows.extend([{"eg": None, "mapping": m} for m in unmatched_mappings])
+
+        def _sort_key(row):
+            mapping = row["mapping"]
+            value = getattr(mapping, sort_by, None) if mapping else None
+            if value is None or str(value).strip() == "":
+                return (2, "")
+            text = str(value).strip()
+            if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+                return (0, int(text))
+            return (1, text.lower())
+
+        rows.sort(key=_sort_key, reverse=(sort_dir == "desc"))
+
+    data = []
+    for row in rows:
+        mapping = row["mapping"]
+        eg = row["eg"]
+        data.append({
+            "Код (code)": _dash(mapping.code if mapping else None),
+            "Название (Топливо) (name_topl)": _dash(mapping.name_topl if mapping else None),
+            "Тип (type_)": _dash(mapping.type_ if mapping else None),
+            "Типы турбин (tm)": _dash(mapping.tm if mapping else None),
+            "Мощность блока (вар. 1) (n1)": _dash(mapping.n1 if mapping else None),
+            "Мощность блока (вар. 2) (n2)": _dash(mapping.n2 if mapping else None),
+            "Давление пара (вар. 1) (p1)": _dash(mapping.p1 if mapping else None),
+            "Давление пара (вар. 2) (p2)": _dash(mapping.p2 if mapping else None),
+            "Группа оборудования (gruppa_oborud)": _dash(mapping.gruppa_oborud if mapping else None),
+            "UUID (ref_uuid)": _dash(eg.ref_uuid if eg else None),
+            "ID (id)": _dash(eg.id if eg else None),
+            "Наименование (name)": _dash(eg.name if eg else None),
+        })
+
+    log_to_db(
+        user,
+        "Подготовка данных для экспорта сопоставлений типов групп оборудования",
+        f"Записей для экспорта: {len(data)}",
+        entity_type="equipment_group",
+    )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    sheet_name = "EquipmentGroup"
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+    output.seek(0)
+    log_to_db(
+        user,
+        "Экспорт сопоставлений типов групп оборудования завершен",
+        f"Экспортировано записей: {len(data)}",
+        entity_type="equipment_group",
+    )
     return output

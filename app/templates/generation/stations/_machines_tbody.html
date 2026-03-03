@@ -46,7 +46,7 @@
         </td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_commission_year if machine.date_commission_year else '—' }}</td>
         <td class="rowspan-td" rowspan="3">{{ machine.date_exploitation if machine.date_exploitation else '—' }}</td>
-        <td class="rowspan-td" rowspan="3">{{ machine.date_decompressing_expected if machine.date_decompressing_expected else '—' }}</td>
+        <td class="rowspan-td" rowspan="3">{{ machine.decompressing_display or '—' }}</td>
         <td class="rowspan-td col-modernization" rowspan="3">{{ machine.modernization_display if machine.modernization_display else '—' }}</td>
         
         <td class="rowspan-td" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
@@ -162,7 +162,7 @@
             </td>
             <td>{{ machine.date_commission_year or '—' }}</td>
             <td>{{ machine.date_exploitation or '—' }}</td>
-            <td>{{ machine.date_decompressing_expected or '—' }}</td>
+            <td>{{ machine.decompressing_display or '—' }}</td>
             <td class="col-modernization">{{ machine.date_modernization_expected if machine.date_modernization_expected else '—' }}</td>
             
             <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.tes_types or '—' }}</td>
@@ -235,7 +235,7 @@
         </td>
         <td>{{ pgu.date_commission_year or '—' }}</td>
         <td>{{ pgu.date_exploitation or '—' }}</td>
-        <td>{{ pgu.date_decompressing_expected or '—' }}</td>
+        <td>{{ pgu.decompressing_display or '—' }}</td>
         <td>{{ pgu.date_modernization_expected or '—' }}</td>
         <td>
             {% if pgu.tes_machine_type and pgu.tes_machine_type.id != 0 %}

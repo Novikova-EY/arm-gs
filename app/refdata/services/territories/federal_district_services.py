@@ -673,11 +673,11 @@ def export_federal_district_mappings_service(
         mapping = row["mapping"]
         fd = row["fd"]
         data.append({
-            "ID в БД Топливо": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
-            "Название в БД Топливо": _dash(mapping.external_name if mapping else None),
-            "UUID ФО": _dash(fd.ref_uuid if fd else None),
-            "ID ФО (текущая версия)": _dash(fd.id if fd else None),
-            "Наименование ФО в АРМ": _dash(fd.name if fd else None),
+            "Номер (fo)": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "Название (name)": _dash(mapping.external_name if mapping else None),
+            "UUID": _dash(fd.ref_uuid if fd else None),
+            "ID": _dash(fd.id if fd else None),
+            "Наименование": _dash(fd.name if fd else None),
         })
 
     log_to_db(

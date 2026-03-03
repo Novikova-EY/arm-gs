@@ -96,6 +96,10 @@
         <table class="table table-hover table-striped table-bordered">
 
             <thead>
+                <tr class="table-success">
+                    <th colspan="4" class="text-center align-middle">Модуль «Топливо»</th>
+                    <th colspan="3" class="text-center align-middle">Модуль «Генерация»</th>
+                </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
                     <!-- Шапка таблицы. Столбец "ID в БД Топливо" -->
                     <th class="text-center align-middle">
@@ -107,7 +111,7 @@
                                             sort_by='external_id',
                                             sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            ID в БД Топливо
+                            Номер<br><span class="text-muted small">(oes)</span>
                             {% if sort_by == 'external_id' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -124,7 +128,7 @@
                                             sort_by='external_name',
                                             sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            Название в БД Топливо
+                            Название<br><span class="text-muted small">(name)</span>
                             {% if sort_by == 'external_name' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -141,7 +145,7 @@
                                             sort_by='external_nameoes',
                                             sort_dir='asc' if sort_by != 'external_nameoes' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            Наименование ОЭС в БД Топливо
+                            Наименование<br><span class="text-muted small">(nameoes)</span>
                             {% if sort_by == 'external_nameoes' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -158,7 +162,7 @@
                                             sort_by='external_abbr',
                                             sort_dir='asc' if sort_by != 'external_abbr' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            Сокр. ОЭС в БД Топливо
+                            Сокр. ОЭС<br><span class="text-muted small">(abbr)</span>
                             {% if sort_by == 'external_abbr' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -175,7 +179,7 @@
                                             sort_by='ref_uuid',
                                             sort_dir='asc' if sort_by != 'ref_uuid' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            UUID ОЭС
+                            UUID
                             {% if sort_by == 'ref_uuid' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -192,7 +196,7 @@
                                             sort_by='id',
                                             sort_dir='asc' if sort_by != 'id' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            ID ОЭС (текущая версия)
+                            ID ОЭС
                             {% if sort_by == 'id' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -209,7 +213,7 @@
                                             sort_by='name',
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            Наименование ОЭС в АРМ
+                            Наименование
                             {% if sort_by == 'name' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}

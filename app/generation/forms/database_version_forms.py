@@ -30,14 +30,6 @@ class DatabaseVersionFilterForm(FlaskForm):
             "title": "До 30 символов: буквы, цифры, пробелы, дефисы и круглые скобки.",
         },
     )
-    
-    name = StringField(
-        "Название версии",
-        validators=[
-            DataRequired(message="Поле «Название версии» обязательно."),
-            Length(min=2, max=255, message="Длина от 2 до 255 символов."),
-        ],
-    )
 
     description = TextAreaField(
         "Описание",
@@ -49,9 +41,9 @@ class DatabaseVersionFilterForm(FlaskForm):
 
     # Поля фильтра
     version_filter = StringField(
-        "Фильтр по названию",
+        "Фильтр по номеру или описанию",
         validators=[Optional(), Length(max=100)],
-        render_kw={"placeholder": "Поиск по названию версии"},
+        render_kw={"placeholder": "Поиск по номеру или описанию"},
     )
 
     # Пагинация
@@ -83,14 +75,6 @@ class AddDatabaseVersionForm(FlaskForm):
             "pattern": "[A-Za-zА-Яа-я0-9 ()\\-]+",
             "title": "До 30 символов: буквы, цифры, пробелы, дефисы и круглые скобки.",
         },
-    )
-
-    name = StringField(
-        "Название версии",
-        validators=[
-            DataRequired(message="Поле «Название версии» обязательно."),
-            Length(min=3, max=255, message="Длина от 3 до 255 символов."),
-        ],
     )
 
     description = TextAreaField(

@@ -37,6 +37,230 @@ from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesTy
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.common.services.get_services.stations.tes_type_get_services import get_unknown_tes_type_id
+import zipfile
+import xml.etree.ElementTree as ET
+from openpyxl.utils import get_column_letter
+
+
+_XLSX_NS = {
+    "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    "rel": "http://schemas.openxmlformats.org/package/2006/relationships",
+}
+
+
+def _xlsx_shared_strings(zf: zipfile.ZipFile) -> list[str]:
+    try:
+        xml = zf.read("xl/sharedStrings.xml")
+    except KeyError:
+        return []
+    root = ET.fromstring(xml)
+    out: list[str] = []
+    for si in root.findall("main:si", _XLSX_NS):
+        parts: list[str] = []
+        for t in si.findall(".//main:t", _XLSX_NS):
+            parts.append(t.text or "")
+        out.append("".join(parts))
+    return out
+
+
+def _xlsx_sheet_path_by_name(zf: zipfile.ZipFile, sheet_name: str) -> str:
+    wb = ET.fromstring(zf.read("xl/workbook.xml"))
+
+    r_id: str | None = None
+    for sh in wb.findall("main:sheets/main:sheet", _XLSX_NS):
+        if sh.attrib.get("name") == sheet_name:
+            r_id = sh.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+            break
+    if not r_id:
+        raise KeyError(f"Sheet not found: {sheet_name}")
+
+    rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+    target: str | None = None
+    for rel in rels.findall("rel:Relationship", _XLSX_NS):
+        if rel.attrib.get("Id") == r_id:
+            target = rel.attrib.get("Target")
+            break
+    if not target:
+        raise KeyError(f"Target for sheet not found: {sheet_name}")
+
+    if not target.startswith("xl/"):
+        target = "xl/" + target.lstrip("/")
+    return target
+
+
+def _xlsx_raw_cell_map(zf: zipfile.ZipFile, sheet_xml_path: str) -> dict[str, tuple[str | None, str | None]]:
+    """
+    coord -> (cell_type, raw_v)
+    cell_type = атрибут t (например 's'), либо None (значит число/пусто)
+    raw_v     = текст из <v> (для числа это и есть то, что нужно)
+    """
+    root = ET.fromstring(zf.read(sheet_xml_path))
+    out: dict[str, tuple[str | None, str | None]] = {}
+    for c in root.findall(".//main:sheetData//main:row//main:c", _XLSX_NS):
+        r = c.attrib.get("r")
+        t = c.attrib.get("t")
+        v_el = c.find("main:v", _XLSX_NS)
+        raw_v = v_el.text if v_el is not None else None
+        if r:
+            out[r] = (t, raw_v)
+    return out
+
+
+def excel_format_scale(number_format: str | None) -> int | None:
+    """
+    Возвращает количество знаков после запятой для форматов типа:
+      0, 0.00, #,##0.0000
+    Если формат сложный (General, научный, условия, проценты и т.п.) — вернёт None.
+    """
+    if not number_format:
+        return None
+    fmt = number_format.strip().split(";", 1)[0]
+    if fmt.lower() == "general":
+        return None
+    fmt = re.sub(r'"[^"]*"', "", fmt)
+    fmt = fmt.replace("\\", "")
+    if "." not in fmt:
+        return 0
+    frac = fmt.split(".", 1)[1]
+    frac = "".join(ch for ch in frac if ch in "0#")
+    if not frac:
+        return 0
+    return len(frac)
+
+
+def quantize_by_scale(dec_val: Decimal, scale: int) -> Decimal:
+    q = Decimal("1") if scale == 0 else Decimal("1." + "0" * scale)
+    return dec_val.quantize(q, rounding=ROUND_HALF_UP)
+
+
+def _read_xlsx_cells_as_stored_strings(xlsx_source, sheet_name: str) -> dict[str, tuple[str | None, str]]:
+    """
+    coord -> (cell_type, value_string):
+      - для чисел: (None или 'n', текст из <v>, напр. \"2.08016129032258\")
+      - для строк: ('s', значение из sharedStrings)
+    xlsx_source может быть путём, FileStorage или file-like объектом.
+    """
+    # Если это FileStorage (Flask), берём его stream, иначе используем сам объект
+    src = getattr(xlsx_source, "stream", xlsx_source)
+
+    if hasattr(src, "seek"):
+        try:
+            src.seek(0)
+        except Exception:
+            pass
+
+    with zipfile.ZipFile(src) as zf:
+        sst = _xlsx_shared_strings(zf)
+        sheet_path = _xlsx_sheet_path_by_name(zf, sheet_name)
+        raw_map = _xlsx_raw_cell_map(zf, sheet_path)
+
+        out: dict[str, tuple[str | None, str]] = {}
+        for coord, (t, raw_v) in raw_map.items():
+            if raw_v is None:
+                continue
+            if t == "s":
+                try:
+                    out[coord] = ("s", sst[int(raw_v)])
+                except Exception:
+                    out[coord] = ("s", str(raw_v))
+            else:
+                out[coord] = (t, str(raw_v))
+        return out
+
+
+def _xlsx_cell_number_formats(xlsx_source, sheet_name: str) -> dict[str, str]:
+    """coord -> number_format (для округления числовых ячеек по формату)."""
+    src = getattr(xlsx_source, "stream", xlsx_source)
+
+    if hasattr(src, "seek"):
+        try:
+            src.seek(0)
+        except Exception:
+            pass
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        return {}
+    try:
+        wb = load_workbook(src, read_only=True, data_only=False)
+    except Exception:
+        return {}
+    out: dict[str, str] = {}
+    try:
+        if sheet_name not in wb.sheetnames:
+            return {}
+        ws = wb[sheet_name]
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.coordinate and cell.number_format is not None:
+                    out[cell.coordinate] = str(cell.number_format)
+    finally:
+        wb.close()
+    return out
+
+
+def _overwrite_power_columns_from_excel_raw(file, df, power_col_names, sheet_name: str = "список", header_row_excel: int = 1):
+    """
+    Перезаписывает в df колонки мощностей «как в Excel»:
+    - строковые ячейки (t=='s'): сырая строка из sharedStrings.
+    - числовые ячейки: значение из <v>, округлённое по формату ячейки (excel_format_scale).
+    """
+    try:
+        raw_cells = _read_xlsx_cells_as_stored_strings(file, sheet_name)
+    except Exception:
+        return
+
+    try:
+        cell_formats = _xlsx_cell_number_formats(file, sheet_name)
+    except Exception:
+        cell_formats = {}
+
+    power_cols = [c for c in df.columns if (c in power_col_names or str(c) in power_col_names)]
+    if not power_cols:
+        return
+
+    col_indices = {c: df.columns.get_loc(c) for c in power_cols}
+    first_data_row_excel = header_row_excel + 1
+    logger = _get_logger()
+
+    for df_row_pos in range(len(df)):
+        excel_row = first_data_row_excel + df_row_pos
+        for col_name, df_col_idx in col_indices.items():
+            excel_col = df_col_idx + 1
+            coord = f"{get_column_letter(excel_col)}{excel_row}"
+            cell_data = raw_cells.get(coord)
+            if cell_data is None:
+                continue
+            t, value_str = cell_data
+            final_value = None
+            if t == "s":
+                final_value = value_str.strip()
+            else:
+                scale = excel_format_scale(cell_formats.get(coord)) if cell_formats else None
+                if scale is not None:
+                    try:
+                        dec = Decimal(value_str.replace(",", "."))
+                        final_value = quantize_by_scale(dec, scale)
+                    except Exception:
+                        final_value = value_str.strip()
+                else:
+                    final_value = value_str.strip()
+
+            # Логируем, что реально получилось из Excel для отладки импорта мощностей
+            try:
+                logger.info(
+                    "[IMPORT_STATIONS][POWER_RAW] coord=%s type=%s fmt=%s raw=%s scale=%s stored=%r",
+                    coord,
+                    t,
+                    cell_formats.get(coord) if cell_formats else None,
+                    value_str,
+                    excel_format_scale(cell_formats.get(coord)) if cell_formats else None,
+                    final_value,
+                )
+            except Exception:
+                pass
+
+            df.iat[df_row_pos, df_col_idx] = final_value
 
 
 def _get_logger():
@@ -251,6 +475,10 @@ FUEL_NAME_ALIASES = {
     # (далее через общую логику resolve_fuel будет выбран Fuel вида
     # "газ естественный попутный" в текущей версии БД).
     "газ попут": ["газ попутный"],
+    # Топлива кокс+дом (без "газ") → газ. "кокс+дом газ" и "газ нпз и др произ"
+    # обрабатываются спец-кейсами в resolve_fuel (собственный FuelType).
+    "кокс+дом газ": ["газ", "кокс+дом"],
+    "газ НПЗ и др произ": ["газ", "природный газ"],
     "уголь": ["уголь", "каменный уголь", "бурый уголь"],
     "прочее": ["прочее"],
 }
@@ -381,6 +609,43 @@ def resolve_fuel(value):
                 value,
             )
 
+    # Спец-кейсы: "газ НПЗ и др произ", "кокс+дом газ" — ищем FuelType по названию
+    _SPECIAL_FUEL_TYPES = {
+        "газ нпз и др произ": ["газ нпз и др произ", "газ нпз и др. произ"],
+        "газ нпз и др. произ": ["газ нпз и др произ", "газ нпз и др. произ"],
+        "кокс+дом газ": ["кокс+дом газ"],
+    }
+    if cleaned_norm in _SPECIAL_FUEL_TYPES:
+        type_names = _SPECIAL_FUEL_TYPES[cleaned_norm]
+        try:
+            fuel_type = (
+                versioned_query(FuelType)
+                .filter(_fuel_type_name_sql_normalized().in_(type_names))
+                .first()
+            )
+            if fuel_type:
+                fuel = (
+                    versioned_query(Fuel)
+                    .filter(Fuel.id_fuel_type == fuel_type.id)
+                    .order_by(Fuel.id.asc())
+                    .first()
+                )
+                if fuel:
+                    _get_logger().info(
+                        "[IMPORT] Топливо '%s' сопоставлено через FuelType='%s' -> Fuel(id=%s, name=%s)",
+                        value,
+                        fuel_type.name,
+                        fuel.id,
+                        fuel.name,
+                    )
+                    return fuel
+        except Exception:
+            _get_logger().exception(
+                "[IMPORT] Ошибка при спец-сопоставлении топлива '%s' (%s)",
+                value,
+                cleaned_norm,
+            )
+
     fuel = versioned_query(Fuel).filter(_fuel_name_sql_normalized() == cleaned_norm).first()
     if fuel:
         return fuel
@@ -500,74 +765,6 @@ def resolve_fuel(value):
     except Exception:
         _get_logger().exception("[IMPORT] Не удалось выполнить диагностику по топливу '%s'", value)
     return None
-
-
-def _decimal_places_from_excel_format(fmt):
-    """
-    По коду формата Excel (number_format) возвращает число знаков после запятой
-    или None, если не удалось определить (например, General).
-    """
-    if not fmt or fmt == "General":
-        return None
-    fmt = str(fmt).strip()
-    # Ищем блок с десятичной точкой: после точки идут 0, #, ? — их количество и есть знаки
-    m = re.search(r"\.([0#?]+)", fmt)
-    if m:
-        return min(len(m.group(1)), 16)
-    return None
-
-
-def _rewrite_power_columns_from_excel_format(file, df, sheet_name, power_col_names):
-    """
-    Перезаписывает колонки мощностей в df значениями, округлёнными по формату
-    ячейки Excel (number_format). Формат файла не меняется — только способ чтения.
-    """
-    try:
-        import openpyxl
-    except ImportError:
-        return
-    file.seek(0)
-    wb = openpyxl.load_workbook(file, read_only=True, data_only=False)
-    if sheet_name not in wb.sheetnames:
-        wb.close()
-        return
-    ws = wb[sheet_name]
-    # Заголовок — первая строка
-    header = [cell.value for cell in ws[1]]
-    col_name_to_idx = {}
-    for j, val in enumerate(header):
-        if val is not None:
-            col_name_to_idx[val] = j + 1
-            col_name_to_idx[str(val)] = j + 1
-    power_cols = [c for c in df.columns if c in power_col_names or str(c) in power_col_names]
-    if not power_cols:
-        wb.close()
-        return
-    for row_idx in range(len(df)):
-        ws_row = row_idx + 2
-        for col_name in power_cols:
-            col_idx = col_name_to_idx.get(col_name) or col_name_to_idx.get(str(col_name))
-            if col_idx is None:
-                continue
-            cell = ws.cell(row=ws_row, column=col_idx)
-            val = cell.value
-            if val is None or (isinstance(val, float) and pd.isna(val)):
-                continue
-            if isinstance(val, str):
-                df.iloc[row_idx, df.columns.get_loc(col_name)] = val
-                continue
-            if not isinstance(val, (int, float)):
-                continue
-            fmt = getattr(cell, "number_format", None) or "General"
-            decimals = _decimal_places_from_excel_format(fmt)
-            if decimals is None:
-                decimals = 14
-            dec_val = Decimal(str(val)).quantize(
-                Decimal("1." + "0" * decimals), rounding=ROUND_HALF_UP
-            )
-            df.iloc[row_idx, df.columns.get_loc(col_name)] = str(dec_val)
-    wb.close()
-    file.seek(0)
 
 
 def to_decimal(val, max_digits: int = 16):
@@ -818,6 +1015,8 @@ def handle_machine(row, current_station, user):
     else:
         date_exploitation = None
 
+    date_commission_year = date_exploitation
+
     if row.get('p_2024') == 0 or (date_exploitation and date_exploitation > 2025):
         condition_type = (
             versioned_query(ConditionType).filter_by(name="планируемый").first()
@@ -862,6 +1061,7 @@ def handle_machine(row, current_station, user):
         update_if_changed(machine, 'machine_name', machine_name, changes)
         update_if_changed(machine, 'machine_group', machine_group, changes)
         update_if_changed(machine, 'date_exploitation', date_exploitation, changes)
+        update_if_changed(machine, 'date_commission_year', date_commission_year, changes)
         update_if_changed(machine, 'id_gen_company', gen_company.id if gen_company else None, changes)
         update_if_changed(machine, 'id_tes_machine_type', safe_lookup(TesMachineType, 'name', row.get('tes_machine_type')), changes)
         update_if_changed(machine, 'id_machine_type', safe_lookup(MachineType, 'id', 0, cleaner=None), changes)
@@ -903,6 +1103,7 @@ def handle_machine(row, current_station, user):
             id_machine_type=safe_lookup(MachineType, 'id', 0, cleaner=None),
             id_tes_machine_type=safe_lookup(TesMachineType, 'name', row.get('tes_machine_type')),
             date_exploitation=date_exploitation,
+            date_commission_year=date_commission_year,
             date_commission_fact=safe_date(row.get('date_commission_fact')),
             date_joining_expected=safe_date(row.get('date_joining_expected')),
             date_joining_fact=safe_date(row.get('date_joining_fact')),
@@ -1403,15 +1604,18 @@ def import_station_list_from_excel(file, user):
     start_year, end_year = 2021, 2031
     power_col_names = {f"p_{y}" for y in range(start_year, end_year + 1)} | {
         str(y) for y in range(start_year, end_year + 1)
-    }
-    df = xls.parse('список', header=0)
+    } | {y for y in range(start_year, end_year + 1)}
+    df_header = xls.parse('список', header=0, nrows=0)
+    dtype = {c: str for c in df_header.columns if c in power_col_names or str(c) in power_col_names}
+    kw = {"header": 0}
+    if dtype:
+        kw["dtype"] = dtype
+    df = xls.parse('список', **kw)
     df = df.dropna(how='all')
-    # По формату ячеек Excel перезаписываем колонки мощностей округлёнными строками
-    # (формат файла не меняется — читаем number_format через openpyxl).
-    _rewrite_power_columns_from_excel_format(file, df, 'список', power_col_names)
     original_columns = list(df.columns)
     df = _apply_station_import_column_aliases(df)
     normalized_columns = list(df.columns)
+    _overwrite_power_columns_from_excel_raw(file, df, power_col_names)
 
     required_columns = ["regional_district", "station_name"]
     missing_required = [c for c in required_columns if c not in df.columns]

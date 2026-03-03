@@ -1822,6 +1822,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const dateDecompressingExpectedField = document.querySelector(
             'input[name*="date_decompressing_expected"]'
         );
+        const dateDecompressingFactField = document.querySelector(
+            'input[name*="date_decompressing_fact"]'
+        );
         const dateModernizationExpectedField = document.querySelector(
             'input[name*="date_modernization_expected"]'
         );
@@ -1866,14 +1869,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (dateDecompressingExpectedField) {
+            // Если указана фактическая дата вывода, ожидаемый год не заполняем
+            const hasDecompressingFact = dateDecompressingFactField && (dateDecompressingFactField.value || "").trim();
             const hasMax =
                 typeof maxVersionYear === "number" &&
                 !isNaN(maxVersionYear) &&
                 maxVersionYear > 0;
             const safeDecompYear =
-                hasMax && decompYear !== null && decompYear > maxVersionYear
+                hasDecompressingFact ? null :
+                (hasMax && decompYear !== null && decompYear > maxVersionYear
                     ? null
-                    : decompYear;
+                    : decompYear);
             dateDecompressingExpectedField.value =
                 safeDecompYear !== null ? String(safeDecompYear) : "";
         }
@@ -2745,6 +2751,25 @@ document.addEventListener('DOMContentLoaded', function() {
         dateCommissionFactInput.addEventListener('input', updateCommissionYear);
         dateCommissionFactInput.addEventListener('change', updateCommissionYear);
         dateCommissionFactInput.addEventListener('blur', updateCommissionYear);
+    }
+
+    // При заполнении "Фактическая дата вывода из эксплуатации" очищаем "Ожидаемый год вывода из эксплуатации"
+    const dateDecompressingFactInput =
+        document.getElementById('date_decompressing_fact') ||
+        document.querySelector('input[name*="date_decompressing_fact"]');
+    const dateDecompressingExpectedInput =
+        document.getElementById('date_decompressing_expected') ||
+        document.querySelector('input[name*="date_decompressing_expected"]');
+
+    if (dateDecompressingFactInput && dateDecompressingExpectedInput) {
+        const clearExpectedIfFactFilled = () => {
+            if ((dateDecompressingFactInput.value || '').trim()) {
+                dateDecompressingExpectedInput.value = '';
+            }
+        };
+        dateDecompressingFactInput.addEventListener('input', clearExpectedIfFactFilled);
+        dateDecompressingFactInput.addEventListener('change', clearExpectedIfFactFilled);
+        clearExpectedIfFactFilled(); // при загрузке страницы, если факт уже заполнен
     }
 });
 

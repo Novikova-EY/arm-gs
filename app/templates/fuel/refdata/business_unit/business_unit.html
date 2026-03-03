@@ -93,6 +93,9 @@
         <table class="table table-hover table-striped table-bordered">
 
             <thead>
+                <tr class="table-success">
+                    <th colspan="2" class="text-center align-middle">Модуль «Топливо»</th>
+                </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
                     <!-- Шапка таблицы. Столбец "ID в БД Топливо" -->
                     <th class="text-center align-middle">
@@ -103,7 +106,7 @@
                                             sort_by='external_id',
                                             sort_dir='asc' if sort_by != 'external_id' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            ID в БД Топливо
+                            Номер<br><span class="text-muted small">(code)</span>
                             {% if sort_by == 'external_id' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}
@@ -119,7 +122,7 @@
                                             sort_by='external_name',
                                             sort_dir='asc' if sort_by != 'external_name' or sort_dir == 'desc' else 'desc') }}"
                             class="text-black">
-                            Название в БД Топливо
+                            Наименование<br><span class="text-muted small">(name)</span>
                             {% if sort_by == 'external_name' %}
                                 {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
                             {% endif %}

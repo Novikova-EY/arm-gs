@@ -25,8 +25,8 @@ threads = int(os.getenv("GUNICORN_THREADS", 4))
 worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", 1000))
 
 # Timeout
-# Увеличен таймаут для операций экспорта больших объемов данных
-timeout = int(os.getenv("GUNICORN_TIMEOUT", 300))
+# Увеличен таймаут для операций импорта/экспорта больших Excel-файлов (по умолчанию 15 мин)
+timeout = int(os.getenv("GUNICORN_TIMEOUT", 900))
 
 # Keep alive
 keepalive = int(os.getenv("GUNICORN_KEEPALIVE", 5))

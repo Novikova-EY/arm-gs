@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Группы оборудования электростанций Российской Федерации{% endblock %}
+{% block title %}Группы оборудования электростанций{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -21,14 +21,14 @@
     <div class="table-responsive" id="stationsTableContainer">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
     </div>
 
     <div class="col-12 mb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <!-- Левая группа кнопок -->
             <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Группы оборудования электростанций Российской Федерации</h2>
+                <h2 class="text-center mb-4">Группы оборудования электростанций</h2>
             </div>
 
             <!-- Правая группа: чекбоксы и подсветка -->
@@ -46,7 +46,7 @@
     <!-- Фильтры -->
     {% include 'fuel/stations_equipment_groups_filters.html' %}
 
-{% set column_count = 31 %}
+{% set column_count = 30 %}
 
     <!-- Таблица с данными -->
         <table class="table table-hover table-striped table-bordered table-responsive">
@@ -54,37 +54,40 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    <th colspan="5">Модуль «Генерация»</th>
+                    <th colspan="25">Модуль «Топливо»</th>
+                </tr>
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 120px;">Группа оборудования</th>
                     <th style="width: 220px;">Станция</th>
                     <th style="width: 50px;">Тип</th>
                     <th style="width: 80px;">cт. №</th>
                     <th style="width: 200px;">Тип агрегата</th>
-                    <th style="width: 80px;">niv</th>
-                    <th style="width: 80px;">comp</th>
-                    <th style="width: 80px;">main</th>
-                    <th style="width: 80px;">d</th>
-                    <th style="width: 80px;">r</th>
-                    <th style="width: 80px;">form</th>
-                    <th style="width: 80px;">type</th>
-                    <th style="width: 100px;">vedomstvo</th>
-                    <th style="width: 80px;">obl</th>
-                    <th style="width: 80px;">dep</th>
-                    <th style="width: 80px;">oes</th>
-                    <th style="width: 80px;">er</th>
-                    <th style="width: 80px;">fo</th>
-                    <th style="width: 80px;">numb</th>
-                    <th style="width: 80px;">tm</th>
-                    <th style="width: 80px;">n1</th>
-                    <th style="width: 80px;">n2</th>
-                    <th style="width: 80px;">p1</th>
-                    <th style="width: 80px;">p2</th>
-                    <th style="width: 100px;">ordnumb</th>
-                    <th style="width: 180px;">addr</th>
-                    <th style="width: 200px;">note</th>
-                    <th style="width: 100px;">codegor</th>
-                    <th style="width: 80px;">be</th>
-                    <th style="width: 80px;">gk</th>
-                    <th style="width: 80px;">gkf</th>
+                    <th style="width: 80px;">Признак группы оборудования<br><span class="text-muted small">(niv)</span></th>
+                    <th style="width: 80px;">Признак станции, разбитой на группы<br><span class="text-muted small">(comp)</span></th>
+                    <th style="width: 80px;">Код станции<br><span class="text-muted small">(main)</span></th>
+                    <th style="width: 80px;">Признак действующей станции<br><span class="text-muted small">(d)</span></th>
+                    <th style="width: 80px;">Признак расширяемой станции<br><span class="text-muted small">(r)</span></th>
+                    <th style="width: 80px;">Признак ФОРЭМ<br><span class="text-muted small">(forem)</span></th>
+                    <th style="width: 100px;">Ведомство<br><span class="text-muted small">(vedomstvo)</span></th>
+                    <th style="width: 80px;">Субъект РФ<br><span class="text-muted small">(obl)</span></th>
+                    <th style="width: 80px;">Департамент<br><span class="text-muted small">(dep)</span></th>
+                    <th style="width: 80px;">ОЭС<br><span class="text-muted small">(oes)</span></th>
+                    <th style="width: 80px;">Экономический район<br><span class="text-muted small">(er)</span></th>
+                    <th style="width: 80px;">Федеральный округ<br><span class="text-muted small">(fo)</span></th>
+                    <th style="width: 80px;">Код станции<br><span class="text-muted small">(numb)</span></th>
+                    <th style="width: 80px;">Типы турбин<br><span class="text-muted small">(tm)</span></th>
+                    <th style="width: 80px;">Мощность блока (вар. 1)<br><span class="text-muted small">(n1)</span></th>
+                    <th style="width: 80px;">Мощность блока (вар. 2)<br><span class="text-muted small">(n2)</span></th>
+                    <th style="width: 80px;">Давление пара (вар. 1)<br><span class="text-muted small">(p1)</span></th>
+                    <th style="width: 80px;">Давление пара (вар. 2)<br><span class="text-muted small">(p2)</span></th>
+                    <th style="width: 100px;">Порядковый номер станции<br><span class="text-muted small">(ordnumb)</span></th>
+                    <th style="width: 180px;">Адрес<br><span class="text-muted small">(addr)</span></th>
+                    <th style="width: 200px;">Примечание<br><span class="text-muted small">(note)</span></th>
+                    <th style="width: 100px;">Код города<br><span class="text-muted small">(codegor)</span></th>
+                    <th style="width: 80px;">Тип генерирующей компании<br><span class="text-muted small">(be)</span></th>
+                    <th style="width: 80px;">Генерирующая компания<br><span class="text-muted small">(gk)</span></th>
+                    <th style="width: 80px;">Филиал ГК<br><span class="text-muted small">(gkf)</span></th>
                 </tr>
             </thead>
 
@@ -210,7 +213,15 @@
                                                         <tr class="text-center align-middle">
                                                             {% if loop.first %}
                                                                 {% if is_new_group %}
-                                                                    <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                                    <td rowspan="{{ group_rowspan }}">
+                                                                        {% if link %}
+                                                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                                                {{ seg.name if seg and seg.name else '—' }}
+                                                                            </a>
+                                                                        {% else %}
+                                                                            {{ seg.name if seg and seg.name else '—' }}
+                                                                        {% endif %}
+                                                                    </td>
                                                                 {% endif %}
                                                                 {% if not station_cell.printed %}
                                                                     <td rowspan="{{ total_machines }}">
@@ -235,16 +246,27 @@
                                                             <td rowspan="{{ group.list|length }}">{{ seg.niv if seg and seg.niv else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.comp if seg and seg.comp else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.main if seg and seg.main else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.d if seg and seg.d else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.r if seg and seg.r else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.form if seg and seg.form else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.type if seg and seg.type else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.vedomstvo if seg and seg.vedomstvo else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.obl if seg and seg.obl else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.dep if seg and seg.dep else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.oes if seg and seg.oes else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.er if seg and seg.er else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.fo if seg and seg.fo else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.d and seg.d|string == '1' else (seg.d if seg and seg.d else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.r and seg.r|string == '1' else (seg.r if seg and seg.r else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.forem and seg.forem|string == '1' else (seg.forem if seg and seg.forem else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">
+                                                                {% if seg and seg.vedomstvo %}
+                                                                    {% if seg.vedomstvo|string == '1' %}
+                                                                        станция<br>отрасли
+                                                                    {% elif seg.vedomstvo|string == '2' %}
+                                                                        пром.<br>предприятие
+                                                                    {% else %}
+                                                                        {{ seg.vedomstvo }}
+                                                                    {% endif %}
+                                                                {% else %}
+                                                                    —
+                                                                {% endif %}
+                                                            </td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.territories_energy_external_mapping.external_name or seg.obl) if seg and seg.territories_energy_external_mapping else (seg.obl if seg and seg.obl else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.department_external_mapping.external_name or seg.dep) if seg and seg.department_external_mapping else (seg.dep if seg and seg.dep else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.union_energy_system_external_mapping.external_nameoes or seg.oes) if seg and seg.union_energy_system_external_mapping else (seg.oes if seg and seg.oes else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.economic_region_external_mapping.external_name or seg.er) if seg and seg.economic_region_external_mapping else (seg.er if seg and seg.er else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.federal_district_external_mapping.external_name or seg.fo) if seg and seg.federal_district_external_mapping else (seg.fo if seg and seg.fo else '—') }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.numb if seg and seg.numb else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.tm if seg and seg.tm else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.n1 if seg and seg.n1 else '—' }}</td>
@@ -254,10 +276,10 @@
                                                             <td rowspan="{{ group.list|length }}">{{ seg.ordnumb if seg and seg.ordnumb else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.addr if seg and seg.addr else '—' }}</td>
                                                             <td rowspan="{{ group.list|length }}">{{ seg.note if seg and seg.note else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.codegor if seg and seg.codegor else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.be if seg and seg.be else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.gk if seg and seg.gk else '—' }}</td>
-                                                            <td rowspan="{{ group.list|length }}">{{ seg.gkf if seg and seg.gkf else '—' }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.cities_external_mapping.name or seg.codegor) if seg and seg.cities_external_mapping else (seg.codegor if seg and seg.codegor else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.business_unit_external_mapping.external_name or seg.be) if seg and seg.business_unit_external_mapping else (seg.be if seg and seg.be else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.gen_company_external_mapping.external_name or seg.gk) if seg and seg.gen_company_external_mapping else (seg.gk if seg and seg.gk else '—') }}</td>
+                                                            <td rowspan="{{ group.list|length }}">{{ (seg.gen_company_branch_external_mapping.external_name or seg.gkf) if seg and seg.gen_company_branch_external_mapping else (seg.gkf if seg and seg.gkf else '—') }}</td>
                                                         {% endif %}
                                                         </tr>
                                                     {% endfor %}
@@ -284,8 +306,6 @@
                                                                 </a>
                                                             </td>
                                                             {% if loop.first %}
-                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
-                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
                                                                 <td rowspan="{{ machines_without_group|length }}">—</td>
                                                                 <td rowspan="{{ machines_without_group|length }}">—</td>
                                                                 <td rowspan="{{ machines_without_group|length }}">—</td>
@@ -390,7 +410,15 @@
                                     <tr class="text-center align-middle">
                                         {% if loop.first %}
                                             {% if is_new_group %}
-                                                <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                <td rowspan="{{ group_rowspan }}">
+                                                    {% if link %}
+                                                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
+                                                            {{ seg.name if seg and seg.name else '—' }}
+                                                        </a>
+                                                    {% else %}
+                                                        {{ seg.name if seg and seg.name else '—' }}
+                                                    {% endif %}
+                                                </td>
                                             {% endif %}
                                             {% if not station_cell.printed %}
                                                 <td rowspan="{{ total_machines }}">
@@ -415,16 +443,27 @@
                                         <td rowspan="{{ group.list|length }}">{{ seg.niv if seg and seg.niv else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.comp if seg and seg.comp else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.main if seg and seg.main else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.d if seg and seg.d else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.r if seg and seg.r else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.form if seg and seg.form else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.type if seg and seg.type else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.vedomstvo if seg and seg.vedomstvo else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.obl if seg and seg.obl else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.dep if seg and seg.dep else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.oes if seg and seg.oes else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.er if seg and seg.er else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.fo if seg and seg.fo else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.d and seg.d|string == '1' else (seg.d if seg and seg.d else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.r and seg.r|string == '1' else (seg.r if seg and seg.r else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ 'да' if seg and seg.forem and seg.forem|string == '1' else (seg.forem if seg and seg.forem else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">
+                                            {% if seg and seg.vedomstvo %}
+                                                {% if seg.vedomstvo|string == '1' %}
+                                                    станция<br>отрасли
+                                                {% elif seg.vedomstvo|string == '2' %}
+                                                    пром.<br>предприятие
+                                                {% else %}
+                                                    {{ seg.vedomstvo }}
+                                                {% endif %}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.territories_energy_external_mapping.external_name or seg.obl) if seg and seg.territories_energy_external_mapping else (seg.obl if seg and seg.obl else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.department_external_mapping.external_name or seg.dep) if seg and seg.department_external_mapping else (seg.dep if seg and seg.dep else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.union_energy_system_external_mapping.external_nameoes or seg.oes) if seg and seg.union_energy_system_external_mapping else (seg.oes if seg and seg.oes else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.economic_region_external_mapping.external_name or seg.er) if seg and seg.economic_region_external_mapping else (seg.er if seg and seg.er else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.federal_district_external_mapping.external_name or seg.fo) if seg and seg.federal_district_external_mapping else (seg.fo if seg and seg.fo else '—') }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.numb if seg and seg.numb else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.tm if seg and seg.tm else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.n1 if seg and seg.n1 else '—' }}</td>
@@ -434,10 +473,10 @@
                                         <td rowspan="{{ group.list|length }}">{{ seg.ordnumb if seg and seg.ordnumb else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.addr if seg and seg.addr else '—' }}</td>
                                         <td rowspan="{{ group.list|length }}">{{ seg.note if seg and seg.note else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.codegor if seg and seg.codegor else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.be if seg and seg.be else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.gk if seg and seg.gk else '—' }}</td>
-                                        <td rowspan="{{ group.list|length }}">{{ seg.gkf if seg and seg.gkf else '—' }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.cities_external_mapping.name or seg.codegor) if seg and seg.cities_external_mapping else (seg.codegor if seg and seg.codegor else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.business_unit_external_mapping.external_name or seg.be) if seg and seg.business_unit_external_mapping else (seg.be if seg and seg.be else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.gen_company_external_mapping.external_name or seg.gk) if seg and seg.gen_company_external_mapping else (seg.gk if seg and seg.gk else '—') }}</td>
+                                        <td rowspan="{{ group.list|length }}">{{ (seg.gen_company_branch_external_mapping.external_name or seg.gkf) if seg and seg.gen_company_branch_external_mapping else (seg.gkf if seg and seg.gkf else '—') }}</td>
                                     {% endif %}
                                     </tr>
                                 {% endfor %}
@@ -445,9 +484,9 @@
                             {% if machines_without_group %}
                                 {% for machine in machines_without_group %}
                                     <tr class="text-center align-middle">
-                                        {% if loop.first %}
-                                            <td rowspan="{{ machines_without_group|length }}">—</td>
-                                            {% if not station_cell.printed %}
+                                    {% if loop.first %}
+                                        <td rowspan="{{ machines_without_group|length }}">—</td>
+                                        {% if not station_cell.printed %}
                                                 <td rowspan="{{ total_machines }}">
                                                     <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
                                                         {{ station.name }}
@@ -464,8 +503,6 @@
                                             </a>
                                         </td>
                                     {% if loop.first %}
-                                        <td rowspan="{{ machines_without_group|length }}">—</td>
-                                        <td rowspan="{{ machines_without_group|length }}">—</td>
                                         <td rowspan="{{ machines_without_group|length }}">—</td>
                                         <td rowspan="{{ machines_without_group|length }}">—</td>
                                         <td rowspan="{{ machines_without_group|length }}">—</td>
@@ -512,6 +549,7 @@
         <!-- Пагинация (скрывается при прокрутке вниз) -->
         <div class="mt-2">
             {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_equipment_groups' %}
                 {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
         </div>
@@ -564,6 +602,16 @@
 </script>
 
 <!-- jQuery и Select2 уже подключены в base.html -->
+
+<!-- Каскадные фильтры ОЭС/ФО/РЭС/субъекты (как на station_list) -->
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
 
 <!-- Функции управления кэшем -->
 <script>

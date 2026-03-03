@@ -23,6 +23,8 @@ def get_technology_type_list_full():
         query
         .order_by(
             (TechnologyType.id != 0),
+            (TechnologyType.display_order.is_(None)),
+            TechnologyType.display_order.asc(),
             TechnologyType.name.asc()
         )
         .all()
@@ -41,7 +43,11 @@ def get_technology_type_list():
     return (
         query
         .filter(TechnologyType.id.isnot(None), TechnologyType.id > 0)
-        .order_by(TechnologyType.name.asc())
+        .order_by(
+            (TechnologyType.display_order.is_(None)),
+            TechnologyType.display_order.asc(),
+            TechnologyType.name.asc()
+        )
     )
 
 

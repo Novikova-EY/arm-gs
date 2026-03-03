@@ -35,14 +35,14 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 
 
 def technology_type_query(
-        technology_type_filter=None, 
-        sort_by="id", 
+        technology_type_filter=None,
+        sort_by="display_order",
         sort_dir="asc"):
     """ Базовый запрос для выборки типов технологий с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id","name"}
-    sort_by = sort_by if sort_by in allowed_sort_by else "id"
+    allowed_sort_by = {"id", "name", "display_order", "number"}
+    sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
     sort_dir = "desc" if sort_dir == "desc" else "asc"
@@ -56,22 +56,33 @@ def technology_type_query(
         query = query.filter(TechnologyType.name.ilike(f"%{technology_type_filter}%"))
 
     # Сортировка
-    if sort_by == "name":
+    if sort_by == "display_order":
+        if sort_dir == "desc":
+            query = query.order_by(
+                (TechnologyType.display_order.is_(None)),
+                TechnologyType.display_order.desc()
+            )
+        else:
+            query = query.order_by(
+                (TechnologyType.display_order.is_(None)),
+                TechnologyType.display_order.asc()
+            )
+    elif sort_by == "name":
         sort_col = TechnologyType.name
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
     else:
         sort_col = TechnologyType.id
-
-    query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
+        query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
 
 
 @no_autoflush
 def get_technology_type_list(
-    page, 
-    per_page, 
-    technology_type_filter=None, 
-    sort_by="id", 
+    page,
+    per_page,
+    technology_type_filter=None,
+    sort_by="display_order",
     sort_dir="asc"):
     """ Получает список типов технологий с пагинацией, фильтрацией и сортировкой. """
     
@@ -87,7 +98,7 @@ def get_technology_type_list(
 
 
 @no_autoflush
-def update_technology_type_service(data, user):
+def update_technology_type_service(data, user, _retried=False):
     """ Обновление данных по типам технологий """
 
     if not isinstance(data, list):
@@ -106,6 +117,7 @@ def update_technology_type_service(data, user):
         for record in data:
             technology_type_id = record.get("technology_type_id")
             name = (record.get("name") or "").strip()
+            display_order = record.get("display_order")
 
             if not name:
                 log_to_db(
@@ -126,19 +138,42 @@ def update_technology_type_service(data, user):
                     entity_id=technology_type_id)
                 raise ValueError(f"Запись с ID «{technology_type_id}» не найдена.")
 
-            # Проверка уникальности name
+            # Проверка уникальности name (глобально — в БД UNIQUE на name без версии)
             if name != (obj.name or ""):
-                q = (apply_version_filter(TechnologyType.query, TechnologyType)
+                q = (TechnologyType.query
                      .filter(TechnologyType.name == name,
                              TechnologyType.id != technology_type_id))
                 if q.first():
                     raise ValueError(f"Запись с именем «{name}» уже существует.")
+
+            # Нормализация display_order (из формы может прийти строка или пустое значение)
+            if display_order is not None and str(display_order).strip() != "":
+                try:
+                    display_order = int(display_order)
+                except (TypeError, ValueError):
+                    display_order = None
+            else:
+                display_order = None
+
+            # Проверка уникальности display_order
+            if display_order != obj.display_order and display_order is not None:
+                dup = (TechnologyType.query
+                       .filter(TechnologyType.display_order == display_order,
+                               TechnologyType.id != technology_type_id))
+                if dup.first():
+                    raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
 
             changes = []
 
             if name != (obj.name or ""):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "technology_type"))
                 obj.name = name
+
+            if display_order != obj.display_order:
+                old_val = obj.display_order if obj.display_order is not None else "не указано"
+                new_val = display_order if display_order is not None else "не указано"
+                changes.append(f"Порядок отображения: {old_val} → {new_val}")
+                obj.display_order = display_order
 
             # Если есть реальные изменения — лог и добавление в список
             if changes:
@@ -171,6 +206,17 @@ def update_technology_type_service(data, user):
     
     except IntegrityError as e:
         db.session.rollback()
+        err_str = str(e).lower()
+        # При UniqueViolation на gs_refdata_entity_years (рассинхронизация sequence) — выравниваем и повторяем 1 раз
+        if not _retried and ("gs_refdata_entity_years" in err_str or "refdata_entity_years_pkey" in err_str):
+            try:
+                quick_fix_seq(SCHEMA_REFDATA, "gs_refdata_entity_years")
+                quick_fix_seq(SCHEMA_REFDATA, "gs_refdata_entities")
+                return update_technology_type_service(data, user, _retried=True)
+            except ValueError:
+                raise
+            except Exception:
+                pass
         log_to_db(
             user, 
             "Ошибка сохранения типов технологий (уникальность/целостность)", 
@@ -199,6 +245,7 @@ def add_technology_type_service(data, user):
         with db.session.no_autoflush:
             for record in data:
                 name = (record.get("name") or "").strip()
+                display_order = record.get("display_order")
                 if not name:
                     log_to_db(
                         user, 
@@ -207,13 +254,24 @@ def add_technology_type_service(data, user):
                         entity_type="technology_type")
                     raise ValueError("Каждая запись должна содержать 'name'.")
 
-                dup = (apply_version_filter(TechnologyType.query, TechnologyType)
+                dup = (TechnologyType.query
                         .filter(TechnologyType.name == name)
                         .with_for_update().first())
                 if dup:
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
 
-                obj = TechnologyType(name=name)
+                if display_order is not None:
+                    try:
+                        display_order = int(display_order)
+                    except (TypeError, ValueError):
+                        display_order = None
+                if display_order is not None:
+                    dup_order = (TechnologyType.query
+                                .filter(TechnologyType.display_order == display_order))
+                    if dup_order.first():
+                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+
+                obj = TechnologyType(name=name, display_order=display_order)
                 set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()
@@ -331,7 +389,7 @@ def delete_technology_type_service(ids, user):
 def export_technology_type_service(
     user,
     technology_type_filter=None,
-    sort_by="id",
+    sort_by="display_order",
     sort_dir="asc",):
     """ Экспортирует данные типов технологий в Excel. """
 
@@ -364,6 +422,7 @@ def export_technology_type_service(
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
+            "Порядок отображения": o.display_order if o.display_order is not None else "",
             "Наименование": _dash(o.name),
         })
 

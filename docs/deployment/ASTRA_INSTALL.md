@@ -68,7 +68,7 @@ sudo apt install -y \
    sudo -u postgres psql <<'SQL'
    CREATE ROLE generation WITH LOGIN PASSWORD 'R7fP9wQk';
    CREATE DATABASE gs_gen OWNER generation ENCODING 'UTF8';
-   GRANT ALL PRIVILEGES ON DATABASE arm_generation TO generation;
+   GRANT ALL PRIVILEGES ON DATABASE gs_gen TO generation;
    SQL
    ```
 3. При необходимости скорректируйте `pg_hba.conf`, чтобы разрешить подключение по сети (обычно `/etc/postgresql/*/main/pg_hba.conf`). После изменений перезапустите PostgreSQL.
@@ -98,19 +98,19 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.41
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.83
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.41 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.83 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.41_amd64.deb novikova-eyu@10.31.205.27:/tmp/
-GnT8xs!
+scp C:\arm_gs\packaging\generation-app_1.0.83_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+# (введите пароль при запросе или используйте ssh-copy-id для входа по ключу)
 ```
 ---
 
@@ -120,8 +120,18 @@ GnT8xs!
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.41_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.83_amd64.deb || sudo apt -f install
 GnT8xs!
+cd /opt/generation-app/
+source venv/bin/activate
+cd /opt/generation-app/app
+export FLASK_APP=run.py
+export FLASK_ENV=production
+eval "$(sudo systemctl show generation-app -p Environment --value | tr ' ' '\n' | sed 's/^/export /')"
+flask db heads
+flask db merge heads -m "merge heads" 2>/dev/null || true
+flask db upgrade
+
 sudo systemctl restart generation-app
 sudo nginx -t && sudo systemctl reload nginx
 sudo journalctl -u generation-app -f
@@ -138,25 +148,120 @@ sudo journalctl -u generation-app -f
 
 **Важно:** Если PostgreSQL и Redis были установлены автоматически на этом этапе, обязательно вернитесь к разделам 3 и 4, чтобы настроить базу данных и пользователя **перед** запуском приложения.
 
+### Если таблица `gs_fue_equipment_group_extra_fuel_param` не существует
+
+Ошибка «отношение gs_fue.gs_fue_equipment_group_extra_fuel_param не существует» возникает, когда миграция `l9m0n1o2p3q4` не применилась (старый пакет без неё, несколько heads и т.п.).
+
+**Сначала:** пересоберите пакет, задеплойте и выполните `flask db upgrade` — миграция `l9m0n1o2p3q4` создаст таблицу.
+
+**Если миграция всё равно не срабатывает** (например, upgrade пошёл по другой ветке из‑за нескольких heads) — создайте таблицу вручную:
+
+```bash
+# На сервере (подставьте пользователя и базу из .env приложения)
+psql -U <пользователь_БД> -d <имя_базы> -f /opt/generation-app/app/scripts/create_gs_fue_equipment_group_extra_fuel_param.sql
+```
+
+Скрипт идемпотентен (CREATE TABLE IF NOT EXISTS).
+
+---
+
+## 8. Автоматизация деплоя
+
+Полный цикл (сборка + передача + установка) можно выполнить одной командой.
+
+### Настройка (один раз)
+
+1. Создайте файл `.env.deploy` в корне проекта (см. `.env.deploy.example`):
+   ```bash
+   DEPLOY_SERVER=10.31.205.27
+   DEPLOY_USER=novikova-eyu
+   DEPLOY_PATH=/tmp
+   ```
+
+2. Убедитесь, что SSH-ключ добавлен на сервер (`ssh-copy-id` или вручную), чтобы не вводить пароль при каждом деплое.
+
+### Запуск
+
+Из корня проекта (`C:\arm_gs`):
+
+
+```powershell
+# Полный деплой с указанной версией
+cd C:\arm_gs
+.\scripts\deploy.ps1 -Version 1.0.83
+
+# Версия из git describe (тег или коммит)
+.\scripts\deploy.ps1
+
+# Только передать на сервер, установку выполнить вручную
+.\scripts\deploy.ps1 -Version 1.0.83 -NoInstall
+
+# Пакет уже собран — только передать и установить
+.\scripts\deploy.ps1 -Version 1.0.83 -DeployOnly
+
+# Пропустить пересборку образа (быстрее при повторных деплоях)
+.\scripts\deploy.ps1 -Version 1.0.83 -SkipBuild
+```
+
+### Важно
+
+- SSH-команды выполняются на сервере от вашего пользователя (`sudo` запрашивает пароль).
+- Для полностью безпарольного деплоя выполните шаги из раздела ниже.
+
+### Полностью безпарольный деплой
+
+Выполните **один раз** на сервере под пользователем с правами sudo:
+
+1. **SSH по ключу** — с вашей рабочей станции скопируйте ключ на сервер:
+   ```bash
+   ssh-copy-id novikova-eyu@10.31.205.27
+   ```
+   (Подставьте свои `DEPLOY_USER` и `DEPLOY_SERVER` из `.env.deploy`.)
+
+2. **sudo без пароля для команд деплоя** — обязательно, иначе скрипт выдаст «sudo: a password is required» и миграции БД завершатся ошибкой «no password supplied».
+
+   На сервере создайте файл:
+   ```bash
+   sudo visudo -f /etc/sudoers.d/deploy-generation-app
+   ```
+   Содержимое (замените `novikova-eyu` на ваш `DEPLOY_USER`):
+   ```
+   novikova-eyu ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/bin/apt, /usr/bin/apt-get, /usr/bin/systemctl, /usr/sbin/nginx, /usr/bin/bash
+   ```
+   (`/usr/bin/bash` нужен для выполнения миграций под пользователем generation-app.)
+
+   Сохраните и закройте редактор. Проверьте:
+   ```bash
+   sudo -n dpkg --version
+   sudo -n systemctl status generation-app
+   ```
+   Если команды выполнились без запроса пароля — настройка верна.
+
+После этого скрипт `deploy.ps1` будет выполняться без ввода пароля.
+
 ---
 
 ## 10. Обновление миграций
 
+Вручную (на сервере). Вариант с загрузкой env из systemd:
 
 ```bash
-cd /opt/generation-app/
-source venv/bin/activate
 cd /opt/generation-app/app
-export FLASK_APP=run.py
-export FLASK_ENV=production
+source /opt/generation-app/venv/bin/activate
+export FLASK_APP=run.py FLASK_ENV=production
 eval "$(sudo systemctl show generation-app -p Environment --value | tr ' ' '\n' | sed 's/^/export /')"
-GnT8xs!
 flask db heads
 flask db merge heads -m "merge heads"
 flask db upgrade
 ```
 
-- Для обновления соберите новый пакет с версией `1.0.41`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.41_amd64.deb`.
+Вариант с прямым чтением app.env (под пользователем generation-app):
+
+```bash
+sudo -u generation-app bash -c 'set -a; . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source ../venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && flask db upgrade'
+```
+
+- Для обновления соберите новый пакет с версией `1.0.83`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.83_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 
@@ -248,28 +353,56 @@ sudo ss -tulpn | grep :80
 
 ## 11. Частые проблемы
 
+- **`cd: $'/tmp\r': Нет такого файла или каталога`**, **`Error: No such command 'upgrade\r'`**, **`Invalid unit name "generation-app\x0d"`** — скрипт деплоя содержал Windows-переносы (CRLF). Обновите `scripts/deploy.ps1` до версии с нормализацией переносов. При необходимости выполните `git pull` и перезапустите деплой.
+- **`/etc/generation-app/app.env: строка N: область,Еврейская: команда не найдена`** — в `app.env` есть значения с запятыми без кавычек. При `source` bash исполняет их как команды. 
+- **`bash: cd: команда не найдена`** — исправлено в актуальном deploy.ps1 (использование BOM при передаче скрипта по SSH).
+- **`sudo: a password is required`** и **`fe_sendauth: no password supplied`** — скрипт деплоя выполняет `sudo` без TTY; настройте NOPASSWD (раздел 8, шаг 2). Без этого переменные окружения для БД не подхватываются, и миграции падают.
 - **dpkg ругается на зависимости** — выполните `sudo apt -f install`, чтобы подтянуть недостающие пакеты. PostgreSQL и Redis установятся автоматически, но их нужно будет настроить (разделы 3 и 4).
 - **pip не собирает psycopg2** — проверьте, что установлены `build-essential` и `libpq-dev`.
 - **Приложение не стартует** — смотрите логи `journalctl -u generation-app -b` и убедитесь, что `app.env` содержит корректный DSN и секреты.
 - **Ошибка подключения к БД** — убедитесь, что PostgreSQL запущен (`sudo systemctl status postgresql`), база данных создана, и параметры в `/etc/generation-app/app.env` соответствуют реальным.
 - **Ошибка подключения к Redis** — проверьте, что Redis запущен (`sudo systemctl status redis-server`) и слушает на `127.0.0.1:6379`.
 
+### 504 Gateway Timeout / WORKER TIMEOUT при импорте Excel
+
+При загрузке больших файлов через кнопку «Импорт» на странице station_list Gunicorn и Nginx могут прерывать запрос по таймауту.
+
+**1. Увеличьте таймаут Gunicorn** в `/etc/generation-app/app.env` (или в переменных окружения systemd):
+
+```bash
+GUNICORN_TIMEOUT=600
+```
+
+Перезапустите приложение: `sudo systemctl restart generation-app`.
+
+**2. Увеличьте таймаут Nginx** (если используется reverse proxy). В конфигурации location для proxy_pass добавьте:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_read_timeout 600s;
+    proxy_connect_timeout 600s;
+    proxy_send_timeout 600s;
+}
+```
+
+Проверьте конфиг: `sudo nginx -t`, затем: `sudo systemctl reload nginx`.
+
 
 sudo mkdir -p /etc/systemd/system/generation-app.service.d
-printf '[Service]\nEnvironment="STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES=Амурская область,Еврейская АО,Пензенская область,Республика Карелия"\n' | sudo tee /etc/systemd/system/generation-app.service.d/override.conf
 sudo systemctl daemon-reload
 sudo systemctl restart generation-app
 
 SELECT id, name, name_full
 FROM gs_sys.gs_regional_districts
-WHERE name IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область,Республика Карелия')
-   OR name_full IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область,Республика Карелия');
+WHERE name IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область', 'Республика Карелия')
+   OR name_full IN ('Амурская область', 'Еврейская автономная область', 'Пензенская область', 'Республика Карелия');
 
-DROP INDEX IF EXISTS gs_gen.uq_station_name_district_version;
-DROP INDEX IF EXISTS uq_station_name_district_version;
-
-CREATE UNIQUE INDEX uq_station_name_district_version
-ON gs_gen.stations (name, id_regional_district, database_version_id)
-WHERE id_regional_district NOT IN (12,2,43,677,647,367,377,407,547,557,587,598,54,637,688);
+-- Ограничение uq_station_name_district_version удалено (миграция q4r5s6t7u8v9).
+-- Дубликаты (name, id_regional_district, database_version_id) допускаются.
 
 sudo systemctl restart generation-app
+
+
+python scripts/fill_machine_commission_year_from_exploitation.py
+python scripts/fix_alembic_version.py

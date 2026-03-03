@@ -27,7 +27,7 @@ cur = conn.cursor()
 print("\n📋 ДОСТУПНЫЕ ВЕРСИИ:")
 print("-" * 70)
 cur.execute("""
-    SELECT id, version_number, name, is_active 
+    SELECT id, version_number, is_active 
     FROM refdata.database_versions 
     ORDER BY version_number
 """)
@@ -40,8 +40,8 @@ if not versions:
     exit(1)
 
 for v in versions:
-    active = " ✓ АКТИВНА" if v[3] else ""
-    print(f"  [{v[0]}] Версия {v[1]}: {v[2]}{active}")
+    active = " ✓ АКТИВНА" if v[2] else ""
+    print(f"  [{v[0]}] Версия {v[1]}{active}")
 
 # Получить статистику по данным
 print("\n📊 СТАТИСТИКА ПО ДАННЫМ:")
@@ -135,21 +135,21 @@ print("ШАГ 2: Выберите ЦЕЛЕВУЮ версию (куда копи
 print("="*70)
 print("\nДоступные версии:")
 for v in versions:
-    print(f"  [{v[0]}] Версия {v[1]}: {v[2]}")
+    print(f"  [{v[0]}] Версия {v[1]}")
 
 target_input = input("\nЦелевая версия (ID): ").strip()
 
 try:
     target_version_id = int(target_input)
     # Проверка существования
-    cur.execute("SELECT version_number, name FROM refdata.database_versions WHERE id = %s", (target_version_id,))
+    cur.execute("SELECT version_number FROM refdata.database_versions WHERE id = %s", (target_version_id,))
     result = cur.fetchone()
     if not result:
         print(f"\n❌ ОШИБКА: Версия с ID {target_version_id} не найдена!")
         cur.close()
         conn.close()
         exit(1)
-    target_name = f"Версия {result[0]}: {result[1]}"
+    target_name = f"Версия {result[0]}"
 except ValueError:
     print("\n❌ ОШИБКА: Неверный формат ID!")
     cur.close()

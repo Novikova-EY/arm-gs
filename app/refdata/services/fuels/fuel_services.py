@@ -41,14 +41,14 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 def fuel_query(
     fuel_filter=None,
     fuel_type_filter=None,
-    topl_nazvl_filter=None,
-    topl_kmbur_filter=None,
+    nazvl_filter=None,
+    kmbur_filter=None,
     sort_by="id",
     sort_dir="asc"):
     """Базовый запрос для выборки топлива с фильтрацией и сортировкой."""
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "fuel_type", "topl_nazvl", "topl_kmbur"}
+    allowed_sort_by = {"id", "name", "fuel_type", "nazvl", "kmbur"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -71,10 +71,10 @@ def fuel_query(
             Fuel.name.ilike(f"%{ff}%"),
             FuelType.name.ilike(f"%{ff}%"),
         ))
-    if topl_nazvl_filter:
-        query = query.filter(Fuel.topl_nazvl.ilike(f"%{topl_nazvl_filter}%"))
-    if topl_kmbur_filter:
-        query = query.filter(Fuel.topl_kmbur.ilike(f"%{topl_kmbur_filter}%"))
+    if nazvl_filter:
+        query = query.filter(Fuel.nazvl.ilike(f"%{nazvl_filter}%"))
+    if kmbur_filter:
+        query = query.filter(Fuel.kmbur.ilike(f"%{kmbur_filter}%"))
 
     # Фильтр по конкретному типу топлива (id)
     if fuel_type_id is not None:
@@ -83,10 +83,10 @@ def fuel_query(
     # Сортировка
     if sort_by == "name":
         sort_col = Fuel.name
-    elif sort_by == "topl_nazvl":
-        sort_col = Fuel.topl_nazvl
-    elif sort_by == "topl_kmbur":
-        sort_col = Fuel.topl_kmbur
+    elif sort_by == "nazvl":
+        sort_col = Fuel.nazvl
+    elif sort_by == "kmbur":
+        sort_col = Fuel.kmbur
     elif sort_by == "fuel_type":
         if not ff:
             query = query.outerjoin(FuelType, Fuel.id_fuel_type == FuelType.id)
@@ -105,8 +105,8 @@ def get_fuel_list(
     per_page, 
     fuel_filter=None, 
     fuel_type_filter=None, 
-    topl_nazvl_filter=None,
-    topl_kmbur_filter=None,
+    nazvl_filter=None,
+    kmbur_filter=None,
     sort_by="id", 
     sort_dir="asc"):
     """ Получает список типов топлива с пагинацией, фильтрацией и сортировкой. """
@@ -115,8 +115,8 @@ def get_fuel_list(
     query = fuel_query(
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
-        topl_kmbur_filter=topl_kmbur_filter,
+        nazvl_filter=nazvl_filter,
+        kmbur_filter=kmbur_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -144,8 +144,8 @@ def update_fuel_service(data, user):
         for record in data:
             fuel_id = record.get("fuel_id")
             name = (record.get("name") or "").strip()
-            topl_nazvl = (record.get("topl_nazvl") or "").strip() or None
-            topl_kmbur = (record.get("topl_kmbur") or "").strip() or None
+            nazvl = (record.get("nazvl") or "").strip() or None
+            kmbur = (record.get("kmbur") or "").strip() or None
 
             # Проверки на валидность данных
             if not name:
@@ -175,27 +175,27 @@ def update_fuel_service(data, user):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "fuel"))
                 obj.name = name
 
-            if topl_nazvl != obj.topl_nazvl:
+            if nazvl != obj.nazvl:
                 changes.append(
                     format_field_change(
-                        "topl_nazvl",
-                        obj.topl_nazvl or "не указано",
-                        topl_nazvl or "не указано",
+                        "nazvl",
+                        obj.nazvl or "не указано",
+                        nazvl or "не указано",
                         "fuel",
                     )
                 )
-                obj.topl_nazvl = topl_nazvl
+                obj.nazvl = nazvl
 
-            if topl_kmbur != obj.topl_kmbur:
+            if kmbur != obj.kmbur:
                 changes.append(
                     format_field_change(
-                        "topl_kmbur",
-                        obj.topl_kmbur or "не указано",
-                        topl_kmbur or "не указано",
+                        "kmbur",
+                        obj.kmbur or "не указано",
+                        kmbur or "не указано",
                         "fuel",
                     )
                 )
-                obj.topl_kmbur = topl_kmbur
+                obj.kmbur = kmbur
 
             # Проверка наличия вида топлива
             if "fuel_type_id" in record:
@@ -453,8 +453,8 @@ def export_fuel_service(
     user,
     fuel_filter=None,
     fuel_type_filter=None,
-    topl_nazvl_filter=None,
-    topl_kmbur_filter=None,
+    nazvl_filter=None,
+    kmbur_filter=None,
     sort_by="id",
     sort_dir="asc",
 ):
@@ -466,8 +466,8 @@ def export_fuel_service(
         (
             f"Фильтр по столбцу: Наименование типа топлива = {fuel_filter},"
             f"Фильтр по столбцу: Вид топлива = {get_fuel_type_name(fuel_type_filter)},"
-            f"Фильтр по столбцу: Наименование БД Топливо = {topl_nazvl_filter},"
-            f"Фильтр по столбцу: Тип угольного топлива = {topl_kmbur_filter},"
+            f"Фильтр по столбцу: Наименование БД Топливо = {nazvl_filter},"
+            f"Фильтр по столбцу: Тип угольного топлива = {kmbur_filter},"
             f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
         ), 
         entity_type="fuel"
@@ -477,8 +477,8 @@ def export_fuel_service(
     query = fuel_query(
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
-        topl_nazvl_filter=topl_nazvl_filter,
-        topl_kmbur_filter=topl_kmbur_filter,
+        nazvl_filter=nazvl_filter,
+        kmbur_filter=kmbur_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
     )
@@ -491,15 +491,15 @@ def export_fuel_service(
         f"Найдено записей: {len(items)}", 
         entity_type="fuel")
 
-    # Подготовка данных для Excel
+    # Подготовка данных для Excel (названия столбцов как на экране)
     data = []
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
-            "Наименование": _dash(o.name),
-            "Вид топлива": getattr(o.fuel_type, "name", "Не указан") or "Не указан",
-            "Наименование БД Топливо": _dash(o.topl_nazvl),
-            "Тип угольного топлива": _dash(o.topl_kmbur),
+            "Вид топлива": _dash(o.name),
+            "Тип топлива": getattr(o.fuel_type, "name", "Не указан") or "Не указан",
+            "Наименование в БД Топливо": _dash(o.nazvl),
+            "Тип угольного топлива": _dash(o.kmbur),
         })
 
     log_to_db(

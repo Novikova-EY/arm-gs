@@ -559,12 +559,12 @@ def export_gen_company_mappings_service(
         mapping = row["mapping"]
         gc = row["gc"]
         data.append({
-            "code_topl": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
-            "name_topl": _dash(mapping.external_name if mapping else None),
-            "name1_topl": _dash(mapping.external_name1 if mapping else None),
-            "UUID генерирующей компании": _dash(gc.ref_uuid if gc else None),
-            "ID генерирующей компании (текущая версия)": _dash(gc.id if gc else None),
-            "Наименование генерирующей компании в АРМ": _dash(gc.name if gc else None),
+            "Номер (code)": _dash(_normalize_external_id(mapping.external_id) if mapping else None),
+            "Наименование (name)": _dash(mapping.external_name if mapping else None),
+            "Наименование_1 (name1)": _dash(mapping.external_name1 if mapping else None),
+            "UUID": _dash(gc.ref_uuid if gc else None),
+            "ID (текущая версия)": _dash(gc.id if gc else None),
+            "Наименование": _dash(gc.name if gc else None),
         })
 
     log_to_db(

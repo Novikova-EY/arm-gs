@@ -1,0 +1,3 @@
+# Скрипты и конфиги для Linux должны иметь LF — CRLF ломает bash (cd /tmp\r, upgrade\r и т.д.)
+*.sh text eol=lf
+packaging/deb/DEBIAN/* text eol=lf

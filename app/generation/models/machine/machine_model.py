@@ -4,6 +4,7 @@ Machine model (Агрегат электростанции).
 - Сохранены все исходные связи и индексы.
 - Добавлены серверные таймстемпы (UTC).
 """
+import re
 import uuid
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
@@ -11,9 +12,10 @@ from sqlalchemy import event
 from sqlalchemy.sql import text as sql_text
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA
+from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 
-class Machine(db.Model, VersionedModelMixin):
+class Machine(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'machines'
     __table_args__ = (
         Index('ix_machine_id_station', 'id_station'),
@@ -163,6 +165,15 @@ class Machine(db.Model, VersionedModelMixin):
         foreign_keys='MachineName.id_machine',
     )
 
+    # Связь с топливными данными агрегата (схема gs_fue)
+    machine_fuel_param = db.relationship(
+        'MachineFuelParam',
+        back_populates='machine',
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
     # фактический год ввода в эксплуатацию
     date_exploitation = db.Column(db.Integer, nullable=True)
 
@@ -254,14 +265,18 @@ class Machine(db.Model, VersionedModelMixin):
     @property
     def decompressing_display(self) -> str | int | None:
         """
-        Отображаемое значение для колонки 'Вывод из экспл.' на station_list:
-        Machine.date_decompressing_fact (год) или Machine.date_decompressing_expected.
+        Отображаемое значение для колонки 'Год вывода' на station_details:
+        либо Ожидаемый год вывода из эксплуатации (date_decompressing_expected),
+        либо год из фактической даты (date_decompressing_fact), при этом 01.01.год → год-1.
         """
         from app.common.services.help_services import convert_to_date
 
         if self.date_decompressing_fact:
             dt = convert_to_date(self.date_decompressing_fact)
             if dt is not None:
+                # 01.01.год — считается годом -1
+                if dt.month == 1 and dt.day == 1:
+                    return dt.year - 1
                 return dt.year
         if self.date_decompressing_expected is not None:
             return self.date_decompressing_expected
@@ -533,66 +548,73 @@ class Machine(db.Model, VersionedModelMixin):
         return f"<Machine id={self.id} name={self.machine_name!r} station_id={self.id_station}>"
 
 
+def _normalize_machine_key_part(value: str | None) -> str:
+    """Номер: '01', '1', '001' -> '1' для стабильности между версиями."""
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+    if s.isdigit():
+        return str(int(s))
+    return s
+
+
+# Варианты скобок: (), （）, []
+_PAREN_PATTERN = re.compile(r"\s*[(\uff08\u005b][^)\uff09\u005d]*[)\uff09\u005d]\s*$")
+
+
+def _normalize_machine_name_for_key(value: str | None) -> str:
+    """
+    Нормализация названия: убираем лишние пробелы и trailing часть в скобках.
+    ПТ-60-130/13 и ПТ-60-130/13 (ПТ-80) считаются одинаковыми.
+    Поддержка: (), （）, [].
+    """
+    if value is None:
+        return ""
+    s = " ".join(str(value).split())
+    while True:
+        s2 = _PAREN_PATTERN.sub("", s).strip()
+        if s2 == s:
+            break
+        s = s2
+    return s
+
+
 @event.listens_for(Machine, 'before_insert')
 def generate_external_code_before_insert(mapper, connection, target):
     """
     Генерирует external_code для агрегата перед вставкой записи.
-    Трехсторонняя привязка: станция - группа оборудования - агрегат
+    Ключ: station.external_code + machine_number + (machine_name или date_exploitation).
+    date_exploitation предпочтительнее при наличии (имя может слегка меняться между версиями).
     """
     # Если код уже есть, не меняем его
     if target.external_code:
         return
-    
-    # Получаем external_code группы оборудования (если есть)
-    equipment_group_set_code = None
-    
-    # Пытаемся получить через связь, если она загружена
-    if target.equipment_group_set and hasattr(target.equipment_group_set, 'external_code'):
-        equipment_group_set_code = target.equipment_group_set.external_code
-    
-    # Если связь не загружена, загружаем через SQL-запрос
-    if not equipment_group_set_code and target.equipment_group_set_id:
+
+    station_code = None
+    if target.machine_station and hasattr(target.machine_station, 'external_code'):
+        station_code = target.machine_station.external_code
+    elif target.id_station:
         result = connection.execute(
-            sql_text(
-                f"SELECT external_code FROM {SCHEMA_FUEL}.gs_fue_equipment_group_sets "
-                "WHERE id = :id"
-            ),
-            {"id": target.equipment_group_set_id}
+            sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.stations WHERE id = :id"),
+            {"id": target.id_station}
         )
         row = result.fetchone()
         if row:
-            equipment_group_set_code = row[0]
-    
-    # Если группа оборудования не указана, используем fallback
-    if not equipment_group_set_code:
-        # Получаем external_code станции
-        station_code = None
-        if target.machine_station and hasattr(target.machine_station, 'external_code'):
-            station_code = target.machine_station.external_code
-        elif target.id_station:
-            result = connection.execute(
-                sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.stations WHERE id = :id"),
-                {"id": target.id_station}
-            )
-            row = result.fetchone()
-            if row:
-                station_code = row[0]
-        
-        # external_code группы оборудования НЕ используем; берем только ID группы оборудования
-        equipment_group_id = target.id_equipment_group or 0
+            station_code = row[0]
+    station_code = station_code or f"station_id_{target.id_station}"
 
-        # Fallback на ID, если external_code станции ещё не заполнен
-        station_code = station_code or f"station_id_{target.id_station}"
-        
-        # Формируем ключ связки станция-группа оборудования (через ID группы оборудования)
-        seg_key = f"station_equipment_group|station|{station_code}|equipment_group_id|{equipment_group_id}"
-        equipment_group_set_code = str(uuid.uuid5(uuid.NAMESPACE_URL, seg_key))
-    
-    # Формируем ключ для трехсторонней привязки: станция-группа оборудования-агрегат
-    machine_key = (
-        f"machine|equipment_group_set|{equipment_group_set_code}|"
-        f"ti|{target.id_ti or ''}|num|{target.machine_number or ''}|name|{target.machine_name or ''}"
-    )
-    
-    # Генерируем детерминированный UUID5
+    num = _normalize_machine_key_part(target.machine_number)
+    name = _normalize_machine_name_for_key(target.machine_name)
+    # Если есть непустое нормализованное имя — используем его (ПТ-60-130/13 и ПТ-60-130/13 (ПТ-80) совпадут)
+    # Иначе — date_exploitation
+    if name:
+        ident = f"name|{name}"
+    elif target.date_exploitation is not None:
+        ident = f"exploitation|{target.date_exploitation}"
+    else:
+        ident = "name|"
+
+    machine_key = f"machine|station|{station_code}|num|{num}|{ident}"
     target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, machine_key))

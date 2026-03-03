@@ -8,8 +8,9 @@ from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_AUTH
 from app.auth.models.user_role_model import user_roles
+from app.common.models.audit_mixin import AuditMixin
 
-class Role(db.Model):
+class Role(db.Model, AuditMixin):
     __tablename__ = 'roles'
     __table_args__ = {"schema": SCHEMA_AUTH}
 

@@ -1,13 +1,16 @@
-"""Сервисный модуль: Список электростанций Российской Федерации."""
+"""Сервисный модуль: Список электростанций."""
+
+import logging
 
 from app.extensions import db
+
+logger = logging.getLogger(__name__)
 from app.logs.services.logging_service import log_to_db
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from config import (
     SCHEMA_GENERATION,
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS,
-    STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES,
     STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS,
 )
 from sqlalchemy import and_, or_
@@ -35,6 +38,7 @@ from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
@@ -526,14 +530,14 @@ def get_stations_list(
 
     all_station_ids = list(set(raw_station_ids).union(set(extra_station_ids)))
     
-    print(f"[DEBUG] Итоговое количество станций: {len(all_station_ids)}")
-    print(f"[DEBUG] Первые 10 ID станций: {all_station_ids[:10]}")
-    
-    # Проверка на дубликаты в SQL запросе
-    if len(raw_station_ids) != len(all_station_ids):
-        duplicates_count = len(raw_station_ids) - len(all_station_ids)
-        print(f"[SQL DUPLICATES] Обнаружено {duplicates_count} дубликатов в SQL запросе station_ids")
-        print(f"   До уникализации: {len(raw_station_ids)} станций, после: {len(all_station_ids)} станций")
+    # Проверка на дубликаты в raw_station_ids (могут появиться из-за JOIN'ов)
+    raw_unique = set(raw_station_ids)
+    duplicates_count = len(raw_station_ids) - len(raw_unique)
+    if duplicates_count > 0:
+        logger.debug(
+            "[SQL DUPLICATES] Обнаружено %d дубликатов в raw_station_ids (до: %d, после: %d)",
+            duplicates_count, len(raw_station_ids), len(raw_unique)
+        )
     
     total_count = len(all_station_ids)
     
@@ -591,7 +595,28 @@ def get_stations_list(
             selectinload(Station.machines)
                 .selectinload(Machine.machine_fuels),
             selectinload(Station.machines)
-                .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type)
+                .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+            selectinload(Station.machines).joinedload(Machine.equipment_group),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.equipment_group),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.department_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.economic_region_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.federal_district_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.cities_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.business_unit_external_mapping),
         ).filter(Station.id.in_(station_ids_for_page)).all()
         
         # Сортируем этот небольшой набор
@@ -621,7 +646,28 @@ def get_stations_list(
                 .joinedload(RegionalEnergySystem.union_energy_system)
                 .joinedload(UnionEnergySystem.energy_system_type),
             joinedload(Station.energy_unit),
-            joinedload(Station.station_type)
+            joinedload(Station.station_type),
+            selectinload(Station.machines).joinedload(Machine.equipment_group),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
+            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.equipment_group),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.department_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.economic_region_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.federal_district_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.cities_external_mapping),
+            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.business_unit_external_mapping),
         ).filter(Station.id.in_(station_ids)).all()
         
         use_cached_sort = False
@@ -889,6 +935,16 @@ def get_stations_list(
         selectinload(Machine.machine_fuels),
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+        joinedload(Machine.equipment_group),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
+        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
     ).filter(
         Machine.id.in_(
             db.session.query(machine_subquery.c.id).filter(
@@ -1288,11 +1344,12 @@ def determine_first_headers(stations_on_page, prev_page_last_station_info=None):
 def get_regional_districts_count_per_res():
     """
     Возвращает словарь {res_id: количество субъектов РФ в этой РЭС}.
+    РЭС/субъекты — общие справочники, не фильтруются по версии.
     """
     from collections import defaultdict
     res_to_rd_count = defaultdict(int)
-    
-    # Запрашиваем все региональные энергосистемы с их субъектами
+
+    # Запрашиваем все РЭС с их субъектами (справочники общие для версий)
     res_list = db.session.query(RegionalEnergySystem).options(
         joinedload(RegionalEnergySystem.regional_districts)
     ).all()
@@ -1307,16 +1364,19 @@ def get_regional_districts_with_stations_per_res(filters=None):
     """
     Возвращает словарь {res_id: количество субъектов РФ с станциями в этой РЭС}.
     Учитывает фильтры - только субъекты, у которых есть станции после фильтрации.
+    Учитывает текущую версию БД для согласованности со списком станций и агрегацией.
     """
     from collections import defaultdict
-    
-    # Получаем все станции с учетом фильтров, используя прямую связь id_regional_energy_system
+
+    # Получаем станции с учётом фильтров и версии БД
     query = db.session.query(
         Station.id_regional_district,
         Station.id_regional_energy_system.label('res_id')
     ).filter(
         Station.id_regional_energy_system.isnot(None)
-    ).distinct()
+    )
+    query = filter_by_db_version(query, Station)
+    query = query.distinct()
     
     # Применяем территориальные фильтры
     if filters:
@@ -1361,7 +1421,7 @@ def get_regional_districts_with_stations_per_res(filters=None):
     return dict(res_to_rd_count)
 
 
-def determine_totals_to_show(stations_on_page, total_count, page, per_page, filters, next_station_info=None):
+def determine_totals_to_show(stations_on_page, total_count, page, per_page, filters, next_station_info=None, force_full_aggregates=False):
     """
     Определяет, какие агрегированные итоги нужно показать на текущей странице.
     Итог показывается если группа меняется внутри страницы или завершается на этой странице.
@@ -1650,7 +1710,13 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
                 show_totals['union_energy_systems'][ues_id] = True
             for est_id in groups_on_page['energy_system_types']:
                 show_totals['energy_system_types'][est_id] = True
-    
+
+    # При явном запросе «Показать суммы по регионам» (show_totals=1) всегда показывать полные итоги
+    # (Россия, ЕЭС, ТИТЭС) на любой странице, иначе на первой странице может не быть видимых итогов
+    if force_full_aggregates:
+        show_totals['aggregate_full_dataset'] = True
+        show_totals['total'] = True
+
     return show_totals
 
 
@@ -2183,6 +2249,10 @@ def get_station_list_data(
         for m in machines:
             station_machines_map[m.id_station].append(m)
 
+        # Expire до присвоения: иначе замена station.machines помечает «удалённые» Machine как dirty
+        # (id_station=None), и при concurrent import -> StaleDataError (version mismatch)
+        for station in stations:
+            db.session.expire(station, ["machines"])
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
             
@@ -2221,6 +2291,8 @@ def get_station_list_data(
         station_machines_map = defaultdict(list)
         for m in machines:
             station_machines_map[m.id_station].append(m)
+        for station in stations:
+            db.session.expire(station, ["machines"])
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
             
@@ -2321,9 +2393,9 @@ def get_station_list_data(
         # В режиме "С суммами" вычисляем, какие итоги показывать
         # Для show_all используем per_page=None, для постраничного - per_page_int
         should_show_totals = determine_totals_to_show(
-            stations, total_count, page, 
-            None if show_all else per_page_int, 
-            filters, next_station_info
+            stations, total_count, page,
+            None if show_all else per_page_int,
+            filters, next_station_info, force_full_aggregates=show_totals
         )
         
         # Для show_all показываем все заголовки, для постраничного - только первые вхождения
@@ -3384,13 +3456,14 @@ def add_station_service(
     name: str,
     id_regional_district: int,
     id_station_type=None,
+    force_create: bool = False,
 ) -> Station:
     name = (name or "").strip()
     if not name:
         raise ValueError("Не указано название станции")
 
     current_version_id = get_current_db_version_id()
-    if not _is_excluded_district(id_regional_district, current_version_id):
+    if not force_create:
         station_query = Station.query.filter(
             Station.name == name,
             Station.id_regional_district == id_regional_district,
@@ -3401,9 +3474,8 @@ def add_station_service(
             station_query = station_query.filter(Station.database_version_id == current_version_id)
         existing_station = station_query.first()
         if existing_station:
-            raise ValueError(
-                "Станция с таким названием уже существует в выбранной версии БД."
-            )
+            raise ValueError("STATION_DUPLICATE")
+
 
     # SelectField часто возвращает строку; "0"/"" трактуем как "не указано"
     station_type_id = None
@@ -3432,13 +3504,6 @@ def add_station_service(
             # Проверяем, является ли это ошибкой UniqueViolation на первичном ключе
             if isinstance(e.orig, psycopg2.errors.UniqueViolation) and attempt == 0:
                 error_msg = str(e.orig)
-                if "uq_station_name_district_version" in error_msg:
-                    if not _is_excluded_district(id_regional_district, get_current_db_version_id()):
-                        raise ValueError(
-                            "Станция с таким названием уже существует в выбранной версии БД."
-                        )
-                    # Для исключенных субъектов оставляем ошибку, чтобы можно было пересоздать без конфликтов
-                    # Перекидываем на повторную попытку только для устранения ошибок последовательности
                 # Проверяем, что это ошибка именно на первичном ключе stations
                 if "stations_pkey" in error_msg:
                     # Исправляем последовательность и повторяем попытку
@@ -3464,23 +3529,15 @@ def _get_excluded_district_ids(database_version_id: int | None) -> set[int]:
         return set(cached)
 
     excluded_ids = set(STATION_UNIQUE_EXCLUDED_DISTRICT_IDS)
-    needs_lookup = STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES or STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS
-    if needs_lookup:
+    if STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
         version_id = database_version_id or get_current_db_version_id()
         query = db.session.query(RegionalDistrict.id)
         if version_id is not None:
             query = query.filter(RegionalDistrict.database_version_id == version_id)
-
         filters = []
-        if STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES:
-            names = [name.strip() for name in STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES if name.strip()]
-            if names:
-                filters.append(RegionalDistrict.name.in_(names))
-                filters.append(RegionalDistrict.name_full.in_(names))
-        if STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
-            uuids = [uid.strip() for uid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS if uid.strip()]
-            if uuids:
-                filters.append(RegionalDistrict.ref_uuid.in_(uuids))
+        uuids = [uid.strip() for uid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS if uid.strip()]
+        if uuids:
+            filters.append(RegionalDistrict.ref_uuid.in_(uuids))
 
         if filters:
             excluded_ids.update({row[0] for row in query.filter(or_(*filters)).all()})
@@ -3496,23 +3553,13 @@ def _is_excluded_district(district_id: int | None, database_version_id: int | No
     if district_id in excluded_ids:
         return True
 
-    # Дополнительная проверка: сверяем по имени/UUID конкретного id без фильтра по версии
-    if STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES or STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
+    # Дополнительная проверка: сверяем по UUID конкретного id без фильтра по версии
+    if STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
         rd = db.session.get(RegionalDistrict, district_id)
-        if rd:
-            name_candidates = {
-                _norm_text_value(rd.name),
-                _norm_text_value(getattr(rd, "name_full", None)),
-            }
-            excluded_names = {_norm_text_value(n) for n in STATION_UNIQUE_EXCLUDED_DISTRICT_NAMES}
-            if name_candidates & excluded_names:
-                excluded_ids.add(district_id)
-                _EXCLUDED_DISTRICT_IDS_CACHE[database_version_id if database_version_id is not None else "none"] = set(excluded_ids)
-                return True
-            if rd.ref_uuid and rd.ref_uuid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
-                excluded_ids.add(district_id)
-                _EXCLUDED_DISTRICT_IDS_CACHE[database_version_id if database_version_id is not None else "none"] = set(excluded_ids)
-                return True
+        if rd and rd.ref_uuid and rd.ref_uuid in STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS:
+            excluded_ids.add(district_id)
+            _EXCLUDED_DISTRICT_IDS_CACHE[database_version_id if database_version_id is not None else "none"] = set(excluded_ids)
+            return True
     return False
 
 

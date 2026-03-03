@@ -18,10 +18,10 @@ class Fuel(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     name = db.Column(db.String(80), unique=True, nullable=False, index=True)
 
     # Название вида топлива из базы Топливо
-    topl_nazvl = db.Column(db.String(80), nullable=True)
+    nazvl = db.Column(db.String(80), nullable=True)
 
     # Название типа угольного топлива из базы Топливо (каменный/бурый)
-    topl_kmbur = db.Column(db.String(80), nullable=True)
+    kmbur = db.Column(db.String(80), nullable=True)
 
     # FK -> FuelType
     id_fuel_type = db.Column(

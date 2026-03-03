@@ -46,7 +46,7 @@ def get_station_by_external_code(external_code):
     if station.database_version_id:
         db_version = db.session.query(DatabaseVersion).filter_by(id=station.database_version_id).first()
         if db_version:
-            database_version_name = db_version.name
+            database_version_name = db_version.version_number
     
     # Получаем наименования генерирующих компаний через агрегаты
     gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
@@ -101,7 +101,7 @@ def get_machine_by_external_code(external_code):
     if machine.database_version_id:
         db_version = db.session.query(DatabaseVersion).filter_by(id=machine.database_version_id).first()
         if db_version:
-            database_version_name = db_version.name
+            database_version_name = db_version.version_number
     
     # Получаем regional_district через станцию
     regional_district_name = None
