@@ -13,8 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, text
 from config import Config
 
-# Ревизия head (см. flask db heads). При нескольких heads — заменить на нужную.
-HEAD_REVISION = "1e1fdaf90b94"
+# Ревизия head (см. flask db heads). c9d0e1f2a3b4 — пересоздание gs_fue equipment group tables.
+HEAD_REVISION = "c9d0e1f2a3b4"
 
 
 def fix_alembic_version():

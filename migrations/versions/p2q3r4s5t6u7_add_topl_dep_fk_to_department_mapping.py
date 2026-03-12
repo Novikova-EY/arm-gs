@@ -25,6 +25,9 @@ DEPT_SCHEMA = SCHEMA_FUE_EM
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
     # 1. Обнулить topl_dep, где значение не существует в gs_fue_em_department
     op.execute(
         f"""
@@ -72,6 +75,9 @@ def upgrade():
 
 
 def downgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
     op.drop_constraint(
         "fk_equipment_group_sets_topl_dep",
         TABLE,

@@ -51,7 +51,7 @@ from app.refdata.models.organizations.department_model import Department
 from app.refdata.models.organizations.business_unit_model import BusinessUnit
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
-    EquipmentGroup,
+    EquipmentGroupType,
 )
 
 
@@ -499,7 +499,7 @@ def _build_gen_company_name_map(current_version_id: int | None):
 
 def _build_equipment_group_name_map(current_version_id: int | None):
     query = filter_by_explicit_db_version(
-        EquipmentGroup.query, EquipmentGroup, current_version_id
+        EquipmentGroupType.query, EquipmentGroupType, current_version_id
     )
     rows = query.all()
     return _build_name_map_for_rows(rows, ["name"])
@@ -882,7 +882,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     - code         — код из БД Топливо (целое), аналог external_id
     - name_topl    — наименование из БД Топливо (текст)
     - gruppa_oborud — группа оборудования (текст)
-    - name         — наименование типа группы в АРМ (для поиска EquipmentGroup.name)
+    - name         — наименование типа группы в АРМ (для поиска EquipmentGroupType.name)
     - type, tm, n1, n2, p1, p2 — дополнительные поля
     """
     logger = current_app.logger
@@ -939,7 +939,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     name_map, duplicates = _build_equipment_group_name_map(current_version_id)
 
     existing = EquipmentGroupExternalMapping.query.all()
-    # Маппинги без привязки к EquipmentGroup (equipment_group_ref_uuid is None) —
+    # Маппинги без привязки к EquipmentGroupType (equipment_group_ref_uuid is None) —
     # ключ: (code, name_topl, gruppa_oborud)
     by_unmatched_key: dict[tuple[str, str, str], EquipmentGroupExternalMapping] = {
         (
@@ -954,7 +954,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
     by_code: dict[int, EquipmentGroupExternalMapping] = {
         m.code: m for m in existing if m.code is not None
     }
-    # Маппинги с привязкой к EquipmentGroup — допускаем несколько строк на один ref_uuid,
+    # Маппинги с привязкой к EquipmentGroupType — допускаем несколько строк на один ref_uuid,
     # но для каждой пары (code, equipment_group_ref_uuid) должна быть не более одной записи.
     # Ключ: (code, equipment_group_ref_uuid)
     by_key_with_ref: dict[tuple[str, str], EquipmentGroupExternalMapping] = {
@@ -987,7 +987,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
 
         processed += 1
 
-        # Для сопоставления с EquipmentGroup используем колонку name (АРМ),
+        # Для сопоставления с EquipmentGroupType используем колонку name (АРМ),
         # а name_topl — это внешнее наименование из БД Топливо.
         local_name = _clean_text(row.get("name"))
         normalized_local = _normalize_name(local_name) if local_name else ""
@@ -1157,7 +1157,7 @@ def import_equipment_group_mappings_from_excel(file, user: str):
                     f"Строка {index + 1}: тип группы оборудования '{local_name}' не найден."
                 )
             logger.info(
-                "[IMPORT_EQUIPMENT_GROUP_MAPPINGS] row=%s: no EquipmentGroup found for name=%r (mapping saved without ref_uuid)",
+                "[IMPORT_EQUIPMENT_GROUP_MAPPINGS] row=%s: no EquipmentGroupType found for name=%r (mapping saved without ref_uuid)",
                 index + 1,
                 local_name,
             )

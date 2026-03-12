@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 EquipmentGroupExtraFuelParam model — дополнительные топливные параметры групп оборудования.
-Связь по NUMB1120 с EquipmentGroupSet.numb (id_equipment_group_set).
 """
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.sql import func
@@ -12,32 +11,33 @@ from config import SCHEMA_FUEL, SCHEMA_REFDATA
 class EquipmentGroupExtraFuelParam(db.Model):
     """
     Дополнительные топливные параметры группы оборудования.
-    Связь: NUMB1120 / id_equipment_group_set -> EquipmentGroupSet.
+    Связь с EquipmentGroup через equipment_group_id.
     """
     __tablename__ = "gs_fue_equipment_group_extra_fuel_param"
     __table_args__ = (
         UniqueConstraint(
-            "id_equipment_group_set",
+            "equipment_group_id",
             "year_number",
-            name="uq_equipment_group_extra_fuel_param_set_year",
+            name="uq_equipment_group_extra_fuel_param_group_year",
         ),
         {"schema": SCHEMA_FUEL},
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # FK -> EquipmentGroupSet (связь по numb)
-    id_equipment_group_set = db.Column(
+    # FK -> EquipmentGroup (итоговая группа оборудования)
+    equipment_group_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_FUEL}.gs_fue_equipment_group_sets.id", ondelete="CASCADE"),
+        db.ForeignKey(f"{SCHEMA_FUEL}.gs_fue_equipment_groups.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
-    equipment_group_set = db.relationship(
-        "EquipmentGroupSet",
-        back_populates="extra_fuel_params",
-        foreign_keys=[id_equipment_group_set],
+    equipment_group = db.relationship(
+        "EquipmentGroup",
+        backref="extra_fuel_params",
+        foreign_keys=[equipment_group_id],
         uselist=False,
+        lazy="select",
     )
 
     name = db.Column(db.String(512), nullable=True)
@@ -103,7 +103,7 @@ class EquipmentGroupExtraFuelParam(db.Model):
     karajyra = db.Column(db.Numeric(20, 6), nullable=True)
     teniz = db.Column(db.Numeric(20, 6), nullable=True)
 
-    numb1120 = db.Column(db.Integer, nullable=True, index=True)  # связь с EquipmentGroupSet.numb
+    numb1120 = db.Column(db.Integer, nullable=True, index=True)  # связь по NUMB1120
     numb1 = db.Column(db.Integer, nullable=True)
 
     database_version_id = db.Column(
@@ -119,5 +119,5 @@ class EquipmentGroupExtraFuelParam(db.Model):
     def __repr__(self) -> str:
         return (
             f"<EquipmentGroupExtraFuelParam id={self.id} "
-            f"id_equipment_group_set={self.id_equipment_group_set} year={self.year_number}>"
+            f"equipment_group_id={self.equipment_group_id} year={self.year_number}>"
         )

@@ -54,11 +54,13 @@ def import_all_models():
         "app.generation.models.pgu_machine_model",
         "app.generation.models.pgu_machine_power_model",
         # fuel
-        "app.fuel.models.fue_equipment_group_set_model",
-        "app.fuel.models.fue_equipment_group_set_station_model",
         "app.fuel.models.fue_machine_fuel_param_model",
         "app.fuel.models.fue_equipment_group_fuel_param_model",
         "app.fuel.models.fue_equipment_group_extra_fuel_param_model",
+        # fuel equipment groups
+        "app.fuel.models.fue_equipment_group_model",
+        "app.fuel.models.fue_equipment_group_set_station_model",
+        "app.fuel.models.fue_equipment_group_set_model",
         "app.fuel.models.external_mapping.fue_em_union_energy_system_model",
         "app.fuel.models.external_mapping.fue_em_federal_district_model",
         "app.fuel.models.external_mapping.fue_em_territories_energy_model",

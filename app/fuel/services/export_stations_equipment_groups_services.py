@@ -3,19 +3,22 @@
 
 from io import BytesIO
 from datetime import datetime
-from itertools import groupby
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.common.services.help_services import apply_nbsp_to_row
 from app.extensions import db
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+from app.common.services.database_version_filter import get_current_db_version_id
+from app.fuel.services.stations_equipment_groups_v2_services import (
+    build_station_equipment_groups_v2,
+    reorganize_by_equipment_group_first,
+)
 from sqlalchemy.orm import selectinload
 
-from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.station_services import (
     get_station_list_data,
 )
@@ -49,7 +52,6 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
     union_energy_system_names = hierarchy_data.get("union_energy_system_name", {})
     regional_energy_system_names = hierarchy_data.get("regional_energy_system_name", {})
     regional_district_names = hierarchy_data.get("regional_district_name", {})
-    energy_unit_names = hierarchy_data.get("energy_unit_name", {})
     
     # Получаем union_energy_system_list для правильной сортировки
     from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
@@ -71,19 +73,10 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         for station in eu_group:
                             all_station_ids.add(station.id)
     
+    stations_dict = {}
     # Загружаем station_equipment_groups и machines для всех станций
     if all_station_ids:
         stations_with_relations = db.session.query(Station).options(
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.equipment_group),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.territories_energy_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.department_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.union_energy_system_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.economic_region_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.federal_district_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.gen_company_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.gen_company_branch_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.business_unit_external_mapping),
-            selectinload(Station.equipment_group_sets).selectinload(EquipmentGroupSet.cities_external_mapping),
             selectinload(Station.machines),
             selectinload(Station.regional_district),
         ).filter(Station.id.in_(all_station_ids)).all()
@@ -101,6 +94,12 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                 if station.id in stations_dict:
                                     eu_group[i] = stations_dict[station.id]
     
+    v2_groups_map = build_station_equipment_groups_v2(
+        list(stations_dict.values()),
+        filters=filters,
+        start_year=start_year,
+        end_year=end_year,
+    )
     current_version_id = get_current_db_version_id()
     
     # Создаем Excel файл
@@ -117,6 +116,8 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "Тип",
         "ст. №",
         "Тип агрегата",
+        "Субъект РФ",
+        "Региональная энергосистема",
         "niv",
         "comp",
         "main",
@@ -154,7 +155,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
     
     for col_num, column_title in enumerate(columns, 1):
         cell = ws.cell(row=1, column=col_num)
-        cell.value = column_title
+        cell.value = apply_nbsp_to_row([column_title])[0]
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = header_alignment
@@ -175,7 +176,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
             length = len(str(value))
             if length > max_lengths[idx]:
                 max_lengths[idx] = length
-        ws.append(row)
+        ws.append(apply_nbsp_to_row(row))
         
         # Стиль для заголовков иерархии
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
@@ -203,7 +204,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                 length = len(str(value))
                 if length > max_lengths[idx]:
                     max_lengths[idx] = length
-            ws.append(row)
+            ws.append(apply_nbsp_to_row(row))
             ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
             cell = ws.cell(row=current_row, column=1)
             cell.font = Font(bold=True)
@@ -225,7 +226,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                     length = len(str(value))
                     if length > max_lengths[idx]:
                         max_lengths[idx] = length
-                ws.append(row)
+                ws.append(apply_nbsp_to_row(row))
                 ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
                 cell = ws.cell(row=current_row, column=1)
                 cell.font = Font(bold=True)
@@ -248,7 +249,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                             length = len(str(value))
                             if length > max_lengths[idx]:
                                 max_lengths[idx] = length
-                        ws.append(row)
+                        ws.append(apply_nbsp_to_row(row))
                         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
                         cell = ws.cell(row=current_row, column=1)
                         cell.font = Font(bold=True)
@@ -256,106 +257,55 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                         current_row += 1
                     
-                    # Сортируем энергоузлы
-                    for eu_id in sorted(rd_group.keys()):
-                        eu_group = rd_group[eu_id]
-                        eu_name = energy_unit_names.get(eu_id)
-                        
-                        if eu_name and eu_name.lower() != "не указано":
-                            # Строка с энергоузлом
+                    # Обрабатываем станции (без отдельного уровня энергоузлов)
+                    for eu_group in rd_group.values():
+                        eu_group_filtered = [
+                            s for s in eu_group
+                            if current_version_id is None
+                            or getattr(s, "database_version_id", None) == current_version_id
+                        ]
+                        blocks = reorganize_by_equipment_group_first(
+                            eu_group_filtered, v2_groups_map
+                        )
+
+                        if not blocks and eu_group_filtered:
                             row = [None] * len(columns)
-                            row[2] = eu_name
+                            row[2] = "Нет агрегатов для отображения"
                             for idx, value in enumerate(row):
                                 if value is None:
                                     continue
                                 length = len(str(value))
                                 if length > max_lengths[idx]:
                                     max_lengths[idx] = length
-                            ws.append(row)
-                            ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
-                            cell = ws.cell(row=current_row, column=1)
-                            cell.font = Font(bold=True)
-                            cell.fill = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")
-                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                            ws.append(apply_nbsp_to_row(row))
+                            ws.merge_cells(
+                                start_row=current_row,
+                                start_column=1,
+                                end_row=current_row,
+                                end_column=len(columns),
+                            )
                             current_row += 1
-                        
-                        # Обрабатываем станции
-                        for station in eu_group:
-                            # Проверяем версию
-                            station_version_id = getattr(station, 'database_version_id', None)
-                            if current_version_id is not None and station_version_id != current_version_id:
-                                continue
-                            
-                            station_id = station.id
-                            
-                            # Обрабатываем агрегаты станции (как на экране)
-                            if hasattr(station, 'machines') and station.machines:
-                                station_name = station.name if hasattr(station, 'name') and station.name else '—'
-                                
-                                filtered_machines = [
-                                    m for m in station.machines
-                                    if current_version_id is None
-                                    or getattr(m, 'database_version_id', None) == current_version_id
-                                ]
-                                if not filtered_machines:
-                                    row = [None] * len(columns)
-                                    row[2] = "Нет агрегатов для отображения"
-                                    for idx, value in enumerate(row):
-                                        if value is None:
-                                            continue
-                                        length = len(str(value))
-                                        if length > max_lengths[idx]:
-                                            max_lengths[idx] = length
-                                    ws.append(row)
-                                    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
-                                    current_row += 1
-                                    continue
-                                
-                                total_machines = len(filtered_machines)
-                                station_first_row = None
-                                
-                                machines_with_group = [
-                                    m for m in filtered_machines
-                                    if getattr(m, 'id_equipment_group', None) is not None
-                                ]
-                                machines_without_group = [
-                                    m for m in filtered_machines
-                                    if getattr(m, 'id_equipment_group', None) is None
-                                ]
-                                
-                                # Агрегаты с группами
-                                sorted_machines = sorted(machines_with_group, key=lambda x: getattr(x, 'id_equipment_group', 0))
-                                
-                                for equipment_group_id, group_list in groupby(sorted_machines, key=lambda x: getattr(x, 'id_equipment_group', None)):
-                                    group_list = list(group_list)
-                                    if not group_list:
-                                        continue
-                                    
-                                    # Получаем EquipmentGroupSet
-                                    group_set = None
-                                    machine = group_list[0]
-                                    group_set = getattr(machine, 'equipment_group_set', None)
-                                    
-                                    if group_set is None and hasattr(station, 'equipment_group_sets'):
-                                        seg_list = [
-                                            s for s in station.equipment_group_sets
-                                            if getattr(s, 'id_equipment_group', None) == equipment_group_id
-                                        ]
-                                        if seg_list:
-                                            group_set = seg_list[0]
-                                    
-                                    group_name = '—'
-                                    if group_set and hasattr(group_set, 'equipment_group') and group_set.equipment_group:
-                                        group_name = group_set.equipment_group.name if hasattr(group_set.equipment_group, 'name') else '—'
-                                    
-                                    seg_name = group_set.name if group_set and hasattr(group_set, 'name') and group_set.name else '—'
-                                    
-                                    first_group_row = None
-                                    
-                                    for machine in group_list:
-                                        row = [None] * len(columns)
+                            continue
 
-                                        # id станции и агрегата
+                        for block in blocks:
+                            group_obj = block.get("equipment_group")
+                            group_first_row = None
+
+                            for station_entry in block.get("station_entries") or []:
+                                station = station_entry.get("station")
+                                if not station:
+                                    continue
+                                station_id = station.id
+                                station_name = (
+                                    station.name if hasattr(station, "name") and station.name else "—"
+                                )
+                                station_first_row = None
+
+                                for link in station_entry.get("links") or []:
+                                    link_first_row = None
+                                    group_type = link.get("equipment_group_type")
+                                    for machine in link.get("machines") or []:
+                                        row = [None] * len(columns)
                                         row[0] = station_id
                                         row[1] = getattr(machine, "id", None)
 
@@ -363,152 +313,182 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
                                             station_first_row = current_row
                                             row[3] = station_name
 
-                                        row[5] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
-                                        row[6] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
-                                        
-                                        if first_group_row is None:
-                                            first_group_row = current_row
-                                            row[2] = seg_name
-                                            row[4] = group_name
-                                            
-                                            if group_set:
-                                                row[7] = group_set.niv if hasattr(group_set, 'niv') and group_set.niv else '—'
-                                                row[8] = group_set.comp if hasattr(group_set, 'comp') and group_set.comp else '—'
-                                                row[9] = group_set.main if hasattr(group_set, 'main') and group_set.main else '—'
-                                                d_val = group_set.d if hasattr(group_set, 'd') and group_set.d else None
-                                                r_val = group_set.r if hasattr(group_set, 'r') and group_set.r else None
-                                                forem_val = group_set.forem if hasattr(group_set, 'forem') and group_set.forem else None
-                                                row[10] = "да" if d_val is not None and str(d_val) == "1" else (d_val or "—")
-                                                row[11] = "да" if r_val is not None and str(r_val) == "1" else (r_val or "—")
-                                                row[12] = "да" if forem_val is not None and str(forem_val) == "1" else (forem_val or "—")
+                                        row[5] = (
+                                            machine.machine_number
+                                            if getattr(machine, "machine_number", None)
+                                            else "—"
+                                        )
+                                        row[6] = (
+                                            machine.machine_name
+                                            if getattr(machine, "machine_name", None)
+                                            else "—"
+                                        )
 
-                                                _vedomstvo = group_set.vedomstvo if hasattr(group_set, 'vedomstvo') and group_set.vedomstvo else None
-                                                if _vedomstvo and str(_vedomstvo) == "1":
-                                                    row[13] = "станция\nотрасли"
-                                                elif _vedomstvo and str(_vedomstvo) == "2":
-                                                    row[13] = "пром.\nпредприятие"
-                                                else:
-                                                    row[13] = _vedomstvo or "—"
-
-                                                terr_mapping = getattr(group_set, 'territories_energy_external_mapping', None)
-                                                row[14] = (terr_mapping.external_name or group_set.obl) if terr_mapping and terr_mapping.external_name else (group_set.obl if hasattr(group_set, 'obl') and group_set.obl else '—')
-                                                dep_mapping = getattr(group_set, 'department_external_mapping', None)
-                                                row[15] = (dep_mapping.external_name or group_set.dep) if dep_mapping and dep_mapping.external_name else (group_set.dep if hasattr(group_set, 'dep') and group_set.dep else '—')
-                                                ues_mapping = getattr(group_set, 'union_energy_system_external_mapping', None)
-                                                row[16] = (ues_mapping.external_nameoes or group_set.oes) if ues_mapping and ues_mapping.external_nameoes else (group_set.oes if hasattr(group_set, 'oes') and group_set.oes else '—')
-                                                er_mapping = getattr(group_set, 'economic_region_external_mapping', None)
-                                                row[17] = (er_mapping.external_name or group_set.er) if er_mapping and er_mapping.external_name else (group_set.er if hasattr(group_set, 'er') and group_set.er else '—')
-                                                fd_mapping = getattr(group_set, 'federal_district_external_mapping', None)
-                                                row[18] = group_set.numb if hasattr(group_set, 'numb') and group_set.numb else '—'
-                                                row[19] = group_set.tm if hasattr(group_set, 'tm') and group_set.tm else '—'
-                                                row[20] = group_set.n1 if hasattr(group_set, 'n1') and group_set.n1 else '—'
-                                                row[21] = group_set.n2 if hasattr(group_set, 'n2') and group_set.n2 else '—'
-                                                row[22] = group_set.p1 if hasattr(group_set, 'p1') and group_set.p1 else '—'
-                                                row[23] = group_set.p2 if hasattr(group_set, 'p2') and group_set.p2 else '—'
-                                                row[24] = group_set.ordnumb if hasattr(group_set, 'ordnumb') and group_set.ordnumb else '—'
-                                                row[25] = group_set.addr if hasattr(group_set, 'addr') and group_set.addr else '—'
-                                                row[26] = group_set.note if hasattr(group_set, 'note') and group_set.note else '—'
-                                                row[27] = (
-                                                    group_set.cities_external_mapping.name
-                                                    if group_set and getattr(group_set, 'cities_external_mapping', None) and group_set.cities_external_mapping
-                                                    else (group_set.codegor if hasattr(group_set, 'codegor') and group_set.codegor else '—')
+                                        if group_first_row is None:
+                                            group_first_row = current_row
+                                            group_name = (
+                                                group_obj.name
+                                                if group_obj and group_obj.name
+                                                else (
+                                                    group_obj.name_ext
+                                                    if group_obj and group_obj.name_ext
+                                                    else "—"
                                                 )
-                                                bu_mapping = getattr(group_set, 'business_unit_external_mapping', None)
-                                                row[28] = (bu_mapping.external_name or group_set.be) if bu_mapping else (group_set.be if hasattr(group_set, 'be') and group_set.be else '—')
-                                                gk_mapping = getattr(group_set, 'gen_company_external_mapping', None)
-                                                row[29] = (gk_mapping.external_name or group_set.gk) if gk_mapping and gk_mapping.external_name else (group_set.gk if hasattr(group_set, 'gk') and group_set.gk else '—')
-                                                gkf_mapping = getattr(group_set, 'gen_company_branch_external_mapping', None)
-                                                row[30] = (gkf_mapping.external_name or group_set.gkf) if gkf_mapping and gkf_mapping.external_name else (group_set.gkf if hasattr(group_set, 'gkf') and group_set.gkf else '—')
+                                            )
+                                            row[2] = group_name
+
+                                            if group_obj:
+                                                rd = getattr(group_obj, "regional_district", None)
+                                                row[7] = rd.name if rd and rd.name else "—"
+                                                res = getattr(group_obj, "regional_energy_system", None)
+                                                row[8] = res.name if res and res.name else "—"
+                                                row[9] = group_obj.niv if group_obj.niv else "—"
+                                                row[10] = group_obj.comp if group_obj.comp else "—"
+                                                row[11] = group_obj.main if group_obj.main else "—"
+                                                d_val = group_obj.d
+                                                r_val = group_obj.r
+                                                forem_val = group_obj.forem
+                                                row[12] = "да" if d_val and str(d_val) == "1" else (d_val or "—")
+                                                row[13] = "да" if r_val and str(r_val) == "1" else (r_val or "—")
+                                                row[14] = "да" if forem_val and str(forem_val) == "1" else (forem_val or "—")
+
+                                                _vedomstvo = group_obj.vedomstvo
+                                                if _vedomstvo and str(_vedomstvo) == "1":
+                                                    row[15] = "станция\nотрасли"
+                                                elif _vedomstvo and str(_vedomstvo) == "2":
+                                                    row[15] = "пром.\nпредприятие"
+                                                else:
+                                                    row[15] = _vedomstvo or "—"
+
+                                                terr_mapping = getattr(
+                                                    group_obj, "territories_energy_external_mapping", None
+                                                )
+                                                row[16] = (
+                                                    terr_mapping.external_name
+                                                    if terr_mapping and terr_mapping.external_name
+                                                    else (group_obj.obl or "—")
+                                                )
+                                                dep_mapping = getattr(
+                                                    group_obj, "department_external_mapping", None
+                                                )
+                                                row[17] = (
+                                                    dep_mapping.external_name
+                                                    if dep_mapping and dep_mapping.external_name
+                                                    else (group_obj.dep or "—")
+                                                )
+                                                ues_mapping = getattr(
+                                                    group_obj, "union_energy_system_external_mapping", None
+                                                )
+                                                row[18] = (
+                                                    ues_mapping.external_nameoes
+                                                    if ues_mapping and ues_mapping.external_nameoes
+                                                    else (group_obj.oes or "—")
+                                                )
+                                                er_mapping = getattr(
+                                                    group_obj, "economic_region_external_mapping", None
+                                                )
+                                                row[19] = (
+                                                    er_mapping.external_name
+                                                    if er_mapping and er_mapping.external_name
+                                                    else (group_obj.er or "—")
+                                                )
+                                                fd_mapping = getattr(
+                                                    group_obj, "federal_district_external_mapping", None
+                                                )
+                                                row[20] = (
+                                                    fd_mapping.external_name
+                                                    if fd_mapping and fd_mapping.external_name
+                                                    else (group_obj.fo or "—")
+                                                )
+                                                row[21] = group_obj.numb if group_obj.numb else "—"
+                                                row[22] = group_obj.tm if group_obj.tm else "—"
+                                                row[23] = group_obj.n1 if group_obj.n1 else "—"
+                                                row[24] = group_obj.n2 if group_obj.n2 else "—"
+                                                row[25] = group_obj.p1 if group_obj.p1 else "—"
+                                                row[26] = group_obj.p2 if group_obj.p2 else "—"
+                                                row[27] = group_obj.ordnumb if group_obj.ordnumb else "—"
+                                                row[28] = group_obj.addr if group_obj.addr else "—"
+                                                row[29] = group_obj.note if group_obj.note else "—"
+                                                row[30] = (
+                                                    group_obj.cities_external_mapping.name
+                                                    if group_obj.cities_external_mapping
+                                                    else (group_obj.codegor or "—")
+                                                )
+                                                bu_mapping = getattr(
+                                                    group_obj, "business_unit_external_mapping", None
+                                                )
+                                                row[31] = (
+                                                    bu_mapping.external_name
+                                                    if bu_mapping and bu_mapping.external_name
+                                                    else (group_obj.be or "—")
+                                                )
+                                                gk_mapping = getattr(
+                                                    group_obj, "gen_company_external_mapping", None
+                                                )
+                                                row[32] = (
+                                                    gk_mapping.external_name
+                                                    if gk_mapping and gk_mapping.external_name
+                                                    else (group_obj.gk or "—")
+                                                )
+                                                gkf_mapping = getattr(
+                                                    group_obj, "gen_company_branch_external_mapping", None
+                                                )
+                                                row[33] = (
+                                                    gkf_mapping.external_name
+                                                    if gkf_mapping and gkf_mapping.external_name
+                                                    else (group_obj.gkf or "—")
+                                                )
                                             else:
                                                 for col_idx in range(7, len(columns)):
                                                     row[col_idx] = "—"
-                                        
+
+                                        if link_first_row is None:
+                                            link_first_row = current_row
+                                            row[4] = (
+                                                group_type.name
+                                                if group_type and getattr(group_type, "name", None)
+                                                else "—"
+                                            )
+
                                         for idx, value in enumerate(row):
                                             if value is None:
                                                 continue
                                             length = len(str(value))
                                             if length > max_lengths[idx]:
                                                 max_lengths[idx] = length
-                                        ws.append(row)
+                                        ws.append(apply_nbsp_to_row(row))
                                         current_row += 1
-                                    
-                                    # Объединяем ячейки для группы (rowspan) после добавления всех строк группы
-                                    if first_group_row is not None and len(group_list) > 1:
-                                        last_row = current_row - 1
-                                        if last_row > first_group_row:
-                                            # Группа оборудования, Тип
-                                            ws.merge_cells(start_row=first_group_row, start_column=3,
-                                                          end_row=last_row, end_column=3)
-                                            ws.merge_cells(start_row=first_group_row, start_column=5,
-                                                          end_row=last_row, end_column=5)
-                                            # Поля StationEquipmentGroup (от niv до gkf)
-                                            for col in range(8, len(columns) + 1):
-                                                ws.merge_cells(start_row=first_group_row, start_column=col,
-                                                              end_row=last_row, end_column=col)
-                                
-                                # Агрегаты без группы
-                                if machines_without_group:
-                                    no_group_first_row = None
-                                    for machine in machines_without_group:
-                                        row = [None] * len(columns)
 
-                                        # id станции и агрегата
-                                        row[0] = station_id
-                                        row[1] = getattr(machine, "id", None)
+                                    if link_first_row is not None and current_row - 1 > link_first_row:
+                                        ws.merge_cells(
+                                            start_row=link_first_row,
+                                            start_column=5,
+                                            end_row=current_row - 1,
+                                            end_column=5,
+                                        )
 
-                                        if station_first_row is None:
-                                            station_first_row = current_row
-                                            row[3] = station_name
+                                if station_first_row is not None and current_row - 1 > station_first_row:
+                                    ws.merge_cells(
+                                        start_row=station_first_row,
+                                        start_column=4,
+                                        end_row=current_row - 1,
+                                        end_column=4,
+                                    )
 
-                                        row[5] = machine.machine_number if hasattr(machine, 'machine_number') and machine.machine_number else '—'
-                                        row[6] = machine.machine_name if hasattr(machine, 'machine_name') and machine.machine_name else '—'
-                                        
-                                        if no_group_first_row is None:
-                                            no_group_first_row = current_row
-                                            row[2] = '—'
-                                            row[4] = '—'
-                                            for col_idx in range(7, len(columns)):
-                                                row[col_idx] = '—'
-                                        
-                                        for idx, value in enumerate(row):
-                                            if value is None:
-                                                continue
-                                            length = len(str(value))
-                                            if length > max_lengths[idx]:
-                                                max_lengths[idx] = length
-                                        ws.append(row)
-                                        current_row += 1
-                                    
-                                    if no_group_first_row is not None and len(machines_without_group) > 1:
-                                        last_row = current_row - 1
-                                        if last_row > no_group_first_row:
-                                            ws.merge_cells(start_row=no_group_first_row, start_column=3,
-                                                          end_row=last_row, end_column=3)
-                                            ws.merge_cells(start_row=no_group_first_row, start_column=5,
-                                                          end_row=last_row, end_column=5)
-                                            for col in range(8, len(columns) + 1):
-                                                ws.merge_cells(start_row=no_group_first_row, start_column=col,
-                                                              end_row=last_row, end_column=col)
-                                
-                                # Объединяем ячейки для станции (rowspan)
-                                if station_first_row is not None and total_machines > 1:
-                                    station_last_row = current_row - 1
-                                    if station_last_row > station_first_row:
-                                        ws.merge_cells(start_row=station_first_row, start_column=4,
-                                                      end_row=station_last_row, end_column=4)
-                            
-                            else:
-                                row = [None] * len(columns)
-                                row[2] = "Нет агрегатов для отображения"
-                                for idx, value in enumerate(row):
-                                    if value is None:
-                                        continue
-                                    length = len(str(value))
-                                    if length > max_lengths[idx]:
-                                        max_lengths[idx] = length
-                                ws.append(row)
-                                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=len(columns))
-                                current_row += 1
+                            if group_first_row is not None and current_row - 1 > group_first_row:
+                                ws.merge_cells(
+                                    start_row=group_first_row,
+                                    start_column=3,
+                                    end_row=current_row - 1,
+                                    end_column=3,
+                                )
+                                for col in range(8, len(columns) + 1):
+                                    ws.merge_cells(
+                                        start_row=group_first_row,
+                                        start_column=col,
+                                        end_row=current_row - 1,
+                                        end_column=col,
+                                    )
     
     # Автоподбор ширины столбцов (по предвычисленным длинам)
     for col_idx, max_length in enumerate(max_lengths, start=1):

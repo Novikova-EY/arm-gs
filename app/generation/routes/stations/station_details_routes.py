@@ -1,7 +1,7 @@
 from app.generation.routes.stations import station_bp
 from app.extensions import db
 from config import Config
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify, abort, make_response
 )
@@ -14,9 +14,6 @@ from flask_login import login_required, current_user
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
-from app.logs.services.logging_service import (
-    log_to_db,
-)
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.machine.machine_model import Machine
@@ -40,15 +37,11 @@ from sqlalchemy import or_, and_
 from app.logs.models.log_model import Log
 from datetime import timezone
 from zoneinfo import ZoneInfo
-import uuid
 from app.common.services.database_version_filter import (
     filter_by_db_version,
     filter_by_explicit_db_version,
     get_current_db_version_id,
-    set_db_version_on_create,
 )
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
-from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 
 MOSCOW = ZoneInfo("Europe/Moscow")
 
@@ -537,16 +530,17 @@ def station_details(station_id):
     years_range = end_year - start_year + 1
     cells_count = machines_count * years_range
     
-    # Загружаем и форматируем логи ТОЛЬКО для GET запросов (для POST не нужны, т.к. идет редирект)
+    # [DIAG] Загружаем и форматируем логи
+    t0 = time.perf_counter()
     station_logs_formatted = []
     if request.method == "GET":
-        # Условие по action с именем станции убрано: имена вроде "Артемовская ТЭЦ"
-        # являются подстроками других ("Артемовская ТЭЦ-2"), что даёт ложные совпадения.
-        logs_filter = or_(
-            and_(Log.entity_type == "station", Log.entity_id == station.id),
-            Log.details.ilike(f"%station_id={station.id}%"),
+        # Используем только entity_type + entity_id (индексированные поля).
+        # Log.details.ilike("%station_id=...") вызывает полное сканирование таблицы и занимает 100+ сек.
+        # Логи по станции пишутся с entity_type="station", entity_id=station.id.
+        logs_filter = and_(
+            Log.entity_type == "station",
+            Log.entity_id == station.id,
         )
-
         station_logs_raw = (
             db.session.query(Log)
             .filter(logs_filter)
@@ -556,6 +550,7 @@ def station_details(station_id):
             .all()
         )
         station_logs_formatted = _format_logs_for_display(station_logs_raw)
+    print(f"[DIAG] Логи: {(time.perf_counter() - t0)*1000:.0f} мс")
     
     logs_count = len(station_logs_formatted)
     
@@ -565,24 +560,27 @@ def station_details(station_id):
     # Группы оборудования станции (по версии)
     target_version_id = current_version_id if current_version_id is not None else station_version_id
 
-    equipment_group_set_links_query = (
-        EquipmentGroupSetStation.query.options(
-            selectinload(EquipmentGroupSetStation.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group)
+    t1 = time.perf_counter()
+    try:
+        from app.fuel.services.stations_equipment_groups_v2_services import (
+            build_station_equipment_groups_v2,
         )
-        .filter(EquipmentGroupSetStation.station_id == station.id)
-    )
-    equipment_group_set_links_query = filter_by_explicit_db_version(
-        equipment_group_set_links_query, EquipmentGroupSetStation, target_version_id
-    )
-    equipment_group_set_links = equipment_group_set_links_query.all()
+        v2_groups_map = build_station_equipment_groups_v2([station])
+        v2_info = v2_groups_map.get(station.id) or {"groups": [], "total_rows": 0}
+        station.equipment_group_v2_groups = v2_info["groups"]
+        station.equipment_group_v2_total_rows = v2_info["total_rows"]
+    except Exception as exc:
+        current_app.logger.warning(
+            f"[station_details] Failed to build v2 equipment groups: {exc}"
+        )
+        station.equipment_group_v2_groups = []
+        station.equipment_group_v2_total_rows = 0
+    print(f"[DIAG] build_station_equipment_groups_v2: {(time.perf_counter() - t1)*1000:.0f} мс (групп: {len(station.equipment_group_v2_groups)})")
 
-    available_group_sets_query = filter_by_explicit_db_version(
-        EquipmentGroupSet.query, EquipmentGroupSet, target_version_id
-    )
-    available_equipment_group_sets = available_group_sets_query.order_by(EquipmentGroupSet.name).all()
-    
+
     initial_machines_tbody_html = None
     if request.method == "GET" and not can_edit:
+        t2 = time.perf_counter()
         cache_bucket = int(time.time() // 120)
         initial_machines_tbody_html = _render_machines_tbody_cached(
             station.id,
@@ -593,11 +591,15 @@ def station_details(station_id):
             cache_bucket,
             current_version_id,
         )
+        print(f"[DIAG] _render_machines_tbody_cached: {(time.perf_counter() - t2)*1000:.0f} мс")
     
     print(f"[RENDER START] Агрегатов: {machines_count}, Лет: {years_range}, Ячеек: {cells_count}, Логов: {logs_count}")
 
     # Render template (measure render time separately)
+    t3 = time.perf_counter()
     year_features = get_year_feature_dict()
+    print(f"[DIAG] get_year_feature_dict: {(time.perf_counter() - t3)*1000:.0f} мс")
+    t4 = time.perf_counter()
     html = render_template(
         "generation/stations/station_details.html",
         form=form,
@@ -615,8 +617,6 @@ def station_details(station_id):
         energy_system_types=energy_system_type_list,
         station_logs=station_logs_formatted,
         can_edit=can_edit,
-        equipment_group_set_links=equipment_group_set_links,
-        available_equipment_group_sets=available_equipment_group_sets,
         initial_machines_tbody_html=initial_machines_tbody_html,
         year_features=year_features,
         # Pass backend timings to the template (fallback to 0 if not computed)
@@ -628,6 +628,8 @@ def station_details(station_id):
     
     # Диагностика размера результата
     html_size_kb = len(html) / 1024
+    jinja_ms = (after_render_at - t4) * 1000
+    print(f"[DIAG] render_template (Jinja): {jinja_ms:.0f} мс")
     print(f"[RENDER DONE] Размер HTML: {html_size_kb:.1f} KB, время: {(after_render_at - before_render_at):.2f} сек")
 
     backend_prepare_ms = int((before_render_at - route_started_at) * 1000)
@@ -673,13 +675,12 @@ def station_logs(station_id):
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
     
-    # Условие по action с именем станции убрано — имена вроде "Артемовская ТЭЦ"
-    # могут быть подстроками других ("Артемовская ТЭЦ-2"), что даёт ложные совпадения.
-    logs_filter = or_(
-        and_(Log.entity_type == "station", Log.entity_id == station.id),
-        Log.details.ilike(f"%station_id={station.id}%"),
+    # Используем только entity_type + entity_id (индексированные поля).
+    # Log.details.ilike("%station_id=...") вызывает полное сканирование таблицы.
+    logs_filter = and_(
+        Log.entity_type == "station",
+        Log.entity_id == station.id,
     )
-
     logs_query = (
         db.session.query(Log)
         .filter(logs_filter)
@@ -704,206 +705,167 @@ def station_logs(station_id):
     })
 
 
-@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/add", methods=["POST"])
+@station_bp.route(
+    "/station_details/<int:station_id>/equipment_groups_v2/<int:equipment_group_id>/rename",
+    methods=["POST"],
+)
 @login_required
 @handle_stale_data
-def add_station_equipment_group_set(station_id):
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
-    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+def rename_station_equipment_group_v2(station_id, equipment_group_id):
+    """Переименование группы оборудования на странице станции."""
+    edit_roles = ["admin", "generation-admin", "generation-editor"]
+    can_edit = current_user.is_authenticated and any(
+        role in current_user.role_names for role in edit_roles
+    )
     if not can_edit:
         abort(403)
 
-    group_set_id = request.form.get("equipment_group_set_id", type=int)
-    if not group_set_id:
-        flash("Выберите группу оборудования.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    current_version_id = get_current_db_version_id()
-
-    def _station_query():
-        return Station.query.filter_by(id=station_id)
-
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
-    if not station:
-        abort(404)
-
-    target_version_id = current_version_id if current_version_id is not None else station_version_id
-
-    group_set_query = EquipmentGroupSet.query.filter_by(id=group_set_id)
-    group_set_query = filter_by_explicit_db_version(group_set_query, EquipmentGroupSet, target_version_id)
-    group_set = group_set_query.first()
-    if not group_set:
-        flash("Группа оборудования не найдена для текущей версии БД.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    link_query = EquipmentGroupSetStation.query.filter_by(
-        station_id=station.id,
-        equipment_group_set_id=group_set.id,
-    )
-    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
-    if link_query.first():
-        flash("Станция уже связана с этой группой оборудования.", "info")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    link = EquipmentGroupSetStation(
-        equipment_group_set_id=group_set.id,
-        station_id=station.id,
-    )
-    set_db_version_on_create(link)
-    db.session.add(link)
-    db.session.commit()
-
-    flash("Станция связана с группой оборудования.", "success")
-    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-
-@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/<int:group_set_id>/rename", methods=["POST"])
-@login_required
-@handle_stale_data
-def rename_station_equipment_group_set(station_id, group_set_id):
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
-    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
-    if not can_edit:
-        abort(403)
-
-    new_name = (request.form.get("equipment_group_set_name") or "").strip()
+    new_name = (request.form.get("equipment_group_name") or "").strip()
+    all_versions = request.values.get("all_versions") == "1"
     if not new_name:
         flash("Название группы не может быть пустым.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    current_version_id = get_current_db_version_id()
-
-    def _station_query():
-        return Station.query.filter_by(id=station_id)
-
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
-    if not station:
-        abort(404)
-
-    target_version_id = current_version_id if current_version_id is not None else station_version_id
-
-    link_query = EquipmentGroupSetStation.query.filter_by(
-        station_id=station.id,
-        equipment_group_set_id=group_set_id,
-    )
-    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
-    link = link_query.first()
-    if not link:
-        flash("Группа не связана с этой станцией.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    group_set_query = EquipmentGroupSet.query.filter_by(id=group_set_id)
-    group_set_query = filter_by_explicit_db_version(group_set_query, EquipmentGroupSet, target_version_id)
-    group_set = group_set_query.first()
-    if not group_set:
-        flash("Группа оборудования не найдена для текущей версии БД.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    # Ищем существующую группу с таким названием (в рамках версии и типа группы)
-    existing_query = EquipmentGroupSet.query.filter_by(
-        name=new_name,
-        id_equipment_group=group_set.id_equipment_group,
-    )
-    existing_query = filter_by_explicit_db_version(existing_query, EquipmentGroupSet, target_version_id)
-    existing = existing_query.first()
-
-    if existing and existing.id != group_set.id:
-        # Переназначаем агрегаты станции на существующую группу
-        Machine.query.filter(
-            Machine.id_station == station.id,
-            Machine.equipment_group_set_id == group_set.id,
-        ).update({"equipment_group_set_id": existing.id})
-
-        # Удаляем старую связь и создаем новую при необходимости
-        db.session.delete(link)
-        existing_link_query = EquipmentGroupSetStation.query.filter_by(
-            station_id=station.id,
-            equipment_group_set_id=existing.id,
+        return redirect(
+            url_for("station_bp.station_details", station_id=station_id, **request.args)
         )
-        existing_link_query = filter_by_explicit_db_version(existing_link_query, EquipmentGroupSetStation, target_version_id)
-        if not existing_link_query.first():
-            new_link = EquipmentGroupSetStation(
-                equipment_group_set_id=existing.id,
-                station_id=station.id,
-            )
-            set_db_version_on_create(new_link)
-            db.session.add(new_link)
 
-        # Удаляем старую группу, если больше не используется
-        has_links = EquipmentGroupSetStation.query.filter_by(
-            equipment_group_set_id=group_set.id
-        ).first()
-        has_machines = Machine.query.filter_by(
-            equipment_group_set_id=group_set.id
-        ).first()
-        if not has_links and not has_machines:
-            db.session.delete(group_set)
-
-        db.session.commit()
-        flash("Станция привязана к существующей группе оборудования.", "success")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    # Обновляем имя текущей группы
-    group_set.name = new_name
-    if not group_set.external_code:
-        version_token = group_set.database_version_id if group_set.database_version_id is not None else "null"
-        eg_id = group_set.id_equipment_group or 0
-        key = f"equipment_group_set|name|{new_name}|equipment_group_id|{eg_id}|db_version|{version_token}"
-        group_set.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, key))
-    db.session.commit()
-
-    flash("Название группы оборудования обновлено.", "success")
-    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-
-@station_bp.route("/station_details/<int:station_id>/equipment_group_sets/<int:group_set_id>/remove", methods=["POST"])
-@login_required
-@handle_stale_data
-def remove_station_equipment_group_set(station_id, group_set_id):
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
-    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
-    if not can_edit:
-        abort(403)
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+    from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+    from app.fuel.models.fue_equipment_group_set_station_model import (
+        EquipmentGroupSetStation,
+    )
+    from app.fuel.services.equipment_group_merge_services import (
+        rename_or_merge_equipment_group_for_station,
+        rename_or_merge_equipment_group_all_versions,
+    )
 
     current_version_id = get_current_db_version_id()
 
-    def _station_query():
-        return Station.query.filter_by(id=station_id)
-
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    station = Station.query.filter_by(id=station_id).first()
     if not station:
         abort(404)
 
-    target_version_id = current_version_id if current_version_id is not None else station_version_id
-
-    link_query = EquipmentGroupSetStation.query.filter_by(
-        station_id=station.id,
-        equipment_group_set_id=group_set_id,
-    )
-    link_query = filter_by_explicit_db_version(link_query, EquipmentGroupSetStation, target_version_id)
-    link = link_query.first()
-    if not link:
-        flash("Связь со станцией не найдена.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
-
-    # Запрещаем удалять связь, если есть агрегаты в этой группе для станции
-    machine_exists = (
-        Machine.query
+    # Проверяем, что группа принадлежит этой станции
+    link_query = (
+        db.session.query(EquipmentGroupSetStation)
+        .join(
+            EquipmentGroupSet,
+            EquipmentGroupSet.equipment_group_set_station_id
+            == EquipmentGroupSetStation.id,
+        )
         .filter(
-            Machine.id_station == station.id,
-            Machine.equipment_group_set_id == group_set_id,
+            EquipmentGroupSetStation.station_id == station_id,
+            EquipmentGroupSet.equipment_group_id == equipment_group_id,
         )
-        .first()
     )
-    if machine_exists:
-        flash("Нельзя удалить связь: есть агрегаты в этой группе.", "warning")
-        return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+    link_query = filter_by_explicit_db_version(
+        link_query, EquipmentGroupSetStation, current_version_id
+    )
+    first_link = link_query.first()
+    if not first_link:
+        flash("Группа оборудования не связана с этой станцией.", "warning")
+        return redirect(
+            url_for("station_bp.station_details", station_id=station_id, **request.args)
+        )
+    equipment_group_type_id = first_link.equipment_group_type_id
 
-    db.session.delete(link)
+    equipment_group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
+    if not equipment_group:
+        flash("Группа оборудования не найдена.", "warning")
+        return redirect(
+            url_for("station_bp.station_details", station_id=station_id, **request.args)
+        )
+
+    if all_versions:
+        station_external_code = (station.external_code or "").strip()
+        if not station_external_code:
+            flash("У станции отсутствует external_code, невозможно применить изменения во всех версиях.", "warning")
+            return redirect(
+                url_for("station_bp.station_details", station_id=station_id, **request.args)
+            )
+        result = rename_or_merge_equipment_group_all_versions(
+            station_external_code=station_external_code,
+            equipment_group_id=equipment_group_id,
+            equipment_group_type_id=equipment_group_type_id,
+            new_name=new_name,
+        )
+        db.session.commit()
+        station_name = station.name or f"ID={station_id}"
+        log_to_db(
+            current_user,
+            "Переименование/объединение групп оборудования во всех версиях БД",
+            details=(
+                f"Станция: {station_name} (id={station_id}); "
+                f"Группа id={equipment_group_id}: '{result.get('old_name', '')}' → '{result.get('new_name', new_name)}'; "
+                f"Затронуто версий: {result.get('versions_touched', 0)}, "
+                f"переименовано: {result.get('renamed_count', 0)}, "
+                f"объединено: {result.get('merged_count', 0)}, удалено дубликатов: {result.get('removed_count', 0)}"
+            ),
+            entity_type="station",
+            entity_id=station_id,
+        )
+        vt = result.get("versions_touched", 0)
+        if vt > 0:
+            flash(
+                f"Изменения применены во всех версиях БД: затронуто версий {vt}, "
+                f"переименовано {result.get('renamed_count', 0)}, объединено {result.get('merged_count', 0)}.",
+                "success",
+            )
+        else:
+            flash(
+                "Не найдено групп с таким наименованием в версиях БД для обработки.",
+                "info",
+            )
+        return redirect(
+            url_for("station_bp.station_details", station_id=station_id, **request.args)
+        )
+
+    result = rename_or_merge_equipment_group_for_station(
+        station_id=station_id,
+        equipment_group_id=equipment_group_id,
+        new_name=new_name,
+        current_version_id=current_version_id,
+    )
     db.session.commit()
 
-    flash("Связь со станцией удалена.", "success")
-    return redirect(url_for("station_bp.station_details", station_id=station_id, **request.args))
+    # Логирование в журнал изменений
+    station_name = station.name or f"ID={station_id}"
+    if result["merged"]:
+        details_parts = [
+            f"Станция: {station_name} (id={station_id})",
+            f"Объединение групп оборудования: '{result['old_name']}' (id={result['deleted_group_id']}) → '{result['new_name']}' (id={result['primary_id']})",
+            f"Удалена дублирующая группа id={result['deleted_group_id']}",
+            f"Переназначено связей EquipmentGroupSet: {len(result.get('reassigned_set_ids', []))} (id: {result.get('reassigned_set_ids', [])})",
+        ]
+        if result.get("merged_fields"):
+            details_parts.append(
+                f"Объединённые параметры EquipmentGroup: {', '.join(result['merged_fields'])}"
+            )
+        log_to_db(
+            current_user,
+            "Объединение групп оборудования при переименовании",
+            details="; ".join(details_parts),
+            entity_type="station",
+            entity_id=station_id,
+        )
+        flash(
+            "Группа оборудования объединена с существующей группой с таким же наименованием.",
+            "success",
+        )
+    else:
+        log_to_db(
+            current_user,
+            "Переименование группы оборудования",
+            details=(
+                f"Станция: {station_name} (id={station_id}); "
+                f"Группа id={equipment_group_id}: '{result.get('old_name', '')}' → '{result.get('new_name', new_name)}'"
+            ),
+            entity_type="station",
+            entity_id=station_id,
+        )
+        flash("Название группы оборудования обновлено.", "success")
+    return redirect(
+        url_for("station_bp.station_details", station_id=station_id, **request.args)
+    )
 
 
 @station_bp.route("/station_details_tbody/<int:station_id>", methods=["GET"])
@@ -1006,6 +968,7 @@ def _render_machines_tbody(
                 joinedload(Station.station_type),
                 selectinload(Station.machines).joinedload(Machine.gen_company),
                 selectinload(Station.machines).joinedload(Machine.tes_machine_type),
+                selectinload(Station.machines).joinedload(Machine.equipment_group),
             )
             .filter_by(id=station_id)
         )
@@ -1041,14 +1004,12 @@ def _render_machines_tbody(
                 agg["p_ogr"] += Decimal(str(mp.p_ogr))
             if mp.p_rasp:
                 agg["p_rasp"] += Decimal(str(mp.p_rasp))
-        # Округляем итоги до rounding_digits (при 0 — до 2 знаков, как на station_list)
-        _digits = rounding_digits if rounding_digits > 0 else 2
-        _quant = Decimal("1." + "0" * _digits)
+        # Итоги оставляем как Decimal — форматирование выполняет шаблон
         for y, data in _agg_decimal.items():
             powers_by_year[y] = {
-                "p_ust": float(data["p_ust"].quantize(_quant, rounding=ROUND_HALF_UP)),
-                "p_ogr": float(data["p_ogr"].quantize(_quant, rounding=ROUND_HALF_UP)),
-                "p_rasp": float(data["p_rasp"].quantize(_quant, rounding=ROUND_HALF_UP)),
+                "p_ust": data["p_ust"],
+                "p_ogr": data["p_ogr"],
+                "p_rasp": data["p_rasp"],
             }
 
         # MachineFuel

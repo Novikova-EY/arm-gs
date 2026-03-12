@@ -57,6 +57,7 @@
                 &mdash;
             {% endif %}
         </td>
+        <td class="rowspan-td col-equipment-group-type text-center" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
         <td class="rowspan-td col-fuel-type text-center" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
             {% if can_edit %}
                 <input type="text" name="fuel_so_{{ machine.id }}" value="{{ machine.fuel_so or '' }}" placeholder="Введите топливо" class="form-control bg-transparent">
@@ -173,6 +174,7 @@
                     &mdash;
                 {% endif %}
             </td>
+            <td class="rowspan-td col-equipment-group-type text-center" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
             <td class="rowspan-td col-fuel-type text-center" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {% if can_edit %}
                     <input type="text" name="fuel_so_{{ machine.id }}" value="{{ machine.fuel_so or '' }}" placeholder="Введите топливо" class="form-control bg-transparent">
@@ -310,7 +312,7 @@
 
 <!-- Итоги по станции -->
 <tr class="text-center total-power-row" style="vertical-align: middle; font-size: 1.2rem;">
-    <td class="total-row-cell" rowspan="3" colspan="11" style="font-weight: bold;">
+    <td class="total-row-cell" rowspan="3" colspan="12" style="font-weight: bold;">
         Всего по станции:
     </td>
     <td class="text-center align-middle" style="font-weight: bold;">Руст</td>

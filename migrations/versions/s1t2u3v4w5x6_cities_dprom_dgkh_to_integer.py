@@ -9,6 +9,7 @@ Create Date: 2026-02-27
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from config import SCHEMA_FUE_EM
 
 
@@ -22,7 +23,14 @@ SCHEMA = SCHEMA_FUE_EM
 
 
 def upgrade():
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    columns_info = {c["name"]: c for c in inspector.get_columns(TABLE, schema=SCHEMA)}
+
     for col in ("dprom_ao", "dgkh_ao"):
+        col_type = str(columns_info.get(col, {}).get("type", ""))
+        if "INT" in col_type.upper():
+            continue  # уже Integer
         op.alter_column(
             TABLE,
             col,
@@ -30,7 +38,7 @@ def upgrade():
             type_=sa.Integer(),
             schema=SCHEMA,
             postgresql_using=(
-                "NULLIF(REGEXP_REPLACE(TRIM(" + col + "), '[^0-9-]', '', 'g'), '')::integer"
+                "NULLIF(REGEXP_REPLACE(TRIM(" + col + "::text), '[^0-9-]', '', 'g'), '')::integer"
             ),
         )
 

@@ -3,9 +3,6 @@
 CitiesExternalMapping model (справочник "Города" из БД Топливо).
 """
 
-from sqlalchemy import cast
-from sqlalchemy.types import String
-
 from app.extensions import db
 from config import SCHEMA_FUE_EM
 from app.common.models.audit_mixin import AuditMixin
@@ -27,10 +24,10 @@ class CitiesExternalMapping(db.Model, AuditMixin):
     dgkh_ao = db.Column(db.Integer, nullable=True)
     obl = db.Column(db.Integer, nullable=True, index=True)
 
-    # Связь obl -> TerritoriesEnergyExternalMapping.obl (cast int→str для join)
+    # Связь obl -> TerritoriesEnergyExternalMapping.obl (оба Integer)
     territories_energy = db.relationship(
         "TerritoriesEnergyExternalMapping",
-        primaryjoin="cast(CitiesExternalMapping.obl, String) == TerritoriesEnergyExternalMapping.obl",
+        primaryjoin="CitiesExternalMapping.obl == TerritoriesEnergyExternalMapping.obl",
         foreign_keys="[TerritoriesEnergyExternalMapping.obl]",
         lazy="joined",
         viewonly=True,

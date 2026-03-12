@@ -57,17 +57,22 @@
 
             <!-- Итоги + выбор количества строк -->
             <form id="perPageForm" method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}">
+                {% for key, value in request.args.items() %}
+                    {% if key != "per_page" %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
                 <!-- Горизонтальное размещение блоков -->
                 <div class="d-flex align-items-center flex-wrap gap-4">
                     <!-- Выпадающий список -->
                     <div id="per_page_select_block" class="ms-2">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
                             <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>
-                            <select id="per_page_select" class="form-select" style="min-width: 150px;">
+                            <select id="per_page_select" name="per_page" class="form-select" style="min-width: 150px;" onchange="this.form.submit()">
                                 <option value="10" {% if request.args.get('per_page') == '10' %}selected{% endif %}>10 станций</option>
                                 <option value="25" {% if request.args.get('per_page') == '25' %}selected{% endif %}>25 станций</option>
                                 <option value="50" {% if request.args.get('per_page') == '50' %}selected{% endif %}>50 станций</option>
-                                <option value="50" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100 станций</option>
+                                <option value="100" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100 станций</option>
                                 <option value="all" {% if request.args.get('per_page') == 'all' %}selected{% endif %}>Все станции</option>
                             </select>
                         </div>

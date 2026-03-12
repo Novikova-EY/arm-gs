@@ -77,7 +77,7 @@ class MachineFilterForm(FlaskForm):
     )
 
     id_equipment_group = SelectField(
-        'Тип технологии (EquipmentGroup)',
+        'Тип технологии (EquipmentGroupType)',
         coerce=int,
         choices=[],
         validators=[Optional()]

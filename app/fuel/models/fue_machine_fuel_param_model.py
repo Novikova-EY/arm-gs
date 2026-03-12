@@ -3,7 +3,7 @@
 MachineFuelParam model — привязка топливных данных агрегата к Machine.
 Схема gs_fue, связь один-к-одному с машиной (Machine).
 """
-from sqlalchemy import UniqueConstraint, cast, Integer
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA
@@ -49,21 +49,8 @@ class MachineFuelParam(db.Model):
     # Код станции
     numb1120 = db.Column(db.Integer, nullable=True)
 
-    # Код группы оборудования → связь с EquipmentGroupSet.numb (без FK в БД, т.к. numb не уникален)
+    # Код группы оборудования (без связи с моделью)
     grcode = db.Column(db.Integer, nullable=True, index=True)
-    equipment_group_sets = db.relationship(
-        "EquipmentGroupSet",
-        primaryjoin="MachineFuelParam.grcode == cast(EquipmentGroupSet.numb, Integer)",
-        foreign_keys="[MachineFuelParam.grcode]",
-        viewonly=True,
-        uselist=True,
-        lazy="select",
-    )
-
-    @property
-    def equipment_group_set(self):
-        """Первый EquipmentGroupSet с совпадающим numb для отображения."""
-        return self.equipment_group_sets[0] if self.equipment_group_sets else None
 
     # Название станции
     stname = db.Column(db.String(80), nullable=True)

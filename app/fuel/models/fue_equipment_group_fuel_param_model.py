@@ -1,45 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupFuelParam model — топливные параметры для EquipmentGroupSetStation.
-Схема gs_fue, связь один-ко-многим: одна связь EquipmentGroupSetStation может иметь
-несколько записей параметров по годам (по year_number).
+EquipmentGroupFuelParam model — топливные параметры для группы оборудования.
+Схема gs_fue, одна группа может иметь несколько записей параметров по годам (по year_number).
 """
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, cast
+from sqlalchemy.orm import foreign
 from sqlalchemy.sql import func
+from sqlalchemy.types import String
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_REFDATA, SCHEMA_FUE_EM
+from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
+    TerritoriesEnergyExternalMapping,
+)
+from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
+    UnionEnergySystemExternalMapping,
+)
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
 
 class EquipmentGroupFuelParam(db.Model):
     """
-    Топливные параметры группы оборудования на станции.
-    Одна запись на одну связь EquipmentGroupSetStation и один год (year_number).
+    Топливные параметры группы оборудования.
+    Одна запись на одну группу оборудования (EquipmentGroup) и один год (year_number).
     """
     __tablename__ = "gs_fue_equipment_group_fuel_param"
     __table_args__ = (
         UniqueConstraint(
-            "equipment_group_set_station_id",
+            "equipment_group_id",
             "year_number",
-            name="uq_equipment_group_fuel_param_station_year",
+            name="uq_equipment_group_fuel_param_group_year",
         ),
         {"schema": SCHEMA_FUEL},
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
-    # FK -> EquipmentGroupSetStation
-    equipment_group_set_station_id = db.Column(
+    # FK -> EquipmentGroup (итоговая группа оборудования)
+    equipment_group_id = db.Column(
         db.Integer,
-        db.ForeignKey(
-            f"{SCHEMA_FUEL}.gs_fue_equipment_group_set_stations.id", ondelete="CASCADE"
-        ),
+        db.ForeignKey(f"{SCHEMA_FUEL}.gs_fue_equipment_groups.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
-    equipment_group_set_station = db.relationship(
-        "EquipmentGroupSetStation",
-        back_populates="fuel_params",
+    equipment_group = db.relationship(
+        "EquipmentGroup",
+        backref="fuel_params",
+        foreign_keys=[equipment_group_id],
         uselist=False,
+        lazy="select",
     )
 
     # Наименование группы оборудования
@@ -150,6 +160,7 @@ class EquipmentGroupFuelParam(db.Model):
     obl_territories_energy = db.relationship(
         "TerritoriesEnergyExternalMapping",
         foreign_keys=[obl],
+        primaryjoin=cast(obl, String(80)) == foreign(TerritoriesEnergyExternalMapping.external_id),
         uselist=False,
         lazy="select",
     )
@@ -176,9 +187,56 @@ class EquipmentGroupFuelParam(db.Model):
     oes_union_energy_system_mapping = db.relationship(
         "UnionEnergySystemExternalMapping",
         foreign_keys=[oes],
+        primaryjoin=cast(oes, String(80)) == foreign(UnionEnergySystemExternalMapping.external_id),
         uselist=False,
         lazy="select",
     )
+
+    @property
+    def regional_district(self):
+        """Субъект РФ через obl_territories_energy.regional_district_ref_uuid -> RegionalDistrict.ref_uuid."""
+        tm = self.obl_territories_energy
+        if tm is None or tm.regional_district_ref_uuid is None:
+            return None
+        q = RegionalDistrict.query.filter(
+            RegionalDistrict.ref_uuid == tm.regional_district_ref_uuid
+        )
+        if self.database_version_id is not None:
+            q = q.filter(RegionalDistrict.database_version_id == self.database_version_id)
+        return q.first()
+
+    @property
+    def regional_energy_system(self):
+        """РЭС через obl_territories_energy.regional_energy_system_ref_uuid -> RegionalEnergySystem.ref_uuid."""
+        tm = self.obl_territories_energy
+        if tm is None or tm.regional_energy_system_ref_uuid is None:
+            return None
+        q = RegionalEnergySystem.query.filter(
+            RegionalEnergySystem.ref_uuid == tm.regional_energy_system_ref_uuid
+        )
+        if self.database_version_id is not None:
+            q = q.filter(RegionalEnergySystem.database_version_id == self.database_version_id)
+        return q.first()
+
+    @property
+    def union_energy_system(self):
+        """ОЭС через oes_union_energy_system_mapping.union_energy_system_ref_uuid -> UnionEnergySystem.ref_uuid."""
+        uem = self.oes_union_energy_system_mapping
+        if uem is None or uem.union_energy_system_ref_uuid is None:
+            return None
+        q = UnionEnergySystem.query.filter(
+            UnionEnergySystem.ref_uuid == uem.union_energy_system_ref_uuid
+        )
+        if self.database_version_id is not None:
+            q = q.filter(UnionEnergySystem.database_version_id == self.database_version_id)
+        return q.first()
+
+    @property
+    def energy_system_type_id(self):
+        """ID типа энергосистемы (EST) через union_energy_system.id_energy_system_type."""
+        ues = self.union_energy_system
+        return ues.id_energy_system_type if ues else None
+
     ees = db.Column(db.Integer, nullable=True)
     # er — FK -> EconomicRegionExternalMapping.external_id
     er = db.Column(
@@ -236,5 +294,5 @@ class EquipmentGroupFuelParam(db.Model):
     def __repr__(self) -> str:
         return (
             f"<EquipmentGroupFuelParam id={self.id} "
-            f"equipment_group_set_station_id={self.equipment_group_set_station_id}>"
+            f"equipment_group_id={self.equipment_group_id}>"
         )

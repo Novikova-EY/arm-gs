@@ -526,6 +526,20 @@ function initializeStationFilters() {
     document.getElementById('federal_district')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_district')?.addEventListener('change', () => updateAllFilters());
 
+    // Автоотправка формы при изменении фильтров — таблица обновляется с учётом выбранных фильтров
+    const filtersForm = document.querySelector('#filtersCollapse form');
+    if (filtersForm) {
+        const filterSelectors = ['#energy_system_type', '#union_energy_system', '#regional_energy_system', '#federal_district', '#regional_district'];
+        filterSelectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) {
+                el.addEventListener('change', () => {
+                    setTimeout(() => filtersForm.submit(), 150);
+                });
+            }
+        });
+    }
+
     // Инициализация при загрузке страницы
     if (selectedEst.length > 0) setSelectValues('#energy_system_type', selectedEst.map(String));
     if (selectedUes.length > 0) setSelectValues('#union_energy_system', selectedUes.map(String));

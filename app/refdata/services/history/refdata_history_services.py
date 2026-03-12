@@ -37,7 +37,7 @@ from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model impo
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
-    EquipmentGroup,
+    EquipmentGroupType,
 )
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import (
     TechnologyAvailability,
@@ -339,7 +339,7 @@ def _technology_availability_payload(availability: TechnologyAvailability) -> di
     }
 
 
-def _equipment_group_payload(group: EquipmentGroup) -> dict[str, Any]:
+def _equipment_group_payload(group: EquipmentGroupType) -> dict[str, Any]:
     return {
         "name": group.name,
         "display_order": group.display_order,
@@ -392,7 +392,7 @@ REFDATA_HISTORY_MAPPINGS = {
     PGUTesMachineType: ("pgu_tes_machine_type", _pgu_tes_machine_type_payload),
     TechnologyType: ("technology_type", _technology_type_payload),
     TechnologyAvailability: ("technology_availability", _technology_availability_payload),
-    EquipmentGroup: ("equipment_group", _equipment_group_payload),
+    EquipmentGroupType: ("equipment_group", _equipment_group_payload),
     FuelCategory: ("fuel_category", _fuel_category_payload),
     FuelType: ("fuel_type", _fuel_type_payload),
     Fuel: ("fuel", _fuel_payload),

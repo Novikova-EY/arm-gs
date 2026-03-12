@@ -44,7 +44,7 @@
 - ✅ `PGUTesMachineType`
 - ✅ `TesMachineType`
 - ✅ `TesType`
-- ✅ `EquipmentGroup`
+- ✅ `EquipmentGroupType`
 - ✅ `TechnologyAvailability`
 - ✅ `TechnologyType`
 

@@ -56,6 +56,8 @@ RENAMES = [
 def _columns_exist(conn, col_names):
     """Проверяет, существуют ли колонки в таблице."""
     inspector = inspect(conn)
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return False
     cols = [c["name"] for c in inspector.get_columns(TABLE, schema=SCHEMA)]
     return all(c in cols for c in col_names)
 

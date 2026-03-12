@@ -38,7 +38,6 @@ from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
@@ -266,6 +265,7 @@ def get_stations_list(
     rounding_digits=None,
     start_year=None,
     end_year=None,
+    return_ids_only=False,
     **filters,
 ):
     # Совместимость параметров: поддерживаем legacy-ключ station_fuel_type_filter
@@ -544,6 +544,9 @@ def get_stations_list(
     if total_count == 0:
         return {"stations": [], "total_count": 0}
 
+    if return_ids_only:
+        return {"station_ids": all_station_ids, "total_count": total_count}
+
     per_page_int = None if isinstance(per_page, str) and per_page.lower() == "all" else int(per_page or 10)
     
     # Пытаемся получить отсортированный список из кэша
@@ -597,26 +600,6 @@ def get_stations_list(
             selectinload(Station.machines)
                 .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
             selectinload(Station.machines).joinedload(Machine.equipment_group),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.equipment_group),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.department_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.economic_region_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.federal_district_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.cities_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.business_unit_external_mapping),
         ).filter(Station.id.in_(station_ids_for_page)).all()
         
         # Сортируем этот небольшой набор
@@ -648,26 +631,6 @@ def get_stations_list(
             joinedload(Station.energy_unit),
             joinedload(Station.station_type),
             selectinload(Station.machines).joinedload(Machine.equipment_group),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
-            selectinload(Station.machines).joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.equipment_group),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.department_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.economic_region_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.federal_district_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.cities_external_mapping),
-            selectinload(Station.equipment_group_sets).joinedload(EquipmentGroupSet.business_unit_external_mapping),
         ).filter(Station.id.in_(station_ids)).all()
         
         use_cached_sort = False
@@ -936,15 +899,6 @@ def get_stations_list(
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
         joinedload(Machine.equipment_group),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.equipment_group),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.territories_energy_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.department_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.union_energy_system_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.economic_region_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.federal_district_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.gen_company_branch_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.cities_external_mapping),
-        joinedload(Machine.equipment_group_set).joinedload(EquipmentGroupSet.business_unit_external_mapping),
     ).filter(
         Machine.id.in_(
             db.session.query(machine_subquery.c.id).filter(
@@ -2329,34 +2283,8 @@ def get_station_list_data(
         current_group = None
         current_list = []
 
-        def _norm_group_key(seg, equipment_group_id):
-            base_raw = ""
-            if seg is not None:
-                if getattr(seg, "external_code", None):
-                    base_raw = seg.external_code or ""
-                elif getattr(seg, "name", None):
-                    base_raw = seg.name or ""
-            base_norm = (
-                base_raw.replace("\u00a0", " ")
-                .replace("\xa0", " ")
-                .replace(" ", "")
-                .lower()
-            )
-            return base_norm or f"none:{station.id}:{equipment_group_id}"
-
         def _append_key(group_id, group_list):
-            seg = None
-            first_machine = group_list[0] if group_list else None
-            if first_machine and getattr(first_machine, "equipment_group_set", None):
-                seg = first_machine.equipment_group_set
-            else:
-                seg_list = [
-                    s for s in (station.equipment_group_sets or [])
-                    if getattr(s, "id_equipment_group", None) == group_id
-                ]
-                if seg_list:
-                    seg = seg_list[0]
-            key_parts.append(_norm_group_key(seg, group_id))
+            key_parts.append(f"group:{group_id or 0}:{station.id}")
 
         for machine in machines_with_group:
             if current_group is None or machine.id_equipment_group != current_group:
@@ -2436,6 +2364,11 @@ def get_station_list_data(
         aggregation_station_ids = []
         rows = []
 
+    from app.fuel.services.stations_equipment_groups_v2_services import (
+        get_station_equipment_group_name_map,
+    )
+    station_equipment_group_name_map = get_station_equipment_group_name_map(station_ids)
+
     result = {
         "stations": stations,
         "stations_grouped": hierarchy_data.get("grouped_stations", {}),
@@ -2450,6 +2383,7 @@ def get_station_list_data(
         "should_show_totals": should_show_totals,
         "show_headers": show_headers,
         "hierarchy_data": hierarchy_data,
+        "station_equipment_group_name_map": station_equipment_group_name_map,
     }
 
     # Выполняем агрегации если включено отображение сумм или режим "Все станции"
@@ -2813,6 +2747,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,
             "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
+            "station_equipment_group_name_map": data.get("station_equipment_group_name_map", {}),
     }
     
     # Проверяем, есть ли агрегированные данные в data (для режима с суммами или show_all)

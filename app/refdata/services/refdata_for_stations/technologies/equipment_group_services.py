@@ -9,10 +9,9 @@ from io import BytesIO
 from config import SCHEMA_REFDATA
         
 # Модели
-from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroupType
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import TechnologyType
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import TechnologyAvailability
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 from app.generation.models.machine.machine_model import Machine
 from app.fuel.models.external_mapping.fue_em_equipment_group_model import (
     EquipmentGroupExternalMapping,
@@ -49,13 +48,13 @@ from app.logs.services.field_names_ru import format_field_change, get_field_name
 
 def _equipment_group_dup_query(name, technology_type_id, exclude_id=None):
     """Возвращает запрос для проверки дубликатов по паре (name, technology_type)."""
-    query = apply_version_filter(EquipmentGroup.query, EquipmentGroup).filter(EquipmentGroup.name == name)
+    query = apply_version_filter(EquipmentGroupType.query, EquipmentGroupType).filter(EquipmentGroupType.name == name)
     if technology_type_id is None:
-        query = query.filter(EquipmentGroup.id_technology_type.is_(None))
+        query = query.filter(EquipmentGroupType.id_technology_type.is_(None))
     else:
-        query = query.filter(EquipmentGroup.id_technology_type == technology_type_id)
+        query = query.filter(EquipmentGroupType.id_technology_type == technology_type_id)
     if exclude_id is not None:
-        query = query.filter(EquipmentGroup.id != exclude_id)
+        query = query.filter(EquipmentGroupType.id != exclude_id)
     return query
 
 
@@ -66,12 +65,12 @@ def _find_replacement_equipment_group(obj, exclude_id):
     с минимальным id.
     """
     return (
-        EquipmentGroup.query
+        EquipmentGroupType.query
         .filter(
-            EquipmentGroup.name == obj.name,
-            EquipmentGroup.id != exclude_id,
+            EquipmentGroupType.name == obj.name,
+            EquipmentGroupType.id != exclude_id,
         )
-        .order_by(EquipmentGroup.id.asc())
+        .order_by(EquipmentGroupType.id.asc())
         .first()
     )
 
@@ -96,13 +95,13 @@ def equipment_group_query(
     technology_availability_id = _to_int_or_none(technology_availability_filter)
 
     # Базовый запрос
-    query = EquipmentGroup.query.filter(EquipmentGroup.id.isnot(None), EquipmentGroup.id > 0)
-    query = apply_version_filter(query, EquipmentGroup)
+    query = EquipmentGroupType.query.filter(EquipmentGroupType.id.isnot(None), EquipmentGroupType.id > 0)
+    query = apply_version_filter(query, EquipmentGroupType)
 
     # Загрузка связанных данных
     query = query.options(
-        joinedload(EquipmentGroup.technology_type),
-        joinedload(EquipmentGroup.technology_availability)
+        joinedload(EquipmentGroupType.technology_type),
+        joinedload(EquipmentGroupType.technology_availability)
     )
 
     # Отслеживание примененных JOIN'ов для избежания дублирования
@@ -111,17 +110,17 @@ def equipment_group_query(
 
     # Фильтрация
     if equipment_group_filter:
-        query = query.filter(EquipmentGroup.name.ilike(f"%{equipment_group_filter}%"))
+        query = query.filter(EquipmentGroupType.name.ilike(f"%{equipment_group_filter}%"))
 
     # Фильтр по типу технологии:
-    # - если передан ID (из выпадающего списка) — фильтруем по EquipmentGroup.id_technology_type
+    # - если передан ID (из выпадающего списка) — фильтруем по EquipmentGroupType.id_technology_type
     # - если передана строка (ручной ввод) — фильтруем по имени типа технологии
     if technology_type_id is not None:
-        query = query.filter(EquipmentGroup.id_technology_type == technology_type_id)
+        query = query.filter(EquipmentGroupType.id_technology_type == technology_type_id)
     elif technology_type_filter:
         query = query.join(
             TechnologyType,
-            EquipmentGroup.id_technology_type == TechnologyType.id,
+            EquipmentGroupType.id_technology_type == TechnologyType.id,
             isouter=True,
         )
         query = query.filter(TechnologyType.name.ilike(f"%{technology_type_filter}%"))
@@ -129,11 +128,11 @@ def equipment_group_query(
 
     # Фильтр по доступности технологии (аналогично типу технологии)
     if technology_availability_id is not None:
-        query = query.filter(EquipmentGroup.id_technology_availability == technology_availability_id)
+        query = query.filter(EquipmentGroupType.id_technology_availability == technology_availability_id)
     elif technology_availability_filter:
         query = query.join(
             TechnologyAvailability,
-            EquipmentGroup.id_technology_availability == TechnologyAvailability.id,
+            EquipmentGroupType.id_technology_availability == TechnologyAvailability.id,
             isouter=True,
         )
         query = query.filter(TechnologyAvailability.name.ilike(f"%{technology_availability_filter}%"))
@@ -141,28 +140,28 @@ def equipment_group_query(
 
     # Сортировка
     if sort_by == "name":
-        sort_col = EquipmentGroup.name
+        sort_col = EquipmentGroupType.name
     elif sort_by == "technology_type":
         if not joined_tech_type:
-            query = query.join(TechnologyType, EquipmentGroup.id_technology_type == TechnologyType.id, isouter=True)
+            query = query.join(TechnologyType, EquipmentGroupType.id_technology_type == TechnologyType.id, isouter=True)
         sort_col = TechnologyType.name
     elif sort_by == "technology_availability":
         if not joined_tech_avail:
-            query = query.join(TechnologyAvailability, EquipmentGroup.id_technology_availability == TechnologyAvailability.id, isouter=True)
+            query = query.join(TechnologyAvailability, EquipmentGroupType.id_technology_availability == TechnologyAvailability.id, isouter=True)
         sort_col = TechnologyAvailability.name
     elif sort_by == "display_order":
         if sort_dir == "desc":
             query = query.order_by(
-                (EquipmentGroup.display_order.is_(None)),
-                EquipmentGroup.display_order.desc()
+                (EquipmentGroupType.display_order.is_(None)),
+                EquipmentGroupType.display_order.desc()
             )
         else:
             query = query.order_by(
-                (EquipmentGroup.display_order.is_(None)),
-                EquipmentGroup.display_order.asc()
+                (EquipmentGroupType.display_order.is_(None)),
+                EquipmentGroupType.display_order.asc()
             )
     else:
-        sort_col = EquipmentGroup.id
+        sort_col = EquipmentGroupType.id
 
     if sort_by != "display_order":
         query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
@@ -221,7 +220,7 @@ def update_equipment_group_service(data, user):
             if not name:
                 raise ValueError(f"Поле 'name' обязательно для заполнения.")
 
-            obj = db.session.get(EquipmentGroup, equipment_group_id)
+            obj = db.session.get(EquipmentGroupType, equipment_group_id)
             if not obj:
                 log_to_db(
                     user, 
@@ -245,9 +244,9 @@ def update_equipment_group_service(data, user):
             # Проверка уникальности display_order
             if display_order != obj.display_order:
                 if display_order is not None:
-                    q_display = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
-                                .filter(EquipmentGroup.display_order == display_order,
-                                        EquipmentGroup.id != equipment_group_id))
+                    q_display = (apply_version_filter(EquipmentGroupType.query, EquipmentGroupType)
+                                .filter(EquipmentGroupType.display_order == display_order,
+                                        EquipmentGroupType.id != equipment_group_id))
                     if q_display.first():
                         raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
 
@@ -389,13 +388,13 @@ def add_equipment_group_service(data, user):
 
                 # Проверяем уникальность display_order при создании
                 if display_order is not None:
-                    dup_display = (apply_version_filter(EquipmentGroup.query, EquipmentGroup)
-                            .filter(EquipmentGroup.display_order == display_order)
+                    dup_display = (apply_version_filter(EquipmentGroupType.query, EquipmentGroupType)
+                            .filter(EquipmentGroupType.display_order == display_order)
                             .with_for_update().first())
                     if dup_display:
                         raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
 
-                obj = EquipmentGroup(
+                obj = EquipmentGroupType(
                     display_order=display_order,
                     name=name,
                     id_technology_type=technology_type_id,
@@ -469,29 +468,18 @@ def delete_equipment_group_service(ids, user):
                 entity_id=ft_id)
             continue
 
-        obj = _locked_get(EquipmentGroup, equipment_group_id)
+        obj = _locked_get(EquipmentGroupType, equipment_group_id)
         if obj:
-            has_group_sets = (
-                db.session.query(EquipmentGroupSet.id)
-                .filter(EquipmentGroupSet.id_equipment_group == equipment_group_id)
-                .first()
-                is not None
-            )
             has_machines = (
                 db.session.query(Machine.id)
                 .filter(Machine.id_equipment_group == equipment_group_id)
                 .first()
                 is not None
             )
-            if has_group_sets or has_machines:
+            if has_machines:
                 replacement = _find_replacement_equipment_group(obj, equipment_group_id)
                 if replacement:
                     # Переназначаем ссылки на дубликат и удаляем
-                    n_sets = (
-                        db.session.query(EquipmentGroupSet)
-                        .filter(EquipmentGroupSet.id_equipment_group == equipment_group_id)
-                        .update({"id_equipment_group": replacement.id})
-                    )
                     n_machines = (
                         db.session.query(Machine)
                         .filter(Machine.id_equipment_group == equipment_group_id)
@@ -501,7 +489,7 @@ def delete_equipment_group_service(ids, user):
                     log_to_db(
                         user,
                         "Удаление с переназначением на дубликат",
-                        f"{name} (id={equipment_group_id}): переназначено {n_sets} сборных групп, {n_machines} машин на id={replacement.id}",
+                        f"{name} (id={equipment_group_id}): переназначено {n_machines} машин на id={replacement.id}",
                         entity_type="equipment_group",
                         entity_id=equipment_group_id)
                     db.session.delete(obj)
@@ -515,7 +503,7 @@ def delete_equipment_group_service(ids, user):
                     log_to_db(
                         user,
                         "Запрещено удаление типа группы оборудования",
-                        f"Используется в сборных группах оборудования: {name}",
+                        f"Используется в агрегатах: {name}",
                         entity_type="equipment_group",
                         entity_id=equipment_group_id)
                 continue
@@ -744,7 +732,7 @@ def export_equipment_group_mappings_service(
 
     df = pd.DataFrame(data)
     output = BytesIO()
-    sheet_name = "EquipmentGroup"
+    sheet_name = "EquipmentGroupType"
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
 

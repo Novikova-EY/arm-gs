@@ -86,7 +86,13 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
+                                            <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
+                                            <input type="hidden"
+                                                   name="{{ main_form.machine_name.name }}"
+                                                   value="{{ main_form.machine_name.data or '' }}"
+                                                   class="machine-name-hidden">
+                                        {% elif can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
                                             <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
@@ -145,16 +151,12 @@
                                     </div>
                                 {% endif %}
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип технологии:</div>
+                                    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
                                             {{ main_form.id_equipment_group(class="form-select") }}
                                         {% else %}
-                                            {% if machine.equipment_group_set and machine.equipment_group_set.equipment_group %}
-                                                {{ machine.equipment_group_set.equipment_group.name }}
-                                            {% else %}
-                                                {{ machine.equipment_group.name if machine.equipment_group else '—' }}
-                                            {% endif %}
+                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1443,7 +1445,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // --- Пересборка поля "Название агрегата" (основное) из таблицы названий по годам ---
     function recomputeMachineNameFromYearNames(inputs) {
         const machineNameTextarea = document.querySelector(".machine-name-textarea");
-        if (!machineNameTextarea) return;  // режим только просмотра
+        const machineNameHidden = document.querySelector(".machine-name-hidden");
+        const machineNameDisplay = document.querySelector(".machine-name-display");
+        if (!machineNameTextarea && !machineNameHidden && !machineNameDisplay) return;
 
         let baseName = null;
         let planName = null;
@@ -1469,7 +1473,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (!baseName) {
-            machineNameTextarea.value = "";
+            if (machineNameTextarea) {
+                machineNameTextarea.value = "";
+            }
+            if (machineNameHidden) {
+                machineNameHidden.value = "";
+            }
+            if (machineNameDisplay) {
+                machineNameDisplay.textContent = "—";
+            }
             return;
         }
 
@@ -1487,7 +1499,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const displayName = planName ? (baseName + " (" + planName + ")") : baseName;
-        machineNameTextarea.value = displayName;
+        if (machineNameTextarea) {
+            machineNameTextarea.value = displayName;
+        }
+        if (machineNameHidden) {
+            machineNameHidden.value = displayName;
+        }
+        if (machineNameDisplay) {
+            machineNameDisplay.textContent = displayName || "—";
+        }
     }
 
     // --- Автозаполнение названий агрегатов по строке (как у мощностей) ---

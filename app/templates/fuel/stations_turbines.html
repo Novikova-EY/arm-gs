@@ -46,7 +46,7 @@
     <!-- Фильтры -->
     {% include 'fuel/stations_turbines_filters.html' %}
 
-{% set column_count = 16 %}
+{% set column_count = 15 %}
 
     <!-- Таблица с данными -->
         <table class="table table-hover table-striped table-bordered table-responsive">
@@ -54,19 +54,18 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="6">Модуль «Генерация»</th>
+                    <th colspan="5">Модуль «Генерация»</th>
                     <th colspan="10">Модуль «Топливо»</th>
                 </tr>
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 120px;">Группа оборудования</th>
                     <th style="width: 220px;">Станция</th>
-                    <th style="width: 50px;">Тип</th>
                     <th style="width: 80px;">cт. №</th>
                     <th style="width: 200px;">Тип агрегата</th>
                     <th style="width: 80px;">Год ввода в эксплуатацию</th>
                     <th style="width: 80px;">Код станции<br><span class="text-muted small">(numb1120)</span></th>
                     <th style="width: 100px;">Название станции<br><span class="text-muted small">(stname)</span></th>
-                    <th style="width: 80px;">Группа оборудования<br><span class="text-muted small">(grcode)</span></th>
+                    <th style="width: 80px;">Группа оборудования<br><span class="text-muted small">(name)</span></th>
                     <th style="width: 80px;">Порядковый номер<br><span class="text-muted small">(numb)</span></th>
                     <th style="width: 80px;">Номер агрегата<br><span class="text-muted small">(stnumb)</span></th>
                     <th style="width: 100px;">Тип (марка) оборудования<br><span class="text-muted small">(opesname)</span></th>
@@ -145,17 +144,7 @@
                                                 {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
                                                 {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
                                                     {% set equipment_group_id = group.grouper %}
-                                                    {% set seg_list = station.equipment_group_sets
-                                                        | selectattr('id_equipment_group', 'equalto', equipment_group_id)
-                                                        | list %}
-                                                    {% set seg = (
-                                                        group.list[0].equipment_group_set
-                                                        if group.list and group.list[0].equipment_group_set
-                                                        else (seg_list[0] if seg_list else None)
-                                                    ) %}
-                                                    {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
-                                                    {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
-                                                    {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                                    {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                                     {% set current = group_counts.values.get(group_key, 0) %}
                                                     {% set _ = group_counts.values.update({group_key: current + (group.list|length)}) %}
                                                 {% endfor %}
@@ -171,28 +160,13 @@
                                                 {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
                                                 {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
                                                     {% set equipment_group_id = group.grouper %}
-                                                    {% set seg_list = station.equipment_group_sets
-                                                        | selectattr('id_equipment_group', 'equalto', equipment_group_id)
-                                                        | list %}
-                                                    {% set seg = (
-                                                        group.list[0].equipment_group_set
-                                                        if group.list and group.list[0].equipment_group_set
-                                                        else (seg_list[0] if seg_list else None)
-                                                    ) %}
-                                                    {% set link_list = (
-                                                        seg.station_links
-                                                        | selectattr('station_id', 'equalto', station.id)
-                                                        | list
-                                                    ) if seg and seg.station_links else [] %}
-                                                    {% set link = link_list[0] if link_list else None %}
+                                                    {% set fuel_equipment_group = station_equipment_group_name_map.get((station.id, equipment_group_id)) %}
                                                     {% set group_name = (
-                                                        seg.equipment_group.name
-                                                        if seg and seg.equipment_group
+                                                        (fuel_equipment_group.name or fuel_equipment_group.name_ext or '—')
+                                                        if fuel_equipment_group
                                                         else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
                                                     ) %}
-                                                    {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
-                                                    {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
-                                                    {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                                    {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                                     {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
                                                     {% set is_new_group = group_key not in rendered_groups.values %}
                                                     {% for machine in group.list %}
@@ -200,7 +174,7 @@
                                                         <tr class="text-center align-middle">
                                                             {% if loop.first %}
                                                                 {% if is_new_group %}
-                                                                    <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                                    <td rowspan="{{ group_rowspan }}">{% if fuel_equipment_group and fuel_equipment_group.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=fuel_equipment_group.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
                                                                 {% endif %}
                                                                 {% if not station_cell.printed %}
                                                                     <td rowspan="{{ total_machines }}">
@@ -211,7 +185,6 @@
                                                                     {% set station_cell.printed = true %}
                                                                 {% endif %}
                                                                 {% if is_new_group %}
-                                                                    <td rowspan="{{ group_rowspan }}">{{ group_name }}</td>
                                                                     {% set _ = rendered_groups.values.append(group_key) %}
                                                                 {% endif %}
                                                             {% endif %}
@@ -224,7 +197,7 @@
                                                         <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
                                                         <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
                                                         <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                        <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
                                                         <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                         <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                         <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
@@ -249,7 +222,6 @@
                                                                     </td>
                                                                     {% set station_cell.printed = true %}
                                                                 {% endif %}
-                                                                <td rowspan="{{ machines_without_group|length }}">—</td>
                                                             {% endif %}
                                                             <td>{{ machine.machine_number or '—' }}</td>
                                                             <td>
@@ -260,7 +232,7 @@
                                                             <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
                                                             <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
                                                             <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                            <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
                                                             <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                             <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                             <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
@@ -293,17 +265,7 @@
                             {% set machines_with_group = station.machines | rejectattr('id_equipment_group', 'equalto', None) | list %}
                             {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
                                 {% set equipment_group_id = group.grouper %}
-                                {% set seg_list = station.equipment_group_sets
-                                    | selectattr('id_equipment_group', 'equalto', equipment_group_id)
-                                    | list %}
-                                {% set seg = (
-                                    group.list[0].equipment_group_set
-                                    if group.list and group.list[0].equipment_group_set
-                                    else (seg_list[0] if seg_list else None)
-                                ) %}
-                                {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
-                                {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
-                                {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                 {% set current = group_counts.values.get(group_key, 0) %}
                                 {% set _ = group_counts.values.update({group_key: current + (group.list|length)}) %}
                             {% endfor %}
@@ -319,28 +281,13 @@
                             {% set machines_without_group = station.machines | selectattr('id_equipment_group', 'equalto', None) | list %}
                             {% for group in machines_with_group | sort(attribute='id_equipment_group') | groupby('id_equipment_group') %}
                                 {% set equipment_group_id = group.grouper %}
-                                {% set seg_list = station.equipment_group_sets
-                                    | selectattr('id_equipment_group', 'equalto', equipment_group_id)
-                                    | list %}
-                                {% set seg = (
-                                    group.list[0].equipment_group_set
-                                    if group.list and group.list[0].equipment_group_set
-                                    else (seg_list[0] if seg_list else None)
-                                ) %}
-                                {% set link_list = (
-                                    seg.station_links
-                                    | selectattr('station_id', 'equalto', station.id)
-                                    | list
-                                ) if seg and seg.station_links else [] %}
-                                {% set link = link_list[0] if link_list else None %}
+                                {% set fuel_equipment_group = station_equipment_group_name_map.get((station.id, equipment_group_id)) %}
                                 {% set group_name = (
-                                    seg.equipment_group.name
-                                    if seg and seg.equipment_group
+                                    (fuel_equipment_group.name or fuel_equipment_group.name_ext or '—')
+                                    if fuel_equipment_group
                                     else (group.list[0].equipment_group.name if group.list[0].equipment_group else '—')
                                 ) %}
-                                {% set base_raw = (seg.external_code if seg and seg.external_code else (seg.name if seg and seg.name else '')) %}
-                                {% set base_norm = base_raw | replace('\u00a0', ' ') | replace('\xa0', ' ') | replace(' ', '') | lower %}
-                                {% set group_key = base_norm if base_norm else ('none:' ~ station.id ~ ':' ~ equipment_group_id) %}
+                                {% set group_key = 'group:' ~ station.id ~ ':' ~ equipment_group_id %}
                                 {% set group_rowspan = group_counts.values.get(group_key, group.list|length) %}
                                 {% set is_new_group = group_key not in rendered_groups.values %}
                                 {% for machine in group.list %}
@@ -348,7 +295,7 @@
                                     <tr class="text-center align-middle">
                                         {% if loop.first %}
                                             {% if is_new_group %}
-                                                <td rowspan="{{ group_rowspan }}">{{ seg.name if seg and seg.name else '—' }}</td>
+                                                <td rowspan="{{ group_rowspan }}">{% if fuel_equipment_group and fuel_equipment_group.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=fuel_equipment_group.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
                                             {% endif %}
                                             {% if not station_cell.printed %}
                                                 <td rowspan="{{ total_machines }}">
@@ -359,7 +306,6 @@
                                                 {% set station_cell.printed = true %}
                                             {% endif %}
                                             {% if is_new_group %}
-                                                <td rowspan="{{ group_rowspan }}">{{ group_name }}</td>
                                                 {% set _ = rendered_groups.values.append(group_key) %}
                                             {% endif %}
                                         {% endif %}
@@ -372,7 +318,7 @@
                                     <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
                                                             <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
                                                             <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                                            <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                                            <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
                                                             <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                             <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                             <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
@@ -397,7 +343,6 @@
                                                 </td>
                                                 {% set station_cell.printed = true %}
                                             {% endif %}
-                                            <td rowspan="{{ machines_without_group|length }}">—</td>
                                         {% endif %}
                                         <td>{{ machine.machine_number or '—' }}</td>
                                         <td>
@@ -408,7 +353,7 @@
                                         <td>{{ machine.date_exploitation if machine.date_exploitation is not none else '—' }}</td>
                                         <td>{{ tp.numb1120 if tp and tp.numb1120 is not none else '—' }}</td>
                                         <td>{{ tp.stname if tp and tp.stname else '—' }}</td>
-                                        <td>{{ (tp.equipment_group_set.name or tp.equipment_group_set.numb) if tp and tp.equipment_group_set else '—' }}</td>
+                                        <td>{{ machine.equipment_group.name if machine.equipment_group else '—' }}</td>
                                         <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                         <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                         <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>

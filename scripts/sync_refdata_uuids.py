@@ -45,7 +45,7 @@ from app.refdata.models.refdata_for_stations.machine.machine_type_model import M
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
-from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroup
+from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import EquipmentGroupType
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import TechnologyType
 from app.refdata.models.refdata_for_stations.technologies.technology_availability_model import (
     TechnologyAvailability,
@@ -99,7 +99,7 @@ TABLES: dict[str, TableConfig] = {
     "tes_types": TableConfig("tes_types", TesType, ("name",)),
     "tes_machine_types": TableConfig("tes_machine_types", TesMachineType, ("name",)),
     "pgu_tes_machine_types": TableConfig("pgu_tes_machine_types", PGUTesMachineType, ("name",)),
-    "equipment_groups": TableConfig("equipment_groups", EquipmentGroup, ("name",)),
+    "equipment_groups": TableConfig("equipment_groups", EquipmentGroupType, ("name",)),
     "technology_types": TableConfig("technology_types", TechnologyType, ("name",)),
     "technology_availabilities": TableConfig(
         "technology_availabilities", TechnologyAvailability, ("name",)

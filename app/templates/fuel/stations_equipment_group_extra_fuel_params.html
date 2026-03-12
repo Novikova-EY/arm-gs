@@ -125,36 +125,22 @@
                                 {% endif %}
 
                                 {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
-                                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
-                                        {% set seg = link.equipment_group_set %}
-                                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
-                                        {% set ns = namespace(params_in_range=[]) %}
-                                        {% for p in (seg.extra_fuel_params if seg else []) %}
-                                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
-                                                {% set _ = ns.params_in_range.append(p) %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {% set params_in_range = ns.params_in_range %}
+                                    {% for group in (station.equipment_group_v2_groups or []) %}
+                                        {% set group_entity = group.equipment_group %}
+                                        {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                        {% set params_in_range = group.extra_fuel_params or [] %}
                                         {% if params_in_range %}
-                                            {% for param in params_in_range|sort(attribute='year_number') %}
-                                            <tr class="text-center align-middle">
-                                                <td>
-                                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
-                                                        {{ seg.name if seg and seg.name else group_name }}
-                                                    </a>
-                                                </td>
-                                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                                <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                                                {% endfor %}
-                                            </tr>
+                                            {% for param in params_in_range %}
+                                                <tr class="text-center align-middle">
+                                                    <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
+                                                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                                    <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                                    {% endfor %}
+                                                </tr>
                                             {% endfor %}
                                         {% else %}
                                             <tr class="text-center align-middle">
-                                                <td>
-                                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
-                                                        {{ seg.name if seg and seg.name else group_name }}
-                                                    </a>
-                                                </td>
+                                                <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
                                                 {% for attr, label, is_numeric in extra_fuel_param_columns %}
                                                 <td>—</td>
                                                 {% endfor %}
@@ -170,36 +156,22 @@
             {% endfor %}
             {% else %}
                 {% for station in stations %}
-                    {% for link in (station.equipment_group_set_links or [])|sort(attribute='id') %}
-                        {% set seg = link.equipment_group_set %}
-                        {% set group_name = (seg.equipment_group.name if seg and seg.equipment_group else (seg.name if seg else '—')) %}
-                        {% set ns = namespace(params_in_range=[]) %}
-                        {% for p in (seg.extra_fuel_params if seg else []) %}
-                            {% if p.year_number is not none and p.year_number >= start_year and p.year_number <= end_year %}
-                                {% set _ = ns.params_in_range.append(p) %}
-                            {% endif %}
-                        {% endfor %}
-                        {% set params_in_range = ns.params_in_range %}
+                    {% for group in (station.equipment_group_v2_groups or []) %}
+                        {% set group_entity = group.equipment_group %}
+                        {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                        {% set params_in_range = group.extra_fuel_params or [] %}
                         {% if params_in_range %}
-                            {% for param in params_in_range|sort(attribute='year_number') %}
-                            <tr class="text-center align-middle">
-                                <td>
-                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
-                                        {{ seg.name if seg and seg.name else group_name }}
-                                    </a>
-                                </td>
-                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                                {% endfor %}
-                            </tr>
+                            {% for param in params_in_range %}
+                                <tr class="text-center align-middle">
+                                    <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
+                                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                    <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                    {% endfor %}
+                                </tr>
                             {% endfor %}
                         {% else %}
                             <tr class="text-center align-middle">
-                                <td>
-                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_set_station_id=link.id, **request.args) }}" class="text-decoration-none">
-                                        {{ seg.name if seg and seg.name else group_name }}
-                                    </a>
-                                </td>
+                                <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
                                 {% for attr, label, is_numeric in extra_fuel_param_columns %}
                                 <td>—</td>
                                 {% endfor %}
@@ -207,29 +179,14 @@
                         {% endif %}
                     {% endfor %}
                 {% endfor %}
-                {% if not stations %}
-                <tr>
-                    <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
-                </tr>
-                {% endif %}
             {% endif %}
         </tbody>
     </table>
 
-    <div class="mt-2">
-        {% if per_page is not none %}
-            {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_extra_fuel_params' %}
-            {% include 'generation/includes/pagination_station.html' %}
-        {% endif %}
-    </div>
     </div>
 </div>
-{% endif %}
 
-<script id="initial-state-json" type="application/json">
-    { "hasActiveFilters": {{ has_active_filters | tojson }} }
-</script>
-
+<!-- Данные фильтров (для первой строки) -->
 <script id="filters-data" type="application/json">
     {{ {
         'energy_system_type_list': energy_system_type_list,
@@ -276,15 +233,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
-{% include 'generation/stations/scripts/station_list_scripts.html' %}
-
 <script>
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.style.display = 'none';
-        }, 500);
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
     });
 </script>
+
+{% endif %}
 {% endblock %}

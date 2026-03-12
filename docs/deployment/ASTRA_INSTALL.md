@@ -98,18 +98,18 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.83
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.105
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.83 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.105 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.83_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.105_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 # (введите пароль при запросе или используйте ssh-copy-id для входа по ключу)
 ```
 ---
@@ -120,7 +120,7 @@ scp C:\arm_gs\packaging\generation-app_1.0.83_amd64.deb novikova-eyu@10.31.205.2
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.83_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.105_amd64.deb || sudo apt -f install
 GnT8xs!
 cd /opt/generation-app/
 source venv/bin/activate
@@ -148,20 +148,90 @@ sudo journalctl -u generation-app -f
 
 **Важно:** Если PostgreSQL и Redis были установлены автоматически на этом этапе, обязательно вернитесь к разделам 3 и 4, чтобы настроить базу данных и пользователя **перед** запуском приложения.
 
-### Если таблица `gs_fue_equipment_group_extra_fuel_param` не существует
+Скрипт идемпотентен (CREATE TABLE IF NOT EXISTS).
 
-Ошибка «отношение gs_fue.gs_fue_equipment_group_extra_fuel_param не существует» возникает, когда миграция `l9m0n1o2p3q4` не применилась (старый пакет без неё, несколько heads и т.п.).
+### Ошибка «Revision X is present more than once», «Multiple head revisions», «overlaps with other requested revisions»
 
-**Сначала:** пересоберите пакет, задеплойте и выполните `flask db upgrade` — миграция `l9m0n1o2p3q4` создаст таблицу.
+При нескольких heads и «грязной» таблице `alembic_version` возникают конфликты. Ошибка «overlaps» обычно означает, что в `gs_auth.alembic_version` есть лишние строки (предки heads, а не сами heads).
 
-**Если миграция всё равно не срабатывает** (например, upgrade пошёл по другой ветке из‑за нескольких heads) — создайте таблицу вручную:
+**Шаг 1.** Удалить лишние ревизии из `alembic_version` (на сервере, через psql или DBeaver):
 
-```bash
-# На сервере (подставьте пользователя и базу из .env приложения)
-psql -U <пользователь_БД> -d <имя_базы> -f /opt/generation-app/app/scripts/create_gs_fue_equipment_group_extra_fuel_param.sql
+```sql
+-- Посмотреть текущее состояние
+SELECT * FROM gs_auth.alembic_version;
+
+-- Удалить b0f6560b0917 — это предок, его наличие вызывает overlap
+DELETE FROM gs_auth.alembic_version WHERE version_num = 'b0f6560b0917';
+
+-- Удалить a0375a0bed3a, если она была создана на сервере и отсутствует в пакете
+DELETE FROM gs_auth.alembic_version WHERE version_num = 'a0375a0bed3a';
+
+-- Если есть другие не-head ревизии — удалить их. Оставить только heads.
 ```
 
-Скрипт идемпотентен (CREATE TABLE IF NOT EXISTS).
+**Шаг 2.** Проверить heads и выполнить merge (если heads несколько):
+
+```bash
+flask db heads   # должно показать только heads (например 281dc31bfeaf, d0e1f2a3b4c5)
+```
+
+Если heads несколько, создать merge-ревизию, **указав heads явно** (не `merge heads` — он может падать, если в alembic_version остались лишние записи):
+
+```bash
+flask db merge 281dc31bfeaf d0e1f2a3b4c5
+```
+
+Подставьте актуальные revision ID из вывода `flask db heads`.
+
+**Шаг 3.** Применить миграции:
+
+```bash
+flask db upgrade head
+```
+
+Если `upgrade` всё ещё падает с overlap — оставить в `alembic_version` только одну запись (merge-head) и выполнить upgrade:
+
+```bash
+# На сервере, из /opt/generation-app/app
+python scripts/fix_alembic_version.py
+flask db upgrade head
+```
+
+Перед этим обновите `HEAD_REVISION` в `scripts/fix_alembic_version.py` на актуальный head (например `d0e1f2a3b4c5` или revision merge-файла).
+
+### Миграции не применились, таблицы gs_fue не изменились
+
+Если после деплоя `flask db upgrade` выполнился без ошибок, но таблицы в `gs_fue` остались старыми — возможно, `alembic_version` была ранее установлена (stamp) без реального применения миграций.
+
+**Решение:** сбросить `alembic_version` на ревизию до изменений в gs_fue и применить миграции заново:
+
+```bash
+# Подключение: PGPASSWORD="$DB_PASS" psql -h localhost -U generation -d gs_gen
+# Или через .env приложения
+
+# 1. Установить ревизию до equipment group v2 (например 1e1fdaf90b94)
+DELETE FROM gs_auth.alembic_version;
+INSERT INTO gs_auth.alembic_version (version_num) VALUES ('1e1fdaf90b94');
+
+# 2. Применить миграции (c9d0e1f2a3b4 — пересоздание gs_fue equipment group tables)
+flask db upgrade c9d0e1f2a3b4
+```
+
+Если при upgrade возникает ошибка «table already exists» — схема уже частично обновлена. В этом случае оставьте `alembic_version` как есть и проверьте наличие нужных таблиц: `\dt gs_fue.*`
+
+### Пересоздание таблиц gs_fue (чистый старт)
+
+Миграция `c9d0e1f2a3b4` удаляет и заново создаёт таблицы `gs_fue_equipment_groups`, `gs_fue_equipment_group_sets`, `gs_fue_equipment_group_type_stations`. Используйте при «грязном» состоянии после ручных манипуляций.
+
+**Внимание:** таблицы будут удалены, все данные в них потеряются. Если нужны данные — сделайте бэкап.
+
+```bash
+# 1. Установить alembic_version на ревизию перед пересозданием
+PGPASSWORD="$DB_PASS" psql -h localhost -U generation -d gs_gen -c "DELETE FROM gs_auth.alembic_version; INSERT INTO gs_auth.alembic_version (version_num) VALUES ('a1b2c3d4e5f7');"
+
+# 2. Применить миграцию (удалит и создаст таблицы заново)
+flask db upgrade c9d0e1f2a3b4
+```
 
 ---
 
@@ -188,19 +258,19 @@ psql -U <пользователь_БД> -d <имя_базы> -f /opt/generation-
 ```powershell
 # Полный деплой с указанной версией
 cd C:\arm_gs
-.\scripts\deploy.ps1 -Version 1.0.83
+.\scripts\deploy.ps1 -Version 1.0.105
 
 # Версия из git describe (тег или коммит)
 .\scripts\deploy.ps1
 
 # Только передать на сервер, установку выполнить вручную
-.\scripts\deploy.ps1 -Version 1.0.83 -NoInstall
+.\scripts\deploy.ps1 -Version 1.0.105 -NoInstall
 
 # Пакет уже собран — только передать и установить
-.\scripts\deploy.ps1 -Version 1.0.83 -DeployOnly
+.\scripts\deploy.ps1 -Version 1.0.105 -DeployOnly
 
 # Пропустить пересборку образа (быстрее при повторных деплоях)
-.\scripts\deploy.ps1 -Version 1.0.83 -SkipBuild
+.\scripts\deploy.ps1 -Version 1.0.105 -SkipBuild
 ```
 
 ### Важно
@@ -261,7 +331,7 @@ flask db upgrade
 sudo -u generation-app bash -c 'set -a; . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source ../venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && flask db upgrade'
 ```
 
-- Для обновления соберите новый пакет с версией `1.0.83`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.83_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.105`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.105_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 

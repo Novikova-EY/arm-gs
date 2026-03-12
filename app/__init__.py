@@ -287,11 +287,7 @@ def create_app():
             document_model,
         )
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
-        from app.fuel.models import (
-            fue_equipment_group_set_model,
-            fue_equipment_group_set_station_model,
-            external_mapping,
-        )
+        from app.fuel.models import external_mapping
 
         # Проброс мапперов
         db.configure_mappers()
@@ -528,11 +524,24 @@ def create_app():
         return getattr(obj, attr, None)
 
     @app.template_filter("format_decimal")
-    def format_decimal_filter(value):
-        from flask import request
-        digits = request.args.get("rounding_digits", default=None, type=int)
+    def format_decimal_filter(value, digits=None):
+        if digits is None:
+            from flask import request
+            digits = request.args.get("rounding_digits", default=None, type=int)
+        else:
+            try:
+                digits = int(digits)
+            except (TypeError, ValueError):
+                digits = None
         return format_decimal_for_display(value, digits=digits)
-    
+
+    @app.template_filter("normalize_uuid")
+    def normalize_uuid_filter(value):
+        """Нормализует UUID для сравнения (убирает скобки, приводит к нижнему регистру)."""
+        if value is None:
+            return ""
+        return str(value).strip().lower().replace("{", "").replace("}", "")
+
     # Фильтр для обработки ссылок на документы в тексте
     @app.template_filter("render_document_links")
     def render_document_links_filter(text):

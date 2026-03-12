@@ -262,9 +262,8 @@ def fetch_machines_with_rowspans(
         selectinload(Machine.machine_fuels)
             .selectinload(MachineFuel.fuel)
             .selectinload(Fuel.fuel_type),
-        joinedload(Machine.machine_fuel_param).joinedload(
-            MachineFuelParam.equipment_group_sets
-        ),
+        joinedload(Machine.machine_fuel_param),
+        joinedload(Machine.equipment_group),
     ).filter(Machine.id_station.in_(station_ids)).all()
 
     # Сначала фильтруем внутренние коллекции по версии БД (важно для primary_fuel_type)

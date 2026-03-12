@@ -26,30 +26,14 @@ class TerritoriesEnergyExternalMapping(db.Model, AuditMixin):
     # Поля из БД Топливо
     name_ext = db.Column(db.String(255), nullable=True)
     ao = db.Column(db.String(255), nullable=True)
-    obl = db.Column(db.String(255), nullable=True)
-    alph = db.Column(db.String(255), nullable=True)
-    dep = db.Column(
-        db.String(80),
-        db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_department.external_id"),
-        nullable=True,
-    )
-    oes = db.Column(
-        db.String(80),
-        db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_union_energy_system.external_id"),
-        nullable=True,
-    )
-    er = db.Column(
-        db.String(80),
-        db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_economic_region.external_id"),
-        nullable=True,
-    )
-    terr_belyaev = db.Column(db.String(255), nullable=True)
-    teo90 = db.Column(db.String(255), nullable=True)
-    fo = db.Column(
-        db.String(80),
-        db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_federal_district.external_id"),
-        nullable=True,
-    )
+    obl = db.Column(db.Integer, nullable=True, index=True)
+    alph = db.Column(db.Integer, nullable=True)
+    dep = db.Column(db.Integer, nullable=True, index=True)
+    oes = db.Column(db.Integer, nullable=True, index=True)
+    er = db.Column(db.Integer, nullable=True, index=True)
+    terr_belyaev = db.Column(db.Integer, nullable=True)
+    teo90 = db.Column(db.Integer, nullable=True)
+    fo = db.Column(db.Integer, nullable=True, index=True)
     abbr = db.Column(db.String(255), nullable=True)
     reu = db.Column(db.String(255), nullable=True)
     pter = db.Column(db.String(255), nullable=True)

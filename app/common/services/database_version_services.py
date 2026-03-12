@@ -1340,24 +1340,6 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 ]
             },
             {
-                'schema': fuel_schema,
-                'table': 'gs_fue_equipment_group_sets',
-                'dependencies': [
-                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
-                ]
-            },
-            {
-                'schema': fuel_schema,
-                'table': 'gs_fue_equipment_group_set_stations',
-                'dependencies': [
-                    {
-                        'fk': 'equipment_group_set_id',
-                        'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
-                    },
-                    {'fk': 'station_id', 'ref_table': f'{gen_schema}.stations'}
-                ]
-            },
-            {
                 'schema': gen_schema,
                 'table': 'machines',
                 'dependencies': [
@@ -1369,11 +1351,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     {'fk': 'id_energy_area', 'ref_table': f'{ref_schema}.gs_energy_areas'},
                     {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
                     {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'},
-                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'},
-                    {
-                        'fk': 'equipment_group_set_id',
-                        'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
-                    }
+                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
                 ]
             },
             {
@@ -1922,24 +1900,6 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
             ]
         },
         {
-            'schema': fuel_schema,
-            'table': 'gs_fue_equipment_group_sets',
-            'dependencies': [
-                {'fk': 'id_equipment_group', 'ref_table': 'refdata.equipment_groups'}
-            ]
-        },
-        {
-            'schema': fuel_schema,
-            'table': 'gs_fue_equipment_group_set_stations',
-            'dependencies': [
-                {
-                    'fk': 'equipment_group_set_id',
-                    'ref_table': f'{fuel_schema}.gs_fue_equipment_group_sets'
-                },
-                {'fk': 'station_id', 'ref_table': f'{gen_schema}.stations'}
-            ]
-        },
-        {
             'schema': gen_schema,
             'table': 'station_powers',
             'dependencies': [
@@ -2300,10 +2260,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         'documents_kommod'           # 13. Документы (независимые)
     ]
 
-    fuel_tables = [
-        'gs_fue_equipment_group_sets',      # 3. Сборные группы оборудования
-        'gs_fue_equipment_group_set_stations',  # 4. Связи групп оборудования со станциями
-    ]
+    fuel_tables = []
     
     # Таблицы для копирования из схемы refdata
     refdata_tables = [
@@ -3537,8 +3494,6 @@ def _delete_version_data_staged(version_id, user):
     # ЭТАП 6: Таблицы, зависящие от stations
     stage6_tables = [
         (SCHEMA_GENERATION, 'machines'),
-        (SCHEMA_FUEL, 'gs_fue_equipment_group_set_stations'),
-        (SCHEMA_FUEL, 'gs_fue_equipment_group_sets'),
         (SCHEMA_FUEL, 'gs_fue_equipment_group_fuel_param'),  # Параметры топлива групп оборудования
         (SCHEMA_GENERATION, 'station_powers'),
         (SCHEMA_GENERATION, 'boilers')
@@ -3833,10 +3788,7 @@ def _delete_version_data(version_id, user):
         'documents_kommod'     # Документы
     ]
 
-    fuel_tables = [
-        'gs_fue_equipment_group_set_stations',  # Связи групп оборудования со станциями
-        'gs_fue_equipment_group_sets',          # Сборные группы оборудования
-    ]
+    fuel_tables = []
     
     # Таблицы для удаления из схемы refdata
     refdata_tables = [

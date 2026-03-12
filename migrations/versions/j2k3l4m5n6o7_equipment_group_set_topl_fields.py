@@ -53,42 +53,56 @@ RENAME_MAP = [
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
+    columns = {c["name"] for c in inspector.get_columns(TABLE, schema=SCHEMA)}
     # 1. Удалить колонку type
-    op.drop_column(TABLE, "type", schema=SCHEMA)
+    if "type" in columns:
+        op.drop_column(TABLE, "type", schema=SCHEMA)
 
     # 2. Добавить колонку topl_name
-    op.add_column(
-        TABLE,
-        sa.Column("topl_name", sa.String(length=255), nullable=True),
-        schema=SCHEMA,
-    )
+    if "topl_name" not in columns:
+        op.add_column(
+            TABLE,
+            sa.Column("topl_name", sa.String(length=255), nullable=True),
+            schema=SCHEMA,
+        )
 
     # 3. Переименовать все колонки
     for old_name, new_name in RENAME_MAP:
-        op.alter_column(
-            TABLE,
-            old_name,
-            new_column_name=new_name,
-            schema=SCHEMA,
-        )
+        if old_name in columns:
+            op.alter_column(
+                TABLE,
+                old_name,
+                new_column_name=new_name,
+                schema=SCHEMA,
+            )
 
 
 def downgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
+    columns = {c["name"] for c in inspector.get_columns(TABLE, schema=SCHEMA)}
     # 1. Переименовать колонки обратно
     for old_name, new_name in RENAME_MAP:
-        op.alter_column(
-            TABLE,
-            new_name,
-            new_column_name=old_name,
-            schema=SCHEMA,
-        )
+        if new_name in columns:
+            op.alter_column(
+                TABLE,
+                new_name,
+                new_column_name=old_name,
+                schema=SCHEMA,
+            )
 
     # 2. Удалить topl_name
-    op.drop_column(TABLE, "topl_name", schema=SCHEMA)
+    if "topl_name" in columns:
+        op.drop_column(TABLE, "topl_name", schema=SCHEMA)
 
     # 3. Добавить type
-    op.add_column(
-        TABLE,
-        sa.Column("type", sa.String(length=255), nullable=True),
-        schema=SCHEMA,
-    )
+    if "type" not in columns:
+        op.add_column(
+            TABLE,
+            sa.Column("type", sa.String(length=255), nullable=True),
+            schema=SCHEMA,
+        )

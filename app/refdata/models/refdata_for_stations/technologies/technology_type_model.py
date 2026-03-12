@@ -31,7 +31,7 @@ class TechnologyType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin
         index=True
     )
 
-    equipment_groups = db.relationship('EquipmentGroup', back_populates='technology_type')
+    equipment_groups = db.relationship('EquipmentGroupType', back_populates='technology_type')
     machines = db.relationship('Machine', back_populates='technology_type')
 
     def __repr__(self) -> str:

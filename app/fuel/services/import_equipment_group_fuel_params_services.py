@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Сервис загрузки EquipmentGroupFuelParam из Excel. Жёсткое сравнение: NUMB1120 == EquipmentGroupSet.numb."""
+"""Сервис загрузки EquipmentGroupFuelParam из Excel (v2)."""
 
 from __future__ import annotations
 
@@ -8,26 +9,20 @@ import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import pandas as pd
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.logs.services.logging_service import log_to_db
-from app.common.services.database_version_filter import (
-    get_current_db_version_id,
-    set_db_version_on_create,
-)
-from sqlalchemy.exc import IntegrityError
-
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
-from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.refdata.models.years.year_model import Year
 
 
 def _get_logger():
     try:
-        from flask import has_app_context
+        from flask import has_app_context, current_app
         if has_app_context():
-            from flask import current_app
             return current_app.logger
     except Exception:
         pass
@@ -45,7 +40,6 @@ def _normalize_column_name(col) -> str:
     return s
 
 
-# Поля EquipmentGroupFuelParam для заполнения из Excel (кроме id, equipment_group_set_station_id, year_number)
 EQUIPMENT_GROUP_FUEL_PARAM_FIELDS = [
     "name", "obor", "ved", "ved_cyrillic", "obl", "dep", "oes", "ees", "er", "gk", "be",
     "numb1120", "numb1",
@@ -72,11 +66,19 @@ NUMERIC_FIELDS = frozenset([
 COLUMN_ALIASES = {
     "numb1120": ["numb1120", "num1120", "номер1120", "numb", "ном1120", "agr_numb1120", "topl_agr_numb1120"],
     "ved_cyrillic": ["вед", "ved_cyrillic"],
+    "equipment_group_id": ["equipment_group_id", "eq_group_id", "id_equipment_group"],
+    "equipment_group_set_station_id": [
+        "equipment_group_set_station_id", "eq_group_station_id", "link_id", "linkid",
+    ],
+    "station_id": ["station_id", "id_station", "id_станции"],
+    "equipment_group_type_id": ["equipment_group_type_id", "equipment_group_id", "group_type_id", "id_group_type"],
+    "equipment_group_type": ["equipment_group_type", "group_type", "type_name", "название_типа", "тип_группы"],
+    "station_external_code": ["station_external_code", "station_code", "код_станции", "external_code"],
+    "station_name": ["station_name", "stname", "название_станции", "наименование_станции"],
 }
 
 
 def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
-    """Приводит имена колонок к каноническим (поля модели)."""
     alias_to_canonical = {}
     for canonical, aliases in COLUMN_ALIASES.items():
         for a in aliases:
@@ -87,10 +89,11 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     rename_map = {}
     for col in df.columns:
         norm = _normalize_column_name(col)
-        canonical = alias_to_canonical.get(norm) or (norm if norm in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS else None)
+        canonical = alias_to_canonical.get(norm) or (
+            norm if norm in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS else None
+        )
         if canonical and canonical not in rename_map.values():
             rename_map[col] = canonical
-
     if rename_map:
         df = df.rename(columns=rename_map)
     return df
@@ -132,11 +135,6 @@ def _safe_int(value) -> int | None:
 
 
 def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
-    """
-    Приводит значение к Decimal для нецелочисленных полей импорта.
-    Поддерживает запятую как десятичный разделитель и сохраняет все знаки
-    после запятой точно (как у мощностей на station_list). Пустые значения → None.
-    """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     if isinstance(value, str):
@@ -154,7 +152,6 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
         else:
             dec_val = Decimal(str(value))
 
-        scale: int
         if isinstance(value, str):
             s = value.strip().replace(",", ".")
             if "." in s:
@@ -175,37 +172,51 @@ def _safe_decimal(value, max_digits: int = 6) -> Decimal | None:
         return None
 
 
-def _numb1120_to_str_for_match(val):
-    """
-    Преобразует значение NUMB1120 из файла в строку для жёсткого сравнения с topl_numb.
-    Excel отдаёт числа как float (1120.0) — приводим к целой строке.
-    """
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+def _safe_str(value) -> str | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
-    if isinstance(val, int):
-        return str(val)
-    if isinstance(val, float):
-        if val.is_integer():
-            return str(int(val))
-        return str(val)
-    s = str(val).strip()
+    s = str(value).strip()
     return s if s else None
+
+
+def _numb1120_for_match(value) -> str | None:
+    """Нормализует numb1120 для сопоставления с EquipmentGroup.numb (строка)."""
+    n = _safe_int(value)
+    if n is not None:
+        return str(n)
+    return _safe_str(value)
+
+
+def _resolve_equipment_groups_from_row(row):
+    """
+    Возвращает список (equipment_group_id, database_version_id) для строки.
+    Сопоставление только по numb1120: EquipmentGroup.numb == numb1120 (все версии БД).
+    """
+    numb1120_str = _numb1120_for_match(_extract_cell_value(row, "numb1120"))
+    if not numb1120_str:
+        return []
+
+    groups = (
+        EquipmentGroup.query
+        .filter(func.trim(EquipmentGroup.numb) == numb1120_str)
+        .all()
+    )
+    return [(g.id, g.database_version_id) for g in groups]
 
 
 def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) -> dict:
     """
     Загружает данные из Excel в EquipmentGroupFuelParam.
-    Жёсткое сравнение: NUMB1120 из файла == EquipmentGroupSet.numb (точно).
-    Поиск только среди записей текущей версии БД (database_version_id).
-    Находим EquipmentGroupSet.id -> EquipmentGroupSetStation (тоже по версии).
-    Данные из файла сохраняются в EquipmentGroupFuelParam для каждого EquipmentGroupSetStation.
+    Сопоставление только по numb1120: EquipmentGroup.numb == numb1120 (все версии БД).
+    Для каждой найденной группы записываются параметры с equipment_group_id и database_version_id
+    из соответствующей EquipmentGroup.
     """
     logger = _get_logger()
     t0 = time.perf_counter()
     filename = getattr(file, "filename", None)
 
     logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS] start user=%s filename=%s year=%s",
+        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] start user=%s filename=%s year=%s",
         user, filename, year,
     )
 
@@ -215,65 +226,24 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
     df = df.dropna(how="all")
     df = _apply_column_aliases(df)
 
-    if "numb1120" not in df.columns:
-        raise ValueError(
-            "Неверный шаблон файла: отсутствует колонка NUMB1120. "
-            "Найдены колонки: " + ", ".join(str(c) for c in df.columns[:20]) + ("..." if len(df.columns) > 20 else "") + ". "
-            "NUMB1120 необходима для связи с EquipmentGroupSet.numb."
-        )
-
     if Year.query.filter_by(number=year).first() is None:
         raise ValueError(
             f"Год {year} не найден в справочнике gs_years. "
             "Добавьте год в справочник или выберите другой год."
         )
 
-    current_version = get_current_db_version_id()
     created = 0
     updated = 0
     skipped_no_match = 0
-    errors = []
+    skipped_no_year = 0
 
     for index, row in df.iterrows():
         if row.isnull().all():
             continue
 
-        numb1120_raw = _extract_cell_value(row, "numb1120")
-        numb1120_str = _numb1120_to_str_for_match(numb1120_raw)
-        if not numb1120_str:
+        equipment_groups = _resolve_equipment_groups_from_row(row)
+        if not equipment_groups:
             skipped_no_match += 1
-            continue
-
-        eq_query = EquipmentGroupSet.query.filter(EquipmentGroupSet.numb == numb1120_str)
-        if current_version is not None:
-            eq_query = eq_query.filter(EquipmentGroupSet.database_version_id == current_version)
-        else:
-            eq_query = eq_query.filter(EquipmentGroupSet.database_version_id.is_(None))
-        equipment_group_set = eq_query.first()
-        if not equipment_group_set:
-            skipped_no_match += 1
-            if len(errors) < 20:
-                errors.append(
-                    f"Строка {index + 2}: NUMB1120={numb1120_raw!r} — нет EquipmentGroupSet с numb={numb1120_str!r} "
-                    f"в текущей версии БД"
-                )
-            continue
-
-        link_query = EquipmentGroupSetStation.query.filter(
-            EquipmentGroupSetStation.equipment_group_set_id == equipment_group_set.id
-        )
-        if current_version is not None:
-            link_query = link_query.filter(EquipmentGroupSetStation.database_version_id == current_version)
-        else:
-            link_query = link_query.filter(EquipmentGroupSetStation.database_version_id.is_(None))
-        links = link_query.all()
-        if not links:
-            skipped_no_match += 1
-            if len(errors) < 20:
-                errors.append(
-                    f"Строка {index + 2}: NUMB1120={numb1120_raw!r} — найдено EquipmentGroupSet id={equipment_group_set.id}, "
-                    "но нет EquipmentGroupSetStation в текущей версии БД"
-                )
             continue
 
         row_values = {}
@@ -294,22 +264,34 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
             if val is not None:
                 row_values[field] = val
 
-        for link in links:
-            param = (
-                EquipmentGroupFuelParam.query
-                .filter_by(
-                    equipment_group_set_station_id=link.id,
-                    year_number=year,
-                )
-                .first()
+        for equipment_group_id, eg_database_version_id in equipment_groups:
+            # FK: (year_number, database_version_id) должен существовать в gs_years
+            year_query = Year.query.filter_by(number=year)
+            if eg_database_version_id is not None:
+                year_query = year_query.filter_by(database_version_id=eg_database_version_id)
+            else:
+                year_query = year_query.filter(Year.database_version_id.is_(None))
+            if year_query.first() is None:
+                skipped_no_year += 1
+                continue
+
+            param_query = EquipmentGroupFuelParam.query.filter_by(
+                equipment_group_id=equipment_group_id,
+                year_number=year,
             )
+            if eg_database_version_id is not None:
+                param_query = param_query.filter_by(database_version_id=eg_database_version_id)
+            else:
+                param_query = param_query.filter(
+                    EquipmentGroupFuelParam.database_version_id.is_(None)
+                )
+            param = param_query.first()
             if param is None:
                 param = EquipmentGroupFuelParam(
-                    equipment_group_set_station_id=link.id,
+                    equipment_group_id=equipment_group_id,
                     year_number=year,
+                    database_version_id=eg_database_version_id,
                 )
-                if current_version:
-                    set_db_version_on_create(param)
                 db.session.add(param)
                 db.session.flush()
                 created += 1
@@ -327,48 +309,26 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
     try:
         if created or updated:
             db.session.commit()
-    except IntegrityError as e:
+    except IntegrityError as exc:
         db.session.rollback()
-        logger.exception("[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS] IntegrityError on commit")
-        raise ValueError(
-            f"Ошибка при сохранении в БД: {e}. "
-            "Возможно, год отсутствует в справочнике gs_years."
-        ) from e
+        logger.exception("[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] db error: %s", exc)
+        raise ValueError("Ошибка сохранения данных: проверьте корректность файла.") from exc
 
     elapsed = time.perf_counter() - t0
-    logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS] done user=%s filename=%s year=%s created=%s updated=%s skipped=%s time=%.2fs",
-        user, filename, year, created, updated, skipped_no_match, elapsed,
-    )
-    try:
-        log_to_db(
-            user,
-            "Загрузка EquipmentGroupFuelParam",
-            details=f"filename={filename}; year={year}; created={created}; updated={updated}; skipped={skipped_no_match}; errors={len(errors)}",
-            entity_type="import_equipment_group_fuel_params",
-            entity_id=None,
-        )
-    except Exception:
-        logger.exception("[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS] failed to write log")
-
-    total_rows = len([r for i, r in df.iterrows() if not r.isnull().all()])
-    if total_rows > 0 and created == 0 and updated == 0 and skipped_no_match >= total_rows:
-        hint = (
-            " Ни одна строка не сопоставлена. Жёсткое сравнение: NUMB1120 == EquipmentGroupSet.numb, "
-            "поиск в пределах текущей версии БД. Запустите сначала импорт групп оборудования."
-        )
-    else:
-        hint = ""
-
     message = (
-        f"Загрузка данных в EquipmentGroupFuelParam за {year} год завершена. "
-        f"Создано: {created}, обновлено: {updated}, пропущено (нет связи по NUMB1120): {skipped_no_match}. "
-        f"Ошибок: {len(errors)}.{hint}"
+        f"Загрузка данных в EquipmentGroupFuelParam завершена. "
+        f"Создано: {created}, обновлено: {updated}, пропущено (нет numb): {skipped_no_match}, "
+        f"пропущено (нет года в версии): {skipped_no_year}."
     )
+    logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] done created=%s updated=%s skipped=%s skipped_no_year=%s elapsed=%.2fs",
+        created, updated, skipped_no_match, skipped_no_year, elapsed,
+    )
+    log_to_db(user, "Загрузка EquipmentGroupFuelParam", message)
     return {
         "message": message,
         "created": created,
         "updated": updated,
-        "skipped_no_match": skipped_no_match,
-        "errors_count": len(errors),
+        "skipped": skipped_no_match,
+        "skipped_no_year": skipped_no_year,
     }

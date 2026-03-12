@@ -29,9 +29,7 @@
         </form>
 
         <a class="btn btn-warning fw-bold"
-            href="{{ url_for('fuel_bp.export_fuel_equipment_group',
-                                equipment_group_filter=equipment_group_filter or '',
-                                sort_by=sort_by, sort_dir=sort_dir) }}"
+            href="{{ url_for('fuel_bp.export_fuel_equipment_group', **url_params()) }}"
             target="_blank" rel="noopener">
             Экспорт в Excel
         </a>
@@ -51,6 +49,13 @@
           action="{{ url_for('fuel_bp.fuel_equipment_group_list') }}"
           class="mb-3"
           id="filterForm">
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        {% for k, v in filter_params.items() %}
+        <input type="hidden" name="filter_{{ k }}" value="{{ v }}">
+        {% endfor %}
 
         <div class="row g-2 align-items-center">
             <div class="col-12 col-lg-8">
@@ -79,11 +84,23 @@
 
             <div class="col-12 col-lg-4 text-lg-end"></div>
         </div>
+    </form>
 
+    {% if can_edit %}
+    <form method="POST" action="{{ url_for('fuel_bp.fuel_equipment_group_list') }}" id="equipmentGroupEditForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
         <input type="hidden" name="sort_by" value="{{ sort_by }}">
         <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
-    </form>
+        <input type="hidden" name="equipment_group_filter" value="{{ equipment_group_filter }}">
+        {% for k, v in filter_params.items() %}
+        <input type="hidden" name="filter_{{ k }}" value="{{ v }}">
+        {% endfor %}
+        <div class="mb-2">
+            <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+        </div>
+    {% endif %}
 
     <div class="table-responsive">
         <table class="table table-hover table-striped table-bordered">
@@ -91,154 +108,58 @@
             <thead>
                 <tr class="table-success">
                     <th colspan="9" class="text-center align-middle">Модуль «Топливо»</th>
-                    <th colspan="3" class="text-center align-middle">Модуль «Генерация»</th>
+                    <th colspan="1" class="text-center align-middle">Модуль «Генерация»</th>
                 </tr>
                 <tr class="table-success" style="word-wrap: break-word;">
+                    {% set mapping_cols = [
+                        ('code', 'Номер', 'code'),
+                        ('name_topl', 'Название', 'name_topl'),
+                        ('type_', 'Тип', 'type'),
+                        ('tm', 'Типы турбин', 'tm'),
+                        ('n1', 'n1', 'n1'),
+                        ('n2', 'n2', 'n2'),
+                        ('p1', 'p1', 'p1'),
+                        ('p2', 'p2', 'p2'),
+                        ('gruppa_oborud', 'Наименование', 'gruppa_oborud')
+                    ] %}
+                    {% for col, label, small in mapping_cols %}
                     <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='code',
-                                            sort_dir='asc' if sort_by != 'code' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            Номер<br><span class="text-muted small">(code)</span>
-                            {% if sort_by == 'code' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
+                        <div class="d-flex justify-content-between align-items-center gap-1">
+                            <a href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'sort_by': col, 'sort_dir': 'asc' if sort_by != col or sort_dir == 'desc' else 'desc'})) }}"
+                               class="text-black text-decoration-none flex-grow-1">
+                                {{ label }}<br><span class="text-muted small">({{ small }})</span>
+                                {% if sort_by == col %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'filter_' ~ col: ''})) }}">Все</a></li>
+                                    {% for val, lbl in (filter_choices.get(col, [])[1:] if filter_choices.get(col) else []) %}
+                                    <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'filter_' ~ col: val})) }}">{{ lbl or val or '—' }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
                     </th>
+                    {% endfor %}
 
                     <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='name_topl',
-                                            sort_dir='asc' if sort_by != 'name_topl' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            Название<br><span class="text-muted small">(name_topl)</span>
-                            {% if sort_by == 'name_topl' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='type_',
-                                            sort_dir='asc' if sort_by != 'type_' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            Тип<br><span class="text-muted small">(type)</span>
-                            {% if sort_by == 'type_' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='tm',
-                                            sort_dir='asc' if sort_by != 'tm' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            Типы турбин<br><span class="text-muted small">(tm)</span>
-                            {% if sort_by == 'tm' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='n1',
-                                            sort_dir='asc' if sort_by != 'n1' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            n1<br><span class="text-muted small">(n1)</span>
-                            {% if sort_by == 'n1' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='n2',
-                                            sort_dir='asc' if sort_by != 'n2' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            n2<br><span class="text-muted small">(n2)</span>
-                            {% if sort_by == 'n2' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='p1',
-                                            sort_dir='asc' if sort_by != 'p1' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            p1<br><span class="text-muted small">(p1)</span>
-                            {% if sort_by == 'p1' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='p2',
-                                            sort_dir='asc' if sort_by != 'p2' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            p2<br><span class="text-muted small">(p2)</span>
-                            {% if sort_by == 'p2' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        <a href="{{ url_for('fuel_bp.fuel_equipment_group_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            equipment_group_filter=equipment_group_filter,
-                                            sort_by='gruppa_oborud',
-                                            sort_dir='asc' if sort_by != 'gruppa_oborud' or sort_dir == 'desc' else 'desc') }}"
-                           class="text-black">
-                            Наименование<br><span class="text-muted small">(gruppa_oborud)</span>
-                            {% if sort_by == 'gruppa_oborud' %}
-                                {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                            {% endif %}
-                        </a>
-                    </th>
-
-                    <th class="text-center align-middle">
-                        UUID
-                    </th>
-
-                    <th class="text-center align-middle">
-                        ID (текущая версия)
-                    </th>
-
-                    <th class="text-center align-middle">
-                        Наименование
+                        <div class="d-flex justify-content-between align-items-center gap-1">
+                            <a href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'sort_by': 'ref_uuid', 'sort_dir': 'asc' if sort_by != 'ref_uuid' or sort_dir == 'desc' else 'desc'})) }}"
+                               class="text-black text-decoration-none flex-grow-1">
+                                Наименование
+                                {% if sort_by == 'ref_uuid' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'filter_equipment_group_ref_uuid': ''})) }}">Все</a></li>
+                                    {% for val, lbl in (filter_choices.get('equipment_group_ref_uuid', [])[1:] or []) %}
+                                    <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_equipment_group_list', **url_params({'page': 1, 'filter_equipment_group_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
                     </th>
                 </tr>
             </thead>
@@ -249,6 +170,25 @@
                         {% set equipment_group = row.eg %}
                         {% set mapping = row.mapping %}
                         <tr class="align-middle text-center">
+                            {% if can_edit and mapping %}
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_code" class="form-control form-control-sm" value="{{ mapping.code if mapping.code is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_name_topl" class="form-control form-control-sm" value="{{ mapping.name_topl or '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_type_" class="form-control form-control-sm" value="{{ mapping.type_ if mapping.type_ is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_tm" class="form-control form-control-sm" value="{{ mapping.tm or '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_n1" class="form-control form-control-sm" value="{{ mapping.n1 if mapping.n1 is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_n2" class="form-control form-control-sm" value="{{ mapping.n2 if mapping.n2 is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_p1" class="form-control form-control-sm" value="{{ mapping.p1 if mapping.p1 is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_p2" class="form-control form-control-sm" value="{{ mapping.p2 if mapping.p2 is not none else '' }}"></td>
+                            <td><input type="text" form="equipmentGroupEditForm" name="row_{{ mapping.id }}_gruppa_oborud" class="form-control form-control-sm" value="{{ mapping.gruppa_oborud or '' }}"></td>
+                            <td>
+                                <select form="equipmentGroupEditForm" name="row_{{ mapping.id }}_equipment_group_ref_uuid" class="form-select form-select-sm">
+                                    <option value="">—</option>
+                                    {% for val, lbl in (filter_choices.get('equipment_group_ref_uuid', [])[1:] or []) %}
+                                    <option value="{{ val }}" {% if ((equipment_group.ref_uuid if equipment_group else mapping.equipment_group_ref_uuid)|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            {% else %}
                             <td>{{ mapping.code if mapping and mapping.code is not none else '' }}</td>
                             <td>{{ mapping.name_topl if mapping and mapping.name_topl else '' }}</td>
                             <td>{{ mapping.type_ if mapping and mapping.type_ is not none else '' }}</td>
@@ -258,13 +198,12 @@
                             <td>{{ mapping.p1 if mapping and mapping.p1 is not none else '' }}</td>
                             <td>{{ mapping.p2 if mapping and mapping.p2 is not none else '' }}</td>
                             <td>{{ mapping.gruppa_oborud if mapping and mapping.gruppa_oborud else '' }}</td>
-                            <td>{{ equipment_group.ref_uuid if equipment_group else '—' }}</td>
-                            <td>{{ equipment_group.id if equipment_group else '—' }}</td>
-                            <td>{{ equipment_group.name if equipment_group else '—' }}</td>
+                            <td>{{ (equipment_group.name if equipment_group else ref_uuid_to_name.get(mapping.equipment_group_ref_uuid, mapping.equipment_group_ref_uuid if mapping else '')) or '—' }}</td>
+                            {% endif %}
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="12" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="10" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                     {% endfor %}
                 {% else %}
@@ -280,19 +219,21 @@
                             <td>{{ mapping.p1 if mapping and mapping.p1 is not none else '' }}</td>
                             <td>{{ mapping.p2 if mapping and mapping.p2 is not none else '' }}</td>
                             <td>{{ mapping.gruppa_oborud if mapping and mapping.gruppa_oborud else '' }}</td>
-                            <td>{{ equipment_group.ref_uuid }}</td>
-                            <td>{{ equipment_group.id }}</td>
-                            <td>{{ equipment_group.name }}</td>
+                            <td>{{ equipment_group.name or '—' }}</td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="12" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="10" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                     {% endfor %}
                 {% endif %}
             </tbody>
         </table>
     </div>
+
+    {% if can_edit %}
+    </form>
+    {% endif %}
 
     <div>
         {% include 'fuel/refdata/equipment_group/equipment_group_pagination.html' %}
@@ -304,4 +245,3 @@
 
 {% endif %}
 {% endblock %}
-

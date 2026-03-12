@@ -117,6 +117,28 @@ def _clean_multiline_text(value: Any) -> Optional[str]:
     return "\n".join(cleaned_lines) if cleaned_lines else None
 
 
+# Неразрывный пробел для экспорта в Excel (предотвращает перенос строки внутри ячейки)
+NBSP = "\u00A0"
+
+
+def to_excel_nbsp(value: Any) -> Any:
+    """
+    Преобразует значение для экспорта в Excel: в строках пробелы заменяются на неразрывные.
+    None и числа возвращаются без изменений.
+    """
+    if value is None:
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value
+    s = str(value)
+    return s.replace(" ", NBSP) if s else value
+
+
+def apply_nbsp_to_row(row) -> list:
+    """Применяет неразрывные пробелы ко всем значениям строки для Excel."""
+    return [to_excel_nbsp(v) for v in row]
+
+
 def format_decimal_for_display(value, digits=None):
     if value is None or isinstance(value, Undefined):
         return "—"
@@ -141,9 +163,12 @@ def format_decimal_for_display(value, digits=None):
     if digits is None:
         digits = 1
 
-    # digits == 0 → без округления, без экспоненты
+    # digits == 0 → без округления, все знаки после запятой
     if digits == 0:
-        return format(value.normalize(), 'f').replace('.', ',')
+        s = format(value.normalize(), '.20f')
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        return s.replace('.', ',')
 
     # digits > 0 → округление с нужной точностью
     with localcontext() as ctx:

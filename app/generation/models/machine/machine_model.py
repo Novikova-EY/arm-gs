@@ -11,7 +11,7 @@ from sqlalchemy.schema import Index
 from sqlalchemy import event
 from sqlalchemy.sql import text as sql_text
 from app.extensions import db
-from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA
+from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 
@@ -22,7 +22,6 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Index('ix_machine_id_condition_type', 'id_condition_type'),
         Index('ix_machine_id_tes_machine_type', 'id_tes_machine_type'),
         Index('ix_machine_id_equipment_group', 'id_equipment_group'),
-        Index('ix_machine_equipment_group_set_id', 'equipment_group_set_id'),
         Index('ix_machine_id_gen_company', 'id_gen_company'),
         Index('ix_machine_id_energy_area', 'id_energy_area'),
         Index('ix_machine_external_code', 'external_code'),
@@ -119,25 +118,14 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     )
     technology_type = db.relationship('TechnologyType', back_populates='machines')
 
-    # FK -> EquipmentGroup
+    # FK -> EquipmentGroupType
     id_equipment_group = db.Column(
         db.Integer,
         db.ForeignKey(f'{SCHEMA_REFDATA}.gs_equipment_groups.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
-    equipment_group = db.relationship('EquipmentGroup', back_populates='machines')
-
-    # FK -> EquipmentGroupSet (общая группа оборудования)
-    equipment_group_set_id = db.Column(
-        db.Integer,
-        db.ForeignKey(
-            f"{SCHEMA_FUEL}.gs_fue_equipment_group_sets.id", ondelete="RESTRICT"
-        ),
-        nullable=True,
-        index=True,
-    )
-    equipment_group_set = db.relationship('EquipmentGroupSet', back_populates='machines')
+    equipment_group = db.relationship('EquipmentGroupType', back_populates='machines')
 
     # Children: powers / fuels / tes_types
     machine_powers = db.relationship(

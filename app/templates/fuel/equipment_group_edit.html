@@ -1,0 +1,550 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ equipment_group.name or equipment_group.name_ext or 'Группа оборудования' }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set can_edit = can_edit if can_edit is defined else false %}
+
+<style>
+.readonly-indicator {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.readonly-indicator::before { content: "👁️"; font-size: 1rem; }
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.edit-indicator::before { content: "✏️"; font-size: 1rem; }
+</style>
+
+<div class="container-fluid mt-4 equipment-group-edit-page">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Группы оборудования</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <body>
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">Информация о группе оборудования
+                {% if can_edit %}
+                    <span class="edit-indicator ms-3">Режим редактирования</span>
+                {% else %}
+                    <span class="readonly-indicator ms-3">Режим просмотра</span>
+                {% endif %}
+            </h2>
+        </div>
+
+        <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="container-fluid">
+                <div class="station-info">
+            <div class="mb-4 p-3" style="background: transparent; border: none;">
+                <div class="row g-4">
+                    <div class="col-12 mb-2">
+                        <h3 class="mb-0 ms-3">Общая информация</h3>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Название (name)</label>
+                        {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="—">{% else %}<span class="station-name">{{ equipment_group.name or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Типы турбин (tm)</label>
+                        {% if can_edit %}<input type="text" name="tm" class="form-control" value="{{ equipment_group.tm or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Код станции (numb)</label>
+                        {% if can_edit %}<input type="text" name="numb" class="form-control" value="{{ equipment_group.numb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
+                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Действующая (d)</label>
+                        {% if can_edit %}<select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (equipment_group.d or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.d }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Расширяемая (r)</label>
+                        {% if can_edit %}<select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (equipment_group.r or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.r }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
+                        {% if can_edit %}<select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (equipment_group.forem or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.forem }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Признак группы (niv)</label>
+                        {% if can_edit %}<input type="text" name="niv" class="form-control" value="{{ equipment_group.niv or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Признак разбитой (comp)</label>
+                        {% if can_edit %}<input type="text" name="comp" class="form-control" value="{{ equipment_group.comp or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Код станции (main)</label>
+                        {% if can_edit %}<input type="text" name="main" class="form-control" value="{{ equipment_group.main or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
+                        {% if can_edit %}<input type="text" name="n1" class="form-control" value="{{ equipment_group.n1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
+                        {% if can_edit %}<input type="text" name="n2" class="form-control" value="{{ equipment_group.n2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
+                        {% if can_edit %}<input type="text" name="p1" class="form-control" value="{{ equipment_group.p1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
+                        {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Адрес (addr)</label>
+                        {% if can_edit %}<input type="text" name="addr" class="form-control" value="{{ equipment_group.addr or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Примечание (note)</label>
+                        {% if can_edit %}<input type="text" name="note" class="form-control" value="{{ equipment_group.note or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Субъект РФ (regional_district_id)</label>
+                        {% if can_edit %}<select name="regional_district_id" class="form-select">{% for val, label in regional_district_choices %}<option value="{{ val }}" {% if (equipment_group.regional_district_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_district_id }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Региональная энергосистема (regional_energy_system_id)</label>
+                        {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Субъект РФ (obl)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.obl }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Департамент (dep)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.dep }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">ОЭС (oes)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.oes }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Экономический район (er)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.er }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Федеральный округ (fo)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.fo }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Код города (codegor)</label>
+                        {% if can_edit %}<select name="codegor" class="form-select">{% for val, label in codegor_choices %}<option value="{{ val }}" {% if (equipment_group.codegor or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.codegor }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Ведомство (vedomstvo)</label>
+                        {% if can_edit %}<select name="vedomstvo" class="form-select">{% for val, label in vedomstvo_choices %}<option value="{{ val }}" {% if (equipment_group.vedomstvo or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.vedomstvo }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Тип генерирующей компании (be)</label>
+                        {% if can_edit %}<select name="be" class="form-select">{% for val, label in be_choices %}<option value="{{ val }}" {% if (equipment_group.be or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.be }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Генерирующая компания (gk)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.gk }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Филиал генерирующей компании (gkf)</label>
+                        <span class="form-control-plaintext">{{ choice_displays.gkf }}</span>
+                    </div>
+                </div>
+                {% if can_edit %}
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                    <button type="submit" name="all_versions" value="1" class="btn btn-outline-success fs-5" title="Применить изменения во всех версиях БД">Сохранить во всех версиях</button>
+                    <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
+                </div>
+                {% else %}
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-secondary">Назад</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+            </div>
+        </form>
+    </body>
+
+    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+
+    <!-- Агрегаты группы оборудования (формат как на station_details) -->
+    <div class="container-fluid">
+        <div class="row g-3">
+            <div class="col-12">
+                <h3 class="mb-0 ms-3">Агрегаты группы оборудования</h3>
+
+                <!-- Фильтры по годам (как на station_details) -->
+                <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+                    <form method="GET" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id) }}" class="d-flex align-items-center gap-2" id="equipmentGroupYearForm">
+                        {% for key, value in request.args.items() %}
+                            {% if key != 'start_year' and key != 'end_year' and key != 'rounding_digits' %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
+                        {% endfor %}
+                        <input type="hidden" name="rounding_digits" id="form_rounding_digits" value="{{ rounding_digits }}">
+                        <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                        <select name="start_year" id="start_year" class="form-select" style="width: auto;">
+                            {% for year in range(2021, 2043) %}
+                            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                        <select name="end_year" id="end_year" class="form-select" style="width: auto;">
+                            {% for year in range(2022, 2043) %}
+                            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-outline-success">Применить</button>
+                    </form>
+                    <div class="d-flex align-items-center gap-1">
+                        <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                        <select id="rounding_digits" class="form-select" style="min-width: 150px;">
+                            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    {% if stations_with_machines %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped table-bordered machines-table">
+                            <thead class="table-success">
+                                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                                    <th rowspan="2" style="width: 50px;">гр.</th>
+                                    <th rowspan="2" style="width: 80px;">cт.№</th>
+                                    <th rowspan="2" class="col-machine-name">Тип агрегата</th>
+                                    <th rowspan="2" class="col-owner">Собственник</th>
+                                    <th rowspan="2" style="width: 80px;">Год ввода в работу</th>
+                                    <th rowspan="2" style="width: 80px;">Год ввода в экспл.</th>
+                                    <th rowspan="2" style="width: 80px;">Год вывода</th>
+                                    <th rowspan="2" class="col-modernization">Модерни<br>зация</th>
+                                    <th rowspan="2" style="width: 80px;">Тип ТЭС</th>
+                                    <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
+                                    <th rowspan="2" class="col-equipment-group-type" style="width: 120px;">Тип<br>группы<br>оборуд.</th>
+                                    <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
+                                    <th colspan="{{ end_year - start_year + 1 }}">Установленная мощность</th>
+                                    <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
+                                    <th rowspan="2" class="col-note">Примечание</th>
+                                </tr>
+                                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                                    {% for year in range(start_year, end_year + 1) %}
+                                    <th style="width: 50px; text-align: center;">{{ year }}</th>
+                                    {% endfor %}
+                                    {% for year in range(start_year, end_year + 1) %}
+                                    <th style="width: 50px; text-align: center;">{{ year }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody id="equipment-group-machines-tbody">
+                                {{ equipment_group_machines_tbody_html | safe }}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted ms-3">Нет привязанных станций или агрегатов. Группа оборудования связана со станциями через страницу деталей станции.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Журнал изменений по группе оборудования -->
+    <h3 class="mb-0 ms-3 mt-4">Журнал изменений по группе оборудования</h3>
+    <div class="container-fluid mt-3">
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped table-bordered table-responsive" id="equipment-group-logs-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
+                            <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
+                            <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
+                            <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
+                            <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
+                            <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if equipment_group_logs and equipment_group_logs|length > 0 %}
+                            {% for log in equipment_group_logs %}
+                            <tr>
+                                <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
+                                <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
+                                <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% if equipment_group_logs and equipment_group_logs|length > 0 %}
+            <div class="card-footer text-center">
+                <div class="mb-2">
+                    <small class="text-muted">
+                        Показано: <span id="equipment-group-logs-shown">{{ equipment_group_logs|length }}</span> из <span id="equipment-group-logs-total">?</span>
+                    </small>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="load-more-equipment-group-logs"
+                        data-equipment-group-id="{{ equipment_group.id }}"
+                        data-offset="{{ equipment_group_logs|length }}"
+                        style="display: none;">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                    Загрузить еще
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="my-3"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loadMoreBtn = document.getElementById('load-more-equipment-group-logs');
+    const logsTable = document.querySelector('#equipment-group-logs-table tbody');
+    const logsShown = document.getElementById('equipment-group-logs-shown');
+    const logsTotal = document.getElementById('equipment-group-logs-total');
+
+    if (!loadMoreBtn) return;
+
+    const equipmentGroupId = loadMoreBtn.dataset.equipmentGroupId;
+    let currentOffset = parseInt(loadMoreBtn.dataset.offset) || 0;
+
+    fetch(`{{ url_for('fuel_bp.equipment_group_logs', equipment_group_id=equipment_group.id) }}?offset=0&limit=0`)
+        .then(r => r.json())
+        .then(data => {
+            if (logsTotal) logsTotal.textContent = data.total;
+            if (currentOffset < data.total) {
+                loadMoreBtn.style.display = 'inline-block';
+            }
+        })
+        .catch(err => console.error('Ошибка проверки логов:', err));
+
+    loadMoreBtn.addEventListener('click', function() {
+        const spinner = this.querySelector('.spinner-border');
+        spinner.style.display = 'inline-block';
+        this.disabled = true;
+
+        fetch(`{{ url_for('fuel_bp.equipment_group_logs', equipment_group_id=equipment_group.id) }}?offset=${currentOffset}&limit=150`)
+            .then(r => r.json())
+            .then(data => {
+                data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td data-date="${log.date}">${log.date}</td>
+                        <td data-time="${log.time}">${log.time}</td>
+                        <td data-user="${log.username_lower}">${log.username}</td>
+                        <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                        <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
+                    `;
+                    logsTable.appendChild(row);
+                });
+
+                currentOffset += data.count;
+                if (logsShown) logsShown.textContent = currentOffset;
+                loadMoreBtn.dataset.offset = currentOffset;
+
+                if (!data.has_more) {
+                    loadMoreBtn.style.display = 'none';
+                } else {
+                    loadMoreBtn.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('Ошибка загрузки логов:', err);
+                alert('Ошибка загрузки логов. Попробуйте позже.');
+                loadMoreBtn.disabled = false;
+                spinner.style.display = 'none';
+            });
+    });
+});
+</script>
+
+{% if stations_with_machines %}
+<script>
+// Обновление таблицы агрегатов при смене округления (как на station_details)
+document.addEventListener('DOMContentLoaded', function() {
+    const roundingSelect = document.getElementById('rounding_digits');
+    const tbody = document.getElementById('equipment-group-machines-tbody');
+    const formRoundingInput = document.getElementById('form_rounding_digits');
+    if (!roundingSelect || !tbody) return;
+
+    // Синхронизация выпадающего списка с URL при загрузке (как на station_details)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRounding = urlParams.get('rounding_digits');
+    if (urlRounding !== null && urlRounding !== '') {
+        roundingSelect.value = urlRounding;
+        if (formRoundingInput) formRoundingInput.value = urlRounding;
+    }
+
+    roundingSelect.addEventListener('change', function() {
+        const selectedRounding = this.value;
+        if (formRoundingInput) formRoundingInput.value = selectedRounding;
+
+        tbody.innerHTML = '<tr><td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>';
+
+        const url = `{{ url_for('fuel_bp.equipment_group_machines_tbody', equipment_group_id=equipment_group.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
+        fetch(url, { cache: 'no-store' })
+            .then(r => r.text())
+            .then(html => {
+                tbody.innerHTML = html;
+            })
+            .catch(err => console.error('Ошибка загрузки агрегатов:', err));
+
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('rounding_digits', selectedRounding);
+        window.history.replaceState({}, '', newUrl.toString());
+    });
+});
+</script>
+{% endif %}
+
+<script>
+// Сортировка и фильтрация таблицы логов (как на station_details)
+(function(){
+    const table = document.getElementById('equipment-group-logs-table');
+    if (!table) return;
+    const thead = table.tHead;
+    const tbody = table.tBodies[0];
+    let sortState = { key: 'date', asc: false };
+
+    function val(node, dataKey){
+        if (!node) return '';
+        const camelKey = dataKey.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        return (node.dataset && node.dataset[camelKey]) ? node.dataset[camelKey] : (node.textContent || '').trim().toLowerCase();
+    }
+
+    function sortBy(key){
+        const rows = Array.from(tbody.rows);
+        rows.sort((r1, r2)=>{
+            let a='', b='';
+            if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
+            else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
+            else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
+            else if (key === 'action'){
+                a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
+                b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
+            } else if (key === 'database_version'){
+                a = val(r1.cells[4], 'database-version');
+                b = val(r2.cells[4], 'database-version');
+            } else if (key === 'details'){
+                a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
+                b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
+            }
+            if (a<b) return sortState.asc ? -1 : 1;
+            if (a>b) return sortState.asc ? 1 : -1;
+            return 0;
+        });
+        tbody.append(...rows);
+        sortState = { key, asc: !sortState.asc };
+    }
+
+    thead.addEventListener('click', (e)=>{
+        const th = e.target.closest('th[data-key]');
+        if (!th) return;
+        sortBy(th.dataset.key);
+    });
+
+    const filterRow = document.createElement('tr');
+    ['date','time','user','action','database_version','details'].forEach((key, idx)=>{
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.className = 'form-control form-control-sm';
+        input.placeholder = 'Фильтр';
+        input.addEventListener('input', ()=>{
+            const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
+            for (const tr of tbody.rows){
+                const dDate = val(tr.cells[0], 'date');
+                const dTime = val(tr.cells[1], 'time');
+                const dUser = val(tr.cells[2], 'user');
+                const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
+                const dDatabaseVersion = val(tr.cells[4], 'database-version');
+                const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
+                const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
+                const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
+                tr.style.display = ok ? '' : 'none';
+            }
+        });
+        td.appendChild(input);
+        filterRow.appendChild(td);
+    });
+    thead.appendChild(filterRow);
+})();
+</script>
+
+<style>
+/* Стили блока информации (как на station_details) */
+.equipment-group-edit-page .station-info { font-size: 1.15rem; }
+.equipment-group-edit-page .station-info .card-title { font-size: 1.25rem; }
+.equipment-group-edit-page .station-info .form-label { font-size: 1.1rem; }
+.equipment-group-edit-page .station-info .form-control,
+.equipment-group-edit-page .station-info .form-select { font-size: 1.15rem; padding: 0.5rem 0.75rem; line-height: 1.4; }
+.equipment-group-edit-page .btn { font-size: 1.1rem; padding: 0.5rem 1rem; }
+.equipment-group-edit-page .row.g-4 { --bs-gutter-y: 0.35rem; --bs-gutter-x: 1rem; }
+.equipment-group-edit-page .station-info .form-label { margin-bottom: 0.2rem; }
+.equipment-group-edit-page .station-info .form-control,
+.equipment-group-edit-page .station-info .form-select { padding: 0.35rem 0.75rem; }
+/* Крупнее и жирнее название группы (как на station_details) */
+.equipment-group-edit-page .station-name { font-size: 1.35rem; font-weight: 700; }
+/* Стили таблицы журнала (как на station_details) */
+#equipment-group-logs-table { table-layout: fixed; width: 100%; }
+#equipment-group-logs-table th.log-col-date, #equipment-group-logs-table td:nth-child(1) { width: 140px !important; }
+#equipment-group-logs-table th.log-col-time, #equipment-group-logs-table td:nth-child(2) { width: 120px !important; }
+#equipment-group-logs-table th.log-col-user, #equipment-group-logs-table td:nth-child(3) { width: 300px !important; }
+#equipment-group-logs-table td:nth-child(1), #equipment-group-logs-table td:nth-child(2), #equipment-group-logs-table td:nth-child(3) { white-space: nowrap; }
+#equipment-group-logs-table td:nth-child(4) div, #equipment-group-logs-table td:nth-child(6) div { white-space: pre-wrap; }
+/* Столбец «Тип агрегата»: расширяется по содержимому */
+.equipment-group-edit-page .machines-table th.col-machine-name,
+.equipment-group-edit-page .machines-table td.col-machine-name {
+    width: 1%;
+    white-space: nowrap;
+    min-width: 150px;
+}
+</style>
+
+{% endif %}
+{% endblock %}

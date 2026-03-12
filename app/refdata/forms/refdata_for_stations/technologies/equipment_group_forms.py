@@ -1,4 +1,4 @@
-"""Формы для справочника «Типы групп оборудования (EquipmentGroup)».
+"""Формы для справочника «Типы групп оборудования (EquipmentGroupType)».
 """
 
 from flask_wtf import FlaskForm
@@ -6,7 +6,7 @@ from wtforms import StringField, HiddenField, SelectField
 from wtforms.validators import DataRequired, Optional, Length, NumberRange
 
 
-class EquipmentGroupFilterForm(FlaskForm):
+class EquipmentGroupTypeFilterForm(FlaskForm):
     csrf_token = HiddenField()
 
     # Пакетное обновление
@@ -65,7 +65,7 @@ class EquipmentGroupFilterForm(FlaskForm):
     )
 
 
-class AddEquipmentGroupForm(FlaskForm):
+class AddEquipmentGroupTypeForm(FlaskForm):
     csrf_token = HiddenField()
 
     name = StringField(

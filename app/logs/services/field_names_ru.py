@@ -43,7 +43,6 @@ MACHINE_FIELDS = {
     "id_energy_area": "Энергорайон агрегата станции",
     "id_tes_machine_type": "Тип агрегата ТЭС",
     "id_equipment_group": "Тип технологии",
-    "equipment_group_set_id": "Группа оборудования",
     "id_machine_type": "Тип агрегата",
     "id_tes_type": "Тип ТЭС",
     "id_fuel": "Топливо",

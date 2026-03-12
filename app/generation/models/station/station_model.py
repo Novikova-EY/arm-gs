@@ -12,7 +12,6 @@ from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
-from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 
 class Station(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'stations'
@@ -103,21 +102,12 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     station_powers = db.relationship('StationPower', back_populates='station_power', cascade="all, delete-orphan")
     machines = db.relationship('Machine', back_populates='machine_station')
     boilers = db.relationship('Boiler', back_populates='boiler_station')
+    equipment_group_type_links_v2 = db.relationship(
+        "EquipmentGroupSetStation",
+        back_populates="station",
+        foreign_keys="EquipmentGroupSetStation.station_id",
+    )
     
-    # Связь со сборными группами оборудования
-    equipment_group_set_links = db.relationship(
-        'EquipmentGroupSetStation',
-        back_populates='station',
-        cascade="all, delete-orphan",
-        overlaps="stations",
-    )
-    equipment_group_sets = db.relationship(
-        'EquipmentGroupSet',
-        secondary=EquipmentGroupSetStation.__table__,
-        back_populates='stations',
-        overlaps="equipment_group_set_links,station,equipment_group_set,station_links",
-    )
-
     # Прочее
     kto = db.Column(db.String(80), unique=True, nullable=True)
     location = db.Column(db.String(255), unique=True, nullable=True)

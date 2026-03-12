@@ -26,6 +26,9 @@ BU_SCHEMA = SCHEMA_FUE_EM
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
     # 1. Обнулить be, где значение не существует в business_unit.external_id
     op.execute(
         f"""
@@ -74,6 +77,9 @@ def upgrade():
 
 
 def downgrade():
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA):
+        return
     op.drop_constraint(
         "fk_equipment_group_sets_be",
         TABLE,

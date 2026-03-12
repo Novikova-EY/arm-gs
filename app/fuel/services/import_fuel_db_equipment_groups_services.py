@@ -203,11 +203,27 @@ def _find_or_create_standalone_equipment_group(
     group_name: str,
     db_version_id: int | None,
     valid_version_ids: set[int],
+    numb: int | None = None,
 ) -> tuple[EquipmentGroup, bool]:
     """
-    Ищет EquipmentGroup без привязки к станции (без EquipmentGroupSet) по name.
+    Ищет EquipmentGroup без привязки к станции (без EquipmentGroupSet) по name или (database_version_id, numb).
     Если не найдена — создаёт и возвращает. Возвращает (eg, was_created).
+    При numb: сначала ищет по (database_version_id, numb) для предотвращения дублей.
     """
+    if numb is not None and db_version_id is not None:
+        eg_by_numb = (
+            db.session.query(EquipmentGroup)
+            .filter(
+                EquipmentGroup.database_version_id == db_version_id,
+                EquipmentGroup.numb == numb,
+            )
+            .outerjoin(EquipmentGroupSet, EquipmentGroup.id == EquipmentGroupSet.equipment_group_id)
+            .filter(EquipmentGroupSet.id.is_(None))
+            .first()
+        )
+        if eg_by_numb:
+            return eg_by_numb, False
+
     name_norm = (group_name or "").strip().lower().replace("\xa0", " ").replace("\u00a0", " ")
     if not name_norm:
         name_norm = KOTELNYE_GROUP_NAME.lower()
@@ -751,6 +767,43 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     created_links = 0
     created_sets = 0
     created_groups = 0
+    # Карта (station_id, equipment_group_type_id, version_id) -> numb для предотвращения дублей
+    pair_to_numb: dict[tuple[int, int, int | None], int] = {}
+    has_numb_col = any(c in df.columns for c in ("numb", "topl_numb", "Код станции"))
+    if has_numb_col:
+        for index, row in df.iterrows():
+            if row.isnull().all():
+                continue
+            machine_id = _safe_int(row.get("id_machine")) if has_machine else None
+            station_id_row = _safe_int(row.get("id_station")) if has_station else None
+            if station_id_row is None:
+                continue
+            group_text = _get_equipment_group_from_row(row, df.columns)
+            if group_text:
+                group_text = _clean_name(group_text)
+            if not group_text:
+                continue
+            numb_val = None
+            for col in ("numb", "topl_numb", "Код станции"):
+                if col in df.columns:
+                    raw = _extract_cell_value(row, col)
+                    numb_val = _safe_int(raw)
+                    if numb_val is not None:
+                        break
+            if numb_val is None:
+                continue
+            station = Station.query.get(station_id_row)
+            if not station or not station.external_code:
+                continue
+            stations_same_code = Station.query.filter(
+                Station.external_code == station.external_code
+            ).all()
+            for st in stations_same_code:
+                db_ver_id = _resolve_version_id(st)
+                group_type = _find_eg_cached(group_text, db_ver_id)
+                if group_type:
+                    pair_to_numb[(st.id, group_type.id, db_ver_id)] = numb_val
+
     print("[IMPORT_FUEL_DB] Шаг 4.1: Формирование EquipmentGroupSetStation и EquipmentGroupSet...")
     try:
         # Собираем (station_id, equipment_group_type_id, version_id) с учётом сводных станций
@@ -816,14 +869,26 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 group_name = None
                 if station and station.name and group_type and group_type.name:
                     group_name = f"{station.name} ({group_type.name})"
-                equipment_group = EquipmentGroup(name=group_name)
-                if version_id is not None:
-                    equipment_group.database_version_id = version_id
-                elif current_version is not None:
-                    set_db_version_on_create(equipment_group)
-                db.session.add(equipment_group)
-                db.session.flush()
-                created_groups += 1
+                # Проверка на дубли: не создавать EquipmentGroup если уже есть с (version_id, numb)
+                equipment_group = None
+                key = (station_id, equipment_group_type_id, version_id)
+                numb_from_map = pair_to_numb.get(key)
+                if numb_from_map is not None:
+                    eq_query = EquipmentGroup.query.filter(EquipmentGroup.numb == numb_from_map)
+                    if version_id is not None:
+                        eq_query = eq_query.filter(EquipmentGroup.database_version_id == version_id)
+                    else:
+                        eq_query = eq_query.filter(EquipmentGroup.database_version_id.is_(None))
+                    equipment_group = eq_query.first()
+                if equipment_group is None:
+                    equipment_group = EquipmentGroup(name=group_name)
+                    if version_id is not None:
+                        equipment_group.database_version_id = version_id
+                    elif current_version is not None:
+                        set_db_version_on_create(equipment_group)
+                    db.session.add(equipment_group)
+                    db.session.flush()
+                    created_groups += 1
 
                 set_v2 = EquipmentGroupSet(
                     equipment_group_id=equipment_group.id,
@@ -1056,9 +1121,10 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
             row_created = 0
             row_updated = 0
+            numb_for_kotelnye = _safe_int(base_row_values.get("numb")) if base_row_values else None
             for db_version_id in kotelnye_version_ids:
                 eg, was_created = _find_or_create_standalone_equipment_group(
-                    group_text, db_version_id, valid_version_ids_kotelnye
+                    group_text, db_version_id, valid_version_ids_kotelnye, numb=numb_for_kotelnye
                 )
                 if was_created:
                     created_kotelnye += 1

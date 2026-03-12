@@ -25,6 +25,10 @@ NEW_CONSTRAINT = "uq_equipment_group_set_stations_set_station_version"
 
 
 def upgrade():
+    from sqlalchemy import inspect
+    inspector = inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA_FUEL):
+        return
     # Удаляем старое ограничение (equipment_group_set_id, station_id)
     op.drop_constraint(
         OLD_CONSTRAINT,
@@ -43,6 +47,10 @@ def upgrade():
 
 
 def downgrade():
+    from sqlalchemy import inspect
+    inspector = inspect(op.get_bind())
+    if not inspector.has_table(TABLE, schema=SCHEMA_FUEL):
+        return
     op.drop_constraint(
         NEW_CONSTRAINT,
         TABLE,

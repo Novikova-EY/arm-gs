@@ -110,6 +110,16 @@ def get_regional_energy_systems_map() -> Dict[int, str]:
     return {id_: name_full for id_, name_full in rows}
 
 
+def get_regional_energy_systems_name_map() -> Dict[int, str]:
+    """Возвращает отображение {РЭС.id: РЭС.name}. Без кэша — версия из текущего запроса."""
+    current_version = get_current_version()
+    query = RegionalEnergySystem.query.with_entities(RegionalEnergySystem.id, RegionalEnergySystem.name)
+    if current_version:
+        query = query.filter(RegionalEnergySystem.database_version_id == current_version)
+    rows = query.order_by(RegionalEnergySystem.id).all()
+    return {id_: name for id_, name in rows}
+
+
 # 4) Обратная/прямая связи с ОЭС — часто нужны вместе с РЭС
 def get_res_to_ues_id_map() -> Dict[int, int]:
     """Возвращает отображение {РЭС.id: ОЭС.id}. Без кэша — версия из текущего запроса."""

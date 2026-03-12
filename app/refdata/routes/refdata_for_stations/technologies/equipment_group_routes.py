@@ -11,8 +11,8 @@ from app.refdata.routes import refdata_bp
 
 # Формы
 from app.refdata.forms.refdata_for_stations.technologies.equipment_group_forms import (
-    EquipmentGroupFilterForm, 
-    AddEquipmentGroupForm,
+    EquipmentGroupTypeFilterForm, 
+    AddEquipmentGroupTypeForm,
 )
 
 # Сервисы
@@ -64,7 +64,7 @@ def equipment_group_list():
         entity_type="equipment_group")
     
     # Создание формы
-    form = EquipmentGroupFilterForm()
+    form = EquipmentGroupTypeFilterForm()
 
     # Получение параметров запроса
     page                            = request.args.get("page", 1, type=int)
@@ -235,7 +235,7 @@ def add_equipment_group():
         entity_type="equipment_group")
 
     # Создание формы
-    form = AddEquipmentGroupForm()
+    form = AddEquipmentGroupTypeForm()
 
     # Сохранение текущих фильтров и параметров отображения
     page                = request.args.get("page", 1, type=int)

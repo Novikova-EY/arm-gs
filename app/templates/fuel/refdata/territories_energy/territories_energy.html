@@ -28,9 +28,7 @@
                 </form>
 
                 <a class="btn btn-warning fw-bold"
-                    href="{{ url_for('fuel_bp.export_fuel_territories_energy',
-                                        territories_energy_filter=territories_energy_filter or '',
-                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    href="{{ url_for('fuel_bp.export_fuel_territories_energy', **url_params()) }}"
                     target="_blank" rel="noopener">
                     Экспорт в Excel
                 </a>
@@ -53,6 +51,9 @@
                 <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
                 <input type="hidden" name="sort_by" value="{{ sort_by }}">
                 <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                {% for k, v in filter_params.items() %}
+                <input type="hidden" name="filter_{{ k }}" value="{{ v }}">
+                {% endfor %}
 
                 <div class="row g-2 align-items-center">
                     <div class="col-12 col-lg-8">
@@ -81,6 +82,22 @@
                 </div>
             </form>
 
+            {% if can_edit %}
+            <form method="POST" action="{{ url_for('fuel_bp.fuel_territories_energy_list') }}" id="territoriesEnergyEditForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+                <input type="hidden" name="per_page" value="{{ per_page }}">
+                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+                <input type="hidden" name="territories_energy_filter" value="{{ territories_energy_filter }}">
+                {% for k, v in filter_params.items() %}
+                <input type="hidden" name="filter_{{ k }}" value="{{ v }}">
+                {% endfor %}
+                <div class="mb-2">
+                    <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+                </div>
+            {% endif %}
+
             <div class="table-responsive">
                 <table class="table table-hover table-striped table-bordered">
                     <thead>
@@ -89,73 +106,130 @@
                             <th colspan="4" class="text-center align-middle">Модуль «Генерация»</th>
                         </tr>
                         <tr class="table-success">
-                            {% for label, col in [
+                            {% set col_defs = [
                                 ('Название','name_ext'),('АО','ao'),('Номер','obl'),('Alph','alph'),
                                 ('Департамент','dep'),('ОЭС','oes'),('Экономический район','er'),
                                 ('terr_belyaev','terr_belyaev'),('teo90','teo90'),('Федеральный округ','fo'),
                                 ('Сокр.','abbr'),('РЭУ','reu'),('pter','pter'),('Ключевое слово','keyword')
                             ] %}
+                            {% for label, col in col_defs %}
                                 <th class="text-center align-middle">
-                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
-                                                        page=pagination.page,
-                                                        per_page=per_page,
-                                                        sort_by=col,
-                                                        sort_dir='asc' if sort_by != col or sort_dir == 'desc' else 'desc') }}"
-                                        class="text-black">
-                                        {{ label }}<br><span class="text-muted small">({{ col }})</span>
-                                        {% if sort_by == col %}
-                                            {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                                        {% endif %}
-                                    </a>
+                                    <div class="d-flex justify-content-between align-items-center gap-1">
+                                        <a href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'sort_by': col, 'sort_dir': 'asc' if sort_by != col or sort_dir == 'desc' else 'desc'})) }}"
+                                            class="text-black text-decoration-none flex-grow-1">
+                                            {{ label }}<br><span class="text-muted small">({{ col }})</span>
+                                            {% if sort_by == col %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                                        </a>
+                                        <div class="dropdown">
+                                            <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_' ~ col: ''})) }}">Все</a></li>
+                                                {% for val, lbl in (filter_choices.get(col, [])[1:] if filter_choices.get(col) else []) %}
+                                                <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_' ~ col: val})) }}">{{ lbl or val or '—' }}</a></li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </th>
                             {% endfor %}
                             <th class="text-center align-middle">
-                                Номер энергозоны
-                            </th>
-                            <th class="text-center align-middle">
-                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
-                                                    page=pagination.page,
-                                                    per_page=per_page,
-                                                    sort_by='regional_district_name',
-                                                    sort_dir='asc' if sort_by != 'regional_district_name' or sort_dir == 'desc' else 'desc') }}"
+                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'sort_by': 'energy_zone_by_subject_number', 'sort_dir': 'asc' if sort_by != 'energy_zone_by_subject_number' or sort_dir == 'desc' else 'desc'})) }}"
                                     class="text-black">
-                                    Субъект РФ
-                                    {% if sort_by == 'regional_district_name' %}
-                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
+                                    Номер энергозоны
+                                    {% if sort_by == 'energy_zone_by_subject_number' %}{% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
                                 </a>
                             </th>
                             <th class="text-center align-middle">
-                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
-                                                    page=pagination.page,
-                                                    per_page=per_page,
-                                                    sort_by='regional_energy_system_name',
-                                                    sort_dir='asc' if sort_by != 'regional_energy_system_name' or sort_dir == 'desc' else 'desc') }}"
-                                    class="text-black">
-                                    Региональная энергосистема
-                                    {% if sort_by == 'regional_energy_system_name' %}
-                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
+                                <div class="d-flex justify-content-between align-items-center gap-1">
+                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'sort_by': 'regional_district_name', 'sort_dir': 'asc' if sort_by != 'regional_district_name' or sort_dir == 'desc' else 'desc'})) }}" class="text-black text-decoration-none flex-grow-1">Субъект РФ</a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_district_ref_uuid': ''})) }}">Все</a></li>
+                                            {% for val, lbl in (filter_choices.get('regional_district_ref_uuid', [])[1:] or []) %}
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_district_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                             </th>
                             <th class="text-center align-middle">
-                                <a href="{{ url_for('fuel_bp.fuel_territories_energy_list',
-                                                    page=pagination.page,
-                                                    per_page=per_page,
-                                                    sort_by='energy_zone_name',
-                                                    sort_dir='asc' if sort_by != 'energy_zone_name' or sort_dir == 'desc' else 'desc') }}"
-                                    class="text-black">
-                                    Энергорайон
-                                    {% if sort_by == 'energy_zone_name' %}
-                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
+                                <div class="d-flex justify-content-between align-items-center gap-1">
+                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'sort_by': 'regional_energy_system_name', 'sort_dir': 'asc' if sort_by != 'regional_energy_system_name' or sort_dir == 'desc' else 'desc'})) }}" class="text-black text-decoration-none flex-grow-1">Региональная энергосистема</a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_energy_system_ref_uuid': ''})) }}">Все</a></li>
+                                            {% for val, lbl in (filter_choices.get('regional_energy_system_ref_uuid', [])[1:] or []) %}
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_regional_energy_system_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="text-center align-middle">
+                                <div class="d-flex justify-content-between align-items-center gap-1">
+                                    <a href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'sort_by': 'energy_zone_name', 'sort_dir': 'asc' if sort_by != 'energy_zone_name' or sort_dir == 'desc' else 'desc'})) }}" class="text-black text-decoration-none flex-grow-1">Энергорайон</a>
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle py-0 px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Фильтр"></button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_energy_zone_ref_uuid': ''})) }}">Все</a></li>
+                                            {% for val, lbl in (filter_choices.get('energy_zone_ref_uuid', [])[1:] or []) %}
+                                            <li><a class="dropdown-item" href="{{ url_for('fuel_bp.fuel_territories_energy_list', **url_params({'page': 1, 'filter_energy_zone_ref_uuid': val})) }}">{{ lbl or val or '—' }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in items %}
                             <tr class="align-middle text-center">
+                                {% if can_edit %}
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_name_ext" class="form-control form-control-sm" value="{{ row.name_ext or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_ao" class="form-control form-control-sm" value="{{ row.ao or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_obl" class="form-control form-control-sm" value="{{ row.obl or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_alph" class="form-control form-control-sm" value="{{ row.alph or '' }}"></td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_dep" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('dep', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.dep or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_oes" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('oes', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.oes or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_er" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('er', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.er or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_terr_belyaev" class="form-control form-control-sm" value="{{ row.terr_belyaev or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_teo90" class="form-control form-control-sm" value="{{ row.teo90 or '' }}"></td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_fo" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('fo', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.fo or '') == (val or '') %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_abbr" class="form-control form-control-sm" value="{{ row.abbr or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_reu" class="form-control form-control-sm" value="{{ row.reu or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_pter" class="form-control form-control-sm" value="{{ row.pter or '' }}"></td>
+                                <td><input type="text" form="territoriesEnergyEditForm" name="row_{{ row.id }}_keyword" class="form-control form-control-sm" value="{{ row.keyword or '' }}"></td>
+                                {% else %}
                                 <td>{{ row.name_ext or '' }}</td>
                                 <td>{{ row.ao or '' }}</td>
                                 <td>{{ row.obl or '' }}</td>
@@ -170,10 +244,38 @@
                                 <td>{{ row.reu or '' }}</td>
                                 <td>{{ row.pter or '' }}</td>
                                 <td>{{ row.keyword or '' }}</td>
+                                {% endif %}
                                 <td>{{ row.energy_zone_by_subject_number or '' }}</td>
+                                {% if can_edit %}
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_regional_district_ref_uuid" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('regional_district_ref_uuid', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.regional_district_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_regional_energy_system_ref_uuid" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('regional_energy_system_ref_uuid', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.regional_energy_system_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select form="territoriesEnergyEditForm" name="row_{{ row.id }}_energy_zone_ref_uuid" class="form-select form-select-sm">
+                                        <option value="">—</option>
+                                        {% for val, lbl in (filter_choices.get('energy_zone_ref_uuid', [])[1:] or []) %}
+                                        <option value="{{ val }}" {% if (row.energy_zone_ref_uuid|normalize_uuid) == (val|normalize_uuid) %}selected{% endif %}>{{ lbl or val }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                {% else %}
                                 <td>{{ row.regional_district_name or '' }}</td>
                                 <td>{{ row.regional_energy_system_name or '' }}</td>
                                 <td>{{ row.energy_zone_name or '' }}</td>
+                                {% endif %}
                             </tr>
                         {% else %}
                             <tr>
@@ -183,6 +285,10 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if can_edit %}
+            </form>
+            {% endif %}
 
             {% include 'fuel/refdata/territories_energy/territories_energy_pagination.html' %}
     </div>

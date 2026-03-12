@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroup model (Группа оборудования).
+EquipmentGroupType model (Тип группы оборудования).
 """
 from sqlalchemy.sql import func
 from app.extensions import db
@@ -11,7 +11,7 @@ from app.common.models.versioned_model import VersionedModelMixin
 from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
-class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
+class EquipmentGroupType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     __tablename__ = 'gs_equipment_groups'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
@@ -52,15 +52,8 @@ class EquipmentGroup(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin
     machines = db.relationship(
         'Machine',
         back_populates='equipment_group',
-        primaryjoin="EquipmentGroup.id == Machine.id_equipment_group"
-    )
-
-    equipment_group_sets = db.relationship(
-        'EquipmentGroupSet',
-        back_populates='equipment_group',
-        primaryjoin="EquipmentGroup.id == EquipmentGroupSet.id_equipment_group",
-        passive_deletes=True,
+        primaryjoin="EquipmentGroupType.id == Machine.id_equipment_group"
     )
 
     def __repr__(self) -> str:
-        return f"<EquipmentGroup id={self.id} name={self.name!r}>"
+        return f"<EquipmentGroupType id={self.id} name={self.name!r}>"

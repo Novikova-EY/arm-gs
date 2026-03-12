@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить группу оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div class="container-fluid mt-4 equipment-group-add-page">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Группы оборудования</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="d-flex align-items-center mb-4">
+        <h2 class="mb-0 ms-3">Добавить группу оборудования</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div class="container-fluid">
+            <div class="station-info">
+                <div class="mb-4 p-3" style="background: transparent; border: none;">
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <h4 class="card-title text-decoration-underline mb-3"><strong>Общая информация</strong></h4>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Название (name)</label>
+                            <input type="text" name="name" class="form-control station-name" value="{{ request.form.name or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Название Топливо (name_ext)</label>
+                            <input type="text" name="name_ext" class="form-control" value="{{ request.form.name_ext or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Типы турбин (tm)</label>
+                            <input type="text" name="tm" class="form-control" value="{{ request.form.tm or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Код станции (numb)</label>
+                            <input type="text" name="numb" class="form-control" value="{{ request.form.numb or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
+                            <input type="text" name="ordnumb" class="form-control" value="{{ request.form.ordnumb or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Действующая (d)</label>
+                            <select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (request.form.d or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Расширяемая (r)</label>
+                            <select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (request.form.r or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
+                            <select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (request.form.forem or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Признак группы (niv)</label>
+                            <input type="text" name="niv" class="form-control" value="{{ request.form.niv or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Признак разбитой (comp)</label>
+                            <input type="text" name="comp" class="form-control" value="{{ request.form.comp or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Код станции (main)</label>
+                            <input type="text" name="main" class="form-control" value="{{ request.form.main or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
+                            <input type="text" name="n1" class="form-control" value="{{ request.form.n1 or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
+                            <input type="text" name="n2" class="form-control" value="{{ request.form.n2 or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
+                            <input type="text" name="p1" class="form-control" value="{{ request.form.p1 or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
+                            <input type="text" name="p2" class="form-control" value="{{ request.form.p2 or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Адрес (addr)</label>
+                            <input type="text" name="addr" class="form-control" value="{{ request.form.addr or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Примечание (note)</label>
+                            <input type="text" name="note" class="form-control" value="{{ request.form.note or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Субъект РФ (obl)</label>
+                            <select name="obl" class="form-select">{% for val, label in obl_choices %}<option value="{{ val }}" {% if (request.form.obl or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Департамент (dep)</label>
+                            <select name="dep" class="form-select">{% for val, label in dep_choices %}<option value="{{ val }}" {% if (request.form.dep or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">ОЭС (oes)</label>
+                            <select name="oes" class="form-select">{% for val, label in oes_choices %}<option value="{{ val }}" {% if (request.form.oes or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Экономический район (er)</label>
+                            <select name="er" class="form-select">{% for val, label in er_choices %}<option value="{{ val }}" {% if (request.form.er or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Федеральный округ (fo)</label>
+                            <select name="fo" class="form-select">{% for val, label in fo_choices %}<option value="{{ val }}" {% if (request.form.fo or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Код города (codegor)</label>
+                            <select name="codegor" class="form-select">{% for val, label in codegor_choices %}<option value="{{ val }}" {% if (request.form.codegor or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Ведомство (vedomstvo)</label>
+                            <select name="vedomstvo" class="form-select">{% for val, label in vedomstvo_choices %}<option value="{{ val }}" {% if (request.form.vedomstvo or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Тип генерирующей компании (be)</label>
+                            <select name="be" class="form-select">{% for val, label in be_choices %}<option value="{{ val }}" {% if (request.form.be or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Генерирующая компания (gk)</label>
+                            <select name="gk" class="form-select">{% for val, label in gk_choices %}<option value="{{ val }}" {% if (request.form.gk or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Филиал генерирующей компании (gkf)</label>
+                            <select name="gkf" class="form-select">{% for val, label in gkf_choices %}<option value="{{ val }}" {% if (request.form.gkf or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="submit" class="btn btn-outline-primary fs-5">Создать</button>
+                        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.equipment-group-add-page .station-info { font-size: 1.15rem; }
+.equipment-group-add-page .station-info .card-title { font-size: 1.25rem; }
+.equipment-group-add-page .station-info .form-label { font-size: 1.1rem; }
+.equipment-group-add-page .station-info .form-control,
+.equipment-group-add-page .station-info .form-select { font-size: 1.15rem; padding: 0.5rem 0.75rem; line-height: 1.4; }
+.equipment-group-add-page .btn { font-size: 1.1rem; padding: 0.5rem 1rem; }
+.equipment-group-add-page .row.g-4 { --bs-gutter-y: 0.35rem; --bs-gutter-x: 1rem; }
+.equipment-group-add-page .station-info .form-label { margin-bottom: 0.2rem; }
+.equipment-group-add-page .station-info .form-control,
+.equipment-group-add-page .station-info .form-select { padding: 0.35rem 0.75rem; }
+.equipment-group-add-page .station-name { font-size: 1.35rem; font-weight: 700; }
+</style>
+
+{% endif %}
+{% endblock %}

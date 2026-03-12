@@ -26,7 +26,7 @@ def get_energy_system_type_list_full():
     return (
         query
         .order_by(
-            (EnergySystemType.id != 0),
+            EnergySystemType.id.asc().nulls_first(),
             EnergySystemType.name.asc()
         )
         .all()
