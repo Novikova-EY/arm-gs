@@ -191,6 +191,43 @@ def rounded_decimal(value, digits=15):
         return None
 
 
+def values_equal_by_display_precision(old_val, new_val, display_digits=6):
+    """
+    Считает значения равными, если разница меньше половины последнего значащего
+    разряда округления. Используется, чтобы не считать «изменением» ситуацию,
+    когда пользователь сохранил форму без правок, а в форме пришло округлённое
+    значение (было в БД 1683.738997, в форме 1683.7).
+    display_digits: число знаков после запятой при отображении (1, 2, 3 и т.д.).
+    Для -1 (целые) используем digits=0.
+    Для 0 («Не округлять») значения сравниваются строго (без допуска по округлению),
+    т.к. в интерфейсе отображаются все знаки после запятой.
+    Нулевое значение и None считаются эквивалентными (0.000000 → — не логируем).
+    """
+    if old_val is None and new_val is None:
+        return True
+    if old_val is None or new_val is None:
+        try:
+            other = Decimal(str(old_val if new_val is None else new_val))
+            if other == 0:
+                return True
+        except (InvalidOperation, ValueError, TypeError):
+            pass
+        return False
+    try:
+        o = Decimal(str(old_val))
+        n = Decimal(str(new_val))
+    except (InvalidOperation, ValueError, TypeError):
+        return old_val == new_val
+
+    # 0 в UI означает «Не округлять» (см. format_decimal_for_display), поэтому сравниваем строго.
+    if display_digits == 0:
+        return o == n
+
+    d = max(0, min(10, int(display_digits))) if display_digits != -1 else 0
+    tol = Decimal("0.5") * (Decimal(10) ** -d)
+    return abs(o - n) < tol
+
+
 
 def convert_to_date(value):
     """

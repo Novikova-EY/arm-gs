@@ -31,7 +31,7 @@
         </div>
 
         <!-- Правая группа ВНУТРИ формы -->
-        <form method="get" action="{{ url_for('station_bp.station_list') }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        <form method="get" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
 
             <!-- Скрытые фильтры -->
             {% for key, value in request.args.items() %}

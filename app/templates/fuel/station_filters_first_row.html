@@ -6,7 +6,7 @@
         <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex flex-nowrap align-items-center w-100 gap-1">
             <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
             {% for key, value in request.args.items() %}
-                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter"] %}
+                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter", "equipment_group_name_filter"] %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
@@ -101,6 +101,12 @@
                 </select>
             </div>
     
+            {% if use_equipment_group_filter|default(false) %}
+            <!-- Группа оборудования (для страниц топливных параметров групп) -->
+            <div class="filter-item" style="width: 15%;">
+                {{ form.equipment_group_name_filter(class="form-control", value=equipment_group_name_filter if equipment_group_name_filter else '', placeholder="Группа оборудования") }}
+            </div>
+            {% else %}
             <!-- Электростанция -->
             <div class="filter-item" style="width: 15%;">
                 {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
@@ -110,6 +116,7 @@
             <div class="filter-item" style="width: 15%;">
                 {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
             </div>
+            {% endif %}
                 
             <!-- Кнопки -->
             <div class="filter-item">

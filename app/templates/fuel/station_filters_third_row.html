@@ -15,21 +15,21 @@
                     {% if use_single_year|default(false) %}
                     <label for="year" class="mb-0" style="white-space: nowrap;">Год:</label>
                     <select name="year" id="year" class="form-select" onchange="this.form.submit()">
-                        {% for y in range(2021, 2043) %}
+                        {% for y in (filter_year_list|default([])) %}
                         <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
                         {% endfor %}
                     </select>
                     {% else %}
                     <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                     <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
-                        {% for year in range(2021, 2043) %}
+                        {% for year in (filter_year_list|default([])) %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
 
                     <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                     <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
-                        {% for year in range(2022, 2043) %}
+                        {% for year in (filter_year_list|default([])) %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
@@ -43,8 +43,37 @@
                 </div>
             </form>
         </div>
+            {% if show_recalculate_specific_fuel_consumption|default(false) %}
+            <div class="ms-auto">
+                <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_consumption') }}" class="d-inline" id="recalculateSpecificFuelConsumptionForm">
+                    {{ form.csrf_token if form is defined else '' }}
+                    <input type="hidden" name="year" id="recalcYearInput" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;">
+                        Рассчитать удельные показатели
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var recalcForm = document.getElementById('recalculateSpecificFuelConsumptionForm');
+                    var yearSelect = document.getElementById('year');
+                    var recalcYearInput = document.getElementById('recalcYearInput');
+                    if (recalcForm && yearSelect && recalcYearInput) {
+                        recalcForm.addEventListener('submit', function() {
+                            recalcYearInput.value = yearSelect.value;
+                        });
+                    }
+                })();
+                </script>
+            </div>
+            {% endif %}
 
         <!-- Пагинация -->
+        {% if not hide_pagination_and_per_page|default(false) %}
         <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="min-width: 200px;">
             {% if per_page is not none %}
                 {% set pagination_endpoint = import_redirect_endpoint | default('fuel_bp.stations_equipment_groups') %}
@@ -80,5 +109,6 @@
                 </div>
             </form>
         </div>
+        {% endif %}
     </div>
 </div>

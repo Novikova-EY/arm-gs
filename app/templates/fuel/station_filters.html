@@ -40,8 +40,8 @@
                 {% endif %}
             {% endfor %}
 
-            {% if show_fuel_params_import|default(false) %}
-            <!-- Выбор знаков после запятой (только на странице топливных параметров) -->
+            {% if show_fuel_params_import|default(false) or show_extra_fuel_params_import|default(false) or show_specific_fuel_consumption_import|default(false) or show_specific_fuel_cost_import|default(false) or show_specific_fuel_price_import|default(false) %}
+            <!-- Выбор знаков после запятой (страницы топливных параметров) -->
             <div class="d-flex align-items-center gap-1">
                 <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>
                 <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;">

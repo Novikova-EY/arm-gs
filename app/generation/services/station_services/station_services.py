@@ -58,6 +58,8 @@ from app.common.services.database_version_services import (
 )
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
+    get_filter_end_year,
+    get_filter_start_year,
     get_year_feature_dict,
 )
 from app.common.services.get_services.fuels.fuel_type_get_services import (
@@ -171,15 +173,22 @@ from app.generation.services.station_services.aggregation_station_services.aggre
 )
 
 
-def _apply_machine_display_names(machines, year_features=None):
+def _apply_machine_display_names(machines, year_features=None, use_machine_name_only=False):
     """
-    Вычисляет отображаемое название агрегата (Machine.display_name) по той же логике,
-    что и карточка агрегата (machine_details):
-    - базовое имя: MachineName за год версии БД, иначе Machine.machine_name;
-    - если в плановом периоде есть отличающееся имя, добавляем его в скобках:
-      "<текущ. год> (<перспективный период>)".
+    Вычисляет отображаемое название агрегата (Machine.display_name).
+
+    По умолчанию (station_details, station_list, equipment_group, machine_details):
+      - базовое имя: MachineName.name за год версии БД, иначе Machine.machine_name;
+      - если в плановом периоде есть отличающееся имя, добавляем в скобках: "<текущ.> (<план>)".
+
+    При use_machine_name_only=True: display_name = Machine.machine_name.
     """
     if not machines:
+        return
+
+    if use_machine_name_only:
+        for m in machines:
+            setattr(m, "display_name", (getattr(m, "machine_name", None) or "").strip())
         return
 
     # Собираем ID агрегатов
@@ -201,15 +210,21 @@ def _apply_machine_display_names(machines, year_features=None):
     if year_features is None:
         year_features = get_year_feature_dict()
 
-    # Диапазон лет текущей версии (берём конец как текущий год версии, как в карточке)
-    _, version_year_end = get_current_version_year_range_from_name()
+    # Диапазон лет текущей версии (start = текущий/факт, end = план)
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
+    # Базовое имя — из года начала диапазона (текущий/факт), иначе из конца
+    version_year_for_base = version_year_start if version_year_start is not None else version_year_end
 
     for m in machines:
         machine_names = names_by_machine.get(getattr(m, "id", None), {})
 
-        # Базовое имя: MachineName за год версии или Machine.machine_name
+        # Базовое имя: MachineName за год версии (текущий) или Machine.machine_name
         base_name = None
-        if version_year_end is not None:
+        if version_year_for_base is not None:
+            current_name = machine_names.get(version_year_for_base)
+            if current_name:
+                base_name = current_name.strip()
+        if not base_name and version_year_end is not None:
             current_name = machine_names.get(version_year_end)
             if current_name:
                 base_name = current_name.strip()
@@ -257,6 +272,17 @@ def clear_station_aggregation_cache(reason: str | None = None) -> None:
     except Exception as exc:
         suffix = f" ({reason})" if reason else ""
         print(f"[CACHE] Failed to clear aggregation cache{suffix}: {exc}")
+
+
+def _build_station_note_search_condition(note_filter_value):
+    note_pattern = f"%{note_filter_value}%"
+    return or_(
+        Station.note.ilike(note_pattern),
+        Station.machines.any(Machine.note.ilike(note_pattern)),
+        Station.machines.any(
+            Machine.pgu_submachines.any(PGUMachine.note.ilike(note_pattern))
+        ),
+    )
 
 
 def get_stations_list(
@@ -387,6 +413,10 @@ def get_stations_list(
         if cond is not None:
             machine_query = machine_query.filter(cond)
 
+    # Фильтр: только агрегаты без группы оборудования (Machine.id_equipment_group IS NULL)
+    if filters.get("machines_without_equipment_group"):
+        machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+
     # 2. Subquery с подходящими агрегатами
     machine_subquery = machine_query.subquery()
     station_ids_query = db.session.query(machine_subquery.c.id_station).distinct()
@@ -415,6 +445,11 @@ def get_stations_list(
         ids = [g[0] for g in gen_company_ids]
         station_ids_query = station_ids_query.filter(
             Station.machines.any(Machine.id_gen_company.in_(ids))
+        )
+
+    if filters.get("note_filter"):
+        station_ids_query = station_ids_query.filter(
+            _build_station_note_search_condition(filters["note_filter"])
         )
 
     if filters.get("condition_type_filter"):
@@ -465,7 +500,93 @@ def get_stations_list(
     # Получаем уникальные ID станций (важно для случаев с multiple regional_energy_systems)
     raw_station_ids = [row[0] for row in station_ids_query.all()]
 
-    # Если ищем по названию станции, добавляем станции без агрегатов,
+    # 4a. При наличии фильтров по датам — добавляем станции, где PGUMachine совпадает по датам
+    date_filters_present = any([
+        filters.get("date_commission_filter"),
+        filters.get("date_exploitation_filter"),
+        filters.get("date_decompressing_expected_filter"),
+        filters.get("date_modernization_expected_filter"),
+    ])
+    if date_filters_present:
+        from app.generation.services.station_services.filters_services import (
+            build_date_filters_for_pgu,
+        )
+        # Строим запрос: Station.id где PGUMachine совпадает по датам
+        pgu_station_query = (
+            db.session.query(Station.id)
+            .join(Machine, Machine.id_station == Station.id)
+            .join(PGUMachine, PGUMachine.id_parent_machine == Machine.id)
+        )
+        pgu_station_query = filter_by_db_version(pgu_station_query, PGUMachine)
+        pgu_station_query = filter_by_db_version(pgu_station_query, Station)
+        for cond in build_date_filters_for_pgu(PGUMachine, filters):
+            pgu_station_query = pgu_station_query.filter(cond)
+        # Для фильтра "агрегаты без группы" — только PGUMachine, у которых родительская Machine без id_equipment_group
+        if filters.get("machines_without_equipment_group"):
+            pgu_station_query = pgu_station_query.filter(Machine.id_equipment_group.is_(None))
+        # Применяем те же фильтры по станции
+        if filters.get("station_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.id_station_type.in_(filters["station_type_filter"])
+            )
+        if filters.get("station_name_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.name.ilike(f"%{filters['station_name_filter']}%")
+            )
+        if filters.get("gen_company_filter"):
+            gen_company_ids = db.session.query(GenCompany.id).filter(
+                GenCompany.name.ilike(f"%{filters['gen_company_filter']}%")
+            ).all()
+            ids = [g[0] for g in gen_company_ids]
+            pgu_station_query = pgu_station_query.filter(
+                Station.machines.any(Machine.id_gen_company.in_(ids))
+            )
+        if filters.get("note_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                _build_station_note_search_condition(filters["note_filter"])
+            )
+        if filters.get("condition_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.machines.any(Machine.id_condition_type == filters["condition_type_filter"])
+            )
+        if filters.get("regional_district_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.id_regional_district.in_(filters["regional_district_filter"])
+            )
+        if filters.get("federal_district_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.regional_district.has(
+                    RegionalDistrict.federal_district.has(
+                        FederalDistrict.id.in_(filters["federal_district_filter"])
+                    )
+                )
+            )
+        if filters.get("regional_energy_system_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
+            )
+        if filters.get("union_energy_system_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(
+                        filters["union_energy_system_filter"]
+                    )
+                )
+            )
+        if filters.get("energy_system_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
+                        )
+                    )
+                )
+            )
+        pgu_station_ids = [row[0] for row in pgu_station_query.distinct().all()]
+        raw_station_ids = list(set(raw_station_ids) | set(pgu_station_ids))
+
+    # Если ищем по названию станции или station.note, добавляем станции без агрегатов,
     # но только когда нет машинных фильтров (иначе они не могут быть выполнены).
     machine_filters_present = any(
         [
@@ -473,6 +594,7 @@ def get_stations_list(
             filters.get("tes_machine_type_filter"),
             filters.get("fuel_type_filter"),
             filters.get("fuel_check"),
+            filters.get("machines_without_equipment_group"),
             filters.get("date_commission_filter"),
             filters.get("date_exploitation_filter"),
             filters.get("date_decompressing_expected_filter"),
@@ -482,10 +604,16 @@ def get_stations_list(
         ]
     )
     extra_station_ids = []
-    if filters.get("station_name_filter") and not machine_filters_present:
-        station_query = filter_by_db_version(Station.query, Station).filter(
-            Station.name.ilike(f"%{filters['station_name_filter']}%")
-        )
+    if (filters.get("station_name_filter") or filters.get("note_filter")) and not machine_filters_present:
+        station_query = filter_by_db_version(Station.query, Station)
+        if filters.get("station_name_filter"):
+            station_query = station_query.filter(
+                Station.name.ilike(f"%{filters['station_name_filter']}%")
+            )
+        if filters.get("note_filter"):
+            station_query = station_query.filter(
+                Station.note.ilike(f"%{filters['note_filter']}%")
+            )
         if filters.get("station_type_filter"):
             station_query = station_query.filter(
                 Station.id_station_type.in_(filters["station_type_filter"])
@@ -894,18 +1022,73 @@ def get_stations_list(
 
     # 7. Загрузка отфильтрованных агрегатов (только для финального списка станций)
     final_station_ids = [s.id for s in stations]
-    filtered_machines = Machine.query.options(
+    base_filtered_machine_ids = db.session.query(machine_subquery.c.id).filter(
+        machine_subquery.c.id_station.in_(final_station_ids)
+    )
+
+    filtered_machines_query = Machine.query.options(
         selectinload(Machine.machine_fuels),
         selectinload(Machine.machine_powers),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
         joinedload(Machine.equipment_group),
-    ).filter(
-        Machine.id.in_(
-            db.session.query(machine_subquery.c.id).filter(
-                machine_subquery.c.id_station.in_(final_station_ids)
-            )
+    ).filter(Machine.id.in_(base_filtered_machine_ids))
+
+    # Если станция попала в выборку только за счет совпадения дочернего PGUMachine по датам,
+    # подгружаем и родительскую Machine, чтобы строка ПГУ отрисовалась в station_list.
+    if any(
+        [
+            filters.get("date_commission_filter"),
+            filters.get("date_exploitation_filter"),
+            filters.get("date_decompressing_expected_filter"),
+            filters.get("date_modernization_expected_filter"),
+        ]
+    ):
+        from app.generation.services.station_services.filters_services import (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+            get_pgu_date_cond_for_filter,
         )
-    ).all()
+
+        date_filter_pairs = [
+            (build_date_commission_filter, "date_commission_filter"),
+            (build_date_exploitation_filter, "date_exploitation_filter"),
+            (build_date_decompressing_filter, "date_decompressing_expected_filter"),
+            (build_date_modernization_filter, "date_modernization_expected_filter"),
+        ]
+        date_and_parts = []
+        for build_fn, key in date_filter_pairs:
+            if not filters.get(key):
+                continue
+            machine_cond = build_fn(Machine, filters)
+            pgu_cond = get_pgu_date_cond_for_filter(PGUMachine, filters, key)
+            if machine_cond is not None and pgu_cond is not None:
+                date_and_parts.append(or_(machine_cond, Machine.pgu_submachines.any(pgu_cond)))
+            elif machine_cond is not None:
+                date_and_parts.append(machine_cond)
+            elif pgu_cond is not None:
+                date_and_parts.append(Machine.pgu_submachines.any(pgu_cond))
+
+        if date_and_parts:
+            extra_pgu_parent_machine_ids = (
+                db.session.query(Machine.id)
+                .filter(Machine.id_station.in_(final_station_ids))
+                .filter(and_(*date_and_parts))
+            )
+            filtered_machines_query = Machine.query.options(
+                selectinload(Machine.machine_fuels),
+                selectinload(Machine.machine_powers),
+                selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+                joinedload(Machine.equipment_group),
+            ).filter(
+                or_(
+                    Machine.id.in_(base_filtered_machine_ids),
+                    Machine.id.in_(extra_pgu_parent_machine_ids),
+                )
+            )
+
+    filtered_machines = filtered_machines_query.all()
 
     # Применяем логику отображаемого названия агрегата (как в карточке агрегата)
     _apply_machine_display_names(filtered_machines)
@@ -1752,6 +1935,11 @@ def get_next_station_info(current_page, per_page, filters):
             station_ids_query = station_ids_query.filter(
                 Station.machines.any(Machine.id_gen_company.in_(ids))
             )
+
+        if filters.get("note_filter"):
+            station_ids_query = station_ids_query.filter(
+                _build_station_note_search_condition(filters["note_filter"])
+            )
         
         if filters.get("condition_type_filter"):
             station_ids_query = station_ids_query.filter(
@@ -1994,6 +2182,11 @@ def get_filtered_station_ids(filters):
                 Station.machines.any(Machine.id_gen_company.in_(ids))
             )
 
+    if filters.get("note_filter"):
+        station_ids_query = station_ids_query.filter(
+            _build_station_note_search_condition(filters["note_filter"])
+        )
+
     if filters.get("condition_type_filter"):
         station_ids_query = station_ids_query.filter(
             Station.machines.any(Machine.id_condition_type == filters["condition_type_filter"])
@@ -2035,8 +2228,70 @@ def get_filtered_station_ids(filters):
         )
 
     raw_ids = [row[0] for row in station_ids_query.all()]
-    unique_ids = sorted({sid for sid in raw_ids if sid is not None})
-    print(f"[AGG DEBUG] get_filtered_station_ids -> {len(unique_ids)} stations (raw={len(raw_ids)}) при фильтрах {filters}")
+
+    machine_filters_present = any(
+        [
+            filters.get("tes_type_filter"),
+            filters.get("tes_machine_type_filter"),
+            filters.get("fuel_type_filter"),
+            filters.get("fuel_check"),
+            filters.get("date_commission_filter"),
+            filters.get("date_exploitation_filter"),
+            filters.get("date_decompressing_expected_filter"),
+            filters.get("date_modernization_expected_filter"),
+            filters.get("gen_company_filter"),
+            filters.get("condition_type_filter"),
+        ]
+    )
+    extra_station_ids = []
+    if (filters.get("station_name_filter") or filters.get("note_filter")) and not machine_filters_present:
+        station_query = filter_by_db_version(Station.query, Station)
+        if filters.get("station_name_filter"):
+            station_query = station_query.filter(
+                Station.name.ilike(f"%{filters['station_name_filter']}%")
+            )
+        if filters.get("note_filter"):
+            station_query = station_query.filter(
+                Station.note.ilike(f"%{filters['note_filter']}%")
+            )
+        if filters.get("station_type_filter"):
+            station_query = station_query.filter(
+                Station.id_station_type.in_(filters["station_type_filter"])
+            )
+        if filters.get("regional_district_filter"):
+            station_query = station_query.filter(
+                Station.id_regional_district.in_(filters["regional_district_filter"])
+            )
+        if filters.get("federal_district_filter"):
+            station_query = station_query.filter(
+                Station.regional_district.has(
+                    RegionalDistrict.id_federal_district.in_(filters["federal_district_filter"])
+                )
+            )
+        if filters.get("regional_energy_system_filter"):
+            station_query = station_query.filter(
+                Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
+            )
+        if filters.get("union_energy_system_filter"):
+            station_query = station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"])
+                )
+            )
+        if filters.get("energy_system_type_filter"):
+            station_query = station_query.filter(
+                Station.regional_energy_system_obj.has(
+                    RegionalEnergySystem.union_energy_system.has(
+                        UnionEnergySystem.energy_system_type.has(
+                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
+                        )
+                    )
+                )
+            )
+        extra_station_ids = [row[0] for row in station_query.with_entities(Station.id).all()]
+
+    unique_ids = sorted({sid for sid in raw_ids + extra_station_ids if sid is not None})
+    print(f"[AGG DEBUG] get_filtered_station_ids -> {len(unique_ids)} stations (raw={len(raw_ids)}, extra={len(extra_station_ids)}) при фильтрах {filters}")
     return unique_ids
 
 
@@ -2209,6 +2464,9 @@ def get_station_list_data(
             db.session.expire(station, ["machines"])
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
+
+        # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
+        _apply_machine_display_names(machines)
             
         # Обеспечиваем, что station_totals содержит данные для всех станций
         for station in stations:
@@ -2249,6 +2507,9 @@ def get_station_list_data(
             db.session.expire(station, ["machines"])
         for station in stations:
             station.machines = station_machines_map.get(station.id, [])
+
+        # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
+        _apply_machine_display_names(machines)
             
         # Обеспечиваем, что station_totals содержит данные для всех станций
         for station in stations:
@@ -2364,7 +2625,7 @@ def get_station_list_data(
         aggregation_station_ids = []
         rows = []
 
-    from app.fuel.services.stations_equipment_groups_v2_services import (
+    from app.fuel.services.stations_equipment_groups_services import (
         get_station_equipment_group_name_map,
     )
     station_equipment_group_name_map = get_station_equipment_group_name_map(station_ids)
@@ -2447,6 +2708,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     start_time = time.time()
 
     year_features = get_year_feature_dict()
+    filter_year_list = list(range(get_filter_start_year(), get_filter_end_year() + 1))
 
     # Получаем энергосистемы заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
@@ -2687,6 +2949,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "show_p_ogr":data["show_p_ogr"],
             "show_p_rasp":data["show_p_rasp"],
             "rounding_digits": rounding_digits,
+            "filter_year_list": filter_year_list,
             "should_show_totals": data.get("should_show_totals", {}),
             "energy_system_type_list": energy_system_type_list,
             "energy_system_type_names": energy_system_type_names,
@@ -2733,6 +2996,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "condition_type_filter": filters.get("condition_type_filter"),
             "gen_company_filter": filters.get("gen_company_filter"),
             "station_name_filter": filters.get("station_name_filter"),
+            "note_filter": filters.get("note_filter"),
+            "equipment_group_name_filter": filters.get("equipment_group_name_filter"),
             "station_type_filter": filters.get("station_type_filter"),
             "tes_type_filter": filters.get("tes_type_filter"),
             "tes_machine_type_filter": filters.get("tes_machine_type_filter"),

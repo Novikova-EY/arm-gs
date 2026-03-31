@@ -1,0 +1,635 @@
+{% extends 'base.html' %}
+{% from 'fuel/_value_macros.html' import render_numeric_or_dash %}
+
+{% block title %}Стоимость для групп оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer" style="overflow-x: auto;">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Стоимость для групп оборудования</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+                <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
+                    ➕ Добавить группу оборудования
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_equipment_group_specific_fuel_cost_filters.html' %}
+
+{% set specific_cost_columns = specific_fuel_cost_columns %}
+{% set column_count = specific_cost_columns|length + 1 %}
+{% set collapsible_attrs = ['gaz_prir', 'gazpp'] %}
+{% set collapsible_mazut_attrs = ['disel', 'maztop'] %}
+{% set collapsible_proch_attrs = ['tvproch', 'szh_gaz', 'inoe'] %}
+{% set collapsible_ugol_attrs = ['don', 'podm', 'pech', 'vork', 'intin', 'kuzn', 'kuzngd', 'kuznt', 'kuznss', 'kuznun', 'ural', 'sver', 'chel', 'kizel', 'bashk', 'kazah', 'ekib', 'maikub', 'karag', 'karajyra', 'teniz', 'kan', 'nazar', 'ibor', 'berez', 'per', 'irbei', 'kansk', 'irkut', 'azey', 'mug', 'cher', 'tung', 'jer', 'karab', 'hak', 'tuv', 'bur', 'gusin', 'tugn', 'okino', 'chit', 'har', 'urt', 'tataur', 'tarbag', 'zab_kam', 'amur', 'rai', 'erk', 'ogodj', 'svo', 'urg', 'ushum', 'prim', 'bikin', 'razdol', 'hankai', 'yakut', 'neru', 'zyryan', 'pyak', 'mag', 'chukot', 'anad', 'bering', 'kamch', 'sah'] %}
+
+    <table class="table table-hover table-striped table-bordered" id="specificFuelCostTable">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="min-width: 140px;">Группа оборудования</th>
+                {% for attr, label, is_numeric in specific_cost_columns %}
+                <th style="min-width: 60px;" class="specific-cost-col-{{ attr }}" data-column="{{ attr }}"
+                    {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %}
+                    {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %}
+                    {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %}
+                    {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>
+                    {{ (fuel_nazvl_to_name or {}).get(attr, label) }}<br><span class="text-muted small">({{ attr }})</span>
+                    {% if attr == 'gaz' %}
+                    <span id="gasGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Газ прир., Газ попут." aria-label="Группировка столбцов газа">
+                        <i class="bi bi-plus-square gas-group-icon" data-state="collapsed"></i>
+                    </span>
+                    {% endif %}
+                    {% if attr == 'mazut' %}
+                    <span id="mazutGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Дизель, Мазут топочный" aria-label="Группировка столбцов мазута">
+                        <i class="bi bi-plus-square mazut-group-icon" data-state="collapsed"></i>
+                    </span>
+                    {% endif %}
+                    {% if attr == 'proch' %}
+                    <span id="prochGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Прочие виды твердого топлива, Газ сжиженный, inoe" aria-label="Группировка столбцов прочего">
+                        <i class="bi bi-plus-square proch-group-icon" data-state="collapsed"></i>
+                    </span>
+                    {% endif %}
+                    {% if attr == 'ugol' %}
+                    <span id="ugolGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть столбцы углей по маркам" aria-label="Группировка столбцов угля">
+                        <i class="bi bi-plus-square ugol-group-icon" data-state="collapsed"></i>
+                    </span>
+                    {% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% if equipment_group_specific_fuel_cost_hierarchy and equipment_group_specific_fuel_cost_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_specific_fuel_cost_hierarchy %}
+                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                    </tr>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                        </tr>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    <tr class="text-center align-middle">
+                                        <td>
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                                                {{ group_name }}
+                                            </a>
+                                            {% else %}
+                                                {{ group_name }}
+                                            {% endif %}
+                                        </td>
+                                        {% for attr, label, is_numeric in specific_cost_columns %}
+                                        <td class="specific-cost-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                        {% endfor %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
+                            <td>{{ station_block.station_name }}, всего</td>
+                            {% for attr, label, is_numeric in specific_cost_columns %}
+                            <td class="specific-cost-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if res_block.group_blocks %}
+                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
+                            <td>{{ res_block.res_name }}, всего</td>
+                            {% for attr, label, is_numeric in specific_cost_columns %}
+                            <td class="specific-cost-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{{ render_numeric_or_dash(res_block.res_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+            {% for row in equipment_group_specific_fuel_cost_rows|default([]) %}
+                {% set group_entity = row[0] %}
+                {% set param = row[1] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                <tr class="text-center align-middle">
+                    <td>
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                            {{ group_name }}
+                        </a>
+                        {% else %}
+                            {{ group_name }}
+                        {% endif %}
+                    </td>
+                    {% for attr, label, is_numeric in specific_cost_columns %}
+                    <td class="specific-cost-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    </div>
+</div>
+
+<!-- Данные фильтров (для первой строки) -->
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .gas-group-icon, .ugol-group-icon, .mazut-group-icon, .proch-group-icon { font-size: 1rem; color: var(--bs-primary); }
+    .gas-group-icon:hover, .ugol-group-icon:hover, .mazut-group-icon:hover, .proch-group-icon:hover { opacity: 0.8; }
+    /* Скрытые столбцы группировки (gaz_prir, gazpp) — по умолчанию скрыты */
+    #specificFuelCostTable th.specific-cost-col-gaz_prir,
+    #specificFuelCostTable th.specific-cost-col-gazpp,
+    #specificFuelCostTable td.specific-cost-col-gaz_prir,
+    #specificFuelCostTable td.specific-cost-col-gazpp {
+        display: none;
+    }
+    #specificFuelCostTable.gas-group-expanded th.specific-cost-col-gaz_prir,
+    #specificFuelCostTable.gas-group-expanded th.specific-cost-col-gazpp,
+    #specificFuelCostTable.gas-group-expanded td.specific-cost-col-gaz_prir,
+    #specificFuelCostTable.gas-group-expanded td.specific-cost-col-gazpp {
+        display: table-cell;
+    }
+    /* Скрытые столбцы группировки MAZUT (disel, maztop) — по умолчанию скрыты */
+    #specificFuelCostTable th.specific-cost-col-disel,
+    #specificFuelCostTable th.specific-cost-col-maztop,
+    #specificFuelCostTable td.specific-cost-col-disel,
+    #specificFuelCostTable td.specific-cost-col-maztop {
+        display: none;
+    }
+    #specificFuelCostTable.mazut-group-expanded th.specific-cost-col-disel,
+    #specificFuelCostTable.mazut-group-expanded th.specific-cost-col-maztop,
+    #specificFuelCostTable.mazut-group-expanded td.specific-cost-col-disel,
+    #specificFuelCostTable.mazut-group-expanded td.specific-cost-col-maztop {
+        display: table-cell;
+    }
+    /* Скрытые столбцы группировки PROCH (tvproch, szh_gaz, inoe) — по умолчанию скрыты */
+    #specificFuelCostTable th.specific-cost-col-tvproch,
+    #specificFuelCostTable th.specific-cost-col-szh_gaz,
+    #specificFuelCostTable th.specific-cost-col-inoe,
+    #specificFuelCostTable td.specific-cost-col-tvproch,
+    #specificFuelCostTable td.specific-cost-col-szh_gaz,
+    #specificFuelCostTable td.specific-cost-col-inoe {
+        display: none;
+    }
+    #specificFuelCostTable.proch-group-expanded th.specific-cost-col-tvproch,
+    #specificFuelCostTable.proch-group-expanded th.specific-cost-col-szh_gaz,
+    #specificFuelCostTable.proch-group-expanded th.specific-cost-col-inoe,
+    #specificFuelCostTable.proch-group-expanded td.specific-cost-col-tvproch,
+    #specificFuelCostTable.proch-group-expanded td.specific-cost-col-szh_gaz,
+    #specificFuelCostTable.proch-group-expanded td.specific-cost-col-inoe {
+        display: table-cell;
+    }
+    /* Скрытые столбцы группировки UGOL (don … sah) — по умолчанию скрыты */
+    #specificFuelCostTable th.specific-cost-col-don,
+    #specificFuelCostTable th.specific-cost-col-podm,
+    #specificFuelCostTable th.specific-cost-col-pech,
+    #specificFuelCostTable th.specific-cost-col-vork,
+    #specificFuelCostTable th.specific-cost-col-intin,
+    #specificFuelCostTable th.specific-cost-col-kuzn,
+    #specificFuelCostTable th.specific-cost-col-kuzngd,
+    #specificFuelCostTable th.specific-cost-col-kuznt,
+    #specificFuelCostTable th.specific-cost-col-kuznss,
+    #specificFuelCostTable th.specific-cost-col-kuznun,
+    #specificFuelCostTable th.specific-cost-col-ural,
+    #specificFuelCostTable th.specific-cost-col-sver,
+    #specificFuelCostTable th.specific-cost-col-chel,
+    #specificFuelCostTable th.specific-cost-col-kizel,
+    #specificFuelCostTable th.specific-cost-col-bashk,
+    #specificFuelCostTable th.specific-cost-col-kazah,
+    #specificFuelCostTable th.specific-cost-col-ekib,
+    #specificFuelCostTable th.specific-cost-col-maikub,
+    #specificFuelCostTable th.specific-cost-col-karag,
+    #specificFuelCostTable th.specific-cost-col-karajyra,
+    #specificFuelCostTable th.specific-cost-col-teniz,
+    #specificFuelCostTable th.specific-cost-col-kan,
+    #specificFuelCostTable th.specific-cost-col-nazar,
+    #specificFuelCostTable th.specific-cost-col-ibor,
+    #specificFuelCostTable th.specific-cost-col-berez,
+    #specificFuelCostTable th.specific-cost-col-per,
+    #specificFuelCostTable th.specific-cost-col-irbei,
+    #specificFuelCostTable th.specific-cost-col-kansk,
+    #specificFuelCostTable th.specific-cost-col-irkut,
+    #specificFuelCostTable th.specific-cost-col-azey,
+    #specificFuelCostTable th.specific-cost-col-mug,
+    #specificFuelCostTable th.specific-cost-col-cher,
+    #specificFuelCostTable th.specific-cost-col-tung,
+    #specificFuelCostTable th.specific-cost-col-jer,
+    #specificFuelCostTable th.specific-cost-col-karab,
+    #specificFuelCostTable th.specific-cost-col-hak,
+    #specificFuelCostTable th.specific-cost-col-tuv,
+    #specificFuelCostTable th.specific-cost-col-bur,
+    #specificFuelCostTable th.specific-cost-col-gusin,
+    #specificFuelCostTable th.specific-cost-col-tugn,
+    #specificFuelCostTable th.specific-cost-col-okino,
+    #specificFuelCostTable th.specific-cost-col-chit,
+    #specificFuelCostTable th.specific-cost-col-har,
+    #specificFuelCostTable th.specific-cost-col-urt,
+    #specificFuelCostTable th.specific-cost-col-tataur,
+    #specificFuelCostTable th.specific-cost-col-tarbag,
+    #specificFuelCostTable th.specific-cost-col-zab_kam,
+    #specificFuelCostTable th.specific-cost-col-amur,
+    #specificFuelCostTable th.specific-cost-col-rai,
+    #specificFuelCostTable th.specific-cost-col-erk,
+    #specificFuelCostTable th.specific-cost-col-ogodj,
+    #specificFuelCostTable th.specific-cost-col-svo,
+    #specificFuelCostTable th.specific-cost-col-urg,
+    #specificFuelCostTable th.specific-cost-col-ushum,
+    #specificFuelCostTable th.specific-cost-col-prim,
+    #specificFuelCostTable th.specific-cost-col-bikin,
+    #specificFuelCostTable th.specific-cost-col-razdol,
+    #specificFuelCostTable th.specific-cost-col-hankai,
+    #specificFuelCostTable th.specific-cost-col-yakut,
+    #specificFuelCostTable th.specific-cost-col-neru,
+    #specificFuelCostTable th.specific-cost-col-zyryan,
+    #specificFuelCostTable th.specific-cost-col-pyak,
+    #specificFuelCostTable th.specific-cost-col-mag,
+    #specificFuelCostTable th.specific-cost-col-chukot,
+    #specificFuelCostTable th.specific-cost-col-anad,
+    #specificFuelCostTable th.specific-cost-col-bering,
+    #specificFuelCostTable th.specific-cost-col-kamch,
+    #specificFuelCostTable th.specific-cost-col-sah,
+    #specificFuelCostTable td.specific-cost-col-don,
+    #specificFuelCostTable td.specific-cost-col-podm,
+    #specificFuelCostTable td.specific-cost-col-pech,
+    #specificFuelCostTable td.specific-cost-col-vork,
+    #specificFuelCostTable td.specific-cost-col-intin,
+    #specificFuelCostTable td.specific-cost-col-kuzn,
+    #specificFuelCostTable td.specific-cost-col-kuzngd,
+    #specificFuelCostTable td.specific-cost-col-kuznt,
+    #specificFuelCostTable td.specific-cost-col-kuznss,
+    #specificFuelCostTable td.specific-cost-col-kuznun,
+    #specificFuelCostTable td.specific-cost-col-ural,
+    #specificFuelCostTable td.specific-cost-col-sver,
+    #specificFuelCostTable td.specific-cost-col-chel,
+    #specificFuelCostTable td.specific-cost-col-kizel,
+    #specificFuelCostTable td.specific-cost-col-bashk,
+    #specificFuelCostTable td.specific-cost-col-kazah,
+    #specificFuelCostTable td.specific-cost-col-ekib,
+    #specificFuelCostTable td.specific-cost-col-maikub,
+    #specificFuelCostTable td.specific-cost-col-karag,
+    #specificFuelCostTable td.specific-cost-col-karajyra,
+    #specificFuelCostTable td.specific-cost-col-teniz,
+    #specificFuelCostTable td.specific-cost-col-kan,
+    #specificFuelCostTable td.specific-cost-col-nazar,
+    #specificFuelCostTable td.specific-cost-col-ibor,
+    #specificFuelCostTable td.specific-cost-col-berez,
+    #specificFuelCostTable td.specific-cost-col-per,
+    #specificFuelCostTable td.specific-cost-col-irbei,
+    #specificFuelCostTable td.specific-cost-col-kansk,
+    #specificFuelCostTable td.specific-cost-col-irkut,
+    #specificFuelCostTable td.specific-cost-col-azey,
+    #specificFuelCostTable td.specific-cost-col-mug,
+    #specificFuelCostTable td.specific-cost-col-cher,
+    #specificFuelCostTable td.specific-cost-col-tung,
+    #specificFuelCostTable td.specific-cost-col-jer,
+    #specificFuelCostTable td.specific-cost-col-karab,
+    #specificFuelCostTable td.specific-cost-col-hak,
+    #specificFuelCostTable td.specific-cost-col-tuv,
+    #specificFuelCostTable td.specific-cost-col-bur,
+    #specificFuelCostTable td.specific-cost-col-gusin,
+    #specificFuelCostTable td.specific-cost-col-tugn,
+    #specificFuelCostTable td.specific-cost-col-okino,
+    #specificFuelCostTable td.specific-cost-col-chit,
+    #specificFuelCostTable td.specific-cost-col-har,
+    #specificFuelCostTable td.specific-cost-col-urt,
+    #specificFuelCostTable td.specific-cost-col-tataur,
+    #specificFuelCostTable td.specific-cost-col-tarbag,
+    #specificFuelCostTable td.specific-cost-col-zab_kam,
+    #specificFuelCostTable td.specific-cost-col-amur,
+    #specificFuelCostTable td.specific-cost-col-rai,
+    #specificFuelCostTable td.specific-cost-col-erk,
+    #specificFuelCostTable td.specific-cost-col-ogodj,
+    #specificFuelCostTable td.specific-cost-col-svo,
+    #specificFuelCostTable td.specific-cost-col-urg,
+    #specificFuelCostTable td.specific-cost-col-ushum,
+    #specificFuelCostTable td.specific-cost-col-prim,
+    #specificFuelCostTable td.specific-cost-col-bikin,
+    #specificFuelCostTable td.specific-cost-col-razdol,
+    #specificFuelCostTable td.specific-cost-col-hankai,
+    #specificFuelCostTable td.specific-cost-col-yakut,
+    #specificFuelCostTable td.specific-cost-col-neru,
+    #specificFuelCostTable td.specific-cost-col-zyryan,
+    #specificFuelCostTable td.specific-cost-col-pyak,
+    #specificFuelCostTable td.specific-cost-col-mag,
+    #specificFuelCostTable td.specific-cost-col-chukot,
+    #specificFuelCostTable td.specific-cost-col-anad,
+    #specificFuelCostTable td.specific-cost-col-bering,
+    #specificFuelCostTable td.specific-cost-col-kamch,
+    #specificFuelCostTable td.specific-cost-col-sah {
+        display: none;
+    }
+    #specificFuelCostTable.ugol-group-expanded th[data-collapsible-ugol="1"],
+    #specificFuelCostTable.ugol-group-expanded td[data-collapsible-ugol="1"] {
+        display: table-cell;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+        document.getElementById('rounding_digits')?.addEventListener('change', function() {
+            const selectedRounding = this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('rounding_digits', selectedRounding);
+            window.location.href = url.toString();
+        });
+
+        // Группировка столбцов (gaz_prir, gazpp) — как в Excel
+        const table = document.getElementById('specificFuelCostTable');
+        const gasToggle = document.getElementById('gasGroupToggle');
+        const gasIcon = gasToggle?.querySelector('.gas-group-icon');
+        const GAS_STORAGE_KEY = 'specificFuelCost_gasGroupExpanded';
+
+        function updateGasGroupState(expanded) {
+            if (expanded) {
+                table?.classList.add('gas-group-expanded');
+                if (gasIcon) {
+                    gasIcon.classList.remove('bi-plus-square');
+                    gasIcon.classList.add('bi-dash-square');
+                    gasIcon.setAttribute('data-state', 'expanded');
+                }
+            } else {
+                table?.classList.remove('gas-group-expanded');
+                if (gasIcon) {
+                    gasIcon.classList.remove('bi-dash-square');
+                    gasIcon.classList.add('bi-plus-square');
+                    gasIcon.setAttribute('data-state', 'collapsed');
+                }
+            }
+            try { localStorage.setItem(GAS_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+        }
+
+        if (gasToggle && table) {
+            const saved = typeof localStorage !== 'undefined' && localStorage.getItem(GAS_STORAGE_KEY) === '1';
+            if (saved) updateGasGroupState(true);
+
+            gasToggle.addEventListener('click', function() {
+                const expanded = table.classList.contains('gas-group-expanded');
+                updateGasGroupState(!expanded);
+            });
+        }
+
+        // Группировка столбцов MAZUT (disel, maztop)
+        const mazutToggle = document.getElementById('mazutGroupToggle');
+        const mazutIcon = mazutToggle?.querySelector('.mazut-group-icon');
+        const MAZUT_STORAGE_KEY = 'specificFuelCost_mazutGroupExpanded';
+
+        function updateMazutGroupState(expanded) {
+            if (expanded) {
+                table?.classList.add('mazut-group-expanded');
+                if (mazutIcon) {
+                    mazutIcon.classList.remove('bi-plus-square');
+                    mazutIcon.classList.add('bi-dash-square');
+                    mazutIcon.setAttribute('data-state', 'expanded');
+                }
+            } else {
+                table?.classList.remove('mazut-group-expanded');
+                if (mazutIcon) {
+                    mazutIcon.classList.remove('bi-dash-square');
+                    mazutIcon.classList.add('bi-plus-square');
+                    mazutIcon.setAttribute('data-state', 'collapsed');
+                }
+            }
+            try { localStorage.setItem(MAZUT_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+        }
+
+        if (mazutToggle && table) {
+            const mazutSaved = typeof localStorage !== 'undefined' && localStorage.getItem(MAZUT_STORAGE_KEY) === '1';
+            if (mazutSaved) updateMazutGroupState(true);
+
+            mazutToggle.addEventListener('click', function() {
+                const expanded = table.classList.contains('mazut-group-expanded');
+                updateMazutGroupState(!expanded);
+            });
+        }
+
+        // Группировка столбцов PROCH (tvproch, szh_gaz, inoe)
+        const prochToggle = document.getElementById('prochGroupToggle');
+        const prochIcon = prochToggle?.querySelector('.proch-group-icon');
+        const PROCH_STORAGE_KEY = 'specificFuelCost_prochGroupExpanded';
+
+        function updateProchGroupState(expanded) {
+            if (expanded) {
+                table?.classList.add('proch-group-expanded');
+                if (prochIcon) {
+                    prochIcon.classList.remove('bi-plus-square');
+                    prochIcon.classList.add('bi-dash-square');
+                    prochIcon.setAttribute('data-state', 'expanded');
+                }
+            } else {
+                table?.classList.remove('proch-group-expanded');
+                if (prochIcon) {
+                    prochIcon.classList.remove('bi-dash-square');
+                    prochIcon.classList.add('bi-plus-square');
+                    prochIcon.setAttribute('data-state', 'collapsed');
+                }
+            }
+            try { localStorage.setItem(PROCH_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+        }
+
+        if (prochToggle && table) {
+            const prochSaved = typeof localStorage !== 'undefined' && localStorage.getItem(PROCH_STORAGE_KEY) === '1';
+            if (prochSaved) updateProchGroupState(true);
+
+            prochToggle.addEventListener('click', function() {
+                const expanded = table.classList.contains('proch-group-expanded');
+                updateProchGroupState(!expanded);
+            });
+        }
+
+        // Группировка столбцов UGOL (don … sah)
+        const ugolToggle = document.getElementById('ugolGroupToggle');
+        const ugolIcon = ugolToggle?.querySelector('.ugol-group-icon');
+        const UGOL_STORAGE_KEY = 'specificFuelCost_ugolGroupExpanded';
+
+        function updateUgolGroupState(expanded) {
+            if (expanded) {
+                table?.classList.add('ugol-group-expanded');
+                if (ugolIcon) {
+                    ugolIcon.classList.remove('bi-plus-square');
+                    ugolIcon.classList.add('bi-dash-square');
+                    ugolIcon.setAttribute('data-state', 'expanded');
+                }
+            } else {
+                table?.classList.remove('ugol-group-expanded');
+                if (ugolIcon) {
+                    ugolIcon.classList.remove('bi-dash-square');
+                    ugolIcon.classList.add('bi-plus-square');
+                    ugolIcon.setAttribute('data-state', 'collapsed');
+                }
+            }
+            try { localStorage.setItem(UGOL_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+        }
+
+        if (ugolToggle && table) {
+            const ugolSaved = typeof localStorage !== 'undefined' && localStorage.getItem(UGOL_STORAGE_KEY) === '1';
+            if (ugolSaved) updateUgolGroupState(true);
+
+            ugolToggle.addEventListener('click', function() {
+                const expanded = table.classList.contains('ugol-group-expanded');
+                updateUgolGroupState(!expanded);
+            });
+        }
+    });
+</script>
+
+<!-- Скрипт для обработки экспорта стоимости -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const exportButton = document.getElementById("exportSpecificFuelCostButton");
+    const form = document.getElementById("exportSpecificFuelCostForm");
+    if (!exportButton || !form) {
+        return;
+    }
+
+    const newButton = exportButton.cloneNode(true);
+    exportButton.parentNode.replaceChild(newButton, exportButton);
+
+    newButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = this;
+        const originalHtml = button.innerHTML;
+
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        button.disabled = true;
+
+        const currentUrl = new URL(window.location.href);
+        const params = new URLSearchParams(currentUrl.search);
+        const roundingEl = document.getElementById('rounding_digits');
+        if (roundingEl) {
+            params.set('rounding_digits', roundingEl.value);
+        }
+        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(exportUrl, {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('Ошибка сервера (' + response.status + '): ' + text.substring(0, 200));
+                });
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/vnd.openxmlformats')) {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = 'Стоимость_для_групп_оборудования_' + timestamp + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                });
+            }
+
+            return response.text().then(() => {
+                throw new Error('Получен неожиданный тип ответа от сервера');
+            });
+        })
+        .catch(error => {
+            console.error('[EXPORT specific_fuel_cost] Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        })
+        .finally(() => {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+    });
+});
+</script>
+
+{% endif %}
+{% endblock %}

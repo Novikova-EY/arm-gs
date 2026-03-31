@@ -15,6 +15,7 @@
 {% set allowed_roles = ['generation', 'admin'] %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+{% set hide_pgu_parent_date_fields = (machine and machine.tes_machine_type and machine.tes_machine_type.name and (machine.tes_machine_type.name|lower) == 'пгу' and pgu_machines is defined and pgu_machines|length > 0) %}
 
 <div class="container-fluid mt-4 machine-details-page">
     <!-- Кнопки возврата -->
@@ -172,6 +173,7 @@
                                     </div>
                                 </div>
                                 
+                                {% if not hide_pgu_parent_date_fields %}
                                 <div class="row g-2 align-items-start mb-2">
                                     <div class="col-5 text-start fw-semibold align-self-start">Документ-основание для изменения параметров агрегата:</div>
                                     <div class="col-7 text-start">
@@ -203,9 +205,13 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% else %}
+                                <input type="hidden" name="{{ main_form.change_document.name }}" value="{{ main_form.change_document.data or '' }}">
+                                {% endif %}
                             </div>
 
                             <div class="col-12 col-lg-3">
+                                {% if not hide_pgu_parent_date_fields %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
@@ -269,10 +275,18 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% else %}
+                                <input type="hidden" name="{{ main_form.date_commission_year.name }}" value="{{ main_form.date_commission_year.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_exploitation.name }}" value="{{ main_form.date_exploitation.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_exploitation_expected.name }}" value="{{ main_form.date_exploitation_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_decompressing_expected.name }}" value="{{ main_form.date_decompressing_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_modernization_expected.name }}" value="{{ main_form.date_modernization_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_joining_expected.name }}" value="{{ main_form.date_joining_expected.data or '' }}">
+                                {% endif %}
                             </div>
 
                             <div class="col-12 col-lg-3">
-                                
+                                {% if not hide_pgu_parent_date_fields %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
                                     <div class="col-7 text-start">
@@ -293,7 +307,6 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                
 
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
@@ -339,6 +352,14 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% else %}
+                                <input type="hidden" name="{{ main_form.date_commission_fact.name }}" value="{{ main_form.date_commission_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_decompressing_fact.name }}" value="{{ main_form.date_decompressing_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_joining_fact.name }}" value="{{ main_form.date_joining_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_detatchment_fact.name }}" value="{{ main_form.date_detatchment_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_update_fact.name }}" value="{{ main_form.date_update_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_relabing_fact.name }}" value="{{ main_form.date_relabing_fact.data or '' }}">
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -419,11 +440,11 @@
             </div>
 
             {{ pgu_machines_form.hidden_tag() }}
-            {% if machine and machine.id_tes_machine_type == 2 %}
+            {% if machine and machine.tes_machine_type and (machine.tes_machine_type.name or '')|lower == 'пгу' %}
                 <!-- Таблица с агрегатами ПГУ (PGUMachines) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0"></h3>
-                    {% if 'generation' in current_user.role_names or 'admin' in current_user.role_names %}
+                    {% if can_edit %}
                         <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
                             ➕ Добавить агрегат ПГУ
                         </a>
@@ -466,11 +487,12 @@
                                         </a>
                                     </td>
                                     {% for year in range(start_year, end_year + 1) %}
-                                        <td class="text-center power-column" style="width: 50px;">
-                                            {% set p_ust_value = pgu_machine.pgu_machine_powers
-                                                                | selectattr('year.number', 'equalto', year)
-                                                                | map(attribute='p_ust')
-                                                                | first %}
+                                        {% set p_ust_value = pgu_machine.pgu_machine_powers
+                                                            | selectattr('year.number', 'equalto', year)
+                                                            | map(attribute='p_ust')
+                                                            | first %}
+                                        {% set p_ust_full = p_ust_value | format_decimal(0) if p_ust_value is not none else '' %}
+                                        <td class="text-center power-column" style="width: 50px;" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                             {% if p_ust_value %}
                                                 {{ p_ust_value | format_decimal }}
                                             {% else %}
@@ -484,7 +506,7 @@
                                 </tr>
                             {% else %}
                                 <tr>
-                                    <td colspan="{{ 4 + (end_year - start_year + 1) }}" class="text-center text-muted">Нет агрегатов ПГУ</td>
+                                    <td colspan="{{ 3 + (end_year - start_year + 1) }}" class="text-center text-muted">Нет агрегатов ПГУ</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -577,7 +599,8 @@
                                 <input type="hidden"
                                        class="year-feature"
                                        value="{{ year_features.get(p.year.data)|default('', true) }}">
-                                <td class="power-column align-middle text-center">
+                                {% set p_ust_full = p.p_ust.data | format_decimal(0) if p.p_ust.data is not none else '' %}
+                                <td class="power-column align-middle text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_ust.name }}_orig"
                                         value="{{ p.p_ust.data | format_decimal }}">
@@ -586,7 +609,7 @@
                                             name="{{ p.p_ust.name }}"
                                             value="{{ p.p_ust.data | format_decimal }}"
                                             data-original-value="{{ p.p_ust.data | format_decimal }}"
-                                            class="form-control text-center">
+                                            class="form-control text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                     {% else %}
                                         <span>{{ p.p_ust.data | format_decimal if p.p_ust.data else '—' }}</span>
                                     {% endif %}
@@ -599,7 +622,8 @@
                             <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
-                                <td class="power-column align-middle text-center">
+                                {% set p_ogr_full = p.p_ogr.data | format_decimal(0) if p.p_ogr.data is not none else '' %}
+                                <td class="power-column align-middle text-center" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_ogr.name }}_orig"
                                         value="{{ p.p_ogr.data | format_decimal }}">
@@ -608,7 +632,7 @@
                                         name="{{ p.p_ogr.name }}"
                                         value="{{ p.p_ogr.data | format_decimal }}"
                                         data-original-value="{{ p.p_ogr.data | format_decimal }}"
-                                        class="form-control text-center">
+                                        class="form-control text-center" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                                     {% else %}
                                         <span>{{ p.p_ogr.data | format_decimal if p.p_ogr.data else '—' }}</span>
                                     {% endif %}
@@ -621,7 +645,8 @@
                             <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
                             {% for p in advanced_form.powers %}
                                 {{ p.year(type="hidden") }}
-                                <td class="power-column align-middle text-center">
+                                {% set p_rasp_full = p.p_rasp.data | format_decimal(0) if p.p_rasp.data is not none else '' %}
+                                <td class="power-column align-middle text-center" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_rasp.name }}_orig"
                                         value="{{ p.p_rasp.data | format_decimal }}">
@@ -630,7 +655,7 @@
                                         name="{{ p.p_rasp.name }}"
                                         value="{{ p.p_rasp.data | format_decimal }}"
                                         data-original-value="{{ p.p_rasp.data | format_decimal }}"
-                                        class="form-control text-center">
+                                        class="form-control text-center" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                                     {% else %}
                                         <span>{{ p.p_rasp.data | format_decimal if p.p_rasp.data else '—' }}</span>
                                     {% endif %}
@@ -1400,42 +1425,36 @@ document.addEventListener("DOMContentLoaded", function () {
             const yearsMatchInputs =
                 columnYears.length && columnYears.length === inputs.length;
 
-            inputs.forEach(function (input, index) {
-                input.addEventListener("change", function () {
-                    const value = this.value;
-
-                    // Продление значения по текущей строке, но не дальше maxVersionYear
-                    for (let i = index + 1; i < inputs.length; i++) {
-                        if (hasMaxVersionYear && yearsMatchInputs) {
+            function extendPowerValue(inputEl, idx) {
+                const value = inputEl.value;
+                // Продление значения по текущей строке, но не дальше maxVersionYear
+                for (let i = idx + 1; i < inputs.length; i++) {
+                    if (hasMaxVersionYear && yearsMatchInputs) {
+                        const y = columnYears[i];
+                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
+                    }
+                    inputs[i].value = value;
+                }
+                // При заполнении Руст заполняем Ррасп = Руст и продлеваем
+                if (isRustRow && raspRowInputs.length) {
+                    const raspYearsMatch =
+                        columnYears.length && columnYears.length === raspRowInputs.length;
+                    for (let i = idx; i < raspRowInputs.length; i++) {
+                        if (hasMaxVersionYear && raspYearsMatch) {
                             const y = columnYears[i];
-                            if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) {
-                                break;
-                            }
+                            if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
                         }
-                        inputs[i].value = value;
+                        raspRowInputs[i].value = value;
                     }
+                }
+            }
 
-                    // Дополнительная логика: при заполнении Руст заполняем Ррасп = Руст
-                    // и продлеваем это значение, но не дальше maxVersionYear
-                    if (isRustRow && raspRowInputs.length) {
-                        const raspYearsMatch =
-                            columnYears.length &&
-                            columnYears.length === raspRowInputs.length;
-                        for (let i = index; i < raspRowInputs.length; i++) {
-                            if (hasMaxVersionYear && raspYearsMatch) {
-                                const y = columnYears[i];
-                                if (
-                                    typeof y === "number" &&
-                                    !isNaN(y) &&
-                                    y > maxVersionYear
-                                ) {
-                                    break;
-                                }
-                            }
-                            raspRowInputs[i].value = value;
-                        }
-                    }
-
+            inputs.forEach(function (input, index) {
+                input.addEventListener("input", function () {
+                    extendPowerValue(this, index);
+                });
+                input.addEventListener("change", function () {
+                    extendPowerValue(this, index);
                     showPowerFlashMessage();
                 });
             });
@@ -1532,26 +1551,28 @@ document.addEventListener("DOMContentLoaded", function () {
         // Пересобрать "Название агрегата" один раз при загрузке
         recomputeMachineNameFromYearNames(inputs);
 
+        function extendNameValue(inputEl, idx) {
+            const value = inputEl.value;
+            for (let i = idx + 1; i < inputs.length; i++) {
+                if (hasMaxVersionYear) {
+                    const colYear = parseInt(inputs[i].dataset.year || "0", 10);
+                    if (!isNaN(colYear) && colYear > maxVersionYear) break;
+                }
+                inputs[i].value = value;
+            }
+        }
+
         inputs.forEach(function (input, index) {
             input.addEventListener("input", function () {
-                // При любом изменении названия по году пересчитываем ожидаемые даты
-                autoFillDatesFromPowers();
+                extendNameValue(this, index);
+                if (typeof recomputeMachineNameFromYearNames === "function") {
+                    recomputeMachineNameFromYearNames(inputs);
+                }
+                if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
             });
             input.addEventListener("change", function () {
-                const value = this.value;
-                // Продление значения по строке (со следующего года до конца периода)
-                for (let i = index + 1; i < inputs.length; i++) {
-                    if (hasMaxVersionYear) {
-                        const colYear = parseInt(inputs[i].dataset.year || "0", 10);
-                        if (!isNaN(colYear) && colYear > maxVersionYear) {
-                            break;
-                        }
-                    }
-                    inputs[i].value = value;
-                }
-                // Пересобираем основное поле Machine.machine_name по новой логике
+                extendNameValue(this, index);
                 recomputeMachineNameFromYearNames(inputs);
-                // И ещё раз пересчитываем ожидаемые даты с учетом "протянутых" названий
                 autoFillDatesFromPowers();
             });
         });

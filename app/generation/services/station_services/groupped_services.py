@@ -1,6 +1,6 @@
 from app.extensions import db
 from decimal import Decimal
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from collections import defaultdict
 from sqlalchemy.orm import joinedload, selectinload
 import re
@@ -254,7 +254,7 @@ def fetch_machines_with_rowspans(
     # Базовые агрегаты с фильтром по версии
     machine_query = Machine.query
     machine_query = filter_by_db_version(machine_query, Machine)
-    machines = machine_query.options(
+    machine_query = machine_query.options(
         joinedload(Machine.tes_machine_type),
         joinedload(Machine.machine_station).joinedload(Station.station_type),
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
@@ -264,7 +264,44 @@ def fetch_machines_with_rowspans(
             .selectinload(Fuel.fuel_type),
         joinedload(Machine.machine_fuel_param),
         joinedload(Machine.equipment_group),
-    ).filter(Machine.id_station.in_(station_ids)).all()
+    ).filter(Machine.id_station.in_(station_ids))
+
+    # При фильтрах по датам: показывать Machine, если он сам или его PGUMachine-потомки совпадают
+    date_filters_present = (filters or {}).get("date_commission_filter") or (filters or {}).get("date_exploitation_filter") or (filters or {}).get("date_decompressing_expected_filter") or (filters or {}).get("date_modernization_expected_filter")
+    if date_filters_present:
+        from app.generation.services.station_services.filters_services import (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+            get_pgu_date_cond_for_filter,
+        )
+        filter_pairs = [
+            (build_date_commission_filter, "date_commission_filter"),
+            (build_date_exploitation_filter, "date_exploitation_filter"),
+            (build_date_decompressing_filter, "date_decompressing_expected_filter"),
+            (build_date_modernization_filter, "date_modernization_expected_filter"),
+        ]
+        and_parts = []
+        for build_fn, key in filter_pairs:
+            if not (filters or {}).get(key):
+                continue
+            machine_cond = build_fn(Machine, filters or {})
+            pgu_cond = get_pgu_date_cond_for_filter(PGUMachine, filters or {}, key)
+            if machine_cond is not None and pgu_cond is not None:
+                and_parts.append(or_(machine_cond, Machine.pgu_submachines.any(pgu_cond)))
+            elif machine_cond is not None:
+                and_parts.append(machine_cond)
+            elif pgu_cond is not None:
+                and_parts.append(Machine.pgu_submachines.any(pgu_cond))
+        if and_parts:
+            machine_query = machine_query.filter(and_(*and_parts))
+
+    # Фильтр: только агрегаты без группы оборудования
+    if (filters or {}).get("machines_without_equipment_group"):
+        machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+
+    machines = machine_query.all()
 
     # Сначала фильтруем внутренние коллекции по версии БД (важно для primary_fuel_type)
     for m in machines:

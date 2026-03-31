@@ -148,10 +148,19 @@ class PGUMachinePowerForm(Form):
     p_ust = DecimalField('Мощность Руст', validators=[Optional()], default=Decimal("0"))
 
 
+class PGUMachineNameForm(FlaskForm):
+    """Название ПГУ агрегата по году (аналог MachineNameForm)."""
+    class Meta:
+        csrf = False
+    year = IntegerField('Год', render_kw={'readonly': True})
+    year_name = StringField('Название по году', validators=[Optional(), Length(max=1024)])
+
+
 class PGUMachineFilterForm(FlaskForm):
     class Meta:
         csrf = False
-        
+
+    id_machine = HiddenField("ID родительского агрегата")
     id_pgu_machine = HiddenField("ID")
 
     id_condition_type = SelectField(
@@ -192,10 +201,19 @@ class PGUMachineFilterForm(FlaskForm):
         validators=[DataRequired(), Length(max=1024)]
     )
 
+    pgu_machine_names = FieldList(FormField(PGUMachineNameForm), min_entries=0)
     powers = FieldList(FormField(PGUMachinePowerForm), min_entries=0)
 
     date_exploitation = StringField(
         'Фактический год ввода в эксплуатацию',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    date_commission_year = StringField(
+        'Фактический год ввода в работу',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    date_exploitation_expected = StringField(
+        'Ожидаемый год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_commission_fact = StringField(
@@ -238,6 +256,11 @@ class PGUMachineFilterForm(FlaskForm):
     note = StringField(
         'Примечание',
         validators=[Optional(), Length(max=512)]
+    )
+
+    change_document = StringField(
+        'Документ-основание для изменения параметров агрегата',
+        validators=[Optional()]
     )
 
 

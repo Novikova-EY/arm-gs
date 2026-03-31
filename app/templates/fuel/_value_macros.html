@@ -1,0 +1,7 @@
+{% macro render_numeric_or_dash(value) -%}
+    {%- if value is none or value == 0 -%}
+        —
+    {%- else -%}
+        {{- value|format_decimal -}}
+    {%- endif -%}
+{%- endmacro %}

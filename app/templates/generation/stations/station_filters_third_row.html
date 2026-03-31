@@ -4,7 +4,7 @@
 
         <!-- Левая часть: выбор годов -->
         <div class="d-flex align-items-center gap-2">
-            <form method="GET" action="{{ url_for('station_bp.station_list') }}" class="d-flex align-items-center gap-2" id="yearForm">
+            <form method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="d-flex align-items-center gap-2" id="yearForm">
                 {% for key, value in request.args.items() %}
                     {% if key != "per_page" and key != "start_year" and key != "end_year" %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
@@ -28,7 +28,7 @@
                 <button type="submit" class="btn btn-outline-success">Применить</button>
 
                 <div class="filter-item">
-                    <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                    <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="btn btn-outline-danger w-100">Сбросить</a>
                 </div>
             </form>
         </div>
@@ -44,7 +44,7 @@
         <div class="d-flex align-items-center flex-wrap justify-content-end gap-5">
 
             <!-- Итоги + выбор количества строк -->
-            <form id="perPageForm" method="GET" action="{{ url_for('station_bp.station_list') }}">
+            <form id="perPageForm" method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}">
                 <!-- Горизонтальное размещение блоков -->
                 <div class="d-flex align-items-center flex-wrap gap-4">
                     <!-- Проверка топлива -->

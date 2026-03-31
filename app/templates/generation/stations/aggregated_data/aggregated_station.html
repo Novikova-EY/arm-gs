@@ -1,10 +1,11 @@
 <!-- Итоговые значения по-станционно -->
+{% set station_total_colspan = 13 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 12 %}
 {% set fuel_columns = end_year - start_year + 1 %}
 {% set trailing_columns = fuel_columns + 1 %}
 
 <!-- Первая строка: p_ust -->
 <tr class="text-center total-power-row" style="vertical-align: middle;">
-    <td class="total-row-cell" rowspan="{{ station_totals.get(station.id, {}).get('summary_rows', 1) }}" colspan="12" style="font-weight: bold;">
+    <td class="total-row-cell" rowspan="{{ station_totals.get(station.id, {}).get('summary_rows', 1) }}" colspan="{{ station_total_colspan }}" style="font-weight: bold;">
         Всего по станции:
     </td>
     <td class="text-center align-middle" style="font-weight: bold;">Руст</td>

@@ -20,6 +20,7 @@ from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+from app.generation.models.pgu_machine.pgu_machine_name_model import PGUMachineName
 from app.generation.models.document.document_model import Document
 from app.refdata.models.energy_systems.energy_area_model import EnergyArea
 from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
@@ -250,13 +251,19 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     except Exception:
         st_name = ""
     is_tes_or_ges = st_name in ("тэс", "гэс", "гаэс")
-    if is_tes_or_ges and machine is not None and version_year_end is not None:
-        # Базовое имя: из MachineName за год версии, иначе из Machine.machine_name
+    version_year_for_base = version_year_start if version_year_start is not None else version_year_end
+    if is_tes_or_ges and machine is not None and (version_year_for_base is not None or version_year_end is not None):
+        # Базовое имя: из MachineName за год начала диапазона (текущий/факт), иначе за конец, иначе Machine.machine_name
         base_name = None
-        mn_current = machine_names.get(version_year_end) if machine_names else None
-        if mn_current and mn_current.name:
-            base_name = mn_current.name.strip()
-        elif machine.machine_name:
+        if version_year_for_base is not None:
+            mn_current = machine_names.get(version_year_for_base) if machine_names else None
+            if mn_current and mn_current.name:
+                base_name = mn_current.name.strip()
+        if not base_name and version_year_end is not None:
+            mn_current = machine_names.get(version_year_end) if machine_names else None
+            if mn_current and mn_current.name:
+                base_name = mn_current.name.strip()
+        if not base_name and machine.machine_name:
             base_name = machine.machine_name.strip()
 
         display_name = base_name
@@ -951,35 +958,44 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                         changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
                     related_entities_changed = True
 
-        # Для ТЭС/ГЭС/ГАЭС пересчитываем отображаемое имя на основе machine_names
-        # и сохраняем его в Machine.machine_name для текущей версии БД.
-        if is_tes_or_ges and version_year_end is not None:
-            base_name = None
-            mn_current = names_map.get(version_year_end) if names_map else None
-            if mn_current and mn_current.name:
-                base_name = mn_current.name.strip()
-            elif machine.machine_name:
-                base_name = machine.machine_name.strip()
+        # Для ТЭС/ГЭС/ГАЭС: поле "Название агрегата" (текущее + в скобках перспективное)
+        # проверяем с Machine.machine_name и при несовпадении сохраняем в Machine.machine_name.
+        if is_tes_or_ges:
+            # Берём значение из формы (то, что отображалось пользователю)
+            form_display_name = (main_form.machine_name.data or "").strip() or None
+            version_year_for_base = version_year_start if version_year_start is not None else version_year_end
+            if not form_display_name and (version_year_for_base is not None or version_year_end is not None):
+                # Fallback: пересчитываем из machine_names, если в форме пусто
+                base_name = None
+                if version_year_for_base is not None:
+                    mn_current = names_map.get(version_year_for_base) if names_map else None
+                    if mn_current and mn_current.name:
+                        base_name = mn_current.name.strip()
+                if not base_name and version_year_end is not None:
+                    mn_current = names_map.get(version_year_end) if names_map else None
+                    if mn_current and mn_current.name:
+                        base_name = mn_current.name.strip()
+                if not base_name and machine.machine_name:
+                    base_name = machine.machine_name.strip()
+                form_display_name = base_name
+                if base_name and year_features:
+                    for y in sorted(names_map.keys()):
+                        label = year_features.get(y)
+                        if not label or "план" not in str(label).strip().lower():
+                            continue
+                        mn_plan = names_map.get(y)
+                        if not mn_plan or not mn_plan.name:
+                            continue
+                        plan_name = mn_plan.name.strip()
+                        if plan_name and plan_name.lower() != base_name.lower():
+                            form_display_name = f"{base_name} ({plan_name})"
+                            break
 
-            display_name = base_name
-            if base_name and year_features:
-                for y in sorted(names_map.keys()):
-                    label = year_features.get(y)
-                    if not label or "план" not in str(label).strip().lower():
-                        continue
-                    mn_plan = names_map.get(y)
-                    if not mn_plan or not mn_plan.name:
-                        continue
-                    plan_name = mn_plan.name.strip()
-                    if plan_name and plan_name.lower() != base_name.lower():
-                        display_name = f"{base_name} ({plan_name})"
-                        break
-
-            if display_name and display_name != (machine.machine_name or None):
+            if form_display_name and form_display_name != (machine.machine_name or None):
                 changes.append(
-                    f"machine_name: {(machine.machine_name or '—')} → {display_name}"
+                    f"machine_name: {(machine.machine_name or '—')} → {form_display_name}"
                 )
-                machine.machine_name = display_name
+                machine.machine_name = form_display_name
 
         # Если изменились связанные сущности, обновляем Machine для инкремента version
         if related_entities_changed:
@@ -1117,6 +1133,7 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
     station = Station.query.get_or_404(station_id)
     parent_machine = Machine.query.get_or_404(machine_id)
     year_features = get_year_feature_dict()
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
 
     if pgu_machine_id == 0:
         pgu_machine = None
@@ -1126,19 +1143,89 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
         pgu_form = PGUMachineFilterForm(obj=pgu_machine, prefix='pgu_')
 
     from app.generation.services.machine_services.machine_services import _fill_pgu_machines_form_choices
-    _fill_pgu_machines_form_choices(pgu_form, machine_id)
+    _fill_pgu_machines_form_choices(pgu_form, machine_id, parent_machine=parent_machine)
+    pgu_form.id_machine.data = machine_id
 
     pgu_machine = PGUMachine.query.get(pgu_machine_id) if pgu_machine_id else None
 
     existing_powers = {}
+    pgu_machine_names = {}
     if pgu_machine:
         for power in pgu_machine.pgu_machine_powers:
             existing_powers[power.year_number] = power
+        names_q = PGUMachineName.query.filter_by(id_pgu_machine=pgu_machine.id)
+        pgu_machine_names = {
+            mn.year_number: mn
+            for mn in names_q.all()
+            if mn.year_number is not None
+        }
 
-    if not pgu_form.powers.entries:
-        for year in range(start_year, end_year + 1):
-            value = existing_powers.get(year).p_ust if existing_powers.get(year) else 0
-            pgu_form.powers.append_entry({"year": year, "p_ust": value})
+    # Заполняем powers и pgu_machine_names из БД. Не полагаемся на obj=pgu_machine:
+    # модель использует year_number/name, форма — year/year_name, маппинг не совпадает.
+    del pgu_form.powers.entries[:]
+    for year in range(start_year, end_year + 1):
+        value = existing_powers.get(year).p_ust if existing_powers.get(year) else 0
+        pgu_form.powers.append_entry({"year": year, "p_ust": value})
+
+    # Всегда заполняем pgu_machine_names из pgu_machine_names dict (из БД)
+    del pgu_form.pgu_machine_names.entries[:]
+    for year_num in range(start_year, end_year + 1):
+        name_entry = pgu_form.pgu_machine_names.append_entry()
+        name_entry.year.data = year_num
+        pmn = pgu_machine_names.get(year_num) if pgu_machine_names else None
+        name_entry.year_name.data = (pmn.name if pmn and pmn.name else None) or ""
+
+    # Для ТЭС/ГЭС/ГАЭС формируем "Название агрегата" из pgu_machine_names (как для Machine)
+    try:
+        st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
+    except Exception:
+        st_name = ""
+    is_tes_or_ges = st_name in ("тэс", "гэс", "гаэс")
+    version_year_for_base = version_year_start if version_year_start is not None else version_year_end
+    if is_tes_or_ges and pgu_machine is not None and (version_year_for_base is not None or version_year_end is not None):
+        def _valid_name(s):
+            return s and not (len(s) == 4 and s.isdigit())
+
+        base_name = None
+        if version_year_for_base is not None:
+            pmn_current = pgu_machine_names.get(version_year_for_base) if pgu_machine_names else None
+            if pmn_current and pmn_current.name and _valid_name(pmn_current.name.strip()):
+                base_name = pmn_current.name.strip()
+        if not base_name and version_year_end is not None:
+            pmn_current = pgu_machine_names.get(version_year_end) if pgu_machine_names else None
+            if pmn_current and pmn_current.name and _valid_name(pmn_current.name.strip()):
+                base_name = pmn_current.name.strip()
+        if not base_name and pgu_machine.machine_name and _valid_name(pgu_machine.machine_name.strip()):
+            base_name = pgu_machine.machine_name.strip()
+        if not base_name and pgu_machine_names:
+            for y in sorted(pgu_machine_names.keys(), reverse=True):
+                pmn = pgu_machine_names.get(y)
+                if pmn and pmn.name and _valid_name(pmn.name.strip()):
+                    base_name = pmn.name.strip()
+                    break
+        display_name = base_name
+        if base_name and year_features:
+            for y in sorted(pgu_machine_names.keys()):
+                label = year_features.get(y)
+                if not label or "план" not in str(label).strip().lower():
+                    continue
+                pmn_plan = pgu_machine_names.get(y)
+                if not pmn_plan or not pmn_plan.name:
+                    continue
+                plan_name = pmn_plan.name.strip()
+                if plan_name and plan_name.lower() != base_name.lower():
+                    display_name = f"{base_name} ({plan_name})"
+                    break
+        if display_name:
+            pgu_form.machine_name.data = display_name
+            # Исправить отображение в заголовке, если в БД ошибочно сохранён год как название
+            if pgu_machine.machine_name != display_name and (
+                not pgu_machine.machine_name or (len(pgu_machine.machine_name.strip()) == 4 and pgu_machine.machine_name.strip().isdigit())
+            ):
+                pgu_machine.machine_name = display_name
+
+    all_documents = choices_cache.get_choices(Document, Document.name)
+    all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
 
     context = {
         "station": station,
@@ -1147,28 +1234,101 @@ def handle_pgu_machine_get(station_id, machine_id, pgu_machine_id, start_year, e
         "start_year": start_year,
         "end_year": end_year,
         "pgu_machine_id": pgu_machine_id,
-        "pgu_machine":pgu_machine,
+        "pgu_machine": pgu_machine,
         "year_features": year_features,
+        "version_year_start": version_year_start,
+        "version_year_end": version_year_end,
+        "all_documents": all_documents,
     }
     return context
 
 
+def _normalize_pgu_form_data(form_data, start_year, end_year):
+    """Нормализация данных формы: запятая→точка в p_ust; валидный int для year в pgu_machine_names."""
+    from werkzeug.datastructures import ImmutableMultiDict
+    import re
+    items = []
+    for key in form_data:
+        for value in form_data.getlist(key):
+            if '-p_ust' in key or key.endswith('p_ust'):
+                if isinstance(value, str) and ',' in value:
+                    value = value.replace(',', '.')
+            # Нормализуем только сами поля `...-year`.
+            # Важно не задевать `...-year_name`, иначе строки вроде `V 64.3А`
+            # ошибочно попадают в ветку обработки года и затираются номером года.
+            if re.search(r'(?:machine_names|powers)-\d+-year$', key):
+                if isinstance(value, str):
+                    value = value.strip()
+                    m = re.search(r'(?:machine_names|powers)-(\d+)-year', key)
+                    idx = int(m.group(1)) if m else 0
+                    if value in ('', '—', '-') or not value:
+                        value = str(start_year + idx)
+                    elif '.' in value:
+                        try:
+                            value = str(int(float(value)))
+                        except (ValueError, TypeError):
+                            value = str(start_year + idx)
+            items.append((key, value))
+    return ImmutableMultiDict(items)
+
+
 @no_autoflush
-def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, user, start_year, end_year):
-    station = get_station_by_id(station_id)
-    parent_machine = get_machine_by_id(machine_id)
+def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, user, start_year, end_year, rounding_digits=1):
+    station = Station.query.get_or_404(station_id)
+    parent_machine = Machine.query.get_or_404(machine_id)
     redirect_args = request.args.to_dict(flat=False)
     redirect_args["start_year"] = start_year
     redirect_args["end_year"] = end_year
+    redirect_args["rounding_digits"] = rounding_digits
 
+    form_data = _normalize_pgu_form_data(form_data, start_year, end_year)
     pgu_form = PGUMachineFilterForm(form_data, prefix='pgu_')
-    _fill_pgu_machines_form_choices(pgu_form, machine_id)
+    _fill_pgu_machines_form_choices(pgu_form, machine_id, parent_machine=parent_machine)
+
+    # Для ТЭС/ГЭС/ГАЭС machine_name формируется из таблицы pgu_machine_names.
+    # Если в форме machine_name пусто, подставляем из первого непустого названия по году,
+    # иначе "Без названия" — чтобы валидатор DataRequired не падал (данные обработаются ниже).
+    try:
+        st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
+    except Exception:
+        st_name = ""
+    # ТЭЦ, КЭС — подтипы ТЭС; для них тоже название из таблицы по годам
+    if st_name in ("тэс", "гэс", "гаэс", "тэц", "кэс") and not (pgu_form.machine_name.data or "").strip():
+        for name_entry in pgu_form.pgu_machine_names.entries:
+            raw = (name_entry.year_name.data or "").strip()
+            if raw:
+                pgu_form.machine_name.data = raw
+                break
+        else:
+            pgu_form.machine_name.data = "Без названия"
 
     if not pgu_form.validate():
+        err_msgs = []
+        _field_labels = {"machine_name": "Название агрегата", "p_ust": "Мощность"}
+        for field_name, errors in pgu_form.errors.items():
+            if errors:
+                label = _field_labels.get(field_name.split("-")[-1], field_name)
+                err_msgs.append(f"{label}: {'; '.join(str(e) for e in errors)}")
         flash(
-            "Ошибка в заполнении формы.",
+            "Ошибка в заполнении формы." + (" " + err_msgs[0] if err_msgs else ""),
             "danger",
         )
+        _, version_year_end = get_current_version_year_range_from_name()
+        year_features = get_year_feature_dict()
+        # Заполняем pgu_machine_names и powers при ошибке валидации, если пусто
+        if not pgu_form.pgu_machine_names.entries:
+            for year_num in range(start_year, end_year + 1):
+                name_entry = pgu_form.pgu_machine_names.append_entry()
+                name_entry.year.data = year_num
+                name_entry.year_name.data = ""
+        if not pgu_form.powers.entries:
+            for year_num in range(start_year, end_year + 1):
+                power_entry = pgu_form.powers.append_entry()
+                power_entry.year.data = year_num
+                power_entry.p_ust.data = Decimal("0")
+        all_documents = choices_cache.get_choices(Document, Document.name)
+        all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
+        pgu_machine_for_template = PGUMachine.query.get(pgu_machine_id) if pgu_machine_id else None
         return render_template(
             "generation/stations/pgu_machine_details.html",
             station=station,
@@ -1177,6 +1337,12 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             start_year=start_year,
             end_year=end_year,
             pgu_machine_id=pgu_machine_id,
+            pgu_machine=pgu_machine_for_template,
+            pgu_machine_logs=[],
+            year_features=year_features,
+            version_year_end=version_year_end,
+            rounding_digits=rounding_digits,
+            all_documents=all_documents,
         )
 
     try:
@@ -1185,7 +1351,13 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         
         with db.session.no_autoflush:
             if is_new:
-                pgu_machine = PGUMachine(id_parent_machine=machine_id)
+                machine_name = (pgu_form.machine_name.data or "").strip() or "Без названия"
+                machine_number = (pgu_form.machine_number.data or "").strip() or None
+                pgu_machine = PGUMachine(
+                    id_parent_machine=machine_id,
+                    machine_name=machine_name,
+                    machine_number=machine_number,
+                )
                 set_db_version_on_create(pgu_machine)
                 db.session.add(pgu_machine)
                 db.session.flush()  # Получаем ID для новой записи
@@ -1217,12 +1389,22 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             "machine_name": str,
             "id_pgu_tes_machine_type": lambda x: pgu_tes_machine_types.get(x, "не указано") if x else "не указано",
             "note": lambda x: x or "не указано",
+            "change_document": lambda x: x or "не указано",
         }
 
             # Список полей, которые являются внешними ключами и должны конвертировать 0 в None
             pgu_fk_fields = {'id_condition_type', 'id_pgu_tes_machine_type'}
+
+            # Для ТЭС/ГЭС/ГАЭС machine_name формируется из pgu_machine_names, не из формы
+            try:
+                st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
+            except Exception:
+                st_name = ""
+            is_tes_or_ges = st_name in ("тэс", "гэс", "гаэс")
             
             for fld, to_str in field_map.items():
+                if is_tes_or_ges and fld == "machine_name":
+                    continue
                 old_v = getattr(pgu_machine, fld) if not is_new else None
                 new_v = getattr(pgu_form, fld).data
                 
@@ -1248,6 +1430,8 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             # Логирование изменений дат
             date_fields = [
                 "date_exploitation",
+                "date_commission_year",
+                "date_exploitation_expected",
                 "date_commission_fact",
                 "date_joining_expected",
                 "date_joining_fact",
@@ -1259,11 +1443,16 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 "date_update_fact",
             ]
 
+            int_year_fields = {"date_exploitation", "date_commission_year", "date_exploitation_expected", "date_decompressing_expected", "date_modernization_expected"}
+
             for fld in date_fields:
                 raw_form_value = getattr(pgu_form, fld).data
 
-                if fld in {"date_exploitation", "date_decompressing_expected", "date_modernization_expected"}:
-                    new_val = int(raw_form_value) if raw_form_value else None
+                if fld in int_year_fields:
+                    try:
+                        new_val = int(raw_form_value) if raw_form_value else None
+                    except (ValueError, TypeError):
+                        new_val = None
                 elif fld in {"date_relabing_fact", "date_update_fact"}:
                     # Для полей с несколькими датами нормализуем список дат в единый формат
                     new_val = normalize_date_list(raw_form_value) if raw_form_value else None
@@ -1299,10 +1488,19 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                     existing_powers[power.year_number] = power.p_ust
 
             # Удаляем старые мощности и добавляем новые
+            # FK: (year_number, database_version_id) должен существовать в gs_years
+            version_id = get_current_db_version_id()
+            valid_years = set(
+                y[0] for y in
+                db.session.query(Year.number).filter_by(database_version_id=version_id).all()
+            ) if version_id else set()
+
             PGUMachinePower.query.filter_by(id_pgu_machine=pgu_machine.id).delete()
 
             for power_entry in pgu_form.powers.entries:
                 year = power_entry.year.data
+                if valid_years and year not in valid_years:
+                    continue  # Год отсутствует в gs_years — пропускаем (FK)
                 p_ust = to_decimal(power_entry.p_ust.data)
                 
                 # Логируем изменения мощности
@@ -1318,50 +1516,98 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 set_db_version_on_create(pgu_power)
                 db.session.add(pgu_power)
 
-            powers_seq = [(pe.year.data, to_decimal(pe.p_ust.data)) for pe in pgu_form.powers.entries]
+            # Сохранение названий по годам (pgu_machine_names)
+            year_features = get_year_feature_dict()
+            version_year_start, version_year_end = get_current_version_year_range_from_name()
+            names_map = {mn.year_number: mn for mn in pgu_machine.pgu_machine_names if mn.year_number is not None}
+            last_effective_name = None
 
-            # ============================================================
-            # ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей:
-            # - date_exploitation (год ввода)
-            # - date_decompressing_expected (год вывода)
-            # - date_modernization_expected (год модернизации)
-            #
-            # Приоритет: вывод -> ввод -> модернизация
-            # ============================================================
-            decomp_year = _calculate_decompressing_expected_year_from_powers(powers_seq)
-            expl_year = _calculate_exploitation_year_from_powers(powers_seq)
-            modern_year = _calculate_modernization_expected_year_from_powers(powers_seq)
+            for i, name_entry in enumerate(pgu_form.pgu_machine_names.entries):
+                year_num = name_entry.year.data
+                if valid_years and year_num not in valid_years:
+                    continue  # Год отсутствует в gs_years — пропускаем (FK)
+                raw_name = (name_entry.year_name.data or "").strip() or None
+                # Не сохранять как название значение, похожее на год (4 цифры) — возможно, year попал в year_name
+                if raw_name and len(raw_name) == 4 and raw_name.isdigit():
+                    raw_name = None
 
-            selected_kind = None
-            selected_year = None
-            if decomp_year is not None:
-                selected_kind, selected_year = "decomp", decomp_year
-            elif expl_year is not None:
-                selected_kind, selected_year = "expl", expl_year
-            elif modern_year is not None:
-                selected_kind, selected_year = "modern", modern_year
+                if is_new and is_tes_or_ges and version_year_end is not None and year_num == version_year_end and not raw_name:
+                    raw_name = (pgu_form.machine_name.data or "").strip() or None
 
-            def _set_int_field(attr: str, value: int | None, label: str):
-                old_val = getattr(pgu_machine, attr)
-                if old_val != value:
-                    changes.append(f"{label}: {old_val} → {value if value is not None else '—'}")
-                    setattr(pgu_machine, attr, value)
+                if is_tes_or_ges and version_year_end is not None:
+                    if year_num > version_year_end:
+                        effective_name = None
+                    else:
+                        if raw_name:
+                            last_effective_name = raw_name
+                        effective_name = last_effective_name if last_effective_name else raw_name
+                else:
+                    effective_name = raw_name
 
-            if selected_kind == "decomp":
-                _set_int_field("date_decompressing_expected", selected_year, "date_decompressing_expected")
-                _set_int_field("date_exploitation", None, "date_exploitation")
-                _set_int_field("date_modernization_expected", None, "date_modernization_expected")
-            elif selected_kind == "expl":
-                _set_int_field("date_exploitation", selected_year, "date_exploitation")
-                _set_int_field("date_decompressing_expected", None, "date_decompressing_expected")
-                _set_int_field("date_modernization_expected", None, "date_modernization_expected")
-            elif selected_kind == "modern":
-                _set_int_field("date_modernization_expected", selected_year, "date_modernization_expected")
-                _set_int_field("date_decompressing_expected", None, "date_decompressing_expected")
-                _set_int_field("date_exploitation", None, "date_exploitation")
-            else:
-                # Ничего не вычислили — не меняем поля автоматически
-                pass
+                if year_num not in names_map:
+                    pmn_obj = PGUMachineName(id_pgu_machine=pgu_machine.id, year_number=year_num)
+                    set_db_version_on_create(pmn_obj)
+                    db.session.add(pmn_obj)
+                    db.session.flush()
+                    names_map[year_num] = pmn_obj
+
+                pmn_obj = names_map[year_num]
+                old_name = pmn_obj.name if pmn_obj.name else None
+                if old_name != effective_name:
+                    pmn_obj.name = effective_name
+                    flag_modified(pmn_obj, "name")
+                    if is_new and effective_name:
+                        changes.append(f"Название по году {year_num}: {effective_name}")
+                    elif not is_new:
+                        changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
+
+            # Для ТЭС/ГЭС/ГАЭС пересчитываем machine_name из pgu_machine_names
+            version_year_for_base = version_year_start if version_year_start is not None else version_year_end
+            if is_tes_or_ges and (version_year_for_base is not None or version_year_end is not None):
+                base_name = None
+                if version_year_for_base is not None and names_map:
+                    pmn_current = names_map.get(version_year_for_base)
+                    if pmn_current and pmn_current.name:
+                        cand = pmn_current.name.strip()
+                        if cand and not (len(cand) == 4 and cand.isdigit()):
+                            base_name = cand
+                if not base_name and version_year_end is not None and names_map:
+                    pmn_current = names_map.get(version_year_end)
+                    if pmn_current and pmn_current.name:
+                        cand = pmn_current.name.strip()
+                        if cand and not (len(cand) == 4 and cand.isdigit()):
+                            base_name = cand
+                if not base_name and pgu_machine.machine_name:
+                    cand = pgu_machine.machine_name.strip()
+                    if cand and not (len(cand) == 4 and cand.isdigit()):
+                        base_name = cand
+                if not base_name and names_map:
+                    for y in sorted(names_map.keys(), reverse=True):
+                        pmn = names_map.get(y)
+                        if pmn and pmn.name:
+                            cand = pmn.name.strip()
+                            if cand and not (len(cand) == 4 and cand.isdigit()):
+                                base_name = cand
+                                break
+                display_name = base_name
+                if base_name and year_features:
+                    for y in sorted(names_map.keys()):
+                        label = year_features.get(y)
+                        if not label or "план" not in str(label).strip().lower():
+                            continue
+                        pmn_plan = names_map.get(y)
+                        if not pmn_plan or not pmn_plan.name:
+                            continue
+                        plan_name = pmn_plan.name.strip()
+                        if plan_name and plan_name.lower() != base_name.lower():
+                            display_name = f"{base_name} ({plan_name})"
+                            break
+                if display_name and display_name != (pgu_machine.machine_name or None):
+                    changes.append(f"machine_name: {(pgu_machine.machine_name or '—')} → {display_name}")
+                    pgu_machine.machine_name = display_name
+
+            # Поля date_exploitation, date_exploitation_expected, date_decompressing_expected,
+            # date_modernization_expected сохраняются только из формы (в т.ч. то, что определил фронт).
 
         _commit_with_retry()
         
@@ -1381,7 +1627,9 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             log_to_db(
                 user, 
                 f"Добавлен ПГУ агрегат '{pgu_form.machine_name.data}' на станции {station.name}", 
-                details="; ".join(changes) if changes else f"ID: {pgu_machine.id}"
+                details="; ".join(changes) if changes else f"ID: {pgu_machine.id}",
+                entity_type="pgu_machine",
+                entity_id=pgu_machine.id,
             )
             flash(f"Агрегат ПГУ успешно добавлен!", "success")
         else:
@@ -1389,7 +1637,9 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 log_to_db(
                     user, 
                     f"Изменения на станции {station.name} в агрегате ПГУ '{pgu_machine.machine_name}' (UID: {pgu_machine.id}) ", 
-                    details="; ".join(changes)
+                    details="; ".join(changes),
+                    entity_type="pgu_machine",
+                    entity_id=pgu_machine.id,
                 )
                 flash(f"Агрегат ПГУ успешно обновлен!", "success")
             else:
@@ -1406,6 +1656,10 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         traceback.print_exc()
         flash(f"Ошибка при сохранении: {e}", "danger")
         log_to_db(user, f"Ошибка при сохранении ПГУ агрегата на станции {station.name}", details=str(e))
+        _, version_year_end = get_current_version_year_range_from_name()
+        year_features = get_year_feature_dict()
+        all_documents = choices_cache.get_choices(Document, Document.name)
+        all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
         return render_template(
             "generation/stations/pgu_machine_details.html",
             station=station,
@@ -1414,6 +1668,12 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             start_year=start_year,
             end_year=end_year,
             pgu_machine_id=pgu_machine_id,
+            pgu_machine=None,
+            pgu_machine_logs=[],
+            year_features=year_features,
+            version_year_end=version_year_end,
+            rounding_digits=rounding_digits,
+            all_documents=all_documents,
         )
     
 
@@ -1472,9 +1732,13 @@ def _fill_advanced_form_choices(form):
             entry.fuel_type.data = choices_cache.EMPTY_VALUE_ID
 
 
-def _fill_pgu_machines_form_choices(form, machine_id):
-    """Заполняет choices для формы ПГУ с использованием унифицированного кэширования"""
-    form.id_parent_machine.choices = choices_cache.get_choices(Machine, Machine.machine_name, name_field='machine_name')
+def _fill_pgu_machines_form_choices(form, machine_id, parent_machine=None):
+    """Заполняет choices для формы ПГУ с использованием унифицированного кэширования.
+    Для pgu_machine_details parent_machine передаётся — используем только его, без загрузки всех агрегатов."""
+    if parent_machine is not None:
+        form.id_parent_machine.choices = [(parent_machine.id, parent_machine.machine_name or "—")]
+    else:
+        form.id_parent_machine.choices = choices_cache.get_choices(Machine, Machine.machine_name, name_field='machine_name')
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     form.id_pgu_tes_machine_type.choices = choices_cache.get_choices(PGUTesMachineType, PGUTesMachineType.id)
     

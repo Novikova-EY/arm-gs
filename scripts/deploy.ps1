@@ -103,13 +103,13 @@ if (-not $NoInstall) {
     Write-Host "[4/4] Установка и миграции на сервере..." -ForegroundColor Cyan
     $RemoteDeb = "${RemotePath}/${DebName}"
     # Миграции выполняем от пользователя generation-app — он может читать /etc/generation-app/app.env
-    # Целевая ревизия c9d0e1f2a3b4 (пересоздание gs_fue equipment group tables)
-    # Fallback: если в БД ревизия a0375a0bed3a (создана на сервере), её нет в пакете — stamp и upgrade
+    # merge heads — объединяет несколько веток миграций (иначе "Multiple head revisions"); при одном head — безопасно игнорируем
+    # upgrade до head. Fallback: если в БД старая/несуществующая ревизия — stamp к базовой (5f943277b415) и upgrade
     $Commands = @"
 set -e
 cd /tmp
 sudo dpkg -i $RemoteDeb || sudo apt -f install -y
-sudo -u generation-app bash -c 'set -a; [ -f /etc/generation-app/app.env ] && . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source /opt/generation-app/venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && (flask db upgrade c9d0e1f2a3b4 || (flask db stamp c9d0e1f2a3b4 && flask db upgrade c9d0e1f2a3b4))'
+sudo -u generation-app bash -c 'set -a; [ -f /etc/generation-app/app.env ] && . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source /opt/generation-app/venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && (flask db merge heads -m "merge heads" 2>/dev/null || true) && (flask db upgrade || (flask db stamp 5f943277b415 && flask db upgrade))'
 sudo systemctl restart generation-app
 sudo nginx -t 2>/dev/null && sudo systemctl reload nginx 2>/dev/null || true
 echo 'Deploy complete. Checking service...'

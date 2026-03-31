@@ -33,7 +33,7 @@
         <td class="rowspan-td" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
         <td class="rowspan-td col-machine-name">
             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                {{ machine.machine_name }}
+                {{ machine.display_name or machine.machine_name }}
             </a>
         </td>
         <td class="rowspan-td col-owner" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -65,8 +65,9 @@
         </td>
 
         {% for year in range(start_year, end_year + 1) %}
-        <td class="text-center power-column">
-            {% set mp = machine_powers_by_year.get(year) %}
+        {% set mp = machine_powers_by_year.get(year) %}
+        {% set p_ust_full = mp.p_ust | format_decimal(0) if mp and mp.p_ust and mp.p_ust != 0 else '' %}
+        <td class="text-center power-column" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
             {% if mp and mp.p_ust and mp.p_ust != 0 %}
                 {{ format_decimal(mp.p_ust) }}
             {% else %}
@@ -104,7 +105,7 @@
         <td class="rowspan-td" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">{{ machine.machine_number if machine.machine_number else "—" }}</td>
         <td class="col-machine-name">
             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
-                {{ machine.machine_name }}
+                {{ machine.display_name or machine.machine_name }}
             </a>
         </td>
         <td class="rowspan-td col-owner" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -136,8 +137,9 @@
         </td>
 
         {% for year in range(start_year, end_year + 1) %}
-        <td class="text-center power-column">
-            {% set mp = machine_powers_by_year.get(year) %}
+        {% set mp = machine_powers_by_year.get(year) %}
+        {% set p_ust_full = mp.p_ust | format_decimal(0) if mp and mp.p_ust and mp.p_ust != 0 else '' %}
+        <td class="text-center power-column" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
             {% if mp and mp.p_ust and mp.p_ust != 0 %}
                 {{ format_decimal(mp.p_ust) }}
             {% else %}
@@ -191,8 +193,9 @@
 
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
-        <td class="text-center power-column">
-            {% set pp = pgu.powers_by_year.get(year) %}
+        {% set pp = pgu.powers_by_year.get(year) %}
+        {% set p_ust_full = pp.p_ust | format_decimal(0) if pp and pp.p_ust and pp.p_ust != 0 else '' %}
+        <td class="text-center power-column" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
             {% if pp and pp.p_ust and pp.p_ust != 0 %}
                 {{ format_decimal(pp.p_ust) }}
             {% else %}
@@ -216,8 +219,9 @@
         Всего по агрегатам группы оборудования {{ equipment_group.name or equipment_group.name_ext or '' }}:
     </td>
     {% for year in range(start_year, end_year + 1) %}
-    <td class="power-column" style="font-weight: bold;">
-        {% set p_ust_value = station.powers_by_year.get(year, {}).get('p_ust') %}
+    {% set p_ust_value = station.powers_by_year.get(year, {}).get('p_ust') %}
+    {% set p_ust_full = p_ust_value | format_decimal(0) if p_ust_value is not none and p_ust_value != 0 else '' %}
+    <td class="power-column" style="font-weight: bold;" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
         {% if p_ust_value is none or p_ust_value == 0 %}
             &mdash;
         {% else %}
@@ -238,8 +242,9 @@
         Всего по группе оборудования {{ equipment_group.name or equipment_group.name_ext or '' }}:
     </td>
     {% for year in range(start_year, end_year + 1) %}
-    <td class="power-column" style="font-weight: bold;">
-        {% set p_ust_total = total_powers_by_year.get(year) %}
+    {% set p_ust_total = total_powers_by_year.get(year) %}
+    {% set p_ust_full = p_ust_total | format_decimal(0) if p_ust_total is not none and p_ust_total != 0 else '' %}
+    <td class="power-column" style="font-weight: bold;" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
         {% if p_ust_total is none or p_ust_total == 0 %}
             &mdash;
         {% else %}

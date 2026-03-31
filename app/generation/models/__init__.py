@@ -10,5 +10,6 @@ from app.generation.models.machine.machine_name_model import MachineName
 
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
+from app.generation.models.pgu_machine.pgu_machine_name_model import PGUMachineName
 
 from app.generation.models.document.document_model import Document

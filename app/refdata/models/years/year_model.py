@@ -54,6 +54,7 @@ class Year(db.Model, AuditMixin, VersionedModelMixin):
     machine_fuels = db.relationship('MachineFuel', back_populates='year')
     machine_tes_types = db.relationship('MachineTesType', back_populates='year')
     machine_names = db.relationship('MachineName', back_populates='year')
+    pgu_machine_names = db.relationship('PGUMachineName', back_populates='year')
 
     def __repr__(self) -> str:
         return f"<Year id={self.id} number={self.number}>"

@@ -2,8 +2,11 @@
 """
 EquipmentGroup model (итоговая группа оборудования).
 """
+import uuid
 from sqlalchemy import String, cast
+from sqlalchemy import event
 from sqlalchemy.orm import reconstructor
+from sqlalchemy.schema import Index
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_REFDATA, SCHEMA_FUE_EM
@@ -32,6 +35,7 @@ from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
 from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
     UnionEnergySystemExternalMapping,
 )
+from app.common.services.database_version_filter import filter_by_explicit_db_version
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
@@ -39,14 +43,21 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 
 class EquipmentGroup(db.Model):
     __tablename__ = "gs_fue_equipment_groups"
-    __table_args__ = ({"schema": SCHEMA_FUEL},)
+    __table_args__ = (
+        Index("ix_equipment_group_external_code", "external_code"),
+        {"schema": SCHEMA_FUEL},
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    external_code = db.Column(
+        db.String(36),
+        nullable=False,
+    )
 
     # Пользовательский идентификатор/название группы
     name = db.Column(db.String(255), nullable=True)
 
-    # Название (Топливо)
+    # Название (БД Топливо)
     name_ext = db.Column(db.String(255), nullable=True)
 
     # Признак группы оборудования
@@ -233,14 +244,15 @@ class EquipmentGroup(db.Model):
 
     def _populate_regional_ids(self) -> None:
         """
-        Заполняет regional_district_id и regional_energy_system_id из Station
-        через EquipmentGroupSet -> EquipmentGroupSetStation.
+        Заполняет regional_district_id и regional_energy_system_id:
+        1) из Station через EquipmentGroupSet -> EquipmentGroupSetStation;
+        2) для standalone-групп (котельные) — по obl через TerritoriesEnergyExternalMapping.
         """
         self.regional_district_id = None
         self.regional_energy_system_id = None
         if self.id is None:
             return
-        # EquipmentGroup -> EquipmentGroupSet (equipment_group_id)
+        # 1. EquipmentGroup -> EquipmentGroupSet (equipment_group_id)
         # -> EquipmentGroupSetStation (equipment_group_set_station_id) -> Station (station_id)
         for link in self.equipment_group_links_v2:
             eg_set_station = link.equipment_group_set_station
@@ -251,5 +263,59 @@ class EquipmentGroup(db.Model):
                     self.regional_energy_system_id = station.id_regional_energy_system
                     return
 
+        # 2. Fallback для standalone-групп (котельные): по obl через TerritoriesEnergyExternalMapping.
+        # RegionalDistrict и RegionalEnergySystem привязываются с учётом EquipmentGroup.database_version_id.
+        if self.obl is not None:
+            obl_val = int(self.obl) if not isinstance(self.obl, int) else self.obl
+            mapping = db.session.query(TerritoriesEnergyExternalMapping).filter(
+                (TerritoriesEnergyExternalMapping.obl == obl_val)
+                | (TerritoriesEnergyExternalMapping.external_id == str(obl_val))
+            ).first()
+            if mapping:
+                version_id = self.database_version_id
+                if mapping.regional_district_ref_uuid:
+                    rd_query = RegionalDistrict.query.filter(
+                        RegionalDistrict.ref_uuid == mapping.regional_district_ref_uuid
+                    )
+                    rd_query = filter_by_explicit_db_version(rd_query, RegionalDistrict, version_id)
+                    rd = rd_query.first()
+                    if rd:
+                        self.regional_district_id = rd.id
+                if mapping.regional_energy_system_ref_uuid:
+                    res_query = RegionalEnergySystem.query.filter(
+                        RegionalEnergySystem.ref_uuid == mapping.regional_energy_system_ref_uuid
+                    )
+                    res_query = filter_by_explicit_db_version(res_query, RegionalEnergySystem, version_id)
+                    res = res_query.first()
+                    if res:
+                        self.regional_energy_system_id = res.id
+
     def __repr__(self) -> str:
         return f"<EquipmentGroup id={self.id} name={self.name!r}>"
+
+
+def _equipment_group_key(name, name_ext, numb, main) -> str:
+    """
+    Формирует стабильный ключ для генерации external_code.
+    Используются только поля из исходных данных (numb, name, name_ext, main),
+    без regional_district_id и regional_energy_system_id — они зависят от версии БД.
+    Так группы с одинаковым numb для разных версий получают один external_code.
+    """
+    return (
+        f"equipment_group|numb|{numb or ''}|name|{name or ''}"
+        f"|name_ext|{name_ext or ''}|main|{main or ''}"
+    )
+
+
+@event.listens_for(EquipmentGroup, "before_insert")
+def generate_external_code_before_insert(mapper, connection, target):
+    """Генерирует стабильный external_code перед вставкой группы оборудования."""
+    if target.external_code:
+        return
+    key = _equipment_group_key(
+        target.name,
+        target.name_ext,
+        target.numb,
+        target.main,
+    )
+    target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, key))

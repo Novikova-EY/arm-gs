@@ -554,7 +554,8 @@ def station_details(station_id):
     
     logs_count = len(station_logs_formatted)
     
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    # Кнопка «Добавить агрегат» и редактирование доступны admin, generation-admin, generation-editor
+    edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor']
     can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
 
     # Группы оборудования станции (по версии)
@@ -562,7 +563,7 @@ def station_details(station_id):
 
     t1 = time.perf_counter()
     try:
-        from app.fuel.services.stations_equipment_groups_v2_services import (
+        from app.fuel.services.stations_equipment_groups_services import (
             build_station_equipment_groups_v2,
         )
         v2_groups_map = build_station_equipment_groups_v2([station])
@@ -713,7 +714,8 @@ def station_logs(station_id):
 @handle_stale_data
 def rename_station_equipment_group_v2(station_id, equipment_group_id):
     """Переименование группы оборудования на странице станции."""
-    edit_roles = ["admin", "generation-admin", "generation-editor"]
+    # Переименование группы — доступно admin, generation-admin, generation-editor
+    edit_roles = ["admin", "generation-admin", "generation-editor", "generation_admin", "generation_editor"]
     can_edit = current_user.is_authenticated and any(
         role in current_user.role_names for role in edit_roles
     )
@@ -882,8 +884,8 @@ def station_details_tbody(station_id):
     end_year = request.args.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.args.get("rounding_digits", 0, type=int)
 
-    # Проверяем права пользователя
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
+    # Проверяем права пользователя (включая generation-admin, generation-editor)
+    edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor']
     can_edit = any(role in current_user.role_names for role in edit_roles) if current_user.is_authenticated else False
 
     current_version_id = get_current_db_version_id()
@@ -1080,7 +1082,7 @@ def _render_machines_tbody(
     # Временно «подкладываем» атрибут для совместимости с шаблоном
     station.powers_by_year = powers_by_year
 
-    # Вычисляем отображаемое название агрегата (как на карточке агрегата)
+    # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
     _apply_machine_display_names(station.machines)
     # Прикрепляем срезы к машинам
     for m in station.machines:

@@ -9,13 +9,18 @@ import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import pandas as pd
-from sqlalchemy import func
+from sqlalchemy import cast
+from sqlalchemy.types import String
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.logs.services.logging_service import log_to_db
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.equipment_group_fuel_params_services import (
+    normalize_fuel_param_external_mapping_value,
+    sanitize_equipment_group_fuel_param_foreign_keys,
+)
 from app.refdata.models.years.year_model import Year
 
 
@@ -51,8 +56,12 @@ EQUIPMENT_GROUP_FUEL_PARAM_FIELDS = [
 ]
 
 INTEGER_FIELDS = frozenset([
-    "obor", "ved", "ved_cyrillic", "obl", "dep", "oes", "ees", "er", "gk", "be",
+    "obor", "ved", "ved_cyrillic", "ees",
     "numb1120", "numb1",
+])
+
+STRING_FIELDS = frozenset([
+    "obl", "dep", "oes", "er", "gk", "be",
 ])
 
 NUMERIC_FIELDS = frozenset([
@@ -198,7 +207,7 @@ def _resolve_equipment_groups_from_row(row):
 
     groups = (
         EquipmentGroup.query
-        .filter(func.trim(EquipmentGroup.numb) == numb1120_str)
+        .filter(cast(EquipmentGroup.numb, String) == numb1120_str)
         .all()
     )
     return [(g.id, g.database_version_id) for g in groups]
@@ -255,6 +264,8 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
                 continue
             if field in INTEGER_FIELDS:
                 val = _safe_int(raw)
+            elif field in STRING_FIELDS:
+                val = normalize_fuel_param_external_mapping_value(field, _safe_str(raw))
             elif field in NUMERIC_FIELDS:
                 val = _safe_decimal(raw)
             else:
@@ -297,6 +308,8 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
                 created += 1
 
             changed = False
+            if sanitize_equipment_group_fuel_param_foreign_keys(param):
+                changed = True
             for field, val in row_values.items():
                 if hasattr(param, field):
                     cur = getattr(param, field)
@@ -316,9 +329,15 @@ def import_equipment_group_fuel_params_from_excel(file, user: str, year: int) ->
 
     elapsed = time.perf_counter() - t0
     message = (
-        f"Загрузка данных в EquipmentGroupFuelParam завершена. "
-        f"Создано: {created}, обновлено: {updated}, пропущено (нет numb): {skipped_no_match}, "
-        f"пропущено (нет года в версии): {skipped_no_year}."
+        "Загрузка данных в EquipmentGroupFuelParam завершена. "
+        "Создано: {created}, обновлено: {updated}, "
+        "пропущено (нет numb): {skipped_no_match}, "
+        "пропущено (нет года в версии): {skipped_no_year}."
+    ).format(
+        created=created,
+        updated=updated,
+        skipped_no_match=skipped_no_match,
+        skipped_no_year=skipped_no_year,
     )
     logger.info(
         "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] done created=%s updated=%s skipped=%s skipped_no_year=%s elapsed=%.2fs",

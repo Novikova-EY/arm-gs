@@ -119,6 +119,60 @@ def _reassign_sets_to_primary(group_ids: list[int], primary_id: int) -> None:
             set_v2.equipment_group_id = primary_id
 
 
+def _merge_missing_model_fields(target_row, source_row) -> None:
+    """Копирует в target пустые поля из source для однотипных годовых записей."""
+    skip_fields = {"id", "equipment_group_id", "created_at", "updated_at"}
+    for column in source_row.__table__.columns:
+        field = column.name
+        if field in skip_fields:
+            continue
+        target_val = getattr(target_row, field, None)
+        source_val = getattr(source_row, field, None)
+        if target_val is None and source_val is not None:
+            setattr(target_row, field, source_val)
+
+
+def _reassign_group_detail_rows_to_primary(group_ids: list[int], primary_id: int) -> None:
+    """Переназначает годовые строки параметров группы на primary, избегая дублей по году."""
+    if not group_ids:
+        return
+
+    from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
+        EquipmentGroupExtraFuelParam,
+    )
+    from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+    from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
+        EquipmentGroupSpecificFuelConsumption,
+    )
+    from app.fuel.models.fue_equipment_group_specific_fuel_cost_model import (
+        EquipmentGroupSpecificFuelCost,
+    )
+    from app.fuel.models.fue_equipment_group_specific_fuel_price_model import (
+        EquipmentGroupSpecificFuelPrice,
+    )
+
+    detail_models = [
+        EquipmentGroupFuelParam,
+        EquipmentGroupExtraFuelParam,
+        EquipmentGroupSpecificFuelConsumption,
+        EquipmentGroupSpecificFuelCost,
+        EquipmentGroupSpecificFuelPrice,
+    ]
+
+    for model in detail_models:
+        rows = model.query.filter(model.equipment_group_id.in_(group_ids)).all()
+        for row in rows:
+            duplicate = model.query.filter_by(
+                equipment_group_id=primary_id,
+                year_number=row.year_number,
+            ).first()
+            if duplicate:
+                _merge_missing_model_fields(duplicate, row)
+                db.session.delete(row)
+            else:
+                row.equipment_group_id = primary_id
+
+
 def _remove_orphan_groups(groups: Iterable[EquipmentGroup], primary_id: int) -> int:
     removed = 0
     for group in groups:
@@ -339,6 +393,7 @@ def rename_or_merge_equipment_group_for_station(
 
     # Есть дубликат — объединяем: current_group → primary_group
     merged_fields = _merge_group_fields_return_list(primary_group, current_group)
+    _reassign_group_detail_rows_to_primary([equipment_group_id], primary_group.id)
     _reassign_sets_to_primary([equipment_group_id], primary_group.id)
     _remove_orphan_groups([current_group], primary_group.id)
 
@@ -597,6 +652,67 @@ def _parse_int_form_val(val) -> Optional[int]:
         return None
 
 
+# Человекочитаемые названия полей для логов
+_EQUIPMENT_GROUP_FIELD_LABELS = {
+    "name": "Наименование",
+    "name_ext": "Название (БД Топливо)",
+    "niv": "Признак группы оборудования",
+    "comp": "Признак станции, разбитой на группы",
+    "main": "Код станции",
+    "d": "Признак действующей станции",
+    "r": "Признак расширяемой станции",
+    "forem": "Признак ФОРЭМ",
+    "vedomstvo": "Ведомство",
+    "obl": "Код субъекта РФ",
+    "dep": "Код департамента",
+    "oes": "Код ОЭС",
+    "er": "Код экономического района",
+    "fo": "Код федерального округа",
+    "numb": "Номер",
+    "tm": "tm",
+    "n1": "n1",
+    "n2": "n2",
+    "p1": "p1",
+    "p2": "p2",
+    "ordnumb": "Порядковый номер",
+    "addr": "Адрес",
+    "note": "Примечание",
+    "codegor": "Код города",
+    "be": "be",
+    "gk": "Генерирующая компания",
+    "gkf": "Филиал ГК",
+    "k": "Коэффициент k",
+    "regional_district_id": "Субъект РФ",
+    "regional_energy_system_id": "Региональная энергосистема",
+}
+
+
+def _format_val_for_log(val) -> str:
+    """Форматирует значение для отображения в логе."""
+    if val is None:
+        return "—"
+    if isinstance(val, str):
+        return val.strip() or "—"
+    return str(val)
+
+
+def _format_fk_for_log(field: str, pk_id) -> str:
+    """Форматирует FK (regional_district_id, regional_energy_system_id) для лога: название или ID."""
+    if pk_id is None:
+        return "—"
+    if field == "regional_district_id":
+        from app.refdata.models.territories.regional_district_model import RegionalDistrict
+        obj = RegionalDistrict.query.get(pk_id)
+        if obj and hasattr(obj, "name"):
+            return (obj.name or "").strip() or str(pk_id)
+    elif field == "regional_energy_system_id":
+        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+        obj = RegionalEnergySystem.query.get(pk_id)
+        if obj and hasattr(obj, "name"):
+            return (obj.name or "").strip() or str(pk_id)
+    return str(pk_id)
+
+
 def update_equipment_group_all_versions(
     *,
     equipment_group_id: int,
@@ -615,11 +731,6 @@ def update_equipment_group_all_versions(
     from app.common.models.database_version_model import DatabaseVersion
     from app.common.services.database_version_filter import filter_by_explicit_db_version
 
-    from app.generation.models.station.station_model import Station
-    from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
-        EquipmentGroupType,
-    )
-
     str_fields = [
         "name", "niv", "comp", "main", "d", "r", "forem", "vedomstvo",
         "obl", "dep", "oes", "er", "fo", "numb", "tm", "n1", "n2", "p1", "p2",
@@ -627,11 +738,23 @@ def update_equipment_group_all_versions(
     ]
     int_fk_fields = ["regional_district_id", "regional_energy_system_id"]
 
+    def _parse_decimal_form_val(val):
+        from decimal import Decimal, InvalidOperation
+        if not val or not str(val).strip():
+            return None
+        try:
+            return Decimal(str(val).strip().replace(",", "."))
+        except (InvalidOperation, ValueError, TypeError):
+            return None
+
     values = {}
     for field in str_fields:
         val = form_data.get(field)
         if val is not None:
             values[field] = (val.strip() if val else None)
+    k_val = form_data.get("k")
+    if k_val is not None:
+        values["k"] = _parse_decimal_form_val(k_val)
     for field in int_fk_fields:
         val = form_data.get(field)
         if val is not None:
@@ -641,174 +764,98 @@ def update_equipment_group_all_versions(
     if not values:
         return {"versions_touched": 0, "updated_count": 0}
 
-    pairs = _get_station_type_pairs_for_equipment_group(equipment_group_id)
-    if not pairs:
-        # Fallback: для групп без связей станция+external_code (напр. котельная)
-        # По EquipmentGroup.regional_district_id -> RegionalDistrict.id берём ref_uuid.
-        # По ref_uuid для каждой версии находим RegionalDistrict.id и вставляем в EquipmentGroup.
-        # Аналогично для RegionalEnergySystem.
-        if "regional_district_id" in form_data or "regional_energy_system_id" in form_data:
-            from app.common.models.database_version_model import DatabaseVersion
-            from app.common.services.database_version_filter import filter_by_explicit_db_version
+    # ref_uuid для разрешения regional_district_id/regional_energy_system_id по версиям
+    # (в main path ID из формы — для текущей версии, в других версиях нужен свой id)
+    new_rd_id = _parse_int_form_val(form_data.get("regional_district_id"))
+    new_res_id = _parse_int_form_val(form_data.get("regional_energy_system_id"))
+    rd_ref_uuid = None
+    res_ref_uuid = None
+    if "regional_district_id" in form_data:
+        if new_rd_id:
             from app.refdata.models.territories.regional_district_model import RegionalDistrict
+            rd = RegionalDistrict.query.get(new_rd_id)
+            if rd:
+                rd_ref_uuid = getattr(rd, "ref_uuid", None)
+    if "regional_energy_system_id" in form_data:
+        if new_res_id:
             from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+            res = RegionalEnergySystem.query.get(new_res_id)
+            if res:
+                res_ref_uuid = getattr(res, "ref_uuid", None)
 
-            group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
-            if not group:
-                return {"versions_touched": 0, "updated_count": 0}
+    def _submitted_rd_id_matches_version(vid: Optional[int]) -> bool:
+        if not new_rd_id:
+            return False
+        from app.refdata.models.territories.regional_district_model import RegionalDistrict
+        rd = RegionalDistrict.query.get(new_rd_id)
+        return bool(rd and getattr(rd, "database_version_id", None) == vid)
 
-            new_rd_id = _parse_int_form_val(form_data.get("regional_district_id"))
-            new_res_id = _parse_int_form_val(form_data.get("regional_energy_system_id"))
+    def _submitted_res_id_matches_version(vid: Optional[int]) -> bool:
+        if not new_res_id:
+            return False
+        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+        res = RegionalEnergySystem.query.get(new_res_id)
+        return bool(res and getattr(res, "database_version_id", None) == vid)
 
-            # ref_uuid из RegionalDistrict.id и RegionalEnergySystem.id (значения из формы)
-            rd_ref_uuid = None
-            res_ref_uuid = None
-            if new_rd_id:
-                rd = RegionalDistrict.query.get(new_rd_id)
-                if rd:
-                    rd_ref_uuid = getattr(rd, "ref_uuid", None)
-            if new_res_id:
-                res = RegionalEnergySystem.query.get(new_res_id)
-                if res:
-                    res_ref_uuid = getattr(res, "ref_uuid", None)
+    def _resolve_rd_id_for_version(vid: Optional[int]) -> Optional[int]:
+        if not rd_ref_uuid:
+            return new_rd_id if _submitted_rd_id_matches_version(vid) else None
+        from app.refdata.models.territories.regional_district_model import RegionalDistrict
+        q = RegionalDistrict.query.filter(RegionalDistrict.ref_uuid == rd_ref_uuid)
+        q = filter_by_explicit_db_version(q, RegionalDistrict, vid)
+        r = q.first()
+        if r:
+            return r.id
+        return new_rd_id if _submitted_rd_id_matches_version(vid) else None
 
-            if not rd_ref_uuid and not res_ref_uuid:
-                if "regional_district_id" in form_data:
-                    group.regional_district_id = new_rd_id
-                if "regional_energy_system_id" in form_data:
-                    group.regional_energy_system_id = new_res_id
-                return {
-                    "versions_touched": 0,
-                    "updated_count": 1,
-                    "fallback_single": True,
-                }
+    def _resolve_res_id_for_version(vid: Optional[int]) -> Optional[int]:
+        if not res_ref_uuid:
+            return new_res_id if _submitted_res_id_matches_version(vid) else None
+        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+        q = RegionalEnergySystem.query.filter(RegionalEnergySystem.ref_uuid == res_ref_uuid)
+        q = filter_by_explicit_db_version(q, RegionalEnergySystem, vid)
+        r = q.first()
+        if r:
+            return r.id
+        return new_res_id if _submitted_res_id_matches_version(vid) else None
 
-            def _resolve_rd_id_for_version(vid: Optional[int]) -> Optional[int]:
-                if not rd_ref_uuid:
-                    return None
-                q = RegionalDistrict.query.filter(RegionalDistrict.ref_uuid == rd_ref_uuid)
-                q = filter_by_explicit_db_version(q, RegionalDistrict, vid)
-                r = q.first()
-                return r.id if r else None
+    def _apply_values_to_group(
+        group: EquipmentGroup, values_to_apply: dict | None = None
+    ) -> tuple[bool, list[tuple[str, str, str]]]:
+        """Применяет значения к группе. Возвращает (changed, [(field_label, old_val, new_val), ...])."""
+        v = values_to_apply if values_to_apply is not None else values
+        changes: list[tuple[str, str, str]] = []
+        for field, val in v.items():
+            if hasattr(group, field):
+                old_val = getattr(group, field, None)
+                if old_val != val:
+                    setattr(group, field, val)
+                    label = _EQUIPMENT_GROUP_FIELD_LABELS.get(field, field)
+                    if field in ("regional_district_id", "regional_energy_system_id"):
+                        old_str = _format_fk_for_log(field, old_val)
+                        new_str = _format_fk_for_log(field, val)
+                    else:
+                        old_str = _format_val_for_log(old_val)
+                        new_str = _format_val_for_log(val)
+                    changes.append((label, old_str, new_str))
+        return bool(changes), changes
 
-            def _resolve_res_id_for_version(vid: Optional[int]) -> Optional[int]:
-                if not res_ref_uuid:
-                    return None
-                q = RegionalEnergySystem.query.filter(RegionalEnergySystem.ref_uuid == res_ref_uuid)
-                q = filter_by_explicit_db_version(q, RegionalEnergySystem, vid)
-                r = q.first()
-                return r.id if r else None
-
-            # ref_uuid текущей группы для поиска эквивалентов
-            rd_ref_uuid_match = None
-            res_ref_uuid_match = None
-            if group.regional_district_id:
-                rd_cur = RegionalDistrict.query.get(group.regional_district_id)
-                if rd_cur:
-                    rd_ref_uuid_match = getattr(rd_cur, "ref_uuid", None)
-            if group.regional_energy_system_id:
-                res_cur = RegionalEnergySystem.query.get(group.regional_energy_system_id)
-                if res_cur:
-                    res_ref_uuid_match = getattr(res_cur, "ref_uuid", None)
-            if not rd_ref_uuid_match and not res_ref_uuid_match:
-                rd_ref_uuid_match = rd_ref_uuid
-                res_ref_uuid_match = res_ref_uuid
-
-            def _resolve_rd_id_match_for_version(vid: Optional[int]) -> Optional[int]:
-                if not rd_ref_uuid_match:
-                    return None
-                q = RegionalDistrict.query.filter(RegionalDistrict.ref_uuid == rd_ref_uuid_match)
-                q = filter_by_explicit_db_version(q, RegionalDistrict, vid)
-                r = q.first()
-                return r.id if r else None
-
-            def _resolve_res_id_match_for_version(vid: Optional[int]) -> Optional[int]:
-                if not res_ref_uuid_match:
-                    return None
-                q = RegionalEnergySystem.query.filter(RegionalEnergySystem.ref_uuid == res_ref_uuid_match)
-                q = filter_by_explicit_db_version(q, RegionalEnergySystem, vid)
-                r = q.first()
-                return r.id if r else None
-
-            version_ids: list[Optional[int]] = [None]
-            for dv in DatabaseVersion.query.filter(DatabaseVersion.id.isnot(None)).all():
-                if dv.id:
-                    version_ids.append(dv.id)
-
-            versions_touched_set: set[Optional[int]] = set()
-            updated_count = 0
-            group_name = (group.name or "").strip()
-
-            for version_id in version_ids:
-                rd_id_match = _resolve_rd_id_match_for_version(version_id)
-                res_id_match = _resolve_res_id_match_for_version(version_id)
-                rd_id_for_version = _resolve_rd_id_for_version(version_id)
-                res_id_for_version = _resolve_res_id_for_version(version_id)
-                if rd_id_match is None and res_id_match is None:
-                    continue
-
-                eg_version_filter = (
-                    EquipmentGroup.database_version_id.is_(None)
-                    if version_id is None
-                    else or_(
-                        EquipmentGroup.database_version_id == version_id,
-                        EquipmentGroup.database_version_id.is_(None),
-                    )
-                )
-                q = db.session.query(EquipmentGroup).filter(eg_version_filter)
-                if rd_id_match is not None:
-                    q = q.filter(EquipmentGroup.regional_district_id == rd_id_match)
-                if res_id_match is not None:
-                    q = q.filter(EquipmentGroup.regional_energy_system_id == res_id_match)
-                if group_name:
-                    name_expr = func.lower(func.trim(func.coalesce(EquipmentGroup.name, "")))
-                    q = q.filter(name_expr == group_name.lower())
-                groups_in_version = q.all()
-
-                if not groups_in_version and (rd_id_for_version is not None or res_id_for_version is not None):
-                    # Группы в этой версии нет — создаём по данным формы
-                    new_eg = EquipmentGroup(name=group_name or group.name)
-                    if version_id is not None:
-                        new_eg.database_version_id = version_id
-                    for field, val in values.items():
-                        if field == "regional_district_id":
-                            setattr(new_eg, field, rd_id_for_version)
-                        elif field == "regional_energy_system_id":
-                            setattr(new_eg, field, res_id_for_version)
-                        elif hasattr(new_eg, field):
-                            setattr(new_eg, field, val)
-                    db.session.add(new_eg)
-                    db.session.flush()
-                    groups_in_version = [new_eg]
-                elif not groups_in_version:
-                    continue
-
-                for g in groups_in_version:
-                    for field, val in values.items():
-                        if field == "regional_district_id" and "regional_district_id" in form_data:
-                            setattr(g, field, rd_id_for_version)
-                        elif field == "regional_energy_system_id" and "regional_energy_system_id" in form_data:
-                            setattr(g, field, res_id_for_version)
-                        elif hasattr(g, field):
-                            setattr(g, field, val)
-                    updated_count += 1
-                versions_touched_set.add(version_id)
-
-            if versions_touched_set:
-                return {
-                    "versions_touched": len(versions_touched_set),
-                    "updated_count": updated_count,
-                }
-            if "regional_district_id" in form_data:
-                group.regional_district_id = new_rd_id
-            if "regional_energy_system_id" in form_data:
-                group.regional_energy_system_id = new_res_id
-            return {
-                "versions_touched": 0,
-                "updated_count": 1,
-                "fallback_single": True,
-            }
+    # Ищем группы во всех версиях ТОЛЬКО по external_code (никак иначе)
+    current_group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
+    if not current_group:
         return {"versions_touched": 0, "updated_count": 0}
+    external_code = (current_group.external_code or "").strip()
+    if not external_code:
+        # Fallback: обновить только текущую группу
+        _, change_details = _apply_values_to_group(current_group, values)
+        if not change_details:
+            return {"versions_touched": 0, "updated_count": 0, "no_changes": True}
+        return {
+            "versions_touched": 0,
+            "updated_count": 1,
+            "fallback_single": True,
+            "change_details": change_details,
+        }
 
     # Все версии
     version_ids: list[Optional[int]] = [None]
@@ -816,138 +863,94 @@ def update_equipment_group_all_versions(
         if dv.id:
             version_ids.append(dv.id)
 
-    def _resolve_type_id_for_version(
-        equipment_group_type_id: int, vid: Optional[int]
-    ) -> Optional[int]:
-        current_type = EquipmentGroupType.query.get(equipment_group_type_id)
-        type_ref_uuid = getattr(current_type, "ref_uuid", None) if current_type else None
-        type_name = (current_type.name or "").strip() if current_type else ""
-        if type_ref_uuid:
-            q = EquipmentGroupType.query.filter(EquipmentGroupType.ref_uuid == type_ref_uuid)
-            q = filter_by_explicit_db_version(q, EquipmentGroupType, vid)
-            t = q.first()
-            return t.id if t else None
-        if type_name:
-            q = EquipmentGroupType.query.filter(EquipmentGroupType.name == type_name)
-            q = filter_by_explicit_db_version(q, EquipmentGroupType, vid)
-            t = q.first()
-            return t.id if t else None
-        return None
-
-    def _apply_values_to_group(group: EquipmentGroup) -> int:
-        n = 0
-        for field, val in values.items():
-            if hasattr(group, field):
-                setattr(group, field, val)
-                n += 1
-        return n
-
     versions_touched_set: set[Optional[int]] = set()
     updated_count = 0
     updated_ids: set[int] = set()
+    matched_any = False
+    change_details: list[tuple[str, str, str]] = []  # (field_label, old_val, new_val)
 
-    for station_external_code, equipment_group_type_id in pairs:
-        for version_id in version_ids:
-            type_id_in_version = _resolve_type_id_for_version(
-                equipment_group_type_id, version_id
-            )
-            if type_id_in_version is None:
-                continue
+    # Для каждой версии: ищем группы ТОЛЬКО по external_code
+    for version_id in version_ids:
+        eg_version_filter = (
+            EquipmentGroup.database_version_id.is_(None)
+            if version_id is None
+            else (EquipmentGroup.database_version_id == version_id)
+        )
+        groups_to_update = (
+            EquipmentGroup.query.filter_by(external_code=external_code)
+            .filter(eg_version_filter)
+            .all()
+        )
+        if not groups_to_update:
+            continue
+        matched_any = True
 
-            station_version_filter = (
-                Station.database_version_id.is_(None)
-                if version_id is None
-                else (Station.database_version_id == version_id)
-            )
-            stations_in_version = (
-                Station.query.filter_by(external_code=station_external_code)
-                .filter(station_version_filter)
-                .all()
-            )
-            station_ids = [s.id for s in stations_in_version]
-            if not station_ids:
-                continue
+        # Объединяем дубликаты, если их больше одной
+        if len(groups_to_update) > 1:
+            primary = _choose_primary_group(groups_to_update)
+            if primary:
+                candidate_ids = [g.id for g in groups_to_update if g.id != primary.id]
+                for g in groups_to_update:
+                    if g.id != primary.id:
+                        _merge_group_fields_return_list(primary, g)
+                _reassign_sets_to_primary(candidate_ids, primary.id)
+                _remove_orphan_groups(groups_to_update, primary.id)
+                groups_to_update = [primary]
 
-            link_filter = (
-                EquipmentGroupSetStation.database_version_id.is_(None)
-                if version_id is None
-                else (EquipmentGroupSetStation.database_version_id == version_id)
+        values_to_apply = dict(values)
+        if "regional_district_id" in form_data:
+            resolved_rd_id = _resolve_rd_id_for_version(version_id)
+            values_to_apply["regional_district_id"] = (
+                resolved_rd_id if resolved_rd_id is not None else new_rd_id
             )
-            station_links = (
-                EquipmentGroupSetStation.query.filter(
-                    EquipmentGroupSetStation.station_id.in_(station_ids),
-                    EquipmentGroupSetStation.equipment_group_type_id == type_id_in_version,
-                    link_filter,
-                )
-                .all()
+        if "regional_energy_system_id" in form_data:
+            resolved_res_id = _resolve_res_id_for_version(version_id)
+            values_to_apply["regional_energy_system_id"] = (
+                resolved_res_id if resolved_res_id is not None else new_res_id
             )
-            link_ids = [l.id for l in station_links]
-            if not link_ids:
-                continue
 
-            eg_version_filter = (
-                EquipmentGroup.database_version_id.is_(None)
-                if version_id is None
-                else or_(
-                    EquipmentGroup.database_version_id == version_id,
-                    EquipmentGroup.database_version_id.is_(None),
-                )
-            )
-            all_station_groups = (
-                db.session.query(EquipmentGroup)
-                .join(
-                    EquipmentGroupSet,
-                    EquipmentGroupSet.equipment_group_id == EquipmentGroup.id,
-                )
-                .filter(
-                    EquipmentGroupSet.equipment_group_set_station_id.in_(link_ids),
-                    eg_version_filter,
-                )
-                .distinct()
-                .all()
-            )
-            if not all_station_groups:
-                continue
-
-            # Дополнительно ищем ВСЕ группы с таким же именем (как на station_details),
-            # чтобы объединять дубликаты даже при совпадении наименования с БД
-            new_name = (values.get("name") or "").strip()
-            groups_to_update = list(all_station_groups)
-            if new_name:
-                new_name_norm = new_name.lower()
-                name_expr = func.lower(func.trim(func.coalesce(EquipmentGroup.name, "")))
-                same_name_in_version = (
-                    db.session.query(EquipmentGroup)
-                    .filter(name_expr == new_name_norm, eg_version_filter)
-                    .all()
-                )
-                seen_ids: set[int] = set()
-                groups_to_update = []
-                for g in all_station_groups + same_name_in_version:
-                    if g and g.id not in seen_ids:
-                        seen_ids.add(g.id)
-                        groups_to_update.append(g)
-
-            # Объединяем дубликаты, если их больше одной
-            if len(groups_to_update) > 1:
-                primary = _choose_primary_group(groups_to_update)
-                if primary:
-                    candidate_ids = [g.id for g in groups_to_update if g.id != primary.id]
-                    for g in groups_to_update:
-                        if g.id != primary.id:
-                            _merge_group_fields_return_list(primary, g)
-                    _reassign_sets_to_primary(candidate_ids, primary.id)
-                    _remove_orphan_groups(groups_to_update, primary.id)
-                    groups_to_update = [primary]
-
-            for g in groups_to_update:
-                if g.id not in updated_ids:
-                    updated_ids.add(g.id)
-                    _apply_values_to_group(g)
+        version_changed = False
+        for g in groups_to_update:
+            if g.id not in updated_ids:
+                updated_ids.add(g.id)
+                changed, changes = _apply_values_to_group(g, values_to_apply)
+                if changed:
                     updated_count += 1
+                    version_changed = True
+                    if not change_details:
+                        change_details = changes
+        if version_changed:
             versions_touched_set.add(version_id)
 
-    return {
+    # Гарантированно обновить группу, которую просматривает пользователь
+    if equipment_group_id not in updated_ids:
+        user_group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
+        if user_group:
+            vid = getattr(user_group, "database_version_id", None)
+            values_to_apply = dict(values)
+            if "regional_district_id" in form_data:
+                resolved_rd_id = _resolve_rd_id_for_version(vid)
+                values_to_apply["regional_district_id"] = (
+                    resolved_rd_id if resolved_rd_id is not None else new_rd_id
+                )
+            if "regional_energy_system_id" in form_data:
+                resolved_res_id = _resolve_res_id_for_version(vid)
+                values_to_apply["regional_energy_system_id"] = (
+                    resolved_res_id if resolved_res_id is not None else new_res_id
+                )
+            matched_any = True
+            changed, changes = _apply_values_to_group(user_group, values_to_apply)
+            if changed:
+                updated_count += 1
+                versions_touched_set.add(vid)
+                if not change_details:
+                    change_details = changes
+
+    result = {
         "versions_touched": len(versions_touched_set),
         "updated_count": updated_count,
+        "change_details": change_details,
     }
+    if matched_any and updated_count == 0:
+        result["no_changes"] = True
+    return result

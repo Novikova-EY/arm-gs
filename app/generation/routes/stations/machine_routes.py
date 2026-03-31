@@ -228,9 +228,10 @@ def machine_details(station_id, machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
-    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
-    rounding_digits = request.args.get("rounding_digits", 1, type=int)
+    # При POST start_year/end_year приходят в теле формы, при GET — в URL
+    start_year = request.values.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.values.get("end_year", get_filter_end_year(), type=int)
+    rounding_digits = request.values.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":
         result = handle_machine_post(
@@ -302,9 +303,12 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
-    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
-    rounding_digits = request.args.get("rounding_digits", 1, type=int)
+    # При POST start_year/end_year приходят в теле формы, при GET — в URL.
+    # Для pgu_machine_details поведение должно совпадать с machine_details:
+    # берём значения из запроса без принудительного "зажатия" к диапазону версии.
+    start_year = request.values.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.values.get("end_year", get_filter_end_year(), type=int)
+    rounding_digits = request.values.get("rounding_digits", 1, type=int)
 
     if request.method == "POST":
         result = handle_pgu_machine_post(
@@ -314,7 +318,8 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
             form_data=request.form,
             user=user,
             start_year=start_year,
-            end_year=end_year
+            end_year=end_year,
+            rounding_digits=rounding_digits,
         )
         elapsed = time.time() - start_time
         print(f"[TIME] pgu_machine_details POST (station: {station_id}, machine: {machine_id}, pgu: {pgu_machine_id}) заняла: {elapsed:.2f} сек")
@@ -334,19 +339,17 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
         try:
             if result.get('pgu_machine') and result['pgu_machine'].id:
                 pm_id = result['pgu_machine'].id
-                # Оптимизированная загрузка ПГУ логов одним запросом с лимитом
+                # Оптимизация: используем entity_type/entity_id (индексы) вместо ILIKE (полный скан)
                 pgu_machine_logs = _format_logs_for_display(
                     db.session.query(Log)
                     .filter(
                         or_(
-                            Log.action.ilike("%ПГУ агрегат%"),
-                            Log.details.ilike("%ПГУ агрегат%"),
-                            Log.details.ilike(f"%ID: {pm_id}%"),
-                            Log.details.ilike(f"%pgu_machine_id={pm_id}%")
+                            (Log.entity_type == "pgu_machine") & (Log.entity_id == pm_id),
+                            Log.details.ilike(f"%pgu_machine_id={pm_id}%"),
                         )
                     )
                     .order_by(Log.timestamp.desc())
-                    .limit(20)  # Уменьшено с 50 до 20 для ускорения рендеринга
+                    .limit(20)
                     .all()
                 )
         except Exception:
@@ -367,4 +370,6 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
             pgu_machine=result.get('pgu_machine'),
             pgu_machine_logs=pgu_machine_logs,
             rounding_digits=rounding_digits,
+            version_year_end=result.get('version_year_end'),
+            all_documents=result.get('all_documents', []),
         )

@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
         function updateFilters() {
             let form = document.createElement("form");
             form.method = "GET";
-            form.action = "{{ url_for('station_bp.station_list') }}";
+            form.action = "{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}";
 
             // Список параметров, которые НЕ нужно добавлять
             let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];

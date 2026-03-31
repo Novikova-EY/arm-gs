@@ -53,6 +53,7 @@ def import_all_models():
         "app.generation.models.machine_tes_type_model",
         "app.generation.models.pgu_machine_model",
         "app.generation.models.pgu_machine_power_model",
+        "app.generation.models.pgu_machine.pgu_machine_name_model",
         # fuel
         "app.fuel.models.fue_machine_fuel_param_model",
         "app.fuel.models.fue_equipment_group_fuel_param_model",

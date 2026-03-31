@@ -6,14 +6,56 @@
 
             <!-- Левая часть (экспорт) -->
             <div class="d-flex gap-2">
-                {% if show_fuel_params_export|default(false) %}
+                {% if show_specific_fuel_price_export|default(false) %}
+                <!-- Экспорт цены для групп оборудования -->
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_price') }}" id="exportSpecificFuelPriceForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportSpecificFuelPriceButton"
+                            class="btn btn-outline-success"
+                            style="white-space: nowrap;">
+                        Выгрузка цены для групп оборудования
+                    </button>
+                </form>
+                {% elif show_specific_fuel_cost_export|default(false) %}
+                <!-- Экспорт стоимости для групп оборудования -->
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_cost') }}" id="exportSpecificFuelCostForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportSpecificFuelCostButton"
+                            class="btn btn-outline-success"
+                            style="white-space: nowrap;">
+                        Выгрузка стоимости для групп оборудования
+                    </button>
+                </form>
+                {% elif show_specific_fuel_consumption_export|default(false) %}
+                <!-- Экспорт удельных показателей -->
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_consumption') }}" id="exportSpecificFuelConsumptionForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportSpecificFuelConsumptionButton"
+                            class="btn btn-outline-success"
+                            style="white-space: nowrap;">
+                        Выгрузка удельных показателей
+                    </button>
+                </form>
+                {% elif show_fuel_params_export|default(false) %}
                 <!-- Экспорт топливных параметров (страница fuel_params) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_fuel_params') }}" id="exportFuelParamsForm">
                     {% for key, value in request.args.items() %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
-                    <button type="submit" class="btn btn-outline-success" style="white-space: nowrap;">
-                        Выгрузка топливных параметров (с учётом фильтров)
+                    <button type="button"
+                            id="exportFuelParamsButton"
+                            class="btn btn-outline-success"
+                            style="white-space: nowrap;">
+                        Выгрузка основных топливных параметров
                     </button>
                 </form>
                 {% else %}
@@ -32,7 +74,244 @@
             <!-- Правая часть (импорт) -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 {% if current_user.has_admin %}
-                {% if show_fuel_params_import|default(false) %}
+                {% if show_specific_fuel_consumption_import|default(false) %}
+                <form action="{{ import_specific_fuel_consumption_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_consumption')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelConsumptionForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="redirect_to" value="{{ import_specific_fuel_consumption_redirect_to|default('fuel_bp.stations_equipment_group_fuel_params') }}">
+                    <input type="hidden" name="year" id="importSpecificFuelConsumptionYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelConsumptionFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelConsumptionBtn">
+                        Загрузка Коэффициента экономии от теплофикации
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importSpecificFuelConsumptionForm');
+                    var btn = document.getElementById('importSpecificFuelConsumptionBtn');
+                    var fileInput = document.getElementById('importSpecificFuelConsumptionFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importSpecificFuelConsumptionYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importSpecificFuelConsumptionYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% endif %}
+                {% if show_specific_fuel_price_import|default(false) %}
+                <form action="{{ import_specific_fuel_price_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_price')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelPriceForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="year" id="importSpecificFuelPriceYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelPriceFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelPriceBtn">
+                        Загрузка цены для групп оборудования
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importSpecificFuelPriceForm');
+                    var btn = document.getElementById('importSpecificFuelPriceBtn');
+                    var fileInput = document.getElementById('importSpecificFuelPriceFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importSpecificFuelPriceYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importSpecificFuelPriceYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_specific_fuel_cost_import|default(false) %}
+                <form action="{{ import_specific_fuel_cost_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_cost')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelCostForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="year" id="importSpecificFuelCostYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelCostFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelCostBtn">
+                        Загрузка стоимости для групп оборудования
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importSpecificFuelCostForm');
+                    var btn = document.getElementById('importSpecificFuelCostBtn');
+                    var fileInput = document.getElementById('importSpecificFuelCostFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importSpecificFuelCostYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importSpecificFuelCostYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_specific_fuel_consumption_calc_import|default(false) %}
+                <form action="{{ import_specific_fuel_consumption_calc_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_consumption_calculated')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelConsumptionCalcForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="year" id="importSpecificFuelConsumptionCalcYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelConsumptionCalcFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelConsumptionCalcBtn">
+                        Загрузка рассчитанных значений удельных показателей
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var formCalc = document.getElementById('importSpecificFuelConsumptionCalcForm');
+                    var btnCalc = document.getElementById('importSpecificFuelConsumptionCalcBtn');
+                    var fileInputCalc = document.getElementById('importSpecificFuelConsumptionCalcFile');
+                    if (formCalc && btnCalc && fileInputCalc) {
+                        btnCalc.addEventListener('click', function() {
+                            fileInputCalc.click();
+                        });
+                        fileInputCalc.addEventListener('change', function() {
+                            if (fileInputCalc.files && fileInputCalc.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importSpecificFuelConsumptionCalcYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                formCalc.submit();
+                            }
+                        });
+                        formCalc.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importSpecificFuelConsumptionCalcYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btnCalc.disabled = true;
+                            btnCalc.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_extra_fuel_params_import|default(false) %}
+                <form action="{{ import_extra_fuel_params_action|default(url_for('fuel_bp.import_equipment_group_extra_fuel_params')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importExtraFuelParamsForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="year" id="importExtraFuelParamsYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importExtraFuelParamsFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importExtraFuelParamsBtn">
+                        Загрузка дополнительных топливных данных
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importExtraFuelParamsForm');
+                    var btn = document.getElementById('importExtraFuelParamsBtn');
+                    var fileInput = document.getElementById('importExtraFuelParamsFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importExtraFuelParamsYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importExtraFuelParamsYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_fuel_params_import|default(false) %}
                 <form action="{{ import_fuel_params_action|default(url_for('fuel_bp.import_equipment_group_fuel_params')) }}"
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importFuelParamsForm">

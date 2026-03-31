@@ -67,76 +67,82 @@
                         <h3 class="mb-0 ms-3">Общая информация</h3>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Название (name)</label>
+                        <label class="form-label fw-semibold">Название</label>
                         {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="—">{% else %}<span class="station-name">{{ equipment_group.name or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label fw-semibold">Субъект РФ</label>
+                        {% if can_edit %}<select name="regional_district_id" class="form-select">{% for val, label in regional_district_choices %}<option value="{{ val }}" {% if (equipment_group.regional_district_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_district_id }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Региональная энергосистема</label>
+                        {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
+                    </div>
+                </div>
+                <div class="row g-4 mt-4">
+                    <div class="col-12 mb-2">
+                        <h3 class="mb-0 ms-3">Общая информация (БД Топливо)</h3>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">Типы турбин (tm)</label>
-                        {% if can_edit %}<input type="text" name="tm" class="form-control" value="{{ equipment_group.tm or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Код станции (numb)</label>
-                        {% if can_edit %}<input type="text" name="numb" class="form-control" value="{{ equipment_group.numb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Действующая (d)</label>
-                        {% if can_edit %}<select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (equipment_group.d or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.d }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.d }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Расширяемая (r)</label>
-                        {% if can_edit %}<select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (equipment_group.r or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.r }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.r }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
-                        {% if can_edit %}<select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (equipment_group.forem or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.forem }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.forem }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Признак группы (niv)</label>
-                        {% if can_edit %}<input type="text" name="niv" class="form-control" value="{{ equipment_group.niv or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Признак разбитой (comp)</label>
-                        {% if can_edit %}<input type="text" name="comp" class="form-control" value="{{ equipment_group.comp or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Код станции (main)</label>
-                        {% if can_edit %}<input type="text" name="main" class="form-control" value="{{ equipment_group.main or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="w-100"></div>
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
-                        {% if can_edit %}<input type="text" name="n1" class="form-control" value="{{ equipment_group.n1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
-                        {% if can_edit %}<input type="text" name="n2" class="form-control" value="{{ equipment_group.n2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
-                        {% if can_edit %}<input type="text" name="p1" class="form-control" value="{{ equipment_group.p1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
-                        {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Адрес (addr)</label>
-                        {% if can_edit %}<input type="text" name="addr" class="form-control" value="{{ equipment_group.addr or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Примечание (note)</label>
-                        {% if can_edit %}<input type="text" name="note" class="form-control" value="{{ equipment_group.note or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Субъект РФ (regional_district_id)</label>
-                        {% if can_edit %}<select name="regional_district_id" class="form-select">{% for val, label in regional_district_choices %}<option value="{{ val }}" {% if (equipment_group.regional_district_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_district_id }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Региональная энергосистема (regional_energy_system_id)</label>
-                        {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Субъект РФ (obl)</label>
@@ -160,15 +166,15 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Код города (codegor)</label>
-                        {% if can_edit %}<select name="codegor" class="form-select">{% for val, label in codegor_choices %}<option value="{{ val }}" {% if (equipment_group.codegor or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.codegor }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.codegor }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ведомство (vedomstvo)</label>
-                        {% if can_edit %}<select name="vedomstvo" class="form-select">{% for val, label in vedomstvo_choices %}<option value="{{ val }}" {% if (equipment_group.vedomstvo or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.vedomstvo }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.vedomstvo }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Тип генерирующей компании (be)</label>
-                        {% if can_edit %}<select name="be" class="form-select">{% for val, label in be_choices %}<option value="{{ val }}" {% if (equipment_group.be or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.be }}</span>{% endif %}
+                        <span class="form-control-plaintext">{{ choice_displays.be }}</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Генерирующая компания (gk)</label>
@@ -263,10 +269,16 @@
                                 </tr>
                                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                                     {% for year in range(start_year, end_year + 1) %}
-                                    <th style="width: 50px; text-align: center;">{{ year }}</th>
+                                    <th style="width: 50px; text-align: center;">
+                                        {{ year }}
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('—', true) }}</div>
+                                    </th>
                                     {% endfor %}
                                     {% for year in range(start_year, end_year + 1) %}
-                                    <th style="width: 50px; text-align: center;">{{ year }}</th>
+                                    <th style="width: 50px; text-align: center;">
+                                        {{ year }}
+                                        <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(year)|default('—', true) }}</div>
+                                    </th>
                                     {% endfor %}
                                 </tr>
                             </thead>
@@ -281,6 +293,333 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Таблицы топливных параметров (из equipment_group_details) -->
+    <div class="container-fluid mt-4">
+        {% if can_edit %}
+        <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" id="fuelParamsForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="start_year" value="{{ start_year }}">
+            <input type="hidden" name="end_year" value="{{ end_year }}">
+            <input type="hidden" name="rounding_digits_table1" value="{{ rounding_digits_table1 }}">
+            <input type="hidden" name="rounding_digits_table2" value="{{ rounding_digits_table2 }}">
+            <input type="hidden" name="rounding_digits_table3" value="{{ rounding_digits_table3 }}">
+            <input type="hidden" name="rounding_digits_table4" value="{{ rounding_digits_table4 }}">
+            {% for key, value in request.args.items() %}
+                {% if key not in ("start_year", "end_year", "rounding_digits_table1", "rounding_digits_table2", "rounding_digits_table3", "rounding_digits_table4") %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        <div class="card mb-3 border-0 shadow-none mt-3">
+            <div class="card-header fw-bold bg-transparent border-0 d-flex justify-content-between align-items-center flex-nowrap gap-2">
+                <h3 class="mb-0 ms-3 text-nowrap flex-grow-1 min-w-0">Параметры группы оборудования</h3>
+                <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto" id="roundingFormTable1">
+                    <label for="rounding_digits_table1" class="mb-0" style="white-space: nowrap;">Округл:</label>
+                    <select name="rounding_digits_table1" id="rounding_digits_table1" class="form-select form-select-sm py-1" style="width: auto; min-width: 95px;">
+                        <option value="0" {% if rounding_digits_table1 == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rounding_digits_table1 == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rounding_digits_table1 == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rounding_digits_table1 == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rounding_digits_table1 == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table1_params_grid %}
+                            {% set attr = table1_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table1(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% else %}
+                                        {{ format_decimal_table1(v) if v is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3 text-nowrap">Основные параметры топлива</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table2_params_grid %}
+                            {% set attr = table2_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table2(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% else %}
+                                        {{ format_decimal_table2(v) if v is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3 text-nowrap">Удельные показатели</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table4_consumption_grid %}
+                            {% set attr = table4_consumption_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span>{% if consumption_formulas is defined and consumption_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}</td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <input type="text" name="consumption_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% else %}
+                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3 text-nowrap">Дополнительные параметры топлива</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table3_params_grid %}
+                            {% set attr = table3_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <input type="text" name="extra_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table3(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% else %}
+                                        {{ format_decimal_table3(v) if v is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3 text-nowrap">Стоимость</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table4_cost_grid %}
+                            {% set attr = table4_cost_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <input type="text" name="cost_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% else %}
+                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3 text-nowrap">Цена</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 80px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, values_by_year in table4_price_grid %}
+                            {% set attr = table4_price_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr[:-7] if attr|length >= 7 and attr[-5:] == '_calc' else (attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else attr), label) }}</span> <span class="text-muted small">({{ attr }})</span>{% if price_formulas is defined and price_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}</td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v = values_by_year.get(y) %}
+                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
+                                        {{ format_decimal_table4(v) if v is not none else '—' }}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none d-none">
+            <div class="card-header fw-bold bg-transparent border-0 pt-0">
+                <h3 class="mb-0 ms-3">Основные параметры</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 120px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for label, display_values_by_year, raw_values_by_year in main_params_grid %}
+                            {% set attr = main_attrs[loop.index0] %}
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v_display = display_values_by_year.get(y) %}
+                                    {% set v_raw = raw_values_by_year.get(y) %}
+                                    <td class="power-column">
+                                        {% if can_edit %}
+                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v_raw if v_raw is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—">
+                                        {% else %}
+                                        {{ v_display if v_display is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if can_edit %}
+        <div class="d-flex justify-content-end gap-2 mt-3 mb-3">
+            <input type="hidden" name="save_fuel_params" value="1">
+            <button type="submit" class="btn btn-outline-success fs-5" title="Сохранить изменения в таблицах: Параметры группы оборудования, Основные параметры топлива, Удельные показатели, Доп. параметры, Стоимость, Цена">Сохранить параметры топлива</button>
+        </div>
+        </form>
+        {% endif %}
     </div>
 
     <!-- Журнал изменений по группе оборудования -->
@@ -342,6 +681,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация Bootstrap tooltip для формул в таблице «Удельные показатели»
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            new bootstrap.Tooltip(el);
+        }
+    });
+
     const loadMoreBtn = document.getElementById('load-more-equipment-group-logs');
     const logsTable = document.querySelector('#equipment-group-logs-table tbody');
     const logsShown = document.getElementById('equipment-group-logs-shown');
@@ -402,6 +748,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 });
+</script>
+
+<script>
+(function() {
+    document.getElementById('rounding_digits_table1')?.addEventListener('change', function() {
+        var url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits_table1', this.value);
+        window.location.href = url.toString();
+    });
+})();
 </script>
 
 {% if stations_with_machines %}
@@ -544,6 +900,27 @@ document.addEventListener('DOMContentLoaded', function() {
     white-space: nowrap;
     min-width: 150px;
 }
+/* Таблицы топливных параметров (из equipment_group_details) */
+.equipment-group-edit-page .equipment-group-tables {
+    width: 100%;
+    table-layout: fixed;
+}
+.equipment-group-edit-page .equipment-group-tables .year-header,
+.equipment-group-edit-page .equipment-group-tables .power-column,
+.equipment-group-edit-page .equipment-group-tables .first-column {
+    text-align: center;
+    vertical-align: middle;
+    word-wrap: break-word;
+    white-space: normal;
+    padding: 12px 8px;
+}
+.equipment-group-edit-page .equipment-group-tables .first-column {
+    text-align: left;
+}
+.equipment-group-edit-page .equipment-group-tables-numeric { font-size: 1.15rem; }
+.equipment-group-edit-page .equipment-group-tables-numeric thead th { font-size: 1.2rem; }
+.equipment-group-edit-page .equipment-group-tables-numeric tbody td { font-size: 1.25rem; }
+.equipment-group-edit-page .equipment-group-tables-numeric .form-control { font-size: 1.25rem; }
 </style>
 
 {% endif %}

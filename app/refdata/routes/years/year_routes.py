@@ -5,7 +5,7 @@ from collections import Counter
 from flask import render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_required, current_user
 
-from app.auth.routes import roles_required
+from app.auth.routes.decorators import has_admin_required
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
@@ -34,6 +34,7 @@ from app.logs.services.logging_service import log_to_db
 
 @refdata_bp.route("/years", methods=["GET", "POST"])
 @login_required
+@has_admin_required
 def years_list():
     """Страница справочника «Годы» (таблица + редактирование)."""
 
@@ -178,7 +179,7 @@ def years_list():
 
 @refdata_bp.route("/add_year", methods=["GET", "POST"])
 @login_required
-@roles_required(["admin"])
+@has_admin_required
 def add_year():
     """Страница добавления записи в справочник «Годы»."""
 

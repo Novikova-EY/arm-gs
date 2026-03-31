@@ -195,7 +195,8 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter',
     'sort_by', 'sort_dir', 'per_page', 'start_year', 'end_year'
 ] %}
-{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{# Кнопка «Добавить агрегат» и редактирование — для admin, generation-admin, generation-editor #}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor'] %}
 {% set can_edit = can_edit if can_edit is defined else (current_user.role_names | select('in', edit_roles) | list | length > 0) %}
 
 <!-- Стили для режима чтения -->

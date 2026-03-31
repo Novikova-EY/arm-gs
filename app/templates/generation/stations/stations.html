@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Электростанции{% endblock %}
+{% block title %}{{ page_title | default('Электростанции') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
+{% set _list_endpoint = station_list_endpoint | default('station_bp.station_list') %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
@@ -23,7 +24,7 @@
     <div class="table-responsive" id="stationsTableContainer">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for(_list_endpoint) }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
         <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
     </div>
 
@@ -57,10 +58,45 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="12">Электростанция</th>
+                    <th colspan="{{ 13 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 12 }}">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
-                    <th rowspan="2" style="width: 200px;">Примечание</th>
+                    <th rowspan="2" style="width: 240px; min-width: 240px;">
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <strong>Примечание</strong>
+                                {% if note_filter %}
+                                    <i class="bi bi-funnel-fill text-warning"></i>
+                                {% endif %}
+                                {% if note_filter %}
+                                    <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                                            type="button"
+                                            data-filter-name="note_filter"
+                                            title="Сбросить фильтр"
+                                            style="padding: 2px 6px; line-height: 1;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                            <form method="get" action="{{ url_for(_list_endpoint) }}" class="d-flex flex-column gap-1">
+                                {% for key, values in request.args.lists() %}
+                                    {% if key not in ['note_filter', 'page'] %}
+                                        {% for value in values %}
+                                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                                <div class="input-group input-group-sm">
+                                    <input type="text"
+                                           name="note_filter"
+                                           value="{{ note_filter or '' }}"
+                                           class="form-control"
+                                           placeholder="">
+                                    <button type="submit" class="btn btn-outline-primary">Найти</button>
+                                </div>
+                            </form>
+                        </div>
+                    </th>
                 </tr>
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th style="width: 50px;">гр.</th>
@@ -84,7 +120,7 @@
                                             не указано
                                         </label>
                                     </li>
-                                    {% for year in range(1950, end_year + 1) %}
+                                    {% for year in range(1900, end_year + 1) %}
                                         <li>
                                             <label class="dropdown-item">
                                                 <input type="checkbox" name="date_commission_filter"
@@ -138,7 +174,7 @@
                                             не указано
                                         </label>
                                     </li>
-                                    {% for year in range(1950, end_year + 1) %}
+                                    {% for year in range(1900, end_year + 1) %}
                                         <li>
                                             <label class="dropdown-item">
                                                 <input type="checkbox" name="date_exploitation_filter"
@@ -192,7 +228,7 @@
                                             не указано
                                         </label>
                                     </li>
-                                    {% for year in range(1950, end_year + 1) %}
+                                    {% for year in range(1900, end_year + 1) %}
                                         <li>
                                             <label class="dropdown-item">
                                                 <input type="checkbox" name="date_decompressing_expected_filter"
@@ -246,7 +282,7 @@
                                             не указано
                                         </label>
                                     </li>
-                                    {% for year in range(1950, end_year + 1) %}
+                                    {% for year in range(1900, end_year + 1) %}
                                         <li>
                                             <label class="dropdown-item">
                                                 <input type="checkbox" name="date_modernization_expected_filter"
@@ -430,6 +466,13 @@
                             {% endif %}
                         </div>
                     </th>
+
+                    {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
+                    <!-- Тип группы оборудования (только на странице агрегатов без группы) -->
+                    <th style="width: 120px; text-align: center;">
+                        Тип<br>группы<br>оборуд.
+                    </th>
+                    {% endif %}
                     
                     <!-- Столбец фильтра по топливу -->
                     <th style="width: 50px; text-align: center;">
@@ -687,6 +730,16 @@
         'fd_to_ues_mapping': fd_to_ues_mapping,
         'fd_to_est_mapping': fd_to_est_mapping
     } | tojson | safe }}
+</script>
+
+<!-- Фильтры ОЭС/ФО/субъект: срабатывают сразу при выборе, множественный выбор (как на stations_equipment_group_fuel_params) -->
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
 </script>
 
 <!-- jQuery и Select2 уже подключены в base.html -->

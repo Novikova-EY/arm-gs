@@ -14,6 +14,7 @@ from app.fuel.services.equipment_group_fuel_params_services import (
 )
 
 FUEL_PARAM_COLUMNS = [
+    ("numb1120", "Код станции", False),
     ("nust", "Руст", True),
     ("nr", "Ррасп", True),
     ("e", "Выр", True),
@@ -61,18 +62,6 @@ FUEL_PARAM_COLUMNS = [
     ("sah", "Сахалин", True),
     ("nt", "Тепл. мощн. отборов", True),
     ("nt_sum", "Сумма NT", True),
-    ("numb1120", "Код станции", False),
-    ("numb1", "Номер", False),
-    ("obor", "OBOR", False),
-    ("ved", "VED", False),
-    ("ved_cyrillic", "вед", False),
-    ("obl", "OBL", False),
-    ("dep", "DEP", False),
-    ("oes", "OES", False),
-    ("ees", "EES", False),
-    ("er", "ER", False),
-    ("gk", "GK", False),
-    ("be", "BE", False),
 ]
 
 
@@ -117,7 +106,14 @@ def _format_cell_value(param, attr, is_numeric, name_maps, rounding_digits):
 
 
 def export_stations_equipment_group_fuel_params_to_excel(
-    filters, start_year, end_year, rounding_digits=1
+    filters,
+    start_year,
+    end_year,
+    *,
+    per_page="all",
+    page=1,
+    show_all=True,
+    rounding_digits=1,
 ):
     """
     Экспортирует топливные параметры групп оборудования в Excel.
@@ -125,11 +121,11 @@ def export_stations_equipment_group_fuel_params_to_excel(
     """
     fuel_data = get_equipment_groups_with_fuel_params_data(
         filters=filters,
-        per_page="all",
-        page=1,
+        per_page=per_page,
+        page=page,
         start_year=start_year,
         end_year=end_year,
-        show_all=True,
+        show_all=show_all,
     )
     rows = fuel_data.get("rows") or []
     if not rows:

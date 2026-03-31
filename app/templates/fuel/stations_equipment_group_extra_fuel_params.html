@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% from 'fuel/_value_macros.html' import render_numeric_or_dash %}
 
-{% block title %}Топливные параметры групп оборудования (дополнительные){% endblock %}
+{% block title %}Дополнительные топливные параметры групп оборудования{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -20,18 +21,20 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
     </div>
 
     <div class="col-12 mb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Топливные параметры групп оборудования (дополнительные)</h2>
+                <h2 class="text-center mb-4">Дополнительные топливные параметры групп оборудования</h2>
             </div>
             <div class="d-flex align-items-center gap-2 ms-auto">
                 <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
                     ➕ Добавить электростанцию
+                </a>
+                <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
+                    ➕ Добавить группу оборудования
                 </a>
             </div>
         </div>
@@ -41,7 +44,7 @@
     {% include 'fuel/stations_equipment_group_extra_fuel_params_filters.html' %}
 
 {% set extra_fuel_param_columns = [
-    ('name', 'Наименование', false),
+    ('numb1120', 'Код станции', false),
     ('gaz_prir', 'gaz_prir', true), ('gazpp', 'gazpp', true), ('disel', 'disel', true), ('maztop', 'maztop', true),
     ('gtt', 'gtt', true), ('nft_proch', 'nft_proch', true), ('domen_g', 'domen_g', true), ('koks_g', 'koks_g', true),
     ('prochgaz', 'prochgaz', true), ('tvproch', 'tvproch', true), ('szh_gaz', 'szh_gaz', true), ('inoe', 'inoe', true),
@@ -57,128 +60,96 @@
     ('kuznss', 'kuznss', true), ('kuznun', 'kuznun', true), ('bering', 'bering', true), ('anad', 'anad', true),
     ('ekib', 'ekib', true), ('maikub', 'maikub', true), ('karag', 'karag', true), ('karajyra', 'karajyra', true),
     ('teniz', 'teniz', true),
-    ('numb1120', 'NUMB1120', false), ('numb1', 'numb1', false),
+    ('numb1', 'numb1', false),
 ] %}
 {% set column_count = extra_fuel_param_columns|length + 1 %}
 
     <table class="table table-hover table-striped table-bordered table-responsive">
         <thead class="table-success">
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                <th colspan="{{ column_count }}">Модуль «Топливо» (дополнительные параметры)</th>
-            </tr>
-            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th style="width: 120px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                <th style="width: 70px;">{{ label }}<br><span class="text-muted small">({{ attr }})</span></th>
+                <th style="width: 70px;">{{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr }})</span></th>
                 {% endfor %}
             </tr>
         </thead>
 
         <tbody>
-            {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
-            {% for es_type_id in sorted_energy_system_type_ids %}
-                {% set es_type_group = stations_grouped[es_type_id] %}
-                {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
-                    <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                        <td colspan="{{ column_count }}">{{ energy_system_type_names[es_type_id] }}</td>
+            {% if equipment_group_extra_fuel_params_hierarchy and equipment_group_extra_fuel_params_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_extra_fuel_params_hierarchy %}
+                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
                     </tr>
-                {% endif %}
-
-                {% for ues in union_energy_system_list %}
-                    {% set ues_id = ues.id %}
-                    {% set ues_group = es_type_group.get(ues_id) %}
-                    {% if ues_group %}
-                    {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
-                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ union_energy_system_names[ues_id] }}</td>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
                         </tr>
-                    {% endif %}
-
-                    {% for res_id, res_group in ues_group.items() %}
-                        {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
-                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
-                                <td colspan="{{ column_count }}">{{ regional_energy_system_names[res_id] }}</td>
-                            </tr>
-                        {% endif %}
-
-                        {% for rd_id, rd_group in res_group.items() %}
-                            {% set rd_name = regional_district_names.get(rd_id) %}
-                            {% if rd_name and rd_name|lower != 'не указано' %}
-                            {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
-                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                                    <td colspan="{{ column_count }}">{{ rd_name }}</td>
-                                </tr>
-                            {% endif %}
-                            {% endif %}
-
-                            {% for eu_id, eu_group in rd_group.items() %}
-                                {% set eu_name = energy_unit_names.get(eu_id) %}
-                                {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
-                                {% if not skip_eu %}
-                                {% if eu_name and eu_name|lower != 'не указано' %}
-                                {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
-                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
-                                        <td colspan="{{ column_count }}">{{ eu_name }}</td>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    <tr class="text-center align-middle">
+                                        <td>
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                                                {{ group_name }}
+                                            </a>
+                                            {% else %}
+                                                {{ group_name }}
+                                            {% endif %}
+                                        </td>
+                                        {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                        <td>{% if param is none %}—{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        {% endfor %}
                                     </tr>
-                                {% endif %}
-                                {% endif %}
-                                {% endif %}
-
-                                {% for station in eu_group|sort(attribute='equipment_group_sort_key') %}
-                                    {% for group in (station.equipment_group_v2_groups or []) %}
-                                        {% set group_entity = group.equipment_group %}
-                                        {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-                                        {% set params_in_range = group.extra_fuel_params or [] %}
-                                        {% if params_in_range %}
-                                            {% for param in params_in_range %}
-                                                <tr class="text-center align-middle">
-                                                    <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
-                                                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                                    <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                                                    {% endfor %}
-                                                </tr>
-                                            {% endfor %}
-                                        {% else %}
-                                            <tr class="text-center align-middle">
-                                                <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
-                                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                                <td>—</td>
-                                                {% endfor %}
-                                            </tr>
-                                        {% endif %}
-                                    {% endfor %}
                                 {% endfor %}
-                            {% endfor %}
                         {% endfor %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
+                            <td>{{ station_block.station_name }}, всего</td>
+                            {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                            <td>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if res_block.group_blocks %}
+                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
+                            <td>{{ res_block.res_name }}, всего</td>
+                            {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                            <td>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{{ render_numeric_or_dash(res_block.res_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
                     {% endfor %}
-                    {% endif %}
                 {% endfor %}
             {% endfor %}
             {% else %}
-                {% for station in stations %}
-                    {% for group in (station.equipment_group_v2_groups or []) %}
-                        {% set group_entity = group.equipment_group %}
-                        {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-                        {% set params_in_range = group.extra_fuel_params or [] %}
-                        {% if params_in_range %}
-                            {% for param in params_in_range %}
-                                <tr class="text-center align-middle">
-                                    <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
-                                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                    <td>{% if is_numeric %}{{ (param|get_attr(attr))|format_decimal }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
+            {% for row in equipment_group_extra_fuel_param_rows|default([]) %}
+                {% set group_entity = row[0] %}
+                {% set param = row[1] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                <tr class="text-center align-middle">
+                    <td>
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                            {{ group_name }}
+                        </a>
                         {% else %}
-                            <tr class="text-center align-middle">
-                                <td>{% if group_entity and group_entity.id %}<a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>{% else %}{{ group_name }}{% endif %}</td>
-                                {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                                <td>—</td>
-                                {% endfor %}
-                            </tr>
+                            {{ group_name }}
                         {% endif %}
+                    </td>
+                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                    <td>{% if param is none %}—{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
                     {% endfor %}
-                {% endfor %}
+                </tr>
+            {% endfor %}
             {% endif %}
         </tbody>
     </table>
@@ -237,6 +208,14 @@ document.addEventListener("DOMContentLoaded", function() {
     document.addEventListener('DOMContentLoaded', function () {
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+        // Округл: перезагрузка при изменении количества знаков после запятой (как на stations_equipment_group_fuel_params)
+        document.getElementById('rounding_digits')?.addEventListener('change', function() {
+            const selectedRounding = this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('rounding_digits', selectedRounding);
+            window.location.href = url.toString();
+        });
     });
 </script>
 

@@ -60,77 +60,77 @@ class EquipmentGroupFuelParam(db.Model):
 
     # Мощность:
     # Руст
-    nust = db.Column(db.Numeric(20, 6), nullable=True)
+    nust = db.Column(db.Numeric(36, 16), nullable=True)
     # Ррасп
-    nr = db.Column(db.Numeric(20, 6), nullable=True)
+    nr = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Электроэнергия в тыс.кВтч:
     # Выр
-    e = db.Column(db.Numeric(20, 6), nullable=True)
+    e = db.Column(db.Numeric(36, 16), nullable=True)
     # Этц
-    ewtp = db.Column(db.Numeric(20, 6), nullable=True)
+    ewtp = db.Column(db.Numeric(36, 16), nullable=True)
     # Отпуск
-    eotp = db.Column(db.Numeric(20, 6), nullable=True)
+    eotp = db.Column(db.Numeric(36, 16), nullable=True)
     # Уд.расх
-    eurt = db.Column(db.Numeric(20, 6), nullable=True)
+    eurt = db.Column(db.Numeric(36, 16), nullable=True)
     # Расх топ ээ
-    eust = db.Column(db.Numeric(20, 6), nullable=True)
+    eust = db.Column(db.Numeric(36, 16), nullable=True)
     # СН, %
-    snk = db.Column(db.Numeric(20, 6), nullable=True)
+    snk = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Тепло в Гкал:
     # Отпуск, Гкал
-    q = db.Column(db.Numeric(20, 6), nullable=True)
+    q = db.Column(db.Numeric(36, 16), nullable=True)
     # Отраб
-    qotr = db.Column(db.Numeric(20, 6), nullable=True)
+    qotr = db.Column(db.Numeric(36, 16), nullable=True)
     # Уд.расх
-    turt = db.Column(db.Numeric(20, 6), nullable=True)
+    turt = db.Column(db.Numeric(36, 16), nullable=True)
     # Расх топ тэ
-    tust = db.Column(db.Numeric(20, 6), nullable=True)
+    tust = db.Column(db.Numeric(36, 16), nullable=True)
     # СН, кВтч/Гкал
-    sn_t = db.Column(db.Numeric(20, 6), nullable=True)  # SNt
+    sn_t = db.Column(db.Numeric(36, 16), nullable=True)  # SNt
     
     # Расх топл. 
-    b = db.Column(db.Numeric(20, 6), nullable=True)
+    b = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Расх по типам топлива
-    gaz = db.Column(db.Numeric(20, 6), nullable=True)
-    isk_gaz = db.Column(db.Numeric(20, 6), nullable=True)
-    mazut = db.Column(db.Numeric(20, 6), nullable=True)
-    torf = db.Column(db.Numeric(20, 6), nullable=True)
-    slan = db.Column(db.Numeric(20, 6), nullable=True)
-    proch = db.Column(db.Numeric(20, 6), nullable=True)
-    ugol = db.Column(db.Numeric(20, 6), nullable=True)
-    don = db.Column(db.Numeric(20, 6), nullable=True)
-    podm = db.Column(db.Numeric(20, 6), nullable=True)
-    pech = db.Column(db.Numeric(20, 6), nullable=True)
-    arkt = db.Column(db.Numeric(20, 6), nullable=True)
-    kuzn = db.Column(db.Numeric(20, 6), nullable=True)
-    ural = db.Column(db.Numeric(20, 6), nullable=True)
-    bashk = db.Column(db.Numeric(20, 6), nullable=True)
-    kazah = db.Column(db.Numeric(20, 6), nullable=True)
-    kan = db.Column(db.Numeric(20, 6), nullable=True)
-    tung = db.Column(db.Numeric(20, 6), nullable=True)
-    irkut = db.Column(db.Numeric(20, 6), nullable=True)
-    hak = db.Column(db.Numeric(20, 6), nullable=True)
-    tuv = db.Column(db.Numeric(20, 6), nullable=True)
-    bur = db.Column(db.Numeric(20, 6), nullable=True)
-    chit = db.Column(db.Numeric(20, 6), nullable=True)
-    yakut = db.Column(db.Numeric(20, 6), nullable=True)
-    amur = db.Column(db.Numeric(20, 6), nullable=True)
-    urg = db.Column(db.Numeric(20, 6), nullable=True)
-    ushum = db.Column(db.Numeric(20, 6), nullable=True)
-    prim = db.Column(db.Numeric(20, 6), nullable=True)
-    mag = db.Column(db.Numeric(20, 6), nullable=True)
-    chukot = db.Column(db.Numeric(20, 6), nullable=True)
-    kamch = db.Column(db.Numeric(20, 6), nullable=True)
-    sah = db.Column(db.Numeric(20, 6), nullable=True)
+    gaz = db.Column(db.Numeric(36, 16), nullable=True)
+    isk_gaz = db.Column(db.Numeric(36, 16), nullable=True)
+    mazut = db.Column(db.Numeric(36, 16), nullable=True)
+    torf = db.Column(db.Numeric(36, 16), nullable=True)
+    slan = db.Column(db.Numeric(36, 16), nullable=True)
+    proch = db.Column(db.Numeric(36, 16), nullable=True)
+    ugol = db.Column(db.Numeric(36, 16), nullable=True)
+    don = db.Column(db.Numeric(36, 16), nullable=True)
+    podm = db.Column(db.Numeric(36, 16), nullable=True)
+    pech = db.Column(db.Numeric(36, 16), nullable=True)
+    arkt = db.Column(db.Numeric(36, 16), nullable=True)
+    kuzn = db.Column(db.Numeric(36, 16), nullable=True)
+    ural = db.Column(db.Numeric(36, 16), nullable=True)
+    bashk = db.Column(db.Numeric(36, 16), nullable=True)
+    kazah = db.Column(db.Numeric(36, 16), nullable=True)
+    kan = db.Column(db.Numeric(36, 16), nullable=True)
+    tung = db.Column(db.Numeric(36, 16), nullable=True)
+    irkut = db.Column(db.Numeric(36, 16), nullable=True)
+    hak = db.Column(db.Numeric(36, 16), nullable=True)
+    tuv = db.Column(db.Numeric(36, 16), nullable=True)
+    bur = db.Column(db.Numeric(36, 16), nullable=True)
+    chit = db.Column(db.Numeric(36, 16), nullable=True)
+    yakut = db.Column(db.Numeric(36, 16), nullable=True)
+    amur = db.Column(db.Numeric(36, 16), nullable=True)
+    urg = db.Column(db.Numeric(36, 16), nullable=True)
+    ushum = db.Column(db.Numeric(36, 16), nullable=True)
+    prim = db.Column(db.Numeric(36, 16), nullable=True)
+    mag = db.Column(db.Numeric(36, 16), nullable=True)
+    chukot = db.Column(db.Numeric(36, 16), nullable=True)
+    kamch = db.Column(db.Numeric(36, 16), nullable=True)
+    sah = db.Column(db.Numeric(36, 16), nullable=True)
 
     
     # 
-    nt = db.Column(db.Numeric(20, 6), nullable=True)
+    nt = db.Column(db.Numeric(36, 16), nullable=True)
     # 
-    nt_sum = db.Column(db.Numeric(20, 6), nullable=True)  # NTsum
+    nt_sum = db.Column(db.Numeric(36, 16), nullable=True)  # NTsum
     
     numb1120 = db.Column(db.Integer, nullable=True)
     numb1 = db.Column(db.Integer, nullable=True)

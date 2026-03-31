@@ -25,3 +25,17 @@ def roles_required(allowed_roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+def has_admin_required(f):
+    """Доступ только для пользователей, у которых в роли есть слово 'admin' (admin, generation-admin и т.д.)."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not has_request_context():
+            abort(403)
+        if not current_user or not current_user.is_authenticated:
+            abort(403)
+        if not getattr(current_user, "has_admin", False):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function

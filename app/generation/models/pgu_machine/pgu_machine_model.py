@@ -69,8 +69,21 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
         foreign_keys='PGUMachinePower.id_pgu_machine',
     )
 
-    # Даты/поля как в исходнике
+    # Children: names by year (аналог Machine.machine_names)
+    pgu_machine_names = db.relationship(
+        'PGUMachineName',
+        back_populates='pgu_machine_name_rel',
+        cascade="all, delete-orphan",
+        foreign_keys='PGUMachineName.id_pgu_machine',
+    )
+
+    # Даты/поля как в machine_model (165-202)
+    # фактический год ввода в эксплуатацию
     date_exploitation = db.Column(db.Integer, nullable=True)
+    # фактический год ввода в работу
+    date_commission_year = db.Column(db.Integer, nullable=True)
+    # ожидаемый год ввода в эксплуатацию
+    date_exploitation_expected = db.Column(db.Integer, nullable=True)
     date_commission_fact = db.Column(db.String(10), nullable=True)
     date_joining_expected = db.Column(db.String(10), nullable=True)
     date_joining_fact = db.Column(db.String(10), nullable=True)
@@ -83,6 +96,9 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     date_relabing_fact = db.Column(db.String(255), nullable=True)
     date_update_fact = db.Column(db.String(255), nullable=True)
     note = db.Column(db.String(512), nullable=True)
+
+    # Документ-основание для изменения параметров агрегата
+    change_document = db.Column(db.Text, nullable=True)
     year_modern = db.Column(db.String(10), nullable=True)
     year_demontaz = db.Column(db.String(10), nullable=True)
     resurs_gas = db.Column(db.String(10), nullable=True)
@@ -103,6 +119,32 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
         return f"<PGUMachine id={self.id} name={self.machine_name!r} parent_id={self.id_parent_machine}>"
 
     @property
+    def commission_display(self) -> str | int | None:
+        """
+        Отображаемое значение для колонки 'Ввод в работу' на station_list:
+        - фактический год ввода в работу (date_commission_year), если указан;
+        - иначе ожидаемый год ввода в эксплуатацию (date_exploitation_expected).
+        """
+        if self.date_commission_year is not None:
+            return self.date_commission_year
+        if self.date_exploitation_expected is not None:
+            return self.date_exploitation_expected
+        return None
+
+    @property
+    def exploitation_display(self) -> int | None:
+        """
+        Отображаемое значение для колонки 'Ввод в экспл.' на station_list:
+        - фактический год ввода в эксплуатацию (date_exploitation), если указан;
+        - иначе ожидаемый год ввода в эксплуатацию (date_exploitation_expected).
+        """
+        if self.date_exploitation is not None:
+            return self.date_exploitation
+        if self.date_exploitation_expected is not None:
+            return self.date_exploitation_expected
+        return None
+
+    @property
     def decompressing_display(self) -> str | int | None:
         """
         Отображаемое значение для колонки 'Год вывода' на station_details:
@@ -119,3 +161,35 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
         if self.date_decompressing_expected is not None:
             return self.date_decompressing_expected
         return None
+
+    @property
+    def modernization_display(self) -> str | None:
+        """
+        Отображаемое значение для колонки 'Модерн.' на station_list.
+
+        Берем максимальный год из:
+        - ожидаемой модернизации (date_modernization_expected);
+        - фактических дат перемаркировки (date_relabing_fact) по правилу 01.01.(Y+1) -> Y.
+        """
+        from app.common.services.help_services import normalize_date_list, convert_to_date
+
+        years: list[int] = []
+
+        if self.date_modernization_expected is not None:
+            years.append(self.date_modernization_expected)
+
+        if self.date_relabing_fact:
+            normalized = normalize_date_list(self.date_relabing_fact)
+            if normalized:
+                tokens = [t.strip() for t in normalized.split(",") if t.strip()]
+                for token in tokens:
+                    dt = convert_to_date(token)
+                    if dt is None:
+                        continue
+                    display_year = dt.year - 1 if dt.month == 1 and dt.day == 1 else dt.year
+                    years.append(display_year)
+
+        if not years:
+            return None
+
+        return str(max(years))

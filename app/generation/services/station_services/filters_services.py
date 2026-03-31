@@ -69,6 +69,8 @@ def extract_filters_from_args(args):
         "regional_district_filter": args.getlist("regional_district_filter", type=int),
         "gen_company_filter": args.get("gen_company_filter", "").strip(),
         "station_name_filter": args.get("station_name_filter", "").strip(),
+        "note_filter": args.get("note_filter", "").strip(),
+        "equipment_group_name_filter": args.get("equipment_group_name_filter", "").strip(),
         "station_type_filter": args.getlist("station_type_filter", type=int),
         "fuel_type_filter": _fuel_type_filter,
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
@@ -77,6 +79,7 @@ def extract_filters_from_args(args):
         "date_exploitation_filter": _parse_year_filter(args.getlist("date_exploitation_filter")),
         "date_decompressing_expected_filter": _parse_year_filter(args.getlist("date_decompressing_expected_filter")),
         "date_modernization_expected_filter": _parse_year_filter(args.getlist("date_modernization_expected_filter")),
+        "machines_without_equipment_group": args.get("machines_without_equipment_group", "0") == "1",
         "sort_by": args.get("sort_by", "id"),
         "sort_dir": args.get("sort_dir", "asc"),
         # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
@@ -217,19 +220,51 @@ def build_date_modernization_filter(machine_cls, filters):
 
 def build_date_filters_for_pgu(pgu_cls, filters):
     """
-    Применяет фильтры по датам для PGUMachine (нет date_commission_year, date_exploitation_expected).
+    Применяет фильтры по датам для PGUMachine.
     Возвращает список условий для добавления в query.
     """
     conds = []
+    # Ввод в работу: date_commission_year или date_exploitation_expected
+    vals = filters.get("date_commission_filter")
+    if vals:
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(
+                or_(
+                    pgu_cls.date_commission_year.in_(years_only),
+                    pgu_cls.date_exploitation_expected.in_(years_only),
+                )
+            )
+        if include_null:
+            parts.append(
+                and_(
+                    pgu_cls.date_commission_year.is_(None),
+                    pgu_cls.date_exploitation_expected.is_(None),
+                )
+            )
+        if parts:
+            conds.append(or_(*parts))
     vals = filters.get("date_exploitation_filter")
     if vals:
         years_only = [y for y in vals if y is not None]
         include_null = None in vals
         parts = []
         if years_only:
-            parts.append(pgu_cls.date_exploitation.in_(years_only))
+            parts.append(
+                or_(
+                    pgu_cls.date_exploitation.in_(years_only),
+                    pgu_cls.date_exploitation_expected.in_(years_only),
+                )
+            )
         if include_null:
-            parts.append(pgu_cls.date_exploitation.is_(None))
+            parts.append(
+                and_(
+                    pgu_cls.date_exploitation.is_(None),
+                    pgu_cls.date_exploitation_expected.is_(None),
+                )
+            )
         if parts:
             conds.append(or_(*parts))
     vals = filters.get("date_decompressing_expected_filter")
@@ -280,6 +315,67 @@ def build_date_filters_for_pgu(pgu_cls, filters):
         if parts:
             conds.append(or_(*parts))
     return conds
+
+
+def get_pgu_date_cond_for_filter(pgu_cls, filters, filter_key):
+    """
+    Возвращает условие PGUMachine для конкретного фильтра по дате.
+    filter_key: 'date_commission_filter', 'date_exploitation_filter', и т.д.
+    """
+    if filter_key == "date_commission_filter":
+        vals = filters.get("date_commission_filter")
+        if not vals:
+            return None
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(or_(pgu_cls.date_commission_year.in_(years_only), pgu_cls.date_exploitation_expected.in_(years_only)))
+        if include_null:
+            parts.append(and_(pgu_cls.date_commission_year.is_(None), pgu_cls.date_exploitation_expected.is_(None)))
+        return or_(*parts) if parts else None
+    if filter_key == "date_exploitation_filter":
+        vals = filters.get("date_exploitation_filter")
+        if not vals:
+            return None
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(or_(pgu_cls.date_exploitation.in_(years_only), pgu_cls.date_exploitation_expected.in_(years_only)))
+        if include_null:
+            parts.append(and_(pgu_cls.date_exploitation.is_(None), pgu_cls.date_exploitation_expected.is_(None)))
+        return or_(*parts) if parts else None
+    if filter_key == "date_decompressing_expected_filter":
+        vals = filters.get("date_decompressing_expected_filter")
+        if not vals:
+            return None
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+            parts.append(or_(pgu_cls.date_decompressing_expected.in_(years_only), pgu_cls.date_decompressing_fact.op("~")(fact_regex)))
+        if include_null:
+            parts.append(and_(pgu_cls.date_decompressing_fact.is_(None), pgu_cls.date_decompressing_expected.is_(None)))
+        return or_(*parts) if parts else None
+    if filter_key == "date_modernization_expected_filter":
+        vals = filters.get("date_modernization_expected_filter")
+        if not vals:
+            return None
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            pats = []
+            for y in years_only:
+                pats.append(rf"01\.01\.{y + 1}\b")
+                pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+            parts.append(or_(pgu_cls.date_modernization_expected.in_(years_only), pgu_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")")))
+        if include_null:
+            parts.append(and_(pgu_cls.date_modernization_expected.is_(None), pgu_cls.date_relabing_fact.is_(None)))
+        return or_(*parts) if parts else None
+    return None
 
 
 def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict):
@@ -708,6 +804,8 @@ def has_any_filters(args):
         # Фильтры по названиям
         args.get('station_name_filter'),
         args.get('gen_company_filter'),
+        args.get('note_filter'),
+        args.get('equipment_group_name_filter'),
         # Фильтры по типам
         args.getlist('station_type_filter'),
         args.getlist('tes_type_filter'),

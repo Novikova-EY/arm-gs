@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+
+{% block title %}Удельные показатели групп оборудования{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-secondary fs-5">Доп. топливные параметры</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">Удельные показатели групп оборудования</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                    ➕ Добавить электростанцию
+                </a>
+                <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
+                    ➕ Добавить группу оборудования
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    {% include 'fuel/stations_equipment_group_specific_fuel_consumption_filters.html' %}
+
+{% set specific_columns = [
+    ('numb1120', 'NUMB1120', false),
+    ('k', 'K', true),
+    ('y', 'Y', true),
+    ('y_calc', 'Y (расчёт)', true),
+    ('btp', 'BTP', true),
+    ('btp_calc', 'BTP (расчёт)', true),
+    ('sntp', 'SNTP', true),
+    ('sntp_calc', 'SNTP (расчёт)', true),
+    ('bk', 'BK', true),
+    ('bk_calc', 'BK (расчёт)', true),
+    ('snk', 'SNK', true),
+    ('snk_calc', 'SNK (расчёт)', true)
+] %}
+{% set header_labels = consumption_column_labels or {} %}
+{% set column_count = specific_columns|length + 1 %}
+
+    <table class="table table-hover table-striped table-bordered table-responsive">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="width: 120px;">Группа оборудования</th>
+                {% for attr, label, is_numeric in specific_columns %}
+                <th style="width: 70px;">
+                    {{ header_labels.get(attr, label) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}
+                    <br><span class="text-muted small">({{ attr }})</span>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% if equipment_group_specific_fuel_consumption_hierarchy and equipment_group_specific_fuel_consumption_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_specific_fuel_consumption_hierarchy %}
+                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                    </tr>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                        </tr>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    <tr class="text-center align-middle">
+                                        <td>
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                                                {{ group_name }}
+                                            </a>
+                                            {% else %}
+                                                {{ group_name }}
+                                            {% endif %}
+                                        </td>
+                                        {% for attr, label, is_numeric in specific_columns %}
+                                        {% set cell_src = param %}
+                                        <td>{% if cell_src is none %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                        {% endfor %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
+                            <td>{{ station_block.station_name }}, всего</td>
+                            {% for attr, label, is_numeric in specific_columns %}
+                            <td>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{% set v = station_block.station_summary[attr] %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if res_block.group_blocks %}
+                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
+                            <td>{{ res_block.res_name }}, всего</td>
+                            {% for attr, label, is_numeric in specific_columns %}
+                            <td>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{% set v = res_block.res_summary[attr] %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+            {% for row in equipment_group_specific_fuel_consumption_rows|default([]) %}
+                {% set group_entity = row[0] %}
+                {% set param = row[1] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                <tr class="text-center align-middle">
+                    <td>
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                            {{ group_name }}
+                        </a>
+                        {% else %}
+                            {{ group_name }}
+                        {% endif %}
+                    </td>
+                    {% for attr, label, is_numeric in specific_columns %}
+                    {% set cell_src = param %}
+                    <td>{% if cell_src is none %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    </div>
+</div>
+
+<!-- Данные фильтров (для первой строки) -->
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+            new bootstrap.Tooltip(el);
+        });
+    }
+});
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+        document.getElementById('rounding_digits')?.addEventListener('change', function() {
+            const selectedRounding = this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('rounding_digits', selectedRounding);
+            window.location.href = url.toString();
+        });
+    });
+</script>
+
+<!-- Скрипт для обработки экспорта удельных показателей -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const exportButton = document.getElementById("exportSpecificFuelConsumptionButton");
+    const form = document.getElementById("exportSpecificFuelConsumptionForm");
+    if (!exportButton || !form) {
+        return;
+    }
+
+    const newButton = exportButton.cloneNode(true);
+    exportButton.parentNode.replaceChild(newButton, exportButton);
+
+    newButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = this;
+        const originalHtml = button.innerHTML;
+
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        button.disabled = true;
+
+        const currentUrl = new URL(window.location.href);
+        const params = new URLSearchParams(currentUrl.search);
+        const roundingEl = document.getElementById('rounding_digits');
+        if (roundingEl) {
+            params.set('rounding_digits', roundingEl.value);
+        }
+        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(exportUrl, {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('Ошибка сервера (' + response.status + '): ' + text.substring(0, 200));
+                });
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/vnd.openxmlformats')) {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = 'Удельные_показатели_групп_оборудования_' + timestamp + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                });
+            }
+
+            return response.text().then(() => {
+                throw new Error('Получен неожиданный тип ответа от сервера');
+            });
+        })
+        .catch(error => {
+            console.error('[EXPORT specific_fuel_consumption] Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        })
+        .finally(() => {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+    });
+});
+</script>
+
+{% endif %}
+{% endblock %}

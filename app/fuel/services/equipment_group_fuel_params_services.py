@@ -10,8 +10,19 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
 )
+from app.common.services.help_services import values_equal_by_display_precision
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
+    EquipmentGroupSpecificFuelConsumption,
+)
+from app.fuel.services.equipment_group_specific_fuel_consumption_calc_services import (
+    calc_bk_calc,
+    calc_btp_calc,
+    calc_sntp_calc,
+    calc_y_calc,
+)
 from app.fuel.models.external_mapping.fue_em_business_unit_model import (
     BusinessUnitExternalMapping,
 )
@@ -165,6 +176,80 @@ INTEGER_ATTRS = frozenset([
 STRING_ATTRS = frozenset(["obl", "dep", "oes", "er", "gk", "be"])
 NUMERIC_ATTRS = frozenset(EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS + EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS)
 
+EXTERNAL_MAPPING_MODELS = {
+    "obl": TerritoriesEnergyExternalMapping,
+    "dep": DepartmentExternalMapping,
+    "oes": UnionEnergySystemExternalMapping,
+    "er": EconomicRegionExternalMapping,
+    "gk": GenCompanyExternalMapping,
+    "be": BusinessUnitExternalMapping,
+}
+_EXTERNAL_MAPPING_VALUE_CACHE = {
+    attr: {} for attr in EXTERNAL_MAPPING_MODELS
+}
+
+
+def normalize_fuel_param_external_mapping_value(attr, value):
+    """
+    Нормализует значение FK-поля к expected external_id.
+
+    Исторически в топливные параметры местами попадал внутренний `id`
+    таблицы маппинга вместо `external_id`. Для строковых FK-полей пытаемся:
+    1) принять значение как корректный external_id;
+    2) если пришёл числовой id записи маппинга — заменить на её external_id;
+    3) если сопоставление не найдено — очистить значение, чтобы не ломать FK.
+    """
+    if value is None:
+        return None
+
+    raw = str(value).strip()
+    if not raw or raw.lower() in ("nan", "—", "-", "–"):
+        return None
+
+    model = EXTERNAL_MAPPING_MODELS.get(attr)
+    if model is None:
+        return raw
+
+    cache = _EXTERNAL_MAPPING_VALUE_CACHE.setdefault(attr, {})
+    if raw in cache:
+        return cache[raw]
+
+    resolved = None
+    with db.session.no_autoflush:
+        by_external = model.query.filter(model.external_id == raw).first()
+        if by_external is not None and getattr(by_external, "external_id", None):
+            resolved = str(by_external.external_id).strip()
+        else:
+            mapping_id = None
+            try:
+                mapping_id = int(Decimal(raw))
+            except (InvalidOperation, ValueError, TypeError):
+                mapping_id = None
+
+            if mapping_id is not None:
+                by_id = db.session.get(model, mapping_id)
+                external_id = getattr(by_id, "external_id", None) if by_id else None
+                if external_id is not None and str(external_id).strip():
+                    resolved = str(external_id).strip()
+
+    cache[raw] = resolved
+    return resolved
+
+
+def sanitize_equipment_group_fuel_param_foreign_keys(param):
+    """Исправляет legacy-значения FK-полей на корректные external_id."""
+    changes = []
+    if param is None:
+        return changes
+
+    for attr in STRING_ATTRS:
+        old_val = getattr(param, attr, None)
+        new_val = normalize_fuel_param_external_mapping_value(attr, old_val)
+        if old_val != new_val:
+            setattr(param, attr, new_val)
+            changes.append((attr, old_val, new_val))
+    return changes
+
 
 def _parse_fuel_param_value(attr, value):
     """Парсит значение из формы для атрибута EquipmentGroupFuelParam."""
@@ -179,7 +264,7 @@ def _parse_fuel_param_value(attr, value):
         except (InvalidOperation, ValueError, TypeError):
             return None
     if attr in STRING_ATTRS:
-        return s if s else None
+        return normalize_fuel_param_external_mapping_value(attr, s)
     if attr in NUMERIC_ATTRS:
         try:
             return Decimal(s.replace(",", "."))
@@ -188,13 +273,37 @@ def _parse_fuel_param_value(attr, value):
     return None
 
 
+TABLE_FUEL_PARAM = "Параметры группы оборудования"
+TABLE_FUEL_MAIN = "Основные параметры"
+TABLE_FUEL_TABLE2 = "Основные параметры топлива"
+TABLE_CONSUMPTION_CALC = "Удельные показатели (расчётные)"
+
+
+def _fuel_param_table_name(attr):
+    if attr in EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS:
+        return TABLE_FUEL_MAIN
+    if attr in EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS:
+        return TABLE_FUEL_PARAM
+    if attr in EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS:
+        return TABLE_FUEL_TABLE2
+    return "Параметры топлива"
+
+
+def _format_val(v):
+    if v is None:
+        return "—"
+    return str(v)
+
+
 def update_equipment_group_fuel_params_from_form(
-    equipment_group_id, form_data, start_year, end_year
+    equipment_group_id, form_data, start_year, end_year,
+    rounding_digits_table1=1, rounding_digits_table2=1,
 ):
     """
     Обновляет EquipmentGroupFuelParam из данных формы.
     Ожидает ключи вида: fuel_param_{year}_{attr}
-    Возвращает (success: bool, message: str).
+    rounding_digits_table1/table2 — точность отображения для сравнения (избегаем ложных «изменений»).
+    Возвращает (success: bool, message: str, change_details: list).
     """
     version_id = get_current_db_version_id()
     all_attrs = (
@@ -202,16 +311,25 @@ def update_equipment_group_fuel_params_from_form(
         + EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS
         + EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS
     )
-    existing_params = {
-        p.year_number: p
-        for p in EquipmentGroupFuelParam.query.filter_by(
-            equipment_group_id=equipment_group_id,
-            database_version_id=version_id,
-        ).all()
-    }
-    changes = 0
+    # Загружаем без фильтра по версии (как при отображении), чтобы обновлять те же записи
+    params_list = EquipmentGroupFuelParam.query.filter_by(
+        equipment_group_id=equipment_group_id
+    ).all()
+    existing_params = {}
+    for p in params_list:
+        # Приоритет: запись с текущей версией, иначе первая найденная для года
+        if p.year_number not in existing_params or p.database_version_id == version_id:
+            existing_params[p.year_number] = p
+    change_details = []
     for year in range(start_year, end_year + 1):
         param = existing_params.get(year)
+        if param is not None:
+            # Перед любым обновлением исправляем legacy-значения FK-полей:
+            # в старых данных мог храниться id записи маппинга вместо external_id.
+            for attr, old_val, new_val in sanitize_equipment_group_fuel_param_foreign_keys(param):
+                change_details.append(
+                    (_fuel_param_table_name(attr), year, attr, _format_val(old_val), _format_val(new_val))
+                )
         for attr in all_attrs:
             key = f"fuel_param_{year}_{attr}"
             raw = form_data.get(key)
@@ -227,11 +345,137 @@ def update_equipment_group_fuel_params_from_form(
                     db.session.add(param)
                     existing_params[year] = param
             if param is not None:
+                # Миграция: задать database_version_id при обновлении записей с NULL
+                if (
+                    hasattr(param, "database_version_id")
+                    and param.database_version_id is None
+                    and version_id is not None
+                ):
+                    param.database_version_id = version_id
                 old_val = getattr(param, attr, None)
-                if old_val != val:
+                digits = rounding_digits_table2 if attr in EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS else rounding_digits_table1
+                is_unchanged = (
+                    attr in NUMERIC_ATTRS
+                    and values_equal_by_display_precision(old_val, val, digits)
+                ) or (attr not in NUMERIC_ATTRS and old_val == val)
+                if not is_unchanged:
                     setattr(param, attr, val)
-                    changes += 1
-    return True, "Параметры успешно сохранены." if changes else "Изменений нет."
+                    change_details.append(
+                        (_fuel_param_table_name(attr), year, attr, _format_val(old_val), _format_val(val))
+                    )
+
+    # Не пересчитываем y_calc, btp_calc и т.д. при сохранении fuel_params: эти поля
+    # хранятся в EquipmentGroupSpecificFuelConsumption и редактируются пользователем
+    # на странице equipment_group_edit (таблица «Удельные показатели»).
+
+    return True, "Параметры успешно сохранены." if change_details else "Изменений нет.", change_details
+
+
+def recalculate_all_specific_fuel_consumption_calc(year=None):
+    """
+    Пересчитывает y_calc, btp_calc, sntp_calc, bk_calc, snk_calc для
+    EquipmentGroupSpecificFuelConsumption по данным EquipmentGroupFuelParam.
+    Вызывается после импорта Excel на странице stations_equipment_groups
+    или после импорта топливных параметров на странице stations_equipment_group_fuel_params.
+    :param year: если задан, пересчитывает только для указанного года; иначе — для всех.
+    :return: количество обновлённых записей.
+    """
+    current_version_id = get_current_db_version_id()
+    query = EquipmentGroupFuelParam.query
+    if year is not None:
+        query = query.filter(EquipmentGroupFuelParam.year_number == year)
+    if current_version_id is not None:
+        query = query.filter(EquipmentGroupFuelParam.database_version_id == current_version_id)
+    else:
+        query = query.filter(EquipmentGroupFuelParam.database_version_id.is_(None))
+    params = query.all()
+    if not params:
+        return 0
+
+    # Группируем по (equipment_group_id, year_number, database_version_id)
+    by_key = defaultdict(list)
+    for p in params:
+        key = (p.equipment_group_id, p.year_number, p.database_version_id)
+        by_key[key].append(p)
+
+    # Берём один param на группу (дублей не должно быть по UniqueConstraint)
+    updates_count = 0
+    Q6 = Decimal("0.000001")
+
+    def q6(val):
+        if val is None:
+            return None
+        try:
+            d = Decimal(str(val))
+            return d.quantize(Q6)
+        except (InvalidOperation, TypeError):
+            return val
+
+    for (equipment_group_id, year_number, version_id), param_list in by_key.items():
+        param = param_list[0]
+        consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
+            equipment_group_id=equipment_group_id,
+            year_number=year_number,
+            database_version_id=version_id,
+        ).first()
+        # K привязан к году: только consumption.k
+        coeff_k = consumption.k if (consumption is not None and consumption.k is not None) else None
+
+        y_calc_val = calc_y_calc(param)
+        btp_calc_val = calc_btp_calc(param, coeff_k)
+        sntp_calc_val = calc_sntp_calc(param)
+        bk_calc_val = calc_bk_calc(param, btp_calc_val, sntp_calc_val)
+        snk_calc_val = getattr(param, "snk", None)
+
+        # Приводим к 6 знакам после запятой (Numeric 20,6)
+        y_calc_val = q6(y_calc_val)
+        btp_calc_val = q6(btp_calc_val)
+        sntp_calc_val = q6(sntp_calc_val)
+        bk_calc_val = q6(bk_calc_val)
+        snk_calc_val = q6(snk_calc_val) if snk_calc_val is not None else None
+
+        consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
+            equipment_group_id=equipment_group_id,
+            year_number=year_number,
+            database_version_id=version_id,
+        ).first()
+        if consumption is None:
+            consumption = EquipmentGroupSpecificFuelConsumption(
+                equipment_group_id=equipment_group_id,
+                year_number=year_number,
+                database_version_id=version_id,
+                y_calc=y_calc_val,
+                btp_calc=btp_calc_val,
+                sntp_calc=sntp_calc_val,
+                bk_calc=bk_calc_val,
+                snk_calc=snk_calc_val,
+            )
+            set_db_version_on_create(consumption)
+            db.session.add(consumption)
+            updates_count += 1
+        else:
+            changed = False
+            if consumption.y_calc != y_calc_val:
+                consumption.y_calc = y_calc_val
+                changed = True
+            if consumption.btp_calc != btp_calc_val:
+                consumption.btp_calc = btp_calc_val
+                changed = True
+            if consumption.sntp_calc != sntp_calc_val:
+                consumption.sntp_calc = sntp_calc_val
+                changed = True
+            if consumption.bk_calc != bk_calc_val:
+                consumption.bk_calc = bk_calc_val
+                changed = True
+            if consumption.snk_calc != snk_calc_val:
+                consumption.snk_calc = snk_calc_val
+                changed = True
+            if changed:
+                updates_count += 1
+
+    if updates_count:
+        db.session.commit()
+    return updates_count
 
 
 def load_equipment_group_fuel_params_for_groups(
@@ -386,7 +630,7 @@ def get_equipment_groups_with_fuel_params_data(
                 EquipmentGroup.database_version_id.is_(None)
             )
 
-    # Территориальные фильтры (как на stations_equipment_groups)
+    # Территориальные фильтры и поиск по группе оборудования (как на stations_equipment_groups)
     territorial_keys = (
         "energy_system_type_filter",
         "union_energy_system_filter",
@@ -396,8 +640,9 @@ def get_equipment_groups_with_fuel_params_data(
     )
     _filters = {k: v for k, v in (filters or {}).items()
                 if k not in ("page", "start_year", "end_year")}
-    if any(_filters.get(k) for k in territorial_keys):
-        from app.fuel.services.stations_equipment_groups_v2_services import (
+    equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
+    if any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
+        from app.fuel.services.stations_equipment_groups_services import (
             get_filtered_equipment_group_ids,
             get_filtered_standalone_equipment_group_ids,
         )

@@ -184,6 +184,8 @@ def add_equipment_group_service(form_data, user):
         if val is not None:
             setattr(equipment_group, field, (val.strip() if val else None))
 
+    # K хранится в EquipmentGroupSpecificFuelConsumption (consumption.k) по году, не в EquipmentGroup
+
     try:
         db.session.add(equipment_group)
         db.session.flush()

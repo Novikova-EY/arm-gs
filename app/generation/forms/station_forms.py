@@ -139,6 +139,12 @@ class StationFilterForm(FlaskForm):
         render_kw={"placeholder": "Введите название генерирующей компании"}
     )
 
+    note_filter = StringField(
+        "Фильтр по примечанию",
+        validators=[Optional(), Length(max=255)],
+        render_kw={"placeholder": "Введите текст примечания"}
+    )
+
     station_type_filter = StringField(
         "Фильтр по типу электростанции",
         validators=[Length(max=100)],
@@ -191,6 +197,12 @@ class StationFilterForm(FlaskForm):
         "Фильтр по генерирующей компании",
         validators=[Length(max=100)],
         render_kw={'multiple': True}
+    )
+
+    equipment_group_name_filter = StringField(
+        "Фильтр по названию группы оборудования",
+        validators=[Optional(), Length(max=255)],
+        render_kw={"placeholder": "Группа оборудования"}
     )
 
     fuel_type_filter = StringField(

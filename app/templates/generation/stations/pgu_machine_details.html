@@ -2,9 +2,9 @@
 
 {% block title %}
     {% if pgu_machine %}
-        {{ pgu_machine.machine_name }} {{ parent_machine.machine_name }} ({{ station.name }})
+        {{ pgu_machine.machine_name }} {{ parent_machine.machine_name }} ({{ station.name }} - {{ parent_machine.machine_name }})
     {% else %}
-        Добавление агрегата ПГУ: {{ parent_machine.machine_name }} ({{ station.name }})
+        Добавление агрегата ПГУ: {{ parent_machine.machine_name }} ({{ station.name }} - {{ parent_machine.machine_name }})
     {% endif %}
 {% endblock %}
 
@@ -27,7 +27,7 @@
         <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции РФ</a>
         <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
-            {{ station.name }}
+            {{ station.name }} - {{ parent_machine.machine_name }}
         </a>
         <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=parent_machine.id, **request.args) }}" class="btn btn-secondary fs-5">
             Агрегат ПГУ № {{ parent_machine.machine_number or '' }}"
@@ -51,7 +51,7 @@
         </div>
 
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
-            <strong>{{ station.name }}</strong>
+            <strong>{{ station.name }} - {{ parent_machine.machine_number }} {{ parent_machine.machine_name }}</strong>
         </a>
 
         <form method="POST" action="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=parent_machine.id, pgu_machine_id=pgu_machine_id, **request.args) }}">
@@ -81,9 +81,15 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Название агрегата:</div>
+                                    <div class="col-5 text-start fw-semibold">Название агрегата: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                        {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
+                                            <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '—' }}</div>
+                                            <input type="hidden"
+                                                   name="{{ pgu_form.machine_name.name }}"
+                                                   value="{{ pgu_form.machine_name.data or '' }}"
+                                                   class="machine-name-hidden">
+                                        {% elif can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
                                             <div class="machine-name-display">{{ pgu_form.machine_name.data if pgu_form.machine_name.data else '—' }}</div>
@@ -100,9 +106,35 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Организация-собственник:</div>
+                                    <div class="col-7 text-start">
+                                        {{ parent_machine.gen_company.name if parent_machine.gen_company else '—' }}
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-7 text-start">
+                                        {{ parent_machine.energy_area.name if parent_machine.energy_area else '—' }}
+                                    </div>
+                                </div>
+                                {% if station.station_type.name|lower == 'тэс' %}
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {{ parent_machine.tes_machine_type.name if parent_machine.tes_machine_type else '—' }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
+                                    <div class="col-7 text-start">
+                                        {{ parent_machine.equipment_group.name if parent_machine.equipment_group else '—' }}
+                                    </div>
+                                </div>
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип агрегата ПГУ:</div>
                                     <div class="col-7 text-start">
@@ -124,11 +156,50 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold align-self-start">Документ-основание для изменения параметров агрегата:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            <div id="change_document_editor"
+                                                 class="document-display-readonly p-2 border rounded mb-2"
+                                                 contenteditable="true"
+                                                 style="background-color: #f8f9fa; min-height: 40px;"></div>
+                                            <input type="hidden"
+                                                   name="{{ pgu_form.change_document.name }}"
+                                                   id="change_document_hidden"
+                                                   value="{{ pgu_form.change_document.data or '' }}">
+                                            <select class="form-select" id="document_selector" onchange="insertDocumentLink(this)">
+                                                <option value="">Выберите документ для вставки...</option>
+                                                {% for doc in all_documents %}
+                                                    <option value="{{ doc.id }}" data-name="{{ doc.name }}">{{ doc.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% else %}
+                                            {% if pgu_form.change_document.data %}
+                                                <div class="document-display-readonly">
+                                                    {{ pgu_form.change_document.data | render_document_links }}
+                                                </div>
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_commission_year(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_commission_year.data if pgu_form.date_commission_year.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.date_exploitation(class="form-control") }}
@@ -138,12 +209,32 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_commission_fact(class="form-control") }}
+                                            {{ pgu_form.date_exploitation_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_commission_fact.data if pgu_form.date_commission_fact.data else '—' }}
+                                            {{ pgu_form.date_exploitation_expected.data if pgu_form.date_exploitation_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_decompressing_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_decompressing_expected.data if pgu_form.date_decompressing_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_modernization_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_modernization_expected.data if pgu_form.date_modernization_expected.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -157,6 +248,29 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_commission_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_commission_fact.data if pgu_form.date_commission_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_decompressing_fact(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_decompressing_fact.data if pgu_form.date_decompressing_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
                                     <div class="col-7 text-start">
@@ -167,26 +281,23 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Ожидаемый год вывода:</div>
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата отсоединения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_decompressing_expected(class="form-control") }}
+                                            {{ pgu_form.date_detatchment_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_decompressing_expected.data if pgu_form.date_decompressing_expected.data else '—' }}
+                                            {{ pgu_form.date_detatchment_fact.data if pgu_form.date_detatchment_fact.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата вывода:</div>
+                                    <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_decompressing_fact(class="form-control") }}
+                                            {{ pgu_form.date_update_fact(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_decompressing_fact.data if pgu_form.date_decompressing_fact.data else '—' }}
+                                            {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -194,23 +305,9 @@
                                     <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_relabing_fact(
-                                                class="form-control",
-                                            ) }}
+                                            {{ pgu_form.date_relabing_fact(class="form-control") }}
                                         {% else %}
                                             {{ pgu_form.date_relabing_fact.data if pgu_form.date_relabing_fact.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="row g-2 align-items-center">
-                                    <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_update_fact(
-                                                class="form-control",
-                                            ) }}
-                                        {% else %}
-                                            {{ pgu_form.date_update_fact.data if pgu_form.date_update_fact.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -225,13 +322,7 @@
                 <div class="col-12 mb-2">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="d-flex align-items-center gap-2" id="yearForm">
-                                {% for key, value in request.args.items() %}
-                                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
-                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                    {% endif %}
-                                {% endfor %}
-
+                            <div class="d-flex align-items-center gap-2">
                                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                                 <select name="start_year" id="start_year" class="form-select">
                                     {% for year in range(2021, 2043) %}
@@ -241,7 +332,8 @@
 
                                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                                 <select name="end_year" id="end_year" class="form-select">
-                                    {% for year in range(2022, 2043) %}
+                                    {% set max_end_year = [version_year_end if version_year_end else 2042, 2022] | max %}
+                                    {% for year in range(2022, max_end_year + 1) %}
                                         <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
                                     {% endfor %}
                                 </select>
@@ -281,6 +373,56 @@
             </div>
 
             {{ pgu_form.hidden_tag() }}
+
+            {# Таблица с названиями для ТЭС, ГЭС и ГАЭС #}
+            {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
+            <!-- Таблица «Название агрегата» -->
+            <div class="table-responsive">
+                <table id="pgu-machine-names-table" class="table table-hover table-striped table-bordered machines-table">
+                    <thead class="table-success">
+                        <tr class="text-center fw-bold align-middle">
+                            <th colspan="{{ end_year - start_year + 2 }}">Название агрегата</th>
+                        </tr>
+                        <tr class="text-center align-middle">
+                            <th class="first-column" style="width: 50px;"></th>
+                            {% for year in range(start_year, end_year + 1) %}
+                            <th style="width: 50px; text-align: center;">
+                                {{ year }}
+                                <div class="text-center text-wrap" style="word-wrap: break-word; white-space: normal;">
+                                    {% if year_features[year] is defined %}
+                                        {{ year_features[year] }}
+                                    {% endif %}
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <input type="hidden" id="pgu_machine_names_current_year" value="{{ version_year_end or '' }}">
+                        <tr class="text-center align-middle">
+                            <td class="first-column fw-bold" style="width: 50px;">Название</td>
+                            {% for nm in pgu_form.pgu_machine_names %}
+                                {{ nm.year(type="hidden") }}
+                                <td class="align-middle text-center">
+                                    {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                        <input type="text"
+                                            name="{{ nm.year_name.name }}"
+                                            value="{{ nm.year_name.data or '' }}"
+                                            data-year="{{ nm.year.data }}"
+                                            data-feature="{{ year_features.get(nm.year.data) or '' }}"
+                                            class="text-center form-control"
+                                            maxlength="1024">
+                                    {% else %}
+                                        <span>{{ nm.year_name.data if nm.year_name.data else '—' }}</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
             <div class="table-responsive">
                 <table class="table table-hover table-striped table-bordered machines-table">
                     <thead class="table-success">
@@ -304,10 +446,18 @@
                         <tr class="text-center align-middle total-power-row">
                             <td class="first-column fw-bold" style="width: 50px;">Руст</td>
                             {% for power in pgu_form.powers %}
+                                {% set p_ust_full = power.p_ust.data | format_decimal(0) if power.p_ust.data is not none else '' %}
+                                <td class="power-column align-middle text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                 {{ power.year(type="hidden") }}
-                                <td class="power-column align-middle text-center">
+                                <input type="hidden"
+                                       class="year-feature"
+                                       value="{{ year_features.get(power.year.data)|default('', true) }}">
                                 {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                    {{ power.p_ust(class="form-control text-center") }}
+                                    <input type="text"
+                                        name="{{ power.p_ust.name }}"
+                                        value="{{ power.p_ust.data | format_decimal }}"
+                                        data-original-value="{{ power.p_ust.data | format_decimal }}"
+                                        class="form-control text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                 {% else %}
                                     <span>{{ power.p_ust.data | format_decimal if power.p_ust.data else '—' }}</span>
                                 {% endif %}
@@ -330,6 +480,9 @@
         </form>
     </div>
 </div>
+
+<!-- Максимальный год версии БД — для ограничений по годам в JS (заполнение до конца Сипр) -->
+<input type="hidden" id="db_version_max_year" value="{{ version_year_end or '' }}">
 
 <!-- jQuery и Select2 уже подключены в base.html -->
 
@@ -366,23 +519,24 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const $ = window.jQuery;
-
-    $('.pftt-select').each(function() {
-        if (!$(this).data('select2')) {
-            $(this).select2({
-                width: '100%',
-                placeholder: "Выберите значение",
-                allowClear: true,
-                minimumResultsForSearch: 0
-            });
-        }
-    });
+    if (typeof $ === "function" && $.fn && $.fn.select2) {
+        $('.pftt-select').each(function() {
+            if (!$(this).data('select2')) {
+                $(this).select2({
+                    width: '100%',
+                    placeholder: "Выберите значение",
+                    allowClear: true,
+                    minimumResultsForSearch: 0
+                });
+            }
+        });
+    }
 
     function equalizeColumnWidth() {
-        const yearColumns = $('.year-header');
+        const yearColumns = document.querySelectorAll('.year-header');
         if (yearColumns.length > 0) {
             const width = 100 / yearColumns.length + "%";
-            yearColumns.css('width', width);
+            yearColumns.forEach(function(el) { el.style.width = width; });
         }
     }
     equalizeColumnWidth();
@@ -420,14 +574,38 @@ document.addEventListener("DOMContentLoaded", function () {
                 const el = document.getElementById(param);
                 if (el && el.value) addHiddenField(form, param, el.value);
             });
+            if (typeof syncHiddenFromEditor === "function") syncHiddenFromEditor();
+            // Синхронизация "Название агрегата" из таблицы названий по годам (ТЭС/ГЭС/ГАЭС)
+            const nameInputs = document.querySelectorAll('#pgu-machine-names-table tbody tr td input[type="text"]');
+            if (nameInputs.length && typeof recomputePguMachineNameFromYearNames === "function") {
+                recomputePguMachineNameFromYearNames(Array.from(nameInputs));
+            }
         });
     });
+
+    function ensureValidYearSelection(selectEl) {
+        if (!selectEl) return "";
+        const options = Array.from(selectEl.options || []);
+        if (!options.length) return "";
+        const currentValue = selectEl.value;
+        const hasExactOption = options.some((option) => option.value === currentValue);
+        if (!currentValue || !hasExactOption) {
+            selectEl.value = selectEl.id === "end_year"
+                ? options[options.length - 1].value
+                : options[0].value;
+        }
+        return selectEl.value;
+    }
+
+    ensureValidYearSelection(startYearSelect);
+    ensureValidYearSelection(endYearSelect);
 
     // Применить годы
     window.applyYearFilters = function () {
         const url = new URL(window.location.href);
-        url.searchParams.set("start_year", startYearSelect.value);
-        url.searchParams.set("end_year", endYearSelect.value);
+        url.searchParams.set("start_year", ensureValidYearSelection(startYearSelect));
+        url.searchParams.set("end_year", ensureValidYearSelection(endYearSelect));
+        url.searchParams.set("rounding_digits", roundingDigitsSelect ? roundingDigitsSelect.value : "");
         url.searchParams.set("page", 1);
         window.location.href = url.toString();
     };
@@ -495,18 +673,67 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function attachPguPowerAutoFill() {
+        // Максимальный допустимый год по версии БД (конец Сипр)
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" &&
+            !isNaN(maxVersionYear) &&
+            maxVersionYear > 0;
+
+        // Годы по столбцам (из скрытых полей year)
+        let columnYears = [];
+        const yearInputs = Array.from(
+            document.querySelectorAll('.total-power-row input[type="hidden"][name*="year"]')
+        );
+        if (yearInputs.length) {
+            yearInputs.forEach((inp) => {
+                const y = parseInt(inp.value || "0", 10);
+                columnYears.push(isNaN(y) ? null : y);
+            });
+        } else {
+            const startYearEl = document.getElementById("start_year");
+            const endYearEl = document.getElementById("end_year");
+            const startYear = startYearEl ? parseInt(startYearEl.value || "0", 10) : NaN;
+            const endYear = endYearEl ? parseInt(endYearEl.value || "0", 10) : NaN;
+            if (!isNaN(startYear) && !isNaN(endYear) && endYear >= startYear) {
+                for (let y = startYear; y <= endYear; y++) {
+                    columnYears.push(y);
+                }
+            }
+        }
+
         const powerRows = document.querySelectorAll(".machines-table .total-power-row");
         powerRows.forEach(function (row) {
             const inputs = Array.from(row.querySelectorAll('input[type="text"], input.form-control'));
             if (!inputs.length) return;
 
-            inputs.forEach(function (input, index) {
-                input.addEventListener("change", function () {
-                    const value = this.value;
-                    for (let i = index + 1; i < inputs.length; i++) {
-                        inputs[i].value = value;
+            const yearsMatchInputs = columnYears.length > 0 && columnYears.length === inputs.length;
+
+            function extendPowerValue(inputEl, idx) {
+                const value = inputEl.value;
+                for (let i = idx + 1; i < inputs.length; i++) {
+                    if (hasMaxVersionYear && yearsMatchInputs) {
+                        const y = columnYears[i];
+                        if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
                     }
+                    inputs[i].value = value;
+                }
+            }
+
+            inputs.forEach(function (input, index) {
+                input.addEventListener("input", function () {
+                    extendPowerValue(this, index);
+                    if (typeof autoSetPguNamesToEmpty === "function") autoSetPguNamesToEmpty();
+                    if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
+                });
+                input.addEventListener("change", function () {
+                    extendPowerValue(this, index);
                     showPguPowerFlashMessage();
+                    if (typeof autoSetPguNamesToEmpty === "function") autoSetPguNamesToEmpty();
+                    if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
                 });
             });
         });
@@ -514,111 +741,446 @@ document.addEventListener("DOMContentLoaded", function () {
 
     attachPguPowerAutoFill();
 
-    // --- Автозаполнение ожидаемых/расчетных годов по Руст ---
-    function parsePowerValue(raw) {
-        if (raw === null || raw === undefined) return 0;
-        const s = String(raw).trim().replace(',', '.');
-        if (!s) return 0;
-        const n = parseFloat(s);
-        return Number.isFinite(n) ? n : 0;
-    }
+    // --- Пересборка поля "Название агрегата" из таблицы названий по годам (для ТЭС/ГЭС/ГАЭС) ---
+    function recomputePguMachineNameFromYearNames(inputs) {
+        const machineNameTextarea = document.querySelector(".machine-name-textarea");
+        const machineNameHidden = document.querySelector(".machine-name-hidden");
+        const machineNameDisplay = document.querySelector(".machine-name-display");
+        if (!machineNameTextarea && !machineNameHidden && !machineNameDisplay) return;
 
-    function autoFillPguYearsFromPowers() {
-        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
-        if (!rustInputs.length) return;
+        let baseName = null;
+        let planName = null;
 
-        let yearInputs = Array.from(document.querySelectorAll(".total-power-row input[type=\"hidden\"][name*=\"year\"]"));
-        if (yearInputs.length === 0 || yearInputs.length !== rustInputs.length) return;
+        inputs.forEach(function (input) {
+            if (baseName) return;
+            const feature = (input.dataset.feature || "").toLowerCase();
+            const value = (input.value || "").trim();
+            if (!value) return;
+            if (feature.includes("план")) return;
+            baseName = value;
+        });
 
-        const powersByYear = [];
-        for (let i = 0; i < rustInputs.length; i++) {
-            const year = parseInt(yearInputs[i].value);
-            if (Number.isNaN(year)) continue;
-            const power = parsePowerValue(rustInputs[i].value);
-            powersByYear.push({ year, power: power > 0 ? power : 0 });
+        if (!baseName) {
+            inputs.forEach(function (input) {
+                if (baseName) return;
+                const value = (input.value || "").trim();
+                if (value) baseName = value;
+            });
         }
 
-        // 1) Вывод: первый переход >0 -> 0 => год N+1 (первый год с нулевой мощностью)
+        if (!baseName) {
+            if (machineNameTextarea) machineNameTextarea.value = "";
+            if (machineNameHidden) machineNameHidden.value = "";
+            if (machineNameDisplay) machineNameDisplay.textContent = "—";
+            return;
+        }
+
+        inputs.forEach(function (input) {
+            if (planName) return;
+            const feature = (input.dataset.feature || "").toLowerCase();
+            const value = (input.value || "").trim();
+            if (!value) return;
+            if (!feature.includes("план")) return;
+            if (value.toLowerCase() === baseName.toLowerCase()) return;
+            planName = value;
+        });
+
+        const displayName = planName ? (baseName + " (" + planName + ")") : baseName;
+        if (machineNameTextarea) machineNameTextarea.value = displayName;
+        if (machineNameHidden) machineNameHidden.value = displayName;
+        if (machineNameDisplay) machineNameDisplay.textContent = displayName || "—";
+    }
+
+    function attachPguNamesAutoFill() {
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+        const hasMaxVersionYear =
+            typeof maxVersionYear === "number" && !isNaN(maxVersionYear) && maxVersionYear > 0;
+
+        const inputs = Array.from(
+            document.querySelectorAll('#pgu-machine-names-table tbody tr td input[type="text"]')
+        );
+        if (!inputs.length) return;
+
+        recomputePguMachineNameFromYearNames(inputs);
+
+        function extendNameValue(inputEl, idx) {
+            const value = inputEl.value;
+            for (let i = idx + 1; i < inputs.length; i++) {
+                if (hasMaxVersionYear) {
+                    const colYear = parseInt(inputs[i].dataset.year || "0", 10);
+                    if (!isNaN(colYear) && colYear > maxVersionYear) break;
+                }
+                inputs[i].value = value;
+            }
+        }
+
+        inputs.forEach(function (input, index) {
+            input.addEventListener("input", function () {
+                extendNameValue(this, index);
+                if (typeof recomputePguMachineNameFromYearNames === "function") {
+                    recomputePguMachineNameFromYearNames(inputs);
+                }
+                if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
+            });
+            input.addEventListener("change", function () {
+                extendNameValue(this, index);
+                recomputePguMachineNameFromYearNames(inputs);
+                if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
+            });
+        });
+    }
+    attachPguNamesAutoFill();
+
+    // --- parsePowerValue (используется в autoSetPguNamesToEmpty и autoFillDatesFromPowers) ---
+    function parsePowerValue(raw) {
+        if (raw === null || raw === undefined) return null;
+        const cleaned = raw.toString().replace(/\s+/g, "").replace(",", ".");
+        if (cleaned === "") return null;
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? null : num;
+    }
+
+    // --- Автоматическая очистка названия при Руст=0 (как attachTesAndFuelAutoEmpty на machine_details) ---
+    function autoSetPguNamesToEmpty() {
+        const rustInputs = Array.from(
+            document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]")
+        );
+        if (!rustInputs.length) return;
+
+        const nameInputs = Array.from(
+            document.querySelectorAll('#pgu-machine-names-table tbody tr td input[type="text"]')
+        );
+        if (!nameInputs.length) return;
+
+        rustInputs.forEach(function (rustInput, index) {
+            const powerValue = parsePowerValue(rustInput.value);
+            const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
+            if (!isZero) return;
+            if (nameInputs[index]) {
+                nameInputs[index].value = "";
+            }
+        });
+        if (typeof recomputePguMachineNameFromYearNames === "function") {
+            recomputePguMachineNameFromYearNames(nameInputs);
+        }
+    }
+
+    function autoFillDatesFromPowers() {
+        const rustInputs = Array.from(
+            document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]")
+        );
+        if (!rustInputs.length) return;
+
+        let yearInputs = Array.from(
+            document.querySelectorAll('.total-power-row input[type="hidden"][name*="year"]')
+        );
+        const yearFeatureInputs = Array.from(
+            document.querySelectorAll('.total-power-row input.year-feature')
+        );
+
+        if (yearInputs.length === 0 || yearInputs.length !== rustInputs.length) {
+            const startYearEl = document.getElementById("start_year");
+            if (!startYearEl) return;
+            const startYear = parseInt(startYearEl.value, 10);
+            if (isNaN(startYear)) return;
+            yearInputs = [];
+            for (let i = 0; i < rustInputs.length; i++) {
+                yearInputs.push({ value: String(startYear + i) });
+            }
+        }
+
+        const powersByYear = [];
+        for (let i = 0; i < rustInputs.length && i < yearInputs.length; i++) {
+            const year = parseInt(yearInputs[i].value, 10);
+            if (isNaN(year)) continue;
+
+            const powerValue = parsePowerValue(rustInputs[i].value);
+            const power =
+                powerValue !== null &&
+                powerValue !== undefined &&
+                !isNaN(powerValue) &&
+                powerValue > 0
+                    ? powerValue
+                    : 0;
+
+            let featureRaw = "";
+            if (yearFeatureInputs[i]) {
+                featureRaw = String(yearFeatureInputs[i].value || "");
+            }
+            const featureNorm = featureRaw.trim().toLowerCase();
+            const isPlan = featureNorm === "план";
+            const isCurrent =
+                featureNorm === "текущий (оценка)" || featureNorm === "текущий(оценка)";
+
+            powersByYear.push({ year, power, isPlan, isCurrent });
+        }
+
+        let planPowers = powersByYear.filter((item) => item.isPlan);
+        if (!planPowers.length) {
+            planPowers = powersByYear;
+        }
+
+        const dateExploitationExpectedField = document.querySelector(
+            'input[name*="date_exploitation_expected"]'
+        );
+        const dateDecompressingExpectedField = document.querySelector(
+            'input[name*="date_decompressing_expected"]'
+        );
+        const dateDecompressingFactField = document.querySelector(
+            'input[name*="date_decompressing_fact"]'
+        );
+        const dateModernizationExpectedField = document.querySelector(
+            'input[name*="date_modernization_expected"]'
+        );
+
+        const maxVersionYearInput = document.getElementById("db_version_max_year");
+        const maxVersionYear = maxVersionYearInput
+            ? parseInt(maxVersionYearInput.value || "0", 10)
+            : null;
+
+        // --- 1. Ожидаемый год вывода: >0 → 0 ---
         let decompYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const cur = powersByYear[i];
-            const next = powersByYear[i + 1];
-            if (cur.power > 0 && next.power === 0) {
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const curr = planPowers[i];
+            const next = planPowers[i + 1];
+            if (curr.power > 0 && next.power === 0) {
                 decompYear = next.year;
                 break;
             }
         }
-
-        // 2) Ввод: первый переход 0 -> >0 => год N+1; если нет — первый год с >0
-        let explYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const cur = powersByYear[i];
-            const next = powersByYear[i + 1];
-            if (cur.power === 0 && next.power > 0) {
-                explYear = next.year;
-                break;
+        if (decompYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (curr.isCurrent && next.isPlan && curr.power > 0 && next.power === 0) {
+                    decompYear = next.year;
+                    break;
+                }
             }
         }
-        if (explYear === null) {
-            for (let i = 0; i < powersByYear.length; i++) {
-                if (powersByYear[i].power > 0) {
-                    explYear = powersByYear[i].year;
+        if (decompYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (next.isCurrent && curr.power > 0 && next.power === 0) {
+                    decompYear = next.year;
                     break;
                 }
             }
         }
 
-        // 3) Модернизация: >0 -> >0 и изменилось значение => год N+1 (первый такой случай)
-        let modernYear = null;
-        for (let i = 0; i < powersByYear.length - 1; i++) {
-            const cur = powersByYear[i];
-            const next = powersByYear[i + 1];
-            if (cur.power > 0 && next.power > 0 && Math.abs(cur.power - next.power) > 0.001) {
-                modernYear = next.year;
+        if (dateDecompressingExpectedField) {
+            const hasDecompressingFact = dateDecompressingFactField && (dateDecompressingFactField.value || "").trim();
+            const hasMax =
+                typeof maxVersionYear === "number" &&
+                !isNaN(maxVersionYear) &&
+                maxVersionYear > 0;
+            const safeDecompYear =
+                hasDecompressingFact ? null :
+                (hasMax && decompYear !== null && decompYear > maxVersionYear
+                    ? null
+                    : decompYear);
+            dateDecompressingExpectedField.value =
+                safeDecompYear !== null ? String(safeDecompYear) : "";
+        }
+
+        // --- 2. Ожидаемый год ввода: 0 → >0 ---
+        let explExpectedYear = null;
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const curr = planPowers[i];
+            const next = planPowers[i + 1];
+            if (curr.power === 0 && next.power > 0) {
+                explExpectedYear = next.year;
                 break;
             }
         }
-
-        // ВАЖНО: может быть заполнено ТОЛЬКО ОДНО из трех полей.
-        // Приоритет: вывод -> ввод -> модернизация.
-        const selectedKind =
-            (decompYear !== null) ? "decomp" :
-            (explYear !== null) ? "expl" :
-            (modernYear !== null) ? "modern" :
-            null;
-
-        const decompField = document.querySelector('input[name*="date_decompressing_expected"]');
-        const modernField = document.querySelector('input[name*="date_modernization_expected"]');
-        const explField = document.querySelector('input[name*="date_exploitation"]');
-
-        function clearField(field) {
-            if (field) field.value = "";
+        if (explExpectedYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (curr.isCurrent && next.isPlan && curr.power === 0 && next.power > 0) {
+                    explExpectedYear = next.year;
+                    break;
+                }
+            }
+        }
+        if (explExpectedYear === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (next.isCurrent && curr.power === 0 && next.power > 0) {
+                    explExpectedYear = next.year;
+                    break;
+                }
+            }
         }
 
-        if (selectedKind === "decomp") {
-            if (decompField) decompField.value = decompYear;
-            clearField(explField);
-            clearField(modernField);
-        } else if (selectedKind === "expl") {
-            if (explField) explField.value = explYear;
-            clearField(decompField);
-            clearField(modernField);
-        } else if (selectedKind === "modern") {
-            if (modernField) modernField.value = modernYear;
-            clearField(decompField);
-            clearField(explField);
+        if (dateExploitationExpectedField) {
+            dateExploitationExpectedField.value =
+                explExpectedYear !== null ? String(explExpectedYear) : "";
         }
+
+        // --- 3. Ожидаемый год модернизации по мощности: >0 → >0 и изменилось ---
+        let modernYearByPower = null;
+        for (let i = 0; i < planPowers.length - 1; i++) {
+            const curr = planPowers[i];
+            const next = planPowers[i + 1];
+            if (curr.power > 0 && next.power > 0 && Math.abs(curr.power - next.power) > 0.001) {
+                modernYearByPower = next.year;
+                break;
+            }
+        }
+        if (modernYearByPower === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (
+                    curr.isCurrent &&
+                    next.isPlan &&
+                    curr.power > 0 &&
+                    next.power > 0 &&
+                    Math.abs(curr.power - next.power) > 0.001
+                ) {
+                    modernYearByPower = next.year;
+                    break;
+                }
+            }
+        }
+        if (modernYearByPower === null) {
+            for (let i = 0; i < powersByYear.length - 1; i++) {
+                const curr = powersByYear[i];
+                const next = powersByYear[i + 1];
+                if (
+                    next.isCurrent &&
+                    curr.power > 0 &&
+                    next.power > 0 &&
+                    Math.abs(curr.power - next.power) > 0.001
+                ) {
+                    modernYearByPower = next.year;
+                    break;
+                }
+            }
+        }
+
+        if (dateModernizationExpectedField) {
+            dateModernizationExpectedField.value =
+                modernYearByPower !== null ? String(modernYearByPower) : "";
+        }
+
+        // date_exploitation (фактический год ввода) НЕ заполняем автоматически
     }
 
-    function attachPguDecompAutoFill() {
+    function attachPguDatesAutoFill() {
         const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
-        rustInputs.forEach((input) => input.addEventListener("change", autoFillPguYearsFromPowers));
-        autoFillPguYearsFromPowers();
+        rustInputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                autoFillDatesFromPowers();
+            });
+        });
+        autoFillDatesFromPowers();
     }
 
-    attachPguDecompAutoFill();
+    attachPguDatesAutoFill();
+    autoSetPguNamesToEmpty();
+
+    // --- Документ-основание (как на machine_details) ---
+    function tokensToHTML(text) {
+        if (!text) return '';
+        let result = text.replace(/&/g, '&amp;')
+                         .replace(/</g, '&lt;')
+                         .replace(/>/g, '&gt;')
+                         .replace(/"/g, '&quot;')
+                         .replace(/\n/g, '<br>');
+        const tokenRe = /\[DOC:(\d+):([^\]]+)\]/g;
+        result = result.replace(tokenRe, function(_, id, name){
+            const safeName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            return `<a href="/generation/stations/view_document_file/${id}" class="document-link" contenteditable="false" target="_blank" rel="noopener noreferrer">${safeName}</a>`;
+        });
+        return result;
+    }
+    function htmlToTokens(html) {
+        if (!html) return '';
+        let result = html.replace(/<a [^>]*href="\/generation\/stations\/view_document_file\/(\d+)"[^>]*>([\s\S]*?)<\/a>/gi, function(_, id, inner){
+            const tmp = document.createElement('div');
+            tmp.innerHTML = inner;
+            const name = tmp.textContent;
+            return `[DOC:${id}:${name}]`;
+        });
+        result = result.replace(/<br\s*\/?>(?=\s*<)/gi, '\n');
+        result = result.replace(/<br\s*\/?>(?!\n)/gi, '\n');
+        result = result.replace(/<\/?div[^>]*>/gi, '\n');
+        result = result.replace(/<\/?p[^>]*>/gi, '\n');
+        result = result.replace(/<[^>]+>/g, '');
+        const tmp = document.createElement('textarea');
+        tmp.innerHTML = result;
+        result = tmp.value;
+        result = result.replace(/\n{3,}/g, '\n\n');
+        return result.trim();
+    }
+    function renderFromHidden() {
+        const hidden = document.getElementById('change_document_hidden');
+        const editor = document.getElementById('change_document_editor');
+        if (!hidden || !editor) return;
+        editor.innerHTML = tokensToHTML(hidden.value || '');
+    }
+    function syncHiddenFromEditor() {
+        const hidden = document.getElementById('change_document_hidden');
+        const editor = document.getElementById('change_document_editor');
+        if (!hidden || !editor) return;
+        hidden.value = htmlToTokens(editor.innerHTML);
+    }
+    window.insertDocumentLink = function(selectElement) {
+        const docId = selectElement.value;
+        const docName = selectElement.options[selectElement.selectedIndex]?.getAttribute('data-name');
+        if (!docId || !docName) return;
+        const hidden = document.getElementById('change_document_hidden');
+        const editor = document.getElementById('change_document_editor');
+        if (!hidden || !editor) return;
+        let text = hidden.value || '';
+        const token = `[DOC:${docId}:${docName}]`;
+        if (text && !text.endsWith('\n') && !text.endsWith(',') && !text.endsWith(' ')) {
+            text += ', ';
+        }
+        text += token;
+        hidden.value = text;
+        renderFromHidden();
+        selectElement.selectedIndex = 0;
+    };
+    const docEditor = document.getElementById('change_document_editor');
+    const docHidden = document.getElementById('change_document_hidden');
+    if (docEditor && docHidden) {
+        renderFromHidden();
+        docEditor.addEventListener('input', syncHiddenFromEditor);
+        docEditor.addEventListener('blur', syncHiddenFromEditor);
+        docEditor.addEventListener('mousedown', function(e){
+            const link = e.target.closest('a.document-link');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+                return false;
+            }
+        }, true);
+        docEditor.addEventListener('click', function(e){
+            const link = e.target.closest('a.document-link');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+                return false;
+            }
+        });
+    }
 });
 </script>
+
+<style>
+.document-display-readonly .document-link { color: #0d6efd; text-decoration: underline; cursor: pointer; }
+[contenteditable="true"] .document-link:hover { background-color: #e7f3ff; outline: 2px solid #0d6efd; outline-offset: 2px; }
+</style>
 
 <script src="{{ url_for('static', filename='js/generation/stations/highlight_changes.js') }}"></script>
 
