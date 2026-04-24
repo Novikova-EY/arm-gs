@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
+            <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»</a>
+        </div>
+
+        <h2 class="text-center align-middle mb-4">{{ page_title }}</h2>
+
+        <div class="row g-4 justify-content-center">
+            {% for item in items %}
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for(demand_endpoint, parent_id=item.id) }}" class="btn btn-primary fs-4 w-100 py-4">
+                            {{ label_fn(item) }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-12">
+                <p class="text-center text-muted fs-5 mb-0">Нет записей для текущей версии БД.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+</div>
+{% endif %}
+{% endblock %}

@@ -37,6 +37,7 @@ from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesTy
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.common.services.get_services.stations.tes_type_get_services import get_unknown_tes_type_id
+from app.generation.forms.machine_forms import MACHINE_RELABING_OUTCOME_CHOICES
 import zipfile
 import xml.etree.ElementTree as ET
 from openpyxl.utils import get_column_letter
@@ -46,6 +47,121 @@ _XLSX_NS = {
     "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
     "rel": "http://schemas.openxmlformats.org/package/2006/relationships",
 }
+
+# Допустимый диапазон лет в колонках мощности при импорте перечня станций
+_IMPORT_POWER_YEAR_MIN = 1990
+_IMPORT_POWER_YEAR_MAX = 2140
+
+
+# Каноническое имя колонки Excel/импорта для «ожидаемый год модернизации с изменением мощности»
+_MODERNIZATION_POWER_CHANGE_IMPORT_KEYS = (
+    "date_modernization_power_change_expected",
+    "date_modernization_expected",  # старые шаблоны до переименования колонки в БД
+)
+
+
+def _row_get_modernization_power_change_year_for_import(row) -> object:
+    """Первое непустое значение по каноническому или устаревшему имени колонки."""
+    for key in _MODERNIZATION_POWER_CHANGE_IMPORT_KEYS:
+        v = row.get(key)
+        if v is not None and not (isinstance(v, float) and pd.isna(v)):
+            return v
+    return None
+
+
+def _column_name_to_power_year(col) -> int | None:
+    """Извлекает год из имени колонки (2021, '2021', 'p_2021', 'P-2025' и т.п.)."""
+    if col is None or isinstance(col, bool):
+        return None
+    if isinstance(col, int):
+        if _IMPORT_POWER_YEAR_MIN <= col <= _IMPORT_POWER_YEAR_MAX:
+            return col
+        return None
+    if isinstance(col, float):
+        if col.is_integer():
+            y = int(col)
+            if _IMPORT_POWER_YEAR_MIN <= y <= _IMPORT_POWER_YEAR_MAX:
+                return y
+        return None
+    s = str(col).strip()
+    if re.fullmatch(r"\d{4}", s):
+        y = int(s)
+        if _IMPORT_POWER_YEAR_MIN <= y <= _IMPORT_POWER_YEAR_MAX:
+            return y
+        return None
+    m = re.fullmatch(r"(?i)p[_-]?(\d{4})", s)
+    if m:
+        y = int(m.group(1))
+        if _IMPORT_POWER_YEAR_MIN <= y <= _IMPORT_POWER_YEAR_MAX:
+            return y
+    return None
+
+
+def _detect_import_power_years(columns) -> list[int]:
+    """Список уникальных лет мощности по заголовкам листа (до/после алиасов колонок)."""
+    found: set[int] = set()
+    for c in columns:
+        y = _column_name_to_power_year(c)
+        if y is not None:
+            found.add(y)
+    return sorted(found)
+
+
+def _power_col_names_for_years(years: list[int]) -> set:
+    """Имена колонок для pandas dtype и чтения сырья из xlsx (все варианты написания года)."""
+    names: set = set()
+    for y in years:
+        names.add(f"p_{y}")
+        names.add(str(y))
+        names.add(y)
+    return names
+
+
+def _canonicalize_station_import_power_columns(df: pd.DataFrame) -> list[int]:
+    """
+    Переименовывает колонки годов в p_YYYY; при двух колонках на один год сливает в p_YYYY.
+    """
+    years = _detect_import_power_years(df.columns)
+    if not years:
+        return []
+
+    target_for_year: dict[int, str] = {y: f"p_{y}" for y in years}
+    renames: dict = {}
+    drop_list: list = []
+
+    for c in list(df.columns):
+        y = _column_name_to_power_year(c)
+        if y is None:
+            continue
+        target = target_for_year[y]
+        if c == target:
+            continue
+        if target in df.columns:
+            df[target] = df[target].where(~df[target].isna(), df[c])
+            drop_list.append(c)
+        else:
+            renames[c] = target
+
+    if drop_list:
+        df.drop(columns=[c for c in drop_list if c in df.columns], inplace=True)
+    if renames:
+        df.rename(columns=renames, inplace=True)
+
+    return _detect_import_power_years(df.columns)
+
+
+def _planned_condition_years(power_years: list[int]) -> tuple[int, int]:
+    """
+    Год колонки p_* и порог года ввода для условия «планируемый» (раньше: p_2024 и >2025).
+    Если в файле есть 2024 — сохраняем прежнюю семантику; иначе — по крайним годам горизонта.
+    """
+    if not power_years:
+        return 2024, 2025
+    ys = sorted(power_years)
+    if 2024 in ys:
+        return 2024, 2025
+    y_max = ys[-1]
+    return y_max, y_max
 
 
 def _xlsx_shared_strings(zf: zipfile.ZipFile) -> list[str]:
@@ -110,7 +226,7 @@ def excel_format_scale(number_format: str | None) -> int | None:
     """
     Возвращает количество знаков после запятой для форматов типа:
       0, 0.00, #,##0.0000
-    Если формат сложный (General, научный, условия, проценты и т.п.) — вернёт None.
+    Если формат сложный (General, научный, условия, проценты и т.п.) — вернет None.
     """
     if not number_format:
         return None
@@ -138,9 +254,9 @@ def _read_xlsx_cells_as_stored_strings(xlsx_source, sheet_name: str) -> dict[str
     coord -> (cell_type, value_string):
       - для чисел: (None или 'n', текст из <v>, напр. \"2.08016129032258\")
       - для строк: ('s', значение из sharedStrings)
-    xlsx_source может быть путём, FileStorage или file-like объектом.
+    xlsx_source может быть путем, FileStorage или file-like объектом.
     """
-    # Если это FileStorage (Flask), берём его stream, иначе используем сам объект
+    # Если это FileStorage (Flask), берем его stream, иначе используем сам объект
     src = getattr(xlsx_source, "stream", xlsx_source)
 
     if hasattr(src, "seek"):
@@ -203,7 +319,7 @@ def _overwrite_power_columns_from_excel_raw(file, df, power_col_names, sheet_nam
     """
     Перезаписывает в df колонки мощностей «как в Excel»:
     - строковые ячейки (t=='s'): сырая строка из sharedStrings.
-    - числовые ячейки: значение из <v>, округлённое по формату ячейки (excel_format_scale).
+    - числовые ячейки: значение из <v>, округленное по формату ячейки (excel_format_scale).
     """
     try:
         raw_cells = _read_xlsx_cells_as_stored_strings(file, sheet_name)
@@ -283,7 +399,7 @@ def _normalize_column_name(col) -> str:
     """
     s = "" if col is None else str(col)
     s = s.replace("\r", " ").replace("\n", " ").strip().lower()
-    s = s.replace("ё", "е")
+    s = s.replace("е", "е")
     s = re.sub(r"\s+", " ", s)
     s = s.replace(" ", "_")
     s = re.sub(r"[^0-9a-zа-я_]+", "", s)
@@ -337,6 +453,17 @@ def _apply_station_import_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     add_aliases("station_type", [
         "station_type",
         "тип_станции",
+    ])
+    add_aliases("date_modernization_power_change_expected", [
+        "date_modernization_power_change_expected",
+        "date_modernization_expected",
+    ])
+    add_aliases("relabing_outcome", [
+        "relabing_outcome",
+        "тип_перемаркировки",
+        "тип_пермаркировки",
+        "вид_перемаркировки",
+        "содержание_перемаркировки",
     ])
 
     rename_map = {}
@@ -453,7 +580,7 @@ def _detect_header_row_index(df_raw: pd.DataFrame, normalized_header_candidates:
         if best_score >= 2:
             break
 
-    # Если нашли только 0/1 совпадение — считаем, что заголовок не определён.
+    # Если нашли только 0/1 совпадение — считаем, что заголовок не определен.
     if best_score < 2:
         return None
     return best_idx
@@ -506,6 +633,30 @@ def safe_date(value):
         return parsed.strftime('%Y-%m-%d')
     except Exception:
         return None
+
+
+_RELABING_OUTCOME_CANONICAL = tuple(
+    c[0] for c in MACHINE_RELABING_OUTCOME_CHOICES if c[0]
+)
+
+
+def safe_relabing_outcome(value):
+    """
+    Нормализует значение из Excel для Machine.relabing_outcome:
+    одно из «окончательный вывод» / «замена» / «новый ввод», иначе None.
+    """
+    if pd.isna(value) or value is None:
+        return None
+    s = str(value).replace("\xa0", " ").strip()
+    if not s or s in ("—", "-", "–"):
+        return None
+    if s in _RELABING_OUTCOME_CANONICAL:
+        return s
+    s_lower = s.lower()
+    for allowed in _RELABING_OUTCOME_CANONICAL:
+        if s_lower == allowed.lower():
+            return allowed
+    return None
 
 
 # Вспомогательная функция, возвращающая query, отфильтрованный по текущей версии БД
@@ -562,7 +713,7 @@ def resolve_fuel(value):
 
     # Спец-кейс для "газ попут": в разных версиях БД могут существовать
     # два очень похожих типа топлива ("газ попут" и "газ попутный").
-    # Нам нужно жёстко привязаться к текущей версии БД и, по возможности,
+    # Нам нужно жестко привязаться к текущей версии БД и, по возможности,
     # выбирать FuelType "газ попутный" и одно из его топлив.
     if cleaned_norm == "газ попут":
         try:
@@ -583,7 +734,7 @@ def resolve_fuel(value):
                 if ft.name.strip().lower() == "газ попутный":
                     chosen_type = ft
                     break
-            # 2) Если нет — берём "газ попут"
+            # 2) Если нет — берем "газ попут"
             if not chosen_type and candidate_types:
                 chosen_type = candidate_types[0]
 
@@ -676,7 +827,7 @@ def resolve_fuel(value):
                     break
 
         if fuel_type:
-            # Берём "первое попавшееся" топливо данного типа в текущей версии
+            # Берем "первое попавшееся" топливо данного типа в текущей версии
             fuel = (
                 versioned_query(Fuel)
                 .filter(Fuel.id_fuel_type == fuel_type.id)
@@ -863,7 +1014,7 @@ def handle_station(row, user):
             regional_district = energy_unit.regional_district
 
     # Определяем «основную» РЭС для субъекта:
-    # приоритет у той, у которой есть ОЭС, иначе берём первую.
+    # приоритет у той, у которой есть ОЭС, иначе берем первую.
     main_res_id = None
     if regional_district:
         try:
@@ -936,7 +1087,7 @@ def handle_station(row, user):
             changes['id_regional_district'] = new_district_id
 
         # Автоподстановка/обновление РЭС:
-        # - если у станции ещё нет прямой РЭС, но есть main_res_id;
+        # - если у станции еще нет прямой РЭС, но есть main_res_id;
         # - либо если сменился субъект и новая «основная» РЭС отличается.
         if main_res_id and (
             station.id_regional_energy_system is None
@@ -963,7 +1114,7 @@ def handle_station(row, user):
 
 
 # Вспомогательная функция: создание или обновление агрегата
-def handle_machine(row, current_station, user):
+def handle_machine(row, current_station, user, import_power_years: list[int] | None = None):
     machine_name = _clean_multiline_text(row['machine_name'])
 
     machine_group = row.get('machine_group')
@@ -1017,7 +1168,16 @@ def handle_machine(row, current_station, user):
 
     date_commission_year = date_exploitation
 
-    if row.get('p_2024') == 0 or (date_exploitation and date_exploitation > 2025):
+    _py, _dy = _planned_condition_years(import_power_years or [])
+    _p_anchor = row.get(f"p_{_py}")
+    if pd.isna(_p_anchor):
+        _p_anchor_zero = False
+    else:
+        try:
+            _p_anchor_zero = float(_p_anchor) == 0.0
+        except (TypeError, ValueError):
+            _p_anchor_zero = False
+    if _p_anchor_zero or (date_exploitation and date_exploitation > _dy):
         condition_type = (
             versioned_query(ConditionType).filter_by(name="планируемый").first()
         )
@@ -1071,11 +1231,20 @@ def handle_machine(row, current_station, user):
             'date_commission_fact',
             'date_joining_expected', 'date_joining_fact',
             'date_detatchment_fact',
-            'date_decompressing_fact', 'date_modernization_expected',
+            'date_decompressing_fact', 'date_modernization_power_change_expected',
+            'date_modernization_no_power_change_expected',
             'date_relabing_fact', 'date_update_fact'
         ]
         for field in date_fields:
-            update_if_changed(machine, field, safe_date(row.get(field)), changes)
+            if field == "date_modernization_power_change_expected":
+                raw = _row_get_modernization_power_change_year_for_import(row)
+            else:
+                raw = row.get(field)
+            update_if_changed(machine, field, safe_date(raw), changes)
+
+        if "relabing_outcome" in row.index:
+            ro = safe_relabing_outcome(row.get("relabing_outcome"))
+            update_if_changed(machine, "relabing_outcome", ro, changes)
 
         # Если указана фактическая дата вывода из эксплуатации — ожидаемый год не заполняем
         date_decompressing_fact_val = safe_date(row.get('date_decompressing_fact'))
@@ -1110,9 +1279,13 @@ def handle_machine(row, current_station, user):
             date_detatchment_fact=safe_date(row.get('date_detatchment_fact')),
             date_decompressing_expected=None if safe_date(row.get('date_decompressing_fact')) else safe_date(row.get('date_decompressing_expected')),
             date_decompressing_fact=safe_date(row.get('date_decompressing_fact')),
-            date_modernization_expected=safe_date(row.get('date_modernization_expected')),
+            date_modernization_power_change_expected=safe_date(
+                _row_get_modernization_power_change_year_for_import(row)
+            ),
+            date_modernization_no_power_change_expected=safe_date(row.get('date_modernization_no_power_change_expected')),
             date_relabing_fact=safe_date(row.get('date_relabing_fact')),
             date_update_fact=safe_date(row.get('date_update_fact')),
+            relabing_outcome=safe_relabing_outcome(row.get("relabing_outcome")),
         )
         set_db_version_on_create(machine)
         db.session.add(machine)
@@ -1121,14 +1294,14 @@ def handle_machine(row, current_station, user):
         print(f"Создание агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Создан агрегат: {machine_number} - {machine_name}")
 
     # Если в Excel явно указана дата модернизации — установим флаг, чтобы не переопределять автоматически
-    if not pd.isna(row.get('date_modernization_expected')):
+    if not pd.isna(_row_get_modernization_power_change_year_for_import(row)):
         machine._modernization_set_manually = True
         
     return machine
 
 
 # Вспомогательная функция: присвоение типа ТЭС агрегату на диапазон лет
-def assign_machine_types(machine, row, start_year, end_year, user):
+def assign_machine_types(machine, row, years: list[int], user):
     # Получаем id типа ТЭС из строки
     tes_type_id = safe_lookup(TesType, 'name', row.get('tes_type'))
     tes_type_obj = (
@@ -1138,7 +1311,7 @@ def assign_machine_types(machine, row, start_year, end_year, user):
     )
     tes_type_name = tes_type_obj.name if tes_type_obj else 'не указано'
 
-    for year in range(start_year, end_year + 1):
+    for year in years:
         record = (
             versioned_query(MachineTesType)
             .filter_by(year_number=year, id_machine=machine.id)
@@ -1170,8 +1343,8 @@ def assign_machine_types(machine, row, start_year, end_year, user):
 
 
 # Вспомогательная функция: запись установленной мощности агрегата на диапазон лет
-def assign_machine_power_p_ust(machine, row, start_year, end_year, user):
-    for year in range(start_year, end_year + 1):
+def assign_machine_power_p_ust(machine, row, years: list[int], user):
+    for year in years:
         val = row.get(f'p_{year}')
         p_ust = to_decimal(val) if not pd.isna(val) else Decimal(0)
 
@@ -1207,14 +1380,14 @@ def assign_machine_power_p_ust(machine, row, start_year, end_year, user):
 
 
 # Вспомогательная функция: запись располагаемой мощности и автоматическое удаление/добавление топлива
-def assign_machine_power_p_rasp(machine, row, start_year, end_year, user):
+def assign_machine_power_p_rasp(machine, row, years: list[int], user):
     if not machine:
         return
 
     station = machine.machine_station
     district_name = station.regional_district.name if station and station.regional_district else "—"
 
-    for year in range(start_year, end_year + 1):
+    for year in years:
         val = row.get(f'p_{year}')
         p_rasp = to_decimal(val) if not pd.isna(val) else Decimal(0)
 
@@ -1251,8 +1424,8 @@ def assign_machine_power_p_rasp(machine, row, start_year, end_year, user):
 
 
 # Отдельная функция для пересчета ограничений мощности
-def update_machine_power_ogr(machine, start_year, end_year, user):
-    for year in range(start_year, end_year + 1):
+def update_machine_power_ogr(machine, years: list[int], user):
+    for year in years:
         power = (
             versioned_query(MachinePower)
             .filter_by(year_number=year, id_machine=machine.id)
@@ -1277,8 +1450,8 @@ def update_machine_power_ogr(machine, start_year, end_year, user):
 
 
 # Вспомогательная функция: расчет агрегированной мощности станции по годам
-def update_station_power(station, start_year, end_year, user):
-    for year in range(start_year, end_year + 1):
+def update_station_power(station, years: list[int], user):
+    for year in years:
         total_values = db.session.query(
             db.func.sum(MachinePower.p_ust).label("total_p_ust"),
             db.func.sum(MachinePower.p_ogr).label("total_p_ogr"),
@@ -1341,7 +1514,7 @@ def update_station_power(station, start_year, end_year, user):
 
 
 # Вспомогательная функция: запись топлива агрегата по годам
-def assign_machine_fuel(machine, row, start_year, end_year, user):
+def assign_machine_fuel(machine, row, years: list[int], user):
     # Получаем тип станции из связанной станции
     station_type_name = None
     if machine.machine_station and machine.machine_station.id_station_type:
@@ -1352,7 +1525,7 @@ def assign_machine_fuel(machine, row, start_year, end_year, user):
         )
         station_type_name = station_type_obj.name if station_type_obj else None
 
-    for year in range(start_year, end_year + 1):
+    for year in years:
         fuel_value = get_fuel_value(row, year)
         fuel = resolve_fuel(fuel_value)
 
@@ -1386,13 +1559,13 @@ def assign_machine_fuel(machine, row, start_year, end_year, user):
 
 
 # Вспомогательная функция: автоматическое удаление/добавление топлива и типа ТЭС
-def cleanup_machine_fuel_and_tes_type(machine, row, start_year, end_year, user):
+def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
     station = machine.machine_station
     district_name = station.regional_district.name if station and station.regional_district else "—"
 
     unknown_tes_type_id = get_unknown_tes_type_id()
 
-    for year in range(start_year, end_year + 1):
+    for year in years:
         p_val = row.get(f'p_{year}')
         fuel_val = get_fuel_value(row, year)
         tes_type_val = row.get(f'tes_type_{year}')
@@ -1525,9 +1698,9 @@ def update_machine_commission_status(machine, start_year, end_year, user):
 
     # Если есть фактические даты — убираем ожидаемую модернизацию
     if machine.date_relabing_fact or machine.date_update_fact:
-        if machine.date_modernization_expected is not None:
-            old_year = machine.date_modernization_expected
-            machine.date_modernization_expected = None
+        if machine.date_modernization_power_change_expected is not None:
+            old_year = machine.date_modernization_power_change_expected
+            machine.date_modernization_power_change_expected = None
             db.session.add(machine)
             log_to_db(
                 user,
@@ -1535,11 +1708,18 @@ def update_machine_commission_status(machine, start_year, end_year, user):
                 f"Агрегат {machine.machine_number} станции '{station.name}': дата модернизации {old_year} удалена, т.к. указаны фактические даты"
             )
             print(f"[Сброс модернизации] {station.name} — агрегат {machine.machine_number}: была {old_year}, удалена из-за наличия фактической даты")
+        if machine.date_modernization_no_power_change_expected is not None:
+            old_np = machine.date_modernization_no_power_change_expected
+            machine.date_modernization_no_power_change_expected = None
+            db.session.add(machine)
+            log_to_db(
+                user,
+                f"Удалён ожидаемый год модернизации без изм. мощности агрегата {station.name} ({district_name})",
+                f"Агрегат {machine.machine_number} станции '{station.name}': год {old_np} удалён (фактические даты перемаркировки/уточнения)"
+            )
+            print(f"[Сброс модерн. без изм. мощности] {station.name} — агрегат {machine.machine_number}: был {old_np}")
 
     for year in range(start_year, end_year):
-        if year < 2021:
-            continue
-
         curr = powers_by_year.get(year, 0)
         next_ = powers_by_year.get(year + 1, 0)
 
@@ -1574,9 +1754,9 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             curr and next_ and curr != next_
             and not getattr(machine, "_modernization_set_manually", False)
             and not (machine.date_relabing_fact or machine.date_update_fact)
-            and not machine.date_modernization_expected
+            and not machine.date_modernization_power_change_expected
         ):
-            machine.date_modernization_expected = year + 1
+            machine.date_modernization_power_change_expected = year + 1
             db.session.add(machine)
             log_to_db(
                 user,
@@ -1601,11 +1781,25 @@ def import_station_list_from_excel(file, user):
         logger.error("[IMPORT_STATIONS] sheet 'список' not found. sheets=%s", xls.sheet_names)
         raise ValueError("В файле отсутствует лист 'список'.")
 
-    start_year, end_year = 2021, 2031
-    power_col_names = {f"p_{y}" for y in range(start_year, end_year + 1)} | {
-        str(y) for y in range(start_year, end_year + 1)
-    } | {y for y in range(start_year, end_year + 1)}
-    df_header = xls.parse('список', header=0, nrows=0)
+    df_header = xls.parse("список", header=0, nrows=0)
+    hdr_alias = _apply_station_import_column_aliases(df_header.copy())
+    power_years = sorted(
+        set(_detect_import_power_years(df_header.columns))
+        | set(_detect_import_power_years(hdr_alias.columns))
+    )
+    if not power_years:
+        power_years = list(range(2021, 2032))
+        logger.warning(
+            "[IMPORT_STATIONS] в заголовках не найдены колонки годов мощности — используется диапазон 2021–2031"
+        )
+    power_col_names = _power_col_names_for_years(power_years)
+    logger.info(
+        "[IMPORT_STATIONS] годы мощности по заголовку файла: %s..%s (%s колонок)",
+        power_years[0],
+        power_years[-1],
+        len(power_years),
+    )
+
     dtype = {c: str for c in df_header.columns if c in power_col_names or str(c) in power_col_names}
     kw = {"header": 0}
     if dtype:
@@ -1615,7 +1809,15 @@ def import_station_list_from_excel(file, user):
     original_columns = list(df.columns)
     df = _apply_station_import_column_aliases(df)
     normalized_columns = list(df.columns)
+    # Сырой перенос из xlsx — до merge/удаления дубликатов колонок, пока порядок совпадает с Excel.
     _overwrite_power_columns_from_excel_raw(file, df, power_col_names)
+    power_years = _canonicalize_station_import_power_columns(df)
+    if not power_years:
+        power_years = list(range(2021, 2032))
+        logger.warning(
+            "[IMPORT_STATIONS] после нормализации колонок годы мощности не определены — используется 2021–2031"
+        )
+    start_year, end_year = power_years[0], power_years[-1]
 
     required_columns = ["regional_district", "station_name"]
     missing_required = [c for c in required_columns if c not in df.columns]
@@ -1686,10 +1888,10 @@ def import_station_list_from_excel(file, user):
                     row.get("machine_name"),
                     row.get("gen_company"),
                 )
-                current_machine = handle_machine(row, current_station, user)
-                assign_machine_types(current_machine, row, start_year, end_year, user)
-                assign_machine_power_p_ust(current_machine, row, start_year, end_year, user)
-                cleanup_machine_fuel_and_tes_type(current_machine, row, start_year, end_year, user)
+                current_machine = handle_machine(row, current_station, user, import_power_years=power_years)
+                assign_machine_types(current_machine, row, power_years, user)
+                assign_machine_power_p_ust(current_machine, row, power_years, user)
+                cleanup_machine_fuel_and_tes_type(current_machine, row, power_years, user)
                 continue
 
             # Строка p_rasp/ограничений
@@ -1702,12 +1904,12 @@ def import_station_list_from_excel(file, user):
                     row.get("station_type"),
                     row.get("gen_company"),
                 )
-                assign_machine_power_p_rasp(current_machine, row, start_year, end_year, user)
+                assign_machine_power_p_rasp(current_machine, row, power_years, user)
                 update_machine_commission_status(current_machine, start_year, end_year, user)
 
-                has_rasp_values = any(not pd.isna(row.get(f'p_{y}')) for y in range(start_year, end_year + 1))
+                has_rasp_values = any(not pd.isna(row.get(f'p_{y}')) for y in power_years)
                 if has_rasp_values:
-                    update_machine_power_ogr(current_machine, start_year, end_year, user)
+                    update_machine_power_ogr(current_machine, power_years, user)
                 continue
 
             skipped_unrecognized_rows += 1
@@ -1740,7 +1942,7 @@ def import_station_list_from_excel(file, user):
                 .first()
             )
             if station:
-                update_station_power(station, start_year, end_year, user)
+                update_station_power(station, power_years, user)
         except Exception:
             try:
                 db.session.rollback()
@@ -1779,7 +1981,7 @@ def import_station_list_from_excel(file, user):
     if errors:
         logger.error("[IMPORT_STATIONS] errors (first 50): %s", errors[:50])
 
-    message = f"Импорт завершён. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах."
+    message = f"Импорт завершен. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах."
     return {
         "message": message,
         "processed_rows": processed_rows,
@@ -1979,7 +2181,7 @@ def import_fuel_tes_station_from_excel(file, user):
                                     entity_id=station.id,
                                 )
 
-                                # 2) Полное логирование по каждому агрегату (только реально изменённые)
+                                # 2) Полное логирование по каждому агрегату (только реально измененные)
                                 for m, old_v, new_v in per_machine_changes:
                                     try:
                                         m_number = (getattr(m, "machine_number", None) or "").strip()
@@ -2128,7 +2330,7 @@ def import_fuel_tes_station_from_excel(file, user):
         logger.exception("[IMPORT_FUEL] failed to write detailed audit log filename=%s", filename)
 
     return {
-        'message': f'Импорт топлива завершён. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах.',
+        'message': f'Импорт топлива завершен. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах.',
         "processed_rows": processed_rows,
         "skipped_empty_rows": skipped_empty_rows,
         "errors_count": len(errors),

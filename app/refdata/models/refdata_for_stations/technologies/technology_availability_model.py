@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class TechnologyAvailability(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_technology_availabilities'
+    __tablename__ = 'gs_sys_technology_availabilities'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

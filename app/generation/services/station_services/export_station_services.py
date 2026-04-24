@@ -119,7 +119,7 @@ def round_value(val, digits):
         return 0
     if val == 0:
         return 0
-    # Режим "Не округлять": digits is None или 0 — не округлять (round(val, 0) даёт целое!)
+    # Режим "Не округлять": digits is None или 0 — не округлять (round(val, 0) дает целое!)
     if digits is None or digits == 0:
         return val
     try:
@@ -254,7 +254,7 @@ def attach_all_aggregates(data, rows):
         for ft in fuel_type_objects
     }
 
-    # Дополняем словари имён для уровней иерархии (для экспорта)
+    # Дополняем словари имен для уровней иерархии (для экспорта)
     try:
         energy_unit_list = get_energy_unit_list_full()
         data["energy_unit_name"] = build_name_lookup(energy_unit_list, ("name_full", "name"))
@@ -366,7 +366,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     try:
         import openpyxl
     except ImportError as e:
-        error_msg = f"Библиотека openpyxl не установлена. Установите её командой: pip install openpyxl"
+        error_msg = f"Библиотека openpyxl не установлена. Установите ее командой: pip install openpyxl"
         print(f"[EXPORT] ОШИБКА: {error_msg}")
         raise ImportError(error_msg) from e
     
@@ -384,7 +384,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         attach_all_aggregates(data, rows)
     print(f"[EXPORT] Проверка/создание агрегатов: {time.time() - t1:.2f}с")
     
-    # 🏷️ Всегда дополняем словари имён (на случай если они отсутствуют)
+    # 🏷️ Всегда дополняем словари имен (на случай если они отсутствуют)
     t2 = time.time()
     if "station_type_name" not in data:
         station_type_names = get_station_type_list_full()
@@ -403,7 +403,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     from app.common.services.sorting_services import sort_fuel_type_objects
     fuel_type_objects_for_order = sort_fuel_type_objects(get_fuel_type_list_full())
 
-    # Если имён ещё нет в data – заполняем их по отсортированному списку.
+    # Если имен еще нет в data – заполняем их по отсортированному списку.
     if "fuel_type_name" not in data:
         data["fuel_type_name"] = {
             ft.id: ft.name
@@ -411,7 +411,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             if getattr(ft, "id", None) is not None
         }
 
-    # Всегда создаём / обновляем отображаемый порядок по display_order,
+    # Всегда создаем / обновляем отображаемый порядок по display_order,
     # чтобы fuel_type_id_sort_key мог его использовать.
     data["fuel_type_display_order"] = {
         ft.id: getattr(ft, "display_order", None)
@@ -466,7 +466,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         tmt.id for tmt in get_tes_machine_type_list_full() if getattr(tmt, "id", None) is not None
     ]
 
-    print(f"[EXPORT] Создание словарей имён: {time.time() - t2:.2f}с")
+    print(f"[EXPORT] Создание словарей имен: {time.time() - t2:.2f}с")
 
     # 📦 Формируем все словари агрегатов для шаблона
     t3 = time.time()
@@ -580,7 +580,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         config = AGGREGATION_CONFIG[level_key]
         current_version_id = get_current_db_version_id()
 
-        # Не выводим итоги по "техническим" / неопределённым уровням
+        # Не выводим итоги по "техническим" / неопределенным уровням
         # (именно они попадали в Excel как строки вида id=0 / id=None).
         if level_id in (None, 0):
             return
@@ -649,7 +649,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         print(f"[DEBUG] add_named_total_row для russia: извлечен словарь по version_id={current_version_id}")
                     else:
                         # Если текущей версии нет, пробуем аккуратно выбрать подходящую:
-                        # - если есть ровно одна доступная версия, просто используем её без предупреждения
+                        # - если есть ровно одна доступная версия, просто используем ее без предупреждения
                         # - если версий несколько, используем первую и пишем мягкий debug-лог
                         available_versions = [
                             k for k in p_ust_dict.keys()
@@ -868,7 +868,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
         # Порядок типов станций как на экране:
         # используем display_order (через station_type_ordered_ids),
-        # а не "жёсткое" правило по подстрокам ("АЭС/ГЭС/ГАЭС/ТЭС").
+        # а не "жесткое" правило по подстрокам ("АЭС/ГЭС/ГАЭС/ТЭС").
         station_type_items_sorted = [
             (st_id, station_type_dict.get(st_id, {}))
             for st_id in station_type_ordered_ids
@@ -885,7 +885,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
             station_type_name = station_type_names.get(station_type_id, f"id={station_type_id}")
 
-            # Если тип станции имеет служебное или неопределённое название,
+            # Если тип станции имеет служебное или неопределенное название,
             # то не отображаем его агрегации:
             #  - "не указано"/"не указан"
             #  - технические подписи вида "id=0", "id=123" и т.п.
@@ -1402,7 +1402,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             # Показываем итого по энергоузлу только если энергоузел отображается
                             if show_energy_unit and show_totals:
                                 add_named_total_row(eu_id, "energy_unit", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
-                        # Показываем итого по субъекту всегда при включённых суммах
+                        # Показываем итого по субъекту всегда при включенных суммах
                         # (ранее: только если в РЭС > 1 субъекта — из-за этого не выгружались строки ПСУ с топливом)
                         if show_totals:
                             add_named_total_row(rd_id, "regional_district", data, rows, start_year, end_year, round_val, show_p_ogr, show_p_rasp)
@@ -1432,7 +1432,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         tip_moshnosti = row.get("Тип мощности") or ""
 
         # Строки разбивки по виду топлива «не указано» (агрегаты с Руст/Рогр/Ррасп) — удаляем всегда,
-        # т.к. для ДЭС «не указано» = «прочее» и создаёт некорректное дублирование группировок
+        # т.к. для ДЭС «не указано» = «прочее» и создает некорректное дублирование группировок
         if tip_moshnosti in ("Руст", "Рогр", "Ррасп") and ("не указано" in electro_lower or "не указан" in electro_lower):
             return True  # Удаляем строку разбивки по топливу «не указано»
 
@@ -2117,7 +2117,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
                         note_parts = []
 
-                        # Ввод в эксплуатацию: сначала берём фактическую дату ввода, если есть,
+                        # Ввод в эксплуатацию: сначала берем фактическую дату ввода, если есть,
                         # иначе плановый год ввода (date_exploitation).
                         # Показываем только если год попадает в диапазон отображаемых данных.
                         if getattr(machine, "date_commission_fact", None):
@@ -2142,14 +2142,18 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
                         # Модернизация (плановая)
                         # Показываем только если год попадает в диапазон отображаемых данных.
-                        if getattr(machine, "date_modernization_expected", None):
-                            year = extract_year(machine.date_modernization_expected)
+                        if getattr(machine, "date_modernization_power_change_expected", None):
+                            year = extract_year(machine.date_modernization_power_change_expected)
                             if year and year in all_years:
-                                note_parts.append(f"Модернизация в {year} г.")
+                                note_parts.append(f"Модернизация (с изм. мощности) в {year} г.")
+                        if getattr(machine, "date_modernization_no_power_change_expected", None):
+                            year = extract_year(machine.date_modernization_no_power_change_expected)
+                            if year and year in all_years:
+                                note_parts.append(f"Модернизация (без изм. мощности) в {year} г.")
 
                         full_note = ". ".join(note_parts)
 
-                        # Значения мощности — без округления; отображение 1 знак после запятой задаётся форматом ячейки в Excel
+                        # Значения мощности — без округления; отображение 1 знак после запятой задается форматом ячейки в Excel
                         row = {
                             "Электростанция": machine.machine_group,
                             "Генерирующая компания": "",

@@ -25,9 +25,9 @@
             </button>
         </div>
 
-        <!-- Центр: Найдено станций -->
+        <!-- Центр: Найдено элементов -->
         <div class="flex-grow-1 d-flex justify-content-center align-items-center">
-            <p class="mb-0 fw-bold">Найдено станций: {{ total_count }}</p>
+            <p class="mb-0 fw-bold">Найдено {{ total_count_label | default('станций') }}: {{ total_count }}</p>
         </div>
 
         <!-- Правая группа ВНУТРИ формы -->
@@ -36,7 +36,9 @@
             <!-- Скрытые фильтры -->
             {% for key, value in request.args.items() %}
                 {% if key not in ['show_p_ogr', 'show_p_rasp'] %}
+                    {% if not (hide_year_range|default(false) and key in ['year', 'start_year', 'end_year']) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
                 {% endif %}
             {% endfor %}
 
@@ -59,11 +61,11 @@
 
 
 <!-- Блок фильтров -->
-{% include 'fuel/station_filters_first_row.html' %}
+{% include 'fuel/_shared/station_filters_first_row.html' %}
 
 <!-- Блок импорта/экспорта -->
-{% include 'fuel/station_filters_second_row.html' %}
+{% include 'fuel/_shared/station_filters_second_row.html' %}
 
 <!-- Третья строка фильтров -->
-{% include 'fuel/station_filters_third_row.html' %}
+{% include 'fuel/_shared/station_filters_third_row.html' %}
 

@@ -165,10 +165,10 @@ def upgrade():
     op.create_foreign_key(None, 'boilers', 'gs_database_versions', ['database_version_id'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='SET NULL')
     op.create_foreign_key(None, 'documents_kommod', 'gs_database_versions', ['database_version_id'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='SET NULL')
     op.create_foreign_key(None, 'machine_fuels', 'gs_database_versions', ['database_version_id'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='SET NULL')
-    # FK на gs_years по одному полю number не создаём, т.к. number не уникален между версиями БД.
+    # FK на gs_years по одному полю number не создаем, т.к. number не уникален между версиями БД.
     op.create_foreign_key(None, 'machine_fuels', 'gs_fuels', ['id_fuel'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='RESTRICT')
     op.create_foreign_key(None, 'machine_fuels', 'machines', ['id_machine'], ['id'], source_schema='gs_gen', referent_schema='gs_gen', ondelete='RESTRICT')
-    # Аналогично не создаём FK machine_names/machine_powers/machine_tes_types/pgu_machine_powers/station_powers на gs_years.number
+    # Аналогично не создаем FK machine_names/machine_powers/machine_tes_types/pgu_machine_powers/station_powers на gs_years.number
     op.create_foreign_key(None, 'machine_names', 'gs_database_versions', ['database_version_id'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='SET NULL')
     op.create_foreign_key(None, 'machine_powers', 'machines', ['id_machine'], ['id'], source_schema='gs_gen', referent_schema='gs_gen', ondelete='RESTRICT')
     op.create_foreign_key(None, 'machine_powers', 'gs_database_versions', ['database_version_id'], ['id'], source_schema='gs_gen', referent_schema='gs_sys', ondelete='SET NULL')

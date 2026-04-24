@@ -1,0 +1,113 @@
+{# Фрагмент как на stations_equipment_group_extra_fuel_params: только таблица. #}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% set extra_fuel_param_columns = [
+    ('numb1120', 'Код станции', false),
+    ('gaz_prir', 'gaz_prir', true), ('gazpp', 'gazpp', true), ('disel', 'disel', true), ('maztop', 'maztop', true),
+    ('gtt', 'gtt', true), ('nft_proch', 'nft_proch', true), ('domen_g', 'domen_g', true), ('koks_g', 'koks_g', true),
+    ('prochgaz', 'prochgaz', true), ('tvproch', 'tvproch', true), ('szh_gaz', 'szh_gaz', true), ('inoe', 'inoe', true),
+    ('nazar', 'nazar', true), ('ibor', 'ibor', true), ('berez', 'berez', true), ('per', 'per', true),
+    ('irbei', 'irbei', true), ('kansk', 'kansk', true), ('gusin', 'gusin', true), ('tugn', 'tugn', true),
+    ('okino', 'okino', true), ('azey', 'azey', true), ('mug', 'mug', true), ('cher', 'cher', true),
+    ('jer', 'jer', true), ('karab', 'karab', true), ('vork', 'vork', true), ('intin', 'intin', true),
+    ('sver', 'sver', true), ('chel', 'chel', true), ('kizel', 'kizel', true), ('har', 'har', true),
+    ('urt', 'urt', true), ('tataur', 'tataur', true), ('tarbag', 'tarbag', true), ('zab_kam', 'zab_kam', true),
+    ('rai', 'rai', true), ('erk', 'erk', true), ('ogodj', 'ogodj', true), ('svo', 'svo', true),
+    ('bikin', 'bikin', true), ('razdol', 'razdol', true), ('hankai', 'hankai', true), ('neru', 'neru', true),
+    ('zyryan', 'zyryan', true), ('pyak', 'pyak', true), ('kuzngd', 'kuzngd', true), ('kuznt', 'kuznt', true),
+    ('kuznss', 'kuznss', true), ('kuznun', 'kuznun', true), ('bering', 'bering', true), ('anad', 'anad', true),
+    ('ekib', 'ekib', true), ('maikub', 'maikub', true), ('karag', 'karag', true), ('karajyra', 'karajyra', true),
+    ('teniz', 'teniz', true),
+    ('numb1', 'numb1', false),
+] %}
+{% set column_count = extra_fuel_param_columns|length + 1 %}
+
+<div class="table-responsive batch-param-table-hscroll">
+    <table class="table table-hover table-striped table-bordered batch-extra-fuel-preview-table" id="{{ table_element_id }}"{% if disable_auto_export_excel|default(false) %} data-auto-export-excel="off"{% endif %}>
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="width: 120px;">Группа оборудования</th>
+                {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                <th style="width: 70px;">{{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr }})</span></th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if equipment_group_extra_fuel_params_hierarchy and equipment_group_extra_fuel_params_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_extra_fuel_params_hierarchy %}
+                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                    </tr>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                        </tr>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    <tr class="text-center align-middle">
+                                        <td>
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) }}" class="text-decoration-none">
+                                                {{ group_name }}
+                                            </a>
+                                            {% else %}
+                                                {{ group_name }}
+                                            {% endif %}
+                                        </td>
+                                        {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                                        <td>{% if param is none %}—{% elif attr == 'numb1120' %}{% if param.numb1120 is not none %}{{ param.numb1120 }}{% elif group_entity and group_entity.numb is not none %}{{ group_entity.numb }}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                        {% endfor %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
+                            <td>{{ station_block.station_name }}, всего</td>
+                            {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                            <td>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        {% if res_block.group_blocks %}
+                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
+                            <td>{{ res_block.res_name }}, всего</td>
+                            {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                            <td>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{{ render_numeric_or_dash(res_block.res_summary[attr]) }}{% else %}—{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+            {% for row in equipment_group_extra_fuel_param_rows|default([]) %}
+                {% set group_entity = row[0] %}
+                {% set param = row[1] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                <tr class="text-center align-middle">
+                    <td>
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) }}" class="text-decoration-none">
+                            {{ group_name }}
+                        </a>
+                        {% else %}
+                            {{ group_name }}
+                        {% endif %}
+                    </td>
+                    {% for attr, label, is_numeric in extra_fuel_param_columns %}
+                    <td>{% if param is none %}—{% elif attr == 'numb1120' %}{% if param.numb1120 is not none %}{{ param.numb1120 }}{% elif group_entity and group_entity.numb is not none %}{{ group_entity.numb }}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>

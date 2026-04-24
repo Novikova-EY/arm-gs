@@ -5,12 +5,20 @@ Revises: j2k3l4m5n6o7
 Create Date: 2026-03-18
 
 Добавляет поле external_code в gs_fue_equipment_groups для стабильной
-трёхсторонней привязки (станция — группа оборудования — агрегат).
+трехсторонней привязки (станция — группа оборудования — агрегат).
 """
+import os
+import sys
 import uuid
+
 from alembic import op
-from sqlalchemy import text
 import sqlalchemy as sa
+from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils
 
 
 revision = "k3l4m5n6o7p8"
@@ -32,19 +40,21 @@ def _equipment_group_key(name, name_ext, numb, regional_district_id, regional_en
 
 
 def upgrade():
+    conn = op.get_bind()
+
     # 1. Добавляем столбец как nullable для заполнения существующих строк
-    op.add_column(
-        TABLE,
-        sa.Column(COLUMN, sa.String(36), nullable=True),
-        schema=SCHEMA,
-    )
+    if not column_utils.table_has_column(conn, SCHEMA, TABLE, COLUMN):
+        op.add_column(
+            TABLE,
+            sa.Column(COLUMN, sa.String(36), nullable=True),
+            schema=SCHEMA,
+        )
 
     # 2. Заполняем external_code для существующих записей
-    conn = op.get_bind()
     result = conn.execute(
         text(
             f"SELECT id, name, name_ext, numb, regional_district_id, regional_energy_system_id "
-            f"FROM {SCHEMA}.{TABLE}"
+            f"FROM {SCHEMA}.{TABLE} WHERE {COLUMN} IS NULL"
         )
     )
     for row in result:
@@ -62,21 +72,25 @@ def upgrade():
         )
 
     # 3. Делаем столбец NOT NULL
-    op.alter_column(
-        TABLE,
-        COLUMN,
-        existing_type=sa.String(36),
-        nullable=False,
-        schema=SCHEMA,
-    )
+    if column_utils.table_has_column(conn, SCHEMA, TABLE, COLUMN) and column_utils.column_is_nullable(
+        conn, SCHEMA, TABLE, COLUMN
+    ):
+        op.alter_column(
+            TABLE,
+            COLUMN,
+            existing_type=sa.String(36),
+            nullable=False,
+            schema=SCHEMA,
+        )
 
-    # 4. Создаём индекс
-    op.create_index(
-        "ix_equipment_group_external_code",
-        TABLE,
-        [COLUMN],
-        schema=SCHEMA,
-    )
+    # 4. Создаем индекс
+    if not column_utils.index_exists(conn, SCHEMA, "ix_equipment_group_external_code"):
+        op.create_index(
+            "ix_equipment_group_external_code",
+            TABLE,
+            [COLUMN],
+            schema=SCHEMA,
+        )
 
 
 def downgrade():

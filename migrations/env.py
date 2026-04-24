@@ -58,6 +58,10 @@ def import_all_models():
         "app.fuel.models.fue_machine_fuel_param_model",
         "app.fuel.models.fue_equipment_group_fuel_param_model",
         "app.fuel.models.fue_equipment_group_extra_fuel_param_model",
+        "app.fuel.models.fue_equipment_group_specific_fuel_consumption_model",
+        "app.fuel.models.fue_distribution_parameter_model",
+        "app.fuel.models.coefficient.distribution_coefficient_summary_model",
+        "app.fuel.models.coefficient.equipment_group_coefficient_result_model",
         # fuel equipment groups
         "app.fuel.models.fue_equipment_group_model",
         "app.fuel.models.fue_equipment_group_set_station_model",
@@ -92,6 +96,22 @@ def import_all_models():
         "app.refdata.models.year_model",
         "app.refdata.models.year_service_model",
         "app.refdata.models.regional_district_regional_energy_system_model",
+        # power_demand (gs_pd)
+        "app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model",
+        "app.power_demand.models.energy_systems.ees_demand_parameter_model",
+        "app.power_demand.models.energy_systems.ees_russia_demand_parameter_model",
+        "app.power_demand.models.energy_systems.ees_russia_with_nt_demand_parameter_model",
+        "app.power_demand.models.energy_systems.energy_area_demand_parameter_model",
+        "app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model",
+        "app.power_demand.models.energy_systems.energy_unit_demand_parameter_model",
+        "app.power_demand.models.energy_systems.energy_zone_demand_parameter_model",
+        "app.power_demand.models.energy_systems.regional_energy_system_demand_parameter_model",
+        "app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model",
+        "app.power_demand.models.energy_systems.union_energy_system_demand_parameter_model",
+        "app.power_demand.models.territories.federal_district_demand_parameter_model",
+        "app.power_demand.models.territories.regional_district_demand_parameter_model",
+        "app.power_demand.models.territories.russia_federation_demand_parameter_model",
+        "app.power_demand.models.territories.russia_federation_with_nt_demand_parameter_model",
     ]
     for m in modules:
         try:
@@ -143,6 +163,7 @@ def run_migrations_offline():
         include_object=include_object,
         version_table='alembic_version',
         version_table_schema=version_schema,
+        transaction_per_migration=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -162,6 +183,9 @@ def run_migrations_online():
             process_revision_directives=process_revision_directives,
             version_table='alembic_version',
             version_table_schema=version_schema,
+            # Иначе весь `flask db upgrade` в одной транзакции: любой сбой откатывает
+            # даже успешно применённые миграции в этой сессии.
+            transaction_per_migration=True,
         )
         with context.begin_transaction():
             context.run_migrations()

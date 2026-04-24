@@ -14,7 +14,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_regional_energy_systems'
+    __tablename__ = 'gs_sys_regional_energy_systems'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -29,7 +29,7 @@ class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUui
     # FK -> UnionEnergySystem
     id_union_energy_system = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_union_energy_systems.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_union_energy_systems.id', ondelete='RESTRICT'),
         index=True,
         nullable=True
     )
@@ -61,6 +61,13 @@ class RegionalEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUui
         'EnergyUnit',
         back_populates='regional_energy_system',
         cascade='all, delete-orphan'
+    )
+
+    # Нагрузки (demand): параметры по историческому максимуму и по годам
+    demand_parameters = db.relationship(
+        'RegionalEnergySystemDemandParameter',
+        back_populates='regional_energy_system',
+        cascade='all, delete-orphan',
     )
 
     @property

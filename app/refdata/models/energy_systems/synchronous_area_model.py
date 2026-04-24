@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class SynchronousArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_synchronous_areas'
+    __tablename__ = 'gs_sys_synchronous_areas'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -36,6 +36,12 @@ class SynchronousArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixi
         'RegionalDistrict',
         back_populates='synchronous_area',
         foreign_keys='RegionalDistrict.id_synchronous_area',
+    )
+
+    demand_parameters = db.relationship(
+        'SynchronousAreaDemandParameter',
+        back_populates='synchronous_area',
+        cascade='all, delete-orphan',
     )
 
     def __repr__(self) -> str:

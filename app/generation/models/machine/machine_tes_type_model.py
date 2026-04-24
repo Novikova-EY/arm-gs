@@ -10,7 +10,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class MachineTesType(db.Model, AuditMixin):
-    __tablename__ = 'machine_tes_types'
+    __tablename__ = 'gs_gen_machine_tes_types'
     __table_args__ = (
         Index('ix_machine_tes_type_id_machine', 'id_machine'),
         Index('ix_machine_tes_type_id_tes_type', 'id_tes_type'),
@@ -24,7 +24,7 @@ class MachineTesType(db.Model, AuditMixin):
     # FK -> Year (по полю years.number)
     year_number = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_years.number', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_years.number', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -33,7 +33,7 @@ class MachineTesType(db.Model, AuditMixin):
     # FK -> Machine
     id_machine = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.machines.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_machines.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -42,7 +42,7 @@ class MachineTesType(db.Model, AuditMixin):
     # FK -> TesType
     id_tes_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_tes_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_tes_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )

@@ -79,7 +79,7 @@ def get_regional_districts_dto_list() -> List[dict]:
         for rd in rows
     ]
 
-# 3) Lookup {rd_id: name} — лёгкий и кэшируемый
+# 3) Lookup {rd_id: name} — легкий и кэшируемый
 @lru_cache(maxsize=1)
 def get_regional_districts_map() -> Dict[int, str]:
     """Возвращает отображение {Субъект.id: Субъект.name} (кэшируется)."""

@@ -93,7 +93,7 @@ def view_logs():
         else:
             log.timestamp_msk = None
 
-        # Не отдаём тип/ID сущности не-admin даже в исходнике HTML
+        # Не отдаем тип/ID сущности не-admin даже в исходнике HTML
         if is_strict_admin:
             log.database_version_display = (
                 versions_map.get(log.database_version_id, '—')

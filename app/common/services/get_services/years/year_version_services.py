@@ -123,11 +123,11 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
         year_features_query = text(f"""
             WITH source_data AS (
                 SELECT id AS old_id, name
-                FROM {SCHEMA_REFDATA}.gs_year_features
+                FROM {SCHEMA_REFDATA}.gs_sys_year_features
                 WHERE database_version_id = :source_version_id
                 ORDER BY id
             )
-            INSERT INTO {SCHEMA_REFDATA}.gs_year_features (name, database_version_id)
+            INSERT INTO {SCHEMA_REFDATA}.gs_sys_year_features (name, database_version_id)
             SELECT name, :target_version_id
             FROM source_data
             ORDER BY old_id
@@ -143,7 +143,7 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
 
         old_feature_ids_query = text(f"""
             SELECT id
-            FROM {SCHEMA_REFDATA}.gs_year_features
+            FROM {SCHEMA_REFDATA}.gs_sys_year_features
             WHERE database_version_id = :source_version_id
             ORDER BY id
         """)
@@ -167,14 +167,14 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
                 params[f"old_id_{idx}"] = old_id
                 params[f"new_id_{idx}"] = new_id
 
-            # LEFT JOIN: годы с NULL id_year_feature тоже копируются (id_year_feature остаётся NULL)
+            # LEFT JOIN: годы с NULL id_year_feature тоже копируются (id_year_feature остается NULL)
             years_query = text(f"""
                 WITH feature_map(old_id, new_id) AS (
                     VALUES {values_clause}
                 ),
                 source_years AS (
                     SELECT y.number, y.id_year_feature
-                    FROM {SCHEMA_REFDATA}.gs_years y
+                    FROM {SCHEMA_REFDATA}.gs_sys_years y
                     WHERE y.database_version_id = :source_version_id
                 ),
                 ranked_years AS (
@@ -187,7 +187,7 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
                         ) AS rn
                     FROM source_years sy
                 )
-                INSERT INTO {SCHEMA_REFDATA}.gs_years (number, id_year_feature, database_version_id)
+                INSERT INTO {SCHEMA_REFDATA}.gs_sys_years (number, id_year_feature, database_version_id)
                 SELECT
                     ry.number,
                     fm.new_id,
@@ -197,7 +197,7 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
                 WHERE ry.rn = 1
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM {SCHEMA_REFDATA}.gs_years y_glob
+                      FROM {SCHEMA_REFDATA}.gs_sys_years y_glob
                       WHERE y_glob.number = ry.number
                         AND y_glob.database_version_id = :target_version_id
                   )
@@ -208,13 +208,13 @@ def copy_year_data_from_version(source_version_id, target_version_id, user, do_c
             # Исходная версия без year_features — копируем годы с id_year_feature=NULL
             # (старый id_year_feature указывал бы на чужую версию)
             years_no_features_query = text(f"""
-                INSERT INTO {SCHEMA_REFDATA}.gs_years (number, id_year_feature, database_version_id)
+                INSERT INTO {SCHEMA_REFDATA}.gs_sys_years (number, id_year_feature, database_version_id)
                 SELECT y.number, NULL, :target_version_id
-                FROM {SCHEMA_REFDATA}.gs_years y
+                FROM {SCHEMA_REFDATA}.gs_sys_years y
                 WHERE y.database_version_id = :source_version_id
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM {SCHEMA_REFDATA}.gs_years y_glob
+                      FROM {SCHEMA_REFDATA}.gs_sys_years y_glob
                       WHERE y_glob.number = y.number
                         AND y_glob.database_version_id = :target_version_id
                   )

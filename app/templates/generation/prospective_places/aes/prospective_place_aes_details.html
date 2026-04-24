@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ place.site_name or 'Перспективная площадка АЭС' }}{% endblock %}
+
+{% block content %}
+<style>
+.readonly-indicator {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.readonly-indicator::before {
+    content: "👁️";
+    font-size: 1rem;
+}
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.edit-indicator::before {
+    content: "✏️";
+    font-size: 1rem;
+}
+/* Как на списке prospective_places/ges/: шапка таблицы 1.2rem, строки 1.1rem */
+.place-info { font-size: 1.1rem; }
+.place-info .card-title { font-size: 1.2rem; }
+.place-info .row .fw-semibold { font-size: 1.1rem; }
+.place-info .form-control, .place-info .form-select { font-size: 1.1rem; }
+.place-info .place-name { font-size: 1.35rem; font-weight: 700; }
+
+/* Таблица энергоблоков — те же размеры, что у списка ГЭС */
+.machines-table { font-size: 1.1rem; min-width: 100%; }
+.machines-table thead th { font-size: 1.2rem; }
+.machines-table tbody td { font-size: 1.1rem; padding: 10px 8px; text-align: center; vertical-align: middle; }
+.machines-table th.col-note,
+.machines-table td.col-note { display: none; }
+</style>
+
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-4">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('prospective_places_bp.prospective_places_aes') }}" class="btn btn-secondary fs-5">Характеристика актуальных площадок размещения новых АЭС</a>
+    </div>
+
+    <div class="d-flex align-items-center mb-4">
+        <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">
+            {{ place.site_name or 'Перспективная площадка АЭС' }}
+            {% if can_edit %}
+                <span class="edit-indicator ms-3">Режим редактирования</span>
+            {% else %}
+                <span class="readonly-indicator ms-3">Режим просмотра</span>
+            {% endif %}
+        </h2>
+    </div>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="container-fluid">
+            <div class="place-info">
+                <div class="mb-4 p-3" style="background: transparent; border: none;">
+                    <div class="row g-4">
+                        <div class="col-12 col-xl-6">
+                            <div class="p-0">
+                                <h4 class="card-title text-decoration-underline mb-3"><strong>Общая информация</strong></h4>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Наименование площадки размещения АЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.site_name(class="form-control place-name", id="site_name") }}
+                                            {% if form.site_name.errors %}
+                                                <div class="text-danger small mt-1">{{ form.site_name.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="place-name">{{ place.site_name or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Субъект Российской Федерации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+                                            {% if form.id_regional_district.errors %}
+                                                <div class="text-danger small mt-1">{{ form.id_regional_district.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.regional_district.name_full if place.regional_district else None) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Объединенная энергосистема (ОЭС):</div>
+                                    <div class="col-7 text-start" id="union_energy_system">
+                                        {{ (place.regional_energy_system.union_energy_system.name if place.regional_energy_system and place.regional_energy_system.union_energy_system else None) or 'Нет данных' }}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">РЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.id_regional_energy_system(class="form-select", id="id_regional_energy_system") }}
+                                            {% if form.id_regional_energy_system.errors %}
+                                                <div class="text-danger small mt-1">{{ form.id_regional_energy_system.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.regional_energy_system.name if place.regional_energy_system else None) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Географическое расположение площадки:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.geo_location(class="form-control", id="geo_location", rows=2) }}
+                                            {% if form.geo_location.errors %}
+                                                <div class="text-danger small mt-1">{{ form.geo_location.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.geo_location or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-xl-6">
+                            <div class="p-0">
+                                <h4 class="card-title text-decoration-underline mb-3"><strong>Параметры площадки</strong></h4>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Планируемая мощность АЭС, МВт:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.planned_capacity_mw(class="form-control", id="planned_capacity_mw") }}
+                                            {% if form.planned_capacity_mw.errors %}
+                                                <div class="text-danger small mt-1">{{ form.planned_capacity_mw.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.planned_capacity_mw or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Планируемая единичная мощность энергоблока, МВт:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.planned_unit_capacity_mw(class="form-control", id="planned_unit_capacity_mw") }}
+                                            {% if form.planned_unit_capacity_mw.errors %}
+                                                <div class="text-danger small mt-1">{{ form.planned_unit_capacity_mw.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.planned_unit_capacity_mw or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Фактор отбора:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.selection_factor(class="form-control", id="selection_factor", rows=3) }}
+                                            {% if form.selection_factor.errors %}
+                                                <div class="text-danger small mt-1">{{ form.selection_factor.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.selection_factor or '—')|nl2br }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% if can_edit %}
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-success">Сохранить</button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center w-100 mb-3">
+            <h3 class="mb-0 ms-3">Энергоблоки</h3>
+            <div class="d-flex gap-2">
+                {% if can_edit %}
+                    <a href="{{ url_for('prospective_places_bp.machine_prospective_place_aes_details', place_id=place.id, machine_id=0) }}" class="btn btn-outline-success text-dark">
+                        ➕ Добавить агрегат
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered table-responsive machines-table">
+                <thead class="table-success">
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        <th rowspan="2">№ п/п</th>
+                        <th rowspan="2">Тип площадки</th>
+                        <th rowspan="2">Станционный номер блока</th>
+                        <th rowspan="2">Тип энергоблока</th>
+                        <th rowspan="2">Мощность энергоблока, МВт</th>
+                        <th rowspan="2">Возможный срок реализации</th>
+                        <th rowspan="2">Срок эксплуатации АЭС, лет</th>
+                        <th rowspan="2">Срок строительства АЭС, лет</th>
+                        <th rowspan="2">Предельное годовое число часов использования мощности энергоблока, час</th>
+                        <th rowspan="2">Удельная топливная составляющая эксплуатационных затрат в ценах текущего года, тыс. руб./кВт</th>
+                        <th rowspan="2">Удельные условно постоянные эксплуатационные затраты (без амортизационных отчислений), руб./кВтч</th>
+                        <th rowspan="2">Относительная величина расхода электрической энергии на собственные нужды АЭС, %</th>
+                        <th rowspan="2">Удельные капиталовложения в строительство АЭС в ценах текущего года (без НДС), тыс. руб./кВт</th>
+                        <th rowspan="2">Удельные затраты на вывод из эксплуатации, тыс. руб./кВт</th>
+                        <th rowspan="2">Вероятность аварийного состояния</th>
+                        <th colspan="2">Относительная продолжительность плановых простоев:</th>
+                        <th rowspan="2" class="col-note">Примечание</th>
+                        {% if can_edit %}
+                        <th rowspan="2">Удалить</th>
+                        {% endif %}
+                    </tr>
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        <th>ОЗП</th>
+                        <th>ВЛП</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mp in place.machine_prospective_places %}
+                    <tr>
+                        <td class="text-center">{{ (loop.index|string)|replace('.', ',') }}</td>
+                        <td>{{ ((mp.prospective_place_type.name if mp.prospective_place_type else None) or '—')|replace('.', ',') }}</td>
+                        <td class="text-center">{% if can_edit %}<a href="{{ url_for('prospective_places_bp.machine_prospective_place_aes_details', place_id=place.id, machine_id=mp.id) }}" class="text-decoration-none">{{ (mp.station_block_number or '—')|replace('.', ',') }}</a>{% else %}{{ (mp.station_block_number or '—')|replace('.', ',') }}{% endif %}</td>
+                        {% if merged_values.unit_type is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.unit_type|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td>{{ (mp.unit_type or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        <td class="text-center">{{ (mp.unit_capacity_mw or '—')|replace('.', ',') }}</td>
+                        <td class="text-center">{{ mp.possible_implementation_period or '—' }}</td>
+                        {% if merged_values.service_life_years is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.service_life_years|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.service_life_years or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.construction_period_years is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.construction_period_years|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.construction_period_years or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.max_annual_operating_hours is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.max_annual_operating_hours|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.max_annual_operating_hours or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.specific_fuel_cost_rub_per_kwh is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.specific_fuel_cost_rub_per_kwh|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.specific_fuel_cost_rub_per_kwh or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.specific_fixed_operating_costs_thous_rub_per_kw is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.specific_fixed_operating_costs_thous_rub_per_kw|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.specific_fixed_operating_costs_thous_rub_per_kw or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.relative_auxiliary_power_consumption_pct is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.relative_auxiliary_power_consumption_pct|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.relative_auxiliary_power_consumption_pct or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.specific_capital_investment_thous_rub_per_kw is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.specific_capital_investment_thous_rub_per_kw|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.specific_capital_investment_thous_rub_per_kw or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.specific_decommissioning_cost_thous_rub_per_kw is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.specific_decommissioning_cost_thous_rub_per_kw|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.specific_decommissioning_cost_thous_rub_per_kw or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.emergency_state_probability is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.emergency_state_probability|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.emergency_state_probability or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.ozp is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.ozp|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.ozp or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        {% if merged_values.vlp is not none %}
+                        {% if loop.first %}<td class="text-center align-middle" rowspan="{{ place.machine_prospective_places|length }}">{{ merged_values.vlp|replace('.', ',') }}</td>{% endif %}
+                        {% else %}
+                        <td class="text-center">{{ (mp.vlp or '—')|replace('.', ',') }}</td>
+                        {% endif %}
+                        <td class="col-note">{{ (mp.note or '—')|replace('.', ',') }}</td>
+                        {% if can_edit %}
+                        <td class="text-center">
+                            <form method="post" action="{{ url_for('prospective_places_bp.delete_machine_prospective_place_aes', place_id=place.id, machine_id=mp.id) }}" class="d-inline" onsubmit="return confirm('Удалить этот агрегат?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if can_edit %}19{% else %}18{% endif %}" class="text-center text-muted">Нет данных</td>
+                    </tr>
+                    {% endfor %}
+                    {% if place.machine_prospective_places %}
+                    <tr class="table-secondary fw-bold">
+                        <td colspan="4" class="text-center">Всего:</td>
+                        <td class="text-center">{{ (total_capacity_mw|round(0))|int }}</td>
+                        <td colspan="{% if can_edit %}14{% else %}13{% endif %}"></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<script>
+(function() {
+    const resAutoMap = {{ res_auto_map|tojson|safe }};
+    const resSelect = document.getElementById("id_regional_energy_system");
+    const uesEl = document.getElementById("union_energy_system");
+    if (!resSelect || !uesEl) return;
+
+    function updateOesFromRes() {
+        const resId = resSelect.value || "";
+        uesEl.textContent = resAutoMap[resId] ?? "Нет данных";
+    }
+
+    resSelect.addEventListener("change", updateOesFromRes);
+})();
+</script>
+{% endif %}
+{% endblock %}

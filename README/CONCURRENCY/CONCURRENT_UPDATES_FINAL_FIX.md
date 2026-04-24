@@ -152,7 +152,7 @@ if conflicts:
 
 ---
 
-## 📁 Изменённые файлы
+## 📁 Измененные файлы
 
 1. **`app/common/models/versioned_model.py`**
    - Удален `version_id_generator: False`

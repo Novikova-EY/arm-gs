@@ -2,6 +2,6 @@
     {%- if value is none or value == 0 -%}
         —
     {%- else -%}
-        {{- value|format_decimal -}}
+        {{- value|format_decimal_trim -}}
     {%- endif -%}
 {%- endmacro %}

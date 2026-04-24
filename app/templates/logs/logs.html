@@ -130,7 +130,7 @@
                                 <td class="p-3">{{ log.database_version_display or '—' }}</td>
                             {% endif %}
                             <td class="p-3">{{ log.action }}</td>
-                            <td class="p-3">{{ log.details }}</td>
+                            <td class="p-3">{{ log.details if log.details is not none else '—' }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

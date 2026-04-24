@@ -10,8 +10,8 @@ function initializeStationFilters() {
     const hasJQuery = typeof window.$ !== 'undefined';
     const hasSelect2 = hasJQuery && window.$.fn && window.$.fn.select2;
 
-    // Если Select2 отсутствует, `<select multiple>` выглядит как "развёрнутый" список.
-    // Чтобы поля "сворачивались" (как dropdown), делаем лёгкую обёртку на Bootstrap dropdown,
+    // Если Select2 отсутствует, `<select multiple>` выглядит как "развернутый" список.
+    // Чтобы поля "сворачивались" (как dropdown), делаем легкую обертку на Bootstrap dropdown,
     // оставляя исходный <select> скрытым (для корректной отправки формы и логики фильтрации).
     function ensureDropdownMultiSelect(selector, placeholder) {
         const selectEl = document.querySelector(selector);
@@ -178,31 +178,48 @@ function initializeStationFilters() {
         const $el = window.$(selector);
         if (!$el.length) return;
         if ($el.data('select2')) return;
+        const el = $el[0];
+        const isMultiple = !!(el && el.multiple);
         $el.select2({
             placeholder,
             allowClear: true,
             width: '100%',
-            closeOnSelect: false,
+            closeOnSelect: isMultiple ? false : true,
             minimumResultsForSearch: 0,  // Поиск по буквам в выпадающем списке
-            language: { noResults: () => 'Ничего не найдено', searching: () => 'Поиск...' }
+            language: { noResults: () => 'Ничего не найдено', searching: () => 'Поиск...' },
+            // Не обрезать список родителями с overflow (table-responsive, collapse и т.д.)
+            dropdownParent: window.$(document.body),
         });
+    }
+
+    function unionEnergySystemPlaceholder() {
+        const el = document.querySelector('#union_energy_system');
+        const custom = el && el.getAttribute('data-ues-placeholder');
+        return (custom && custom.trim()) ? custom.trim() : 'ОЭС';
     }
 
     // Откладываем инициализацию, чтобы collapse успел отрисоваться
     setTimeout(() => {
+        const uesPlaceholder = unionEnergySystemPlaceholder();
         initializeSelect2IfAvailable('#energy_system_type', 'Тип энергосистемы');
-        initializeSelect2IfAvailable('#union_energy_system', 'ОЭС');
+        initializeSelect2IfAvailable('#union_energy_system', uesPlaceholder);
         initializeSelect2IfAvailable('#regional_energy_system', 'Региональная энергосистема');
         initializeSelect2IfAvailable('#federal_district', 'Федеральный округ');
         initializeSelect2IfAvailable('#regional_district', 'Субъект РФ');
-
-        // Если Select2 нет — делаем "сворачиваемые" dropdown-поля
+        initializeSelect2IfAvailable('#tes_type_filter', 'Тип ТЭС');
+        // Если Select2 нет — мультиселекты сворачиваем в dropdown с чекбоксами; одиночные — обычный <select>.
         if (!hasSelect2) {
-            ensureDropdownMultiSelect('#energy_system_type', 'Тип энергосистемы');
-            ensureDropdownMultiSelect('#union_energy_system', 'ОЭС');
-            ensureDropdownMultiSelect('#regional_energy_system', 'Региональная энергосистема');
-            ensureDropdownMultiSelect('#federal_district', 'Федеральный округ');
-            ensureDropdownMultiSelect('#regional_district', 'Субъект РФ');
+            const uesEl = document.querySelector('#union_energy_system');
+            const maybeMulti = (sel, ph) => {
+                const n = document.querySelector(sel);
+                if (n && n.multiple) ensureDropdownMultiSelect(sel, ph);
+            };
+            maybeMulti('#energy_system_type', 'Тип энергосистемы');
+            if (uesEl && uesEl.multiple) ensureDropdownMultiSelect('#union_energy_system', uesPlaceholder);
+            maybeMulti('#regional_energy_system', 'Региональная энергосистема');
+            maybeMulti('#federal_district', 'Федеральный округ');
+            maybeMulti('#regional_district', 'Субъект РФ');
+            maybeMulti('#tes_type_filter', 'Тип ТЭС');
         }
     }, 100);
 
@@ -253,6 +270,10 @@ function initializeStationFilters() {
     const fdToUes = filtersData?.fd_to_ues_mapping || {};
     const fdToEst = filtersData?.fd_to_est_mapping || {};
     const fdToRd = filtersData?.regional_district_mapping || {}; // старое название
+
+    // Страницы вроде /fuel/calculation: в JSON только список ОЭС без маппингов территории.
+    // Каскад updateAllFilters() там не нужен и ломает мультивыбор (пересборка options).
+    const skipTerritoryFilterCascade = filtersData?.skip_territory_filter_cascade === true;
 
     // Получаем текущие выбранные значения
     const selectedEst = parseMaybeJSON(filtersData?.energy_system_type_filter, []);
@@ -387,7 +408,7 @@ function initializeStationFilters() {
 
         // Восстанавливаем выбранные
         setSelectValues(selector, newSelected);
-        // если select "завёрнут" в dropdown — пересобираем меню
+        // если select "завернут" в dropdown — пересобираем меню
         refreshDropdownMultiSelect(selector);
 
         if (!skipTrigger) {
@@ -400,6 +421,7 @@ function initializeStationFilters() {
 
     // Функция для обновления всех фильтров на основе текущих выборов
     function updateAllFilters() {
+        if (skipTerritoryFilterCascade) return;
         // Предотвращаем рекурсию
         if (isUpdating) return;
         isUpdating = true;
@@ -463,7 +485,7 @@ function initializeStationFilters() {
     document.getElementById('energy_system_type')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('union_energy_system')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_energy_system')?.addEventListener('change', function() {
-        // "Как в Excel": выбранная РЭС однозначно задаёт ФО, ОЭС и тип энергосистемы.
+        // "Как в Excel": выбранная РЭС однозначно задает ФО, ОЭС и тип энергосистемы.
         // Если выбрана ровно одна РЭС — синхронизируем связанные поля автоматически.
         if (isUpdating) return;
         const currentRes = getSelectValues('#regional_energy_system');
@@ -526,29 +548,48 @@ function initializeStationFilters() {
     document.getElementById('federal_district')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_district')?.addEventListener('change', () => updateAllFilters());
 
-    // Автоотправка формы при изменении фильтров — таблица обновляется с учётом выбранных фильтров
-    const filtersForm = document.querySelector('#filtersCollapse form');
+    // Автоотправка формы при изменении фильтров — таблица обновляется с учетом выбранных фильтров.
+    // Поля могут быть вне <form> (атрибут form=...) — например фильтры в шапке таблицы параметров распределения.
+    const filtersForm =
+        document.querySelector('#filtersCollapse form') ||
+        document.querySelector('#distributionFiltersCollapse form');
     if (filtersForm) {
-        const filterSelectors = ['#energy_system_type', '#union_energy_system', '#regional_energy_system', '#federal_district', '#regional_district'];
+        const filterSelectors = [
+            '#energy_system_type',
+            '#union_energy_system',
+            '#regional_energy_system',
+            '#federal_district',
+            '#regional_district',
+            '#start_year',
+            '#base_year',
+        ];
         filterSelectors.forEach(sel => {
-            const el = document.querySelector(sel);
-            if (el) {
+            document.querySelectorAll(sel).forEach(el => {
+                if (el.form !== filtersForm) return;
                 el.addEventListener('change', () => {
                     setTimeout(() => filtersForm.submit(), 150);
                 });
-            }
+            });
         });
     }
 
     // Инициализация при загрузке страницы
     if (selectedEst.length > 0) setSelectValues('#energy_system_type', selectedEst.map(String));
-    if (selectedUes.length > 0) setSelectValues('#union_energy_system', selectedUes.map(String));
+    if (selectedUes.length > 0) {
+        const uesDom = document.querySelector('#union_energy_system');
+        const uesVals = uesDom && !uesDom.multiple
+            ? [String(selectedUes[0])]
+            : selectedUes.map(String);
+        setSelectValues('#union_energy_system', uesVals);
+    }
     if (selectedRes.length > 0) setSelectValues('#regional_energy_system', selectedRes.map(String));
     if (selectedFd.length > 0) setSelectValues('#federal_district', selectedFd.map(String));
     if (selectedRd.length > 0) setSelectValues('#regional_district', selectedRd.map(String));
 
     // Вызываем updateAllFilters для первоначальной настройки
     setTimeout(() => {
-        updateAllFilters();
+        if (!skipTerritoryFilterCascade) {
+            updateAllFilters();
+        }
     }, 200);
 }

@@ -11,7 +11,7 @@ from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 
 class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
-    __tablename__ = 'pgu_machines'
+    __tablename__ = 'gs_gen_pgu_machines'
     __table_args__ = (
         Index('ix_pgu_machine_id_parent_machine', 'id_parent_machine'),
         Index('ix_pgu_machine_id_tes_machine_type', 'id_tes_machine_type'),
@@ -25,7 +25,7 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> ConditionType
     id_condition_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_condition_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_condition_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -34,7 +34,7 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> Machine (родитель)
     id_parent_machine = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.machines.id', ondelete='CASCADE'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_machines.id', ondelete='CASCADE'),
         nullable=False,
         index=True,
     )
@@ -46,7 +46,7 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_tes_machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_tes_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -55,7 +55,7 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> PGUTesMachineType (ГТ/ПТ)
     id_pgu_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_pgu_tes_machine_types.id'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_pgu_tes_machine_types.id'),
         nullable=True,
         index=True,
     )
@@ -90,7 +90,12 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     date_detatchment_fact = db.Column(db.String(10), nullable=True)
     date_decompressing_expected = db.Column(db.Integer, nullable=True)
     date_decompressing_fact = db.Column(db.String(10), nullable=True)
-    date_modernization_expected = db.Column(db.Integer, nullable=True)
+    date_modernization_power_change_expected = db.Column(
+        "date_modernization_power_change_expected", db.Integer, nullable=True
+    )
+    date_modernization_no_power_change_expected = db.Column(
+        "date_modernization_no_power_change_expected", db.Integer, nullable=True
+    )
 
     # Поля могут содержать несколько дат в текстовом формате
     date_relabing_fact = db.Column(db.String(255), nullable=True)
@@ -168,15 +173,18 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
         Отображаемое значение для колонки 'Модерн.' на station_list.
 
         Берем максимальный год из:
-        - ожидаемой модернизации (date_modernization_expected);
+        - ожидаемой модернизации с изменением мощности (date_modernization_power_change_expected);
+        - ожидаемой модернизации без изменения мощности (date_modernization_no_power_change_expected);
         - фактических дат перемаркировки (date_relabing_fact) по правилу 01.01.(Y+1) -> Y.
         """
         from app.common.services.help_services import normalize_date_list, convert_to_date
 
         years: list[int] = []
 
-        if self.date_modernization_expected is not None:
-            years.append(self.date_modernization_expected)
+        if self.date_modernization_power_change_expected is not None:
+            years.append(self.date_modernization_power_change_expected)
+        if self.date_modernization_no_power_change_expected is not None:
+            years.append(self.date_modernization_no_power_change_expected)
 
         if self.date_relabing_fact:
             normalized = normalize_date_list(self.date_relabing_fact)

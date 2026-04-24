@@ -12,7 +12,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_regional_districts'
+    __tablename__ = 'gs_sys_regional_districts'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     # Идентификатор субъекта РФ
@@ -39,7 +39,7 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
     # FK -> Федеральный округ
     id_federal_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_federal_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_federal_districts.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )
@@ -72,7 +72,7 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
     # FK -> Энергозона (EnergyZone)
     id_energy_zone = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_energy_zones.id", ondelete="SET NULL", onupdate="CASCADE"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_energy_zones.id", ondelete="SET NULL", onupdate="CASCADE"),
         nullable=True,
         index=True,
     )
@@ -85,7 +85,7 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
     # FK -> Синхронная зона (SynchronousArea)
     id_synchronous_area = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_synchronous_areas.id', ondelete='SET NULL', onupdate='CASCADE'),
         nullable=True,
         index=True
     )
@@ -111,6 +111,12 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
         db.UniqueConstraint('database_version_id', 'name', name='uq_refdata_regional_districts_ver_name'),
         db.UniqueConstraint('database_version_id', 'name_full', name='uq_refdata_regional_districts_ver_name_full'),
         {"schema": SCHEMA_REFDATA},
+    )
+
+    demand_parameters = db.relationship(
+        'RegionalDistrictDemandParameter',
+        back_populates='regional_district',
+        cascade='all, delete-orphan',
     )
 
     @property

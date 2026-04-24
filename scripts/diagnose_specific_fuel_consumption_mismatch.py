@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Диагностика расхождений между загруженными (y, btp, sntp, bk, snk)
-и расчётными (y_calc, btp_calc, sntp_calc, bk_calc, snk_calc) значениями.
+и расчетными (y_calc, btp_calc, sntp_calc, bk_calc, snk_calc) значениями.
 
 Запуск: python scripts/diagnose_specific_fuel_consumption_mismatch.py [year]
 """
@@ -19,7 +19,7 @@ Q6 = Decimal("0.000001")
 
 def _reverse_k_for_btp(param, btp_loaded):
     """
-    Обратный расчёт K: при каком K btp_calc = btp_loaded?
+    Обратный расчет K: при каком K btp_calc = btp_loaded?
     btp = eurt - K*(1 - ewtp/e)*100  =>  K = (eurt - btp) / ((1 - ewtp/e)*100)
     """
     eurt = param.eurt
@@ -50,7 +50,7 @@ def main():
         EquipmentGroupSpecificFuelConsumption,
     )
     from app.fuel.models.fue_equipment_group_model import EquipmentGroup
-    from app.fuel.services.equipment_group_specific_fuel_consumption_calc_services import (
+    from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
         calc_y_calc,
         calc_btp_calc,
         calc_sntp_calc,
@@ -76,7 +76,7 @@ def main():
             )
         consumptions = cq.all()
 
-        # Fuel params для расчёта
+        # Fuel params для расчета
         pq = EquipmentGroupFuelParam.query
         if year:
             pq = pq.filter(EquipmentGroupFuelParam.year_number == year)
@@ -158,11 +158,11 @@ def main():
                 })
                 print("  consumption.k:", coeff_k)
                 print("  consumption.snk:", c.snk)
-                # Обратный расчёт K для btp
+                # Обратный расчет K для btp
                 if c.btp is not None and (d := next((x for x in diffs if x[0] == "btp"), None)):
                     k_reverse = _reverse_k_for_btp(param, c.btp)
                     if k_reverse is not None:
-                        print(f"  K для совпадения btp (обратный расчёт): {k_reverse:.4f}")
+                        print(f"  K для совпадения btp (обратный расчет): {k_reverse:.4f}")
 
         print(
             f"\n--- Итого: consumption={len(consumptions)}, "

@@ -30,6 +30,14 @@
                 </div>
             </div>
             <div class="col-12 col-lg-4 text-lg-end">
+                <a class="btn btn-warning fw-bold"
+                   href="{{ url_for('refdata_bp.export_years',
+                                    year_filter=year_filter or '',
+                                    sort_by=sort_by, sort_dir=sort_dir) }}"
+                   target="_blank" rel="noopener">
+                    Экспорт в Excel
+                </a>
+
                 <select name="per_page" class="form-select d-inline-block w-auto" onchange="this.form.page.value=1; this.form.submit()">
                     <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
                     <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
@@ -70,7 +78,7 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered">
+                <table class="table table-hover table-striped table-bordered" data-auto-export-excel="off">
                     <thead class="table-success">
                         <tr>
                             <th class="text-center align-middle">
@@ -139,7 +147,7 @@
         </form>
     {% else %}
         <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered">
+            <table class="table table-hover table-striped table-bordered" data-auto-export-excel="off">
                 <thead class="table-success">
                     <tr>
                         <th class="text-center align-middle">№</th>

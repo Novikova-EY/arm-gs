@@ -88,7 +88,7 @@ def get_federal_districts_dto_list() -> List[dict]:
         for fd in rows
     ]
 
-# 3) Карта {fd_id: fd_name} — лёгкий lookup (кэшируется)
+# 3) Карта {fd_id: fd_name} — легкий lookup (кэшируется)
 @lru_cache(maxsize=1)
 def get_federal_districts_map() -> Dict[int, str]:
     """Возвращает отображение {ФО.id: ФО.name} (кэшируется)."""

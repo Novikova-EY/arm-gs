@@ -1,10 +1,10 @@
-<!-- Третья строка фильтров -->
+<!-- Третья строка фильтров: слева годы; при center_top_pagination — пагинация в той же строке по центру; справа «Показать: …»; копирование по годам — в панели «Импорт/Экспорт» (station_filters_second_row); опционально пересчёт удельных по центру -->
 <div class="col-12 mb-2">
-    <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-3 mb-2">
+    <div class="d-flex align-items-center w-100 flex-wrap gap-3 mb-2">
 
-        <!-- Левая часть: выбор годов (может быть скрыта) -->
-        <div class="d-flex align-items-center gap-2">
-            <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2" id="yearForm">
+        <!-- Слева: интервал лет (и сброс) -->
+        <div class="d-flex align-items-center gap-2 station-filters-third-left" style="{% if center_top_pagination|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
+            <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2 flex-nowrap overflow-x-auto pb-1" id="yearForm">
                 {% for key, value in request.args.items() %}
                     {% if key != "per_page" and key != "start_year" and key != "end_year" and key != "year" %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
@@ -13,38 +13,48 @@
 
                 {% if not hide_year_range|default(false) %}
                     {% if use_single_year|default(false) %}
-                    <label for="year" class="mb-0" style="white-space: nowrap;">Год:</label>
-                    <select name="year" id="year" class="form-select" onchange="this.form.submit()">
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    <label for="year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год:</label>
+                    <select name="year" id="year" class="form-select" style="width: auto; min-width: 4.5rem;" onchange="this.form.submit()">
                         {% for y in (filter_year_list|default([])) %}
                         <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
                         {% endfor %}
                     </select>
+                    </div>
                     {% else %}
-                    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-                    <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    <label for="start_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
                         {% for year in (filter_year_list|default([])) %}
                         <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
+                    </div>
 
-                    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-                    <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    <label for="end_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
                         {% for year in (filter_year_list|default([])) %}
                         <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                         {% endfor %}
                     </select>
+                    </div>
 
-                    <button type="submit" class="btn btn-outline-success">Применить</button>
+                    <button type="submit" class="btn btn-outline-success flex-shrink-0">Применить</button>
                     {% endif %}
                 {% endif %}
 
-                <div class="filter-item">
-                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                {% if not hide_filters_third_row_reset|default(false) %}
+                <div class="filter-item flex-shrink-0">
+                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger">Сбросить</a>
                 </div>
+                {% endif %}
             </form>
         </div>
-            {% if show_recalculate_specific_fuel_consumption|default(false) %}
-            <div class="ms-auto">
+
+        {% if show_recalculate_specific_fuel_consumption|default(false) %}
+        <!-- По центру строки: (опционально) пересчёт удельных; копирование по годам — в строке «Импорт/Экспорт» (station_filters_second_row) -->
+        <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap station-filters-third-center flex-shrink-0">
                 <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_consumption') }}" class="d-inline" id="recalculateSpecificFuelConsumptionForm">
                     {{ form.csrf_token if form is defined else '' }}
                     <input type="hidden" name="year" id="recalcYearInput" value="{{ selected_year|default(start_year)|default(end_year) }}">
@@ -69,46 +79,67 @@
                     }
                 })();
                 </script>
+        </div>
+        {% endif %}
+
+        {% if center_top_pagination|default(false) and not hide_pagination_and_per_page|default(false) %}
+            {% if not hide_pagination_in_filters_third_row|default(false) %}
+                {% if per_page is not none %}
+                <div class="d-flex justify-content-center align-items-center station-filters-third-pagination flex-grow-1" style="min-width: 0;">
+                    {% set pagination_endpoint = import_redirect_endpoint | default('fuel_bp.stations_equipment_groups') %}
+                    {% include 'generation/includes/pagination_station.html' %}
+                </div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+
+        {% if not hide_pagination_and_per_page|default(false) %}
+        <!-- Справа: пагинация и выбор числа строк (если не center_top_pagination — пагинация здесь же; иначе только «Показать: …»). -->
+        <div class="d-flex align-items-center flex-wrap justify-content-end gap-3 station-filters-third-right" style="{% if center_top_pagination|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
+            {% if not hide_pagination_in_filters_third_row|default(false) %}
+            {% if not center_top_pagination|default(false) %}
+            <div class="d-flex justify-content-center align-items-center" style="min-width: min(100%, 200px);">
+                {% if per_page is not none %}
+                    {% set pagination_endpoint = import_redirect_endpoint | default('fuel_bp.stations_equipment_groups') %}
+                    {% include 'generation/includes/pagination_station.html' %}
+                {% endif %}
             </div>
             {% endif %}
-
-        <!-- Пагинация -->
-        {% if not hide_pagination_and_per_page|default(false) %}
-        <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="min-width: 200px;">
-            {% if per_page is not none %}
-                {% set pagination_endpoint = import_redirect_endpoint | default('fuel_bp.stations_equipment_groups') %}
-                {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
-        </div>
 
-        <!-- Правая часть: чекбоксы, округление, пер-пейдж -->
-        <div class="d-flex align-items-center flex-wrap justify-content-end gap-5">
-
-            <!-- Итоги + выбор количества строк -->
+            <div class="d-flex align-items-center flex-wrap justify-content-end gap-3">
+            {% if show_fuel_calc_edit_add_year_period|default(false) and current_user.is_authenticated and current_user.has_admin and year_list_for_edit|default(none) %}
+            <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddYearModal">Добавить год</button>
+            <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddPeriodModal">Добавить период</button>
+            {% endif %}
+            {% if show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false) and current_user.is_authenticated and current_user.has_admin %}
+            <button type="submit" form="fuelParamsBulkEditForm" class="btn btn-success flex-shrink-0">Сохранить</button>
+            {% endif %}
             <form id="perPageForm" method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}">
                 {% for key, value in request.args.items() %}
                     {% if key != "per_page" %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
-                <!-- Горизонтальное размещение блоков -->
                 <div class="d-flex align-items-center flex-wrap gap-4">
-                    <!-- Выпадающий список -->
                     <div id="per_page_select_block" class="ms-2">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
                             <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>
                             <select id="per_page_select" name="per_page" class="form-select" style="min-width: 150px;" onchange="this.form.submit()">
-                                <option value="10" {% if request.args.get('per_page') == '10' %}selected{% endif %}>10 станций</option>
-                                <option value="25" {% if request.args.get('per_page') == '25' %}selected{% endif %}>25 станций</option>
-                                <option value="50" {% if request.args.get('per_page') == '50' %}selected{% endif %}>50 станций</option>
-                                <option value="100" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100 станций</option>
-                                <option value="all" {% if request.args.get('per_page') == 'all' %}selected{% endif %}>Все станции</option>
+                                <option value="10" {% if request.args.get('per_page') == '10' %}selected{% endif %}>10 {{ per_page_count_label | default('станций') }}</option>
+                                <option value="25" {% if request.args.get('per_page') == '25' %}selected{% endif %}>25 {{ per_page_count_label | default('станций') }}</option>
+                                <option value="50" {% if request.args.get('per_page') == '50' %}selected{% endif %}>50 {{ per_page_count_label | default('станций') }}</option>
+                                <option value="100" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100 {{ per_page_count_label | default('станций') }}</option>
+                                <option value="all" {% if request.args.get('per_page') == 'all' %}selected{% endif %}>Все {{ per_page_all_label | default('станции') }}</option>
                             </select>
                         </div>
                     </div>
                 </div>
             </form>
+            </div>
         </div>
+        {% elif show_recalculate_specific_fuel_consumption|default(false) %}
+        <div class="station-filters-third-right-spacer flex-grow-1 flex-basis-0" style="min-width: 0;" aria-hidden="true"></div>
         {% endif %}
     </div>
 </div>

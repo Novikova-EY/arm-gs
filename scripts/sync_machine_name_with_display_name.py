@@ -32,7 +32,7 @@ def sync_machine_names(dry_run: bool = False) -> Tuple[int, List[dict]]:
     Синхронизирует Machine.machine_name с отображаемым именем (логика machine_details).
 
     Returns:
-        (количество обновлённых, список изменений для вывода)
+        (количество обновленных, список изменений для вывода)
     """
     machines = Machine.query.options(
         db.joinedload(Machine.machine_station),

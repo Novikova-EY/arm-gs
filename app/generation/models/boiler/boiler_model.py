@@ -10,7 +10,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class Boiler(db.Model, AuditMixin):
-    __tablename__ = 'boilers'
+    __tablename__ = 'gs_gen_boilers'
     __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -20,7 +20,7 @@ class Boiler(db.Model, AuditMixin):
     # FK -> Station
     id_station = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.stations.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_stations.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )

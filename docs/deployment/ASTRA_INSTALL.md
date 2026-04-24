@@ -1,10 +1,10 @@
 ## Общее описание
 
-Этот документ описывает полный сценарий сборки deb-пакета приложения `generation-app` и его установку на сервер под Astra Linux 1.8.4 (Debian-based). Приведённые команды ожидают, что вы выполняете их от имени пользователя с правами `sudo`.
+Этот документ описывает полный сценарий сборки deb-пакета приложения `generation-app` и его установку на сервер под Astra Linux 1.8.4 (Debian-based). Приведенные команды ожидают, что вы выполняете их от имени пользователя с правами `sudo`.
 
 ### ⚠️ Важно: PostgreSQL и Redis
 
-**PostgreSQL и Redis указаны в зависимостях deb-пакета**, поэтому они **установятся автоматически** при выполнении `sudo apt -f install` после установки пакета (если ещё не установлены).
+**PostgreSQL и Redis указаны в зависимостях deb-пакета**, поэтому они **установятся автоматически** при выполнении `sudo apt -f install` после установки пакета (если еще не установлены).
 
 **Однако** настройку этих сервисов (создание базы данных, пользователя, паролей) нужно выполнить **вручную** перед запуском приложения. См. разделы 3 и 4.
 
@@ -18,10 +18,10 @@
 ## 1. Требования к серверу
 
 - Astra Linux 1.8.4 (SE или CE) с доступом в интернет.
-- Доступ к учётной записи с правами `sudo`.
+- Доступ к учетной записи с правами `sudo`.
 - Открытые порты:
   - 8000/TCP для самого приложения (при необходимости проксируйте через Nginx).
-  - 5432/TCP, если PostgreSQL будет использоваться удалённо.
+  - 5432/TCP, если PostgreSQL будет использоваться удаленно.
   - 6379/TCP, если Redis нужен с других хостов (по умолчанию слушает только localhost).
 
 ---
@@ -98,18 +98,18 @@ docker build -t arm-gs-deb .
 2. Запускаем сборку .deb из Docker
 
 ```bash
-docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.105
+docker run --rm -v "C:\arm_gs:/app" arm-gs-deb --version 1.0.181
 ```
 
 -v "C:\fproject:/app" — монтируем твой проект внутрь контейнера в /app.
 Соответственно, внутри контейнера путь к скрипту scripts/build_deb.py совпадает с тем, что ты указала в ENTRYPOINT.
 arm-gs-deb — имя образа, который ты собрала.
---version 1.0.105 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
+--version 1.0.181 — это аргументы, которые передаются в build_deb.py (добавляются к ENTRYPOINT).
 
 ## 6. Передача пакета на сервер
 
 ```bash
-scp C:\arm_gs\packaging\generation-app_1.0.105_amd64.deb novikova-eyu@10.31.205.27:/tmp/
+scp C:\arm_gs\packaging\generation-app_1.0.181_amd64.deb novikova-eyu@10.31.205.27:/tmp/
 # (введите пароль при запросе или используйте ssh-copy-id для входа по ключу)
 ```
 ---
@@ -120,7 +120,7 @@ scp C:\arm_gs\packaging\generation-app_1.0.105_amd64.deb novikova-eyu@10.31.205.
 
 ```bash
 cd /tmp
-sudo dpkg -i generation-app_1.0.105_amd64.deb || sudo apt -f install
+sudo dpkg -i generation-app_1.0.181_amd64.deb || sudo apt -f install
 GnT8xs!
 cd /opt/generation-app/
 source venv/bin/activate
@@ -143,7 +143,7 @@ sudo journalctl -u generation-app -f
 
 2. **Создание системных объектов:**
    - Созданы системный пользователь `generation-app` и каталог `/opt/generation-app`.
-   - Развёрнут virtualenv и установлены Python-зависимости из `requirements-linux.txt`.
+   - Развернут virtualenv и установлены Python-зависимости из `requirements-linux.txt`.
    - Скопирован unit-файл `generation-app.service`.
 
 **Важно:** Если PostgreSQL и Redis были установлены автоматически на этом этапе, обязательно вернитесь к разделам 3 и 4, чтобы настроить базу данных и пользователя **перед** запуском приложения.
@@ -173,19 +173,19 @@ sudo journalctl -u generation-app -f
 ```powershell
 # Полный деплой с указанной версией
 cd C:\arm_gs
-.\scripts\deploy.ps1 -Version 1.0.105
+.\scripts\deploy.ps1 -Version 1.0.182
 
 # Версия из git describe (тег или коммит)
 .\scripts\deploy.ps1
 
 # Только передать на сервер, установку выполнить вручную
-.\scripts\deploy.ps1 -Version 1.0.105 -NoInstall
+.\scripts\deploy.ps1 -Version 1.0.181 -NoInstall
 
 # Пакет уже собран — только передать и установить
-.\scripts\deploy.ps1 -Version 1.0.105 -DeployOnly
+.\scripts\deploy.ps1 -Version 1.0.181 -DeployOnly
 
 # Пропустить пересборку образа (быстрее при повторных деплоях)
-.\scripts\deploy.ps1 -Version 1.0.105 -SkipBuild
+.\scripts\deploy.ps1 -Version 1.0.181 -SkipBuild
 ```
 
 ### Важно
@@ -246,7 +246,7 @@ flask db upgrade
 sudo -u generation-app bash -c 'set -a; . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source ../venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && flask db upgrade'
 ```
 
-- Для обновления соберите новый пакет с версией `1.0.105`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.105_amd64.deb`.
+- Для обновления соберите новый пакет с версией `1.0.181`, скопируйте его на сервер и выполните `sudo dpkg -i /opt/generation-app/generation-app_1.0.181_amd64.deb`.
 - Сервис автоматически перезапустится (через `postinst`). При необходимости можно вручную выполнить `sudo systemctl restart generation-app`.
 - Возврат к предыдущей версии возможен командой `sudo apt install ./generation-app_1.0.0_amd64.deb`.
 
@@ -391,3 +391,7 @@ sudo systemctl restart generation-app
 
 python scripts/fill_machine_commission_year_from_exploitation.py
 python scripts/fix_alembic_version.py
+
+
+$env:PGPASSWORD = '***'
+.\scripts\sync_postgres_remote_to_local.ps1 -RemoteHost 10.31.205.27 -Force

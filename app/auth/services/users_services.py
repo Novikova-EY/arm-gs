@@ -58,7 +58,7 @@ def get_users_page(user, q: str, sort_by: str, sort_dir: str,
     base_q = build_users_query(user, q)
     total = base_q.count()
     page = max(int(page or 1), 1)
-    per_page = max(int(per_page or 10), 1)
+    per_page = max(int(per_page or 50), 1)
     items = _apply_sorting(base_q, sort_by, sort_dir) \
         .offset((page - 1) * per_page).limit(per_page).all()
     return items, total

@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
             this.disabled = true;
 
-            // Берём текущие параметры из URL
+            // Берем текущие параметры из URL
             const currentUrl = new URL(window.location.href);
             const params = new URLSearchParams(currentUrl.search);
 

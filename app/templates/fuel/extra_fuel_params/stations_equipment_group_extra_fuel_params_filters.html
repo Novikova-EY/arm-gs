@@ -1,11 +1,15 @@
 {# Фильтры для страницы "Дополнительные топливные параметры групп оборудования" #}
 {% set filters_action = url_for('fuel_bp.stations_equipment_group_extra_fuel_params') %}
 {% set use_equipment_group_filter = true %}
-{% set hide_pagination_and_per_page = true %}
+{% set total_count_label = 'групп оборудования' %}
+{% set per_page_count_label = 'групп оборудования' %}
+{% set per_page_all_label = 'группы оборудования' %}
 {% set import_redirect_endpoint = 'fuel_bp.stations_equipment_group_extra_fuel_params' %}
 {% set use_single_year = true %}
 {% set show_fuel_params_import = false %}
 {% set show_extra_fuel_params_import = true %}
+{% set show_extra_fuel_params_export = true %}
 {% set import_extra_fuel_params_action = url_for('fuel_bp.import_equipment_group_extra_fuel_params') %}
 {% set selected_year = selected_year|default(start_year)|default(end_year) %}
-{% include 'fuel/station_filters.html' %}
+{% set center_top_pagination = true %}
+{% include 'fuel/_shared/station_filters.html' %}

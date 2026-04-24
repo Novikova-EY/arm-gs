@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class FederalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_federal_districts'
+    __tablename__ = 'gs_sys_federal_districts'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -42,6 +42,12 @@ class FederalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixi
     )
 
     regional_districts = db.relationship('RegionalDistrict', back_populates='federal_district')
+
+    demand_parameters = db.relationship(
+        'FederalDistrictDemandParameter',
+        back_populates='federal_district',
+        cascade='all, delete-orphan',
+    )
 
     def __repr__(self) -> str:
         return f"<FederalDistrict id={self.id} name={self.name!r}>"

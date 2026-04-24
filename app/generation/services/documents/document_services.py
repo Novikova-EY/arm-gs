@@ -244,7 +244,7 @@ def add_document_service(data, user):
     except IntegrityError:
         db.session.rollback()
         created_ids.clear()
-        quick_fix_seq(SCHEMA_GENERATION, "documents_kommod")
+        quick_fix_seq(SCHEMA_GENERATION, "gs_gen_documents_kommod")
         _do_insert()
         _commit_with_retry()
         return created_ids[0] if len(created_ids) == 1 else created_ids

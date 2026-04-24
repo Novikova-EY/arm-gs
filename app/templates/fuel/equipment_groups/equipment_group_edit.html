@@ -37,6 +37,27 @@
     gap: 0.5rem;
 }
 .edit-indicator::before { content: "✏️"; font-size: 1rem; }
+.equipment-group-edit-page tr.calc-row td.first-column {
+    background-color: rgba(var(--bs-secondary-rgb), 0.06);
+}
+/* Выпадающий список «Станция для группировки» — как фильтр РЭС на stations_equipment_groups */
+.equipment-group-edit-page .grouping-station-dropdown .dropdown-menu {
+    width: 100%;
+    min-width: 100%;
+}
+.equipment-group-edit-page .grouping-station-dropdown .grouping-station-row {
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.125rem;
+}
+.equipment-group-edit-page .grouping-station-dropdown .grouping-station-row:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+}
+.equipment-group-edit-page .grouping-station-dropdown .grouping-station-row.is-selected {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+    font-weight: 600;
+}
 </style>
 
 <div class="container-fluid mt-4 equipment-group-edit-page">
@@ -56,8 +77,10 @@
             </h2>
         </div>
 
-        <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}">
+        <form id="equipmentGroupHeaderForm" method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {# Первая submit в форме: при Enter в полях срабатывает она, иначе браузер берёт первую кнопку — «Удалить» #}
+            <button type="submit" class="visually-hidden" tabindex="-1">Сохранить</button>
 
             <div class="container-fluid">
                 <div class="station-info">
@@ -78,118 +101,161 @@
                         <label class="form-label fw-semibold">Региональная энергосистема</label>
                         {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
                     </div>
+                    {# Вторая строка: колонки как в первой — Тип под Название, Станция под Субъект РФ #}
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Тип группы оборудования</label>
+                        {% if can_edit %}
+                        <select name="equipment_group_type_id" class="form-select">
+                            {% for val, label in equipment_group_type_choices %}
+                            <option value="{{ val }}" {% if (equipment_group_type_selected or '')|string == (val or '')|string %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if not equipment_group_type_selected and equipment_group_types_display and equipment_group_types_display != '—' %}
+                        <div class="form-text text-muted">Сейчас в связях несколько разных типов: {{ equipment_group_types_display }} — выберите единый тип и сохраните.</div>
+                        {% endif %}
+                        {% else %}
+                        <span class="form-control-plaintext">{{ equipment_group_types_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Станция для группировки</label>
+                        {% if can_edit %}
+                        <select
+                            name="grouping_station_id"
+                            id="grouping_station_id"
+                            class="form-select"
+                        >
+                            {% for val, label in grouping_station_choices %}
+                            <option value="{{ val }}" {% if (grouping_station_effective_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <span class="form-control-plaintext">{{ choice_displays.grouping_station_id }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 d-none d-md-block" aria-hidden="true"></div>
                 </div>
                 <div class="row g-4 mt-4">
                     <div class="col-12 mb-2">
                         <h3 class="mb-0 ms-3">Общая информация (БД Топливо)</h3>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Типы турбин (tm)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>
+                        <label class="form-label fw-semibold">Название (name_ext)</label>
+                        {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '—' }}</span>{% endif %}
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Код станции (numb)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>
+                        {% if can_edit %}<input type="number" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Действующая (d)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.d }}</span>
+                        {% if can_edit %}<select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (equipment_group.d or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.d }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Расширяемая (r)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.r }}</span>
+                        {% if can_edit %}<select name="r" class="form-select">{% for val, label in r_choices %}<option value="{{ val }}" {% if (equipment_group.r or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.r }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Типы турбин (tm)</label>
+                        {% if can_edit %}<input type="text" name="tm" class="form-control" value="{{ equipment_group.tm or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.tm or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.forem }}</span>
+                        {% if can_edit %}<select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (equipment_group.forem or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.forem }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Признак группы (niv)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>
+                        {% if can_edit %}<input type="number" name="niv" class="form-control" value="{{ equipment_group.niv if equipment_group.niv is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Признак разбитой (comp)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>
+                        {% if can_edit %}<input type="number" name="comp" class="form-control" value="{{ equipment_group.comp if equipment_group.comp is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Код станции (main)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>
+                        {% if can_edit %}<input type="number" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
                     </div>
                     <div class="w-100"></div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="n1" class="form-control" value="{{ equipment_group.n1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n1 or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="n2" class="form-control" value="{{ equipment_group.n2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.n2 or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="p1" class="form-control" value="{{ equipment_group.p1 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p1 or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Адрес (addr)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>
+                        {% if can_edit %}<input type="text" name="addr" class="form-control" value="{{ equipment_group.addr or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.addr or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Примечание (note)</label>
-                        <span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>
+                        {% if can_edit %}<textarea name="note" class="form-control" rows="2" placeholder="—">{{ equipment_group.note or '' }}</textarea>{% else %}<span class="form-control-plaintext">{{ equipment_group.note or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Субъект РФ (obl)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.obl }}</span>
+                        {% if can_edit %}<select name="obl" class="form-select">{% for val, label in obl_choices %}<option value="{{ val }}" {% if (equipment_group.obl or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.obl }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Департамент (dep)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.dep }}</span>
+                        {% if can_edit %}<select name="dep" class="form-select">{% for val, label in dep_choices %}<option value="{{ val }}" {% if (equipment_group.dep or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.dep }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">ОЭС (oes)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.oes }}</span>
+                        {% if can_edit %}<select name="oes" class="form-select">{% for val, label in oes_choices %}<option value="{{ val }}" {% if (equipment_group.oes or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.oes }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Экономический район (er)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.er }}</span>
+                        {% if can_edit %}<select name="er" class="form-select">{% for val, label in er_choices %}<option value="{{ val }}" {% if (equipment_group.er or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.er }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Федеральный округ (fo)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.fo }}</span>
+                        {% if can_edit %}<select name="fo" class="form-select">{% for val, label in fo_choices %}<option value="{{ val }}" {% if (equipment_group.fo or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.fo }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Код города (codegor)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.codegor }}</span>
+                        {% if can_edit %}<select name="codegor" class="form-select">{% for val, label in codegor_choices %}<option value="{{ val }}" {% if (equipment_group.codegor or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.codegor }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Ведомство (vedomstvo)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.vedomstvo }}</span>
+                        {% if can_edit %}<select name="vedomstvo" class="form-select">{% for val, label in vedomstvo_choices %}<option value="{{ val }}" {% if (equipment_group.vedomstvo or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.vedomstvo }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Тип генерирующей компании (be)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.be }}</span>
+                        {% if can_edit %}<select name="be" class="form-select">{% for val, label in be_choices %}<option value="{{ val }}" {% if (equipment_group.be or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.be }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Генерирующая компания (gk)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.gk }}</span>
+                        {% if can_edit %}<select name="gk" class="form-select">{% for val, label in gk_choices %}<option value="{{ val }}" {% if (equipment_group.gk or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.gk }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Филиал генерирующей компании (gkf)</label>
-                        <span class="form-control-plaintext">{{ choice_displays.gkf }}</span>
+                        {% if can_edit %}<select name="gkf" class="form-select">{% for val, label in gkf_choices %}<option value="{{ val }}" {% if (equipment_group.gkf or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.gkf }}</span>{% endif %}
                     </div>
                 </div>
                 {% if can_edit %}
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
-                    <button type="submit" name="all_versions" value="1" class="btn btn-outline-success fs-5" title="Применить изменения во всех версиях БД">Сохранить во всех версиях</button>
-                    <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" name="delete_current" value="1" class="btn btn-outline-danger fs-5" title="Удалить группу оборудования только в текущей версии" onclick="return confirm('Удалить группу оборудования в текущей версии? Это действие нельзя отменить.');">Удалить</button>
+                        <button type="submit" name="delete_all_versions" value="1" class="btn btn-outline-danger fs-5" title="Удалить группу оборудования во всех версиях БД" onclick="return confirm('Удалить группу оборудования во всех версиях БД? Это действие нельзя отменить.');">Удалить во всех версиях</button>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                        <button type="submit" name="all_versions" value="1" class="btn btn-outline-success fs-5" title="Применить изменения во всех версиях БД">Сохранить во всех версиях</button>
+                        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
+                    </div>
                 </div>
                 {% else %}
                 <div class="d-flex justify-content-end gap-2 mt-3">
@@ -248,7 +314,7 @@
                 <div class="mt-3">
                     {% if stations_with_machines %}
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped table-bordered machines-table">
+                        <table class="table table-hover table-striped table-bordered machines-table" data-auto-export-excel="off">
                             <thead class="table-success">
                                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                                     <th rowspan="2" style="width: 50px;">гр.</th>
@@ -263,7 +329,8 @@
                                     <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
                                     <th rowspan="2" class="col-equipment-group-type" style="width: 120px;">Тип<br>группы<br>оборуд.</th>
                                     <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
-                                    <th colspan="{{ end_year - start_year + 1 }}">Установленная мощность</th>
+                                    <th rowspan="2" style="width: 90px; white-space: normal;">Тепловая мощность,<br>Гкал/час</th>
+                                    <th colspan="{{ end_year - start_year + 1 }}">Установленная электрическая мощность, МВт</th>
                                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                                     <th rowspan="2" class="col-note">Примечание</th>
                                 </tr>
@@ -300,6 +367,8 @@
         {% if can_edit %}
         <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" id="fuelParamsForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="equipment_group_type_id" id="fuelFormEquipmentGroupTypeId" value="{{ (equipment_group_type_selected if equipment_group_type_selected is not none else '')|string }}">
+            <input type="hidden" name="grouping_station_id" id="fuelFormGroupingStationId" value="{{ (grouping_station_effective_id or '')|string }}">
             <input type="hidden" name="start_year" value="{{ start_year }}">
             <input type="hidden" name="end_year" value="{{ end_year }}">
             <input type="hidden" name="rounding_digits_table1" value="{{ rounding_digits_table1 }}">
@@ -329,7 +398,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -371,7 +440,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -409,11 +478,15 @@
 
         <div class="card mb-3 border-0 shadow-none">
             <div class="card-header fw-bold bg-transparent border-0">
-                <h3 class="mb-0 ms-3 text-nowrap">Удельные показатели</h3>
+                <h3 class="mb-0 ms-3 text-nowrap d-flex align-items-center flex-wrap gap-2">
+                    Удельные показатели
+                    <span class="badge bg-secondary">Ввод и расчёт</span>
+                </h3>
+                <p class="small text-muted mb-0 ms-3 mt-2">Поля <code>k</code>, <code>y</code>, <code>btp</code>, <code>sntp</code>, <code>bk</code>, <code>snk</code> сохраняются как входные параметры. Поля с суффиксом <code>_calc</code> рассчитываются автоматически и не редактируются вручную.</p>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -428,13 +501,24 @@
                         <tbody>
                             {% for label, values_by_year in table4_consumption_grid %}
                             {% set attr = table4_consumption_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span>{% if consumption_formulas is defined and consumption_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}</td>
+                            {% set is_calc_row = attr.endswith('_calc') %}
+                            <tr class="text-center align-middle{% if is_calc_row %} table-light calc-row{% endif %}">
+                                <td class="first-column text-start">
+                                    {% if is_calc_row %}<span class="text-muted me-1" title="Расчётная строка">∑</span>{% endif %}
+                                    <span class="fw-bold">{{ label }}</span>
+                                    <span class="text-muted small">({{ attr }})</span>
+                                    {% if is_calc_row %}<span class="badge bg-light text-dark border ms-1">auto</span>{% endif %}
+                                    {% if consumption_formulas is defined and consumption_formulas.get(attr) %}
+                                    <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
+                                    {% endif %}
+                                </td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
-                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {% if can_edit %}
+                                    <td class="power-column{% if is_calc_row %} bg-light border-start border-secondary-subtle{% endif %}" {% if is_calc_row %}title="Расчётное значение{% if v_full %} · полное: {{ v_full }}{% endif %}"{% elif v_full %}title="{{ v_full }}"{% endif %}>
+                                        {% if is_calc_row %}
+                                        <span class="d-block text-muted">{{ format_decimal_table4(v) if v is not none else '—' }}</span>
+                                        {% elif can_edit and attr in consumption_form_input_attrs %}
                                         <input type="text" name="consumption_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table4(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
                                         {% else %}
                                         {{ format_decimal_table4(v) if v is not none else '—' }}
@@ -455,7 +539,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -497,7 +581,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -535,11 +619,15 @@
 
         <div class="card mb-3 border-0 shadow-none">
             <div class="card-header fw-bold bg-transparent border-0">
-                <h3 class="mb-0 ms-3 text-nowrap">Цена</h3>
+                <h3 class="mb-0 ms-3 text-nowrap d-flex align-items-center flex-wrap gap-2">
+                    Цена
+                    <span class="badge bg-secondary">Только просмотр</span>
+                </h3>
+                <p class="small text-muted mb-0 ms-3 mt-2">Цена рассчитывается автоматически на основании стоимости топлива и рассчитанных топливных параметров. Удельная цена (поля <code>xxx_c</code>) пересчитывается при сохранении карточки; ввод с формы отключён.</p>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 80px;">Параметр</th>
@@ -554,8 +642,16 @@
                         <tbody>
                             {% for label, values_by_year in table4_price_grid %}
                             {% set attr = table4_price_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr[:-7] if attr|length >= 7 and attr[-5:] == '_calc' else (attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else attr), label) }}</span> <span class="text-muted small">({{ attr }})</span>{% if price_formulas is defined and price_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}</td>
+                            <tr class="text-center align-middle table-light calc-row">
+                                <td class="first-column text-start">
+                                    <span class="text-muted me-1" title="Расчётная строка">∑</span>
+                                    <span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr[:-7] if attr|length >= 7 and attr[-5:] == '_calc' else (attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else attr), label) }}</span>
+                                    <span class="text-muted small">({{ attr }})</span>
+                                    <span class="badge bg-light text-dark border ms-1">auto</span>
+                                    {% if price_formulas is defined and price_formulas.get(attr) %}
+                                    <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
+                                    {% endif %}
+                                </td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
@@ -577,7 +673,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th class="first-column" style="width: 120px;">Параметр</th>
@@ -616,7 +712,7 @@
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3">
             <input type="hidden" name="save_fuel_params" value="1">
-            <button type="submit" class="btn btn-outline-success fs-5" title="Сохранить изменения в таблицах: Параметры группы оборудования, Основные параметры топлива, Удельные показатели, Доп. параметры, Стоимость, Цена">Сохранить параметры топлива</button>
+            <button type="submit" class="btn btn-outline-success fs-5" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
         </div>
         </form>
         {% endif %}
@@ -627,7 +723,7 @@
     <div class="container-fluid mt-3">
         <div class="card">
             <div class="card-body p-0">
-                <table class="table table-hover table-striped table-bordered table-responsive" id="equipment-group-logs-table">
+                <table class="table table-hover table-striped table-bordered table-responsive" id="equipment-group-logs-table" data-auto-export-excel="off">
                     <thead class="table-light">
                         <tr>
                             <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
@@ -752,6 +848,188 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 (function() {
+    /** Одиночный выбор: тот же UI, что у фильтра РЭС на stations_equipment_groups (Bootstrap dropdown + «Поиск...»). */
+    function ensureGroupingStationDropdown() {
+        const selectEl = document.getElementById('grouping_station_id');
+        if (!selectEl || selectEl.dataset.groupingDropdownInit === '1') return;
+
+        selectEl.dataset.groupingDropdownInit = '1';
+
+        const titleText = 'Станция для группировки';
+        const placeholderBtn = 'не указано';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dropdown w-100 grouping-station-dropdown';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'form-select w-100 text-start';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.setAttribute('data-bs-auto-close', 'outside');
+        btn.setAttribute('aria-expanded', 'false');
+
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu p-2 filter-dropdown-menu';
+
+        selectEl.classList.add('d-none');
+
+        const parent = selectEl.parentNode;
+        if (!parent) return;
+        parent.replaceChild(wrapper, selectEl);
+        wrapper.appendChild(btn);
+        wrapper.appendChild(menu);
+        wrapper.appendChild(selectEl);
+
+        function currentValue() {
+            const o = selectEl.selectedOptions[0];
+            return o ? String(o.value) : '';
+        }
+
+        function setButtonText() {
+            const o = selectEl.selectedOptions[0];
+            if (!o || String(o.value) === '') {
+                const emptyOpt = Array.from(selectEl.options).find(function(opt) {
+                    return String(opt.value) === '';
+                });
+                btn.textContent = (emptyOpt && (emptyOpt.textContent || '').trim()) || placeholderBtn;
+                return;
+            }
+            btn.textContent = (o.textContent || '').trim() || placeholderBtn;
+        }
+
+        function selectValue(value) {
+            const v = String(value);
+            Array.from(selectEl.options).forEach(function(opt) {
+                opt.selected = String(opt.value) === v;
+            });
+            setButtonText();
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function hideDropdown() {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                const inst = bootstrap.Dropdown.getInstance(btn)
+                    || bootstrap.Dropdown.getOrCreateInstance(btn);
+                inst.hide();
+            }
+        }
+
+        let searchInputRef = null;
+
+        function renderMenu() {
+            menu.innerHTML = '';
+
+            const actions = document.createElement('div');
+            actions.className = 'd-flex justify-content-between align-items-center mb-2 gap-2';
+
+            const title = document.createElement('div');
+            title.className = 'fw-bold';
+            title.textContent = titleText;
+
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'btn btn-sm btn-outline-danger';
+            clearBtn.textContent = 'Сбросить';
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectValue('');
+                renderMenu();
+            });
+
+            actions.appendChild(title);
+            actions.appendChild(clearBtn);
+            menu.appendChild(actions);
+
+            const searchWrap = document.createElement('div');
+            searchWrap.className = 'mb-2';
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control form-control-sm';
+            searchInput.placeholder = 'Поиск...';
+            searchInput.setAttribute('autocomplete', 'off');
+            searchWrap.appendChild(searchInput);
+            menu.appendChild(searchWrap);
+            searchInputRef = searchInput;
+
+            const list = document.createElement('div');
+            list.className = 'd-flex flex-column';
+
+            const selVal = currentValue();
+
+            Array.from(selectEl.options).forEach(function(opt) {
+                const value = (opt.value ?? '').toString();
+
+                const row = document.createElement('div');
+                row.className = 'grouping-station-row';
+                row.setAttribute('role', 'button');
+                row.tabIndex = 0;
+                const optText = (opt.textContent || '').trim();
+                row.textContent = optText;
+                row.setAttribute('data-search-text', optText.toLowerCase());
+                row.setAttribute('data-opt-value', value);
+
+                if (String(value) === selVal) {
+                    row.classList.add('is-selected');
+                }
+
+                row.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectValue(value);
+                    renderMenu();
+                    hideDropdown();
+                });
+                row.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        row.click();
+                    }
+                });
+
+                list.appendChild(row);
+            });
+
+            function applyFilter() {
+                const q = (searchInput.value || '').trim().toLowerCase();
+                const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+                list.querySelectorAll('[data-search-text]').forEach(function(el) {
+                    const hay = el.getAttribute('data-search-text') || '';
+                    const match = terms.length === 0 || terms.every(function(t) {
+                        return hay.indexOf(t) !== -1;
+                    });
+                    el.classList.toggle('d-none', !match);
+                });
+            }
+            searchInput.addEventListener('input', applyFilter);
+            searchInput.addEventListener('keyup', applyFilter);
+            searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+
+            menu.appendChild(list);
+            setButtonText();
+        }
+
+        btn.addEventListener('shown.bs.dropdown', function() {
+            if (searchInputRef) {
+                searchInputRef.value = '';
+                searchInputRef.dispatchEvent(new Event('input', { bubbles: true }));
+                setTimeout(function() { searchInputRef.focus(); }, 0);
+            }
+        });
+
+        renderMenu();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureGroupingStationDropdown);
+    } else {
+        ensureGroupingStationDropdown();
+    }
+})();
+</script>
+
+<script>
+(function() {
     document.getElementById('rounding_digits_table1')?.addEventListener('change', function() {
         var url = new URL(window.location.href);
         url.searchParams.set('rounding_digits_table1', this.value);
@@ -759,6 +1037,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 })();
 </script>
+
+{% if can_edit %}
+<script>
+(function() {
+    const fuelForm = document.getElementById('fuelParamsForm');
+    const headerForm = document.getElementById('equipmentGroupHeaderForm');
+    if (!fuelForm || !headerForm) return;
+    const sel = headerForm.querySelector('select[name="equipment_group_type_id"]');
+    const hid = document.getElementById('fuelFormEquipmentGroupTypeId');
+    const gSel = headerForm.querySelector('select[name="grouping_station_id"]');
+    const gHid = document.getElementById('fuelFormGroupingStationId');
+    const sync = function() {
+        if (sel && hid) {
+            hid.value = sel.value;
+        }
+        if (gSel && gHid) {
+            gHid.value = gSel.value;
+        }
+    };
+    if (sel && hid) {
+        sel.addEventListener('change', sync);
+    }
+    if (gSel && gHid) {
+        gSel.addEventListener('change', sync);
+    }
+    fuelForm.addEventListener('submit', sync);
+})();
+</script>
+{% endif %}
 
 {% if stations_with_machines %}
 <script>

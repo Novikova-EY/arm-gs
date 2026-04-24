@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError, DataError, DBAPIError
 from app.extensions import db
 from app.logs.models.log_model import Log
 
-# Жёсткие лимиты под типы колонок
+# Жесткие лимиты под типы колонок
 MAX_USERNAME = 100
 MAX_ACTION = 500
 MAX_ENTITY_TYPE = 50
@@ -79,6 +79,13 @@ def log_to_db(
         # чтобы не коммитить основной db.session и не инвалидировать объекты
         if session is None:
             return
+
+        # Эта сессия используется только для записи служебных логов.
+        # Ее commit не должен триггерить очистку refdata-кэшей в listeners after_commit.
+        try:
+            session.info["_skip_refdata_cache_invalidation"] = True
+        except Exception:
+            pass
 
         # Получаем текущую версию БД, не трогая основной db.session (может быть в flush)
         database_version_id = None

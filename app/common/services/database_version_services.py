@@ -562,7 +562,7 @@ def add_version_service(data, user):
                 source_version_id=snapshot_source_version_id,
             )
 
-        # Коммитим всё разом после retry
+        # Коммитим все разом после retry
         _commit_with_retry()
         
         # Логируем результаты копирования после успешного commit
@@ -637,12 +637,12 @@ def _get_max_generation_data_year(version_id: int) -> Optional[int]:
     """
     q = text(f"""
         SELECT GREATEST(
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.station_powers     WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_powers     WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.pgu_machine_powers WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_fuels      WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_tes_types  WHERE database_version_id = :vid), 0),
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.machine_names     WHERE database_version_id = :vid), 0)
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_station_powers     WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_powers     WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_pgu_machine_powers WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_fuels      WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_tes_types  WHERE database_version_id = :vid), 0),
+            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_names     WHERE database_version_id = :vid), 0)
         ) AS max_year
     """)
     try:
@@ -692,7 +692,7 @@ def extend_version_period_by_copying_last_year(
         entity_id=target_version_id,
     )
 
-    # 1) Обновляем YearService в целевой версии (если нет — создаём)
+    # 1) Обновляем YearService в целевой версии (если нет — создаем)
     target_service = (
         YearService.query
         .filter_by(database_version_id=target_version_id)
@@ -706,13 +706,13 @@ def extend_version_period_by_copying_last_year(
     target_service.year_sipr_end = new_end_year
     db.session.flush()
 
-    # 2) Гарантируем наличие записей годов (gs_years) для новых лет (чтобы не ломались FK по year_number)
+    # 2) Гарантируем наличие записей годов (gs_sys_years) для новых лет (чтобы не ломались FK по year_number)
     ensure_year_sql = text(f"""
-        INSERT INTO {SCHEMA_REFDATA}.gs_years (number, database_version_id)
+        INSERT INTO {SCHEMA_REFDATA}.gs_sys_years (number, database_version_id)
         SELECT :year_number, :target_version_id
         WHERE NOT EXISTS (
             SELECT 1
-            FROM {SCHEMA_REFDATA}.gs_years
+            FROM {SCHEMA_REFDATA}.gs_sys_years
             WHERE number = :year_number
               AND database_version_id = :target_version_id
         )
@@ -729,42 +729,42 @@ def extend_version_period_by_copying_last_year(
     copy_specs = [
         # station_powers: мощности станции
         {
-            "table": f"{SCHEMA_GENERATION}.station_powers",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_station_powers",
             "key_cols": ["id_station"],
             "select_cols": ["id_station", "p_ust", "p_ogr", "p_rasp"],
             "insert_cols": ["year_number", "id_station", "p_ust", "p_ogr", "p_rasp", "database_version_id"],
         },
         # machine_powers: мощности агрегатов
         {
-            "table": f"{SCHEMA_GENERATION}.machine_powers",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_machine_powers",
             "key_cols": ["id_machine"],
             "select_cols": ["id_machine", "p_ust", "p_ogr", "p_rasp"],
             "insert_cols": ["year_number", "id_machine", "p_ust", "p_ogr", "p_rasp", "database_version_id"],
         },
         # pgu_machine_powers: мощности ПГУ-компонентов
         {
-            "table": f"{SCHEMA_GENERATION}.pgu_machine_powers",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_pgu_machine_powers",
             "key_cols": ["id_pgu_machine"],
             "select_cols": ["id_pgu_machine", "p_ust"],
             "insert_cols": ["year_number", "id_pgu_machine", "p_ust", "database_version_id"],
         },
         # machine_fuels: топливо агрегата
         {
-            "table": f"{SCHEMA_GENERATION}.machine_fuels",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_machine_fuels",
             "key_cols": ["id_machine", "id_fuel"],
             "select_cols": ["id_machine", "id_fuel"],
             "insert_cols": ["year_number", "id_machine", "id_fuel", "database_version_id"],
         },
         # machine_tes_types: тип ТЭС агрегата
         {
-            "table": f"{SCHEMA_GENERATION}.machine_tes_types",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_machine_tes_types",
             "key_cols": ["id_machine", "id_tes_type"],
             "select_cols": ["id_machine", "id_tes_type"],
             "insert_cols": ["year_number", "id_machine", "id_tes_type", "database_version_id"],
         },
         # machine_names: названия агрегатов по годам
         {
-            "table": f"{SCHEMA_GENERATION}.machine_names",
+            "table": f"{SCHEMA_GENERATION}.gs_gen_machine_names",
             "key_cols": ["id_machine"],
             "select_cols": ["id_machine", "name"],
             "insert_cols": ["year_number", "id_machine", "name", "database_version_id"],
@@ -838,7 +838,7 @@ def _copy_association_tables(source_version_id, target_version_id, id_mappings, 
     
     # Список ассоциативных таблиц С database_version_id
     association_tables = [
-        (SCHEMA_REFDATA, 'gs_regional_district_regional_energy_system'),
+        (SCHEMA_REFDATA, 'gs_sys_regional_district_regional_energy_system'),
         # Добавьте сюда другие ассоциативные таблицы при необходимости
     ]
     
@@ -869,10 +869,10 @@ def _copy_association_tables(source_version_id, target_version_id, id_mappings, 
             for col_name in column_names:
                 # Определяем, в какую таблицу ссылается эта колонка
                 if col_name == 'regional_district_id':
-                    mapping_key = f"{SCHEMA_REFDATA}.gs_regional_districts"
+                    mapping_key = f"{SCHEMA_REFDATA}.gs_sys_regional_districts"
                     columns_to_map.append((col_name, mapping_key))
                 elif col_name == 'regional_energy_system_id':
-                    mapping_key = f"{SCHEMA_REFDATA}.gs_regional_energy_systems"
+                    mapping_key = f"{SCHEMA_REFDATA}.gs_sys_regional_energy_systems"
                     columns_to_map.append((col_name, mapping_key))
                 # Добавьте другие колонки при необходимости
             
@@ -1013,21 +1013,21 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     
     # Полностью независимые таблицы (справочники без внешних ключей)
     completely_independent_tables = [
-        (ref_schema, 'gs_station_types'),
-        (ref_schema, 'gs_machine_types'),
-        (ref_schema, 'gs_tes_types'),
-        (ref_schema, 'gs_tes_machine_types'),
-        (ref_schema, 'gs_pgu_tes_machine_types'),
-        (ref_schema, 'gs_condition_types'),
-        (ref_schema, 'gs_technology_types'),
-        (ref_schema, 'gs_technology_availabilities'),
-        (ref_schema, 'gs_energy_system_types'),
-        (ref_schema, 'gs_fuel_categories'),
-        (ref_schema, 'gs_fuel_types'),
-        (ref_schema, 'gs_fuels'),
-        (ref_schema, 'gs_companies'),
-        (gen_schema, 'station_groups'),
-        (gen_schema, 'documents_kommod')
+        (ref_schema, 'gs_sys_station_types'),
+        (ref_schema, 'gs_sys_machine_types'),
+        (ref_schema, 'gs_sys_tes_types'),
+        (ref_schema, 'gs_sys_tes_machine_types'),
+        (ref_schema, 'gs_sys_pgu_tes_machine_types'),
+        (ref_schema, 'gs_sys_condition_types'),
+        (ref_schema, 'gs_sys_technology_types'),
+        (ref_schema, 'gs_sys_technology_availabilities'),
+        (ref_schema, 'gs_sys_energy_system_types'),
+        (ref_schema, 'gs_sys_fuel_categories'),
+        (ref_schema, 'gs_sys_fuel_types'),
+        (ref_schema, 'gs_sys_fuels'),
+        (ref_schema, 'gs_sys_companies'),
+        (gen_schema, 'gs_gen_station_groups'),
+        (gen_schema, 'gs_gen_documents_kommod')
     ]
     
     # Копируем полностью независимые таблицы
@@ -1064,30 +1064,30 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     stage2_tables = [
         {
             'schema': ref_schema,
-            'table': 'gs_equipment_groups',
+            'table': 'gs_sys_equipment_groups',
             'dependencies': [
-                {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
-                {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'}
+                {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_sys_technology_availabilities'},
+                {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_sys_technology_types'}
             ]
         },
         {
             'schema': ref_schema,
-            'table': 'gs_union_energy_systems',
+            'table': 'gs_sys_union_energy_systems',
             'dependencies': []  # Независимая, но копируем во 2 этапе для логической группировки
         },
         {
             'schema': ref_schema,
-            'table': 'gs_synchronous_areas',
+            'table': 'gs_sys_synchronous_areas',
             'dependencies': []
         },
         {
             'schema': ref_schema,
-            'table': 'gs_energy_zones',
+            'table': 'gs_sys_energy_zones',
             'dependencies': []
         },
         {
             'schema': ref_schema,
-            'table': 'gs_federal_districts',
+            'table': 'gs_sys_federal_districts',
             'dependencies': []
         }
     ]
@@ -1138,18 +1138,18 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     stage3_tables = [
         {
             'schema': ref_schema,
-            'table': 'gs_regional_districts',
+            'table': 'gs_sys_regional_districts',
             'dependencies': [
-                {'fk': 'id_federal_district', 'ref_table': f'{ref_schema}.gs_federal_districts'},
-                {'fk': 'id_energy_zone', 'ref_table': f'{ref_schema}.gs_energy_zones'},
-                {'fk': 'id_synchronous_area', 'ref_table': f'{ref_schema}.gs_synchronous_areas'}
+                {'fk': 'id_federal_district', 'ref_table': f'{ref_schema}.gs_sys_federal_districts'},
+                {'fk': 'id_energy_zone', 'ref_table': f'{ref_schema}.gs_sys_energy_zones'},
+                {'fk': 'id_synchronous_area', 'ref_table': f'{ref_schema}.gs_sys_synchronous_areas'}
             ]
         },
         {
             'schema': ref_schema,
-            'table': 'gs_regional_energy_systems',
+            'table': 'gs_sys_regional_energy_systems',
             'dependencies': [
-                {'fk': 'id_union_energy_system', 'ref_table': f'{ref_schema}.gs_union_energy_systems'}
+                {'fk': 'id_union_energy_system', 'ref_table': f'{ref_schema}.gs_sys_union_energy_systems'}
             ]
         }
     ]
@@ -1202,17 +1202,17 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     stage4_tables = [
         {
             'schema': ref_schema,
-            'table': 'gs_energy_areas',
+            'table': 'gs_sys_energy_areas',
             'dependencies': [
-                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'}
+                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_sys_regional_districts'}
             ]
         },
         {
             'schema': ref_schema,
-            'table': 'gs_energy_units',
+            'table': 'gs_sys_energy_units',
             'dependencies': [
-                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'},
-                {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_regional_energy_systems'}
+                {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_sys_regional_districts'},
+                {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_sys_regional_energy_systems'}
             ]
         }
     ]
@@ -1274,14 +1274,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         stage5_tables = [
             {
                 'schema': gen_schema,
-                'table': 'stations',
+                'table': 'gs_gen_stations',
                 'dependencies': [
-                    {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.station_groups'},
-                    {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_regional_districts'},
-                    {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_regional_energy_systems'},
-                    {'fk': 'id_energy_unit', 'ref_table': f'{ref_schema}.gs_energy_units'},
-                    {'fk': 'id_station_type', 'ref_table': f'{ref_schema}.gs_station_types'},
-                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'}
+                    {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.gs_gen_station_groups'},
+                    {'fk': 'id_regional_district', 'ref_table': f'{ref_schema}.gs_sys_regional_districts'},
+                    {'fk': 'id_regional_energy_system', 'ref_table': f'{ref_schema}.gs_sys_regional_energy_systems'},
+                    {'fk': 'id_energy_unit', 'ref_table': f'{ref_schema}.gs_sys_energy_units'},
+                    {'fk': 'id_station_type', 'ref_table': f'{ref_schema}.gs_sys_station_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_sys_condition_types'}
                 ]
             }
         ]
@@ -1334,31 +1334,31 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         stage6_tables = [
             {
                 'schema': gen_schema,
-                'table': 'station_powers',
+                'table': 'gs_gen_station_powers',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'machines',
+                'table': 'gs_gen_machines',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
-                    {'fk': 'id_machine_type', 'ref_table': f'{ref_schema}.gs_machine_types'},
-                    {'fk': 'id_tes_machine_type', 'ref_table': f'{ref_schema}.gs_tes_machine_types'},
-                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'},
-                    {'fk': 'id_gen_company', 'ref_table': f'{ref_schema}.gs_companies'},
-                    {'fk': 'id_energy_area', 'ref_table': f'{ref_schema}.gs_energy_areas'},
-                    {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_technology_availabilities'},
-                    {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_technology_types'},
-                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_equipment_groups'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'},
+                    {'fk': 'id_machine_type', 'ref_table': f'{ref_schema}.gs_sys_machine_types'},
+                    {'fk': 'id_tes_machine_type', 'ref_table': f'{ref_schema}.gs_sys_tes_machine_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_sys_condition_types'},
+                    {'fk': 'id_gen_company', 'ref_table': f'{ref_schema}.gs_sys_companies'},
+                    {'fk': 'id_energy_area', 'ref_table': f'{ref_schema}.gs_sys_energy_areas'},
+                    {'fk': 'id_technology_availability', 'ref_table': f'{ref_schema}.gs_sys_technology_availabilities'},
+                    {'fk': 'id_technology_type', 'ref_table': f'{ref_schema}.gs_sys_technology_types'},
+                    {'fk': 'id_equipment_group', 'ref_table': f'{ref_schema}.gs_sys_equipment_groups'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'boilers',
+                'table': 'gs_gen_boilers',
                 'dependencies': [
-                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
+                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
                 ]
             }
         ]
@@ -1411,41 +1411,41 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         stage7_tables = [
             {
                 'schema': gen_schema,
-                'table': 'machine_powers',
+                'table': 'gs_gen_machine_powers',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'machine_fuels',
+                'table': 'gs_gen_machine_fuels',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
-                    {'fk': 'id_fuel', 'ref_table': f'{ref_schema}.gs_fuels'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
+                    {'fk': 'id_fuel', 'ref_table': f'{ref_schema}.gs_sys_fuels'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'machine_tes_types',
+                'table': 'gs_gen_machine_tes_types',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
-                    {'fk': 'id_tes_type', 'ref_table': f'{ref_schema}.gs_tes_types'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
+                    {'fk': 'id_tes_type', 'ref_table': f'{ref_schema}.gs_sys_tes_types'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'machine_names',
+                'table': 'gs_gen_machine_names',
                 'dependencies': [
-                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
+                    {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'}
                 ]
             },
             {
                 'schema': gen_schema,
-                'table': 'pgu_machines',
+                'table': 'gs_gen_pgu_machines',
                 'dependencies': [
-                    {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.machines'},
-                    {'fk': 'id_pgu_tes_machine_type', 'ref_table': f'{ref_schema}.gs_pgu_tes_machine_types'},
-                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_condition_types'}
+                    {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
+                    {'fk': 'id_pgu_tes_machine_type', 'ref_table': f'{ref_schema}.gs_sys_pgu_tes_machine_types'},
+                    {'fk': 'id_condition_type', 'ref_table': f'{ref_schema}.gs_sys_condition_types'}
                 ]
             }
         ]
@@ -1498,9 +1498,9 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         stage8_tables = [
             {
                 'schema': gen_schema,
-                'table': 'pgu_machine_powers',
+                'table': 'gs_gen_pgu_machine_powers',
                 'dependencies': [
-                    {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.pgu_machines'}
+                    {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.gs_gen_pgu_machines'}
                 ]
             }
         ]
@@ -1552,7 +1552,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         with db.session.begin_nested():
             # fuels.id_fuel_type -> fuel_types (сначала по ID-мэппингу, затем резерв по name)
             updated_rows_total = 0
-            ft_mapping = id_mappings.get(f'{ref_schema}.gs_fuel_types') or {}
+            ft_mapping = id_mappings.get(f'{ref_schema}.gs_sys_fuel_types') or {}
             if ft_mapping:
                 current_app.logger.info("🔧 [STAGED] Перепривязка fuels по маппингу ID fuel_types...")
                 temp_tbl = f"tmp_map_ft_{target_version_id}"
@@ -1570,7 +1570,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     )
                 result = db.session.execute(_text(
                     f"""
-                    UPDATE {ref_schema}.gs_fuels f
+                    UPDATE {ref_schema}.gs_sys_fuels f
                     SET id_fuel_type = m.new_id
                     FROM {temp_tbl} m
                     WHERE f.database_version_id = :target_version_id
@@ -1586,14 +1586,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     f"""
                     WITH map AS (
                         SELECT f.id AS fuel_id, ft_new.id AS new_ft_id
-                        FROM {ref_schema}.gs_fuels f
-                        JOIN {ref_schema}.gs_fuel_types ft_old ON ft_old.id = f.id_fuel_type
-                        JOIN {ref_schema}.gs_fuel_types ft_new
+                        FROM {ref_schema}.gs_sys_fuels f
+                        JOIN {ref_schema}.gs_sys_fuel_types ft_old ON ft_old.id = f.id_fuel_type
+                        JOIN {ref_schema}.gs_sys_fuel_types ft_new
                           ON ft_new.name = ft_old.name
                          AND ft_new.database_version_id = f.database_version_id
                         WHERE f.database_version_id = :target_version_id
                     )
-                    UPDATE {ref_schema}.gs_fuels f
+                    UPDATE {ref_schema}.gs_sys_fuels f
                     SET id_fuel_type = m.new_ft_id
                     FROM map m
                     WHERE f.id = m.fuel_id
@@ -1607,8 +1607,8 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             check_sql = _text(
                 f"""
                 SELECT COUNT(*)
-                FROM {ref_schema}.gs_fuels f
-                LEFT JOIN {ref_schema}.gs_fuel_types ft
+                FROM {ref_schema}.gs_sys_fuels f
+                LEFT JOIN {ref_schema}.gs_sys_fuel_types ft
                   ON ft.id = f.id_fuel_type
                  AND ft.database_version_id = f.database_version_id
                 WHERE f.database_version_id = :target_version_id
@@ -1617,11 +1617,11 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             )
             not_mapped_cnt = db.session.execute(check_sql, {"target_version_id": target_version_id}).scalar()
             if not_mapped_cnt and not_mapped_cnt > 0:
-                current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_fuels: {not_mapped_cnt}")
+                current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_sys_fuels: {not_mapped_cnt}")
             
             # union_energy_systems.id_energy_system_type -> energy_system_types (ID-мэппинг, затем резерв по name)
             updated_ues_rows_total = 0
-            est_mapping = id_mappings.get(f'{ref_schema}.gs_energy_system_types') or {}
+            est_mapping = id_mappings.get(f'{ref_schema}.gs_sys_energy_system_types') or {}
             if est_mapping:
                 current_app.logger.info("🔧 [STAGED] Перепривязка UES по маппингу ID energy_system_types...")
                 temp_tbl2 = f"tmp_map_est_{target_version_id}"
@@ -1639,7 +1639,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     )
                 result2 = db.session.execute(_text(
                     f"""
-                    UPDATE {ref_schema}.gs_union_energy_systems ues
+                    UPDATE {ref_schema}.gs_sys_union_energy_systems ues
                     SET id_energy_system_type = m.new_id
                     FROM {temp_tbl2} m
                     WHERE ues.database_version_id = :target_version_id
@@ -1655,14 +1655,14 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                     f"""
                     WITH map AS (
                         SELECT ues.id AS ues_id, est_new.id AS new_type_id
-                        FROM {ref_schema}.gs_union_energy_systems ues
-                        JOIN {ref_schema}.gs_energy_system_types est_old ON est_old.id = ues.id_energy_system_type
-                        JOIN {ref_schema}.gs_energy_system_types est_new
+                        FROM {ref_schema}.gs_sys_union_energy_systems ues
+                        JOIN {ref_schema}.gs_sys_energy_system_types est_old ON est_old.id = ues.id_energy_system_type
+                        JOIN {ref_schema}.gs_sys_energy_system_types est_new
                           ON est_new.name = est_old.name
                          AND est_new.database_version_id = ues.database_version_id
                         WHERE ues.database_version_id = :target_version_id
                     )
-                    UPDATE {ref_schema}.gs_union_energy_systems ues
+                    UPDATE {ref_schema}.gs_sys_union_energy_systems ues
                     SET id_energy_system_type = m.new_type_id
                     FROM map m
                     WHERE ues.id = m.ues_id
@@ -1676,8 +1676,8 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             check_ues_sql = _text(
                 f"""
                 SELECT COUNT(*)
-                FROM {ref_schema}.gs_union_energy_systems ues
-                LEFT JOIN {ref_schema}.gs_energy_system_types est
+                FROM {ref_schema}.gs_sys_union_energy_systems ues
+                LEFT JOIN {ref_schema}.gs_sys_energy_system_types est
                   ON est.id = ues.id_energy_system_type
                  AND est.database_version_id = ues.database_version_id
                 WHERE ues.database_version_id = :target_version_id
@@ -1687,7 +1687,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             not_mapped_cnt2 = db.session.execute(check_ues_sql, {"target_version_id": target_version_id}).scalar()
             if not_mapped_cnt2 and not_mapped_cnt2 > 0:
                 current_app.logger.warning(
-                    f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_union_energy_systems: {not_mapped_cnt2}"
+                    f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_sys_union_energy_systems: {not_mapped_cnt2}"
                 )
     except Exception as e:
         current_app.logger.error(f"  ❌ [STAGED] Ошибка доп. перепривязки FK в справочниках: {e}")
@@ -1748,7 +1748,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         'pgu_tes_machine_types', 'condition_types', 'technology_types',
         'technology_availabilities', 'equipment_groups', 'energy_system_types',
         'union_energy_systems', 'synchronous_areas', 'energy_zones', 
-        'federal_districts', 'gs_companies', 'fuel_categories', 'fuel_types', 'fuels'
+        'federal_districts', 'gs_sys_companies', 'fuel_categories', 'fuel_types', 'fuels'
     ]
     
     # Копируем независимые таблицы refdata
@@ -1851,8 +1851,8 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
     
     # Независимые таблицы generation
     independent_generation_tables = [
-        'station_groups',      # Группы станций - независимы
-        'documents_kommod'     # Документы - независимы
+        'gs_gen_station_groups',      # Группы станций - независимы
+        'gs_gen_documents_kommod'     # Документы - независимы
     ]
     
     # Копируем независимые таблицы generation
@@ -1890,9 +1890,9 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
     dependent_generation_tables = [
         {
             'schema': gen_schema,
-            'table': 'stations',
+            'table': 'gs_gen_stations',
             'dependencies': [
-                {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.station_groups'},
+                {'fk': 'id_station_group', 'ref_table': f'{gen_schema}.gs_gen_station_groups'},
                 {'fk': 'id_regional_district', 'ref_table': 'refdata.regional_districts'},
                 {'fk': 'id_energy_unit', 'ref_table': 'refdata.energy_units'},
                 {'fk': 'id_station_type', 'ref_table': 'refdata.station_types'},
@@ -1901,20 +1901,20 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         },
         {
             'schema': gen_schema,
-            'table': 'station_powers',
+            'table': 'gs_gen_station_powers',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'machines',
+            'table': 'gs_gen_machines',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'},
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'},
                 {'fk': 'id_machine_type', 'ref_table': 'refdata.machine_types'},
                 {'fk': 'id_tes_machine_type', 'ref_table': 'refdata.tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'},
-                {'fk': 'id_gen_company', 'ref_table': 'refdata.gs_companies'},
+                {'fk': 'id_gen_company', 'ref_table': 'refdata.gs_sys_companies'},
                 {'fk': 'id_energy_area', 'ref_table': 'refdata.energy_areas'},
                 {'fk': 'id_technology_availability', 'ref_table': 'refdata.technology_availabilities'},
                 {'fk': 'id_technology_type', 'ref_table': 'refdata.technology_types'},
@@ -1923,55 +1923,55 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         },
         {
             'schema': gen_schema,
-            'table': 'machine_powers',
+            'table': 'gs_gen_machine_powers',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'machine_fuels',
+            'table': 'gs_gen_machine_fuels',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
                 {'fk': 'id_fuel', 'ref_table': 'refdata.fuels'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'machine_tes_types',
+            'table': 'gs_gen_machine_tes_types',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'},
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
                 {'fk': 'id_tes_type', 'ref_table': 'refdata.tes_types'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'machine_names',
+            'table': 'gs_gen_machine_names',
             'dependencies': [
-                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.machines'}
+                {'fk': 'id_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'pgu_machines',
+            'table': 'gs_gen_pgu_machines',
             'dependencies': [
-                {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.machines'},
+                {'fk': 'id_parent_machine', 'ref_table': f'{gen_schema}.gs_gen_machines'},
                 {'fk': 'id_pgu_tes_machine_type', 'ref_table': 'refdata.pgu_tes_machine_types'},
                 {'fk': 'id_condition_type', 'ref_table': 'refdata.condition_types'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'pgu_machine_powers',
+            'table': 'gs_gen_pgu_machine_powers',
             'dependencies': [
-                {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.pgu_machines'}
+                {'fk': 'id_pgu_machine', 'ref_table': f'{gen_schema}.gs_gen_pgu_machines'}
             ]
         },
         {
             'schema': gen_schema,
-            'table': 'boilers',
+            'table': 'gs_gen_boilers',
             'dependencies': [
-                {'fk': 'id_station', 'ref_table': f'{gen_schema}.stations'}
+                {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
             ]
         }
     ]
@@ -2217,7 +2217,7 @@ def _update_foreign_keys_in_table(schema, table, fk_column, ref_mapping, target_
             entity_type="database_version",
             entity_id=target_version_id
         )
-        # Важно: пробрасываем исключение, иначе транзакция остаётся в состоянии aborted
+        # Важно: пробрасываем исключение, иначе транзакция остается в состоянии aborted
         # и последующие запросы падают с InFailedSqlTransaction
         raise
 
@@ -2246,18 +2246,18 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
     # Таблицы для копирования из схемы generation (в порядке зависимостей)
     # ВАЖНО: Порядок должен соответствовать иерархии зависимостей!
     generation_tables = [
-        'station_groups',            # 1. Сначала группы станций (независимые)
-        'stations',                  # 2. Затем станции (зависят от групп станций)
-        'station_powers',            # 5. Мощности станций (зависят от станций)
-        'machines',                  # 6. Машины (зависят от станций)
-        'machine_powers',            # 7. Мощности машин (зависят от машин)
-        'machine_fuels',             # 8. Топливо машин (зависят от машин)
-        'machine_tes_types',         # 9. Типы ТЭС машин (зависят от машин)
-        'machine_names',             # 9a. Названия агрегатов по годам (зависят от машин)
-        'pgu_machines',              # 10. ПГУ машины (зависят от машин)
-        'pgu_machine_powers',        # 11. Мощности ПГУ машин (зависят от ПГУ машин)
-        'boilers',                   # 12. Котлы (зависят от станций)
-        'documents_kommod'           # 13. Документы (независимые)
+        'gs_gen_station_groups',            # 1. Сначала группы станций (независимые)
+        'gs_gen_stations',                  # 2. Затем станции (зависят от групп станций)
+        'gs_gen_station_powers',            # 5. Мощности станций (зависят от станций)
+        'gs_gen_machines',                  # 6. Машины (зависят от станций)
+        'gs_gen_machine_powers',            # 7. Мощности машин (зависят от машин)
+        'gs_gen_machine_fuels',             # 8. Топливо машин (зависят от машин)
+        'gs_gen_machine_tes_types',         # 9. Типы ТЭС машин (зависят от машин)
+        'gs_gen_machine_names',             # 9a. Названия агрегатов по годам (зависят от машин)
+        'gs_gen_pgu_machines',              # 10. ПГУ машины (зависят от машин)
+        'gs_gen_pgu_machine_powers',        # 11. Мощности ПГУ машин (зависят от ПГУ машин)
+        'gs_gen_boilers',                   # 12. Котлы (зависят от станций)
+        'gs_gen_documents_kommod'           # 13. Документы (независимые)
     ]
 
     fuel_tables = []
@@ -2286,7 +2286,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         'federal_districts',
         'regional_districts',
         # Генерирующие компании
-        'gs_companies',
+        'gs_sys_companies',
         # Топливо
         'fuel_categories',
         'fuel_types',
@@ -2608,57 +2608,57 @@ def _update_version_relationships(id_mappings, target_version_id, user):
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'gs_gen.machines',
+            'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'gs_gen.machine_powers',
+            'table': 'gs_gen.gs_gen_machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'gs_gen.machine_fuels',
+            'table': 'gs_gen.gs_gen_machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'gs_gen.machine_tes_types',
+            'table': 'gs_gen.gs_gen_machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'gs_gen.pgu_machines',
+            'table': 'gs_gen.gs_gen_pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'gs_gen.pgu_machine_powers',
+            'table': 'gs_gen.gs_gen_pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'gs_gen.pgu_machines'
+            'reference_table': 'gs_gen.gs_gen_pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'gs_gen.stations',
+            'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'gs_gen.station_groups'
+            'reference_table': 'gs_gen.gs_gen_station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'gs_gen.station_powers',
+            'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'gs_gen.boilers',
+            'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         }
     ]
     
@@ -2769,57 +2769,57 @@ def _update_version_relationships_ultra_fast(id_mappings, target_version_id, use
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'gs_gen.machines',
+            'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'gs_gen.machine_powers',
+            'table': 'gs_gen.gs_gen_machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'gs_gen.machine_fuels',
+            'table': 'gs_gen.gs_gen_machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'gs_gen.machine_tes_types',
+            'table': 'gs_gen.gs_gen_machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'gs_gen.pgu_machines',
+            'table': 'gs_gen.gs_gen_pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'gs_gen.pgu_machine_powers',
+            'table': 'gs_gen.gs_gen_pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'gs_gen.pgu_machines'
+            'reference_table': 'gs_gen.gs_gen_pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'gs_gen.stations',
+            'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'gs_gen.station_groups'
+            'reference_table': 'gs_gen.gs_gen_station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'gs_gen.station_powers',
+            'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'gs_gen.boilers',
+            'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         }
     ]
     
@@ -2928,57 +2928,57 @@ def _update_version_relationships_ultra_optimized(id_mappings, target_version_id
     relationships = [
         # 1. machines -> stations
         {
-            'table': 'gs_gen.machines',
+            'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'gs_gen.machine_powers',
+            'table': 'gs_gen.gs_gen_machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'gs_gen.machine_fuels',
+            'table': 'gs_gen.gs_gen_machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'gs_gen.machine_tes_types',
+            'table': 'gs_gen.gs_gen_machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'gs_gen.pgu_machines',
+            'table': 'gs_gen.gs_gen_pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'gs_gen.pgu_machine_powers',
+            'table': 'gs_gen.gs_gen_pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'gs_gen.pgu_machines'
+            'reference_table': 'gs_gen.gs_gen_pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'gs_gen.stations',
+            'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'gs_gen.station_groups'
+            'reference_table': 'gs_gen.gs_gen_station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'gs_gen.station_powers',
+            'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'gs_gen.boilers',
+            'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         }
     ]
     
@@ -3103,57 +3103,57 @@ def _update_version_relationships_fixed(id_mappings, target_version_id, user):
     relationships = [
         # 1. stations -> station_groups (станции ссылаются на группы)
         {
-            'table': 'gs_gen.stations',
+            'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'gs_gen.station_groups'
+            'reference_table': 'gs_gen.gs_gen_station_groups'
         },
         # 2. station_powers -> stations (мощности станций ссылаются на станции)
         {
-            'table': 'gs_gen.station_powers',
+            'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 3. machines -> stations (машины ссылаются на станции)
         {
-            'table': 'gs_gen.machines',
+            'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 4. boilers -> stations (котлы ссылаются на станции)
         {
-            'table': 'gs_gen.boilers',
+            'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 5. machine_powers -> machines (мощности машин ссылаются на машины)
         {
-            'table': 'gs_gen.machine_powers',
+            'table': 'gs_gen.gs_gen_machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 6. machine_fuels -> machines (топливо машин ссылается на машины)
         {
-            'table': 'gs_gen.machine_fuels',
+            'table': 'gs_gen.gs_gen_machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 7. machine_tes_types -> machines (типы ТЭС машин ссылаются на машины)
         {
-            'table': 'gs_gen.machine_tes_types',
+            'table': 'gs_gen.gs_gen_machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 8. pgu_machines -> machines (ПГУ машины ссылаются на машины)
         {
-            'table': 'gs_gen.pgu_machines',
+            'table': 'gs_gen.gs_gen_pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 9. pgu_machine_powers -> pgu_machines (мощности ПГУ машин ссылаются на ПГУ машины)
         {
-            'table': 'gs_gen.pgu_machine_powers',
+            'table': 'gs_gen.gs_gen_pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'gs_gen.pgu_machines'
+            'reference_table': 'gs_gen.gs_gen_pgu_machines'
         }
     ]
     
@@ -3283,57 +3283,57 @@ def _update_version_relationships_lightning_fast(id_mappings, target_version_id,
     critical_relationships = [
         # 1. machines -> stations
         {
-            'table': 'gs_gen.machines',
+            'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 2. machine_powers -> machines
         {
-            'table': 'gs_gen.machine_powers',
+            'table': 'gs_gen.gs_gen_machine_powers',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 3. machine_fuels -> machines
         {
-            'table': 'gs_gen.machine_fuels',
+            'table': 'gs_gen.gs_gen_machine_fuels',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 4. machine_tes_types -> machines
         {
-            'table': 'gs_gen.machine_tes_types',
+            'table': 'gs_gen.gs_gen_machine_tes_types',
             'foreign_key': 'id_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 5. pgu_machines -> machines (используем id_parent_machine)
         {
-            'table': 'gs_gen.pgu_machines',
+            'table': 'gs_gen.gs_gen_pgu_machines',
             'foreign_key': 'id_parent_machine',
-            'reference_table': 'gs_gen.machines'
+            'reference_table': 'gs_gen.gs_gen_machines'
         },
         # 6. pgu_machine_powers -> pgu_machines
         {
-            'table': 'gs_gen.pgu_machine_powers',
+            'table': 'gs_gen.gs_gen_pgu_machine_powers',
             'foreign_key': 'id_pgu_machine',
-            'reference_table': 'gs_gen.pgu_machines'
+            'reference_table': 'gs_gen.gs_gen_pgu_machines'
         },
         # 7. stations -> station_groups
         {
-            'table': 'gs_gen.stations',
+            'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
-            'reference_table': 'gs_gen.station_groups'
+            'reference_table': 'gs_gen.gs_gen_station_groups'
         },
         # 8. station_powers -> stations
         {
-            'table': 'gs_gen.station_powers',
+            'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 9. boilers -> stations
         {
-            'table': 'gs_gen.boilers',
+            'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.stations'
+            'reference_table': 'gs_gen.gs_gen_stations'
         }
     ]
     
@@ -3478,91 +3478,91 @@ def _delete_version_data_staged(version_id, user):
     
     # ЭТАП 8: Таблицы с максимальными зависимостями (удаляем первыми)
     stage8_tables = [
-        (SCHEMA_GENERATION, 'pgu_machine_powers')
+        (SCHEMA_GENERATION, 'gs_gen_pgu_machine_powers')
     ]
     
     # ЭТАП 7: Таблицы, зависящие от machines
     stage7_tables = [
-        (SCHEMA_GENERATION, 'machine_powers'),
-        (SCHEMA_GENERATION, 'machine_fuels'),
-        (SCHEMA_GENERATION, 'machine_tes_types'),
-        (SCHEMA_GENERATION, 'machine_names'),
-        (SCHEMA_GENERATION, 'pgu_machines'),
+        (SCHEMA_GENERATION, 'gs_gen_machine_powers'),
+        (SCHEMA_GENERATION, 'gs_gen_machine_fuels'),
+        (SCHEMA_GENERATION, 'gs_gen_machine_tes_types'),
+        (SCHEMA_GENERATION, 'gs_gen_machine_names'),
+        (SCHEMA_GENERATION, 'gs_gen_pgu_machines'),
         (SCHEMA_FUEL, 'gs_fue_machine_fuel_param'),  # Топливные параметры агрегатов
     ]
     
     # ЭТАП 6: Таблицы, зависящие от stations
     stage6_tables = [
-        (SCHEMA_GENERATION, 'machines'),
+        (SCHEMA_GENERATION, 'gs_gen_machines'),
         (SCHEMA_FUEL, 'gs_fue_equipment_group_fuel_param'),  # Параметры топлива групп оборудования
-        (SCHEMA_GENERATION, 'station_powers'),
-        (SCHEMA_GENERATION, 'boilers')
+        (SCHEMA_GENERATION, 'gs_gen_station_powers'),
+        (SCHEMA_GENERATION, 'gs_gen_boilers')
     ]
     
     # ЭТАП 5: Таблицы generation с зависимостями
     stage5_tables = [
-        (SCHEMA_GENERATION, 'stations')
+        (SCHEMA_GENERATION, 'gs_gen_stations')
     ]
     
     # ЭТАП 4: Таблицы с зависимостями от ЭТАПОВ 1-3
     # Таблицы refdata после миграции ff9f0f8940c8 имеют префикс gs_
     stage4_tables = [
-        (SCHEMA_REFDATA, 'gs_energy_areas'),
-        (SCHEMA_REFDATA, 'gs_energy_units')
+        (SCHEMA_REFDATA, 'gs_sys_energy_areas'),
+        (SCHEMA_REFDATA, 'gs_sys_energy_units')
     ]
     
     # ЭТАП 3: Таблицы с зависимостями от ЭТАПОВ 1-2
     stage3_tables = [
-        (SCHEMA_REFDATA, 'gs_regional_districts'),
-        (SCHEMA_REFDATA, 'gs_regional_energy_systems')
+        (SCHEMA_REFDATA, 'gs_sys_regional_districts'),
+        (SCHEMA_REFDATA, 'gs_sys_regional_energy_systems')
     ]
     
     # ЭТАП 2: Таблицы с зависимостями от ЭТАПА 1
     stage2_tables = [
-        (SCHEMA_REFDATA, 'gs_union_energy_systems'),
-        (SCHEMA_REFDATA, 'gs_synchronous_areas'),
-        (SCHEMA_REFDATA, 'gs_energy_zones'),
-        (SCHEMA_REFDATA, 'gs_federal_districts')
+        (SCHEMA_REFDATA, 'gs_sys_union_energy_systems'),
+        (SCHEMA_REFDATA, 'gs_sys_synchronous_areas'),
+        (SCHEMA_REFDATA, 'gs_sys_energy_zones'),
+        (SCHEMA_REFDATA, 'gs_sys_federal_districts')
     ]
     
     # ЭТАП 1: Полностью независимые таблицы (удаляем последними)
     stage1_tables = [
-        (SCHEMA_REFDATA, 'gs_station_types'),
-        (SCHEMA_REFDATA, 'gs_machine_types'),
-        (SCHEMA_REFDATA, 'gs_tes_types'),
-        (SCHEMA_REFDATA, 'gs_tes_machine_types'),
-        (SCHEMA_REFDATA, 'gs_pgu_tes_machine_types'),
-        (SCHEMA_REFDATA, 'gs_condition_types'),
-        (SCHEMA_REFDATA, 'gs_technology_types'),
-        (SCHEMA_REFDATA, 'gs_technology_availabilities'),
-        (SCHEMA_REFDATA, 'gs_equipment_groups'),
-        (SCHEMA_REFDATA, 'gs_energy_system_types'),
-        (SCHEMA_REFDATA, 'gs_fuel_categories'),
-        (SCHEMA_REFDATA, 'gs_fuel_types'),
-        (SCHEMA_REFDATA, 'gs_fuels'),
-        (SCHEMA_REFDATA, 'gs_companies'),
-        (SCHEMA_REFDATA, 'gs_year_features'),
-        (SCHEMA_REFDATA, 'gs_years'),
-        (SCHEMA_REFDATA, 'gs_year_service'),  # Сервис управления годами СиПР
-        (SCHEMA_REFDATA, 'gs_refdata_entity_years'),  # История справочников — годы
-        (SCHEMA_REFDATA, 'gs_refdata_entities'),  # История справочников — сущности
-        (SCHEMA_REFDATA, 'gs_departments'),  # Подразделения
-        (SCHEMA_REFDATA, 'gs_business_units'),  # Бизнес-единицы
-        (SCHEMA_GENERATION, 'station_groups'),
-        (SCHEMA_GENERATION, 'documents_kommod')
+        (SCHEMA_REFDATA, 'gs_sys_station_types'),
+        (SCHEMA_REFDATA, 'gs_sys_machine_types'),
+        (SCHEMA_REFDATA, 'gs_sys_tes_types'),
+        (SCHEMA_REFDATA, 'gs_sys_tes_machine_types'),
+        (SCHEMA_REFDATA, 'gs_sys_pgu_tes_machine_types'),
+        (SCHEMA_REFDATA, 'gs_sys_condition_types'),
+        (SCHEMA_REFDATA, 'gs_sys_technology_types'),
+        (SCHEMA_REFDATA, 'gs_sys_technology_availabilities'),
+        (SCHEMA_REFDATA, 'gs_sys_equipment_groups'),
+        (SCHEMA_REFDATA, 'gs_sys_energy_system_types'),
+        (SCHEMA_REFDATA, 'gs_sys_fuel_categories'),
+        (SCHEMA_REFDATA, 'gs_sys_fuel_types'),
+        (SCHEMA_REFDATA, 'gs_sys_fuels'),
+        (SCHEMA_REFDATA, 'gs_sys_companies'),
+        (SCHEMA_REFDATA, 'gs_sys_year_features'),
+        (SCHEMA_REFDATA, 'gs_sys_years'),
+        (SCHEMA_REFDATA, 'gs_sys_year_service'),  # Сервис управления годами СиПР
+        (SCHEMA_REFDATA, 'gs_sys_refdata_entity_years'),  # История справочников — годы
+        (SCHEMA_REFDATA, 'gs_sys_refdata_entities'),  # История справочников — сущности
+        (SCHEMA_REFDATA, 'gs_sys_departments'),  # Подразделения
+        (SCHEMA_REFDATA, 'gs_sys_business_units'),  # Бизнес-единицы
+        (SCHEMA_GENERATION, 'gs_gen_station_groups'),
+        (SCHEMA_GENERATION, 'gs_gen_documents_kommod')
     ]
     
     # Объединяем все этапы в обратном порядке (от 8 к 1)
     # Сначала удаляем generation, затем refdata
     all_stages = [
-        ("ЭТАП 8", stage8_tables),  # gs_gen.pgu_machine_powers
-        ("ЭТАП 7", stage7_tables),  # gs_gen.machine_powers, machine_fuels, machine_tes_types, pgu_machines
-        ("ЭТАП 6", stage6_tables),  # gs_gen.station_powers, machines, boilers
-        ("ЭТАП 5", stage5_tables),  # gs_gen.stations
+        ("ЭТАП 8", stage8_tables),  # gs_gen.gs_gen_pgu_machine_powers
+        ("ЭТАП 7", stage7_tables),  # gs_gen.gs_gen_machine_powers, machine_fuels, machine_tes_types, pgu_machines
+        ("ЭТАП 6", stage6_tables),  # gs_gen.gs_gen_station_powers, machines, boilers
+        ("ЭТАП 5", stage5_tables),  # gs_gen.gs_gen_stations
         ("ЭТАП 4", stage4_tables),  # refdata.energy_areas, energy_units
         ("ЭТАП 3", stage3_tables),  # refdata.regional_districts, regional_energy_systems
         ("ЭТАП 2", stage2_tables),  # refdata.union_energy_systems, synchronous_areas, energy_zones, federal_districts
-        ("ЭТАП 1", stage1_tables)   # refdata.station_types, machine_types, etc. + gs_gen.station_groups, documents_kommod
+        ("ЭТАП 1", stage1_tables)   # refdata.station_types, machine_types, etc. + gs_gen.gs_gen_station_groups, documents_kommod
     ]
     
     total_deleted = 0
@@ -3656,8 +3656,8 @@ def _delete_version_data_staged(version_id, user):
     current_app.logger.info("🔄 Удаление ассоциативных таблиц")
     
     try:
-        # После миграции ff9f0f8940c8 таблица переименована в gs_regional_district_regional_energy_system
-        assoc_table = 'gs_regional_district_regional_energy_system'
+        # Таблица many-to-many (миграция b8c9d0e1f2a3): gs_sys_regional_district_regional_energy_system
+        assoc_table = 'gs_sys_regional_district_regional_energy_system'
         check_assoc_query = text("""
             SELECT COUNT(*) 
             FROM information_schema.tables 
@@ -3774,18 +3774,18 @@ def _delete_version_data(version_id, user):
     # ВАЖНО: Порядок имеет значение из-за внешних ключей!
     generation_tables = [
         # Сначала удаляем все дочерние записи
-        'machine_powers',      # Мощности машин (зависят от машин)
-        'machine_fuels',       # Топливо машин (зависят от машин)
-        'machine_tes_types',   # Типы ТЭС машин (зависят от машин)
-        'machine_names',      # Названия агрегатов по годам (зависят от машин)
-        'pgu_machine_powers',  # Мощности ПГУ машин (зависят от ПГУ машин)
-        'pgu_machines',        # ПГУ машины (зависят от машин)
-        'machines',            # Машины (зависят от станций)
-        'station_powers',      # Мощности станций (зависят от станций)
-        'boilers',             # Котлы (зависят от станций)
-        'stations',            # Станции (зависят от групп станций)
-        'station_groups',      # Группы станций
-        'documents_kommod'     # Документы
+        'gs_gen_machine_powers',      # Мощности машин (зависят от машин)
+        'gs_gen_machine_fuels',       # Топливо машин (зависят от машин)
+        'gs_gen_machine_tes_types',   # Типы ТЭС машин (зависят от машин)
+        'gs_gen_machine_names',      # Названия агрегатов по годам (зависят от машин)
+        'gs_gen_pgu_machine_powers',  # Мощности ПГУ машин (зависят от ПГУ машин)
+        'gs_gen_pgu_machines',        # ПГУ машины (зависят от машин)
+        'gs_gen_machines',            # Машины (зависят от станций)
+        'gs_gen_station_powers',      # Мощности станций (зависят от станций)
+        'gs_gen_boilers',             # Котлы (зависят от станций)
+        'gs_gen_stations',            # Станции (зависят от групп станций)
+        'gs_gen_station_groups',      # Группы станций
+        'gs_gen_documents_kommod'     # Документы
     ]
 
     fuel_tables = []
@@ -3812,9 +3812,9 @@ def _delete_version_data(version_id, user):
         'regional_energy_systems',
         # Территории
         'federal_districts',
-        'gs_regional_districts',
+        'gs_sys_regional_districts',
         # Генерирующие компании
-        'gs_companies',
+        'gs_sys_companies',
         # Топливо
         'fuel_categories',
         'fuel_types',
@@ -4685,16 +4685,16 @@ def _build_version_id_mappings(version_id, user):
     
     # Таблицы для обработки
     tables = [
-        'gs_gen.station_groups',
-        'gs_gen.stations', 
-        'gs_gen.machines',
-        'gs_gen.machine_powers',
-        'gs_gen.machine_fuels',
-        'gs_gen.machine_tes_types',
-        'gs_gen.station_powers',
-        'gs_gen.pgu_machines',
-        'gs_gen.pgu_machine_powers',
-        'gs_gen.boilers'
+        'gs_gen.gs_gen_station_groups',
+        'gs_gen.gs_gen_stations', 
+        'gs_gen.gs_gen_machines',
+        'gs_gen.gs_gen_machine_powers',
+        'gs_gen.gs_gen_machine_fuels',
+        'gs_gen.gs_gen_machine_tes_types',
+        'gs_gen.gs_gen_station_powers',
+        'gs_gen.gs_gen_pgu_machines',
+        'gs_gen.gs_gen_pgu_machine_powers',
+        'gs_gen.gs_gen_boilers'
     ]
     
     id_mappings = {}
@@ -5081,8 +5081,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Станции -> Группы станций',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM gs_gen.stations s
-                LEFT JOIN gs_gen.station_groups sg ON s.id_station_group = sg.id
+                FROM gs_gen.gs_gen_stations s
+                LEFT JOIN gs_gen.gs_gen_station_groups sg ON s.id_station_group = sg.id
                 WHERE s.database_version_id = :version_id 
                   AND s.id_station_group IS NOT NULL 
                   AND sg.id IS NULL
@@ -5092,8 +5092,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Машины -> Станции',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM gs_gen.machines m
-                LEFT JOIN gs_gen.stations s ON m.id_station = s.id
+                FROM gs_gen.gs_gen_machines m
+                LEFT JOIN gs_gen.gs_gen_stations s ON m.id_station = s.id
                 WHERE m.database_version_id = :version_id 
                   AND m.id_station IS NOT NULL 
                   AND s.id IS NULL
@@ -5103,8 +5103,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'Мощности машин -> Машины',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM gs_gen.machine_powers mp
-                LEFT JOIN gs_gen.machines m ON mp.id_machine = m.id
+                FROM gs_gen.gs_gen_machine_powers mp
+                LEFT JOIN gs_gen.gs_gen_machines m ON mp.id_machine = m.id
                 WHERE mp.database_version_id = :version_id 
                   AND mp.id_machine IS NOT NULL 
                   AND m.id IS NULL
@@ -5114,8 +5114,8 @@ def _verify_version_data_integrity(version_id, user):
             'name': 'ПГУ машины -> Машины',
             'query': text("""
                 SELECT COUNT(*) as broken_links
-                FROM gs_gen.pgu_machines pm
-                LEFT JOIN gs_gen.machines m ON pm.id_machine = m.id
+                FROM gs_gen.gs_gen_pgu_machines pm
+                LEFT JOIN gs_gen.gs_gen_machines m ON pm.id_machine = m.id
                 WHERE pm.database_version_id = :version_id 
                   AND pm.id_machine IS NOT NULL 
                   AND m.id IS NULL

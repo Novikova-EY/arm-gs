@@ -12,7 +12,7 @@ from app.common.models.audit_mixin import AuditMixin
 
 
 class PGUMachineName(db.Model, AuditMixin):
-    __tablename__ = 'pgu_machine_names'
+    __tablename__ = 'gs_gen_pgu_machine_names'
     __table_args__ = (
         Index('ix_pgu_machine_name_id_pgu_machine', 'id_pgu_machine'),
         Index('ix_pgu_machine_name_year_number', 'year_number'),
@@ -26,7 +26,7 @@ class PGUMachineName(db.Model, AuditMixin):
     # FK -> Year (по полю years.number)
     year_number = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_years.number', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_years.number', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -35,7 +35,7 @@ class PGUMachineName(db.Model, AuditMixin):
     # FK -> PGUMachine
     id_pgu_machine = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.pgu_machines.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_pgu_machines.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )

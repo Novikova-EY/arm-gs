@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class EnergyZone(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_energy_zones'
+    __tablename__ = 'gs_sys_energy_zones'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -33,6 +33,12 @@ class EnergyZone(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
         db.UniqueConstraint('database_version_id', 'number', name='uq_refdata_energy_zones_ver_number'),
         db.UniqueConstraint('database_version_id', 'name', name='uq_refdata_energy_zones_ver_name'),
         {"schema": SCHEMA_REFDATA},
+    )
+
+    demand_parameters = db.relationship(
+        "EnergyZoneDemandParameter",
+        back_populates="energy_zone",
+        cascade="all, delete-orphan",
     )
 
     # FK -> RegionalDistrict

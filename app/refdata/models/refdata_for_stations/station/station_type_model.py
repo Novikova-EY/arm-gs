@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class StationType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_station_types'
+    __tablename__ = 'gs_sys_station_types'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

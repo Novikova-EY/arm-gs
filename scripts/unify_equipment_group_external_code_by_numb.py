@@ -106,7 +106,7 @@ def main() -> None:
             print(f"    new: {new_code}")
             shown += 1
         if len(id_to_code) > 10:
-            print(f"  ... и ещё {len(id_to_code) - 10} записей")
+            print(f"  ... и еще {len(id_to_code) - 10} записей")
 
         if args.dry_run:
             print()

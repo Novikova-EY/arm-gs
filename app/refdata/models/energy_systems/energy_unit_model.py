@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_energy_units'
+    __tablename__ = 'gs_sys_energy_units'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -25,7 +25,7 @@ class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     # FK -> RegionalDistrict
     id_regional_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_regional_districts.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -37,7 +37,7 @@ class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     # FK -> RegionalEnergySystem
     id_regional_energy_system = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_energy_systems.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_regional_energy_systems.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -66,6 +66,12 @@ class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     stations = db.relationship(
         'Station',
         back_populates='energy_unit'
+    )
+
+    demand_parameters = db.relationship(
+        'EnergyUnitDemandParameter',
+        back_populates='energy_unit',
+        cascade='all, delete-orphan',
     )
 
     @property

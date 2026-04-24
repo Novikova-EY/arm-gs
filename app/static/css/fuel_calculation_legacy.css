@@ -1,0 +1,341 @@
+/* Страница «Расчёт» — стиль legacy Access, см. макет формы */
+.fuel-calc-legacy {
+  --fc-bg: #004d4d;
+  --fc-panel: #d4d0c8;
+  --fc-text: #000;
+  --fc-white: #fff;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  margin: -0.5rem -12px 0;
+  padding: 10px 12px 14px;
+  min-height: calc(100vh - 80px);
+  box-sizing: border-box;
+}
+.fuel-calc-legacy *,
+.fuel-calc-legacy *::before,
+.fuel-calc-legacy *::after {
+  box-sizing: border-box;
+}
+.fuel-calc-legacy .fc-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.fuel-calc-legacy .fc-titlebar h1 {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--fc-white);
+  margin: 0;
+}
+.fuel-calc-legacy a.fc-back {
+  color: #cceeee;
+  font-size: 0.9rem;
+}
+.fuel-calc-legacy a.fc-back:hover {
+  color: #fff;
+}
+.fuel-calc-legacy .fc-inset {
+  background: var(--fc-white);
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  min-height: 22px;
+  color: var(--fc-text);
+}
+.fuel-calc-legacy .fc-inset.fc-readonly {
+  background: var(--fc-panel);
+}
+.fuel-calc-legacy .fc-outset {
+  background: var(--fc-panel);
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--fc-text);
+}
+.fuel-calc-legacy .fc-outset:active {
+  border-color: #808080 #fff #fff #808080;
+  padding: 5px 11px 3px 13px;
+}
+.fuel-calc-legacy .fc-outset:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.fuel-calc-legacy select.fc-select {
+  background: var(--fc-panel);
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  min-width: 160px;
+  color: var(--fc-text);
+}
+.fuel-calc-legacy .fc-grid-main {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 380px);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 992px) {
+  .fuel-calc-legacy .fc-grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+.fuel-calc-legacy .fc-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.fuel-calc-legacy .fc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fuel-calc-legacy .fc-field label {
+  font-size: 0.72rem;
+  color: var(--fc-white);
+  white-space: nowrap;
+}
+.fuel-calc-legacy .fc-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.fuel-calc-legacy .fc-field-inline label {
+  margin: 0;
+}
+.fuel-calc-legacy .fc-station-title {
+  min-width: 200px;
+  flex: 1;
+}
+.fuel-calc-legacy .fc-name-wide {
+  min-width: 220px;
+  flex: 2;
+}
+.fuel-calc-legacy .fc-year-box {
+  width: 56px;
+}
+.fuel-calc-legacy .fc-k-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fuel-calc-legacy .fc-k-small {
+  width: 56px;
+}
+.fuel-calc-legacy .fc-num-med {
+  width: 88px;
+}
+.fuel-calc-legacy table.fc-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--fc-white);
+  font-size: 0.8rem;
+}
+.fuel-calc-legacy table.fc-table th,
+.fuel-calc-legacy table.fc-table td {
+  border: 1px solid #000;
+  padding: 2px 6px;
+  text-align: right;
+}
+.fuel-calc-legacy table.fc-table th:first-child,
+.fuel-calc-legacy table.fc-table td:first-child {
+  text-align: center;
+  font-weight: normal;
+}
+.fuel-calc-legacy table.fc-table thead th {
+  background: var(--fc-panel);
+  font-weight: bold;
+  text-align: center;
+}
+.fuel-calc-legacy .fc-table-caption {
+  color: var(--fc-white);
+  font-size: 0.75rem;
+  margin: 4px 0 6px;
+  opacity: 0.95;
+}
+.fuel-calc-legacy .fc-left-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 420px;
+}
+.fuel-calc-legacy .fc-left-actions .fc-outset {
+  width: 100%;
+  text-align: center;
+  padding: 8px 12px;
+}
+.fuel-calc-legacy .fc-sep-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.fuel-calc-legacy .fc-sep-bars .fc-inset.fc-readonly {
+  height: 20px;
+}
+.fuel-calc-legacy .fc-right-panel {
+  background: var(--fc-bg);
+  border: 1px solid #266;
+  padding: 8px;
+}
+.fuel-calc-legacy .fc-group-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--fc-panel);
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+/* Три отдельные кнопки этапов в одной панели (как «Коэфф | Распред | Топливо» в Access) */
+.fuel-calc-legacy .fc-stage-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 10px;
+  background: var(--fc-panel);
+  border: 2px solid;
+  border-color: #fff #808080 #808080 #fff;
+  padding: 4px 6px;
+}
+.fuel-calc-legacy .fc-stage-bar form {
+  flex: 1;
+  margin: 0;
+  display: flex;
+  min-width: 0;
+}
+.fuel-calc-legacy .fc-stage-bar .fc-outset {
+  width: 100%;
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+  padding: 6px 8px;
+}
+.fuel-calc-legacy .fc-stage-bar .fc-stage-clock {
+  align-self: center;
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+.fuel-calc-legacy .fc-mini-table-wrap {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.fuel-calc-legacy .fc-row-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding-top: 22px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: var(--fc-white);
+  text-align: right;
+  line-height: 1.6;
+}
+.fuel-calc-legacy .fc-mini-table {
+  flex: 1;
+}
+.fuel-calc-legacy .fc-dropdowns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.fuel-calc-legacy .fc-dropdowns .fc-lbl {
+  color: var(--fc-white);
+  font-size: 0.75rem;
+  margin: 0;
+}
+.fuel-calc-legacy .fc-lbl-block {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--fc-white);
+  font-size: 0.75rem;
+}
+.fuel-calc-legacy .fc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.fuel-calc-legacy .fc-toolbar .fc-outset {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.fuel-calc-legacy .fc-footer {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: space-between;
+}
+.fuel-calc-legacy .fc-filter-line {
+  flex: 1;
+  min-width: 200px;
+}
+.fuel-calc-legacy .fc-filter-line .fc-inset.fc-readonly {
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fuel-calc-legacy .fc-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fc-white);
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+.fuel-calc-legacy .fc-nav .fc-inset {
+  width: 120px;
+  font-size: 0.75rem;
+}
+.fuel-calc-legacy .fc-meta-line {
+  color: #9cc;
+  font-size: 0.72rem;
+  margin-top: 6px;
+  width: 100%;
+}
+.fuel-calc-legacy .fc-results-wrap {
+  margin-top: 14px;
+  border: 1px solid #266;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+}
+.fuel-calc-legacy .fc-results-wrap caption {
+  caption-side: top;
+  font-weight: bold;
+  color: var(--fc-white);
+  padding-bottom: 6px;
+  font-size: 0.85rem;
+}
+.fuel-calc-legacy .fc-empty-hint {
+  color: #9cc;
+  font-size: 0.85rem;
+  padding: 12px 0;
+}
+.fuel-calc-legacy .fc-scenario-line {
+  margin-bottom: 8px;
+}

@@ -34,7 +34,7 @@ from app.common.services.database_version_filter import apply_version_filter, se
 def _invalidate_fuel_type_caches() -> None:
     """
     Инвалидирует кэши, используемые для выпадающих списков и get-сервисов FuelType.
-    Важно: без этого новые/изменённые виды топлива могут не появляться на страницах,
+    Важно: без этого новые/измененные виды топлива могут не появляться на страницах,
     которые используют in-memory кэш (например, refdata/fuel).
     """
     # Локальные импорты, чтобы избежать возможных циклических зависимостей при старте приложения
@@ -532,8 +532,8 @@ def export_fuel_type_service(
 def repair_fuel_types_sequence_hard(user: str) -> None:
     """
     Выравнивает sequence для refdata.fuel_types.id под MAX(id)
-    в ОТДЕЛЬНОЙ транзакции (engine.begin), чтобы её не откатил внешний rollback().
-    Работает и для SERIAL, и для IDENTITY, т.к. имя берём через pg_get_serial_sequence.
+    в ОТДЕЛЬНОЙ транзакции (engine.begin), чтобы ее не откатил внешний rollback().
+    Работает и для SERIAL, и для IDENTITY, т.к. имя берем через pg_get_serial_sequence.
     """
     try:
         with db.engine.begin() as conn:  # <— отдельная транзакция, гарантированный commit

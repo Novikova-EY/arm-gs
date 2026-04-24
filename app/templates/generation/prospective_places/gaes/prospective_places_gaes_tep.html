@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<style>
+.prospective-places-gaes-table th.col-capacity,
+.prospective-places-gaes-table td.col-capacity { width: 85px; }
+.prospective-places-gaes-table thead th { font-size: 1rem; }
+.prospective-places-gaes-table tbody td { text-align: center; vertical-align: middle; }
+.prospective-places-gaes-table.tep-ges-main-full-table thead th {
+    font-size: 1.18rem;
+}
+.prospective-places-gaes-table.tep-ges-main-full-table tbody tr:not(.gaes-place-type-group) td {
+    font-size: 1.1rem;
+}
+.prospective-places-gaes-table.tep-ges-main-full-table tbody tr.gaes-place-type-group td {
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+.prospective-places-gaes-table tbody tr.gaes-place-type-group td {
+    text-align: center !important;
+    vertical-align: middle;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+</style>
+{% if current_user.is_authenticated %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+{% set qs = request.query_string.decode('utf-8') if request.query_string else '' %}
+{% set qs_suffix = ('?' + qs) if qs else '' %}
+{% set url_list = url_for('prospective_places_bp.prospective_places_gaes') + qs_suffix %}
+{% set url_prospective_start = url_for('prospective_places_bp.prospective_places_start') %}
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
+        <a href="{{ url_list }}" class="btn btn-secondary fs-5">Список перспективных площадок ГАЭС</a>
+        <a href="{{ url_prospective_start }}" class="btn btn-secondary fs-5">Перспективные площадки размещения новых электростанций</a>
+    </div>
+    <h2 class="mb-4 text-center">
+        {% if toolbar_mode == 'tep_main' %}
+        Перечень исходных технико-экономических показателей новых ГАЭС по проектным (предпроектным) данным
+        {% else %}
+        Характеристика актуальных площадок размещения новых ГАЭС
+        {% endif %}
+    </h2>
+    {% if page_subtitle %}
+    <p class="lead mb-3 text-center">{{ page_subtitle }}</p>
+    {% endif %}
+
+    {% include 'generation/prospective_places/gaes/prospective_places_gaes_toolbar.html' %}
+
+    {% if toolbar_mode == 'tep_main' %}
+    <div id="tepMainTablePanelCurrentYear" class="tep-main-table-variant">
+        {% include 'generation/prospective_places/gaes/_tep_machines_table_main.html' %}
+    </div>
+    <div id="tepMainTablePanelSource" class="tep-main-table-variant d-none">
+        {% include 'generation/prospective_places/gaes/_tep_machines_table_main_source.html' %}
+    </div>
+    {% else %}
+    {% include 'generation/prospective_places/gaes/_tep_machines_table.html' %}
+    {% endif %}
+
+    {% if toolbar_mode == 'tep_main' %}
+    <div class="modal fade" id="gesTepPriceCoeffModal" tabindex="-1" aria-labelledby="gesTepPriceCoeffModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fs-4" id="gesTepPriceCoeffModalLabel">Индекс дефлятор-инвестиций в основной капитал</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="gesTepPriceCoeffAlert" class="alert alert-danger py-2 d-none" role="alert"></div>
+                    {% if ges_tep_price_coeff_can_edit | default(false) %}
+                    <div class="d-flex justify-content-end mb-2">
+                        <button type="button" class="btn btn-outline-primary fs-6" id="gesTepPriceCoeffAddBtn">Добавить строку</button>
+                    </div>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover mb-0">
+                            <thead class="table-light" id="gesTepPriceCoeffThead"></thead>
+                            <tbody id="gesTepPriceCoeffTableBody">
+                                <tr id="gesTepPriceCoeffLoadingRow"><td colspan="3" class="text-center text-muted">Загрузка…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fs-5" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    (function tepMainTableViewToggleGaes() {
+        const panelCurrentYear = document.getElementById("tepMainTablePanelCurrentYear");
+        const panelSource = document.getElementById("tepMainTablePanelSource");
+        const coeffBtn = document.getElementById("gesTepPriceCoeffBtn");
+        const radios = document.querySelectorAll('input[name="tepMainTableView"]');
+        if (!panelCurrentYear || !panelSource || !radios.length) return;
+        function applyView(which) {
+            const showSource = which === "source";
+            panelCurrentYear.classList.toggle("d-none", showSource);
+            panelSource.classList.toggle("d-none", !showSource);
+            if (coeffBtn) coeffBtn.classList.toggle("d-none", !showSource);
+            const exportView = document.getElementById("tepMainExportViewGaes");
+            if (exportView) exportView.value = which;
+        }
+        radios.forEach(function (r) {
+            r.addEventListener("change", function () {
+                if (this.checked) applyView(this.value);
+            });
+        });
+        const checked = document.querySelector('input[name="tepMainTableView"]:checked');
+        if (checked) applyView(checked.value);
+    })();
+
+    {% if toolbar_mode == 'tep_main' %}
+    (function gesTepPriceCoeffModalGaesPage() {
+        const modalEl = document.getElementById("gesTepPriceCoeffModal");
+        const tbody = document.getElementById("gesTepPriceCoeffTableBody");
+        const thead = document.getElementById("gesTepPriceCoeffThead");
+        const alertEl = document.getElementById("gesTepPriceCoeffAlert");
+        const addBtn = document.getElementById("gesTepPriceCoeffAddBtn");
+        const coeffUrl = {{ url_for('prospective_places_bp.ges_tep_price_conversion_coefficients_json') | tojson }};
+        const coeffItemUrl = function (id) {
+            return {{ url_for('prospective_places_bp.ges_tep_price_conversion_coefficients_item', row_id=888888888) | tojson }}.split("888888888").join(String(id));
+        };
+        const csrfToken = {{ csrf_token|tojson }};
+
+        if (!modalEl || !tbody || !thead) return;
+
+        function hideAlert() {
+            if (!alertEl) return;
+            alertEl.classList.add("d-none");
+            alertEl.textContent = "";
+        }
+        function showAlert(msg) {
+            if (!alertEl) return;
+            alertEl.textContent = msg;
+            alertEl.classList.remove("d-none");
+        }
+
+        function apiHeadersJson() {
+            return {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+                "X-Requested-With": "XMLHttpRequest",
+            };
+        }
+
+        function formatCoeffPretty(raw) {
+            if (raw == null || raw === "") return "";
+            let s = String(raw).trim().replace(/\s/g, "").replace(",", ".");
+            if (s === "" || s === "-") return "";
+            let neg = false;
+            if (s[0] === "-") {
+                neg = true;
+                s = s.slice(1);
+            }
+            const parts = s.split(".");
+            let intPart = parts[0] !== undefined && parts[0] !== "" ? parts[0] : "0";
+            let frac = parts[1];
+            if (frac != null && frac.length) {
+                frac = frac.replace(/0+$/, "");
+                if (frac.length) {
+                    return (neg ? "-" : "") + intPart + "," + frac;
+                }
+            }
+            return (neg ? "-" : "") + intPart;
+        }
+
+        function normalizeCoeffForServer(trimmed) {
+            if (trimmed === "") return null;
+            return trimmed.replace(/\s/g, "").replace(/,/g, ".");
+        }
+
+        function usedYearIdsExcluding(excludeTr) {
+            const set = {};
+            tbody.querySelectorAll("tr[data-row-id]").forEach(function (tr) {
+                if (tr === excludeTr) return;
+                const sel = tr.querySelector(".ges-tep-coeff-year-select");
+                if (sel && sel.value) set[sel.value] = true;
+            });
+            return set;
+        }
+
+        function buildYearSelectHtml(years, selectedId, excludeMap) {
+            let h = "<select class=\"form-select form-select-sm ges-tep-coeff-year-select text-center\">";
+            h += "<option value=\"\">— год —</option>";
+            years.forEach(function (y) {
+                const idStr = String(y.id);
+                const dis = excludeMap[idStr] && String(selectedId) !== idStr;
+                h += "<option value=\"" + idStr + "\"" +
+                    (String(selectedId) === idStr ? " selected" : "") +
+                    (dis ? " disabled" : "") + ">" + y.number + "</option>";
+            });
+            h += "</select>";
+            return h;
+        }
+
+        function renderThead(canEdit) {
+            let h = "<tr>";
+            h += "<th scope=\"col\" class=\"text-center\" style=\"width: 38%;\">Год</th>";
+            h += "<th scope=\"col\" class=\"text-center\">Коэффициент</th>";
+            if (canEdit) h += "<th scope=\"col\" class=\"text-center\" style=\"width: 22%;\">Действия</th>";
+            h += "</tr>";
+            thead.innerHTML = h;
+        }
+
+        function renderPayload(data) {
+            hideAlert();
+            const canEdit = !!(data && data.can_edit);
+            const rows = (data && data.rows) ? data.rows : [];
+            const years = (data && data.years) ? data.years : [];
+            renderThead(canEdit);
+            const colSpan = canEdit ? 3 : 2;
+            tbody.innerHTML = "";
+
+            if (!rows.length && !canEdit) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = "<td colspan=\"" + colSpan + "\" class=\"text-center text-muted\">Нет данных.</td>";
+                tbody.appendChild(tr);
+                return;
+            }
+
+            if (!rows.length && canEdit) {
+                const tr = document.createElement("tr");
+                tr.className = "ges-tep-coeff-hint";
+                tr.innerHTML = "<td colspan=\"" + colSpan + "\" class=\"text-center text-muted\">Нет записей. Нажмите «Добавить строку».</td>";
+                tbody.appendChild(tr);
+                return;
+            }
+
+            rows.forEach(function (row) {
+                tbody.appendChild(buildDataRow(row, years, canEdit));
+            });
+        }
+
+        function buildDataRow(row, years, canEdit) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-row-id", String(row.id));
+            if (!canEdit) {
+                const y = row.year != null ? String(row.year) : "—";
+                const rawC = row.coefficient;
+                const c = (rawC == null || String(rawC).trim() === "") ? "—" : (formatCoeffPretty(rawC) || "—");
+                tr.innerHTML = "<td class=\"text-center align-middle\">" + y + "</td><td class=\"text-center align-middle\">" + c + "</td>";
+                return tr;
+            }
+            const ex = usedYearIdsExcluding(tr);
+            const selHtml = buildYearSelectHtml(years, row.id_year, ex);
+            const coeffVal = row.coefficient != null ? formatCoeffPretty(row.coefficient) : "";
+            tr.innerHTML =
+                "<td class=\"align-middle\">" + selHtml + "</td>" +
+                "<td class=\"align-middle\"><input type=\"text\" class=\"form-control form-control-sm text-center ges-tep-coeff-input\" inputmode=\"decimal\"></td>" +
+                "<td class=\"text-center align-middle text-nowrap\">" +
+                "<button type=\"button\" class=\"btn btn-sm btn-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
+                "<button type=\"button\" class=\"btn btn-sm btn-outline-danger ges-tep-coeff-del\">Удалить</button>" +
+                "</td>";
+            const inpEl = tr.querySelector(".ges-tep-coeff-input");
+            if (inpEl) inpEl.value = coeffVal;
+            wireRow(tr, false);
+            return tr;
+        }
+
+        function wireRow(tr, isNew) {
+            tr.querySelector(".ges-tep-coeff-save").addEventListener("click", function () {
+                const sel = tr.querySelector(".ges-tep-coeff-year-select");
+                const inp = tr.querySelector(".ges-tep-coeff-input");
+                const idYear = sel && sel.value ? parseInt(sel.value, 10) : null;
+                const coeffTrim = inp && inp.value != null ? String(inp.value).trim() : "";
+                const coeffPayload = coeffTrim === "" ? null : normalizeCoeffForServer(coeffTrim);
+                if (!idYear) {
+                    showAlert("Выберите год.");
+                    return;
+                }
+                hideAlert();
+                if (isNew) {
+                    fetch(coeffUrl, {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: apiHeadersJson(),
+                        body: JSON.stringify({ id_year: idYear, coefficient: coeffPayload }),
+                    })
+                        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })
+                        .then(function (res) {
+                            if (!res.ok) {
+                                showAlert((res.body && res.body.error) ? res.body.error : "Ошибка сохранения (" + res.status + ")");
+                                return;
+                            }
+                            renderPayload(res.body);
+                        })
+                        .catch(function () { showAlert("Сеть или сервер недоступны."); });
+                } else {
+                    const rid = parseInt(tr.getAttribute("data-row-id"), 10);
+                    fetch(coeffItemUrl(rid), {
+                        method: "PUT",
+                        credentials: "same-origin",
+                        headers: apiHeadersJson(),
+                        body: JSON.stringify({ id_year: idYear, coefficient: coeffPayload }),
+                    })
+                        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })
+                        .then(function (res) {
+                            if (!res.ok) {
+                                showAlert((res.body && res.body.error) ? res.body.error : "Ошибка сохранения (" + res.status + ")");
+                                return;
+                            }
+                            renderPayload(res.body);
+                        })
+                        .catch(function () { showAlert("Сеть или сервер недоступны."); });
+                }
+            });
+            tr.querySelector(".ges-tep-coeff-del").addEventListener("click", function () {
+                if (isNew) {
+                    tr.remove();
+                    hideAlert();
+                    return;
+                }
+                if (!window.confirm("Удалить эту запись?")) return;
+                const rid = parseInt(tr.getAttribute("data-row-id"), 10);
+                fetch(coeffItemUrl(rid), {
+                    method: "DELETE",
+                    credentials: "same-origin",
+                    headers: apiHeadersJson(),
+                })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            showAlert((res.body && res.body.error) ? res.body.error : "Ошибка удаления");
+                            return;
+                        }
+                        renderPayload(res.body);
+                    })
+                    .catch(function () { showAlert("Сеть или сервер недоступны."); });
+            });
+        }
+
+        function addDraftRow(years, canEdit) {
+            if (!canEdit || !years.length) return;
+            const empty = tbody.querySelector("tr[data-new-row]");
+            if (empty) return;
+            const hint = tbody.querySelector("tr.ges-tep-coeff-hint");
+            if (hint) hint.remove();
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-new-row", "1");
+            const ex = usedYearIdsExcluding(tr);
+            const selHtml = buildYearSelectHtml(years, "", ex);
+            tr.innerHTML =
+                "<td class=\"align-middle\">" + selHtml + "</td>" +
+                "<td class=\"align-middle\"><input type=\"text\" class=\"form-control form-control-sm text-center ges-tep-coeff-input\" inputmode=\"decimal\" placeholder=\"\"></td>" +
+                "<td class=\"text-center align-middle text-nowrap\">" +
+                "<button type=\"button\" class=\"btn btn-sm btn-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
+                "<button type=\"button\" class=\"btn btn-sm btn-outline-secondary ges-tep-coeff-del\">Отмена</button>" +
+                "</td>";
+            tbody.appendChild(tr);
+            wireRow(tr, true);
+        }
+
+        function loadModal() {
+            hideAlert();
+            thead.innerHTML = "<tr><th colspan=\"3\" class=\"text-center text-muted\">Загрузка…</th></tr>";
+            tbody.innerHTML = "<tr><td colspan=\"3\" class=\"text-center text-muted\">Загрузка…</td></tr>";
+            fetch(coeffUrl, { credentials: "same-origin" })
+                .then(function (r) {
+                    if (!r.ok) throw new Error("HTTP " + r.status);
+                    return r.json();
+                })
+                .then(function (data) {
+                    renderPayload(data);
+                })
+                .catch(function () {
+                    thead.innerHTML = "<tr><th colspan=\"3\" class=\"text-center text-danger\">Не удалось загрузить данные</th></tr>";
+                    tbody.innerHTML = "";
+                });
+        }
+
+        modalEl.addEventListener("show.bs.modal", function () {
+            loadModal();
+        });
+
+        if (addBtn) {
+            addBtn.addEventListener("click", function () {
+                fetch(coeffUrl, { credentials: "same-origin" })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.can_edit) return;
+                        addDraftRow(data.years || [], true);
+                    })
+                    .catch(function () { showAlert("Не удалось получить справочник годов."); });
+            });
+        }
+    })();
+    {% endif %}
+
+    function bindProspectivePlacesGaesExcelExport(exportBtn, exportForm) {
+        if (!exportBtn || !exportForm) return;
+        exportBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const exportView = document.getElementById("tepMainExportViewGaes");
+            const checkedView = document.querySelector('input[name="tepMainTableView"]:checked');
+            if (exportView && checkedView) exportView.value = checkedView.value;
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            exportBtn.disabled = true;
+
+            const formData = new FormData(exportForm);
+            const params = new URLSearchParams(formData);
+            const exportUrl = exportForm.action + (exportForm.action.includes("?") ? "&" : "?") + params.toString();
+
+            fetch(exportUrl, { method: "GET", credentials: "same-origin" })
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function () {
+                            throw new Error("Ошибка сервера (" + response.status + ")");
+                        });
+                    }
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/vnd.openxmlformats")) {
+                        const disposition = response.headers.get("content-disposition");
+                        let filename = "Перспективные_площадки_ГАЭС_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+                        if (disposition && disposition.includes("filename=")) {
+                            const m = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                            if (m) filename = m[1].replace(/['"]/g, "").trim();
+                        }
+                        return response.blob().then(function (blob) {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        });
+                    }
+                    return response.text().then(function () {
+                        throw new Error("Неожиданный тип ответа от сервера");
+                    });
+                })
+                .catch(function (error) {
+                    console.error("Ошибка экспорта:", error);
+                    alert("Ошибка при экспорте данных: " + error.message);
+                })
+                .finally(function () {
+                    exportBtn.innerHTML = originalText;
+                    exportBtn.disabled = false;
+                });
+        });
+    }
+    bindProspectivePlacesGaesExcelExport(
+        document.getElementById("exportProspectivePlacesGaesBtn"),
+        document.getElementById("exportProspectivePlacesGaesForm")
+    );
+});
+</script>
+{% endif %}
+{% endblock %}

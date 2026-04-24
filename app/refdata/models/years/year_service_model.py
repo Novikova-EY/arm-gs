@@ -11,7 +11,7 @@ from app.common.models.versioned_model import VersionedModelMixin
 
 
 class YearService(db.Model, AuditMixin, VersionedModelMixin):
-    __tablename__ = 'gs_year_service'
+    __tablename__ = 'gs_sys_year_service'
     __table_args__ = {
         "schema": SCHEMA_REFDATA,
         "extend_existing": True

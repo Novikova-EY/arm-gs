@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_energy_areas'
+    __tablename__ = 'gs_sys_energy_areas'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -20,7 +20,7 @@ class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     # FK -> RegionalDistrict (обязательный)
     id_regional_district = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_regional_districts.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_regional_districts.id', ondelete='RESTRICT'),
         index=True,
         nullable=False
     )
@@ -44,6 +44,12 @@ class EnergyArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
 
     # связь с агрегатами (Machine)
     machines = db.relationship('Machine', back_populates='energy_area')
+
+    demand_parameters = db.relationship(
+        'EnergyAreaDemandParameter',
+        back_populates='energy_area',
+        cascade='all, delete-orphan',
+    )
 
     # --- ВЫЧИСЛЯЕМЫЕ СВОЙСТВА ---
 

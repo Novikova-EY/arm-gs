@@ -9,7 +9,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class StationGroup(db.Model, AuditMixin):
-    __tablename__ = 'station_groups'
+    __tablename__ = 'gs_gen_station_groups'
     __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

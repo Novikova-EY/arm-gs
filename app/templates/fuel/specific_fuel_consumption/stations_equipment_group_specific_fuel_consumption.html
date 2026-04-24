@@ -42,21 +42,21 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'fuel/stations_equipment_group_specific_fuel_consumption_filters.html' %}
+    {% include 'fuel/specific_fuel_consumption/stations_equipment_group_specific_fuel_consumption_filters.html' %}
 
 {% set specific_columns = [
     ('numb1120', 'NUMB1120', false),
     ('k', 'K', true),
     ('y', 'Y', true),
-    ('y_calc', 'Y (расчёт)', true),
+    ('y_calc', 'Y (расчет)', true),
     ('btp', 'BTP', true),
-    ('btp_calc', 'BTP (расчёт)', true),
+    ('btp_calc', 'BTP (расчет)', true),
     ('sntp', 'SNTP', true),
-    ('sntp_calc', 'SNTP (расчёт)', true),
+    ('sntp_calc', 'SNTP (расчет)', true),
     ('bk', 'BK', true),
-    ('bk_calc', 'BK (расчёт)', true),
+    ('bk_calc', 'BK (расчет)', true),
     ('snk', 'SNK', true),
-    ('snk_calc', 'SNK (расчёт)', true)
+    ('snk_calc', 'SNK (расчет)', true)
 ] %}
 {% set header_labels = consumption_column_labels or {} %}
 {% set column_count = specific_columns|length + 1 %}
@@ -111,7 +111,7 @@
                                     </tr>
                                 {% endfor %}
                         {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
                         <tr class="text-center align-middle table-warning" style="font-weight: bold;">
                             <td>{{ station_block.station_name }}, всего</td>
                             {% for attr, label, is_numeric in specific_columns %}
@@ -155,6 +155,13 @@
             {% endif %}
         </tbody>
     </table>
+
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_specific_fuel_consumption' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
 
     </div>
 </div>
@@ -250,6 +257,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const currentUrl = new URL(window.location.href);
         const params = new URLSearchParams(currentUrl.search);
+        params.set('per_page', 'all');
+        params.delete('page');
         const roundingEl = document.getElementById('rounding_digits');
         if (roundingEl) {
             params.set('rounding_digits', roundingEl.value);

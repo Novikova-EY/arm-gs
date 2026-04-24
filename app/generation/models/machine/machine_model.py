@@ -16,7 +16,7 @@ from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
 
 class Machine(db.Model, AuditMixin, VersionedModelMixin):
-    __tablename__ = 'machines'
+    __tablename__ = 'gs_gen_machines'
     __table_args__ = (
         Index('ix_machine_id_station', 'id_station'),
         Index('ix_machine_id_condition_type', 'id_condition_type'),
@@ -27,7 +27,8 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Index('ix_machine_external_code', 'external_code'),
         Index('ix_machine_date_exploitation', 'date_exploitation'),
         Index('ix_machine_date_decompressing_expected', 'date_decompressing_expected'),
-        Index('ix_machine_date_modernization_expected', 'date_modernization_expected'),
+        Index('ix_machine_date_modernization_power_change_expected', 'date_modernization_power_change_expected'),
+        Index('ix_machine_date_modernization_no_power_change_expected', 'date_modernization_no_power_change_expected'),
         {"schema": SCHEMA_GENERATION},
     )
 
@@ -43,7 +44,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> ConditionType
     id_condition_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_condition_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_condition_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -52,7 +53,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> GenCompany
     id_gen_company = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_companies.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_companies.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -61,7 +62,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> Station
     id_station = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.stations.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_stations.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -70,7 +71,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> EnergyArea
     id_energy_area = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_energy_areas.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_energy_areas.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -85,7 +86,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> MachineType
     id_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -94,7 +95,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> TesMachineType
     id_tes_machine_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_tes_machine_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_tes_machine_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -103,7 +104,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> TechnologyAvailability  
     id_technology_availability = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_availabilities.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_technology_availabilities.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -112,7 +113,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> TechnologyType 
     id_technology_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_technology_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -121,7 +122,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> EquipmentGroupType
     id_equipment_group = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_equipment_groups.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_equipment_groups.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -189,11 +190,20 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # фактическая дата отсоединения
     date_detatchment_fact = db.Column(db.String(10), nullable=True)
 
-    # ожидаемый год модернизации
-    date_modernization_expected = db.Column(db.Integer, nullable=True)
-    
+    # ожидаемый год модернизации с изменением мощности
+    date_modernization_power_change_expected = db.Column(
+        "date_modernization_power_change_expected", db.Integer, nullable=True
+    )
+    # ожидаемый год модернизации без изменения мощности
+    date_modernization_no_power_change_expected = db.Column(
+        "date_modernization_no_power_change_expected", db.Integer, nullable=True
+    )
+
     # фактическая дата перемаркировки (может содержать несколько дат)
     date_relabing_fact = db.Column(db.String(255), nullable=True)
+
+    # вид изменений: окончательный вывод / замена / новый ввод
+    relabing_outcome = db.Column(db.String(64), nullable=True)
     
     # фактическая дата уточнения (может содержать несколько дат)
     date_update_fact = db.Column(db.String(255), nullable=True)
@@ -296,20 +306,23 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
 
         Требование:
         - показывать один год:
-          * либо ожидаемый год модернизации (date_modernization_expected),
+          * либо ожидаемый год модернизации с изменением мощности (date_modernization_power_change_expected),
+          * либо ожидаемый год модернизации без изменения мощности (date_modernization_no_power_change_expected),
           * либо максимальный год, полученный из поля фактической даты(дат) перемаркировки
-            (date_relabing_fact) с учётом правила:
+            (date_relabing_fact) с учетом правила:
               - если дата 01.01.год → отображаемый год = год-1.
         - если есть и ожидаемый год модернизации, и годы из перемаркировок,
-          берём максимальный год из всех.
+          берем максимальный год из всех.
         """
         from app.common.services.help_services import normalize_date_list, convert_to_date
 
         years: list[int] = []
 
-        # 1) ожидаемый год модернизации
-        if self.date_modernization_expected is not None:
-            years.append(self.date_modernization_expected)
+        # 1) ожидаемые годы модернизации (с/без изменения мощности)
+        if self.date_modernization_power_change_expected is not None:
+            years.append(self.date_modernization_power_change_expected)
+        if self.date_modernization_no_power_change_expected is not None:
+            years.append(self.date_modernization_no_power_change_expected)
 
         # 2) годы из фактических дат перемаркировки (может быть несколько дат)
         if self.date_relabing_fact:
@@ -373,7 +386,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
                 except (TypeError, ValueError):
                     return False
 
-        # Карта мощностей по годам с учётом версии БД
+        # Карта мощностей по годам с учетом версии БД
         powers_by_year: dict[int, object] = {}
         for mp in getattr(self, "machine_powers", []) or []:
             if current_version_id is not None:
@@ -424,8 +437,8 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Возвращает словарь {год: тип_топлива} для отображения в таблице/экспорте.
         
         Учитывает текущую отображаемую версию БД:
-        - если выбрана версия, берём только записи с этим database_version_id;
-        - если версия не выбрана, берём только записи без версии (NULL).
+        - если выбрана версия, берем только записи с этим database_version_id;
+        - если версия не выбрана, берем только записи без версии (NULL).
         """
         from decimal import Decimal, InvalidOperation
         from app.common.services.database_version_filter import get_current_db_version_id
@@ -515,7 +528,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     def id_regional_energy_system(self):
         """
         Вычисляемый id РЭС для агрегата.
-        Берём со станции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
+        Берем со станции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
 
         ВАЖНО: это НЕ колонка БД, а runtime-helper для группировки/отображения.
         """
@@ -569,40 +582,141 @@ def _normalize_machine_name_for_key(value: str | None) -> str:
     return s
 
 
-@event.listens_for(Machine, 'before_insert')
-def generate_external_code_before_insert(mapper, connection, target):
+def _make_new_machine_external_code() -> str:
     """
-    Генерирует external_code для агрегата перед вставкой записи.
-    Ключ: station.external_code + machine_number + (machine_name или date_exploitation).
-    date_exploitation предпочтительнее при наличии (имя может слегка меняться между версиями).
+    Новый external_code должен быть постоянным идентификатором машины,
+    а не функцией от изменяемых полей. Поэтому для genuinely new machine
+    выдаём uuid4 один раз и потом больше его не пересчитываем.
     """
-    # Если код уже есть, не меняем его
-    if target.external_code:
-        return
+    return str(uuid.uuid4())
 
+
+def _resolve_station_external_code_for_machine(connection, target) -> str:
     station_code = None
     if target.machine_station and hasattr(target.machine_station, 'external_code'):
         station_code = target.machine_station.external_code
     elif target.id_station:
         result = connection.execute(
-            sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.stations WHERE id = :id"),
+            sql_text(f"SELECT external_code FROM {SCHEMA_GENERATION}.gs_gen_stations WHERE id = :id"),
             {"id": target.id_station}
         )
         row = result.fetchone()
         if row:
             station_code = row[0]
-    station_code = station_code or f"station_id_{target.id_station}"
+    return (station_code or f"station_id_{target.id_station}").strip()
 
-    num = _normalize_machine_key_part(target.machine_number)
-    name = _normalize_machine_name_for_key(target.machine_name)
-    # Если есть непустое нормализованное имя — используем его (ПТ-60-130/13 и ПТ-60-130/13 (ПТ-80) совпадут)
-    # Иначе — date_exploitation
-    if name:
-        ident = f"name|{name}"
-    elif target.date_exploitation is not None:
-        ident = f"exploitation|{target.date_exploitation}"
-    else:
-        ident = "name|"
 
-    machine_key = f"machine|station|{station_code}|num|{num}|{ident}"
-    target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, machine_key))
+def _pick_single_external_code(rows) -> str | None:
+    codes = [
+        (row.external_code or "").strip()
+        for row in rows
+        if row.external_code and str(row.external_code).strip()
+    ]
+    if not codes:
+        return None
+    distinct_codes = set(codes)
+    if len(distinct_codes) == 1:
+        return next(iter(distinct_codes))
+    return None
+
+
+def _find_existing_machine_external_code_by_id_ti(connection, target) -> str | None:
+    if getattr(target, "id_ti", None) is None:
+        return None
+    rows = connection.execute(
+        sql_text(
+            f"""
+            SELECT m.external_code
+            FROM {SCHEMA_GENERATION}.gs_gen_machines m
+            WHERE m.id_ti = :id_ti
+              AND trim(COALESCE(m.external_code, '')) <> ''
+            """
+        ),
+        {"id_ti": target.id_ti},
+    ).fetchall()
+    return _pick_single_external_code(rows)
+
+
+def _find_existing_machine_external_code_by_signature(
+    connection,
+    *,
+    station_external_code: str,
+    machine_number: str,
+    machine_name: str,
+    date_exploitation,
+) -> str | None:
+    if not station_external_code or not machine_number:
+        return None
+
+    params = {
+        "station_external_code": station_external_code,
+        "machine_number": machine_number,
+        "machine_name": machine_name,
+        "date_exploitation": date_exploitation,
+    }
+    rows = connection.execute(
+        sql_text(
+            f"""
+            SELECT m.external_code
+            FROM {SCHEMA_GENERATION}.gs_gen_machines m
+            JOIN {SCHEMA_GENERATION}.gs_gen_stations s ON s.id = m.id_station
+            WHERE trim(COALESCE(m.external_code, '')) <> ''
+              AND trim(COALESCE(s.external_code, '')) = :station_external_code
+              AND trim(COALESCE(m.machine_number, '')) = :machine_number
+              AND trim(COALESCE(m.machine_name, '')) = :machine_name
+              AND (
+                    (m.date_exploitation IS NULL AND :date_exploitation IS NULL)
+                    OR m.date_exploitation = :date_exploitation
+                  )
+            """
+        ),
+        params,
+    ).fetchall()
+    return _pick_single_external_code(rows)
+
+
+def _find_existing_machine_external_code(connection, target) -> str | None:
+    """
+    Возвращает уже существующий external_code для логически той же машины.
+
+    Приоритет:
+    1. По id_ti, если он есть и однозначен.
+    2. По жёсткой сигнатуре внутри семейства станции:
+       station.external_code + machine_number + machine_name + date_exploitation.
+
+    Если однозначного матча нет, считаем машину genuinely new и генерируем
+    новый UUID, не зависящий от изменяемых бизнес-полей.
+    """
+    by_id_ti = _find_existing_machine_external_code_by_id_ti(connection, target)
+    if by_id_ti:
+        return by_id_ti
+
+    station_external_code = _resolve_station_external_code_for_machine(connection, target)
+    return _find_existing_machine_external_code_by_signature(
+        connection,
+        station_external_code=station_external_code,
+        machine_number=" ".join(str(getattr(target, "machine_number", None) or "").split()),
+        machine_name=" ".join(str(getattr(target, "machine_name", None) or "").split()),
+        date_exploitation=getattr(target, "date_exploitation", None),
+    )
+
+
+@event.listens_for(Machine, 'before_insert')
+def generate_external_code_before_insert(mapper, connection, target):
+    """
+    Генерирует/наследует external_code для агрегата перед вставкой записи.
+
+    external_code больше не должен пересчитываться из текущих параметров машины:
+    это постоянный identity-key логического агрегата между версиями БД.
+    Поэтому при вставке сначала пытаемся найти уже существующий код семейства,
+    а если машины ещё нигде нет — выдаём новый UUID один раз.
+    """
+    if target.external_code:
+        return
+
+    existing_external_code = _find_existing_machine_external_code(connection, target)
+    if existing_external_code:
+        target.external_code = existing_external_code
+        return
+
+    target.external_code = _make_new_machine_external_code()

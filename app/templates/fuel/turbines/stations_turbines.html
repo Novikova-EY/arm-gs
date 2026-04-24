@@ -17,7 +17,7 @@
 </div>
 
 <div class="container-fluid mt-2">
-    {# Скроллим весь блок страницы: при прокрутке скрывается всё над шапкой таблицы #}
+    {# Скроллим весь блок страницы: при прокрутке скрывается все над шапкой таблицы #}
     <div class="table-responsive" id="stationsTableContainer">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'fuel/stations_turbines_filters.html' %}
+    {% include 'fuel/turbines/stations_turbines_filters.html' %}
 
 {% set column_count = 15 %}
 
@@ -201,7 +201,7 @@
                                                         <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                         <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                         <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                        <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
                                                         <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
                                                         <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
                                                         <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
@@ -236,7 +236,7 @@
                                                             <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                             <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                             <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                            <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
                                                             <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
                                                             <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
                                                             <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
@@ -322,7 +322,7 @@
                                                             <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                                             <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                                             <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                                            <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                                            <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
                                                             <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
                                                             <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
                                                             <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>
@@ -357,7 +357,7 @@
                                         <td>{{ tp.numb if tp and tp.numb is not none else '—' }}</td>
                                         <td>{{ tp.stnumb if tp and tp.stnumb is not none else '—' }}</td>
                                         <td>{{ tp.opesname if tp and tp.opesname else '—' }}</td>
-                                        <td>{{ tp.nt if tp and tp.nt is not none else '—' }}</td>
+                                        <td>{% if tp and tp.nt is not none %}{{ tp.nt | trim_decimal }}{% else %}—{% endif %}</td>
                                         <td>{{ tp.yearin if tp and tp.yearin is not none else '—' }}</td>
                                         <td>{{ tp.dem if tp and tp.dem is not none else '—' }}</td>
                                         <td>{{ tp.note if tp and tp.note is not none else '—' }}</td>

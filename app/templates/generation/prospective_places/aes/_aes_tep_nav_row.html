@@ -1,0 +1,20 @@
+{# Как power_demand/demand_summary.html: ряд кнопок-переключателей + ссылка справа. #}
+{# active: list | tep_main | tep_reserve #}
+{% set aes_nav_active = aes_nav_active|default('list') %}
+{% set qs = request.query_string.decode('utf-8') if request.query_string else '' %}
+{% set qs_suffix = ('?' + qs) if qs else '' %}
+{% set url_tep_main = url_for('prospective_places_bp.prospective_places_aes_tep_main') + qs_suffix %}
+{% set url_tep_reserve = url_for('prospective_places_bp.prospective_places_aes_tep_reserve') + qs_suffix %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3 w-100">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_tep_main }}"
+           class="btn {% if aes_nav_active == 'tep_main' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+            ТЭП основных перспективных площадок АЭС
+        </a>
+        <a href="{{ url_tep_reserve }}"
+           class="btn {% if aes_nav_active == 'tep_reserve' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+            ТЭП резервных перспективных площадок АЭС
+        </a>
+    </div>
+    <a href="{{ aes_nav_back_url }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-auto">{{ aes_nav_back_label }}</a>
+</div>

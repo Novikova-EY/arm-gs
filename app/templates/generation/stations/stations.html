@@ -20,7 +20,7 @@
 </div>
 
 <div class="container-fluid mt-2">
-    {# Скроллим весь блок страницы: при прокрутке скрывается всё над шапкой таблицы #}
+    {# Скроллим весь блок страницы: при прокрутке скрывается все над шапкой таблицы #}
     <div class="table-responsive" id="stationsTableContainer">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
@@ -59,7 +59,7 @@
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     <th colspan="{{ 13 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 12 }}">Электростанция</th>
-                    <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
+                    <th colspan="{{ end_year - start_year + 2 }}">Электрическая мощность, МВт</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                     <th rowspan="2" style="width: 240px; min-width: 240px;">
                         <div class="d-flex flex-column gap-2">

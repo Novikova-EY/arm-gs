@@ -28,12 +28,6 @@
             </label>
         </form>
 
-        <a class="btn btn-warning fw-bold"
-            href="{{ url_for('fuel_bp.export_fuel_equipment_group', **url_params()) }}"
-            target="_blank" rel="noopener">
-            Экспорт в Excel
-        </a>
-
         <select name="per_page"
                 form="filterForm"
                 class="form-select d-inline-block w-auto"
@@ -103,7 +97,7 @@
     {% endif %}
 
     <div class="table-responsive">
-        <table class="table table-hover table-striped table-bordered">
+        <table class="table table-hover table-striped table-bordered" data-auto-export-excel="off">
 
             <thead>
                 <tr class="table-success">

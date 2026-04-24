@@ -60,7 +60,7 @@ def _get_current_username() -> str:
 def _set_created_by(mapper, connection, target):
     """
     Перед вставкой:
-    - устанавливаем created_by, если оно ещё не задано.
+    - устанавливаем created_by, если оно еще не задано.
     - modified_by трогать не обязательно (останется NULL).
     """
     if hasattr(target, "created_by") and not getattr(target, "created_by", None):

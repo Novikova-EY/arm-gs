@@ -405,8 +405,8 @@ def export_pgu_tes_machine_type_service(
 def repair_pgu_tes_machine_types_sequence_hard(user: str) -> None:
     """
     Выравнивает sequence для refdata.pgu_tes_machine_types.id под MAX(id)
-    в ОТДЕЛЬНОЙ транзакции (engine.begin), чтобы её не откатил внешний rollback().
-    Работает и для SERIAL, и для IDENTITY, т.к. имя берём через pg_get_serial_sequence.
+    в ОТДЕЛЬНОЙ транзакции (engine.begin), чтобы ее не откатил внешний rollback().
+    Работает и для SERIAL, и для IDENTITY, т.к. имя берем через pg_get_serial_sequence.
     """
     try:
         with db.engine.begin() as conn:  # <— отдельная транзакция, гарантированный commit

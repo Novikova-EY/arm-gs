@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'fuel/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
 {% block title %}Основные топливные параметры групп оборудования{% endblock %}
 
@@ -42,7 +42,8 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'fuel/stations_equipment_group_fuel_params_filters.html' %}
+    {% include 'fuel/fuel_params/stations_equipment_group_fuel_params_filters.html' %}
+
 
 {% set fuel_param_columns = [
     ('numb1120', 'Код станции', false),
@@ -116,7 +117,7 @@
                                     </tr>
                                 {% endfor %}
                         {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
                         <tr class="text-center align-middle table-warning" style="font-weight: bold;">
                             <td>{{ station_block.station_name }}, всего</td>
                             {% for attr, label, is_numeric in fuel_param_columns %}
@@ -159,6 +160,14 @@
             {% endif %}
         </tbody>
     </table>
+
+        <!-- Пагинация (как на stations_equipment_groups) -->
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_fuel_params' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
 
     </div>
 </div>
@@ -285,7 +294,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
     }
 
-    // Пересоздаём кнопку, чтобы сбросить возможные обработчики
+    // Пересоздаем кнопку, чтобы сбросить возможные обработчики
     const newButton = exportButton.cloneNode(true);
     exportButton.parentNode.replaceChild(newButton, exportButton);
 
@@ -301,6 +310,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const currentUrl = new URL(window.location.href);
         const params = new URLSearchParams(currentUrl.search);
+        params.set('per_page', 'all');
+        params.delete('page');
         // Учитываем отображаемое количество знаков при выгрузке (из селекта «Округл»)
         const roundingEl = document.getElementById('rounding_digits');
         if (roundingEl) {

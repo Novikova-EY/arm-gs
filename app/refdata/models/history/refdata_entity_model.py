@@ -17,7 +17,7 @@ def _refdata_entity_key(entity_type: str, entity_id: int) -> str:
 
 
 class RefdataEntity(db.Model, AuditMixin):
-    __tablename__ = "gs_refdata_entities"
+    __tablename__ = "gs_sys_refdata_entities"
     __table_args__ = (
         db.UniqueConstraint(
             "entity_type",
@@ -61,7 +61,7 @@ class RefdataEntity(db.Model, AuditMixin):
 
 
 class RefdataEntityYear(db.Model, AuditMixin):
-    __tablename__ = "gs_refdata_entity_years"
+    __tablename__ = "gs_sys_refdata_entity_years"
     __table_args__ = (
         db.UniqueConstraint(
             "refdata_entity_id",
@@ -75,7 +75,7 @@ class RefdataEntityYear(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     refdata_entity_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_refdata_entities.id", ondelete="CASCADE"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_refdata_entities.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

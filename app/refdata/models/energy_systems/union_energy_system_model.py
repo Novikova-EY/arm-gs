@@ -13,7 +13,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class UnionEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_union_energy_systems'
+    __tablename__ = 'gs_sys_union_energy_systems'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -34,7 +34,7 @@ class UnionEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMi
     # FK -> EnergySystemType
     id_energy_system_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_energy_system_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_energy_system_types.id', ondelete='RESTRICT'),
         index=True,
         nullable=True
     )
@@ -66,6 +66,12 @@ class UnionEnergySystem(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMi
     energy_system_type = db.relationship(
         'EnergySystemType',
         back_populates='union_energy_systems'
+    )
+
+    demand_parameters = db.relationship(
+        'UnionEnergySystemDemandParameter',
+        back_populates='union_energy_system',
+        cascade='all, delete-orphan',
     )
 
     def __repr__(self) -> str:

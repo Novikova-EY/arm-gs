@@ -1,0 +1,50 @@
+<!-- Первая строка фильтров (каскад: тип энергосистемы, ОЭС, РЭС, ФО, субъект) — остальные фильтры в шапке таблицы -->
+<div class="col-12 mb-2">
+    <div class="collapse mt-2 show" id="filtersCollapse">
+        <div class="d-flex flex-wrap align-items-center w-100 gap-1">
+            <!-- Тип энергосистемы -->
+            <div class="filter-item" style="width: 15%;">
+                <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" multiple>
+                    {% for est in energy_system_type_list if est.name|lower == 'не указано' %}
+                        <option value="{{ est.id }}" {% if est.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>{{ est.name }}</option>
+                    {% endfor %}
+                    {% for est in energy_system_type_list if est.name|lower != 'не указано' %}
+                        <option value="{{ est.id }}" {% if est.id|string in energy_system_type_filter|map('string') %}selected{% endif %}>{{ est.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Региональная ЭС -->
+            <div class="filter-item" style="width: 15%;">
+                <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" multiple>
+                    {% for res in regional_energy_system_list if res.name|lower == 'не указано' %}
+                        <option value="{{ res.id }}" {% if res.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>{{ res.name }}</option>
+                    {% endfor %}
+                    {% for res in regional_energy_system_list if res.name|lower != 'не указано' %}
+                        <option value="{{ res.id }}" {% if res.id|string in regional_energy_system_filter|map('string') %}selected{% endif %}>{{ res.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Федеральный округ -->
+            <div class="filter-item" style="width: 15%;">
+                <select id="federal_district" name="federal_district_filter" class="form-select select2" multiple>
+                    {% for fd in federal_district_list if fd.name|lower == 'не указано' %}
+                        <option value="{{ fd.id }}" {% if fd.id|string in federal_district_filter|map('string') %}selected{% endif %}>{{ fd.name }}</option>
+                    {% endfor %}
+                    {% for fd in federal_district_list if fd.name|lower != 'не указано' %}
+                        <option value="{{ fd.id }}" {% if fd.id|string in federal_district_filter|map('string') %}selected{% endif %}>{{ fd.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="filter-item">
+                <button type="submit" form="prospectivePlacesAesFilterForm" class="btn btn-outline-primary w-100">Поиск</button>
+            </div>
+            <div class="filter-item">
+                <a href="{{ url_for('prospective_places_bp.prospective_places_aes') }}" class="btn btn-outline-danger w-100">Сбросить</a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -75,7 +75,7 @@ def get_current_year_info(version_id):
             if sipr_end is None:
                 sipr_end = current_year + 6
         
-        # Если по каким‑то причинам данных по годам нет – вернём 0, как требуется
+        # Если по каким‑то причинам данных по годам нет – вернем 0, как требуется
         return {
             'current_year': current_year if current_year is not None else 0,
             'sipr_start': sipr_start if sipr_start is not None else 0,

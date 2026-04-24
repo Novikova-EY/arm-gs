@@ -2,10 +2,10 @@
 <div class="col-12 mb-2">
     <div class="collapse" id="importExportCollapse">
 
-        <div class="d-flex justify-content-between align-items-start w-100 flex-nowrap">
+        <div class="d-flex align-items-center w-100 flex-wrap gap-2">
 
             <!-- Левая часть (экспорт) -->
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-shrink-0">
                 {% if show_specific_fuel_price_export|default(false) %}
                 <!-- Экспорт цены для групп оборудования -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_price') }}" id="exportSpecificFuelPriceForm">
@@ -45,6 +45,19 @@
                         Выгрузка удельных показателей
                     </button>
                 </form>
+                {% elif show_extra_fuel_params_export|default(false) %}
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_extra_fuel_params') }}" id="exportExtraFuelParamsForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportExtraFuelParamsButton"
+                            class="btn btn-outline-success"
+                            style="white-space: nowrap;">
+                        Выгрузка дополнительных топливных параметров
+                    </button>
+                </form>
+                {% elif show_fuel_params_export|default(false) and hide_fuel_params_export_button|default(false) %}
                 {% elif show_fuel_params_export|default(false) %}
                 <!-- Экспорт топливных параметров (страница fuel_params) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_fuel_params') }}" id="exportFuelParamsForm">
@@ -58,6 +71,10 @@
                         Выгрузка основных топливных параметров
                     </button>
                 </form>
+                {% elif show_fuel_formula_page|default(false) %}
+                <button type="button" id="exportFuelFormulasToExcel" class="btn btn-outline-success" style="white-space: nowrap;">
+                    Экспорт в Excel
+                </button>
                 {% else %}
                 <!-- Экспорт в Excel (страница groups) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_groups') }}" id="exportExcelFormFull">
@@ -71,10 +88,54 @@
                 {% endif %}
             </div>
 
+            {% if show_fuel_params_year_copy|default(false) %}
+            <!-- Копирование исходных данных между годами: по центру строки «Импорт/Экспорт», между выгрузкой и загрузкой -->
+            <div class="flex-grow-1 d-flex justify-content-center align-items-center min-w-0 py-1">
+            <div class="overflow-x-auto" style="max-width: 100%;">
+            <form method="POST" action="{{ fuel_params_year_copy_action }}" id="fuelParamsYearCopyForm" class="d-flex align-items-center gap-2 flex-wrap">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                {% for key, value in request.args.items() %}
+                <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <label for="copy_source_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год исходных данных:</label>
+                <select name="copy_source_year" id="copy_source_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;">
+                    {% for year in (filter_year_list|default([])) %}
+                    <option value="{{ year }}" {% if year == start_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <label for="copy_target_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год для копирования исходных данных:</label>
+                <select name="copy_target_year" id="copy_target_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;">
+                    {% for year in (filter_year_list|default([])) %}
+                    <option value="{{ year }}" {% if year == end_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-outline-success flex-shrink-0">Применить</button>
+                <button type="button" class="btn btn-outline-danger flex-shrink-0" id="fuelParamsYearCopyReset">Сбросить</button>
+            </form>
+            </div>
+            </div>
+            <script>
+            (function() {
+                var src = document.getElementById('copy_source_year');
+                var tgt = document.getElementById('copy_target_year');
+                var reset = document.getElementById('fuelParamsYearCopyReset');
+                var defSrc = {{ start_year|tojson }};
+                var defTgt = {{ end_year|tojson }};
+                if (reset && src && tgt) {
+                    reset.addEventListener('click', function() {
+                        if (defSrc != null) { src.value = String(defSrc); }
+                        if (defTgt != null) { tgt.value = String(defTgt); }
+                    });
+                }
+            })();
+            </script>
+            {% endif %}
+
             <!-- Правая часть (импорт) -->
-            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap flex-shrink-0">
                 {% if current_user.has_admin %}
-                {% if show_specific_fuel_consumption_import|default(false) %}
+                {% if show_specific_fuel_consumption_import|default(false) and hide_specific_fuel_consumption_import_button|default(false) %}
+                {% elif show_specific_fuel_consumption_import|default(false) %}
                 <form action="{{ import_specific_fuel_consumption_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_consumption')) }}"
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelConsumptionForm">
@@ -311,6 +372,7 @@
                     }
                 })();
                 </script>
+                {% elif show_fuel_params_import|default(false) and hide_fuel_params_import_button|default(false) %}
                 {% elif show_fuel_params_import|default(false) %}
                 <form action="{{ import_fuel_params_action|default(url_for('fuel_bp.import_equipment_group_fuel_params')) }}"
                     method="POST" enctype="multipart/form-data"
@@ -352,6 +414,40 @@
                             if (yearSelect && yearInput) {
                                 yearInput.value = yearSelect.value;
                             }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_fuel_formula_import|default(false) %}
+                <form action="{{ import_fuel_formula_action|default(url_for('fuel_bp.import_equipment_group_fuel_formula')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importFuelFormulaForm">
+                    {{ form.csrf_token }}
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelFormulaFile" required>
+                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelFormulaBtn">
+                        Загрузка формул топлива из Excel
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importFuelFormulaForm');
+                    var btn = document.getElementById('importFuelFormulaBtn');
+                    var fileInput = document.getElementById('importFuelFormulaFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
                             btn.disabled = true;
                             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
                         });

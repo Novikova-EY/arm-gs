@@ -90,9 +90,11 @@ def technology_type_list():
            # Формирование данных для обновления
             n = len(technology_type_ids)
             display_orders_padded = (display_orders + [""] * n)[:n]  # дополняем пустыми до n
+            names_padded = (list(technology_type_names) + [""] * n)[:n]
             technology_type_data = []
-            for technology_type_id, technology_type_name, display_order in zip(
-                technology_type_ids, technology_type_names, display_orders_padded
+            # Порядок полей в строке таблицы: id → порядок отображения → наименование
+            for technology_type_id, display_order, technology_type_name in zip(
+                technology_type_ids, display_orders_padded, names_padded
             ):
                 if technology_type_id and int(technology_type_id) in deleted_ids:
                     continue

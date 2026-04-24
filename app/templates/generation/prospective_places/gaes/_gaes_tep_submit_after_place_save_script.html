@@ -1,0 +1,102 @@
+{# При «Сохранить» в форме ТЭП сначала сохраняется карточка площадки (верхняя форма), затем — запись ТЭП. #}
+(function gaesTepSubmitAfterPlaceSaveInit() {
+    var placeForm = document.getElementById("gaes-place-edit-form");
+    if (!placeForm) return;
+
+    function isRedirectStatus(status) {
+        return (
+            status === 301 ||
+            status === 302 ||
+            status === 303 ||
+            status === 307 ||
+            status === 308
+        );
+    }
+
+    /** При redirect: "manual" успешный редирект приходит как type "opaqueredirect" и status 0, не как HTTP 302. */
+    function responseIsRedirect(response) {
+        return isRedirectStatus(response.status) || response.type === "opaqueredirect";
+    }
+
+    function syncPlannedCapacityFromTepForm(tepForm) {
+        var placeInput = document.getElementById("planned_capacity_mw");
+        if (!placeInput || !tepForm) return;
+        var ins = tepForm.querySelector('[name="installed_capacity_mw_generator_mode"]');
+        if (!ins) return;
+        var s = ins.value;
+        if (s == null || String(s).trim() === "") {
+            placeInput.value = "";
+            return;
+        }
+        var t = String(s).trim().replace(/\s/g, "").replace(",", ".");
+        var x = parseFloat(t);
+        placeInput.value = !isFinite(x) ? "" : String(Math.round(x));
+    }
+
+    function resolveRedirectUrl(response) {
+        var loc = response.headers.get("Location");
+        if (!loc) return null;
+        try {
+            return new URL(loc, window.location.href).href;
+        } catch (e) {
+            return loc;
+        }
+    }
+
+    function submitPlaceThenTep(tepForm) {
+        if (typeof fetch !== "function") {
+            window.alert("Обновите браузер: требуется поддержка fetch.");
+            return;
+        }
+        syncPlannedCapacityFromTepForm(tepForm);
+        fetch(placeForm.action || window.location.pathname, {
+            method: "POST",
+            body: new FormData(placeForm),
+            credentials: "same-origin",
+            redirect: "manual",
+        })
+            .then(function (r1) {
+                if (r1.status === 200) {
+                    return r1.text().then(function (html) {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    });
+                }
+                if (responseIsRedirect(r1)) {
+                    return fetch(tepForm.action, {
+                        method: "POST",
+                        body: new FormData(tepForm),
+                        credentials: "same-origin",
+                        redirect: "manual",
+                    }).then(function (r2) {
+                        if (responseIsRedirect(r2)) {
+                            var url = resolveRedirectUrl(r2);
+                            if (url) window.location.href = url;
+                            else window.location.reload();
+                            return;
+                        }
+                        if (r2.status === 200) {
+                            return r2.text().then(function (html) {
+                                document.open();
+                                document.write(html);
+                                document.close();
+                            });
+                        }
+                        window.alert("Не удалось сохранить запись перечня ТЭП.");
+                    });
+                }
+                window.alert("Не удалось сохранить карточку площадки.");
+            })
+            .catch(function () {
+                window.alert("Ошибка сети при сохранении.");
+            });
+    }
+
+    document.querySelectorAll("form.gaes-tep-machine-form").forEach(function (tepForm) {
+        tepForm.addEventListener("submit", function (ev) {
+            ev.preventDefault();
+            submitPlaceThenTep(tepForm);
+        });
+    });
+})();

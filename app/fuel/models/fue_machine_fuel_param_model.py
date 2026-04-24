@@ -25,11 +25,25 @@ class MachineFuelParam(db.Model):
     # FK -> Machine
     machine_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_GENERATION}.machines.id", ondelete="CASCADE"),
+        db.ForeignKey(f"{SCHEMA_GENERATION}.gs_gen_machines.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     machine = db.relationship("Machine", back_populates="machine_fuel_param", uselist=False)
+
+    # FK -> EquipmentGroup (явная привязка агрегата к итоговой группе топлива)
+    equipment_group_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{SCHEMA_FUEL}.gs_fue_equipment_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    equipment_group = db.relationship(
+        "EquipmentGroup",
+        foreign_keys=[equipment_group_id],
+        uselist=False,
+        lazy="select",
+    )
 
     # Порядковый номер
     numb = db.Column(db.Integer, nullable=True)
@@ -43,8 +57,8 @@ class MachineFuelParam(db.Model):
     # Год демонтажа
     dem = db.Column(db.Integer, nullable=True)
 
-    # Тепловая мощность отборов
-    nt = db.Column(db.Integer, nullable=True)
+    # Тепловая мощность отборов, Гкал/ч
+    nt = db.Column(db.Numeric(12, 6), nullable=True)
 
     # Код станции
     numb1120 = db.Column(db.Integer, nullable=True)
@@ -74,4 +88,7 @@ class MachineFuelParam(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     def __repr__(self) -> str:
-        return f"<MachineFuelParam id={self.id} machine_id={self.machine_id}>"
+        return (
+            f"<MachineFuelParam id={self.id} machine_id={self.machine_id} "
+            f"equipment_group_id={self.equipment_group_id}>"
+        )

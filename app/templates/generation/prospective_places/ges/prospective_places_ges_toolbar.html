@@ -1,0 +1,62 @@
+{# toolbar_mode: list | tep_main | tep_reserve — те же query-параметры, что у списка #}
+{% set toolbar_mode = toolbar_mode|default('list') %}
+{% set tep_main_force_source_only = tep_main_force_source_only|default(false) %}
+{% set qs = request.query_string.decode('utf-8') if request.query_string else '' %}
+{% set qs_suffix = ('?' + qs) if qs else '' %}
+{% set url_list = url_for('prospective_places_bp.prospective_places_ges') + qs_suffix %}
+{% set url_tep_main = url_for('prospective_places_bp.prospective_places_ges_tep_main') + qs_suffix %}
+<div class="col-12 mb-2">
+    <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
+        {% if toolbar_mode == 'tep_main' %}
+        <div class="d-flex align-items-center flex-wrap gap-3" role="radiogroup" aria-label="Цены в таблице ТЭП">
+            <span class="fw-semibold fs-5 text-nowrap">Цены:</span>
+            <div class="form-check form-check-inline mb-0 fs-5{% if tep_main_force_source_only %} d-none{% endif %}">
+                <input class="form-check-input" type="radio" name="tepMainTableView" id="tepMainTableViewCurrentYear" value="current_year"{% if not tep_main_force_source_only %} checked{% endif %} autocomplete="off">
+                <label class="form-check-label" for="tepMainTableViewCurrentYear">{% if tep_price_label_year is defined and tep_price_label_year is not none %}в ценах {{ tep_price_label_year }} года{% else %}в ценах текущего года{% endif %}</label>
+            </div>
+            <div class="form-check form-check-inline mb-0 fs-5">
+                <input class="form-check-input" type="radio" name="tepMainTableView" id="tepMainTableViewSource" value="source"{% if tep_main_force_source_only %} checked{% endif %} autocomplete="off">
+                <label class="form-check-label" for="tepMainTableViewSource">исходные данные</label>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap ms-auto">
+            <button type="button" id="gesTepPriceCoeffBtn" class="btn btn-lg btn-outline-secondary fs-5 d-none" style="white-space: nowrap;" data-bs-toggle="modal" data-bs-target="#gesTepPriceCoeffModal">
+                Индекс дефлятор-инвестиций в основной капитал
+            </button>
+            <form method="GET" action="{{ url_for('prospective_places_bp.export_prospective_places_ges') }}" id="exportProspectivePlacesGesForm" class="d-inline">
+                {% for key, value in request.args.items() %}
+                    {% if key != 'export_mode' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <input type="hidden" name="export_mode" value="tep_main">
+                <input type="hidden" name="tep_main_view" id="tepMainExportViewGes" value="{% if tep_main_force_source_only %}source{% else %}current_year{% endif %}">
+                <button type="button" id="exportProspectivePlacesGesBtn" class="btn btn-lg btn-outline-primary fs-5" style="white-space: nowrap;">
+                    📥 Экспорт в Excel
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <a href="{{ url_tep_main }}" target="_blank" rel="noopener noreferrer" class="btn btn-lg btn-outline-primary fs-5" style="white-space: nowrap;">Перечень исходных ТЭП перспективных площадок ГЭС</a>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap ms-auto">
+            <form method="GET" action="{{ url_for('prospective_places_bp.export_prospective_places_ges') }}" id="exportProspectivePlacesGesForm" class="d-inline">
+                {% for key, value in request.args.items() %}
+                    {% if key != 'export_mode' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <button type="button" id="exportProspectivePlacesGesBtn" class="btn btn-lg btn-outline-primary fs-5" style="white-space: nowrap;">
+                    📥 Экспорт в Excel
+                </button>
+            </form>
+            {% if can_edit %}
+            <a href="{{ url_for('prospective_places_bp.add_prospective_place_ges') }}" class="btn btn-lg btn-outline-success text-dark fs-5">
+                ➕ Добавить новую площадку
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

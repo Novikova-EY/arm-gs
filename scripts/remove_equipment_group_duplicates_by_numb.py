@@ -4,7 +4,7 @@
 Удаление дублей EquipmentGroup (gs_fue.gs_fue_equipment_groups) по (numb, database_version_id).
 
 Для каждой группы дублей оставляет запись с минимальным id, переназначает ссылки
-(EquipmentGroupSet, EquipmentGroupFuelParam, EquipmentGroupExtraFuelParam) на неё,
+(EquipmentGroupSet, EquipmentGroupFuelParam, EquipmentGroupExtraFuelParam) на нее,
 удаляет дубликаты.
 """
 

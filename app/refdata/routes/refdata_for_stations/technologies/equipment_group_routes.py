@@ -25,8 +25,10 @@ from app.common.services.get_services.refdata_for_stations.technologies.technolo
 from app.refdata.services.refdata_for_stations.technologies.equipment_group_services import (
     equipment_group_query,
     get_equipment_group_list,
-    update_equipment_group_service, 
-    add_equipment_group_service, 
+    update_equipment_group_service,
+    update_equipment_group_all_versions_service,
+    add_equipment_group_service,
+    add_equipment_group_all_versions_service,
     delete_equipment_group_service,
     export_equipment_group_service, 
 )
@@ -172,14 +174,20 @@ def equipment_group_list():
             if duplicates:
                 raise ValueError(f"Обнаружены дублирующиеся ID типов групп оборудования: {duplicates}")
 
-            # Обновление данных в базе
-            update_equipment_group_service(equipment_group_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                update_equipment_group_all_versions_service(
+                    equipment_group_data, user
+                )
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_equipment_group_service(equipment_group_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
         except Exception as e:
-            flash("Ошибка сохранения данных.", "danger")
+            current_app.logger.exception("Сохранение типов групп оборудования")
+            flash(f"Ошибка сохранения данных: {e}", "danger")
 
         return redirect(url_for("refdata_bp.equipment_group_list", 
                                 page=page, 
@@ -261,9 +269,12 @@ def add_equipment_group():
                 "technology_availability_id": form.technology_availability.data,
             }]
 
-            # Добавление новой записи через сервис
-            add_equipment_group_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                add_equipment_group_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_equipment_group_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = equipment_group_query(

@@ -1,5 +1,6 @@
 from app.extensions import db
 from functools import lru_cache
+
 from sqlalchemy import func
 
 # Модели
@@ -16,20 +17,21 @@ from app.common.services.get_services.years.year_feature_services import (
 from config import Config
 
 
-@lru_cache(maxsize=1)
 def get_year_list_full():
-    """Получает полный список годов."""
+    """
+    Полный список годов текущей версии БД.
+
+    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache —
+    после завершения запроса сессия закрывается, и повторное обращение к атрибутам
+    даёт DetachedInstanceError.
+    """
     current_version = get_current_version()
     query = Year.query
-    
+
     if current_version:
         query = query.filter(Year.database_version_id == current_version)
-    
-    return (
-        query
-        .order_by(Year.number.asc())
-        .all()
-    )
+
+    return query.order_by(Year.number.asc()).all()
 
 
 def get_current_year():
@@ -186,3 +188,46 @@ def get_year_feature_dict():
 def get_year_feature_dict_for_version(version_id: int | None):
     """Возвращает словарь {year_number: year_feature_name} для указанной версии."""
     return get_year_feature_dict_for_version_service(version_id)
+
+
+def get_year_number_for_year_feature_name_current_version(feature_name: str) -> int | None:
+    """
+    Календарный год (Year.number) для признака года с заданным именем в текущей версии БД.
+    Если записей несколько — берётся год с минимальным number.
+    """
+    current_version = get_current_version()
+    if not current_version:
+        return None
+    yf = (
+        db.session.query(YearFeature)
+        .filter(
+            YearFeature.name == feature_name,
+            YearFeature.database_version_id == current_version,
+        )
+        .first()
+    )
+    if not yf:
+        return None
+    y = (
+        db.session.query(Year)
+        .filter(
+            Year.id_year_feature == yf.id,
+            Year.database_version_id == current_version,
+        )
+        .order_by(Year.number.asc())
+        .first()
+    )
+    if y is None or y.number is None:
+        return None
+    return int(y.number)
+
+
+def get_ges_tep_current_price_year_number() -> int | None:
+    """
+    Год для подписи «в ценах текущего года» на ТЭП ГЭС:
+    сначала признак «текущий», иначе «текущий (оценка)» (как в справочнике годов).
+    """
+    n = get_year_number_for_year_feature_name_current_version("текущий")
+    if n is not None:
+        return n
+    return get_year_number_for_year_feature_name_current_version("текущий (оценка)")

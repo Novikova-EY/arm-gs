@@ -1,0 +1,52 @@
+{# Таблица ТЭП ГЭС (перечень исходных показателей). Ожидает: tep_groups #}
+{% set tep_col_count = 7 %}
+<div class="table-responsive">
+    <table class="table table-hover table-striped table-bordered prospective-places-ges-table tep-ges-page-table mb-0" style="text-align: center; font-size: 0.9rem;">
+        <thead class="table-success">
+            <tr class="text-center align-middle">
+                <th rowspan="2" style="min-width: 48px;">№ п/п</th>
+                <th rowspan="2" style="min-width: 140px;">Наименование площадки</th>
+                <th rowspan="2" style="min-width: 90px;">Установленная генерирующая мощность, МВт</th>
+                <th rowspan="2" style="min-width: 120px;">Тип гидротурбины</th>
+                <th rowspan="2" style="min-width: 90px;">Срок строительства ГЭС, лет</th>
+                <th rowspan="2" style="min-width: 120px;">Удельные условно-постоянные эксплуатационные затраты (без амортизации), тыс. руб./кВт</th>
+                <th rowspan="2" style="min-width: 120px;">Удельные капиталовложения (без НДС, за вычетом водохранилища), тыс. руб./кВт</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if tep_groups %}
+                {% for g in tep_groups %}
+                <tr class="ges-place-type-group">
+                    <td colspan="{{ tep_col_count }}" class="py-3">{{ g.type_label }}</td>
+                </tr>
+                {% if g.tep_rows %}
+                {% for row in g.tep_rows %}
+                <tr>
+                    <td class="text-center align-middle">{{ row.idx }}</td>
+                    {% if row.show_station_cell %}
+                    <td class="text-center align-middle" rowspan="{{ row.station_rowspan }}">{{ row.site_name }}</td>
+                    {% endif %}
+                    <td class="text-center align-middle">{{ row.machine.installed_capacity_mw }}</td>
+                    <td class="text-center align-middle">{{ row.machine.hydro_turbine_type }}</td>
+                    {% set m = row.merged_tep %}
+                    {% set n = row.station_rowspan %}
+                    {% set first = row.is_first_in_station %}
+                    {% if first or not m.construction_period_years %}<td class="text-center align-middle"{% if m.construction_period_years and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.construction_period_years }}</td>{% endif %}
+                    {% if first or not m.specific_semifixed_operating_costs_thous_rub_per_kw %}<td class="text-center align-middle"{% if m.specific_semifixed_operating_costs_thous_rub_per_kw and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_semifixed_operating_costs_thous_rub_per_kw }}</td>{% endif %}
+                    {% if first or not m.specific_capital_investment_thous_rub_per_kw %}<td class="text-center align-middle"{% if m.specific_capital_investment_thous_rub_per_kw and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_capital_investment_thous_rub_per_kw }}</td>{% endif %}
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="{{ tep_col_count }}" class="text-center text-muted">Нет данных</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ tep_col_count }}" class="text-center text-muted">Нет данных</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

@@ -114,6 +114,7 @@ def update_technology_type_service(data, user, _retried=False):
     
     # Проверки на валидность данных
     with db.session.no_autoflush:
+        batch = []
         for record in data:
             technology_type_id = record.get("technology_type_id")
             name = (record.get("name") or "").strip()
@@ -155,13 +156,46 @@ def update_technology_type_service(data, user, _retried=False):
             else:
                 display_order = None
 
-            # Проверка уникальности display_order
-            if display_order != obj.display_order and display_order is not None:
-                dup = (TechnologyType.query
-                       .filter(TechnologyType.display_order == display_order,
-                               TechnologyType.id != technology_type_id))
-                if dup.first():
-                    raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+            batch.append({
+                "technology_type_id": technology_type_id,
+                "name": name,
+                "display_order": display_order,
+                "obj": obj,
+                "prev_display_order": obj.display_order,
+            })
+
+        # Сначала сбрасываем порядок у строк, для которых он меняется, чтобы не ловить
+        # ложный дубликат при обмене номерами между строками одной формы.
+        for item in batch:
+            obj = item["obj"]
+            if item["display_order"] != obj.display_order:
+                obj.display_order = None
+
+        db.session.flush()
+
+        for item in batch:
+            technology_type_id = item["technology_type_id"]
+            name = item["name"]
+            display_order = item["display_order"]
+            obj = item["obj"]
+            prev_do = item["prev_display_order"]
+
+            # Проверка уникальности display_order в рамках текущей версии БД (как в списке на экране)
+            if display_order is not None:
+                dup = apply_version_filter(
+                    TechnologyType.query.filter(
+                        TechnologyType.display_order == display_order,
+                        TechnologyType.id != technology_type_id,
+                    ),
+                    TechnologyType,
+                ).first()
+                if dup:
+                    other = dup.name or "—"
+                    raise ValueError(
+                        f"Порядок «{display_order}» уже задан у записи «{other}» (id={dup.id}). "
+                        f"Укажите другой номер или измените порядок у той строки. "
+                        f"Колонка «№» — это не порядок отображения."
+                    )
 
             changes = []
 
@@ -169,8 +203,8 @@ def update_technology_type_service(data, user, _retried=False):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "technology_type"))
                 obj.name = name
 
-            if display_order != obj.display_order:
-                old_val = obj.display_order if obj.display_order is not None else "не указано"
+            if display_order != prev_do:
+                old_val = prev_do if prev_do is not None else "не указано"
                 new_val = display_order if display_order is not None else "не указано"
                 changes.append(f"Порядок отображения: {old_val} → {new_val}")
                 obj.display_order = display_order
@@ -207,11 +241,11 @@ def update_technology_type_service(data, user, _retried=False):
     except IntegrityError as e:
         db.session.rollback()
         err_str = str(e).lower()
-        # При UniqueViolation на gs_refdata_entity_years (рассинхронизация sequence) — выравниваем и повторяем 1 раз
-        if not _retried and ("gs_refdata_entity_years" in err_str or "refdata_entity_years_pkey" in err_str):
+        # При UniqueViolation на gs_sys_refdata_entity_years (рассинхронизация sequence) — выравниваем и повторяем 1 раз
+        if not _retried and ("gs_sys_refdata_entity_years" in err_str or "refdata_entity_years_pkey" in err_str):
             try:
-                quick_fix_seq(SCHEMA_REFDATA, "gs_refdata_entity_years")
-                quick_fix_seq(SCHEMA_REFDATA, "gs_refdata_entities")
+                quick_fix_seq(SCHEMA_REFDATA, "gs_sys_refdata_entity_years")
+                quick_fix_seq(SCHEMA_REFDATA, "gs_sys_refdata_entities")
                 return update_technology_type_service(data, user, _retried=True)
             except ValueError:
                 raise
@@ -266,10 +300,17 @@ def add_technology_type_service(data, user):
                     except (TypeError, ValueError):
                         display_order = None
                 if display_order is not None:
-                    dup_order = (TechnologyType.query
-                                .filter(TechnologyType.display_order == display_order))
-                    if dup_order.first():
-                        raise ValueError(f"Запись с порядком отображения «{display_order}» уже существует.")
+                    dup_order = apply_version_filter(
+                        TechnologyType.query.filter(
+                            TechnologyType.display_order == display_order,
+                        ),
+                        TechnologyType,
+                    ).first()
+                    if dup_order:
+                        other = dup_order.name or "—"
+                        raise ValueError(
+                            f"Порядок «{display_order}» уже задан у записи «{other}» (id={dup_order.id})."
+                        )
 
                 obj = TechnologyType(name=name, display_order=display_order)
                 set_db_version_on_create(obj)

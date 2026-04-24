@@ -13,14 +13,14 @@
 
                 <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                 <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
-                    {% for year in range(2021, 2043) %}
+                    {% for year in (filter_year_list|default([])) %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
 
                 <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                 <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
-                    {% for year in range(2022, 2043) %}
+                    {% for year in (filter_year_list|default([])) %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>

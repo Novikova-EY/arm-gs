@@ -1,0 +1,251 @@
+{# Поля перечня ТЭП (ProspectivePlaceGaesTepSourceEditForm). Ожидается переменная form. #}
+{# Основные | Выработка+ЧЧУ | Очередность; затем Стоимость; Экономика + примечание #}
+<div class="row g-4 align-items-start">
+    <div class="col-md-4">
+        <h5 class="text-decoration-underline">Основные параметры</h5>
+        <div class="row g-3">
+            <div class="col-12">
+                <span class="fw-semibold d-block text-decoration-underline mb-1">Генераторный режим</span>
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.installed_capacity_mw_generator_mode.label.text }}</label>
+                {{ form.installed_capacity_mw_generator_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.startup_complex_capacity_mw_generator_mode.label.text }}</label>
+                {{ form.startup_complex_capacity_mw_generator_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.stage_1_capacity_mw_generator_mode.label.text }}</label>
+                {{ form.stage_1_capacity_mw_generator_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.stage_2_capacity_mw_generator_mode.label.text }}</label>
+                {{ form.stage_2_capacity_mw_generator_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.unit_capacity_mw_generator_mode.label.text }}</label>
+                {{ form.unit_capacity_mw_generator_mode(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <span class="fw-semibold d-block text-decoration-underline mb-1">Насосный режим</span>
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.installed_capacity_mw_pump_mode.label.text }}</label>
+                {{ form.installed_capacity_mw_pump_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.startup_complex_capacity_mw_pump_mode.label.text }}</label>
+                {{ form.startup_complex_capacity_mw_pump_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.stage_1_capacity_mw_pump_mode.label.text }}</label>
+                {{ form.stage_1_capacity_mw_pump_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.stage_2_capacity_mw_pump_mode.label.text }}</label>
+                {{ form.stage_2_capacity_mw_pump_mode(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.unit_capacity_mw_pump_mode.label.text }}</label>
+                {{ form.unit_capacity_mw_pump_mode(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.units_count.label.text }}</label>
+                {{ form.units_count(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.hydro_turbine_type.label.text }}</label>
+                {{ form.hydro_turbine_type(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.construction_period_years.label.text }}</label>
+                {{ form.construction_period_years(class="form-control", step="0.1", min="0") }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <h5 class="text-decoration-underline">Выработка электроэнергии</h5>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.generation_average_multiyear_billion_kwh.label.text }}</label>
+                {{ form.generation_average_multiyear_billion_kwh(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.generation_average_multiyear_million_kwh_stage_1.label.text }}</label>
+                {{ form.generation_average_multiyear_million_kwh_stage_1(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.generation_average_multiyear_million_kwh_stage_2.label.text }}</label>
+                {{ form.generation_average_multiyear_million_kwh_stage_2(class="form-control") }}
+            </div>
+            {# Средневодные / маловодные условия — скрыты; значения передаются скрытыми полями #}
+            <div class="d-none" aria-hidden="true">
+                {{ form.generation_medium_water_50pct_billion_kwh(class="form-control") }}
+                {{ form.generation_low_water_95pct_billion_kwh(class="form-control") }}
+            </div>
+            <div class="col-12 mt-2">
+                <h6 class="text-decoration-underline mb-2">Годовое потребление электрической энергии ГАЭС на заряд</h6>
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.annual_charging_electricity_consumption_million_kwh.label.text }}</label>
+                {{ form.annual_charging_electricity_consumption_million_kwh(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.annual_charging_electricity_consumption_million_kwh_stage_1.label.text }}</label>
+                {{ form.annual_charging_electricity_consumption_million_kwh_stage_1(class="form-control") }}
+            </div>
+            <div class="col-12 ps-3">
+                <label class="fw-semibold d-block">{{ form.annual_charging_electricity_consumption_million_kwh_stage_2.label.text }}</label>
+                {{ form.annual_charging_electricity_consumption_million_kwh_stage_2(class="form-control") }}
+            </div>
+            <div class="col-12 mt-3">
+                <h5 class="text-decoration-underline mb-2">Число часов использования установленной мощности в сутки</h5>
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.ccium_turbine_mode.label.text }}</label>
+                {{ form.ccium_turbine_mode(class="form-control") }}
+            </div>
+            <div class="col-12">
+                <label class="fw-semibold d-block">{{ form.ccium_pump_mode.label.text }}</label>
+                {{ form.ccium_pump_mode(class="form-control") }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <h5 class="text-decoration-underline">Очередность строительства (прирост вводимой мощности), МВт</h5>
+        <div class="row g-2">
+            {% for fld in [
+                form.construction_increment_year_01_mw, form.construction_increment_year_02_mw, form.construction_increment_year_03_mw,
+                form.construction_increment_year_04_mw, form.construction_increment_year_05_mw, form.construction_increment_year_06_mw,
+                form.construction_increment_year_07_mw, form.construction_increment_year_08_mw, form.construction_increment_year_09_mw,
+                form.construction_increment_year_10_mw, form.construction_increment_year_11_mw, form.construction_increment_year_12_mw,
+            ] %}
+            <div class="col-12">
+                <label class="small fw-semibold d-block">{{ fld.label.text }}</label>
+                {{ fld(class="form-control form-control-sm") }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start mt-1">
+    <div class="col-md-4 d-flex flex-column">
+        <h5 class="text-decoration-underline mb-3">Капитальные затраты, млн руб.</h5>
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="row g-2 align-items-end mb-1">
+                    <div class="col-12 col-md-7">
+                        <label class="fw-semibold d-block mb-0">{{ form.capital_cost_wo_pir_total_million_rub.label.text }}</label>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="fw-semibold d-block mb-0">{{ form.id_year_capital_cost_wo_pir_total.label.text }}</label>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-7">
+                        {{ form.capital_cost_wo_pir_total_million_rub(class="form-control", step="any") }}
+                    </div>
+                    <div class="col-12 col-md-5">
+                        {{ form.id_year_capital_cost_wo_pir_total(class="form-select") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 d-flex flex-column">
+        <h5 class="text-decoration-underline mb-3">в том числе</h5>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-6">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="row g-2 align-items-end mb-1">
+                            <div class="col-12 col-md-7">
+                                <label class="fw-semibold d-block mb-0">{{ form.capital_cost_wo_pir_ges_with_reservoir_million_rub.label.text }}</label>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label class="fw-semibold d-block mb-0">{{ form.id_year_capital_cost_wo_pir_ges_with_reservoir.label.text }}</label>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-7">
+                                {{ form.capital_cost_wo_pir_ges_with_reservoir_million_rub(class="form-control", step="any") }}
+                            </div>
+                            <div class="col-12 col-md-5">
+                                {{ form.id_year_capital_cost_wo_pir_ges_with_reservoir(class="form-select") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="row g-2 align-items-end mb-1">
+                            <div class="col-12 col-md-7">
+                                <label class="fw-semibold d-block mb-0">{{ form.capital_cost_wo_pir_svm_million_rub.label.text }}</label>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label class="fw-semibold d-block mb-0">{{ form.id_year_capital_cost_wo_pir_svm.label.text }}</label>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-7">
+                                {{ form.capital_cost_wo_pir_svm_million_rub(class="form-control", step="any") }}
+                            </div>
+                            <div class="col-12 col-md-5">
+                                {{ form.id_year_capital_cost_wo_pir_svm(class="form-select") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start mt-1">
+    <div class="col-12">
+        <h5 class="text-decoration-underline mb-3">Экономические показатели</h5>
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-lg-4">
+                <label class="fw-semibold d-block mb-1">{{ form.specific_semifixed_operating_costs_thous_rub_per_kw.label.text }}</label>
+                {{ form.specific_semifixed_operating_costs_thous_rub_per_kw(class="form-control") }}
+            </div>
+            <div class="col-12 col-lg-2">
+                <label class="fw-semibold d-block mb-1">{{ form.id_year_specific_semifixed_operating_costs.label.text }}</label>
+                {{ form.id_year_specific_semifixed_operating_costs(class="form-select") }}
+            </div>
+            <div class="col-12 col-lg-4">
+                <label class="fw-semibold d-block mb-1">{{ form.specific_capital_investment_thous_rub_per_kw.label.text }}</label>
+                <span class="gaes-tep-derived-specific-capital-tooltip-wrap d-block w-100 mb-1" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="gaes-planned-capacity-tooltip" title="Рассчитывается автоматически: капзатраты «здания, сооружения…» (в ценах года ТЭП) / установленная мощность (генераторный режим), МВт">
+                    {{ form.specific_capital_investment_thous_rub_per_kw(class="form-control bg-body-secondary gaes-tep-derived-specific-capital", readonly=true, tabindex="-1") }}
+                </span>
+            </div>
+            <div class="col-12 col-lg-2">
+                <label class="fw-semibold d-block mb-1">{{ form.id_year_specific_capital_investment.label.text }}</label>
+                {% set ns_cap_y = namespace(txt='—') %}
+                {% set sel_ges_y = form.id_year_capital_cost_wo_pir_ges_with_reservoir.data %}
+                {% if sel_ges_y is not none %}
+                    {% for v, lbl in form.id_year_capital_cost_wo_pir_ges_with_reservoir.choices %}
+                        {% if v == sel_ges_y or (v is not none and sel_ges_y is not none and v|string == sel_ges_y|string) %}
+                            {% set ns_cap_y.txt = lbl %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                <p class="form-control-plaintext mb-1 py-2 border rounded px-2 bg-body-secondary gaes-tep-specific-capital-year-display">{{ ns_cap_y.txt }}</p>
+                {{ form.id_year_specific_capital_investment() }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 align-items-start mt-1">
+    <div class="col-12">
+        <h5 class="text-decoration-underline">{{ form.note.label.text }}</h5>
+        {{ form.note(class="form-control", rows=4) }}
+    </div>
+</div>

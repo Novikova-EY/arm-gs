@@ -63,9 +63,10 @@ SCHEMA_REFDATA = os.getenv("SCHEMA_REFDATA", "gs_sys")
 SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
 SCHEMA_FUEL = _normalize_schema_name(os.getenv("SCHEMA_FUEL"), "gs_fue")
 SCHEMA_FUE_EM = _normalize_schema_name(os.getenv("SCHEMA_FUE_EM"), "gs_fue_em")
+SCHEMA_POWER_DEMAND = _normalize_schema_name(os.getenv("SCHEMA_POWER_DEMAND"), "gs_pd")
 DB_SEARCH_PATH = _normalize_search_path(
     os.getenv("DB_SEARCH_PATH"),
-    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em",
+    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em,gs_pd",
 )
 STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
     os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
@@ -112,9 +113,10 @@ class Config:
     SCHEMA_GENERATION = _normalize_schema_name(os.getenv("SCHEMA_GENERATION"), "gs_gen")
     SCHEMA_FUEL = _normalize_schema_name(os.getenv("SCHEMA_FUEL"), "gs_fue")
     SCHEMA_FUE_EM = _normalize_schema_name(os.getenv("SCHEMA_FUE_EM"), "gs_fue_em")
+    SCHEMA_POWER_DEMAND = _normalize_schema_name(os.getenv("SCHEMA_POWER_DEMAND"), "gs_pd")
     DB_SEARCH_PATH = _normalize_search_path(
         os.getenv("DB_SEARCH_PATH"),
-        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},public",
+        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},{SCHEMA_POWER_DEMAND},public",
     )
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
         os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
@@ -136,7 +138,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = set(os.getenv('ALLOWED_EXTENSIONS', '').split(','))
-    # DEBUG берём из вычисленного значения выше (см. _resolve_debug()).
+    # DEBUG берем из вычисленного значения выше (см. _resolve_debug()).
     DEBUG = DEBUG
     START_YEAR_SIPR = 2026
     START_YEAR = 2024
@@ -166,3 +168,16 @@ class Config:
     # Если не указано, будет использована последняя версия по номеру версии
     DEFAULT_DATABASE_VERSION_ID = os.getenv('DEFAULT_DATABASE_VERSION_ID', None)  # ID версии или None для автоопределения
     DEFAULT_DATABASE_VERSION_NUMBER = os.getenv('DEFAULT_DATABASE_VERSION_NUMBER', None)  # Номер версии или None
+
+    # Flask 3.1 / Werkzeug: по умолчанию MAX_FORM_MEMORY_SIZE = 500 KiB — для крупных
+    # POST (массовое сохранение топливных параметров, импорты и т.д.) этого мало → 413.
+    # Размер тела application/x-www-form-urlencoded проверяется против этого значения.
+    MAX_FORM_MEMORY_SIZE = int(
+        os.getenv("MAX_FORM_MEMORY_SIZE", str(32 * 1024 * 1024))
+    )
+    # Общий лимит тела запроса (None = без лимита на уровне Flask). Имеет смысл >= MAX_FORM_MEMORY_SIZE.
+    MAX_CONTENT_LENGTH = (
+        int(os.getenv("MAX_CONTENT_LENGTH"))
+        if os.getenv("MAX_CONTENT_LENGTH", "").strip().isdigit()
+        else None
+    )

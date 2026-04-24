@@ -69,7 +69,7 @@ def _get_sum_years_and_header(start_year: int, end_year: int, current_year: int 
     """
     years = list(range(start_year, end_year + 1))
 
-    # Если текущий год не определён или не входит в диапазон — суммируем всё как есть.
+    # Если текущий год не определен или не входит в диапазон — суммируем все как есть.
     if current_year is None or current_year < start_year or current_year > end_year:
         return years, f"{start_year}–{end_year} гг."
 
@@ -205,7 +205,7 @@ def export_station_changes_to_excel(
         if hasattr(func, "cache_clear"):
             func.cache_clear()
 
-    # Загружаем все данные без пагинации, чтобы экспортировать всё отображаемое
+    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
     if (
         data is None
         or data.get("database_version_id") != current_db_version_id
@@ -356,7 +356,7 @@ def export_station_changes_to_excel(
 
     # Текущая строка для данных (сразу после шапки таблицы)
     current_row = sub_row + 1
-    # Отслеживаем последнюю объединённую строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
+    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
     # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
     max_merged_row_by_col: dict[int, int] = {}
 
@@ -364,7 +364,7 @@ def export_station_changes_to_excel(
     def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
         if r2 > r1 or c2 > c1:
             worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединённую строку для каждого затронутого столбца
+            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
             for c in range(c1, c2 + 1):
                 prev = max_merged_row_by_col.get(c, -1)
                 if r2 > prev:
@@ -372,7 +372,7 @@ def export_station_changes_to_excel(
         else:
             worksheet.write(r1, c1, value, text_center_format)
 
-    #  Справочники имён и хелпер вывода итогов по событиям
+    #  Справочники имен и хелпер вывода итогов по событиям
     try:
         union_energy_system_names = get_union_energy_systems_map()
     except Exception:
@@ -934,7 +934,7 @@ def export_station_changes_pril_b_to_excel(
         if hasattr(func, "cache_clear"):
             func.cache_clear()
 
-    # Загружаем все данные без пагинации, чтобы экспортировать всё отображаемое
+    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
     if (
         data is None
         or data.get("database_version_id") != current_db_version_id
@@ -1106,7 +1106,7 @@ def export_station_changes_pril_b_to_excel(
 
     # Текущая строка для данных (начинаем с 7-й строки Excel)
     current_row = sub_row + 1
-    # Отслеживаем последнюю объединённую строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
+    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
     # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
     max_merged_row_by_col: dict[int, int] = {}
 
@@ -1114,7 +1114,7 @@ def export_station_changes_pril_b_to_excel(
     def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
         if r2 > r1 or c2 > c1:
             worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединённую строку для каждого затронутого столбца
+            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
             for c in range(c1, c2 + 1):
                 prev = max_merged_row_by_col.get(c, -1)
                 if r2 > prev:
@@ -1122,7 +1122,7 @@ def export_station_changes_pril_b_to_excel(
         else:
             worksheet.write(r1, c1, value, text_center_format)
 
-    #  Справочники имён и хелпер вывода итогов по событиям
+    #  Справочники имен и хелпер вывода итогов по событиям
     try:
         union_energy_system_names = get_union_energy_systems_map()
     except Exception:
@@ -1629,7 +1629,7 @@ def export_station_changes_pril_2_russia_to_excel(
         if hasattr(func, "cache_clear"):
             func.cache_clear()
 
-    # Загружаем все данные без пагинации, чтобы экспортировать всё отображаемое
+    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
     if (
         data is None
         or data.get("database_version_id") != current_db_version_id
@@ -1746,7 +1746,7 @@ def export_station_changes_pril_2_russia_to_excel(
     # "Основание" — после столбца с суммой
     note_col = all_years_col + 1
 
-    # Преамбула формы «Приложение 2 (Россия)» (как на утверждённом шаблоне)
+    # Преамбула формы «Приложение 2 (Россия)» (как на утвержденном шаблоне)
     last_col_name = xl_col_to_name(all_years_col)
     header_right_format = workbook.add_format({
         'font_name': 'Times New Roman',
@@ -1846,7 +1846,7 @@ def export_station_changes_pril_2_russia_to_excel(
 
     # Текущая строка для данных (сразу после шапки таблицы)
     current_row = sub_row + 1
-    # Отслеживаем последнюю объединённую строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
+    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
     # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
     max_merged_row_by_col: dict[int, int] = {}
 
@@ -1854,7 +1854,7 @@ def export_station_changes_pril_2_russia_to_excel(
     def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
         if r2 > r1 or c2 > c1:
             worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединённую строку для каждого затронутого столбца
+            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
             for c in range(c1, c2 + 1):
                 prev = max_merged_row_by_col.get(c, -1)
                 if r2 > prev:
@@ -1862,7 +1862,7 @@ def export_station_changes_pril_2_russia_to_excel(
         else:
             worksheet.write(r1, c1, value, text_center_format)
 
-    #  Справочники имён и хелпер вывода итогов по событиям
+    #  Справочники имен и хелпер вывода итогов по событиям
     try:
         union_energy_system_names = get_union_energy_systems_map()
     except Exception:

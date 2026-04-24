@@ -8,7 +8,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class Document(db.Model, AuditMixin):
-    __tablename__ = 'documents_kommod'
+    __tablename__ = 'gs_gen_documents_kommod'
     __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

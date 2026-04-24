@@ -149,7 +149,7 @@ def totals_summary():
     _sa_ids = [sa.id for sa in synchronous_area_list if sa.id and sa.id > 0]
     _kaliningrad_ids = []
 
-    # 1) Надёжный способ: берём sa_id через субъект РФ Калининградской области (номер региона = 39)
+    # 1) Надежный способ: берем sa_id через субъект РФ Калининградской области (номер региона = 39)
     #    -> RegionalDistrict.id_synchronous_area
     try:
         from app.refdata.models.territories.regional_district_model import RegionalDistrict

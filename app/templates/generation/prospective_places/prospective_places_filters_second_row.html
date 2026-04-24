@@ -1,0 +1,15 @@
+<!-- Строка экспорта (подход как на station_list: fetch + blob, страница не виснет) -->
+<div class="col-12 mb-2">
+    <div class="collapse" id="exportCollapse">
+        <div class="d-flex gap-2">
+            <form method="GET" action="{{ url_for('prospective_places_bp.export_prospective_places_aes') }}" id="exportProspectivePlacesAesForm">
+                {% for key, value in request.args.items() %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <button type="button" id="exportProspectivePlacesAesBtn" class="btn btn-outline-success" style="white-space: nowrap;">
+                    Экспорт списка перспективных площадок АЭС
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

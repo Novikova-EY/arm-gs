@@ -61,6 +61,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
     get_filter_start_year,
     get_year_feature_dict,
+    get_year_list_full,
 )
 from app.common.services.get_services.fuels.fuel_type_get_services import (
     get_fuel_type_list_full,
@@ -196,7 +197,7 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
     if not machine_ids:
         return
 
-    # ВАЖНО: берём MachineName БЕЗ фильтра по версии БД,
+    # ВАЖНО: берем MachineName БЕЗ фильтра по версии БД,
     # ровно как в handle_machine_get (карточка агрегата),
     # чтобы логика формирования названия была идентичной.
     names_query = MachineName.query.filter(MachineName.id_machine.in_(machine_ids))
@@ -234,7 +235,7 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
         display_name = base_name
 
         # Ищем отличающееся имя в плановом периоде (полностью копируем логику handle_machine_get):
-        # перебираем ВСЕ годы с признаком "план" и берём первое отличающееся название.
+        # перебираем ВСЕ годы с признаком "план" и берем первое отличающееся название.
         if base_name and machine_names:
             for y in sorted(machine_names.keys()):
                 label = year_features.get(y)
@@ -281,6 +282,26 @@ def _build_station_note_search_condition(note_filter_value):
         Station.machines.any(Machine.note.ilike(note_pattern)),
         Station.machines.any(
             Machine.pgu_submachines.any(PGUMachine.note.ilike(note_pattern))
+        ),
+    )
+
+
+def _station_union_energy_system_sql_filter(union_energy_system_filter):
+    """
+    ОЭС: как в get_filtered_station_ids — прямая привязка станции к РЭС
+    и связь через субъект РФ (fallback логики Station.union_energy_system).
+    """
+    ues_ids = union_energy_system_filter
+    if not isinstance(ues_ids, list):
+        ues_ids = [ues_ids]
+    return or_(
+        Station.regional_energy_system_obj.has(
+            RegionalEnergySystem.id_union_energy_system.in_(ues_ids)
+        ),
+        Station.regional_district.has(
+            RegionalDistrict.regional_energy_systems.any(
+                RegionalEnergySystem.id_union_energy_system.in_(ues_ids)
+            )
         ),
     )
 
@@ -345,7 +366,7 @@ def get_stations_list(
         else:
             mf_version_cond = MachineFuel.database_version_id.is_(None)
 
-        # Границы лет берём из параметров страницы (то, что показано в таблице)
+        # Границы лет берем из параметров страницы (то, что показано в таблице)
         sy = int(start_year if start_year is not None else get_filter_start_year())
         ey = int(end_year if end_year is not None else get_filter_end_year())
 
@@ -478,10 +499,8 @@ def get_stations_list(
 
     if filters.get("union_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
-            Station.regional_energy_system_obj.has(
-                RegionalEnergySystem.id_union_energy_system.in_(
-                    filters["union_energy_system_filter"]
-                )
+            _station_union_energy_system_sql_filter(
+                filters["union_energy_system_filter"]
             )
         )
 
@@ -567,10 +586,8 @@ def get_stations_list(
             )
         if filters.get("union_energy_system_filter"):
             pgu_station_query = pgu_station_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.id_union_energy_system.in_(
-                        filters["union_energy_system_filter"]
-                    )
+                _station_union_energy_system_sql_filter(
+                    filters["union_energy_system_filter"]
                 )
             )
         if filters.get("energy_system_type_filter"):
@@ -638,10 +655,8 @@ def get_stations_list(
             )
         if filters.get("union_energy_system_filter"):
             station_query = station_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.id_union_energy_system.in_(
-                        filters["union_energy_system_filter"]
-                    )
+                _station_union_energy_system_sql_filter(
+                    filters["union_energy_system_filter"]
                 )
             )
         if filters.get("energy_system_type_filter"):
@@ -1505,7 +1520,7 @@ def get_regional_districts_with_stations_per_res(filters=None):
     """
     from collections import defaultdict
 
-    # Получаем станции с учётом фильтров и версии БД
+    # Получаем станции с учетом фильтров и версии БД
     query = db.session.query(
         Station.id_regional_district,
         Station.id_regional_energy_system.label('res_id')
@@ -2458,7 +2473,7 @@ def get_station_list_data(
         for m in machines:
             station_machines_map[m.id_station].append(m)
 
-        # Expire до присвоения: иначе замена station.machines помечает «удалённые» Machine как dirty
+        # Expire до присвоения: иначе замена station.machines помечает «удаленные» Machine как dirty
         # (id_station=None), и при concurrent import -> StaleDataError (version mismatch)
         for station in stations:
             db.session.expire(station, ["machines"])
@@ -2625,7 +2640,7 @@ def get_station_list_data(
         aggregation_station_ids = []
         rows = []
 
-    from app.fuel.services.stations_equipment_groups_services import (
+    from app.fuel.services.stations.stations_equipment_groups_services import (
         get_station_equipment_group_name_map,
     )
     station_equipment_group_name_map = get_station_equipment_group_name_map(station_ids)
@@ -2707,8 +2722,16 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     import time
     start_time = time.time()
 
+    # Порядок ОЭС/ЕЭС ниже — из справочника (union_energy_system_list); hierarchy_data только для совместимости вызовов.
+    _ = hierarchy_data
+
     year_features = get_year_feature_dict()
-    filter_year_list = list(range(get_filter_start_year(), get_filter_end_year() + 1))
+    _years_from_db = [y.number for y in get_year_list_full()]
+    filter_year_list = (
+        _years_from_db
+        if _years_from_db
+        else list(range(get_filter_start_year(), get_filter_end_year() + 1))
+    )
 
     # Получаем энергосистемы заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
@@ -2817,17 +2840,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     fd_to_ues_mapping = get_fd_to_ues_ids_map()
     fd_to_est_mapping = get_fd_to_est_ids_map()
 
-    # Порядок типов энергосистем по минимальному порядку ОЭС внутри них
-    # Используем данные из hierarchy_data вместо повторной загрузки из БД
-    ues_order_index = {}
-    if hierarchy_data and 'union_energy_system_name' in hierarchy_data:
-        # Создаем индекс на основе данных из hierarchy_data
-        for ues_id in hierarchy_data['union_energy_system_name'].keys():
-            ues_order_index[ues_id] = ues_id  # Используем ID как порядок
-    
-    # Если hierarchy_data не содержит UES данных, используем уже загруженные данные
-    if not ues_order_index:
-        ues_order_index = {ues["id"]: idx for idx, ues in enumerate(union_energy_system_list)}
+    # Порядок ОЭС как в справочнике (порядковый номер / display_order — см. get_union_energy_system_list_full).
+    # По нему же упорядочиваются типы ЕЭС: сначала тот тип, у которого минимальный индекс ОЭС среди фактических данных.
+    ues_order_index = {ues["id"]: idx for idx, ues in enumerate(union_energy_system_list)}
 
     def _min_ues_index(es_group: dict) -> int:
         indices = [ues_order_index.get(ues_id, 10**9) for ues_id in es_group.keys()]
@@ -2861,7 +2876,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         EnergyUnit.id.asc()
     ).all()
     
-    # Словарь имён энергоузлов сразу с ключами-числами и строками,
+    # Словарь имен энергоузлов сразу с ключами-числами и строками,
     # т.к. в шаблонах и агрегаторах eu_id может приходить как int или str.
     energy_unit_names = {}
     for eu in energy_units:
@@ -3230,11 +3245,11 @@ def recalculate_station_power(station, start_year, end_year):
         if powers_to_create:
             # Перед вставкой убеждаемся, что последовательность PK синхронизирована (для PostgreSQL)
             try:
-                seq_name = f"{SCHEMA_GENERATION}.station_powers_id_seq"
+                seq_name = f"{SCHEMA_GENERATION}.gs_gen_station_powers_id_seq"
                 db.session.execute(
                     text(
                         "SELECT setval(:seq, COALESCE((SELECT MAX(id) FROM "
-                        f"{SCHEMA_GENERATION}.station_powers), 0))"
+                        f"{SCHEMA_GENERATION}.gs_gen_station_powers), 0))"
                     ),
                     {"seq": seq_name},
                 )
@@ -3452,7 +3467,7 @@ def build_total_energy_system_type_aggregates(data):
         """
         В агрегатах по России ключом верхнего уровня является ID версии БД.
         Для шаблонов нужно получить словарь {year: value} (или аналогичные вложенные структуры).
-        Берем текущую версию, а при её отсутствии — первый доступный ключ.
+        Берем текущую версию, а при ее отсутствии — первый доступный ключ.
         """
         current_version_id = get_current_db_version_id()
         if isinstance(values_dict, dict):
@@ -3707,7 +3722,7 @@ def add_station_service(
                 # Проверяем, что это ошибка именно на первичном ключе stations
                 if "stations_pkey" in error_msg:
                     # Исправляем последовательность и повторяем попытку
-                    quick_fix_seq(SCHEMA_GENERATION, "stations", "id")
+                    quick_fix_seq(SCHEMA_GENERATION, "gs_gen_stations", "id")
                     continue
             raise
         except Exception:
@@ -4029,7 +4044,7 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
         for machine in machines_to_delete:
             affected_station_ids.add(machine.id_station)
             # Полагаться на каскадные связи ORM: дети удаляются автоматически
-            changes.append(f"Агрегат {machine.machine_number or '—'} удалён")
+            changes.append(f"Агрегат {machine.machine_number or '—'} удален")
             db.session.delete(machine)
 
         for station_id in affected_station_ids:

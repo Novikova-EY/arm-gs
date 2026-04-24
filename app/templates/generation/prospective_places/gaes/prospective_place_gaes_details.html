@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ place.site_name or 'Перспективная площадка ГАЭС' }}{% endblock %}
+
+{% block content %}
+<style>
+.readonly-indicator {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.readonly-indicator::before {
+    content: "👁️";
+    font-size: 1rem;
+}
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.edit-indicator::before {
+    content: "✏️";
+    font-size: 1rem;
+}
+/* Как на списке prospective_places/ges/: шапка таблицы 1.2rem, строки 1.1rem */
+.place-info { font-size: 1.1rem; }
+.place-info .card-title { font-size: 1.2rem; }
+.place-info .row .fw-semibold { font-size: 1.1rem; }
+.place-info .form-control, .place-info .form-select { font-size: 1.1rem; }
+.place-info .place-name { font-size: 1.35rem; font-weight: 700; }
+
+.machine-card .form-control, .machine-card .form-select { font-size: 1.1rem; }
+.machine-card .fw-semibold { font-size: 1.1rem; }
+.machine-card h5 { font-size: 1.2rem; margin-top: 1rem; }
+
+.tooltip.gaes-planned-capacity-tooltip .tooltip-inner {
+    font-size: 1.2rem;
+    line-height: 1.45;
+    max-width: min(28rem, 92vw);
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+}
+</style>
+
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-4">
+    <!-- Кнопки возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('prospective_places_bp.prospective_places_gaes') }}" class="btn btn-secondary fs-5">Характеристика актуальных площадок размещения новых ГАЭС</a>
+    </div>
+
+    <div class="d-flex align-items-center mb-4">
+        <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">
+            {{ place.site_name or 'Перспективная площадка ГАЭС' }}
+            {% if can_edit %}
+                <span class="edit-indicator ms-3">Режим редактирования</span>
+            {% else %}
+                <span class="readonly-indicator ms-3">Режим просмотра</span>
+            {% endif %}
+        </h2>
+    </div>
+
+    <form method="POST" id="gaes-place-edit-form" action="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}">
+        {{ form.hidden_tag() }}
+        <div class="container-fluid">
+            <div class="place-info">
+                <div class="mb-4 p-3" style="background: transparent; border: none;">
+                    <div class="row g-4">
+                        <div class="col-12 col-xl-6">
+                            <div class="p-0">
+                                <h4 class="card-title text-decoration-underline mb-3"><strong>Общая информация</strong></h4>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Наименование площадки размещения ГАЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.site_name(class="form-control place-name", id="site_name") }}
+                                            {% if form.site_name.errors %}
+                                                <div class="text-danger small mt-1">{{ form.site_name.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="place-name">{{ place.site_name or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Инициатор проекта:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.project_initiator(class="form-control", id="project_initiator") }}
+                                            {% if form.project_initiator.errors %}
+                                                <div class="text-danger small mt-1">{{ form.project_initiator.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.project_initiator or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Субъект Российской Федерации:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+                                            {% if form.id_regional_district.errors %}
+                                                <div class="text-danger small mt-1">{{ form.id_regional_district.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.regional_district.name_full if place.regional_district else None) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Объединенная энергосистема (ОЭС):</div>
+                                    <div class="col-7 text-start" id="union_energy_system">
+                                        {{ (place.regional_energy_system.union_energy_system.name if place.regional_energy_system and place.regional_energy_system.union_energy_system else None) or 'Нет данных' }}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">РЭС:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.id_regional_energy_system(class="form-select", id="id_regional_energy_system") }}
+                                            {% if form.id_regional_energy_system.errors %}
+                                                <div class="text-danger small mt-1">{{ form.id_regional_energy_system.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.regional_energy_system.name if place.regional_energy_system else None) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Географическое расположение площадки:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.geo_location(class="form-control", id="geo_location", rows=2) }}
+                                            {% if form.geo_location.errors %}
+                                                <div class="text-danger small mt-1">{{ form.geo_location.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.geo_location or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Водный объект:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.water_body(class="form-control", id="water_body") }}
+                                            {% if form.water_body.errors %}
+                                                <div class="text-danger small mt-1">{{ form.water_body.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.water_body or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-xl-6">
+                            <div class="p-0">
+                                <h4 class="card-title text-decoration-underline mb-3"><strong>Параметры площадки</strong></h4>
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_prospective_place_type_gaes.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.id_prospective_place_type_gaes(class="form-select", id="id_prospective_place_type_gaes") }}
+                                            {% if form.id_prospective_place_type_gaes.errors %}
+                                                <div class="text-danger small mt-1">{{ form.id_prospective_place_type_gaes.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.prospective_place_type_gaes.name if place.prospective_place_type_gaes else None) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">{{ form.display_order.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.display_order(class="form-control", id="display_order") }}
+                                            {% if form.display_order.errors %}
+                                                <div class="text-danger small mt-1">{{ form.display_order.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.display_order if place.display_order is not none else '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Планируемая установленная генерирующая мощность ГАЭС, МВт:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            <span id="planned_capacity_mw-tooltip-wrap" class="d-block w-100" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="gaes-planned-capacity-tooltip" title="Заполняется автоматически из поля «Установленная мощность в генераторном режиме, МВт» в перечне ТЭП.">
+                                                {{ form.planned_capacity_mw(class="form-control bg-body-secondary", id="planned_capacity_mw", readonly=true, tabindex="-1") }}
+                                            </span>
+                                            {% if form.planned_capacity_mw.errors %}
+                                                <div class="text-danger small mt-1">{{ form.planned_capacity_mw.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.planned_capacity_mw or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold small">{{ form.general_scheme_commissioning_period.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.general_scheme_commissioning_period(class="form-control", id="general_scheme_commissioning_period", placeholder="например: 2032, 2036-2039") }}
+                                            {% if form.general_scheme_commissioning_period.errors %}
+                                                <div class="text-danger small mt-1">{{ form.general_scheme_commissioning_period.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ place.general_scheme_commissioning_period or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold small">{{ form.construction_period_years.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                            {{ form.construction_period_years(class="form-control", id="construction_period_years_station", step="0.1", min="0") }}
+                                            {% if form.construction_period_years.errors %}
+                                                <div class="text-danger small mt-1">{{ form.construction_period_years.errors[0] }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span>{{ (place.construction_period_years|format_construction_period_years) or '—' }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+    <div class="container-fluid">
+        <h3 class="mb-3 ms-3">Перечень исходных технико-экономических показателей по проектным (предпроектным) данным</h3>
+
+        {% for entry in tep_form_entries %}
+        {% if can_edit %}
+            {{ entry.form.hidden_tag() }}
+            <div class="gaes-tep-machine-form card mb-3 border-0 shadow-none machine-card">
+                <div class="card-body">
+                    {% set form = entry.form %}
+                    {% include 'generation/prospective_places/gaes/_gaes_tep_form_fields.html' %}
+                </div>
+            </div>
+        {% else %}
+        <div class="card mb-3 border-0 shadow-none machine-card">
+            <div class="card-body">
+                <fieldset disabled>
+                    {% set form = entry.form %}
+                    {% include 'generation/prospective_places/gaes/_gaes_tep_form_fields.html' %}
+                </fieldset>
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-muted ms-3">Нет записей перечня ТЭП.</p>
+        {% endfor %}
+        {% if can_edit %}
+        <div class="row mt-4 mb-3">
+            <div class="col-12 d-flex justify-content-end gap-2">
+                <button type="submit" class="btn btn-outline-success btn-lg">Сохранить</button>
+                <a href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}" class="btn btn-outline-secondary btn-lg">Отмена</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    </form>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<script>
+(function() {
+    const resAutoMap = {{ res_auto_map|tojson|safe }};
+    const resSelect = document.getElementById("id_regional_energy_system");
+    const uesEl = document.getElementById("union_energy_system");
+    if (!resSelect || !uesEl) return;
+
+    function updateOesFromRes() {
+        const resId = resSelect.value || "";
+        uesEl.textContent = resAutoMap[resId] ?? "Нет данных";
+    }
+
+    resSelect.addEventListener("change", updateOesFromRes);
+})();
+</script>
+<script>
+{% include 'generation/prospective_places/gaes/_gaes_tep_derived_specific_capital_script.html' %}
+</script>
+<script>
+{% include 'generation/prospective_places/gaes/_gaes_planned_capacity_from_tep_script.html' %}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (typeof bootstrap === "undefined" || !bootstrap.Tooltip) return;
+    var w = document.getElementById("planned_capacity_mw-tooltip-wrap");
+    if (w) new bootstrap.Tooltip(w);
+    document.querySelectorAll(".gaes-tep-derived-specific-capital-tooltip-wrap").forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+    var pForm = document.getElementById("gaes-place-edit-form");
+    if (pForm) {
+        pForm.addEventListener("submit", function () {
+            var first = document.querySelector(".gaes-tep-machine-form");
+            var placeIn = document.getElementById("planned_capacity_mw");
+            if (!first || !placeIn) return;
+            var ins = first.querySelector('[name="installed_capacity_mw_generator_mode"]') ||
+                first.querySelector('[name$="-installed_capacity_mw_generator_mode"]');
+            if (!ins) return;
+            var s = ins.value;
+            if (s == null || String(s).trim() === "") {
+                placeIn.value = "";
+                return;
+            }
+            var t = String(s).trim().replace(/\s/g, "").replace(",", ".");
+            var x = parseFloat(t);
+            placeIn.value = !isFinite(x) ? "" : String(Math.round(x));
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

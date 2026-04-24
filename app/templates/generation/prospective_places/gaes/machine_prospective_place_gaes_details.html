@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Перечень исходных ТЭП — {{ place.site_name or 'Перспективная площадка ГАЭС' }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<style>
+.machine-card .form-control, .machine-card .form-select { font-size: 1.05rem; }
+.machine-card .fw-semibold { font-size: 1rem; }
+.machine-card h5 { font-size: 1.15rem; margin-top: 1rem; }
+.tooltip.gaes-planned-capacity-tooltip .tooltip-inner {
+    font-size: 1.2rem;
+    line-height: 1.45;
+    max-width: min(28rem, 92vw);
+    padding: 0.65rem 0.85rem;
+    text-align: left;
+}
+</style>
+
+<div class="container-fluid mt-4 machine-details-page">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}" class="btn btn-secondary fs-5">← Назад к площадке</a>
+    </div>
+
+    <div class="container-fluid mt-3">
+        <h2 class="mb-2">Перечень исходных технико-экономических показателей новых ГАЭС по проектным (предпроектным) данным</h2>
+        <p class="mb-2"><a href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}" class="text-decoration-underline fs-4"><strong>{{ place.site_name or 'Перспективная площадка ГАЭС' }}</strong></a></p>
+
+        <form method="POST" class="gaes-tep-machine-form">
+            {{ form.hidden_tag() }}
+            <div class="card mb-3 border-0 shadow-none machine-card">
+                <div class="card-body">
+                    {% include 'generation/prospective_places/gaes/_gaes_tep_form_fields.html' %}
+
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <button type="submit" class="btn btn-outline-success btn-lg">Сохранить</button>
+                            <a href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}" class="btn btn-outline-secondary btn-lg">Отмена</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+<script>
+{% include 'generation/prospective_places/gaes/_gaes_tep_derived_specific_capital_script.html' %}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (typeof bootstrap === "undefined" || !bootstrap.Tooltip) return;
+    document.querySelectorAll(".gaes-tep-derived-specific-capital-tooltip-wrap").forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+</script>
+{% endblock %}

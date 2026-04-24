@@ -190,7 +190,7 @@ def build_date_decompressing_filter(machine_cls, filters):
 
 
 def build_date_modernization_filter(machine_cls, filters):
-    """Фильтр «Модерн.»: date_modernization_expected или date_relabing_fact (правило 01.01.год → год-1)."""
+    """Фильтр «Модерн.»: ожидаемые годы модернизации (с/без изм. мощности), date_relabing_fact (правило 01.01.год → год-1)."""
     vals = filters.get("date_modernization_expected_filter")
     if not vals:
         return None
@@ -204,14 +204,16 @@ def build_date_modernization_filter(machine_cls, filters):
             pats.append(rf"(?<!01\.01\.){y}(?!\d)")
         conds.append(
             or_(
-                machine_cls.date_modernization_expected.in_(years_only),
+                machine_cls.date_modernization_power_change_expected.in_(years_only),
+                machine_cls.date_modernization_no_power_change_expected.in_(years_only),
                 machine_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
             )
         )
     if include_null:
         conds.append(
             and_(
-                machine_cls.date_modernization_expected.is_(None),
+                machine_cls.date_modernization_power_change_expected.is_(None),
+                machine_cls.date_modernization_no_power_change_expected.is_(None),
                 machine_cls.date_relabing_fact.is_(None),
             )
         )
@@ -301,14 +303,16 @@ def build_date_filters_for_pgu(pgu_cls, filters):
                 pats.append(rf"(?<!01\.01\.){y}(?!\d)")
             parts.append(
                 or_(
-                    pgu_cls.date_modernization_expected.in_(years_only),
+                    pgu_cls.date_modernization_power_change_expected.in_(years_only),
+                    pgu_cls.date_modernization_no_power_change_expected.in_(years_only),
                     pgu_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
                 )
             )
         if include_null:
             parts.append(
                 and_(
-                    pgu_cls.date_modernization_expected.is_(None),
+                    pgu_cls.date_modernization_power_change_expected.is_(None),
+                    pgu_cls.date_modernization_no_power_change_expected.is_(None),
                     pgu_cls.date_relabing_fact.is_(None),
                 )
             )
@@ -371,9 +375,21 @@ def get_pgu_date_cond_for_filter(pgu_cls, filters, filter_key):
             for y in years_only:
                 pats.append(rf"01\.01\.{y + 1}\b")
                 pats.append(rf"(?<!01\.01\.){y}(?!\d)")
-            parts.append(or_(pgu_cls.date_modernization_expected.in_(years_only), pgu_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")")))
+            parts.append(
+                or_(
+                    pgu_cls.date_modernization_power_change_expected.in_(years_only),
+                    pgu_cls.date_modernization_no_power_change_expected.in_(years_only),
+                    pgu_cls.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
+                )
+            )
         if include_null:
-            parts.append(and_(pgu_cls.date_modernization_expected.is_(None), pgu_cls.date_relabing_fact.is_(None)))
+            parts.append(
+                and_(
+                    pgu_cls.date_modernization_power_change_expected.is_(None),
+                    pgu_cls.date_modernization_no_power_change_expected.is_(None),
+                    pgu_cls.date_relabing_fact.is_(None),
+                )
+            )
         return or_(*parts) if parts else None
     return None
 
@@ -494,8 +510,8 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         include_null = None in vals
         conds = []
         if years_only:
-            # date_modernization_expected или date_relabing_fact (правило: 01.01.год → год-1)
-            # Для года Y: date_modernization_expected=Y ИЛИ date_relabing_fact содержит дату,
+            # date_modernization_power_change_expected или date_relabing_fact (правило: 01.01.год → год-1)
+            # Для года Y: date_modernization_power_change_expected=Y ИЛИ date_relabing_fact содержит дату,
             # отображаемую как Y: 01.01.(Y+1) или иная дата в году Y (но не 01.01.Y)
             pats = []
             for y in years_only:
@@ -503,14 +519,16 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
                 pats.append(rf"(?<!01\.01\.){y}(?!\d)")  # год Y не в контексте 01.01.Y
             conds.append(
                 or_(
-                    Machine.date_modernization_expected.in_(years_only),
+                    Machine.date_modernization_power_change_expected.in_(years_only),
+                    Machine.date_modernization_no_power_change_expected.in_(years_only),
                     Machine.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
                 )
             )
         if include_null:
             conds.append(
                 and_(
-                    Machine.date_modernization_expected.is_(None),
+                    Machine.date_modernization_power_change_expected.is_(None),
+                    Machine.date_modernization_no_power_change_expected.is_(None),
                     Machine.date_relabing_fact.is_(None),
                 )
             )
@@ -621,7 +639,7 @@ def get_filtered_station_ids(
             )
         )
 
-    # Фильтрация по объединённой энергосистеме
+    # Фильтрация по объединенной энергосистеме
     if union_energy_system_filter:
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
@@ -727,7 +745,7 @@ def get_stations_all(
             )
         )
 
-    # Фильтрация по объединённой энергосистеме
+    # Фильтрация по объединенной энергосистеме
     if union_energy_system_filter:
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
@@ -819,3 +837,120 @@ def has_any_filters(args):
         # Фильтр по состоянию
         args.get('condition_type_filter'),
     ])
+
+
+def get_territorial_filter_reference_data():
+    """
+    Списки и маппинги для каскадных фильтров первой строки station_list
+    (тип энергосистемы, ОЭС, РЭС, ФО, субъект РФ).
+
+    Структура совместима с блоком #filters-data и station_filters_first_row.js.
+    """
+    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
+        get_energy_system_type_list_full,
+        get_est_to_ues_ids_map,
+        get_est_to_res_ids_map,
+        get_est_to_rd_ids_map,
+        get_est_to_fd_ids_map,
+    )
+    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+        get_union_energy_system_list_full,
+        get_ues_to_res_ids_map,
+        get_ues_to_est_id_map,
+        get_ues_to_rd_ids_map,
+        get_ues_to_fd_ids_map,
+    )
+    from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+        get_regional_energy_system_list_full,
+        get_res_to_ues_id_map,
+        get_res_to_est_id_map,
+        get_res_to_rd_ids_map,
+        get_res_to_fd_ids_map,
+    )
+    from app.common.services.get_services.territories.federal_district_get_services import (
+        get_federal_district_list_full,
+        get_fd_to_rd_ids_map,
+        get_fd_to_res_ids_map,
+        get_fd_to_ues_ids_map,
+        get_fd_to_est_ids_map,
+    )
+    from app.common.services.get_services.territories.regional_district_get_services import (
+        get_regional_district_list_full,
+        get_rd_to_fd_id_map,
+        get_rd_to_res_ids_map,
+        get_rd_to_ues_ids_map,
+        get_rd_to_est_ids_map,
+    )
+
+    energy_system_type_objects = get_energy_system_type_list_full()
+    energy_system_type_list = [{"id": est.id, "name": est.name} for est in energy_system_type_objects]
+
+    union_energy_system_objects = get_union_energy_system_list_full()
+    union_energy_system_list = [{"id": ues.id, "name": ues.name} for ues in union_energy_system_objects]
+
+    regional_energy_system_objects = get_regional_energy_system_list_full()
+    regional_energy_system_list = [{"id": res.id, "name": res.name} for res in regional_energy_system_objects]
+    regional_energy_system_mapping = get_ues_to_res_ids_map()
+
+    federal_district_objects = get_federal_district_list_full()
+    federal_district_list = [{"id": fd.id, "name": fd.name} for fd in federal_district_objects]
+
+    regional_district_tuples = get_regional_district_list_full()
+    regional_district_list = [{"id": rd_id, "name": rd_name} for rd_id, rd_name in regional_district_tuples]
+    regional_district_mapping = get_fd_to_rd_ids_map()
+
+    est_to_ues_mapping = get_est_to_ues_ids_map()
+    est_to_res_mapping = get_est_to_res_ids_map()
+    est_to_rd_mapping = get_est_to_rd_ids_map()
+    est_to_fd_mapping = get_est_to_fd_ids_map()
+    ues_to_est_mapping = get_ues_to_est_id_map()
+    ues_to_res_mapping = regional_energy_system_mapping
+    ues_to_rd_mapping = get_ues_to_rd_ids_map()
+    ues_to_fd_mapping = get_ues_to_fd_ids_map()
+    res_to_est_mapping = get_res_to_est_id_map()
+    res_to_ues_mapping_one = get_res_to_ues_id_map()
+    res_to_rd_mapping = get_res_to_rd_ids_map()
+    res_to_fd_mapping = get_res_to_fd_ids_map()
+    rd_to_fd_mapping_one = get_rd_to_fd_id_map()
+    rd_to_res_mapping = get_rd_to_res_ids_map()
+    rd_to_ues_mapping = get_rd_to_ues_ids_map()
+    rd_to_est_mapping = get_rd_to_est_ids_map()
+    fd_to_rd_mapping = regional_district_mapping
+    fd_to_res_mapping = get_fd_to_res_ids_map()
+    fd_to_ues_mapping = get_fd_to_ues_ids_map()
+    fd_to_est_mapping = get_fd_to_est_ids_map()
+
+    return {
+        "energy_system_type_list": energy_system_type_list,
+        "union_energy_system_list": union_energy_system_list,
+        "regional_energy_system_list": regional_energy_system_list,
+        "federal_district_list": federal_district_list,
+        "regional_district_list": regional_district_list,
+        "energy_system_type_filter": [],
+        "union_energy_system_filter": [],
+        "regional_energy_system_filter": [],
+        "federal_district_filter": [],
+        "regional_district_filter": [],
+        "regional_energy_system_mapping": regional_energy_system_mapping,
+        "regional_district_mapping": regional_district_mapping,
+        "est_to_ues_mapping": est_to_ues_mapping,
+        "est_to_res_mapping": est_to_res_mapping,
+        "est_to_rd_mapping": est_to_rd_mapping,
+        "est_to_fd_mapping": est_to_fd_mapping,
+        "ues_to_est_mapping": ues_to_est_mapping,
+        "ues_to_res_mapping": ues_to_res_mapping,
+        "ues_to_rd_mapping": ues_to_rd_mapping,
+        "ues_to_fd_mapping": ues_to_fd_mapping,
+        "res_to_est_mapping": res_to_est_mapping,
+        "res_to_ues_mapping_one": res_to_ues_mapping_one,
+        "res_to_rd_mapping": res_to_rd_mapping,
+        "res_to_fd_mapping": res_to_fd_mapping,
+        "rd_to_fd_mapping_one": rd_to_fd_mapping_one,
+        "rd_to_res_mapping": rd_to_res_mapping,
+        "rd_to_ues_mapping": rd_to_ues_mapping,
+        "rd_to_est_mapping": rd_to_est_mapping,
+        "fd_to_rd_mapping": fd_to_rd_mapping,
+        "fd_to_res_mapping": fd_to_res_mapping,
+        "fd_to_ues_mapping": fd_to_ues_mapping,
+        "fd_to_est_mapping": fd_to_est_mapping,
+    }

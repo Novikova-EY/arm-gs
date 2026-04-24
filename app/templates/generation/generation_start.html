@@ -6,8 +6,9 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
 
-<div class="container">
+<div class="container content-start-container">
     <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">Модуль «Генерация»</h2>
         <div class="row g-4 justify-content-center">
             <!-- Первая строка -->
             <div class="col-12 col-md-6">
@@ -34,13 +35,15 @@
                 </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-12">
+                <hr class="my-5 border border-secondary opacity-50">
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Разделительная линия -->
-<hr class="my-5 border border-secondary opacity-50">
-
-<div class="container">
+<div class="container content-start-container">
     <div class="container-fluid">
         <div class="row g-4 justify-content-center">
             <!-- Первая строка -->
@@ -53,6 +56,26 @@
             </div>
 
 
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <hr class="my-5 border border-secondary opacity-50">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <div class="row g-4 justify-content-center">
+            <!-- Третья строка -->
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('prospective_places_bp.prospective_places_start') }}" class="btn btn-primary fs-4 w-100 py-4">Перспективные площадки размещения новых электростанций</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

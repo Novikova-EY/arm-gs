@@ -63,7 +63,7 @@ class EquipmentGroupSpecificFuelConsumption(db.Model):
     # Коэффициент экономии от теплофикации (привязан к году). Numeric для дробных (1.5, 0.7)
     k = db.Column(db.Numeric(10, 4), nullable=True)
 
-    # --- Расчётные величины (_calc) ---
+    # --- Расчетные величины (_calc) ---
     # Удельная выработка эл.эн. на тепловом потреблении
     y_calc = db.Column(db.Numeric(36, 16), nullable=True)
 

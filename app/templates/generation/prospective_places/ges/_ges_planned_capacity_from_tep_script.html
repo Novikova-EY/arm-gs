@@ -1,0 +1,52 @@
+{# Синхронизация «Планируемая установленная генерирующая мощность» с полем ТЭП «Установленная генерирующая мощность, МВт». Подключать в <script>. #}
+(function gesPlannedCapacityFromTepInit() {
+    var placeInput = document.getElementById("planned_capacity_mw");
+    if (!placeInput) return;
+
+    function findField(root) {
+        if (!root) return null;
+        var a = root.querySelector('[name="installed_capacity_mw"]');
+        if (a) return a;
+        return root.querySelector('[name$="-installed_capacity_mw"]');
+    }
+
+    function parseMwInt(s) {
+        if (s == null || String(s).trim() === "") return "";
+        var t = String(s).trim().replace(/\s/g, "").replace(",", ".");
+        var x = parseFloat(t);
+        if (!isFinite(x)) return "";
+        return String(Math.round(x));
+    }
+
+    function syncFromForm(tepForm) {
+        var ins = findField(tepForm);
+        if (!ins) return;
+        placeInput.value = parseMwInt(ins.value);
+    }
+
+    function bindTepForm(tepForm) {
+        function onEdit() {
+            syncFromForm(tepForm);
+        }
+        tepForm.addEventListener("input", onEdit, true);
+        tepForm.addEventListener("change", onEdit, true);
+        tepForm.addEventListener("focusout", onEdit, true);
+    }
+
+    function bindAll() {
+        var forms = document.querySelectorAll(".ges-tep-machine-form");
+        forms.forEach(bindTepForm);
+        var first = document.querySelector(".ges-tep-machine-form");
+        if (first) syncFromForm(first);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindAll);
+    } else {
+        bindAll();
+    }
+    window.addEventListener("load", function () {
+        var first = document.querySelector(".ges-tep-machine-form");
+        if (first) syncFromForm(first);
+    });
+})();

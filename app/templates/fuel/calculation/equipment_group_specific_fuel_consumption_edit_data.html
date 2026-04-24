@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+
+{% macro specific_fc_data_cell(attr, is_numeric, param) -%}
+{% if param is none %}—
+{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
+{% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}
+{%- endmacro %}
+
+{% macro specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, do_edit, rounding_digits, form_id) -%}
+{% if do_edit %}
+{% set raw = param|get_attr(attr) if param is not none else none %}
+{% if raw is none %}
+{% set display_val = '' %}
+{% elif is_numeric %}
+{% set display_val = raw|format_decimal_trim(rounding_digits) %}
+{% else %}
+{% set display_val = raw|string %}
+{% endif %}
+{% set fname = 'g' ~ gid ~ '_specific_fc_' ~ ynum ~ '_' ~ attr %}
+<input type="text" inputmode="{% if is_numeric %}decimal{% else %}text{% endif %}" autocomplete="off" name="{{ fname }}" class="form-control form-control-lg text-center" value="{{ display_val }}"{% if form_id %} form="{{ form_id }}"{% endif %}>
+{% else %}
+{{ specific_fc_data_cell(attr, is_numeric, param) }}
+{% endif %}
+{%- endmacro %}
+
+{% block title %}Редактирование удельных показателей (расчётный модуль){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <h2 class="text-center mb-4">Редактирование удельных показателей</h2>
+    </div>
+
+    {% include 'fuel/calculation/fuel_calculation_specific_consumption_edit_data_filters.html' %}
+
+{% set can_edit_bulk = current_user.is_authenticated and current_user.has_admin %}
+{% set hdr = consumption_column_labels|default({}) %}
+{# (attr, key in COLUMN_LABELS / header, is_numeric, allow_input) #}
+{% set specific_fc_columns = [
+    ('numb1120', 'NUMB1120', false, true),
+    ('k', 'K', true, true),
+    ('y', 'Y', true, true),
+    ('y_calc', 'Y (расчет)', true, false),
+    ('btp', 'BTP', true, true),
+    ('btp_calc', 'BTP (расчет)', true, false),
+    ('sntp', 'SNTP', true, true),
+    ('sntp_calc', 'SNTP (расчет)', true, false),
+    ('bk', 'BK', true, true),
+    ('bk_calc', 'BK (расчет)', true, false),
+    ('snk', 'SNK', true, true),
+    ('snk_calc', 'SNK (расчет)', true, false),
+] %}
+{% set column_count = specific_fc_columns|length + 2 %}
+
+    {% if can_edit_bulk %}
+    <form method="POST" action="{{ url_for('fuel_bp.equipment_group_specific_fuel_consumption_edit_data_save') }}" id="specificFcBulkEditForm" class="mb-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="save_return_qs" value="{{ request.query_string.decode('utf-8')|e }}">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+        <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+        <input type="hidden" name="bulk_edit_group_ids" value="{{ bulk_edit_equipment_group_ids|default([])|join(',') }}">
+    {% endif %}
+    <table class="table table-hover table-striped table-bordered table-responsive" data-auto-export-excel="off">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word;">
+                <th style="min-width: 9rem;">Группа</th>
+                <th style="min-width: 3.5rem;">Год</th>
+                {% for attr, _lbl, is_numeric, allow_input in specific_fc_columns %}
+                <th style="min-width: 4rem;" class="specific-fc-col-{{ attr }}">
+                    {{ hdr.get(attr, _lbl) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %}
+                    <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>
+                    {% endif %}
+                    <br><span class="text-muted small">({{ attr }})</span>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if equipment_group_specific_fuel_consumption_hierarchy and equipment_group_specific_fuel_consumption_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_specific_fuel_consumption_hierarchy %}
+                <tr class="table-light text-center fw-bold">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center fw-bold">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                    </tr>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center fw-bold">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                        </tr>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set row_span = group_block.rows|length %}
+                                {% if row_span > 0 %}
+                                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    {% set is_first_row = loop.first %}
+                                    {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
+                                    {% set can_row_edit = can_edit_bulk and gid and ynum != '' %}
+                                    <tr class="text-center align-middle">
+                                        {% if is_first_row %}
+                                        <td rowspan="{{ row_span }}">
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
+                                            {% else %}{{ group_name }}{% endif %}
+                                        </td>
+                                        {% endif %}
+                                        <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                                        {% for attr, _2, is_numeric, allow_input in specific_fc_columns %}
+                                        <td>
+                                            {% if allow_input and can_row_edit %}
+                                            {{ specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, true, rounding_digits, 'specificFcBulkEditForm' if can_edit_bulk else none) }}
+                                            {% else %}
+                                            {{ specific_fc_data_cell(attr, is_numeric, param) }}
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                                {% endif %}
+                        {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+            {% for group_rows in equipment_group_specific_fuel_consumption_row_groups|default([]) %}
+                {% set row_span = group_rows|length %}
+                {% set group_entity = group_rows[0][0] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                {% for row in group_rows %}
+                {% set param = row[1] %}
+                {% set is_first_row = loop.first %}
+                {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
+                {% set can_row_edit = can_edit_bulk and gid and ynum != '' %}
+                <tr class="text-center align-middle">
+                    {% if is_first_row %}
+                    <td rowspan="{{ row_span }}">
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
+                        {% else %}{{ group_name }}{% endif %}
+                    </td>
+                    {% endif %}
+                    <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                    {% for attr, _2, is_numeric, allow_input in specific_fc_columns %}
+                    <td>
+                        {% if allow_input and can_row_edit %}
+                        {{ specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, true, rounding_digits, 'specificFcBulkEditForm' if can_edit_bulk else none) }}
+                        {% else %}
+                        {{ specific_fc_data_cell(attr, is_numeric, param) }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ column_count }}" class="text-muted text-center py-4">Нет данных за выбранный интервал лет и фильтры.</td>
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+    {% if can_edit_bulk %}
+    </form>
+    {% endif %}
+
+    <div class="mt-2">
+        {% if per_page is not none %}
+        {% set pagination_endpoint = 'fuel_bp.equipment_group_specific_fuel_consumption_edit_data' %}
+        {% include 'generation/includes/pagination_station.html' %}
+        {% endif %}
+    </div>
+    </div>
+</div>
+
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") initializeStationFilters();
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+            new bootstrap.Tooltip(el);
+        });
+    }
+    var loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+});
+</script>
+{% endif %}
+{% endblock %}

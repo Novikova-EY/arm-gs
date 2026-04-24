@@ -12,7 +12,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class EnergySystemType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = "gs_energy_system_types"
+    __tablename__ = "gs_sys_energy_system_types"
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -34,6 +34,12 @@ class EnergySystemType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
         "UnionEnergySystem",
         back_populates="energy_system_type",
         foreign_keys="UnionEnergySystem.id_energy_system_type"
+    )
+
+    demand_parameters = db.relationship(
+        "EnergySystemTypeDemandParameter",
+        back_populates="energy_system_type",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

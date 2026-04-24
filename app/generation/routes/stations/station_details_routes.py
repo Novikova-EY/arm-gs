@@ -557,13 +557,17 @@ def station_details(station_id):
     # Кнопка «Добавить агрегат» и редактирование доступны admin, generation-admin, generation-editor
     edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor']
     can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    # Создание группы оборудования — как в fuel_bp.add_equipment_group (только администраторы)
+    can_add_equipment_group = current_user.is_authenticated and getattr(
+        current_user, "has_admin", False
+    )
 
     # Группы оборудования станции (по версии)
     target_version_id = current_version_id if current_version_id is not None else station_version_id
 
     t1 = time.perf_counter()
     try:
-        from app.fuel.services.stations_equipment_groups_services import (
+        from app.fuel.services.stations.stations_equipment_groups_services import (
             build_station_equipment_groups_v2,
         )
         v2_groups_map = build_station_equipment_groups_v2([station])
@@ -618,6 +622,7 @@ def station_details(station_id):
         energy_system_types=energy_system_type_list,
         station_logs=station_logs_formatted,
         can_edit=can_edit,
+        can_add_equipment_group=can_add_equipment_group,
         initial_machines_tbody_html=initial_machines_tbody_html,
         year_features=year_features,
         # Pass backend timings to the template (fallback to 0 if not computed)
@@ -735,7 +740,7 @@ def rename_station_equipment_group_v2(station_id, equipment_group_id):
     from app.fuel.models.fue_equipment_group_set_station_model import (
         EquipmentGroupSetStation,
     )
-    from app.fuel.services.equipment_group_merge_services import (
+    from app.fuel.services.equipment_groups.equipment_group_merge_services import (
         rename_or_merge_equipment_group_for_station,
         rename_or_merge_equipment_group_all_versions,
     )
@@ -840,7 +845,7 @@ def rename_station_equipment_group_v2(station_id, equipment_group_id):
         ]
         if result.get("merged_fields"):
             details_parts.append(
-                f"Объединённые параметры EquipmentGroup: {', '.join(result['merged_fields'])}"
+                f"Объединенные параметры EquipmentGroup: {', '.join(result['merged_fields'])}"
             )
         log_to_db(
             current_user,
@@ -865,6 +870,80 @@ def rename_station_equipment_group_v2(station_id, equipment_group_id):
             entity_id=station_id,
         )
         flash("Название группы оборудования обновлено.", "success")
+    return redirect(
+        url_for("station_bp.station_details", station_id=station_id, **request.args)
+    )
+
+
+@station_bp.route(
+    "/station_details/<int:station_id>/equipment_group_type_links/delete",
+    methods=["POST"],
+)
+@login_required
+@handle_stale_data
+def delete_station_equipment_group_type_links(station_id):
+    """Удаление «пустой» привязки типа группы оборудования к станции (без группы в топливе)."""
+    edit_roles = [
+        "admin",
+        "generation-admin",
+        "generation-editor",
+        "generation_admin",
+        "generation_editor",
+    ]
+    can_edit = current_user.is_authenticated and any(
+        role in current_user.role_names for role in edit_roles
+    )
+    if not can_edit:
+        abort(403)
+
+    station = Station.query.filter_by(id=station_id).first()
+    if not station:
+        abort(404)
+
+    all_versions = request.values.get("all_versions") == "1"
+    id_list = request.form.getlist("equipment_group_set_station_id")
+
+    from app.fuel.services.equipment_groups.equipment_group_edit_services import (
+        delete_station_equipment_group_type_station_links,
+    )
+
+    try:
+        result = delete_station_equipment_group_type_station_links(
+            station_id=station_id,
+            equipment_group_set_station_ids=id_list,
+            all_versions=all_versions,
+        )
+        if not result.get("ok"):
+            flash(
+                "Не удалось удалить привязку: неверные данные или связь уже изменена. Обновите страницу.",
+                "warning",
+            )
+        else:
+            db.session.commit()
+            invalidate_cache("station_full", station_id=station.id)
+            invalidate_cache_pattern("station_list:*")
+            station_name = station.name or f"ID={station_id}"
+            flash(
+                "Привязка типа группы оборудования к станции удалена"
+                + (" во всех версиях БД." if all_versions else "."),
+                "success",
+            )
+            log_to_db(
+                current_user,
+                "Удаление привязки типа группы оборудования к станции (EquipmentGroupSetStation)",
+                details=(
+                    f"Станция: {station_name} (id={station_id}); "
+                    f"удалено связей станция–тип: {result.get('deleted_set_stations', 0)}, "
+                    f"удалено EquipmentGroupSet: {result.get('deleted_sets', 0)}; "
+                    f"во всех версиях: {all_versions}"
+                ),
+                entity_type="station",
+                entity_id=station_id,
+            )
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Ошибка при удалении привязки: {e}", "danger")
+
     return redirect(
         url_for("station_bp.station_details", station_id=station_id, **request.args)
     )

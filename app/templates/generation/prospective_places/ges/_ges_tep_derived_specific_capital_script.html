@@ -1,0 +1,123 @@
+{# Пересчёт «Удельные капиталовложения…» на лету. Ожидает ges_tep_price_derive_config. Оборачивайте в <script> при include. #}
+(function gesTepDerivedSpecificCapitalInit() {
+    const cfg = {{ (ges_tep_price_derive_config or {})|tojson|safe }};
+    if (cfg == null || typeof cfg !== "object") return;
+
+    const WATCH_NAMES = {
+        installed_capacity_mw: true,
+        capital_cost_wo_pir_ges_with_reservoir_million_rub: true,
+        id_year_capital_cost_wo_pir_ges_with_reservoir: true,
+    };
+
+    function findFieldByBaseName(root, baseName) {
+        if (!root) return null;
+        const a = root.querySelector('[name="' + baseName + '"]');
+        if (a) return a;
+        return root.querySelector('[name$="-' + baseName + '"]');
+    }
+
+    function fieldBaseName(nameAttr) {
+        if (nameAttr == null || nameAttr === "") return "";
+        const i = String(nameAttr).lastIndexOf("-");
+        if (i < 0) return String(nameAttr);
+        return String(nameAttr).slice(i + 1);
+    }
+
+    function parseDecimal(s) {
+        if (s == null || String(s).trim() === "") return null;
+        const t = String(s).trim().replace(/\s/g, "").replace(",", ".");
+        const x = parseFloat(t);
+        return Number.isFinite(x) ? x : null;
+    }
+
+    function multiplierPriceYearToCurrent(priceYear, targetYear, coeffByYear) {
+        if (targetYear == null || priceYear == null) return null;
+        const py = parseInt(priceYear, 10);
+        const ty = parseInt(targetYear, 10);
+        if (!Number.isFinite(py) || !Number.isFinite(ty)) return null;
+        if (py >= ty) return 1;
+        let prod = 1;
+        for (let y = py + 1; y <= ty; y++) {
+            const c = coeffByYear[String(y)];
+            if (c == null || c === undefined) return null;
+            prod *= parseFloat(String(c).replace(",", "."));
+        }
+        return prod;
+    }
+
+    function formatRu(q) {
+        if (q == null || !Number.isFinite(q)) return "";
+        const rounded = Math.round(q * 100) / 100;
+        const s = rounded.toFixed(2).replace(/\.?0+$/, "");
+        return s.replace(".", ",");
+    }
+
+    function updateForm(formEl) {
+        const installed = findFieldByBaseName(formEl, "installed_capacity_mw");
+        const capMil = findFieldByBaseName(formEl, "capital_cost_wo_pir_ges_with_reservoir_million_rub");
+        const idYearGes = findFieldByBaseName(formEl, "id_year_capital_cost_wo_pir_ges_with_reservoir");
+        const out = formEl.querySelector(".ges-tep-derived-specific-capital");
+        const hidYear = findFieldByBaseName(formEl, "id_year_specific_capital_investment");
+        const yearDisplayEl = formEl.querySelector(".ges-tep-derived-capital-year-display");
+        if (!out) return;
+        const mw = installed ? parseDecimal(installed.value) : null;
+        const cap = capMil ? parseDecimal(capMil.value) : null;
+        let priceYearNum = null;
+        if (idYearGes && idYearGes.value && cfg.yearIdToNumber) {
+            const yid = String(idYearGes.value);
+            priceYearNum = cfg.yearIdToNumber[yid];
+        }
+        const ty = cfg.targetYear;
+        let gesM = null;
+        if (cap != null) {
+            if (ty == null || ty === undefined) {
+                gesM = cap;
+            } else {
+                const m = multiplierPriceYearToCurrent(priceYearNum, ty, cfg.coeffByYear || {});
+                gesM = m == null ? cap : cap * m;
+            }
+        }
+        if (gesM == null || mw == null || mw <= 0) {
+            out.value = "";
+            return;
+        }
+        out.value = formatRu(gesM / mw);
+        if (hidYear && cfg.targetYearId != null) {
+            hidYear.value = String(cfg.targetYearId);
+        }
+        if (yearDisplayEl && idYearGes && cfg.yearIdToNumber) {
+            const yid = String(idYearGes.value || "");
+            const num = cfg.yearIdToNumber[yid];
+            yearDisplayEl.textContent =
+                num != null && num !== undefined && yid !== "" ? String(num) : "—";
+        }
+    }
+
+    function bindForm(formEl) {
+        function onDeriv(ev) {
+            const t = ev.target;
+            if (!t || typeof t.getAttribute !== "function") return;
+            const n = t.getAttribute("name");
+            const b = fieldBaseName(n);
+            if (!b || !WATCH_NAMES[b]) return;
+            updateForm(formEl);
+        }
+        formEl.addEventListener("input", onDeriv, true);
+        formEl.addEventListener("change", onDeriv, true);
+        formEl.addEventListener("focusout", onDeriv, true);
+        updateForm(formEl);
+    }
+
+    function bindAll() {
+        document.querySelectorAll(".ges-tep-machine-form").forEach(bindForm);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindAll);
+    } else {
+        bindAll();
+    }
+    window.addEventListener("load", function () {
+        document.querySelectorAll(".ges-tep-machine-form").forEach(updateForm);
+    });
+})();

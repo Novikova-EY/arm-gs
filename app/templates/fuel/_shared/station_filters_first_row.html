@@ -7,7 +7,9 @@
             <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
             {% for key, value in request.args.items() %}
                 {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter", "equipment_group_name_filter"] %}
+                    {% if not (hide_year_range|default(false) and key in ["year", "start_year", "end_year"]) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
                 {% endif %}
             {% endfor %}
 

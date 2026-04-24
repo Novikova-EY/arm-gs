@@ -50,7 +50,7 @@
             </h2>
         </div>
 
-        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
+        <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=parent_machine.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
             <strong>{{ station.name }} - {{ parent_machine.machine_number }} {{ parent_machine.machine_name }}</strong>
         </a>
 
@@ -229,12 +229,22 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации с изменением мощности:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
-                                            {{ pgu_form.date_modernization_expected(class="form-control") }}
+                                            {{ pgu_form.date_modernization_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ pgu_form.date_modernization_expected.data if pgu_form.date_modernization_expected.data else '—' }}
+                                            {{ pgu_form.date_modernization_power_change_expected.data if pgu_form.date_modernization_power_change_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации без изменения мощности:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_modernization_no_power_change_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_modernization_no_power_change_expected.data if pgu_form.date_modernization_no_power_change_expected.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -427,7 +437,7 @@
                 <table class="table table-hover table-striped table-bordered machines-table">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
-                            <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
+                            <th colspan="{{ end_year - start_year + 2 }}" >Электрическая мощность, МВт</th>
                         </tr>
                         <tr class="text-center align-middle">
                             <th class="first-column" style="width: 50px;"></th>
@@ -933,7 +943,7 @@ document.addEventListener("DOMContentLoaded", function () {
             'input[name*="date_decompressing_fact"]'
         );
         const dateModernizationExpectedField = document.querySelector(
-            'input[name*="date_modernization_expected"]'
+            'input[name*="date_modernization_power_change_expected"]'
         );
 
         const maxVersionYearInput = document.getElementById("db_version_max_year");

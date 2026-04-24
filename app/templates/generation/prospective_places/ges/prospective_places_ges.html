@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}Перспективные площадки ГЭС{% endblock %}
+
+{% block content %}
+<style>
+.prospective-places-ges-table th.col-capacity,
+.prospective-places-ges-table td.col-capacity { width: 85px; }
+.prospective-places-ges-table th.col-capacity { white-space: normal; word-wrap: break-word; }
+.prospective-places-ges-table thead th { font-size: 1.2rem; }
+.prospective-places-ges-table .filter-button { font-size: inherit; white-space: normal; }
+.prospective-places-ges-table tbody tr:not(.ges-place-type-group) td {
+    font-size: 1.1rem;
+}
+/* Выпадающие фильтры поверх шапки, по ширине столбца */
+.prospective-places-ges-table thead .dropdown { position: static; }
+.prospective-places-ges-table thead .filter-dropdown-menu {
+    z-index: 1060;
+    width: auto;
+    min-width: 0;
+}
+.prospective-places-ges-table thead .dropdown-item { white-space: normal; }
+.prospective-places-ges-table tbody td { text-align: center; vertical-align: middle; }
+.prospective-places-ges-table tbody tr.ges-place-type-group td {
+    text-align: center !important;
+    vertical-align: middle;
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+</style>
+{% if current_user.is_authenticated %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+<div class="container-fluid mt-2">
+    {# Как основной список на prospective_places_ges_tep #}
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
+        <a href="{{ url_for('prospective_places_bp.prospective_places_start') }}" class="btn btn-secondary fs-5">Перспективные площадки размещения новых электростанций</a>
+    </div>
+    <h2 class="mb-4 text-center">Характеристика актуальных площадок размещения новых ГЭС</h2>
+
+    {% set toolbar_mode = 'list' %}
+    {% include 'generation/prospective_places/ges/prospective_places_ges_toolbar.html' %}
+
+    <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered table-responsive prospective-places-ges-table" style="text-align: center;">
+                <thead class="table-success">
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        <th>№ п/п</th>
+                        <th style="min-width: 180px;">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <div class="dropdown position-static">
+                                    <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}'>
+                                        <strong>Наименование площадки</strong>
+                                        {% if request.args.getlist('site_name_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                    </button>
+                                    <ul class="dropdown-menu filter-dropdown-menu" style="max-height: 300px; overflow-y: auto;">
+                                        {% for site_name in (site_name_list or []) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="site_name_filter" value="{{ site_name|e if site_name else '' }}"
+                                                    {% if (site_name or '')|string in (site_name_filter or [])|map('string') %}checked{% endif %}>
+                                                {{ site_name or 'не указано' }}
+                                            </label>
+                                        </li>
+                                        {% endfor %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="site_name_filter">Сбросить</button>
+                                            <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="site_name_filter">Ок</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                {% if request.args.getlist('site_name_filter') %}
+                                <button class="btn btn-sm btn-outline-danger filter-clear-btn" type="button" data-filter-name="site_name_filter" title="Сбросить фильтр" style="padding: 2px 6px;"><i class="bi bi-x-lg"></i></button>
+                                {% endif %}
+                            </div>
+                        </th>
+                        <th style="min-width: 140px;">Инициатор проекта</th>
+                        <th class="col-capacity">Планируемая установленная генерирующая мощность ГЭС, МВт</th>
+                        <th style="min-width: 120px; white-space: normal;">Среднемноголетняя выработка<br>электроэнергии,<br>млн кВт·ч</th>
+                        <th style="min-width: 120px;">Вид регулирования</th>
+                        <th style="min-width: 120px;">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <div class="dropdown position-static">
+                                    <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}'>
+                                        <strong>Объединенная энергосистема (ОЭС)</strong>
+                                        {% if request.args.getlist('union_energy_system_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                    </button>
+                                    <ul class="dropdown-menu filter-dropdown-menu" style="max-height: 300px; overflow-y: auto;">
+                                        {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
+                                        <li><label class="dropdown-item"><input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" {% if ues.id|string in union_energy_system_filter|map('string') %}checked{% endif %}>{{ ues.name }}</label></li>
+                                        {% endfor %}
+                                        {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
+                                        <li><label class="dropdown-item"><input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" {% if ues.id|string in union_energy_system_filter|map('string') %}checked{% endif %}>{{ ues.name }}</label></li>
+                                        {% endfor %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="union_energy_system_filter">Сбросить</button>
+                                            <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="union_energy_system_filter">Ок</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                {% if request.args.getlist('union_energy_system_filter') %}
+                                <button class="btn btn-sm btn-outline-danger filter-clear-btn" type="button" data-filter-name="union_energy_system_filter" title="Сбросить фильтр" style="padding: 2px 6px;"><i class="bi bi-x-lg"></i></button>
+                                {% endif %}
+                            </div>
+                        </th>
+                        <th style="min-width: 150px;">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <div class="dropdown position-static">
+                                    <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-bs-popper-config='{"strategy":"fixed"}'>
+                                        <strong>Субъект Российской Федерации</strong>
+                                        {% if request.args.getlist('regional_district_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                    </button>
+                                    <ul class="dropdown-menu filter-dropdown-menu" style="max-height: 300px; overflow-y: auto;">
+                                        {% for rd in regional_district_list if rd.name|lower == 'не указано' %}
+                                        <li><label class="dropdown-item"><input type="checkbox" name="regional_district_filter" value="{{ rd.id }}" {% if rd.id|string in regional_district_filter|map('string') %}checked{% endif %}>{{ rd.name }}</label></li>
+                                        {% endfor %}
+                                        {% for rd in regional_district_list if rd.name|lower != 'не указано' %}
+                                        <li><label class="dropdown-item"><input type="checkbox" name="regional_district_filter" value="{{ rd.id }}" {% if rd.id|string in regional_district_filter|map('string') %}checked{% endif %}>{{ rd.name }}</label></li>
+                                        {% endfor %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="regional_district_filter">Сбросить</button>
+                                            <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="regional_district_filter">Ок</button>
+                                        </li>
+                                    </ul>
+                                </div>
+                                {% if request.args.getlist('regional_district_filter') %}
+                                <button class="btn btn-sm btn-outline-danger filter-clear-btn" type="button" data-filter-name="regional_district_filter" title="Сбросить фильтр" style="padding: 2px 6px;"><i class="bi bi-x-lg"></i></button>
+                                {% endif %}
+                            </div>
+                        </th>
+                        <th style="min-width: 120px;">Водный объект</th>
+                        <th>Географическое расположение площадки</th>
+                        <th style="min-width: 11rem; max-width: 16rem; white-space: normal;">Генеральная схема до 2042 года (Период ввода в эксплуатацию).<br>Распоряжение Правительства от 30.12.2024 №4153-р</th>
+                        <th style="min-width: 11rem; max-width: 16rem; white-space: normal;">Срок строительства по Протоколу Минэнерго от 25.05.2022 №РГ/07-0003пр (без учета срока выполнения ПИР- 2 года), лет</th>
+                    </tr>
+                </thead>
+            <tbody>
+                {% set idx = namespace(n=0) %}
+                {% for group in ges_place_type_groups %}
+                <tr class="ges-place-type-group">
+                    <td colspan="12" class="py-3">{{ group.type_label }}</td>
+                </tr>
+                    {% for station in group.stations %}
+                    {% set idx.n = idx.n + 1 %}
+                    {% set station_index = idx.n %}
+                    {% if station.ges_tep_source_indicators %}
+                        {% set tep_count = station.ges_tep_source_indicators|length %}
+                        {% for tr in station.ges_tep_source_indicators %}
+                        <tr>
+                            {% if loop.first %}
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station_index }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}"><a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '—' }}</td>
+                            <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{{ station.planned_capacity_mw or '—' }}</td>
+                            {% endif %}
+                            <td class="text-center">{% set _gavg = (tr.generation_average_multiyear_billion_kwh or '')|trim %}{% if _gavg %}{{ _gavg|replace('.', ',') }}{% else %}—{% endif %}</td>
+                            {% if loop.first %}
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.regulation_type or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.water_body or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.geo_location or '—' }}</td>
+                            {% endif %}
+                            {% if loop.first %}
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.general_scheme_commissioning_period or '—' }}</td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.construction_period_years|format_construction_period_years) or '—' }}</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td class="text-center">{{ station_index }}</td>
+                            <td class="text-center"><a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center align-middle">{{ station.project_initiator or '—' }}</td>
+                            <td class="text-center align-middle col-capacity">{{ station.planned_capacity_mw or '—' }}</td>
+                            <td class="text-center text-muted">—</td>
+                            <td class="text-center align-middle">{{ station.regulation_type or '—' }}</td>
+                            <td class="text-center">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
+                            <td class="text-center">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
+                            <td class="text-center align-middle">{{ station.water_body or '—' }}</td>
+                            <td class="text-center align-middle">{{ station.geo_location or '—' }}</td>
+                            <td class="text-center align-middle">{{ station.general_scheme_commissioning_period or '—' }}</td>
+                            <td class="text-center align-middle">{{ (station.construction_period_years|format_construction_period_years) or '—' }}</td>
+                        </tr>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="12" class="text-center text-muted">Нет данных</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const listUrl = "{{ url_for('prospective_places_bp.prospective_places_ges') }}";
+
+    // Ширина выпадающего списка = ширина столбца (th)
+    document.querySelectorAll(".prospective-places-ges-table thead .dropdown").forEach(function(dropdown) {
+        dropdown.addEventListener("show.bs.dropdown", function() {
+            const th = this.closest("th");
+            const menu = this.querySelector(".filter-dropdown-menu");
+            if (th && menu) {
+                menu.style.width = th.offsetWidth + "px";
+            }
+        });
+    });
+
+    document.querySelectorAll(".filter-apply-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const filterName = this.getAttribute("data-filter-name");
+            if (!filterName) return;
+
+            const params = new URLSearchParams(window.location.search);
+            params.delete(filterName);
+
+            document.querySelectorAll("input[name=\"" + filterName + "\"]:checked").forEach(function(cb) {
+                params.append(filterName, cb.value);
+            });
+
+            params.set("page", "1");
+            window.location.href = listUrl + (params.toString() ? "?" + params.toString() : "");
+        });
+    });
+
+    document.querySelectorAll(".filter-reset-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const filterName = this.getAttribute("data-filter-name");
+            if (!filterName) return;
+            document.querySelectorAll("input[name=\"" + filterName + "\"]").forEach(function(cb) {
+                cb.checked = false;
+            });
+        });
+    });
+
+    document.querySelectorAll(".filter-clear-btn").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const filterName = this.getAttribute("data-filter-name");
+            if (!filterName) return;
+
+            const params = new URLSearchParams(window.location.search);
+            params.delete(filterName);
+            params.set("page", "1");
+
+            const newUrl = listUrl + (params.toString() ? "?" + params.toString() : "");
+            window.location.href = newUrl;
+        });
+    });
+
+    // Экспорт в Excel через fetch (как на station_list) — страница не виснет
+    const exportBtn = document.getElementById("exportProspectivePlacesGesBtn");
+    const exportForm = document.getElementById("exportProspectivePlacesGesForm");
+    if (exportBtn && exportForm) {
+        exportBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+            this.disabled = true;
+
+            const formData = new FormData(exportForm);
+            const params = new URLSearchParams(formData);
+            const exportUrl = exportForm.action + (exportForm.action.includes("?") ? "&" : "?") + params.toString();
+
+            fetch(exportUrl, { method: "GET", credentials: "same-origin" })
+                .then(function(response) {
+                    if (!response.ok) {
+                        return response.text().then(function(text) {
+                            throw new Error("Ошибка сервера (" + response.status + ")");
+                        });
+                    }
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/vnd.openxmlformats")) {
+                        const disposition = response.headers.get("content-disposition");
+                        let filename = "Перспективные_площадки_ГЭС_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+                        if (disposition && disposition.includes("filename=")) {
+                            const m = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                            if (m) filename = m[1].replace(/['"]/g, "").trim();
+                        }
+                        return response.blob().then(function(blob) {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        });
+                    }
+                    return response.text().then(function(text) {
+                        throw new Error("Неожиданный тип ответа от сервера");
+                    });
+                })
+                .catch(function(error) {
+                    console.error("Ошибка экспорта:", error);
+                    alert("Ошибка при экспорте данных: " + error.message);
+                })
+                .finally(function() {
+                    exportBtn.innerHTML = originalText;
+                    exportBtn.disabled = false;
+                });
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

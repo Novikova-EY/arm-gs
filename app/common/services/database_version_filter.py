@@ -35,7 +35,7 @@ def get_current_db_version_id():
     if hasattr(g, 'current_db_version'):
         return g.current_db_version
 
-    # Берём из БД: активная версия, иначе версия по умолчанию
+    # Берем из БД: активная версия, иначе версия по умолчанию
     from app.common.models.database_version_model import DatabaseVersion
     from app.common.services.database_version_services import get_default_version
     active_version = DatabaseVersion.query.filter_by(is_active=True).first()

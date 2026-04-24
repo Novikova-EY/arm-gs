@@ -5,7 +5,21 @@ from app.validators.validate_year_or_date import (
     validate_year_or_date,
     validate_year_or_date_list,
 )
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+
+# Значения для Machine.relabing_outcome (и формы)
+MACHINE_RELABING_OUTCOME_CHOICES = (
+    ("", "—"),
+    ("окончательный вывод", "окончательный вывод"),
+    ("замена", "замена"),
+    ("новый ввод", "новый ввод"),
+)
+
+
+def _coerce_optional_str_choice(value):
+    if value is None or value == "":
+        return None
+    return str(value)
 
 class MachineFilterForm(FlaskForm):
     csrf_token = HiddenField()
@@ -83,6 +97,27 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional()]
     )
 
+    id_fuel_equipment_group = SelectField(
+        'Группа оборудования (топливный модуль)',
+        coerce=int,
+        choices=[],
+        validators=[Optional()],
+    )
+
+    thermal_power_gcalh = DecimalField(
+        "Тепловая мощность, Гкал/час",
+        places=6,
+        rounding=ROUND_HALF_UP,
+        validators=[
+            Optional(),
+            NumberRange(
+                min=Decimal("0"),
+                max=Decimal("999999.999999"),
+                message="Укажите неотрицательное число (до 6 знаков после запятой).",
+            ),
+        ],
+    )
+
     date_exploitation = StringField(
         'Фактический год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
@@ -119,13 +154,23 @@ class MachineFilterForm(FlaskForm):
         'Фактическая дата вывода из эксплуатации',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
-    date_modernization_expected = StringField(
-        'Ожидаемый год модернизации',
+    date_modernization_power_change_expected = StringField(
+        'Ожидаемый год модернизации с изменением мощности',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    date_modernization_no_power_change_expected = StringField(
+        'Ожидаемый год модернизации без изменения мощности',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_relabing_fact = StringField(
         'Фактическая дата перемаркировки',
         validators=[Optional(), Length(max=255), validate_year_or_date_list]
+    )
+    relabing_outcome = SelectField(
+        "Тип перемаркировки",
+        coerce=_coerce_optional_str_choice,
+        choices=MACHINE_RELABING_OUTCOME_CHOICES,
+        validators=[Optional()],
     )
     date_update_fact = StringField(
         'Фактическая дата уточнения',
@@ -240,13 +285,23 @@ class PGUMachineFilterForm(FlaskForm):
         'Фактическая дата вывода из эксплуатации',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
-    date_modernization_expected = StringField(
-        'Ожидаемый год модернизации',
+    date_modernization_power_change_expected = StringField(
+        'Ожидаемый год модернизации с изменением мощности',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    date_modernization_no_power_change_expected = StringField(
+        'Ожидаемый год модернизации без изменения мощности',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_relabing_fact = StringField(
         'Фактическая дата перемаркировки',
         validators=[Optional(), Length(max=255), validate_year_or_date_list]
+    )
+    relabing_outcome = SelectField(
+        "Тип перемаркировки",
+        coerce=_coerce_optional_str_choice,
+        choices=MACHINE_RELABING_OUTCOME_CHOICES,
+        validators=[Optional()],
     )
     date_update_fact = StringField(
         'Фактическая дата уточнения',

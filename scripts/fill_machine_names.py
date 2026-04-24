@@ -3,8 +3,8 @@
 """
 Скрипт заполнения таблицы machine_names для всех агрегатов.
 
-Для каждого агрегата (Machine) берёт комбинации (year_number, database_version_id)
-из таблицы machine_tes_types и создаёт соответствующие записи в machine_names,
+Для каждого агрегата (Machine) берет комбинации (year_number, database_version_id)
+из таблицы machine_tes_types и создает соответствующие записи в machine_names,
 где name = Machine.machine_name.
 
 Т.е. если у агрегата в machine_tes_types есть записи для версии id=7 

@@ -85,6 +85,38 @@ def get_union_energy_systems_map() -> Dict[int, str]:
     return {id_: name for id_, name in rows}
 
 
+def get_union_energy_system_display_order_map() -> Dict[int, int | None]:
+    """Возвращает отображение {ОЭС.id: ОЭС.display_order}. Без кэша — версия из текущего запроса."""
+    current_version = get_current_version()
+    query = UnionEnergySystem.query.with_entities(
+        UnionEnergySystem.id,
+        UnionEnergySystem.display_order,
+    )
+    if current_version:
+        query = query.filter(UnionEnergySystem.database_version_id == current_version)
+    rows = query.order_by(UnionEnergySystem.id).all()
+    return {id_: display_order for id_, display_order in rows}
+
+
+def union_energy_system_hierarchy_sort_key(
+    ues_id: int,
+    ues_names: Dict[int, str],
+    ues_display_orders: Dict[int, int | None],
+) -> tuple:
+    """
+    Ключ сортировки ОЭС для иерархии ЕЭС → ОЭС → РЭС (порядок как в справочнике ОЭС):
+    display_order, затем имя; «Не указано» и записи без номера порядка — в конце.
+    """
+    display_order = ues_display_orders.get(ues_id)
+    return (
+        1 if ues_id == -1 else 0,
+        1 if display_order is None else 0,
+        display_order if display_order is not None else 10**9,
+        (ues_names.get(ues_id) or "").strip().lower(),
+        ues_id,
+    )
+
+
 def get_ues_to_res_ids_map() -> Dict[int, List[int]]:
     """Возвращает отображение {ОЭС.id: [РЭС.id, ...]}. Без кэша — версия из текущего запроса."""
     current_version = get_current_version()

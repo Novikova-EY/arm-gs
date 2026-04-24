@@ -4,4 +4,4 @@
 {% set import_fuel_db_action = url_for('fuel_bp.import_fuel_db_turbines') %}
 {% set use_single_year = true %}
 {% set selected_year = selected_year|default(start_year)|default(end_year) %}
-{% include 'fuel/station_filters.html' %}
+{% include 'fuel/_shared/station_filters.html' %}

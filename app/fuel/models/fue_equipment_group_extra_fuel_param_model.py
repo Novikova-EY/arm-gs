@@ -103,6 +103,11 @@ class EquipmentGroupExtraFuelParam(db.Model):
     karajyra = db.Column(db.Numeric(36, 16), nullable=True)
     teniz = db.Column(db.Numeric(36, 16), nullable=True)
 
+    # Доп. поля по аналогии с Access (детализация углей)
+    sosv = db.Column(db.Numeric(36, 16), nullable=True)
+    luch = db.Column(db.Numeric(36, 16), nullable=True)
+    tal = db.Column(db.Numeric(36, 16), nullable=True)
+
     numb1120 = db.Column(db.Integer, nullable=True, index=True)  # связь по NUMB1120
     numb1 = db.Column(db.Integer, nullable=True)
 

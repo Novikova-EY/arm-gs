@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавление перспективной площадки ГАЭС{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <a href="{{ url_for('prospective_places_bp.prospective_places_gaes') }}" class="btn btn-outline-secondary mb-3">← Назад к списку</a>
+    <h2 class="mb-4">Добавление новой перспективной площадки ГАЭС</h2>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="card mb-4" style="max-width: 600px;">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="site_name" class="form-label"><strong>Наименование площадки размещения ГАЭС</strong></label>
+                    {{ form.site_name(class="form-control", id="site_name", placeholder="Введите наименование площадки") }}
+                    {% if form.site_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.site_name.errors[0] }}</div>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="id_regional_district" class="form-label"><strong>Субъект Российской Федерации</strong></label>
+                    {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+                    {% if form.id_regional_district.errors %}
+                        <div class="text-danger small mt-1">{{ form.id_regional_district.errors[0] }}</div>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-outline-success">Создать</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

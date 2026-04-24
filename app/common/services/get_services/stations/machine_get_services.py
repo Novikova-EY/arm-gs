@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 
 # Модели
 from app.generation.models.machine.machine_model import Machine
+from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
@@ -29,6 +30,7 @@ def get_machine_by_id(machine_id):
             joinedload(Machine.tes_machine_type),
             joinedload(Machine.condition_type),
             joinedload(Machine.equipment_group),
+            joinedload(Machine.machine_fuel_param).joinedload(MachineFuelParam.equipment_group),
         )
         .filter_by(id=machine_id)
     )

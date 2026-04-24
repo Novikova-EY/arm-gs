@@ -1,6 +1,10 @@
 """Сервисный модуль: Справочник «Годы»."""
 
+from io import BytesIO
+
+import pandas as pd
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 
@@ -9,7 +13,7 @@ from app.refdata.models.years.year_model import Year
 from app.refdata.models.years.year_feature_model import YearFeature
 
 # Сервисы/хелперы
-from app.common.services.help_services import _to_int_or_none
+from app.common.services.help_services import _dash, _to_int_or_none
 from app.common.services.tranzaction_services import _commit_with_retry, no_autoflush
 from app.common.services.database_version_filter import apply_version_filter, set_db_version_on_create
 
@@ -261,4 +265,61 @@ def delete_year_service(ids, user):
 
     return len(objects)
 
+
+def export_years_service(user, year_filter=None, sort_by="number", sort_dir="asc"):
+    """Экспортирует справочник «Годы» в Excel (все строки по текущему фильтру и сортировке)."""
+
+    log_to_db(
+        user,
+        "Начата выгрузка справочника «Годы»",
+        entity_type="year",
+    )
+    log_to_db(
+        user,
+        "Параметры экспорта",
+        (
+            f"Фильтр = {year_filter!r}, "
+            f"Сортировка = {sort_by}, направление = {sort_dir}."
+        ),
+    )
+
+    query = year_query(year_filter=year_filter, sort_by=sort_by, sort_dir=sort_dir)
+    query = query.options(joinedload(Year.year_feature))
+    items = query.all()
+
+    data = []
+    for idx, y in enumerate(items, start=1):
+        feature_name = y.year_feature.name if y.year_feature else "не указано"
+        data.append(
+            {
+                "№": idx,
+                "Год": y.number,
+                "Признак года": _dash(feature_name),
+            }
+        )
+
+    log_to_db(
+        user,
+        "Подготовка данных для экспорта справочника «Годы» в Excel",
+        f"Записей для экспорта: {len(data)}",
+    )
+
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    sheet_name = "Годы"
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
+        for i, col in enumerate(df.columns):
+            max_len = max(len(str(col)), *(len(str(v)) for v in df[col].values)) if not df.empty else len(str(col))
+            ws.set_column(i, i, min(max_len + 2, 60))
+
+    output.seek(0)
+    log_to_db(
+        user,
+        "Экспорт справочника «Годы» в Excel завершен",
+        f"Экспортировано записей: {len(data)}",
+        entity_type="year",
+    )
+    return output
 

@@ -10,8 +10,8 @@ function initializeStationFilters() {
     const hasJQuery = typeof window.$ !== 'undefined';
     const hasSelect2 = hasJQuery && window.$.fn && window.$.fn.select2;
 
-    // Если Select2 отсутствует, `<select multiple>` выглядит как "развёрнутый" список.
-    // Чтобы поля "сворачивались" (как dropdown), делаем лёгкую обёртку на Bootstrap dropdown,
+    // Если Select2 отсутствует, `<select multiple>` выглядит как "развернутый" список.
+    // Чтобы поля "сворачивались" (как dropdown), делаем легкую обертку на Bootstrap dropdown,
     // оставляя исходный <select> скрытым (для корректной отправки формы и логики фильтрации).
     function ensureDropdownMultiSelect(selector, placeholder) {
         const selectEl = document.querySelector(selector);
@@ -382,7 +382,7 @@ function initializeStationFilters() {
         el.innerHTML = '';
         el.appendChild(frag);
         setSelectValues(selector, newSelected);
-        // если select "завёрнут" в dropdown — пересобираем меню
+        // если select "завернут" в dropdown — пересобираем меню
         refreshDropdownMultiSelect(selector);
 
         if (!skipTrigger) {
@@ -457,7 +457,7 @@ function initializeStationFilters() {
     document.getElementById('energy_system_type')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('union_energy_system')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_energy_system')?.addEventListener('change', function() {
-        // "Как в Excel": выбранная РЭС однозначно задаёт ФО, ОЭС и тип энергосистемы.
+        // "Как в Excel": выбранная РЭС однозначно задает ФО, ОЭС и тип энергосистемы.
         // Если выбрана ровно одна РЭС — синхронизируем связанные поля автоматически.
         if (isUpdating) return;
         const currentRes = getSelectValues('#regional_energy_system');

@@ -45,7 +45,7 @@ def list_users():
     sort_by = request.values.get("sort_by") or "id"
     sort_dir = request.values.get("sort_dir") or "asc"
     page = int(request.values.get("page") or 1)
-    per_page = int(request.values.get("per_page") or 10)
+    per_page = int(request.values.get("per_page") or 50)
 
     if request.method == "POST":
         if not form.validate_on_submit():
@@ -55,7 +55,7 @@ def list_users():
                                     sort_by=request.values.get("sort_by",'id'),
                                     sort_dir=request.values.get("sort_dir",'asc'),
                                     page=request.values.get("page",1),
-                                    per_page=request.values.get("per_page",10)))
+                                    per_page=request.values.get("per_page", 50)))
         try:
             # 1) Основные списки
             user_ids = request.form.getlist("user_ids[]")
@@ -155,7 +155,7 @@ def add_user():
     sort_by = request.values.get("sort_by") or "id"
     sort_dir = request.values.get("sort_dir") or "asc"
     page = int(request.values.get("page") or 1)
-    per_page = int(request.values.get("per_page") or 10)
+    per_page = int(request.values.get("per_page") or 50)
 
     if request.method == "POST":
         try:
@@ -206,7 +206,7 @@ def delete_user(user_id: int):
     sort_by = request.values.get("sort_by") or "id"
     sort_dir = request.values.get("sort_dir") or "asc"
     page = int(request.values.get("page") or 1)
-    per_page = int(request.values.get("per_page") or 10)
+    per_page = int(request.values.get("per_page") or 50)
 
     if user_id == current_user.id:
         flash("Нельзя удалить текущего пользователя.", "warning")

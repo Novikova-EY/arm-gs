@@ -11,7 +11,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class Fuel(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_fuels'
+    __tablename__ = 'gs_sys_fuels'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -26,7 +26,7 @@ class Fuel(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
     # FK -> FuelType
     id_fuel_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_fuel_types.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_fuel_types.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )

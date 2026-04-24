@@ -11,7 +11,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class StationPower(db.Model, AuditMixin):
-    __tablename__ = 'station_powers'
+    __tablename__ = 'gs_gen_station_powers'
     __table_args__ = (
         Index('ix_station_power_id_station', 'id_station'),
         Index('ix_station_power_year_number', 'year_number'),
@@ -25,7 +25,7 @@ class StationPower(db.Model, AuditMixin):
     # FK -> Year (по полю years.number)
     year_number = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_years.number', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_years.number', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -34,7 +34,7 @@ class StationPower(db.Model, AuditMixin):
     # FK -> Station
     id_station = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.stations.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_stations.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )

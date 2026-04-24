@@ -251,7 +251,7 @@ def build_package(build_dir: Path, version: str, dpkg_bin: str) -> Path:
                     # maintainer-скрипты должны быть исполняемыми
                     os.chmod(item, 0o755)
                 else:
-                    # всё остальное (control, md5sums и т.п.)
+                    # все остальное (control, md5sums и т.п.)
                     os.chmod(item, 0o644)
 
     output_path = DEB_OUTPUT_TEMPLATE.with_name(

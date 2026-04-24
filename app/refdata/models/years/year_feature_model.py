@@ -10,7 +10,7 @@ from app.common.models.versioned_model import VersionedModelMixin
 
 
 class YearFeature(db.Model, AuditMixin, VersionedModelMixin):
-    __tablename__ = 'gs_year_features'
+    __tablename__ = 'gs_sys_year_features'
     __table_args__ = {
         "schema": SCHEMA_REFDATA,
         "extend_existing": True

@@ -317,7 +317,7 @@ def aggregate_all_at_once(rows):
         rd_tes_machine_fuel_p_ogr[rd][tes_type][tes_machine][fuel][year] += p_ogr_val
         rd_tes_machine_fuel_p_rasp[rd][tes_type][tes_machine][fuel][year] += p_rasp_val
 
-        # Federal Districts агрегации (только если федеральный округ определён)
+        # Federal Districts агрегации (только если федеральный округ определен)
         if fd is not None:
             fd_p_ust[fd][year] += p_ust_val
             fd_p_ogr[fd][year] += p_ogr_val

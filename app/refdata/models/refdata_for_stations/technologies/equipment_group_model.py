@@ -12,7 +12,7 @@ from app.refdata.models.refdata_uuid_mixin import RefdataUuidMixin
 
 
 class EquipmentGroupType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
-    __tablename__ = 'gs_equipment_groups'
+    __tablename__ = 'gs_sys_equipment_groups'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -23,7 +23,7 @@ class EquipmentGroupType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidM
     # FK -> TechnologyAvailability
     id_technology_availability = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_availabilities.id', ondelete='SET NULL'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_technology_availabilities.id', ondelete='SET NULL'),
         nullable=True,
         index=True,
     )
@@ -32,7 +32,7 @@ class EquipmentGroupType(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidM
     # FK -> TechnologyType
     id_technology_type = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_technology_types.id', ondelete='SET NULL'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_technology_types.id', ondelete='SET NULL'),
         nullable=True,
         index=True,
     )

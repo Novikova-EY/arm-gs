@@ -54,10 +54,10 @@ def _replace_quotes_sequentially(text: str) -> str:
     # Заменяем по очереди:
     for idx, pos in enumerate(quote_indices):
         if idx % 2 == 0:
-            # нечетный индекс пары (с точки зрения человеческого счёта) – «
+            # нечетный индекс пары (с точки зрения человеческого счета) – «
             result[pos] = '«'
         else:
-            # чётный индекс пары – »
+            # четный индекс пары – »
             result[pos] = '»'
 
     return ''.join(result)
@@ -67,7 +67,7 @@ def _clean_name(value: Any) -> Optional[str]:
     if not isinstance(value, str):
         return value
     
-    # Проверка на строку 'nan', игнорируем её
+    # Проверка на строку 'nan', игнорируем ее
     if value.strip().lower() == "nan":
         return None
     
@@ -163,12 +163,12 @@ def format_decimal_for_display(value, digits=None):
     if digits is None:
         digits = 1
 
-    # digits == 0 → без округления, все знаки после запятой
+    # digits == 0 → без округления: вся значащая дробная часть Decimal (без искусственного .20f)
     if digits == 0:
-        s = format(value.normalize(), '.20f')
-        if '.' in s:
-            s = s.rstrip('0').rstrip('.')
-        return s.replace('.', ',')
+        s = format(value, "f")
+        if "." in s:
+            s = s.rstrip("0").rstrip(".")
+        return s.replace(".", ",")
 
     # digits > 0 → округление с нужной точностью
     with localcontext() as ctx:
@@ -176,6 +176,37 @@ def format_decimal_for_display(value, digits=None):
         quant = Decimal('1.' + '0' * digits)
         value = value.quantize(quant)
         return format(value, f'.{digits}f').replace('.', ',')
+
+
+def strip_trailing_fraction_zeros_comma(s: str) -> str:
+    """У дробной части после запятой убирает лишние нули (1,50 → 1,5; 3,00 → 3)."""
+    if not s or s == "—" or "," not in s:
+        return s
+    int_part, frac = s.split(",", 1)
+    frac = frac.rstrip("0")
+    return int_part if frac == "" else f"{int_part},{frac}"
+
+
+def format_decimal_trim_for_display(value, digits=None) -> str:
+    """
+    Как format_decimal_for_display, плюс без лишних нулей в дробной части (после округления).
+    Для digits 0 и -1 результат совпадает с format_decimal_for_display.
+    """
+    s = format_decimal_for_display(value, digits=digits)
+    if not s or s == "—":
+        return s
+    return strip_trailing_fraction_zeros_comma(s)
+
+
+def format_number_trim_trailing(value) -> str:
+    """
+    Показ числа со значащей дробной частью, без «хвоста» нулей (85; 85,5; 85,555),
+    а не 85,000000. Разделитель — запятая. Всегда с digits=0 (без квантования к фикс. знакам);
+    не читает rounding_digits из запроса (в отличие от шаблонного format_decimal_trim без аргумента).
+    """
+    if value is None or isinstance(value, Undefined):
+        return "—"
+    return format_decimal_trim_for_display(value, digits=0)
 
 
 def rounded_decimal(value, digits=15):
@@ -195,7 +226,7 @@ def values_equal_by_display_precision(old_val, new_val, display_digits=6):
     """
     Считает значения равными, если разница меньше половины последнего значащего
     разряда округления. Используется, чтобы не считать «изменением» ситуацию,
-    когда пользователь сохранил форму без правок, а в форме пришло округлённое
+    когда пользователь сохранил форму без правок, а в форме пришло округленное
     значение (было в БД 1683.738997, в форме 1683.7).
     display_digits: число знаков после запятой при отображении (1, 2, 3 и т.д.).
     Для -1 (целые) используем digits=0.
@@ -281,7 +312,7 @@ def convert_to_date(value):
 def normalize_date_list(value: str) -> Optional[str]:
     """
     Нормализует список дат в строке к единому формату 'YYYY-MM-DD',
-    разделённому запятыми.
+    разделенному запятыми.
 
     Примеры:
     - "01-10-2002, 01.10.2025" -> "2002-10-01, 2025-10-01"

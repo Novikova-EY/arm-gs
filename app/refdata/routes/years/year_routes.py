@@ -2,7 +2,9 @@
 """Маршруты справочника «Годы»."""
 
 from collections import Counter
-from flask import render_template, request, redirect, url_for, flash, session, current_app
+from datetime import datetime
+
+from flask import render_template, request, redirect, url_for, flash, session, current_app, send_file
 from flask_login import login_required, current_user
 
 from app.auth.routes.decorators import has_admin_required
@@ -26,6 +28,7 @@ from app.refdata.services.years.year_services import (
     update_year_service,
     add_year_service,
     delete_year_service,
+    export_years_service,
 )
 
 # Логирование
@@ -175,6 +178,43 @@ def years_list():
         per_page=per_page,
         version_id=version_id,
     )
+
+
+@refdata_bp.route("/export_years", methods=["GET"])
+@login_required
+@has_admin_required
+def export_years():
+    """Экспорт справочника «Годы» в Excel (как на странице федеральных округов)."""
+
+    user = session.get("username", "Неизвестный пользователь")
+    sort_by = request.args.get("sort_by", "number")
+    sort_dir = request.args.get("sort_dir", "asc")
+    year_filter = request.args.get("year_filter", "").strip()
+
+    try:
+        excel_data = export_years_service(
+            user=user,
+            year_filter=year_filter,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
+        if excel_data is None or excel_data.getbuffer().nbytes == 0:
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(url_for("refdata_bp.years_list"))
+
+        filename = f"years_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        excel_data.seek(0)
+        return send_file(
+            excel_data,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            max_age=0,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Ошибка экспорта годов: {e}")
+        flash("Ошибка экспорта данных. Пожалуйста, попробуйте снова.", "danger")
+        return redirect(url_for("refdata_bp.years_list"))
 
 
 @refdata_bp.route("/add_year", methods=["GET", "POST"])

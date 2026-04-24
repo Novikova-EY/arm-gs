@@ -1,6 +1,8 @@
 from config import Config
 from app.generation.routes.stations import station_bp
 from app.extensions import db
+from urllib.parse import urlencode
+
 from flask import render_template, request, session, flash, redirect, url_for
 from flask_login import login_required
 from datetime import datetime, timedelta
@@ -35,6 +37,17 @@ from datetime import timezone
 from zoneinfo import ZoneInfo
 
 MOSCOW = ZoneInfo("Europe/Moscow")
+
+
+def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
+    """
+    Если «год начала» больше «года конца», в шаблоне и в handle_machine_get
+    получается пустой range(start_year, end_year + 1) — таблицы без столбцов данных.
+    Приводим к допустимому интервалу [min, max].
+    """
+    if start_year > end_year:
+        return end_year, start_year
+    return start_year, end_year
 
 
 def _format_logs_for_display(logs):
@@ -233,6 +246,19 @@ def machine_details(station_id, machine_id):
     end_year = request.values.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.values.get("rounding_digits", 1, type=int)
 
+    nsy, ney = _normalize_start_end_years(start_year, end_year)
+    if request.method == "GET" and (nsy, ney) != (start_year, end_year):
+        q = request.args.to_dict(flat=True)
+        q["start_year"] = nsy
+        q["end_year"] = ney
+        target = url_for(
+            "station_bp.machine_details",
+            station_id=station_id,
+            machine_id=machine_id,
+        )
+        return redirect(f"{target}?{urlencode(q)}")
+    start_year, end_year = nsy, ney
+
     if request.method == "POST":
         result = handle_machine_post(
             station_id=station_id,
@@ -305,10 +331,24 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
 
     # При POST start_year/end_year приходят в теле формы, при GET — в URL.
     # Для pgu_machine_details поведение должно совпадать с machine_details:
-    # берём значения из запроса без принудительного "зажатия" к диапазону версии.
+    # берем значения из запроса без принудительного "зажатия" к диапазону версии.
     start_year = request.values.get("start_year", get_filter_start_year(), type=int)
     end_year = request.values.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.values.get("rounding_digits", 1, type=int)
+
+    nsy, ney = _normalize_start_end_years(start_year, end_year)
+    if request.method == "GET" and (nsy, ney) != (start_year, end_year):
+        q = request.args.to_dict(flat=True)
+        q["start_year"] = nsy
+        q["end_year"] = ney
+        target = url_for(
+            "station_bp.pgu_machine_details",
+            station_id=station_id,
+            machine_id=machine_id,
+            pgu_machine_id=pgu_machine_id,
+        )
+        return redirect(f"{target}?{urlencode(q)}")
+    start_year, end_year = nsy, ney
 
     if request.method == "POST":
         result = handle_pgu_machine_post(

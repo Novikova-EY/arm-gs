@@ -1,0 +1,114 @@
+{# Одна строка на всю ширину: территория + группа + годы отбора + кнопки #}
+{% set tfd = territorial_filters_data %}
+<div class="w-100 mb-2">
+<div class="d-flex flex-nowrap align-items-center w-100 gap-1">
+    <div class="filter-item flex-grow-1 min-w-0">
+        <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2 w-100" multiple>
+            {% for energy_system_type in tfd.energy_system_type_list if energy_system_type.name|lower == 'не указано' %}
+            <option value="{{ energy_system_type.id }}"
+                {% if energy_system_type.id|string in tfd.energy_system_type_filter|map('string') %}selected{% endif %}>
+                {{ energy_system_type.name }}
+            </option>
+            {% endfor %}
+            {% for energy_system_type in tfd.energy_system_type_list if energy_system_type.name|lower != 'не указано' %}
+            <option value="{{ energy_system_type.id }}"
+                {% if energy_system_type.id|string in tfd.energy_system_type_filter|map('string') %}selected{% endif %}>
+                {{ energy_system_type.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-item flex-grow-1 min-w-0">
+        <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2 w-100" multiple>
+            {% for union_energy_system in tfd.union_energy_system_list if union_energy_system.name|lower == 'не указано' %}
+            <option value="{{ union_energy_system.id }}"
+                {% if union_energy_system.id|string in tfd.union_energy_system_filter|map('string') %}selected{% endif %}>
+                {{ union_energy_system.name }}
+            </option>
+            {% endfor %}
+            {% for union_energy_system in tfd.union_energy_system_list if union_energy_system.name|lower != 'не указано' %}
+            <option value="{{ union_energy_system.id }}"
+                {% if union_energy_system.id|string in tfd.union_energy_system_filter|map('string') %}selected{% endif %}>
+                {{ union_energy_system.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-item flex-grow-1 min-w-0">
+        <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2 w-100" multiple>
+            {% for regional_energy_system in tfd.regional_energy_system_list if regional_energy_system.name|lower == 'не указано' %}
+            <option value="{{ regional_energy_system.id }}"
+                {% if regional_energy_system.id|string in tfd.regional_energy_system_filter|map('string') %}selected{% endif %}>
+                {{ regional_energy_system.name }}
+            </option>
+            {% endfor %}
+            {% for regional_energy_system in tfd.regional_energy_system_list if regional_energy_system.name|lower != 'не указано' %}
+            <option value="{{ regional_energy_system.id }}"
+                {% if regional_energy_system.id|string in tfd.regional_energy_system_filter|map('string') %}selected{% endif %}>
+                {{ regional_energy_system.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-item flex-grow-1 min-w-0">
+        <select id="federal_district" name="federal_district_filter" class="form-select select2 w-100" multiple>
+            {% for federal_district in tfd.federal_district_list if federal_district.name|lower == 'не указано' %}
+            <option value="{{ federal_district.id }}"
+                {% if federal_district.id|string in tfd.federal_district_filter|map('string') %}selected{% endif %}>
+                {{ federal_district.name }}
+            </option>
+            {% endfor %}
+            {% for federal_district in tfd.federal_district_list if federal_district.name|lower != 'не указано' %}
+            <option value="{{ federal_district.id }}"
+                {% if federal_district.id|string in tfd.federal_district_filter|map('string') %}selected{% endif %}>
+                {{ federal_district.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-item flex-grow-1 min-w-0">
+        <select id="regional_district" name="regional_district_filter" class="form-select select2 w-100" multiple>
+            {% for regional_district in tfd.regional_district_list if regional_district.name|lower == 'не указано' %}
+            <option value="{{ regional_district.id }}"
+                {% if regional_district.id|string in tfd.regional_district_filter|map('string') %}selected{% endif %}>
+                {{ regional_district.name }}
+            </option>
+            {% endfor %}
+            {% for regional_district in tfd.regional_district_list if regional_district.name|lower != 'не указано' %}
+            <option value="{{ regional_district.id }}"
+                {% if regional_district.id|string in tfd.regional_district_filter|map('string') %}selected{% endif %}>
+                {{ regional_district.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-item flex-grow-1 min-w-0" style="min-width: 5rem;">
+        <input type="text" class="form-control w-100" id="batchEquipmentGroupNameFilter" placeholder="Группа оборудования" autocomplete="off" title="Название группы оборудования (часть строки, опционально)">
+    </div>
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <label for="batchFilterStartYear" class="mb-0 flex-shrink-0 fw-semibold" style="white-space: nowrap;">Год начала:</label>
+        <select id="batchFilterStartYear" class="form-select flex-shrink-0"
+                style="width: 10rem; min-width: 10rem; max-width: 10rem;"
+                title="Диапазон для отбора станций; пусто — как год расчета. По умолчанию — год начала СиПР из версии БД.">
+            <option value="">По умолчанию</option>
+            {% for y in filter_year_list|default([]) %}
+            <option value="{{ y }}" {% if y == default_batch_filter_start_year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <label for="batchFilterEndYear" class="mb-0 flex-shrink-0 fw-semibold" style="white-space: nowrap;">Год конца:</label>
+        <select id="batchFilterEndYear" class="form-select flex-shrink-0"
+                style="width: 10rem; min-width: 10rem; max-width: 10rem;"
+                title="По умолчанию — год конца СиПР из версии БД.">
+            <option value="">По умолчанию</option>
+            {% for y in filter_year_list|default([]) %}
+            <option value="{{ y }}" {% if y == default_batch_filter_end_year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="button" class="btn btn-outline-primary flex-shrink-0" id="btnBatchResolve">Проверить отбор</button>
+    <button type="button" class="btn btn-outline-danger flex-shrink-0" id="btnBatchResetFilters" title="Сбросить все фильтры строки">Сбросить</button>
+    <span id="batchFilterYearDefaults" class="d-none" data-start-year="{{ default_batch_filter_start_year }}" data-end-year="{{ default_batch_filter_end_year }}"></span>
+</div>
+</div>

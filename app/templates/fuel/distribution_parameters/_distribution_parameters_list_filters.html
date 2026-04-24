@@ -1,0 +1,13 @@
+{# Скрытая GET-форма для form="dpListFilterForm" (чекбоксы ОЭС, расчётный год). Фильтры — в шапке таблицы. #}
+<form method="GET" action="{{ url_for('fuel_bp.distribution_parameters_list') }}"
+      id="dpListFilterForm" class="d-none">
+    <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+
+    {% for key, values in request.args.lists() %}
+        {% if key not in ['union_energy_system_filter', 'tes_type_filter', 'start_year', 'base_year', 'rounding_digits'] %}
+            {% for v in values %}
+                <input type="hidden" name="{{ key }}" value="{{ v }}">
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+</form>

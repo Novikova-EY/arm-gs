@@ -141,8 +141,8 @@
                 });
             }
 
-            // Авто-обёртка: если внутри контейнера есть таблицы, делаем единый scroll-wrapper,
-            // чтобы при прокрутке скрывалось всё над шапкой таблицы.
+            // Авто-обертка: если внутри контейнера есть таблицы, делаем единый scroll-wrapper,
+            // чтобы при прокрутке скрывалось все над шапкой таблицы.
             function wrapTablePages() {
                 document.querySelectorAll('.container-fluid.mt-2').forEach(function (container) {
                     // BODY тоже имеет class="container-fluid mt-2" — его нельзя оборачивать, иначе появляются 2 scroll-контейнера
@@ -238,10 +238,14 @@
             requestAnimationFrame(show);
         }, { capture: true }); // чтобы сработать до перехода
 
-        // Отправка форм
+        // Отправка форм: не показывать прелоадер, если submit отменён (например клиентская валидация)
         document.querySelectorAll('form').forEach(function (form) {
-            form.addEventListener('submit', function () {
-            requestAnimationFrame(show);
+            form.addEventListener('submit', function (e) {
+                requestAnimationFrame(function () {
+                    if (!e.defaultPrevented) {
+                        show();
+                    }
+                });
             });
         });
         })();
@@ -390,7 +394,7 @@
                     });
 
                     el.addEventListener('mousedown', function (e) {
-                        // не даём событию уйти наружу, чтобы оверлей не закрылся раньше выбора
+                        // не даем событию уйти наружу, чтобы оверлей не закрылся раньше выбора
                         e.preventDefault();
                         e.stopPropagation();
                         if (opt.disabled) return;
@@ -565,6 +569,245 @@
                 e.preventDefault();
                 openOverlay(el, e.key);
             });
+        })();
+    </script>
+
+    <script>
+        (function () {
+            function normalizeText(value) {
+                return String(value || '').replace(/\s+/g, ' ').trim();
+            }
+
+            function isDeleteColumnHeader(value) {
+                return normalizeText(value).toLowerCase() === 'удалить';
+            }
+
+            function isVisibleElement(el) {
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                return style.display !== 'none' && style.visibility !== 'hidden';
+            }
+
+            function getControlValue(control) {
+                if (!control || !isVisibleElement(control)) return '';
+                const tag = (control.tagName || '').toLowerCase();
+                const type = String(control.type || '').toLowerCase();
+
+                if (type === 'hidden') return '';
+                if (type === 'checkbox' || type === 'radio') {
+                    return control.checked ? 'Да' : '';
+                }
+                if (tag === 'select') {
+                    return Array.from(control.selectedOptions || [])
+                        .map(function (option) { return normalizeText(option.textContent); })
+                        .filter(Boolean)
+                        .join('; ');
+                }
+                return normalizeText(control.value);
+            }
+
+            function extractCellText(cell) {
+                const controls = Array.from(cell.querySelectorAll('input, select, textarea'));
+                const controlValues = controls
+                    .map(getControlValue)
+                    .filter(Boolean);
+
+                if (controlValues.length) {
+                    return controlValues.join('; ');
+                }
+
+                return normalizeText(cell.innerText || cell.textContent || '');
+            }
+
+            function buildTableMatrix(table) {
+                const rows = Array.from(table.rows || []).filter(function (row) {
+                    return isVisibleElement(row);
+                });
+                const matrix = [];
+                const spanMap = {};
+
+                rows.forEach(function (rowEl) {
+                    const row = [];
+                    let colIndex = 0;
+
+                    function fillSpans() {
+                        while (spanMap[colIndex] && spanMap[colIndex].remaining > 0) {
+                            row[colIndex] = spanMap[colIndex].value;
+                            spanMap[colIndex].remaining -= 1;
+                            if (spanMap[colIndex].remaining <= 0) {
+                                delete spanMap[colIndex];
+                            }
+                            colIndex += 1;
+                        }
+                    }
+
+                    fillSpans();
+
+                    Array.from(rowEl.cells || []).forEach(function (cell) {
+                        if (!isVisibleElement(cell)) return;
+
+                        fillSpans();
+
+                        const value = extractCellText(cell);
+                        const colspan = Math.max(parseInt(cell.colSpan, 10) || 1, 1);
+                        const rowspan = Math.max(parseInt(cell.rowSpan, 10) || 1, 1);
+
+                        for (let i = 0; i < colspan; i += 1) {
+                            row[colIndex + i] = value;
+                            if (rowspan > 1) {
+                                spanMap[colIndex + i] = {
+                                    value: value,
+                                    remaining: rowspan - 1
+                                };
+                            }
+                        }
+
+                        colIndex += colspan;
+                    });
+
+                    fillSpans();
+                    matrix.push(row);
+                });
+
+                const maxColumns = matrix.reduce(function (maxValue, row) {
+                    return Math.max(maxValue, row.length);
+                }, 0);
+
+                return matrix.map(function (row) {
+                    const normalized = [];
+                    for (let i = 0; i < maxColumns; i += 1) {
+                        normalized.push(normalizeText(row[i] || ''));
+                    }
+                    return normalized;
+                });
+            }
+
+            function getTablePayload(table, tableIndex) {
+                const matrix = buildTableMatrix(table);
+                if (!matrix.length) {
+                    return { headers: [], rows: [] };
+                }
+
+                let headers = [];
+                let bodyRows = matrix;
+                const theadRows = Array.from(table.tHead?.rows || []).filter(function (row) {
+                    return isVisibleElement(row);
+                });
+
+                if (theadRows.length) {
+                    headers = buildTableMatrix({ rows: theadRows }).slice(-1)[0] || [];
+                    bodyRows = matrix.slice(theadRows.length);
+                } else {
+                    const firstRow = Array.from(table.rows || []).find(function (row) {
+                        return isVisibleElement(row);
+                    });
+                    if (firstRow && Array.from(firstRow.cells || []).every(function (cell) { return cell.tagName === 'TH'; })) {
+                        headers = matrix[0] || [];
+                        bodyRows = matrix.slice(1);
+                    }
+                }
+
+                const excludedColumnIndexes = [];
+                if (headers.length) {
+                    headers.forEach(function (header, index) {
+                        if (isDeleteColumnHeader(header)) {
+                            excludedColumnIndexes.push(index);
+                        }
+                    });
+                }
+
+                if (excludedColumnIndexes.length) {
+                    const shouldKeepColumn = function (_value, index) {
+                        return !excludedColumnIndexes.includes(index);
+                    };
+
+                    headers = headers.filter(shouldKeepColumn);
+                    bodyRows = bodyRows.map(function (row) {
+                        return row.filter(shouldKeepColumn);
+                    });
+                }
+
+                const titleSource = normalizeText(
+                    table.getAttribute('data-export-title') ||
+                    table.caption?.innerText ||
+                    document.querySelector('h1')?.innerText ||
+                    document.title ||
+                    ('Таблица ' + tableIndex)
+                );
+
+                const safeBaseName = titleSource
+                    .replace(/[\\/:*?"<>|]+/g, '_')
+                    .replace(/\s+/g, '_')
+                    .replace(/^_+|_+$/g, '')
+                    .slice(0, 80) || 'table_export';
+
+                return {
+                    headers: headers,
+                    rows: bodyRows,
+                    sheet_name: titleSource.slice(0, 31) || 'Данные',
+                    filename: safeBaseName + '_' + new Date().toISOString().slice(0, 10)
+                };
+            }
+
+            async function exportTable(table, button, tableIndex) {
+                const originalHtml = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+
+                try {
+                    const payload = getTablePayload(table, tableIndex);
+                    const response = await fetch('{{ url_for("start.export_table_excel") }}', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = 'Ошибка при экспорте таблицы.';
+                        try {
+                            const errorData = await response.json();
+                            if (errorData && errorData.error) {
+                                errorMessage = errorData.error;
+                            }
+                        } catch (err) {
+                            const text = await response.text();
+                            if (text) {
+                                errorMessage = text;
+                            }
+                        }
+                        throw new Error(errorMessage);
+                    }
+
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    const payloadInfo = getTablePayload(table, tableIndex);
+
+                    link.href = downloadUrl;
+                    link.download = payloadInfo.filename + '.xlsx';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } catch (error) {
+                    alert(error && error.message ? error.message : 'Ошибка при экспорте таблицы.');
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = originalHtml;
+                }
+            }
+
+            window.__clientTableExportToExcel = function (button, tableEl) {
+                if (!button || !tableEl) {
+                    return Promise.resolve();
+                }
+                return exportTable(tableEl, button, 1);
+            };
         })();
     </script>
 

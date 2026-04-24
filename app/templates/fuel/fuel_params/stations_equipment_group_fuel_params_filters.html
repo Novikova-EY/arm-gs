@@ -1,7 +1,9 @@
 {# Фильтры для страницы "Топливные параметры групп оборудования" — один год вместо диапазона #}
 {% set filters_action = url_for('fuel_bp.stations_equipment_group_fuel_params') %}
 {% set use_equipment_group_filter = true %}
-{% set hide_pagination_and_per_page = true %}
+{% set total_count_label = 'групп оборудования' %}
+{% set per_page_count_label = 'групп оборудования' %}
+{% set per_page_all_label = 'группы оборудования' %}
 {% set import_redirect_endpoint = 'fuel_bp.stations_equipment_group_fuel_params' %}
 {% set use_single_year = true %}
 {% set show_fuel_params_import = true %}
@@ -11,4 +13,5 @@
 {% set import_specific_fuel_consumption_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption') %}
 {% set import_specific_fuel_consumption_redirect_to = 'fuel_bp.stations_equipment_group_fuel_params' %}
 {% set selected_year = selected_year|default(start_year)|default(end_year) %}
-{% include 'fuel/station_filters.html' %}
+{% set center_top_pagination = true %}
+{% include 'fuel/_shared/station_filters.html' %}

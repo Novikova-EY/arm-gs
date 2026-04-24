@@ -18,7 +18,7 @@ depends_on = None
 
 SCHEMA = 'gs_fue'
 # NUMERIC(20, 6) -> NUMERIC(36, 16): 20 цифр до запятой, 16 после
-# (20,16) даёт лишь 4 цифры до запятой — данные не помещаются
+# (20,16) дает лишь 4 цифры до запятой — данные не помещаются
 NEW_TYPE = sa.Numeric(precision=36, scale=16)
 OLD_TYPE = sa.Numeric(precision=20, scale=6)
 

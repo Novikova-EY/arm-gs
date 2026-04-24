@@ -166,6 +166,28 @@ USER_FIELDS = {
     "role": "Роль",
 }
 
+# Параметры распределения (DistributionParameter / fuel)
+DISTRIBUTION_PARAMETER_FIELDS = {
+    "id_union_energy_system": "ОЭС",
+    "id_year": "Расчитываемый год",
+    "id_base_year": "Базовый год (byear)",
+    "e": "E (целевой Ераспред)",
+    "kplus": "kplus",
+    "kmin": "kmin",
+    "k": "k",
+    "bkl": "bkl",
+    "kn": "kn",
+    "knps": "knps",
+    "kngt": "kngt",
+    "knpg": "knpg",
+    "hnps": "hnps",
+    "hngt": "hngt",
+    "hnpg": "hnpg",
+    "numb": "Порядковый номер (numb)",
+    "doptim": "Дополнительный параметр (doptim)",
+    "lim": "Ограничение (lim)",
+}
+
 # Объединенный словарь всех полей
 ALL_FIELDS = {
     **COMMON_FIELDS,
@@ -188,6 +210,7 @@ ALL_FIELDS = {
     **TECHNOLOGY_AVAILABILITY_FIELDS,
     **DOCUMENT_FIELDS,
     **USER_FIELDS,
+    **DISTRIBUTION_PARAMETER_FIELDS,
 }
 
 
@@ -222,6 +245,7 @@ def get_field_name_ru(field_name: str, entity_type: str = None) -> str:
             "technology_availability": TECHNOLOGY_AVAILABILITY_FIELDS,
             "document": DOCUMENT_FIELDS,
             "user": USER_FIELDS,
+            "distribution_parameter": DISTRIBUTION_PARAMETER_FIELDS,
         }.get(entity_type, {})
         
         if field_name in type_fields:

@@ -30,7 +30,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
 )
 
-# Версия структуры/смысла данных, которые кладём в export_cache для station_changes.
+# Версия структуры/смысла данных, которые кладем в export_cache для station_changes.
 # При изменениях логики группировок/агрегаций — увеличивать, чтобы не использовать устаревший кэш.
 STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 8
 

@@ -2,6 +2,12 @@ body {
     font-family: 'Roboto', sans-serif !important;
 }
 
+/* Стартовые страницы разделов (Топливо, Генерация и т.п.): немного шире .container на широких экранах */
+@media (min-width: 1400px) {
+    .container.content-start-container {
+        max-width: 1500px;
+    }
+}
 
 .alert-container {
     position: fixed;
@@ -66,7 +72,7 @@ body {
 }
 
 /* Единая логика для страниц с таблицами:
-   скроллим весь контент страницы, а шапка таблицы остаётся sticky */
+   скроллим весь контент страницы, а шапка таблицы остается sticky */
 .page-table-scroll {
     /* высота рассчитывается относительно верхней "шапки" приложения */
     max-height: calc(100vh - var(--app-topbar-height, 0px) - 16px);
@@ -131,7 +137,7 @@ tfoot {
     position: sticky;
     top: 0;
     z-index: 50; /* выше строк таблицы, ниже выпадающих меню (1050) */
-    /* фон берём из bootstrap переменных таблицы */
+    /* фон берем из bootstrap переменных таблицы */
     background-color: var(--bs-table-bg);
 }
 

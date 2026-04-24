@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if machine and machine.unit_type %}{{ machine.unit_type }}{% else %}Новый агрегат{% endif %} — {{ place.site_name or 'Перспективная площадка АЭС' }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<style>
+.readonly-indicator {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.readonly-indicator::before { content: "👁️"; font-size: 1rem; }
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.edit-indicator::before { content: "✏️"; font-size: 1rem; }
+/* Как на списке prospective_places/ges/: основной текст и поля 1.1rem */
+.machine-details-page { font-size: 1.1rem; }
+.machine-details-page .machine-card .form-control,
+.machine-details-page .machine-card .form-select {
+    font-size: 1.1rem;
+}
+.machine-details-page .machine-card .fw-semibold { font-size: 1.1rem; }
+.machine-details-page .machine-card .row.g-2 { --bs-gutter-y: 0.75rem; }
+</style>
+
+<div class="container-fluid mt-4 machine-details-page">
+    <!-- Кнопка возврата -->
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id) }}" class="btn btn-secondary fs-5">← Назад к площадке</a>
+    </div>
+
+    <div class="container-fluid">
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате перспективной площадки АЭС
+                <span class="edit-indicator ms-3">Режим редактирования</span>
+            </h2>
+        </div>
+
+        <a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id) }}" class="text-decoration-underline mb-3 fs-5 d-inline-block">
+            <strong>{{ place.site_name or 'Перспективная площадка АЭС' }}</strong>
+        </a>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="container-fluid">
+                <div class="card mb-3 border-0 shadow-none machine-card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_prospective_place_type.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.id_prospective_place_type(class="form-select form-select-lg") }}
+                                        {% if form.id_prospective_place_type.errors %}
+                                            <div class="text-danger small mt-1">{{ form.id_prospective_place_type.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.station_block_number.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.station_block_number(class="form-control form-control-lg fw-bold") }}
+                                        {% if form.station_block_number.errors %}
+                                            <div class="text-danger small mt-1">{{ form.station_block_number.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.unit_type.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.unit_type(class="form-control form-control-lg fw-bold") }}
+                                        {% if form.unit_type.errors %}
+                                            <div class="text-danger small mt-1">{{ form.unit_type.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.unit_capacity_mw.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.unit_capacity_mw(class="form-control form-control-lg") }}
+                                        {% if form.unit_capacity_mw.errors %}
+                                            <div class="text-danger small mt-1">{{ form.unit_capacity_mw.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.possible_implementation_period.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.possible_implementation_period(class="form-control form-control-lg") }}
+                                        {% if form.possible_implementation_period.errors %}
+                                            <div class="text-danger small mt-1">{{ form.possible_implementation_period.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.service_life_years.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.service_life_years(class="form-control form-control-lg") }}
+                                        {% if form.service_life_years.errors %}
+                                            <div class="text-danger small mt-1">{{ form.service_life_years.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.construction_period_years.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.construction_period_years(class="form-control form-control-lg") }}
+                                        {% if form.construction_period_years.errors %}
+                                            <div class="text-danger small mt-1">{{ form.construction_period_years.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.max_annual_operating_hours.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.max_annual_operating_hours(class="form-control form-control-lg") }}
+                                        {% if form.max_annual_operating_hours.errors %}
+                                            <div class="text-danger small mt-1">{{ form.max_annual_operating_hours.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.specific_fuel_cost_rub_per_kwh.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.specific_fuel_cost_rub_per_kwh(class="form-control form-control-lg") }}
+                                        {% if form.specific_fuel_cost_rub_per_kwh.errors %}
+                                            <div class="text-danger small mt-1">{{ form.specific_fuel_cost_rub_per_kwh.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_year_specific_fuel_cost.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.id_year_specific_fuel_cost(class="form-select form-select-lg") }}
+                                        {% if form.id_year_specific_fuel_cost.errors %}
+                                            <div class="text-danger small mt-1">{{ form.id_year_specific_fuel_cost.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.specific_fixed_operating_costs_thous_rub_per_kw.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.specific_fixed_operating_costs_thous_rub_per_kw(class="form-control form-control-lg") }}
+                                        {% if form.specific_fixed_operating_costs_thous_rub_per_kw.errors %}
+                                            <div class="text-danger small mt-1">{{ form.specific_fixed_operating_costs_thous_rub_per_kw.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_year_specific_fixed_operating_costs.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.id_year_specific_fixed_operating_costs(class="form-select form-select-lg") }}
+                                        {% if form.id_year_specific_fixed_operating_costs.errors %}
+                                            <div class="text-danger small mt-1">{{ form.id_year_specific_fixed_operating_costs.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.relative_auxiliary_power_consumption_pct.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.relative_auxiliary_power_consumption_pct(class="form-control form-control-lg") }}
+                                        {% if form.relative_auxiliary_power_consumption_pct.errors %}
+                                            <div class="text-danger small mt-1">{{ form.relative_auxiliary_power_consumption_pct.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.specific_capital_investment_thous_rub_per_kw.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.specific_capital_investment_thous_rub_per_kw(class="form-control form-control-lg") }}
+                                        {% if form.specific_capital_investment_thous_rub_per_kw.errors %}
+                                            <div class="text-danger small mt-1">{{ form.specific_capital_investment_thous_rub_per_kw.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_year_specific_capital_investment.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.id_year_specific_capital_investment(class="form-select form-select-lg") }}
+                                        {% if form.id_year_specific_capital_investment.errors %}
+                                            <div class="text-danger small mt-1">{{ form.id_year_specific_capital_investment.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.specific_decommissioning_cost_thous_rub_per_kw.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.specific_decommissioning_cost_thous_rub_per_kw(class="form-control form-control-lg") }}
+                                        {% if form.specific_decommissioning_cost_thous_rub_per_kw.errors %}
+                                            <div class="text-danger small mt-1">{{ form.specific_decommissioning_cost_thous_rub_per_kw.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.id_year_specific_decommissioning.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.id_year_specific_decommissioning(class="form-select form-select-lg") }}
+                                        {% if form.id_year_specific_decommissioning.errors %}
+                                            <div class="text-danger small mt-1">{{ form.id_year_specific_decommissioning.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.emergency_state_probability.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.emergency_state_probability(class="form-control form-control-lg") }}
+                                        {% if form.emergency_state_probability.errors %}
+                                            <div class="text-danger small mt-1">{{ form.emergency_state_probability.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">Относительная продолжительность плановых простоев:</div>
+                                    <div class="col-7 text-start">
+                                        <span></span>
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.ozp.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.ozp(class="form-control form-control-lg") }}
+                                        {% if form.ozp.errors %}
+                                            <div class="text-danger small mt-1">{{ form.ozp.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-3">
+                                    <div class="col-5 text-start fw-semibold">{{ form.vlp.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.vlp(class="form-control form-control-lg") }}
+                                        {% if form.vlp.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vlp.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-start mb-3 d-none">
+                                    <div class="col-5 text-start fw-semibold align-self-start">{{ form.note.label.text }}:</div>
+                                    <div class="col-7 text-start">
+                                        {{ form.note(class="form-control form-control-lg", rows=4) }}
+                                        {% if form.note.errors %}
+                                            <div class="text-danger small mt-1">{{ form.note.errors[0] }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-outline-success btn-lg">Сохранить</button>
+                                <a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id) }}" class="btn btn-outline-secondary btn-lg ms-2">Отмена</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

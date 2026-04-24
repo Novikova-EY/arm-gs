@@ -9,6 +9,9 @@ from sqlalchemy.sql import func
 from sqlalchemy.types import String
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_REFDATA, SCHEMA_FUE_EM
+from app.fuel.models.external_mapping.fue_em_department_model import (
+    DepartmentExternalMapping,
+)
 from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
     TerritoriesEnergyExternalMapping,
 )
@@ -55,7 +58,7 @@ class EquipmentGroupFuelParam(db.Model):
     # Наименование группы оборудования
     name = db.Column(db.String(512), nullable=True)
 
-    # Ссылка на год (number из gs_years). Без FK: gs_years.number не уникален (дубли по версиям).
+    # Ссылка на год (number из gs_sys_years). Без FK: gs_sys_years.number не уникален (дубли по версиям).
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Мощность:
@@ -174,6 +177,7 @@ class EquipmentGroupFuelParam(db.Model):
     dep_department_mapping = db.relationship(
         "DepartmentExternalMapping",
         foreign_keys=[dep],
+        primaryjoin=cast(dep, String(80)) == foreign(DepartmentExternalMapping.external_id),
         uselist=False,
         lazy="select",
     )

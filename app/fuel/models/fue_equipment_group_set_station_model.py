@@ -26,8 +26,8 @@ class EquipmentGroupSetStation(db.Model):
     # FK -> Station
     station_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_GENERATION}.stations.id", ondelete="RESTRICT"),
-        nullable=False,
+        db.ForeignKey(f"{SCHEMA_GENERATION}.gs_gen_stations.id", ondelete="RESTRICT"),
+        nullable=True,
         index=True,
     )
     station = db.relationship("Station", back_populates="equipment_group_type_links_v2")
@@ -35,7 +35,7 @@ class EquipmentGroupSetStation(db.Model):
     # FK -> EquipmentGroupType
     equipment_group_type_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_equipment_groups.id", ondelete="RESTRICT"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_equipment_groups.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )

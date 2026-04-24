@@ -1,3 +1,4 @@
+import importlib
 import os
 import json
 import datetime as dt
@@ -148,7 +149,7 @@ def create_app():
         # Отдельный Redis‑клиент для сессий с более щадящими таймаутами и ретраями
         redis_client = redis.from_url(
             app.config.get("REDIS_URL", "redis://localhost:6379/0"),
-            # Даём больше времени на установление соединения
+            # Даем больше времени на установление соединения
             socket_connect_timeout=10,
             # Увеличенный таймаут на операции чтения/записи,
             # чтобы кратковременные задержки сети не приводили к ошибкам
@@ -286,8 +287,18 @@ def create_app():
         from app.generation.models.document import (
             document_model,
         )
+        from app.generation.prospective_places.models.aes import station_prospective_place_aes_model  # noqa: F401
+        from app.generation.prospective_places.models.aes import prospective_place_type_aes_model  # noqa: F401
+        from app.generation.prospective_places.models.ges import station_prospective_place_ges_model  # noqa: F401
+        from app.generation.prospective_places.models.ges import prospective_place_ges_tep_source_model  # noqa: F401
+        from app.generation.prospective_places.models import tep_price_conversion_coefficient_model  # noqa: F401
+        from app.generation.prospective_places.models.ges import prospective_place_type_ges_model  # noqa: F401
+        from app.generation.prospective_places.models.gaes import station_prospective_place_gaes_model  # noqa: F401
+        from app.generation.prospective_places.models.gaes import prospective_place_gaes_tep_source_model  # noqa: F401
+        from app.generation.prospective_places.models.gaes import prospective_place_type_gaes_model  # noqa: F401
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import external_mapping
+        importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
 
         # Проброс мапперов
         db.configure_mappers()
@@ -450,6 +461,13 @@ def create_app():
 
             def _after_commit(session) -> None:
                 """После коммита при изменениях справочников — очищаем refdata-кэши."""
+                try:
+                    if session.info.pop("_skip_refdata_cache_invalidation", False):
+                        session.info.pop("_refdata_changed", None)
+                        return
+                except Exception:
+                    pass
+
                 force = False
                 try:
                     from flask import has_request_context, request
@@ -471,6 +489,7 @@ def create_app():
 
             def _after_rollback(session) -> None:
                 session.info.pop("_refdata_changed", None)
+                session.info.pop("_skip_refdata_cache_invalidation", None)
 
             try:
                 from sqlalchemy.orm import Session as _SASession
@@ -516,7 +535,11 @@ def create_app():
                 app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
 
     # Фильтр форматирования чисел
-    from app.common.services.help_services import format_decimal_for_display
+    from app.common.services.help_services import (
+        format_decimal_for_display,
+        format_decimal_trim_for_display,
+        format_number_trim_trailing,
+    )
 
     @app.template_filter("get_attr")
     def get_attr_filter(obj, attr):
@@ -535,12 +558,51 @@ def create_app():
                 digits = None
         return format_decimal_for_display(value, digits=digits)
 
+    @app.template_filter("format_construction_period_years")
+    def format_construction_period_years_filter(value):
+        from app.generation.prospective_places.forms.decimal_input_display import (
+            format_construction_period_years_display,
+        )
+
+        return format_construction_period_years_display(value)
+
+    @app.template_filter("format_decimal_trim")
+    def format_decimal_trim_filter(value, digits=None):
+        if digits is None:
+            from flask import request
+
+            digits = request.args.get("rounding_digits", default=None, type=int)
+        else:
+            try:
+                digits = int(digits)
+            except (TypeError, ValueError):
+                digits = None
+        return format_decimal_trim_for_display(value, digits=digits)
+
+    @app.template_filter("trim_decimal")
+    def trim_decimal_filter(value):
+        """См. format_number_trim_trailing: без влияния rounding_digits из запроса; дробь без лишних нулей."""
+        return format_number_trim_trailing(value)
+
     @app.template_filter("normalize_uuid")
     def normalize_uuid_filter(value):
         """Нормализует UUID для сравнения (убирает скобки, приводит к нижнему регистру)."""
         if value is None:
             return ""
         return str(value).strip().lower().replace("{", "").replace("}", "")
+
+    @app.template_filter("nl2br")
+    def nl2br_filter(value):
+        """Экранирует HTML и преобразует переносы строк (\\n, \\r\\n, \\r) и теги <br> в <br> для отображения."""
+        if value is None:
+            return ""
+        from markupsafe import Markup, escape
+        s = str(value)
+        # Нормализуем literal <br> в переносы строк
+        for br in ("<br>", "<br/>", "<br />", "<BR>", "<Br>"):
+            s = s.replace(br, "\n")
+        escaped = escape(s)
+        return escaped.replace("\r\n", Markup("<br>")).replace("\n", Markup("<br>")).replace("\r", Markup("<br>"))
 
     # Фильтр для обработки ссылок на документы в тексте
     @app.template_filter("render_document_links")
@@ -621,11 +683,13 @@ def create_app():
     from app.generation.routes.stations import station_bp
     from app.generation.routes.generation_routes import generation_bp
     from app.generation.routes.rational_structure import rational_structure_bp
+    from app.generation.prospective_places.routes import prospective_places_bp
     from app.fuel.routes import fuel_bp
     from app.generation.routes.station_changes import station_changes_bp
     from app.start.routes import start_bp
     from app.logs.routes import logs_bp
     from app.history.routes import history_bp
+    from app.power_demand.routes import power_demand_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -633,11 +697,13 @@ def create_app():
     app.register_blueprint(generation_bp, url_prefix="/generation")
     app.register_blueprint(station_bp, url_prefix="/generation/stations")
     app.register_blueprint(rational_structure_bp, url_prefix="/rational_structure")
+    app.register_blueprint(prospective_places_bp, url_prefix="/prospective_places")
     app.register_blueprint(station_changes_bp, url_prefix="/generation/station_changes")
     app.register_blueprint(fuel_bp, url_prefix="/fuel")
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(logs_bp, url_prefix="/log")
     app.register_blueprint(history_bp, url_prefix="/history")
+    app.register_blueprint(power_demand_bp, url_prefix="/power_demand")
 
     # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')

@@ -12,9 +12,11 @@
     'federal_district_filter', 'regional_district_filter', 'station_fuel_type_filter', 'station_id',
     'per_page',
 ] %}
-{% set allowed_roles = ['generation', 'admin'] %}
-{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
-{% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
+{% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
+{% set generation_edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_edit_fuel = current_user.role_names | select('in', fuel_edit_roles) | list | length > 0 %}
+{% set can_edit_generation = current_user.role_names | select('in', generation_edit_roles) | list | length > 0 %}
+{% set can_edit_any = can_edit_fuel or can_edit_generation %}
 {% set hide_pgu_parent_date_fields = (machine and machine.tes_machine_type and machine.tes_machine_type.name and (machine.tes_machine_type.name|lower) == 'пгу' and pgu_machines is defined and pgu_machines|length > 0) %}
 
 <div class="container-fluid mt-4 machine-details-page">
@@ -33,7 +35,7 @@
     <div class="container-fluid">
         <div class="d-flex align-items-center mb-4">
             <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате электростанции
-                {% if can_edit %}
+                {% if can_edit_any %}
                     <span class="edit-indicator ms-3">Режим редактирования</span>
                 {% else %}
                     <span class="readonly-indicator ms-3">Режим просмотра</span>
@@ -67,7 +69,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Номер/название группы агрегата:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.machine_group(class="form-control") }}
                                         {% else %}
                                             {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
@@ -77,7 +79,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Номер агрегата:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.machine_number(class="form-control fw-bold") }}
                                         {% else %}
                                             {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
@@ -93,7 +95,7 @@
                                                    name="{{ main_form.machine_name.name }}"
                                                    value="{{ main_form.machine_name.data or '' }}"
                                                    class="machine-name-hidden">
-                                        {% elif can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% elif can_edit_generation %}
                                             {{ main_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
                                             <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
@@ -103,7 +105,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Состояние агрегата станции:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.id_condition_type(class="form-select") }}
                                         {% else %}
                                             {{ machine.condition_type.name if machine.condition_type else '—' }}
@@ -111,10 +113,20 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_generation %}
+                                            {{ main_form.id_energy_area(class="form-select") }}
+                                        {% else %}
+                                            {% if station.energy_unit and (station.energy_unit.name or '')|lower not in ('не указано', 'не указан') %}{{ station.energy_unit.name }}{% else %}—{% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Организация-собственник: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_gen_company(class="form-select", id="id_gen_company") }}
+                                        {% if can_edit_generation %}
+                                            {{ main_form.id_gen_company(class="form-select machine-details-searchable-select", id="id_gen_company") }}
                                         {% else %}
                                             {% if machine and machine.gen_company %}
                                                 {{ machine.gen_company.name }}
@@ -126,16 +138,40 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Примечание:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_generation %}
+                                            {{ main_form.note(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.note.data if main_form.note.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-5 text-start fw-semibold">Группа оборудования:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_energy_area(class="form-select") }}
+                                        {% if can_edit_fuel %}
+                                            {{ main_form.id_fuel_equipment_group(class="form-select machine-details-searchable-select", id="id_fuel_equipment_group") }}
                                         {% else %}
-                                            {% if station.energy_unit and (station.energy_unit.name or '')|lower not in ('не указано', 'не указан') %}{{ station.energy_unit.name }}{% else %}—{% endif %}
+                                            {% if machine and machine.machine_fuel_param and machine.machine_fuel_param.equipment_group %}
+                                                {{ machine.machine_fuel_param.equipment_group.name }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_fuel %}
+                                            {{ main_form.id_equipment_group(class="form-select") }}
+                                        {% else %}
+                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -143,41 +179,48 @@
                                     <div class="row g-2 align-items-center mb-2">
                                         <div class="col-5 text-start fw-semibold">Тип агрегата ТЭС:</div>
                                         <div class="col-7 text-start">
-                                            {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                            {% if can_edit_fuel %}
                                                 {{ main_form.id_tes_machine_type(class="form-select") }}
                                             {% else %}
                                                 {{ machine.tes_machine_type.name if machine and machine.tes_machine_type else '—' }}
                                             {% endif %}
                                         </div>
                                     </div>
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-5 text-start fw-semibold">Тепловая мощность, Гкал/час:</div>
+                                        <div class="col-7 text-start">
+                                            {% if can_edit_fuel %}
+                                                <input type="text"
+                                                    name="{{ main_form.thermal_power_gcalh.name }}"
+                                                    class="form-control{% if main_form.thermal_power_gcalh.errors %} is-invalid{% endif %}"
+                                                    {% if main_form.thermal_power_gcalh.errors and main_form.thermal_power_gcalh.data is not none %}
+                                                    value="{{ main_form.thermal_power_gcalh.data }}"
+                                                    {% elif main_form.thermal_power_gcalh.data is not none %}
+                                                    value="{{ main_form.thermal_power_gcalh.data | trim_decimal }}"
+                                                    {% else %}
+                                                    value=""
+                                                    {% endif %}
+                                                    placeholder="—"
+                                                    inputmode="decimal"
+                                                    autocomplete="off"
+                                                    lang="ru">
+                                                {% for err in main_form.thermal_power_gcalh.errors %}
+                                                <div class="invalid-feedback d-block">{{ err }}</div>
+                                                {% endfor %}
+                                            {% elif machine and machine.machine_fuel_param and machine.machine_fuel_param.nt is not none %}
+                                                {{ machine.machine_fuel_param.nt | trim_decimal }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 {% endif %}
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.id_equipment_group(class="form-select") }}
-                                        {% else %}
-                                            {{ machine.equipment_group.name if machine.equipment_group else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Примечание:</div>
-                                    <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.note(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.note.data if main_form.note.data else '—' }}
-                                        {% endif %}
-                                    </div>
-                                </div>
                                 
                                 {% if not hide_pgu_parent_date_fields %}
                                 <div class="row g-2 align-items-start mb-2">
                                     <div class="col-5 text-start fw-semibold align-self-start">Документ-основание для изменения параметров агрегата:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             <!-- Редактируемая область (визуально как нижний блок) -->
                                             <div id="change_document_editor"
                                                  class="document-display-readonly p-2 border rounded mb-2"
@@ -215,7 +258,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_commission_year(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_commission_year.data if main_form.date_commission_year.data else '—' }}
@@ -226,7 +269,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_exploitation(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
@@ -237,7 +280,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_exploitation_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}
@@ -247,7 +290,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_decompressing_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
@@ -256,19 +299,29 @@
                                 </div>
 
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации:</div>
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации с изменением мощности:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
-                                            {{ main_form.date_modernization_expected(class="form-control") }}
+                                        {% if can_edit_generation %}
+                                            {{ main_form.date_modernization_power_change_expected(class="form-control") }}
                                         {% else %}
-                                            {{ main_form.date_modernization_expected.data if main_form.date_modernization_expected.data else '—' }}
+                                            {{ main_form.date_modernization_power_change_expected.data if main_form.date_modernization_power_change_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации без изменения мощности:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_generation %}
+                                            {{ main_form.date_modernization_no_power_change_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_modernization_no_power_change_expected.data if main_form.date_modernization_no_power_change_expected.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемая дата присоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_joining_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
@@ -280,7 +333,8 @@
                                 <input type="hidden" name="{{ main_form.date_exploitation.name }}" value="{{ main_form.date_exploitation.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_exploitation_expected.name }}" value="{{ main_form.date_exploitation_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_decompressing_expected.name }}" value="{{ main_form.date_decompressing_expected.data or '' }}">
-                                <input type="hidden" name="{{ main_form.date_modernization_expected.name }}" value="{{ main_form.date_modernization_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_modernization_power_change_expected.name }}" value="{{ main_form.date_modernization_power_change_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.date_modernization_no_power_change_expected.name }}" value="{{ main_form.date_modernization_no_power_change_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_joining_expected.name }}" value="{{ main_form.date_joining_expected.data or '' }}">
                                 {% endif %}
                             </div>
@@ -290,7 +344,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_commission_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
@@ -300,7 +354,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_decompressing_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
@@ -311,7 +365,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_joining_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
@@ -321,7 +375,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата отсоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_detatchment_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
@@ -331,7 +385,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_update_fact(
                                                 class="form-control",
                                             ) }}
@@ -343,12 +397,22 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit or ('generation' in current_user.role_names or 'admin' in current_user.role_names) %}
+                                        {% if can_edit_generation %}
                                             {{ main_form.date_relabing_fact(
                                                 class="form-control",
                                             ) }}
                                         {% else %}
                                             {{ main_form.date_relabing_fact.data if main_form.date_relabing_fact.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Тип перемаркировки:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_generation %}
+                                            {{ main_form.relabing_outcome(class="form-select") }}
+                                        {% else %}
+                                            {{ main_form.relabing_outcome.data if main_form.relabing_outcome.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -359,6 +423,7 @@
                                 <input type="hidden" name="{{ main_form.date_detatchment_fact.name }}" value="{{ main_form.date_detatchment_fact.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_update_fact.name }}" value="{{ main_form.date_update_fact.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_relabing_fact.name }}" value="{{ main_form.date_relabing_fact.data or '' }}">
+                                <input type="hidden" name="{{ main_form.relabing_outcome.name }}" value="{{ main_form.relabing_outcome.data or '' }}">
                                 {% endif %}
                             </div>
                         </div>
@@ -444,7 +509,7 @@
                 <!-- Таблица с агрегатами ПГУ (PGUMachines) -->
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0"></h3>
-                    {% if can_edit %}
+                    {% if can_edit_generation %}
                         <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
                             ➕ Добавить агрегат ПГУ
                         </a>
@@ -452,7 +517,7 @@
 
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered table-responsive">
+                    <table class="table table-hover table-striped table-bordered table-responsive" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center align-middle">
                                 <th colspan="{{ end_year - start_year + 4 }}" >Установленная мощность агрегатов, входящих в состав ПГУ</th>
@@ -501,7 +566,11 @@
                                         </td>
                                     {% endfor %}
                                     <td>
+                                        {% if can_edit_generation %}
                                         <input type="checkbox" name="pgu_machines_delete[]" value="{{ pgu_machine.id }}" class="form-check-input">
+                                        {% else %}
+                                        &mdash;
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% else %}
@@ -518,7 +587,7 @@
             {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
             <!-- Таблица «Название агрегата» -->
             <div class="table-responsive">
-                <table id="machine-names-table" class="table table-hover table-striped table-bordered machines-table">
+                <table id="machine-names-table" class="table table-hover table-striped table-bordered machines-table" data-auto-export-excel="off">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
                             <th colspan="{{ end_year - start_year + 2 }}">Название агрегата</th>
@@ -548,7 +617,7 @@
                             {% for nm in advanced_form.machine_names %}
                                 {{ nm.year(type="hidden") }}
                                 <td class="align-middle text-center">
-                                    {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                    {% if can_edit_generation %}
                                         <input type="text"
                                             name="{{ nm.year_name.name }}"
                                             value="{{ nm.year_name.data or '' }}"
@@ -569,10 +638,10 @@
 
             <!-- Таблица с агрегатами (Machines) -->
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered machines-table">
+                <table class="table table-hover table-striped table-bordered machines-table" data-auto-export-excel="off">
                     <thead class="table-success">
                         <tr class="text-center fw-bold align-middle">
-                            <th colspan="{{ end_year - start_year + 2 }}" >Мощность</th>
+                            <th colspan="{{ end_year - start_year + 2 }}" >Электрическая мощность, МВт</th>
                         </tr>
                         <tr class="text-center align-middle">
                             <th class="first-column" style="width: 50px;"></th>
@@ -604,7 +673,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_ust.name }}_orig"
                                         value="{{ p.p_ust.data | format_decimal }}">
-                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                            {% if can_edit_generation %}
                                         <input type="text"
                                             name="{{ p.p_ust.name }}"
                                             value="{{ p.p_ust.data | format_decimal }}"
@@ -627,7 +696,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_ogr.name }}_orig"
                                         value="{{ p.p_ogr.data | format_decimal }}">
-                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                            {% if can_edit_generation %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
                                         value="{{ p.p_ogr.data | format_decimal }}"
@@ -650,7 +719,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_rasp.name }}_orig"
                                         value="{{ p.p_rasp.data | format_decimal }}">
-                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                            {% if can_edit_generation %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
                                         value="{{ p.p_rasp.data | format_decimal }}"
@@ -669,7 +738,7 @@
             {% if station.station_type.name|lower == 'тэс' %}
                 <!-- Таблица "Типы ТЭС" -->
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered machines-table">
+                    <table class="table table-hover table-striped table-bordered machines-table" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center fw-bold align-middle">
                                 <th colspan="{{ end_year - start_year + 2 }}">Тип ТЭС</th>
@@ -697,7 +766,7 @@
                                 {% for t in advanced_form.tes_types %}
                                     {{ t.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                            {% if can_edit_fuel %}
                                             {{ t.tes_type(
                                                 class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
@@ -723,7 +792,7 @@
                 
                 <!-- Таблица "Типы топлива" -->
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered machines-table">
+                    <table class="table table-hover table-striped table-bordered machines-table" data-auto-export-excel="off">
                         <thead class="table-success">
                             <tr class="text-center fw-bold align-middle">
                                 <th colspan="{{ end_year - start_year + 2 }}">Топливо</th>
@@ -751,7 +820,7 @@
                                 {% for f in advanced_form.fuels %}
                                     {{ f.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
-                            {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                            {% if can_edit_fuel %}
                                             {{ f.fuel_type(
                                                 class="form-select fuel-column text-center",
                                                 style="background-color: transparent;",
@@ -779,7 +848,7 @@
             <!-- Контейнер для кнопок -->
             <div class="d-flex justify-content-end mt-3 gap-3">
                 <!-- Кнопка "Сохранить" -->
-                 {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                 {% if can_edit_any %}
                     <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
                 
                     <!-- Кнопка "Сбросить" -->
@@ -802,151 +871,92 @@
 
 <script>
 (function() {
-    function initGenCompanySelect() {
-        const $ = window.jQuery;
-        // Важно: не используем window.$ как fallback — он может быть переопределён не-jQuery,
-        // что приводит к "$ is not a function" и обрывает выполнение скриптов страницы.
-        if (typeof $ !== 'function' || !$.fn || !$.fn.select2) {
-            return false;
-        }
-        
-        const $genCompanySelect = $('#id_gen_company');
-        if (!$genCompanySelect.length) {
-            return false;
-        }
-        
-        if ($genCompanySelect.data('select2')) {
-            return true; // Уже инициализирован
-        }
-        
-        // Инициализируем Select2
-        $genCompanySelect.select2({
-            placeholder: "Выберите компанию (начните вводить для поиска)",
-            allowClear: true,
+    function select2Options(placeholder, allowClear) {
+        if (allowClear === undefined) allowClear = true;
+        return {
+            placeholder: placeholder,
+            allowClear: allowClear,
             width: '100%',
             minimumResultsForSearch: 0,
             matcher: function(params, data) {
-                // Поиск по совпадению внутри строки (case-insensitive)
                 if (!params.term || params.term.trim() === '') {
                     return data;
                 }
                 var term = params.term.toLowerCase().trim();
                 var text = data.text ? data.text.toLowerCase() : '';
-                // Ищем подстроку в любом месте текста
                 if (text.indexOf(term) !== -1) {
                     return data;
                 }
                 return null;
             },
             language: {
-                noResults: function() {
-                    return "Ничего не найдено";
-                },
-                searching: function() {
-                    return "Поиск...";
-                }
+                noResults: function() { return "Ничего не найдено"; },
+                searching: function() { return "Поиск..."; }
             }
-        });
-        
-        // Обработчик для автоматического выбора первого результата при нажатии Enter (как в Excel)
-        $genCompanySelect.on('select2:open', function() {
-            var $search = $('.select2-container--open .select2-search__field');
+        };
+    }
+
+    function bindSelect2ExcelEnter($el) {
+        $el.on('select2:open', function() {
+            var $search = window.jQuery('.select2-container--open .select2-search__field');
             if ($search.length) {
                 $search.off('keyup.select2-excel').on('keyup.select2-excel', function(e) {
                     if (e.key === 'Enter' || e.keyCode === 13) {
-                        var $results = $('.select2-results__option--highlighted, .select2-results__option:first');
+                        var $results = window.jQuery('.select2-results__option--highlighted, .select2-results__option:first');
                         if ($results.length) {
                             var value = $results.first().data('id');
                             if (value !== undefined) {
-                                $genCompanySelect.val(value).trigger('change');
-                                $genCompanySelect.trigger('select2:close');
+                                $el.val(value).trigger('change');
+                                $el.trigger('select2:close');
                             }
                         }
                     }
                 });
-                
-                // Автоматически фокусируемся на поле поиска при открытии
-                setTimeout(function() {
-                    $search.focus();
-                }, 10);
+                setTimeout(function() { $search.focus(); }, 10);
             }
         });
-        
+    }
+
+    function initOneSearchableSelect($el, placeholder, allowClear) {
+        if (!$el.length || $el.data('select2')) {
+            return $el.length > 0;
+        }
+        $el.select2(select2Options(placeholder, allowClear));
+        bindSelect2ExcelEnter($el);
         return true;
     }
-    
-    // Инициализация при загрузке страницы
+
+    function initMachineDetailsSearchableSelects() {
+        const $ = window.jQuery;
+        if (typeof $ !== 'function' || !$.fn || !$.fn.select2) {
+            return false;
+        }
+        initOneSearchableSelect($('#id_gen_company'), "Выберите компанию (начните вводить для поиска)", true);
+        initOneSearchableSelect($('#id_fuel_equipment_group'), "Группа оборудования (поиск по названию)", false);
+        return true;
+    }
+
     function tryInit() {
         const $ = window.jQuery;
         if (typeof $ === 'function' && $.fn && $.fn.select2) {
             $(document).ready(function() {
-                // Инициализируем сразу при загрузке страницы
-                setTimeout(function() {
-                    initGenCompanySelect();
-                }, 100);
-                
-                // Также инициализируем для динамически добавленных элементов (fallback)
-                $(document).on('focus click', '#id_gen_company', function () {
-                    const $el = $(this);
+                setTimeout(initMachineDetailsSearchableSelects, 100);
+                $(document).on('focus click', '.machine-details-searchable-select', function() {
+                    var $el = $(this);
                     if ($el.data('select2')) return;
-                    
-                    $el.select2({
-                        placeholder: "Выберите компанию (начните вводить для поиска)",
-                        allowClear: true,
-                        width: '100%',
-                        minimumResultsForSearch: 0,
-                        matcher: function(params, data) {
-                            if (!params.term || params.term.trim() === '') {
-                                return data;
-                            }
-                            var term = params.term.toLowerCase().trim();
-                            var text = data.text ? data.text.toLowerCase() : '';
-                            if (text.indexOf(term) !== -1) {
-                                return data;
-                            }
-                            return null;
-                        },
-                        language: {
-                            noResults: function() {
-                                return "Ничего не найдено";
-                            },
-                            searching: function() {
-                                return "Поиск...";
-                            }
-                        }
-                    });
-                    
-                    // Обработчик Enter для динамически добавленных элементов
-                    $el.on('select2:open', function() {
-                        var $search = $('.select2-container--open .select2-search__field');
-                        if ($search.length) {
-                            $search.off('keyup.select2-excel').on('keyup.select2-excel', function(e) {
-                                if (e.key === 'Enter' || e.keyCode === 13) {
-                                    var $results = $('.select2-results__option--highlighted, .select2-results__option:first');
-                                    if ($results.length) {
-                                        var value = $results.first().data('id');
-                                        if (value !== undefined) {
-                                            $el.val(value).trigger('change');
-                                            $el.trigger('select2:close');
-                                        }
-                                    }
-                                }
-                            });
-                            setTimeout(function() {
-                                $search.focus();
-                            }, 10);
-                        }
-                    });
+                    var isFuel = $el.attr('id') === 'id_fuel_equipment_group';
+                    var ph = isFuel
+                        ? "Группа оборудования (поиск по названию)"
+                        : "Выберите компанию (начните вводить для поиска)";
+                    initOneSearchableSelect($el, ph, !isFuel);
                 });
             });
             return true;
         }
         return false;
     }
-    
-    // Пробуем сразу
+
     if (!tryInit()) {
-        // Если не получилось, ждем загрузки jQuery и Select2
         var attempts = 0;
         var checkInterval = setInterval(function() {
             attempts++;
@@ -955,19 +965,13 @@
             }
         }, 50);
     }
-    
-    // Дополнительная инициализация при загрузке DOM (на случай если ready уже прошел)
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                initGenCompanySelect();
-            }, 200);
+            setTimeout(initMachineDetailsSearchableSelects, 200);
         });
     } else {
-        // DOM уже загружен
-        setTimeout(function() {
-            initGenCompanySelect();
-        }, 200);
+        setTimeout(initMachineDetailsSearchableSelects, 200);
     }
 })();
 </script>
@@ -992,15 +996,17 @@
         line-height: 1.4;
     }
     
-    /* Стили для Select2 в поле "Организация-собственник" - выравнивание слева и ободок как у form-select */
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] {
+    /* Select2: организация-собственник, группа оборудования — единый вид */
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"],
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] {
         width: 100% !important;
         text-align: left;
     }
     
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection--single,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection--single {
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] .select2-selection--single {
         height: calc(1.5em + 0.75rem + 2px) !important;
         border: 1px solid #ced4da !important;
         border-radius: 0.375rem !important;
@@ -1012,8 +1018,9 @@
         position: relative;
     }
     
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__rendered,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__rendered {
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container .select2-selection__rendered,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__rendered,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] .select2-selection__rendered {
         text-align: left !important;
         padding-left: 0 !important;
         padding-right: 50px !important;
@@ -1021,8 +1028,9 @@
         color: #212529 !important;
     }
     
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__arrow,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__arrow {
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container .select2-selection__arrow,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__arrow,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] .select2-selection__arrow {
         right: 0.75rem !important;
         height: 100% !important;
         display: flex !important;
@@ -1030,8 +1038,9 @@
     }
     
     /* Крестик очистки справа рядом со стрелкой */
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container .select2-selection__clear,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__clear {
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container .select2-selection__clear,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"] .select2-selection__clear,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"] .select2-selection__clear {
         right: 2.5rem !important;
         margin-right: 0 !important;
         position: absolute !important;
@@ -1041,8 +1050,9 @@
         line-height: 1 !important;
     }
     
-    .machine-details-page .col-7.text-start #id_gen_company + .select2-container:focus-within .select2-selection--single,
-    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"]:focus-within .select2-selection--single {
+    .machine-details-page .col-7.text-start select.machine-details-searchable-select + .select2-container:focus-within .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_gen_company"]:focus-within .select2-selection--single,
+    .machine-details-page .col-7.text-start .select2-container[id*="id_fuel_equipment_group"]:focus-within .select2-selection--single {
         border-color: #80bdff !important;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
     }
@@ -1111,7 +1121,7 @@
         color: #000 !important;
     }
 
-    /* Крупнее шрифт во всех ячейках строк таблиц: Мощность, Тип ТЭС, Топливо */
+    /* Крупнее шрифт во всех ячейках строк таблиц: Электрическая мощность, Тип ТЭС, Топливо */
     .machine-details-page table tbody td { font-size: 1.15rem; }
     .machine-details-page table tbody td .form-control,
     .machine-details-page table tbody td .form-select { font-size: 1.15rem; }
@@ -1225,7 +1235,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const $ = window.jQuery; // может отсутствовать, поэтому ниже всё jQuery-зависимое — под guard
+    const $ = window.jQuery; // может отсутствовать, поэтому ниже все jQuery-зависимое — под guard
 
     // --- Select2 и ширина колонок ---
     if (typeof $ === "function" && $.fn && $.fn.select2) {
@@ -1267,7 +1277,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Чекбоксы: по умолчанию оба включены, если в localStorage ещё нет значений
+    // Чекбоксы: по умолчанию оба включены, если в localStorage еще нет значений
     const toggleOgrEl = document.getElementById("toggleP_Ogr");
     const toggleRaspEl = document.getElementById("toggleP_Rasp");
 
@@ -1315,9 +1325,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // --- Применение фильтра годов ---
     window.applyYearFilters = function () {
+        const startEl = document.getElementById("start_year");
+        const endEl = document.getElementById("end_year");
+        let sy = parseInt(startEl.value, 10);
+        let ey = parseInt(endEl.value, 10);
+        if (!isNaN(sy) && !isNaN(ey) && sy > ey) {
+            startEl.value = String(ey);
+            endEl.value = String(sy);
+        }
         const url = new URL(window.location.href);
-        url.searchParams.set("start_year", document.getElementById("start_year").value);
-        url.searchParams.set("end_year", document.getElementById("end_year").value);
+        url.searchParams.set("start_year", startEl.value);
+        url.searchParams.set("end_year", endEl.value);
         url.searchParams.set("page", 1);
         window.location.href = url.toString();
     };
@@ -1482,7 +1500,7 @@ document.addEventListener("DOMContentLoaded", function () {
             baseName = value;
         });
 
-        // Если нет неплановых, берём просто первое непустое
+        // Если нет неплановых, берем просто первое непустое
         if (!baseName) {
             inputs.forEach(function (input) {
                 if (baseName) return;
@@ -1578,7 +1596,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // --- Автоматический расчёт Рогр как Руст - Ррасп ---
+    // --- Автоматический расчет Рогр как Руст - Ррасп ---
     function parsePowerValue(raw) {
         if (raw === null || raw === undefined) return null;
         const cleaned = raw.toString().replace(/\s+/g, "").replace(",", ".");
@@ -1640,7 +1658,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function formatPowerValue(template, value) {
         if (value === null || value === undefined || value === "") return "";
-        // Если в шаблоне использовалась запятая, сохраняем её
+        // Если в шаблоне использовалась запятая, сохраняем ее
         const str = String(value);
         if (template && template.indexOf(",") !== -1) {
             return str.replace(".", ",");
@@ -1658,10 +1676,10 @@ document.addEventListener("DOMContentLoaded", function () {
             wrapper.style.width = "90%";
             document.body.appendChild(wrapper);
         }
-        // Сообщение о пересчёте Рогр убрано по требованию.
+        // Сообщение о пересчете Рогр убрано по требованию.
     }
 
-    // Пересчёт Рогр как Руст - Ррасп (по всем годам)
+    // Пересчет Рогр как Руст - Ррасп (по всем годам)
     function recalcOgrByColumns(showFlash) {
         const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
         const ogrInputs  = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
@@ -1683,7 +1701,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Пересчёт Ррасп как Руст - Рогр (по всем годам)
+    // Пересчет Ррасп как Руст - Рогр (по всем годам)
     function recalcRaspByColumns(showFlash) {
         const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
         const ogrInputs  = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
@@ -1867,7 +1885,7 @@ document.addEventListener("DOMContentLoaded", function () {
             'input[name*="date_decompressing_fact"]'
         );
         const dateModernizationExpectedField = document.querySelector(
-            'input[name*="date_modernization_expected"]'
+            'input[name*="date_modernization_power_change_expected"]'
         );
         const dateExploitationField = document.querySelector(
             'input[name*="date_exploitation"]'
@@ -2148,7 +2166,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         function getYearForSelect(selectEl) {
             if (!selectEl) return null;
-            // Приоритетно берём год из data-year на самом select
+            // Приоритетно берем год из data-year на самом select
             if (selectEl.dataset && selectEl.dataset.year) {
                 const yData = parseInt(selectEl.dataset.year || "0", 10);
                 if (!isNaN(yData)) return yData;
@@ -2371,7 +2389,7 @@ document.addEventListener("DOMContentLoaded", function () {
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered" id="machine-logs-table">
+            <table class="table table-hover table-striped table-bordered" id="machine-logs-table" data-auto-export-excel="off">
                 <thead class="table-light">
                     <tr>
                         <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
@@ -2493,7 +2511,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <style>
 #machine-logs-table { table-layout: fixed; width: 100%; }
-/* Фиксированные ширины первых трёх колонок */
+/* Фиксированные ширины первых трех колонок */
 #machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) { width: 140px !important; }
 #machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) { width: 120px !important; }
 #machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) { width: 300px !important; }

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'fuel/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
 {% block title %}Дополнительные топливные параметры групп оборудования{% endblock %}
 
@@ -41,7 +41,8 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'fuel/stations_equipment_group_extra_fuel_params_filters.html' %}
+    {% include 'fuel/extra_fuel_params/stations_equipment_group_extra_fuel_params_filters.html' %}
+
 
 {% set extra_fuel_param_columns = [
     ('numb1120', 'Код станции', false),
@@ -110,7 +111,7 @@
                                     </tr>
                                 {% endfor %}
                         {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') %}
+                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
                         <tr class="text-center align-middle table-warning" style="font-weight: bold;">
                             <td>{{ station_block.station_name }}, всего</td>
                             {% for attr, label, is_numeric in extra_fuel_param_columns %}
@@ -153,6 +154,13 @@
             {% endif %}
         </tbody>
     </table>
+
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_extra_fuel_params' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
 
     </div>
 </div>
@@ -217,6 +225,79 @@ document.addEventListener("DOMContentLoaded", function() {
             window.location.href = url.toString();
         });
     });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const exportButton = document.getElementById("exportExtraFuelParamsButton");
+    const form = document.getElementById("exportExtraFuelParamsForm");
+    if (!exportButton || !form) {
+        return;
+    }
+
+    const newButton = exportButton.cloneNode(true);
+    exportButton.parentNode.replaceChild(newButton, exportButton);
+
+    newButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = this;
+        const originalHtml = button.innerHTML;
+
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        button.disabled = true;
+
+        const currentUrl = new URL(window.location.href);
+        const params = new URLSearchParams(currentUrl.search);
+        params.set('per_page', 'all');
+        params.delete('page');
+        const roundingEl = document.getElementById('rounding_digits');
+        if (roundingEl) {
+            params.set('rounding_digits', roundingEl.value);
+        }
+        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(exportUrl, {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('Ошибка сервера (' + response.status + '): ' + text.substring(0, 200));
+                });
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/vnd.openxmlformats')) {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = 'Дополнительные_топливные_параметры_групп_оборудования_' + timestamp + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                });
+            }
+
+            return response.text().then(() => {
+                throw new Error('Получен неожиданный тип ответа от сервера');
+            });
+        })
+        .catch(error => {
+            console.error('[EXPORT extra_fuel_params] Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        });
+    });
+});
 </script>
 
 {% endif %}

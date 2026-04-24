@@ -361,7 +361,7 @@ def add_database_version():
                     if extend_years and extend_years > 0:
                         flash(
                             f"Новая версия успешно создана на основе версии {parent.version_number}. "
-                            f"Данные скопированы и период продлён на {extend_years} лет.",
+                            f"Данные скопированы и период продлен на {extend_years} лет.",
                             "success",
                         )
                     else:

@@ -4,92 +4,119 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container-fluid mt-2 px-4">
-    <div class="row g-4 justify-content-center">
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Группы оборудования электростанций
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_turbines') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Турбины электростанций
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_without_equipment_group') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Агрегаты электростанций без группы оборудования
-                            </a>
-                        </div>
-                    </div>
-                </div>
+<div class="container-fluid mt-2">
 
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">Модуль «Топливо»</h2>
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Группы оборудования электростанций
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_turbines') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Турбины электростанций
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Топливные параметры групп оборудования<br>(основные)
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Топливные параметры групп оборудования<br>(дополнительные)
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_cost') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Стоимость для групп оборудования
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Топливные параметры групп оборудования (основные)
-                            </a>
-                        </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Цена для групп оборудования
+                        </a>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Топливные параметры групп оборудования (дополнительные)
-                            </a>
-                        </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Удельные показатели групп оборудования
+                        </a>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Удельные показатели групп оборудования
-                            </a>
-                        </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_without_equipment_group') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Агрегаты электростанций без группы оборудования
+                        </a>
                     </div>
                 </div>
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_cost') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Стоимость для групп оборудования
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <div class="card shadow-sm w-100">
-                        <div class="card-body text-center">
-                            <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                Цена для групп оборудования
-                            </a>
-                        </div>
-                    </div>
-                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <hr class="my-5 border border-secondary opacity-50">
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Разделительная линия -->
-<hr class="my-5 border border-secondary opacity-50">
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Расчет топливных показателей на перспективный период
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <hr class="my-5 border border-secondary opacity-50">
+            </div>
+        </div>
+    </div>
+</div>
 
-<div class="container-fluid px-4">
-    <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-4">
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.fuel_refdata_start') }}" class="btn btn-primary fs-4 w-100 py-4">
@@ -98,7 +125,9 @@
                     </div>
                 </div>
             </div>
+        </div>
     </div>
 </div>
+
 {% endif %}
 {% endblock %}

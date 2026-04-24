@@ -580,7 +580,7 @@ def get_station_changes_list_data(
                 setattr(m, "plan_period_sum", None)
                 setattr(m, "plan_period_sum_by_event", {})
     except Exception:
-        # Итоги — вспомогательный расчёт для UI. Не должен ломать страницу.
+        # Итоги — вспомогательный расчет для UI. Не должен ломать страницу.
         for m in all_machines:
             setattr(m, "plan_period_sum", None)
             setattr(m, "plan_period_sum_by_event", {})
@@ -1005,7 +1005,7 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
     if not getattr(machine, "machine_powers", None):
         return
 
-    # Собираем мощности по годам в словарь (на случай дублей по году берём последнюю)
+    # Собираем мощности по годам в словарь (на случай дублей по году берем последнюю)
     # rounding_digits: 0 = не округлять, -1 = целое число, >0 = знаков после запятой
     year_to_power: dict[int, float] = {}
     for mp in machine.machine_powers:
@@ -2019,7 +2019,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         EVENT_TYPES,
     )
 
-    # Динамический rowspan для объединённых энергосистем (ОЭС)
+    # Динамический rowspan для объединенных энергосистем (ОЭС)
     context["union_energy_system_rowspans"] = compute_union_energy_system_rowspans(
         data,
         station_type_list,
@@ -2631,7 +2631,7 @@ def compute_union_energy_system_rowspans(
     station_type_list: dict,
     event_types: list[tuple[str, str]],
 ) -> dict[int, int]:
-    """Возвращает {ues_id: rowspan} для блока объединённой энергосистемы.
+    """Возвращает {ues_id: rowspan} для блока объединенной энергосистемы.
 
     Считаем количество реально отображаемых строк:
       - по каждому событию, если есть агрегаты для ОЭС

@@ -9,7 +9,7 @@ from sqlalchemy.orm import reconstructor
 from sqlalchemy.schema import Index
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_FUEL, SCHEMA_REFDATA, SCHEMA_FUE_EM
+from config import SCHEMA_FUEL, SCHEMA_GENERATION, SCHEMA_REFDATA, SCHEMA_FUE_EM
 from app.fuel.models.external_mapping.fue_em_business_unit_model import (
     BusinessUnitExternalMapping,
 )
@@ -36,6 +36,10 @@ from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
     UnionEnergySystemExternalMapping,
 )
 from app.common.services.database_version_filter import filter_by_explicit_db_version
+from app.common.services.refdata_fk_resolve import (
+    coerce_regional_district_id_for_db_version,
+    coerce_regional_energy_system_id_for_db_version,
+)
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
@@ -94,7 +98,7 @@ class EquipmentGroup(db.Model):
     # FK -> RegionalDistrict (заполняется при загрузке по obl и database_version_id)
     regional_district_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_regional_districts.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_regional_districts.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -108,7 +112,7 @@ class EquipmentGroup(db.Model):
     # FK -> RegionalEnergySystem (заполняется при загрузке по obl и database_version_id)
     regional_energy_system_id = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_regional_energy_systems.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_regional_energy_systems.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -259,12 +263,17 @@ class EquipmentGroup(db.Model):
             if eg_set_station:
                 station = eg_set_station.station
                 if station:
-                    self.regional_district_id = station.id_regional_district
-                    self.regional_energy_system_id = station.id_regional_energy_system
+                    version_id = self.database_version_id
+                    self.regional_district_id = coerce_regional_district_id_for_db_version(
+                        station.id_regional_district, version_id
+                    )
+                    self.regional_energy_system_id = coerce_regional_energy_system_id_for_db_version(
+                        station.id_regional_energy_system, version_id
+                    )
                     return
 
         # 2. Fallback для standalone-групп (котельные): по obl через TerritoriesEnergyExternalMapping.
-        # RegionalDistrict и RegionalEnergySystem привязываются с учётом EquipmentGroup.database_version_id.
+        # RegionalDistrict и RegionalEnergySystem привязываются с учетом EquipmentGroup.database_version_id.
         if self.obl is not None:
             obl_val = int(self.obl) if not isinstance(self.obl, int) else self.obl
             mapping = db.session.query(TerritoriesEnergyExternalMapping).filter(

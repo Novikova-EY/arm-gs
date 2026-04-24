@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'fuel/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
 {% block title %}Цена для групп оборудования{% endblock %}
 
@@ -41,7 +41,7 @@
     </div>
 
     <!-- Фильтры -->
-    {% include 'fuel/stations_equipment_group_specific_fuel_price_filters.html' %}
+    {% include 'fuel/specific_fuel_price/stations_equipment_group_specific_fuel_price_filters.html' %}
 
 {% set specific_price_columns = specific_fuel_price_columns %}
 {% set column_count = specific_price_columns|length + 1 %}
@@ -149,6 +149,13 @@
             {% endif %}
         </tbody>
     </table>
+
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_specific_fuel_price' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
 
     </div>
 </div>
@@ -422,6 +429,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const currentUrl = new URL(window.location.href);
         const params = new URLSearchParams(currentUrl.search);
+        params.set('per_page', 'all');
+        params.delete('page');
         const roundingEl = document.getElementById('rounding_digits');
         if (roundingEl) {
             params.set('rounding_digits', roundingEl.value);

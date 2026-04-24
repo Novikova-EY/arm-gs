@@ -1,0 +1,1509 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
+{% set year_is_plan = year_is_plan | default({}) %}
+<div class="container-fluid mt-2">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 w-100">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}"
+               class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                Максимумы потребления мощности по энергосистемам
+            </a>
+            <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts') }}"
+               class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                Максимумы потребления мощности по ФО
+            </a>
+            <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones') }}"
+               class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                Максимумы потребления мощности по энергозонам
+            </a>
+        </div>
+        <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-auto">
+            <i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»
+        </a>
+    </div>
+
+    <h1 class="text-center mb-4">{{ page_title }}</h1>
+
+    {% if active_summary == 'oes' %}
+    {% set export_endpoint = 'power_demand_bp.demand_summary_oes_export' %}
+    {% elif active_summary == 'fo' %}
+    {% set export_endpoint = 'power_demand_bp.demand_summary_federal_districts_export' %}
+    {% else %}
+    {% set export_endpoint = 'power_demand_bp.demand_summary_energy_zones_export' %}
+    {% endif %}
+
+    <!-- Как на fuel/stations_equipment_groups: строка с кнопками Фильтр/Поиск и Импорт/Экспорт -->
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2 align-items-center">
+                <button id="filtersToggleBtn"
+                        class="btn {% if has_active_summary_filters | default(false) %}btn-warning text-dark{% else %}btn-primary text-white{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#filtersCollapse"
+                        aria-expanded="{% if has_active_summary_filters | default(false) %}true{% else %}false{% endif %}"
+                        aria-controls="filtersCollapse">
+                    {% if has_active_summary_filters | default(false) %}<i class="bi bi-funnel-fill"></i>{% else %}🔍{% endif %} Фильтры / Поиск
+                </button>
+                <button id="importExportToggleBtn"
+                        class="btn btn-outline-secondary text-dark"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#importExportCollapse"
+                        aria-expanded="false"
+                        aria-controls="importExportCollapse">
+                    📁 Импорт / Экспорт
+                </button>
+            </div>
+            <div class="flex-grow-1 d-flex justify-content-center align-items-center d-none d-md-flex">
+                <p class="mb-0 fw-bold">&nbsp;</p>
+            </div>
+            {% if can_edit_summary_cells %}
+            <button type="button" id="demandSummarySaveBtn" class="btn btn-success fs-5 flex-shrink-0">Сохранить</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Только строка территориальных фильтров (раскрывается по кнопке «Фильтры / Поиск») -->
+    <div class="col-12 mb-2">
+        <div class="collapse mt-2{% if has_active_summary_filters | default(false) %} show{% endif %} power-demand-filters-collapse" id="filtersCollapse">
+            {% if active_summary == 'oes' and union_energy_system_list is defined %}
+            <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
+                {% for key, values in request.args.lists() %}
+                    {% if key not in ['ds_ues', 'ds_res', 'ds_rd', 'ds_eu', 'ds_sa'] %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                <div class="pd-summary-filter-field">
+                    <label for="ds_ues" class="visually-hidden">ОЭС</label>
+                    <select id="ds_ues" name="ds_ues" class="form-select pd-ds-ms" multiple data-pd-placeholder="ОЭС" aria-label="ОЭС">
+                        {% for row in union_energy_system_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_ues')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field">
+                    <label for="ds_res" class="visually-hidden">РЭС</label>
+                    <select id="ds_res" name="ds_res" class="form-select pd-ds-ms" multiple data-pd-placeholder="Региональная энергосистема" aria-label="Региональная энергосистема">
+                        {% for row in regional_energy_system_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_res')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field">
+                    <label for="ds_rd_oes" class="visually-hidden">Субъект РФ</label>
+                    <select id="ds_rd_oes" name="ds_rd" class="form-select pd-ds-ms" multiple data-pd-placeholder="Субъект РФ" aria-label="Субъект РФ">
+                        {% for row in regional_district_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_rd')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field">
+                    <label for="ds_eu" class="visually-hidden">Энергорайон</label>
+                    <select id="ds_eu" name="ds_eu" class="form-select pd-ds-ms" multiple data-pd-placeholder="Энергорайон" aria-label="Энергорайон">
+                        {% for row in energy_unit_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_eu')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <button type="submit" class="btn btn-outline-primary">Поиск</button>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                </div>
+            </form>
+            {% elif active_summary == 'fo' and federal_district_list is defined %}
+            <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
+                {% for key, values in request.args.lists() %}
+                    {% if key not in ['ds_fd', 'ds_rd'] %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                <div class="pd-summary-filter-field">
+                    <label for="ds_fd" class="visually-hidden">Федеральный округ</label>
+                    <select id="ds_fd" name="ds_fd" class="form-select pd-ds-ms" multiple data-pd-placeholder="Федеральный округ" aria-label="Федеральный округ">
+                        {% for row in federal_district_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_fd')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field">
+                    <label for="ds_rd_fo" class="visually-hidden">Субъект РФ</label>
+                    <select id="ds_rd_fo" name="ds_rd" class="form-select pd-ds-ms" multiple data-pd-placeholder="Субъект РФ" aria-label="Субъект РФ">
+                        {% for row in regional_district_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_rd')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <button type="submit" class="btn btn-outline-primary">Поиск</button>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                </div>
+            </form>
+            {% elif active_summary == 'ez' and energy_zone_list is defined %}
+            <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
+                {% for key, values in request.args.lists() %}
+                    {% if key not in ['ds_ez', 'ds_res'] %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                <div class="pd-summary-filter-field">
+                    <label for="ds_ez" class="visually-hidden">Энергозона</label>
+                    <select id="ds_ez" name="ds_ez" class="form-select pd-ds-ms" multiple data-pd-placeholder="Энергозона" aria-label="Энергозона">
+                        {% for row in energy_zone_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_ez')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field">
+                    <label for="ds_res_ez" class="visually-hidden">Региональная энергосистема</label>
+                    <select id="ds_res_ez" name="ds_res" class="form-select pd-ds-ms" multiple data-pd-placeholder="Региональная энергосистема" aria-label="Региональная энергосистема">
+                        {% for row in regional_energy_system_list %}
+                        <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_res')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <button type="submit" class="btn btn-outline-primary">Поиск</button>
+                </div>
+                <div class="pd-summary-filter-field pd-summary-filter-actions">
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Раскрывающийся блок Импорт/Экспорт: под строкой фильтров, над строкой с годами -->
+    <div class="col-12 mb-2">
+        <div class="collapse mt-2" id="importExportCollapse">
+            <div class="d-flex justify-content-start align-items-center w-100 flex-wrap gap-2">
+                <a href="{{ url_for(export_endpoint) }}{% if request.query_string %}?{{ request.query_string }}{% endif %}"
+                   class="btn btn-outline-success pd-demand-summary-export-xlsx d-inline-flex align-items-center justify-content-center gap-2"
+                   style="white-space: nowrap;"
+                   data-pd-visible-rows-key="{% if active_summary == 'oes' %}powerDemandSummaryOesVisibleRowKeys{% elif active_summary == 'fo' %}powerDemandSummaryFoVisibleRowKeys{% else %}powerDemandSummaryEzVisibleRowKeys{% endif %}"
+                   {% if active_summary == 'oes' %}id="powerDemandOesExportXlsx"
+                   {% elif active_summary == 'fo' %}id="powerDemandFoExportXlsx"
+                   {% elif active_summary == 'ez' %}id="powerDemandEzExportXlsx"
+                   {% endif %}>
+                    <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Годы диапазона и округление — всегда видимы, не входят в блок «Фильтры» -->
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
+            <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex align-items-center gap-2 flex-wrap flex-grow-0" id="powerDemandSummaryYearForm">
+                {% for key, values in request.args.lists() %}
+                    {% if key != 'start_year' and key != 'end_year' %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+                    {% for year in filter_year_list %}
+                    <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+                    {% for year in filter_year_list %}
+                    <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-outline-success">Применить</button>
+                <div class="filter-item">
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                </div>
+            </form>
+            <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>
+                <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    {% if can_edit_summary_cells %}
+    .fuel-params-edit-table .form-control-lg.fuel-param-input {
+        font-size: 1.1rem;
+        min-height: calc(1.5em + 0.5rem + 2px);
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+    }
+    {% endif %}
+    /* Блок фильтров не тянуть на всю ширину; выпадающие меню не обрезать */
+    .power-demand-filters-collapse {
+        overflow: visible !important;
+    }
+    .pd-summary-filters-form {
+        max-width: 100%;
+    }
+    /* Фиксированная ширина полей фильтра: в 3 раза больше прежних 12.5rem, одинаково для всех */
+    .pd-summary-filters-form .pd-summary-filter-field {
+        flex: 0 0 auto;
+        width: 37.5rem;
+        max-width: 100%;
+    }
+    .pd-summary-filters-form .pd-summary-filter-field .dropdown {
+        width: 100%;
+    }
+    .pd-summary-filters-form .pd-summary-filter-field .select2-container {
+        width: 100% !important;
+    }
+    .pd-summary-filters-form .pd-summary-filter-field .dropdown-menu.filter-dropdown-menu {
+        min-width: 100%;
+        box-sizing: border-box;
+    }
+    .pd-summary-filters-form .pd-summary-filter-actions {
+        width: auto;
+        align-self: center;
+    }
+    .pd-summary-filters-form .pd-summary-filter-actions .btn {
+        white-space: nowrap;
+    }
+    /* Ширина колонок ×3 (37.5rem); высота закрытого поля — как раньше (как у кнопки «Фильтры / Поиск») */
+    .pd-summary-filters-form .pd-summary-filter-field .dropdown > button.form-select {
+        font-size: 1rem;
+        line-height: 1.5;
+        padding: 0.375rem 0.75rem;
+        min-height: 2.5rem;
+        width: 100%;
+        white-space: normal;
+        text-align: left;
+    }
+    .pd-summary-filters-form .select2-container--default .select2-selection--multiple {
+        min-height: 2.5rem !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+    }
+    .pd-summary-filters-form .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        line-height: 1.5 !important;
+        font-size: 1rem !important;
+        white-space: normal !important;
+    }
+    </style>
+
+    {% if active_summary == 'oes' %}
+    <div class="modal fade" id="powerDemandOesRowsModal" tabindex="-1" aria-labelledby="powerDemandOesRowsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-4" id="powerDemandOesRowsModalLabel">Строки для отображения</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Отметьте показатели, которые нужно показать в таблице.</p>
+                    <div class="list-group">
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_max_power" data-pd-row-key="max_power" checked>
+                            <span>Максимальное потребление мощности, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_peak_datetime" data-pd-row-key="peak_datetime" checked>
+                            <span>Дата и время, мск</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_avg_temp" data-pd-row-key="avg_temp" checked>
+                            <span>Среднесуточная ТНВ, °C</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_oes" data-pd-row-key="combined_on_oes" checked>
+                            <span>Совмещенный на ОЭС, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_ees" data-pd-row-key="combined_on_ees" checked>
+                            <span>Совмещенный на ЕЭС, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_es" data-pd-row-key="combined_on_es" checked>
+                            <span>Совмещенный на ЭС, МВт</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="powerDemandOesRowsApply">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if active_summary == 'fo' %}
+    <div class="modal fade" id="powerDemandFoRowsModal" tabindex="-1" aria-labelledby="powerDemandFoRowsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-4" id="powerDemandFoRowsModalLabel">Строки для отображения</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Отметьте показатели, которые нужно показать в таблице.</p>
+                    <div class="list-group">
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="max_power" checked>
+                            <span>Максимальное потребление мощности, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
+                            <span>Дата и время, мск</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="avg_temp" checked>
+                            <span>Среднесуточная ТНВ, °C</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_cz" checked>
+                            <span>Совмещенный на централизованную зону, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_fo" checked>
+                            <span>Совмещенный на ФО, МВт</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="powerDemandFoRowsApply">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if active_summary == 'ez' %}
+    <div class="modal fade" id="powerDemandEzRowsModal" tabindex="-1" aria-labelledby="powerDemandEzRowsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-4" id="powerDemandEzRowsModalLabel">Строки для отображения</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Отметьте показатели, которые нужно показать в таблице.</p>
+                    <div class="list-group">
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="max_power" checked>
+                            <span>Максимальное потребление мощности, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
+                            <span>Дата и время, мск</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="avg_temp" checked>
+                            <span>Среднесуточная ТНВ, °C</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ez" checked>
+                            <span>Совмещенный на энергозону, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ees" checked>
+                            <span>Совмещенный на ЕЭС, МВт</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="powerDemandEzRowsApply">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Доля ширины для «Энергосистема» и «Наименование параметров» (одинаковые); «Исторический…» = 60% от ширины «Наименование параметров». #}
+    {% set summary_narrow_col_pct = 11 %}
+    {% set summary_hist_col_pct = (summary_narrow_col_pct * 0.6)|round(4) %}
+    <div class="table-responsive power-demand-summary-scroll">
+        <table id="powerDemandSummaryTable" class="table table-bordered table-striped{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table"
+               {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}"{% endif %}
+               {% if can_edit_summary_cells %}
+               data-save-cell-url="{{ url_for('power_demand_bp.demand_summary_save_cell') }}"
+               data-rounding-digits="{{ rounding_digits }}"
+               {% endif %}>
+            <colgroup>
+                {% if years|length > 0 %}
+                {# Две первые колонки уже и одинаковые; «Исторический…» — 60% от доли «Наименование параметров»; годы делят остаток поровну. #}
+                <col class="summary-col-entity" />
+                <col class="summary-col-parameter" />
+                <col class="summary-col-hist" />
+                {% set _year_share = ((100.0 - 2 * summary_narrow_col_pct - summary_hist_col_pct) / (years|length))|round(6) %}
+                {% for y in years %}
+                <col class="summary-col-year" style="width: {{ _year_share }}%;" />
+                {% endfor %}
+                {% else %}
+                <col class="summary-col-entity" />
+                <col class="summary-col-parameter" />
+                <col class="summary-col-hist" />
+                {% endif %}
+            </colgroup>
+            <thead>
+                <tr class="table-success">
+                    <th class="text-center align-middle summary-entity-col">Энергосистема</th>
+                    <th class="text-center align-middle summary-parameter-col">
+                        <span class="summary-parameter-header-inner">
+                            <span>Наименование параметров</span>
+                            {% if active_summary == 'oes' %}
+                            <button type="button"
+                                    class="btn btn-sm power-demand-oes-rows-filter-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#powerDemandOesRowsModal"
+                                    title="Выбор строк для отображения"
+                                    aria-label="Выбор строк для отображения">
+                                <i class="bi bi-funnel" aria-hidden="true"></i>
+                            </button>
+                            {% elif active_summary == 'fo' %}
+                            <button type="button"
+                                    class="btn btn-sm power-demand-oes-rows-filter-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#powerDemandFoRowsModal"
+                                    title="Выбор строк для отображения"
+                                    aria-label="Выбор строк для отображения">
+                                <i class="bi bi-funnel" aria-hidden="true"></i>
+                            </button>
+                            {% elif active_summary == 'ez' %}
+                            <button type="button"
+                                    class="btn btn-sm power-demand-oes-rows-filter-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#powerDemandEzRowsModal"
+                                    title="Выбор строк для отображения"
+                                    aria-label="Выбор строк для отображения">
+                                <i class="bi bi-funnel" aria-hidden="true"></i>
+                            </button>
+                            {% endif %}
+                        </span>
+                    </th>
+                    <th class="text-center align-middle summary-hist-col">Исторический собственный максимум</th>
+                    {% for year in years %}
+                    <th class="text-center align-middle summary-year-col">
+                        {{ year }}
+                        <div class="text-wrap power-demand-year-feature-caption" style="word-wrap: break-word; white-space: normal;">
+                            {% if year in year_features %}
+                            {{ year_features[year] }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary_rows %}
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param"
+                    data-parameter-key="{{ row.parameter_key }}"
+                    data-entity-block-size="{{ row.entity_rowspan }}"
+                    {% if row.show_entity_cell %}data-is-block-start="1"{% endif %}>
+                    {% if row.show_entity_cell %}
+                    <td rowspan="{{ row.entity_rowspan }}"
+                        data-original-rowspan="{{ row.entity_rowspan }}"
+                        class="summary-entity-cell summary-depth-{{ row.entity_depth }}">
+                        <div style="padding-left: {{ row.entity_depth * 1.5 }}rem;">
+                            {{ row.entity_label }}
+                        </div>
+                    </td>
+                    {% endif %}
+                    <td class="summary-parameter-cell">{{ row.parameter_label }}</td>
+                    {% set _can_edit_slice = row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) %}
+                    <td class="text-center summary-hist-cell"
+                        {% if row.parameter_key == 'peak_datetime' %}
+                        title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                        {% elif row.hist_numeric_tooltip|default('') %}
+                        title="{{ row.hist_numeric_tooltip|e }}"
+                        {% endif %}>
+                        {% if can_edit_summary_cells and _can_edit_slice %}
+                        {% set _hv = row.hist_value if row.hist_value != '—' else '' %}
+                        {% if row.parameter_key == 'peak_datetime' %}
+                        <input type="text"
+                               autocomplete="off"
+                               class="form-control form-control-lg text-center fuel-param-input p-1"
+                               value="{{ _hv }}"
+                               data-initial="{{ _hv|e }}"
+                               data-slice="hist"
+                               data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
+                               title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
+                               {% if row.hist_numeric_tooltip %}data-db-full="{{ row.hist_numeric_tooltip|e }}"{% endif %}
+                               {% if row.hist_row_id is not none %}data-row-id="{{ row.hist_row_id }}"{% endif %}
+                               {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
+                               {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
+                               data-parameter-key="{{ row.parameter_key }}"
+                               data-model="{{ row.demand_model_name }}"
+                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                        {% else %}
+                        <input type="text"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               class="form-control form-control-lg text-center fuel-param-input p-1"
+                               value="{{ _hv }}"
+                               data-initial="{{ _hv|e }}"
+                               data-slice="hist"
+                               {% if row.hist_numeric_tooltip %}title="{{ row.hist_numeric_tooltip|e }}" data-db-full="{{ row.hist_numeric_tooltip|e }}"{% endif %}
+                               {% if row.hist_row_id is not none %}data-row-id="{{ row.hist_row_id }}"{% endif %}
+                               {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
+                               {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
+                               data-parameter-key="{{ row.parameter_key }}"
+                               data-model="{{ row.demand_model_name }}"
+                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
+                        {% endif %}
+                        {% else %}
+                        {{ row.hist_value }}
+                        {% endif %}
+                    </td>
+                    {% for value in row.year_values %}
+                    {% set yrid = row.year_row_ids[loop.index0] %}
+                    {% set _yr = years[loop.index0] %}
+                    {% set _plan_col = year_is_plan.get(_yr, false) %}
+                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' %}
+                    {% set _yr_tt = (row.year_numeric_tooltips|default([]))[loop.index0]|default('') %}
+                    <td class="text-center summary-year-cell{% if _plan_hide %} summary-plan-empty{% endif %}"
+                        {% if row.parameter_key == 'peak_datetime' %}
+                        title="{% if _yr_tt %}{{ _yr_tt|e }} — {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
+                        {% elif _yr_tt %}
+                        title="{{ _yr_tt|e }}"
+                        {% endif %}>
+                        {% if _plan_hide %}
+                        {% elif can_edit_summary_cells and _can_edit_slice %}
+                        {% set _yv = value if value != '—' else '' %}
+                        {% if row.parameter_key == 'peak_datetime' %}
+                        <textarea rows="2"
+                               autocomplete="off"
+                               class="form-control form-control-lg text-center fuel-param-input p-1 power-demand-summary-datetime-field"
+                               data-initial="{{ _yv|e }}"
+                               data-slice="{{ _yr }}"
+                               data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="power-demand-datetime-format-tooltip"
+                               title="{% if _yr_tt %}{{ _yr_tt|e }} — {% endif %}Дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ или год ГГГГ"
+                               {% if _yr_tt %}data-db-full="{{ _yr_tt|e }}"{% endif %}
+                               {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
+                               {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
+                               {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
+                               data-parameter-key="{{ row.parameter_key }}"
+                               data-model="{{ row.demand_model_name }}"
+                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год">{{ _yv }}</textarea>
+                        {% else %}
+                        <input type="text"
+                               inputmode="decimal"
+                               autocomplete="off"
+                               class="form-control form-control-lg text-center fuel-param-input p-1"
+                               value="{{ _yv }}"
+                               data-initial="{{ _yv|e }}"
+                               data-slice="{{ _yr }}"
+                               {% if _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}
+                               {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
+                               {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
+                               {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
+                               data-parameter-key="{{ row.parameter_key }}"
+                               data-model="{{ row.demand_model_name }}"
+                               aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
+                        {% endif %}
+                        {% else %}
+                        {{ value }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{{ 3 + (years|length) }}" class="text-center text-muted">
+                        Нет данных для текущей версии БД.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .power-demand-summary-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .power-demand-summary-table {
+        width: 100%;
+        max-width: 100%;
+        table-layout: fixed;
+        font-size: 1.15rem;
+    }
+    .power-demand-summary-table col.summary-col-entity {
+        width: {{ summary_narrow_col_pct }}%;
+    }
+    .power-demand-summary-table col.summary-col-parameter {
+        width: {{ summary_narrow_col_pct }}%;
+    }
+    .power-demand-summary-table col.summary-col-hist {
+        width: {{ summary_hist_col_pct }}%;
+    }
+    .power-demand-summary-table thead th {
+        font-size: 1.28rem;
+        min-width: 0;
+    }
+    .summary-entity-col {
+        width: {{ summary_narrow_col_pct }}%;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-parameter-col {
+        width: {{ summary_narrow_col_pct }}%;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-parameter-header-inner {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+    .power-demand-oes-rows-filter-btn {
+        flex-shrink: 0;
+        line-height: 1;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.95rem;
+        border-radius: 2px;
+        color: #495057;
+        border-color: #adb5bd;
+        background: #fff;
+        box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    }
+    .power-demand-oes-rows-filter-btn:hover,
+    .power-demand-oes-rows-filter-btn:focus {
+        color: #212529;
+        border-color: #6c757d;
+        background: #f8f9fa;
+    }
+    .summary-hist-col {
+        width: {{ summary_hist_col_pct }}%;
+        min-width: 0;
+        white-space: normal;
+    }
+    .summary-year-col {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .power-demand-year-feature-caption {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+    }
+    .summary-entity-cell {
+        font-weight: 700;
+        font-size: 1.15rem;
+        white-space: normal;
+        background-color: #f8f9fa;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-parameter-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-hist-cell {
+        white-space: normal;
+    }
+    .summary-hist-cell,
+    .summary-year-cell {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-year-cell.summary-plan-empty {
+        min-height: 2.5rem;
+        background-color: #f1f3f5;
+    }
+    .power-demand-summary-table .fuel-param-input {
+        width: 100%;
+        min-width: 0;
+    }
+    #powerDemandSummaryTable tr[data-parameter-key="peak_datetime"] td.summary-hist-cell,
+    #powerDemandSummaryTable tr[data-parameter-key="peak_datetime"] td.summary-year-cell {
+        white-space: normal;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable textarea.power-demand-summary-datetime-field {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        resize: vertical;
+        min-height: 2.75rem;
+        line-height: 1.25;
+        max-width: 100%;
+        field-sizing: content;
+    }
+    .summary-kind-group > td,
+    .summary-kind-group-root > td {
+        background-color: #eef5ff;
+    }
+    .summary-kind-child > td {
+        background-color: #fbfcff;
+    }
+    #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-hidden {
+        display: none !important;
+    }
+    .tooltip.power-demand-datetime-format-tooltip .tooltip-inner {
+        max-width: min(320px, 90vw);
+        text-align: center;
+        font-size: 1.2rem;
+        line-height: 1.35;
+        padding: 0.55rem 0.75rem;
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    /* Мультивыбор без «вечно раскрытого» списка: как station_filters_first_row.js (без Select2) */
+    function initPdSummaryFilterDropdowns() {
+        function ensureDropdownMultiSelectFromEl(selectEl) {
+            if (!selectEl || selectEl.dataset.multiDropdownInit === "1") return;
+            var placeholder =
+                (selectEl.getAttribute("data-pd-placeholder") || "").trim() || "Выберите";
+            selectEl.dataset.multiDropdownInit = "1";
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "dropdown";
+
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "form-select text-start";
+            btn.setAttribute("data-bs-toggle", "dropdown");
+            btn.setAttribute("data-bs-auto-close", "outside");
+            btn.setAttribute("aria-expanded", "false");
+
+            var menu = document.createElement("div");
+            menu.className = "dropdown-menu p-2 filter-dropdown-menu";
+
+            selectEl.classList.add("d-none");
+
+            var parent = selectEl.parentNode;
+            if (!parent) return;
+            parent.replaceChild(wrapper, selectEl);
+            wrapper.appendChild(btn);
+            wrapper.appendChild(menu);
+            wrapper.appendChild(selectEl);
+
+            function setButtonText() {
+                var selected = Array.from(selectEl.selectedOptions || [])
+                    .map(function (o) {
+                        return (o.textContent || "").trim();
+                    })
+                    .filter(Boolean);
+                if (!selected.length) {
+                    btn.textContent = placeholder;
+                    return;
+                }
+                var preview = selected.slice(0, 1).join(", ");
+                var suffix = selected.length > 1 ? " (+" + (selected.length - 1) + ")" : "";
+                btn.textContent = preview + suffix;
+            }
+
+            function renderMenu() {
+                menu.innerHTML = "";
+                var actions = document.createElement("div");
+                actions.className = "d-flex justify-content-end align-items-center mb-2";
+                var clearBtn = document.createElement("button");
+                clearBtn.type = "button";
+                clearBtn.className = "btn btn-sm btn-outline-danger";
+                clearBtn.textContent = "Сбросить";
+                clearBtn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    Array.from(selectEl.options).forEach(function (opt) {
+                        opt.selected = false;
+                    });
+                    setButtonText();
+                    selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+                    renderMenu();
+                });
+                actions.appendChild(clearBtn);
+                menu.appendChild(actions);
+
+                var searchWrap = document.createElement("div");
+                searchWrap.className = "mb-2";
+                var searchInput = document.createElement("input");
+                searchInput.type = "text";
+                searchInput.className = "form-control form-control-sm";
+                searchInput.placeholder = "Поиск...";
+                searchInput.setAttribute("autocomplete", "off");
+                searchWrap.appendChild(searchInput);
+                menu.appendChild(searchWrap);
+
+                var list = document.createElement("div");
+                list.className = "d-flex flex-column gap-1";
+
+                Array.from(selectEl.options).forEach(function (opt) {
+                    var value = (opt.value != null ? String(opt.value) : "").trim();
+                    if (value === "") return;
+
+                    var item = document.createElement("label");
+                    item.className = "dropdown-item d-flex align-items-center gap-2";
+                    item.style.whiteSpace = "normal";
+
+                    var cb = document.createElement("input");
+                    cb.type = "checkbox";
+                    cb.checked = !!opt.selected;
+                    cb.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                    });
+                    cb.addEventListener("change", function (e) {
+                        e.stopPropagation();
+                        var found = Array.from(selectEl.options).find(function (o) {
+                            return String(o.value) === value;
+                        });
+                        if (found) found.selected = cb.checked;
+                        setButtonText();
+                        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+                    });
+
+                    var text = document.createElement("span");
+                    var optText = (opt.textContent || "").trim();
+                    text.textContent = optText;
+                    item.setAttribute("data-search-text", optText.toLowerCase());
+
+                    item.appendChild(cb);
+                    item.appendChild(text);
+                    list.appendChild(item);
+                });
+
+                function applyFilter() {
+                    var q = (searchInput.value || "").trim().toLowerCase();
+                    list.querySelectorAll("[data-search-text]").forEach(function (el) {
+                        var match =
+                            !q || (el.getAttribute("data-search-text") || "").indexOf(q) !== -1;
+                        el.classList.toggle("d-none", !match);
+                    });
+                }
+                searchInput.addEventListener("input", applyFilter);
+                searchInput.addEventListener("keyup", applyFilter);
+                searchInput.addEventListener("keydown", function (e) {
+                    e.stopPropagation();
+                });
+
+                menu.appendChild(list);
+                setButtonText();
+            }
+
+            selectEl._multiDropdownRender = renderMenu;
+            renderMenu();
+        }
+
+        var hasJQuery = typeof window.$ !== "undefined";
+        var hasSelect2 = hasJQuery && window.$ && window.$.fn && window.$.fn.select2;
+        if (hasSelect2) {
+            document.querySelectorAll("#filtersCollapse select.pd-ds-ms[multiple]").forEach(function (sel) {
+                var $el = window.$(sel);
+                if (!$el.length || $el.data("select2")) return;
+                var ph = (sel.getAttribute("data-pd-placeholder") || "").trim() || "Выберите";
+                $el.select2({
+                    placeholder: ph,
+                    allowClear: true,
+                    width: "100%",
+                    closeOnSelect: false,
+                    minimumResultsForSearch: 0,
+                    dropdownParent: window.$(document.body),
+                    language: {
+                        noResults: function () {
+                            return "Ничего не найдено";
+                        },
+                        searching: function () {
+                            return "Поиск...";
+                        }
+                    }
+                });
+            });
+            return;
+        }
+        document.querySelectorAll("#filtersCollapse select.pd-ds-ms[multiple]").forEach(function (sel) {
+            ensureDropdownMultiSelectFromEl(sel);
+        });
+    }
+
+    setTimeout(initPdSummaryFilterDropdowns, 100);
+
+    /* Автопоиск при выборе в фильтрах — как на fuel/stations_equipment_groups (station_filters_first_row.js) */
+    setTimeout(function () {
+        var filterForm = document.querySelector("#filtersCollapse form.pd-summary-filters-form");
+        if (!filterForm || filterForm.dataset.pdAutoSubmitBound === "1") {
+            return;
+        }
+        filterForm.dataset.pdAutoSubmitBound = "1";
+        filterForm.addEventListener("change", function (e) {
+            var t = e.target;
+            if (!t || typeof t.matches !== "function" || !t.matches("select.pd-ds-ms")) {
+                return;
+            }
+            if (filterForm.getAttribute("data-pd-cascade-silent") === "1") {
+                return;
+            }
+            /* Пока открыто (или недавно закрыто) модальное окно выбора строк таблицы, Select2 может
+               слать ложный change на фильтрах — тогда автопоиск сбрасывает территориальные фильтры. */
+            if (filterForm.dataset.pdRowPickerModalGuard === "1") {
+                return;
+            }
+            setTimeout(function () {
+                if (filterForm.dataset.pdRowPickerModalGuard === "1") {
+                    return;
+                }
+                filterForm.submit();
+            }, 150);
+        });
+        ["powerDemandOesRowsModal", "powerDemandFoRowsModal", "powerDemandEzRowsModal"].forEach(function (modalId) {
+            var modalEl = document.getElementById(modalId);
+            if (!modalEl) {
+                return;
+            }
+            modalEl.addEventListener("show.bs.modal", function () {
+                filterForm.dataset.pdRowPickerModalGuard = "1";
+            });
+            modalEl.addEventListener("hidden.bs.modal", function () {
+                setTimeout(function () {
+                    delete filterForm.dataset.pdRowPickerModalGuard;
+                }, 500);
+            });
+        });
+    }, 250);
+
+    document.getElementById("rounding_digits")?.addEventListener("change", function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set("rounding_digits", this.value);
+        window.location.href = url.toString();
+    });
+
+    /* Экспорт без второй вкладки: window.open переводит фокус на новую вкладку — в Chrome таймеры на фоновой
+       основной вкладке сильно замедляются, сброс спиннера задерживается («висит» вся страница). Скрытый iframe
+       не уводит фокус; спиннер только на кнопке; сброс по таймеру + при возврате на вкладку (visibilitychange). */
+    (function () {
+        var exportLink = document.querySelector("a.pd-demand-summary-export-xlsx");
+        if (!exportLink) {
+            return;
+        }
+        exportLink.addEventListener("click", function (e) {
+            var u = new URL(this.getAttribute("href") || this.href, window.location.origin);
+            var storageKey = this.getAttribute("data-pd-visible-rows-key") || "";
+            if (storageKey) {
+                try {
+                    var raw = sessionStorage.getItem(storageKey);
+                    if (raw) {
+                        var arr = JSON.parse(raw);
+                        if (Array.isArray(arr) && arr.length > 0) {
+                            u.searchParams.set("visible_rows", arr.join(","));
+                        }
+                    }
+                } catch (err) { /* */ }
+            }
+            var exportUrl = u.pathname + u.search;
+            this.setAttribute("href", exportUrl);
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
+                return;
+            }
+            e.preventDefault();
+
+            if (this.getAttribute("data-pd-exporting") === "1") {
+                return;
+            }
+            this.setAttribute("data-pd-exporting", "1");
+
+            var originalHtml = this.innerHTML;
+            var w = this.offsetWidth;
+            if (w) {
+                this.style.minWidth = w + "px";
+            }
+
+            this.innerHTML =
+                '<span class="spinner-border spinner-border-sm flex-shrink-0" role="status" aria-hidden="true"></span>' +
+                '<span>Экспорт в Excel</span>';
+            this.classList.add("disabled");
+            this.setAttribute("aria-busy", "true");
+            this.setAttribute("aria-disabled", "true");
+
+            var self = this;
+            var ifr = null;
+            var finished = false;
+
+            function finishExport() {
+                if (finished) {
+                    return;
+                }
+                finished = true;
+                document.removeEventListener("visibilitychange", onVis);
+                if (timerId !== null) {
+                    clearTimeout(timerId);
+                    timerId = null;
+                }
+                try {
+                    if (ifr && ifr.parentNode) {
+                        ifr.remove();
+                    }
+                } catch (eRm) { /* */ }
+                self.innerHTML = originalHtml;
+                self.style.minWidth = "";
+                self.classList.remove("disabled");
+                self.removeAttribute("aria-busy");
+                self.removeAttribute("aria-disabled");
+                self.removeAttribute("data-pd-exporting");
+            }
+
+            function onVis() {
+                if (document.visibilityState === "visible") {
+                    finishExport();
+                }
+            }
+
+            var timerId = null;
+
+            window.requestAnimationFrame(function () {
+                window.requestAnimationFrame(function () {
+                    ifr = document.createElement("iframe");
+                    ifr.setAttribute("aria-hidden", "true");
+                    ifr.tabIndex = -1;
+                    ifr.style.cssText =
+                        "position:absolute;width:0;height:0;border:0;clip:rect(0,0,0,0);visibility:hidden";
+                    ifr.src = exportUrl;
+                    document.body.appendChild(ifr);
+                    document.addEventListener("visibilitychange", onVis);
+                    timerId = window.setTimeout(finishExport, 450);
+                });
+            });
+        });
+    })();
+
+    const summaryTable = document.getElementById("powerDemandSummaryTable");
+    if (summaryTable) {
+        const FILTER_STORAGE_KEY = "powerDemandSummaryRowFilter";
+
+        function initPdSummaryRowPicker(spec) {
+            var ROW_KEYS = spec.rowKeys;
+            var storageKey = spec.storageKey;
+            var modalId = spec.modalId;
+            var applyBtnId = spec.applyBtnId;
+            var lastApplied = null;
+
+            /**
+             * Ячейка «Энергосистема» в разметке только у первой строки блока (обычно max_power).
+             * Если эту строку скрывают, без переноса ячейки таблица «ломается» (колонки съезжают).
+             * Переносим td.summary-entity-cell на первую видимую строку блока и выставляем rowspan.
+             */
+            function repositionEntityCellsAndRowspans() {
+                var tbody = summaryTable.querySelector("tbody");
+                if (!tbody) {
+                    return;
+                }
+                var startRows = tbody.querySelectorAll(
+                    'tr.summary-row-param[data-is-block-start="1"]'
+                );
+                Array.prototype.forEach.call(startRows, function (startTr) {
+                    var blockSize = parseInt(startTr.getAttribute("data-entity-block-size") || "1", 10);
+                    if (blockSize < 1) {
+                        blockSize = 1;
+                    }
+                    var blockRows = [];
+                    var tr = startTr;
+                    for (var j = 0; j < blockSize && tr; j++) {
+                        if (!tr.classList.contains("summary-row-param")) {
+                            break;
+                        }
+                        blockRows.push(tr);
+                        tr = tr.nextElementSibling;
+                    }
+                    if (blockRows.length === 0) {
+                        return;
+                    }
+                    var entityTd = null;
+                    for (var k = 0; k < blockRows.length; k++) {
+                        var et = blockRows[k].querySelector("td.summary-entity-cell");
+                        if (et) {
+                            entityTd = et;
+                            break;
+                        }
+                    }
+                    if (!entityTd) {
+                        return;
+                    }
+                    var visibleRows = blockRows.filter(function (r) {
+                        return !r.classList.contains("summary-row-hidden");
+                    });
+                    if (visibleRows.length === 0) {
+                        entityTd.setAttribute("rowspan", "1");
+                        return;
+                    }
+                    var firstVis = visibleRows[0];
+                    var paramCell = firstVis.querySelector("td.summary-parameter-cell");
+                    if (paramCell && entityTd.parentNode !== firstVis) {
+                        firstVis.insertBefore(entityTd, paramCell);
+                    }
+                    entityTd.setAttribute("rowspan", String(visibleRows.length));
+                });
+            }
+
+            function readKeysFromCheckboxes() {
+                var set = {};
+                ROW_KEYS.forEach(function (k) {
+                    set[k] = false;
+                });
+                document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
+                    var k = inp.getAttribute("data-pd-row-key");
+                    if (!k) {
+                        return;
+                    }
+                    set[k] = inp.checked;
+                });
+                return set;
+            }
+
+            function syncCheckboxesFromKeys(keyMap) {
+                document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
+                    var k = inp.getAttribute("data-pd-row-key");
+                    if (!k) {
+                        return;
+                    }
+                    inp.checked = keyMap[k] !== false;
+                });
+            }
+
+            function applyVisibilityFromKeys(keyMap) {
+                summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
+                    var pk = tr.getAttribute("data-parameter-key") || "";
+                    var show = keyMap[pk] !== false;
+                    if (show) {
+                        tr.classList.remove("summary-row-hidden");
+                    } else {
+                        tr.classList.add("summary-row-hidden");
+                    }
+                });
+                repositionEntityCellsAndRowspans();
+            }
+
+            function parseFromStorage(raw) {
+                var def = {};
+                ROW_KEYS.forEach(function (k) {
+                    def[k] = true;
+                });
+                if (!raw) {
+                    return def;
+                }
+                try {
+                    var arr = JSON.parse(raw);
+                    if (!Array.isArray(arr) || arr.length === 0) {
+                        return def;
+                    }
+                    var out = {};
+                    ROW_KEYS.forEach(function (k) {
+                        out[k] = arr.indexOf(k) !== -1;
+                    });
+                    return out;
+                } catch (e) {
+                    return def;
+                }
+            }
+
+            function serializeKeys(keyMap) {
+                return ROW_KEYS.filter(function (k) {
+                    return keyMap[k] !== false;
+                });
+            }
+
+            try {
+                var stored = sessionStorage.getItem(storageKey);
+                if (!stored) {
+                    var legacy = sessionStorage.getItem(FILTER_STORAGE_KEY);
+                    if (legacy === "max_power") {
+                        var onlyMax = {};
+                        ROW_KEYS.forEach(function (k) {
+                            onlyMax[k] = k === "max_power";
+                        });
+                        lastApplied = onlyMax;
+                    }
+                }
+                if (!lastApplied) {
+                    lastApplied = parseFromStorage(stored);
+                }
+            } catch (e) {
+                lastApplied = parseFromStorage(null);
+            }
+
+            syncCheckboxesFromKeys(lastApplied);
+            applyVisibilityFromKeys(lastApplied);
+            try {
+                sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(lastApplied)));
+            } catch (e2) { /* */ }
+
+            var modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                modalEl.addEventListener("show.bs.modal", function () {
+                    syncCheckboxesFromKeys(lastApplied);
+                });
+            }
+            var applyBtn = document.getElementById(applyBtnId);
+            if (applyBtn && modalEl) {
+                applyBtn.addEventListener("click", function () {
+                    var keyMap = readKeysFromCheckboxes();
+                    lastApplied = keyMap;
+                    applyVisibilityFromKeys(keyMap);
+                    try {
+                        sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(keyMap)));
+                    } catch (e3) { /* */ }
+                    var inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) {
+                        inst.hide();
+                    }
+                });
+            }
+        }
+
+        var summaryView = summaryTable.getAttribute("data-summary-view");
+        if (summaryView === "oes") {
+            initPdSummaryRowPicker({
+                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_oes", "combined_on_ees", "combined_on_es"],
+                storageKey: "powerDemandSummaryOesVisibleRowKeys",
+                modalId: "powerDemandOesRowsModal",
+                applyBtnId: "powerDemandOesRowsApply"
+            });
+        } else if (summaryView === "fo") {
+            initPdSummaryRowPicker({
+                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_cz", "combined_on_fo"],
+                storageKey: "powerDemandSummaryFoVisibleRowKeys",
+                modalId: "powerDemandFoRowsModal",
+                applyBtnId: "powerDemandFoRowsApply"
+            });
+        } else if (summaryView === "ez") {
+            initPdSummaryRowPicker({
+                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_ez", "combined_on_ees"],
+                storageKey: "powerDemandSummaryEzVisibleRowKeys",
+                modalId: "powerDemandEzRowsModal",
+                applyBtnId: "powerDemandEzRowsApply"
+            });
+        }
+    }
+
+    document.querySelectorAll('#powerDemandSummaryTable [data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+
+    const table = document.querySelector(".power-demand-summary-table[data-save-cell-url]");
+    const saveBtn = document.getElementById("demandSummarySaveBtn");
+    if (!table || !saveBtn) {
+        return;
+    }
+    const saveUrl = table.dataset.saveCellUrl;
+    const roundingDigits = parseInt(table.dataset.roundingDigits || "1", 10);
+
+    function normForCompare(s) {
+        return String(s ?? "").trim().replace(/\s+/g, "").replace(",", ".");
+    }
+
+    const headers = {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": "{{ csrf_token }}"
+    };
+
+    function parsePeakDatetimeSummary(val) {
+        var lines = String(val || "").split(/\r?\n/);
+        var s = "";
+        for (var li = 0; li < lines.length; li++) {
+            var t = lines[li].trim();
+            if (t) {
+                s = t;
+                break;
+            }
+        }
+        if (!s) {
+            s = String(val || "").trim();
+        }
+        if (!s) return null;
+        if (/^\d{4}$/.test(s)) {
+            var yy = parseInt(s, 10);
+            if (yy >= 1000 && yy <= 9999) {
+                return new Date(yy, 0, 1, 0, 0, 0, 0);
+            }
+            return null;
+        }
+        var m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/.exec(s);
+        if (!m) return null;
+        var d = parseInt(m[1], 10);
+        var mo = parseInt(m[2], 10) - 1;
+        var y = parseInt(m[3], 10);
+        var h = parseInt(m[4], 10);
+        var mi = parseInt(m[5], 10);
+        var dt = new Date(y, mo, d, h, mi, 0, 0);
+        if (
+            dt.getFullYear() !== y ||
+            dt.getMonth() !== mo ||
+            dt.getDate() !== d ||
+            dt.getHours() !== h ||
+            dt.getMinutes() !== mi
+        ) {
+            return null;
+        }
+        return dt;
+    }
+
+    function validateDemandSummaryPeak(inp) {
+        if (inp.dataset.parameterKey !== "peak_datetime") {
+            return true;
+        }
+        var raw = String(inp.value || "").trim();
+        if (!raw) {
+            return true;
+        }
+        var sl = String(inp.dataset.slice || "").trim();
+        if (sl === "hist") {
+            return true;
+        }
+        var pdt = parsePeakDatetimeSummary(inp.value);
+        if (!pdt) {
+            alert("«Дата и время»: укажите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ или только год (ГГГГ).");
+            return false;
+        }
+        var colY = parseInt(sl, 10);
+        if (!Number.isNaN(colY) && pdt.getFullYear() !== colY) {
+            alert(
+                "Год в «Дата и время» (" +
+                    pdt.getFullYear() +
+                    ") должен совпадать с годом столбца (" +
+                    colY +
+                    ")."
+            );
+            return false;
+        }
+        return true;
+    }
+
+    async function runDemandSummarySave() {
+        if (saveBtn.disabled) {
+            return;
+        }
+        const inputs = table.querySelectorAll(".fuel-param-input[data-model][data-slice]");
+        const changed = [];
+        inputs.forEach(function (inp) {
+            const initial = inp.getAttribute("data-initial") || "";
+            if (normForCompare(initial) !== normForCompare(inp.value)) {
+                changed.push(inp);
+            }
+        });
+        if (changed.length === 0) {
+            alert("Нет изменений для сохранения.");
+            return;
+        }
+
+        const originalHtml = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Сохранение...';
+
+        try {
+            for (let i = 0; i < changed.length; i++) {
+                const inp = changed[i];
+                if (!validateDemandSummaryPeak(inp)) {
+                    saveBtn.innerHTML = originalHtml;
+                    saveBtn.disabled = false;
+                    return;
+                }
+                const sliceRaw = inp.dataset.slice;
+                const payload = {
+                    demand_model_name: inp.dataset.model,
+                    parameter_key: inp.dataset.parameterKey,
+                    value: inp.value,
+                    rounding_digits: roundingDigits,
+                    slice_key: sliceRaw === "hist" ? "hist" : (sliceRaw ? parseInt(sliceRaw, 10) : null)
+                };
+                const ridAttr = inp.getAttribute("data-row-id");
+                if (ridAttr !== null && ridAttr !== "") {
+                    const rid = parseInt(ridAttr, 10);
+                    if (!Number.isNaN(rid)) {
+                        payload.row_id = rid;
+                    }
+                }
+                const pfk = inp.getAttribute("data-parent-fk");
+                if (pfk) {
+                    payload.parent_fk_column = pfk;
+                }
+                const pidi = inp.getAttribute("data-parent-id");
+                if (pidi !== null && pidi !== "") {
+                    payload.parent_id = parseInt(pidi, 10);
+                }
+                if (!payload.demand_model_name || !payload.parameter_key) {
+                    continue;
+                }
+                const response = await fetch(saveUrl, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json().catch(function () { return null; });
+                if (!response.ok || !data || !data.ok) {
+                    const msg = (data && data.error) ? data.error : "Не удалось сохранить.";
+                    alert(msg);
+                    saveBtn.innerHTML = originalHtml;
+                    saveBtn.disabled = false;
+                    return;
+                }
+            }
+            window.location.reload();
+        } catch (e) {
+            alert("Ошибка сети при сохранении.");
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+        }
+    }
+
+    saveBtn.addEventListener("click", function () {
+        runDemandSummarySave();
+    });
+
+    table.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" || e.repeat) {
+            return;
+        }
+        if (!e.target || !e.target.matches("input.fuel-param-input")) {
+            return;
+        }
+        e.preventDefault();
+        runDemandSummarySave();
+    });
+});
+</script>
+{% if active_summary == 'oes' and pd_oes_filters_cascade is defined %}
+<script type="application/json" id="pd-oes-filters-data">{{ pd_oes_filters_cascade | tojson | safe }}</script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_oes_cascade.js') }}"></script>
+{% endif %}
+{% if active_summary == 'fo' and pd_fo_filters_cascade is defined %}
+<script type="application/json" id="pd-fo-filters-data">{{ pd_fo_filters_cascade | tojson | safe }}</script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_fo_cascade.js') }}"></script>
+{% endif %}
+{% if active_summary == 'ez' and pd_ez_filters_cascade is defined %}
+<script type="application/json" id="pd-ez-filters-data">{{ pd_ez_filters_cascade | tojson | safe }}</script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_ez_cascade.js') }}"></script>
+{% endif %}
+{% endif %}
+{% endblock %}

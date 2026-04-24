@@ -10,7 +10,7 @@ from app.common.models.versioned_model import VersionedModelMixin
 
 
 class Year(db.Model, AuditMixin, VersionedModelMixin):
-    __tablename__ = 'gs_years'
+    __tablename__ = 'gs_sys_years'
     __table_args__ = (
         db.UniqueConstraint(
             "number",
@@ -29,7 +29,7 @@ class Year(db.Model, AuditMixin, VersionedModelMixin):
     # FK -> YearFeature
     id_year_feature = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_year_features.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_year_features.id', ondelete='RESTRICT'),
         nullable=True,
         index=True
     )

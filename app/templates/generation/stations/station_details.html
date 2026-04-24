@@ -75,7 +75,7 @@
 }
 .machines-table .machine-note-textarea {
     width: 100%;
-    resize: none;               /* высоту даём скриптом, без ручного ресайза */
+    resize: none;               /* высоту даем скриптом, без ручного ресайза */
     overflow: hidden;           /* без внутреннего скролла */
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -457,7 +457,7 @@
                     {% set station_groups = station.equipment_group_v2_groups or [] %}
                     {% if station_groups %}
                         <div class="table-responsive">
-                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100">
+                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100" data-auto-export-excel="off">
                                 <thead class="table-success">
                                     <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                                         <th>Группа оборудования</th>
@@ -468,41 +468,105 @@
                                 <tbody>
                                     {% for group in station_groups %}
                                         {% set group_entity = group.equipment_group %}
-                                        {% set group_name = (
+                                        {% set group_display_name = (
                                             group_entity.name if group_entity and group_entity.name
                                             else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')
                                         ) %}
-                                        {% set group_cell_printed = namespace(value=false) %}
-                                        {% for link_item in group.links %}
-                                            {% set group_type = link_item.equipment_group_type %}
-                                            <tr>
-                                                {% if not group_cell_printed.value %}
-                                                <td class="equipment-group-name" rowspan="{{ group.rowspan }}">
-                                                    {% if can_edit and group_entity and group_entity.id %}
-                                                    <form method="POST" action="{{ url_for('station_bp.rename_station_equipment_group_v2', station_id=station.id, equipment_group_id=group_entity.id, **request.args) }}" class="d-flex gap-2 align-items-center flex-nowrap" id="rename-equipment-group-v2-{{ group_entity.id }}">
-                                                        {{ form.hidden_tag() }}
-                                                        <input type="text" name="equipment_group_name" class="form-control" value="{{ group_name }}" placeholder="Название группы" style="flex: 1; min-width: 120px;">
-                                                        <div class="d-flex gap-1 flex-shrink-0">
-                                                            <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить</button>
-                                                            <button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>
-                                                        </div>
-                                                    </form>
-                                                    {% else %}
-                                                    {{ group_name }}
-                                                    {% endif %}
-                                                </td>
-                                                {% set group_cell_printed.value = true %}
-                                                {% endif %}
-                                                <td class="text-center">{{ group_type.name if group_type and group_type.name else '—' }}</td>
-                                                <td class="text-center">{{ link_item.machines|length }}</td>
-                                            </tr>
+                                        {% set group_input_value = (group_entity.name if group_entity and group_entity.name else '') %}
+                                        {% set has_nonempty_links = namespace(value=false) %}
+                                        {% for li in group.links %}
+                                            {% if (li.equipment_group_type and li.equipment_group_type.name) or (li.machines|length > 0) %}
+                                                {% set has_nonempty_links.value = true %}
+                                            {% endif %}
                                         {% endfor %}
+                                        {% set missing_eg_name_row = (group_display_name == '—') and has_nonempty_links.value %}
+                                        {% set type_names_acc = namespace(names=[]) %}
+                                        {% set machines_total = namespace(n=0) %}
+                                        {% for li in group.links %}
+                                            {% set machines_total.n = machines_total.n + (li.machines|length) %}
+                                            {% set tnm = li.equipment_group_type.name if li.equipment_group_type and li.equipment_group_type.name else None %}
+                                            {% if tnm and tnm not in type_names_acc.names %}
+                                                {% set _ = type_names_acc.names.append(tnm) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% set group_types_cell = (type_names_acc.names | join(', ')) if type_names_acc.names else '—' %}
+                                        <tr>
+                                            <td class="equipment-group-name">
+                                                {% if can_edit and group_entity and group_entity.id %}
+                                                <form method="POST" action="{{ url_for('station_bp.rename_station_equipment_group_v2', station_id=station.id, equipment_group_id=group_entity.id, **request.args) }}" class="d-flex gap-2 align-items-center flex-nowrap" style="max-width: 100%;" id="rename-equipment-group-v2-{{ group_entity.id }}">
+                                                    {{ form.hidden_tag() }}
+                                                    <input type="text" name="equipment_group_name" class="form-control" value="{{ group_input_value }}" placeholder="Название группы" style="flex: 1; min-width: 120px;">
+                                                    <div class="d-flex gap-1 flex-shrink-0">
+                                                        <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="btn btn-outline-success btn-sm">Открыть</a>
+                                                        <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить</button>
+                                                        <button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>
+                                                    </div>
+                                                </form>
+                                                {% if missing_eg_name_row and can_add_equipment_group %}
+                                                <div class="mt-2">
+                                                    <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="btn btn-outline-secondary btn-sm">Карточка группы (Топливо)</a>
+                                                </div>
+                                                {% endif %}
+                                                {% else %}
+                                                <div class="{% if missing_eg_name_row and not group_entity %}d-flex flex-column gap-2{% endif %}">
+                                                    <span>{{ group_display_name }}</span>
+                                                    {% if missing_eg_name_row and not group_entity %}
+                                                        {% set orphan_ns = namespace(ids=[], all_have_link=true) %}
+                                                        {% for li in group.links %}
+                                                            {% if li.link is none %}
+                                                                {% set orphan_ns.all_have_link = false %}
+                                                            {% else %}
+                                                                {% set _ = orphan_ns.ids.append(li.link.id) %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        {% set can_delete_orphan_eg_link = orphan_ns.all_have_link and orphan_ns.ids|length > 0 and machines_total.n == 0 %}
+                                                        {% if can_delete_orphan_eg_link and can_edit %}
+                                                        <form method="POST" action="{{ url_for('station_bp.delete_station_equipment_group_type_links', station_id=station.id, **request.args) }}" class="d-flex flex-column gap-2 align-items-start">
+                                                            {{ form.hidden_tag() }}
+                                                            {% for lid in orphan_ns.ids %}
+                                                            <input type="hidden" name="equipment_group_set_station_id" value="{{ lid }}">
+                                                            {% endfor %}
+                                                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Удалить привязку типа группы к станции в текущей версии БД?');">Удалить</button>
+                                                                <button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Удалить все записи с этой станцией и типом группы во всех версиях БД" onclick="return confirm('Удалить эту привязку во всех версиях БД?');">Удалить во всех версиях</button>
+                                                            </div>
+                                                            <p class="small text-body-secondary mb-0">Удаляется только связь «станция — тип группы» и наборы EquipmentGroupSet; карточки групп в Топливе не затрагиваются.</p>
+                                                        </form>
+                                                        {% elif can_add_equipment_group %}
+                                                        <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-success text-dark btn-sm align-self-start">➕ Создать группу оборудования</a>
+                                                        <p class="small text-body-secondary mb-0">После создания привяжите группу к станции в «Группы оборудования» (Топливо) или импортом БД Топливо.</p>
+                                                        {% elif can_edit %}
+                                                        <span class="small text-body-secondary">Создание группы — администратором в разделе «Топливо».</span>
+                                                        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-secondary btn-sm align-self-start">Группы оборудования (Топливо)</a>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">{{ group_types_cell }}</td>
+                                            <td class="text-center">{{ machines_total.n }}</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     {% else %}
-                        <div class="text-muted mb-3">Нет привязанных групп оборудования.</div>
+                        <div class="text-muted mb-3 d-flex flex-wrap align-items-center gap-2">
+                            <span>Нет привязанных групп оборудования.</span>
+                            {% if can_add_equipment_group %}
+                            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-success text-dark btn-sm">
+                                ➕ Создать группу оборудования
+                            </a>
+                            <p class="small text-body-secondary mb-0 w-100 mt-1">
+                                После создания привяжите группу к станции на странице
+                                <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}">«Группы оборудования»</a>
+                                (Топливо) или через импорт БД Топливо.
+                            </p>
+                            {% elif can_edit %}
+                            <span class="small text-body-secondary">Новую группу может создать администратор в разделе «Топливо».</span>
+                            <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-secondary btn-sm">Группы оборудования (Топливо)</a>
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -595,7 +659,7 @@
             <input type="hidden" name="version" value="{{ station.version }}">
             {% endif %}
             <div class="table-responsive">
-                <table class="table table-hover table-striped table-bordered table-responsive machines-table">
+                <table class="table table-hover table-striped table-bordered table-responsive machines-table" data-auto-export-excel="off">
                     <thead class="table-success">
                         <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                             <th rowspan="2" style="width: 50px;">гр.</th>
@@ -611,7 +675,7 @@
                             <th rowspan="2" class="col-equipment-group-type" style="width: 120px;">Тип<br>группы<br>оборуд.</th>
                             <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
                             <th rowspan="2" class="fw-bold" style="width: 50px;">Тип <br> мощ-ти</th>
-                            <th colspan="{{ end_year - start_year + 1 }}">Мощность</th>
+                            <th colspan="{{ end_year - start_year + 1 }}">Электрическая мощность, МВт</th>
                             <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                             <th rowspan="2" class="col-note">Примечание</th>
                             <th rowspan="2" class="col-delete" style="width: 80px;">Удалить</th>
@@ -670,7 +734,7 @@
 <div class="container-fluid mt-3">
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-hover table-striped table-bordered table-responsive" id="station-logs-table">
+            <table class="table table-hover table-striped table-bordered table-responsive" id="station-logs-table" data-auto-export-excel="off">
                 <thead class="table-light">
                     <tr>
                         <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
@@ -732,7 +796,7 @@
 #station-logs-table,
 #machine-logs-table { table-layout: fixed; width: 100%; }
 
-/* Фиксированные ширины первых трёх колонок */
+/* Фиксированные ширины первых трех колонок */
 #station-logs-table th.log-col-date, #station-logs-table td:nth-child(1),
 #machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) {
   width: 140px !important;
@@ -745,7 +809,7 @@
 #machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) {
   width: 300px !important;
 }
-/* Без переноса в первых трёх колонках для данных */
+/* Без переноса в первых трех колонках для данных */
 #station-logs-table td:nth-child(1),
 #station-logs-table td:nth-child(2),
 #station-logs-table td:nth-child(3),
@@ -1176,7 +1240,7 @@
         const labelPRasp = document.querySelector('label[for="toggleP_Rasp"]');
 
         // На этой странице по умолчанию Рогр скрыт всегда при первичной загрузке
-        // Игнорируем сохранённое состояние и принудительно выключаем чекбокс
+        // Игнорируем сохраненное состояние и принудительно выключаем чекбокс
         try {
             if (togglePOgr) {
                 togglePOgr.checked = false;
@@ -1372,7 +1436,7 @@
             uesElement.innerText = uesValue;
             estElement.innerText = estValue;
 
-            // Подсветка обновлённых значений зелёным, как у федерального округа
+            // Подсветка обновленных значений зеленым, как у федерального округа
             [uesElement, estElement].forEach((el) => {
                 if (!el) return;
                 el.style.transition = "background-color 0.3s ease";
@@ -1577,7 +1641,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const existingField = machinesForm.querySelector(`[name="${input.name}"]`);
                 
                 if (!existingField && input.name && input.name !== 'csrf_token') {
-                    // Создаём скрытое поле с данными из формы станции
+                    // Создаем скрытое поле с данными из формы станции
                     const hiddenField = document.createElement('input');
                     hiddenField.type = 'hidden';
                     hiddenField.name = input.name;

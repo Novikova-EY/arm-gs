@@ -10,7 +10,7 @@ from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class MachineFuel(db.Model, AuditMixin):
-    __tablename__ = 'machine_fuels'
+    __tablename__ = 'gs_gen_machine_fuels'
     __table_args__ = (
         Index('ix_machine_fuel_id_machine', 'id_machine'),
         Index('ix_machine_fuel_id_fuel', 'id_fuel'),
@@ -25,7 +25,7 @@ class MachineFuel(db.Model, AuditMixin):
     # FK -> Year (по полю years.number)
     year_number = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_years.number', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_years.number', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -34,7 +34,7 @@ class MachineFuel(db.Model, AuditMixin):
     # FK -> Machine
     id_machine = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_GENERATION}.machines.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_GENERATION}.gs_gen_machines.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )
@@ -43,7 +43,7 @@ class MachineFuel(db.Model, AuditMixin):
     # FK -> Fuel
     id_fuel = db.Column(
         db.Integer,
-        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_fuels.id', ondelete='RESTRICT'),
+        db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_fuels.id', ondelete='RESTRICT'),
         nullable=True,
         index=True,
     )

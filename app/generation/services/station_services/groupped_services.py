@@ -145,7 +145,7 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
                     res = r
                     break
             if res is None:
-                # нет РЭС с валидной ОЭС — берём первую по версии, даже если у неё нет ОЭС (будет пропуск)
+                # нет РЭС с валидной ОЭС — берем первую по версии, даже если у нее нет ОЭС (будет пропуск)
                 res = rd_res_list[0]
 
         ues = getattr(res, 'union_energy_system', None)
@@ -459,7 +459,7 @@ def fetch_machines_with_rowspans(
         sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
         machine_list[:] = [m for group in sorted_fuel_groups for m in group]
 
-        # Сначала задаём total_rows каждой машине (нужно для fuel_rowspan)
+        # Сначала задаем total_rows каждой машине (нужно для fuel_rowspan)
         for m in machine_list:
             num_pgu = len(m.pgu_machines)
             base_rows = 1 + num_pgu

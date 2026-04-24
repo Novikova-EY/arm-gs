@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Ограничения{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<style>
+.restrictions-table {
+    font-size: 1.05rem;
+    vertical-align: middle;
+}
+.restrictions-table thead th {
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+</style>
+
+{% set _ues_selected = union_energy_system_filter[0] if union_energy_system_filter and union_energy_system_filter|length > 0 else none %}
+
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Топливо»</a>
+        {% set calc_qs = request.query_string.decode('utf-8') if request.query_string else '' %}
+        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Расчёт</a>
+        <a href="{{ url_for('fuel_bp.distribution_parameters_list') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Параметры распределения</a>
+    </div>
+
+    <h2 class="mb-3">Ограничения</h2>
+    <p class="text-muted small mb-3">Данные в порядке сортировки по полю <code>obl</code> (как при открытии формы в Access: <code>Me.OrderBy = &quot;obl&quot;</code>).</p>
+
+    <div class="col-12 mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
+            <button class="btn {% if has_active_filters|default(false) %}btn-warning{% else %}btn-primary{% endif %} text-white"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#restrictionsFiltersCollapse"
+                    aria-expanded="true"
+                    aria-controls="restrictionsFiltersCollapse">
+                Фильтры
+            </button>
+            <div class="d-flex align-items-center gap-1">
+                <label for="rounding_digits_top" class="mb-0 text-nowrap">Округл:</label>
+                <select id="rounding_digits_top" class="form-select" style="min-width: 9rem;">
+                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="collapse show mt-2" id="restrictionsFiltersCollapse">
+        <form method="GET" action="{{ url_for('fuel_bp.fuel_restrictions_list') }}" class="card card-body mb-3">
+            {% for key, values in request.args.lists() %}
+                {% if key not in ['union_energy_system_filter', 'start_year', 'rounding_digits'] %}
+                    {% for v in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ v }}">
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+            <input type="hidden" name="rounding_digits" id="rounding_digits_hidden" value="{{ rounding_digits }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-semibold mb-1" for="union_energy_system_filter_r">ОЭС</label>
+                    <select id="union_energy_system_filter_r" name="union_energy_system_filter" class="form-select">
+                        <option value="" {% if _ues_selected is none %}selected{% endif %}>Все ОЭС</option>
+                        {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
+                        <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
+                        {% endfor %}
+                        {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
+                        <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label class="form-label fw-semibold mb-1" for="start_year_r">Год расчёта</label>
+                    <select name="start_year" id="start_year_r" class="form-select">
+                        <option value="" {% if start_year is none %}selected{% endif %}>Все годы</option>
+                        {% for year in filter_year_list %}
+                        <option value="{{ year }}" {% if start_year is not none and start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Применить</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    (function() {
+        var sel = document.getElementById('rounding_digits_top');
+        var hidden = document.getElementById('rounding_digits_hidden');
+        var form = hidden && hidden.closest('form');
+        function sync() {
+            if (sel && hidden) hidden.value = sel.value;
+        }
+        if (sel && hidden) {
+            sel.addEventListener('change', function() {
+                sync();
+                if (form) form.submit();
+            });
+            sync();
+        }
+    })();
+    </script>
+
+    <div class="table-responsive border rounded">
+        <table class="table table-hover table-striped table-bordered align-middle mb-0 restrictions-table">
+            <thead class="table-success">
+                <tr class="text-center">
+                    {% for attr, label in restriction_headings %}
+                    <th>{{ label }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in restriction_rows %}
+                <tr class="text-center">
+                    {% for attr, label in restriction_headings %}
+                    <td class="text-center">
+                        {% set v = attribute(row, attr) %}
+                        {% if v is none %}
+                            —
+                        {% elif attr in ('restriction_name', 'kcur') %}
+                            {% if v == '' %}—{% else %}{{ v }}{% endif %}
+                        {% else %}
+                            {{ v|format_decimal_trim(rounding_digits) }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="{{ restriction_headings|length }}" class="text-center text-muted py-4">
+                        Нет строк. При необходимости загрузите данные в таблицу <code>gs_fue_restrictions</code> или ослабьте фильтр.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

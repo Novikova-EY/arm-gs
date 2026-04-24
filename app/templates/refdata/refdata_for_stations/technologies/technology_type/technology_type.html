@@ -100,8 +100,9 @@
                 <table class="table table-hover table-striped table-bordered">
                     <thead class="table-success">
                         <tr>
-                            <!-- Шапка таблицы. Столбец "№" -->
-                            <th class="text-center align-middle">
+                            <!-- Шапка таблицы. Столбец "№" (не путать с порядком отображения в справочнике) -->
+                            <th class="text-center align-middle"
+                                title="Порядковый номер строки на странице (зависит от сортировки и страницы). Это не поле «Порядок отображения».">
                                 <a href="{{ url_for('refdata_bp.technology_type_list', 
                                             page=pagination.page, 
                                             per_page=per_page, 
@@ -120,8 +121,9 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
-                            <th class="text-center align-middle">
+                            <!-- Порядок в справочнике; уникален в пределах текущей версии БД -->
+                            <th class="text-center align-middle"
+                                title="Число для сортировки в справочнике; должно быть уникальным среди типов технологий текущей версии БД (в т.ч. на других страницах списка).">
                                 <a href="{{ url_for('refdata_bp.technology_type_list', 
                                             page=pagination.page, 
                                             per_page=per_page, 
@@ -210,8 +212,8 @@
             <table class="table table-hover table-striped table-bordered">
                 <thead class="table-success">
                     <tr>
-                        <!-- Шапка таблицы. Столбец "№" -->
-                        <th class="text-center align-middle">
+                        <th class="text-center align-middle"
+                            title="Порядковый номер строки на странице; не равен полю «Порядок отображения».">
                             <a href="{{ url_for('refdata_bp.technology_type_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 

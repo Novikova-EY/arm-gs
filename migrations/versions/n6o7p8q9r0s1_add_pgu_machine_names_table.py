@@ -4,10 +4,18 @@ Revision ID: n6o7p8q9r0s1
 Revises: m5n6o7p8q9r0
 Create Date: 2026-03-18
 
-Создаёт таблицу pgu_machine_names по аналогии с machine_names (названия компонентов ПГУ по годам).
+Создает таблицу pgu_machine_names по аналогии с machine_names (названия компонентов ПГУ по годам).
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils
 
 
 revision = "n6o7p8q9r0s1"
@@ -21,6 +29,9 @@ TABLE = "pgu_machine_names"
 
 
 def upgrade():
+    conn = op.get_bind()
+    if column_utils.table_exists(conn, SCHEMA, TABLE):
+        return
     op.create_table(
         TABLE,
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -75,7 +86,7 @@ def upgrade():
         referent_schema=SCHEMA_REF,
         ondelete="SET NULL",
     )
-    # Не создаём FK на gs_years.number (по аналогии с machine_names)
+    # Не создаем FK на gs_years.number (по аналогии с machine_names)
 
 
 def downgrade():

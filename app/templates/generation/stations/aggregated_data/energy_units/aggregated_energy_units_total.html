@@ -2,7 +2,7 @@
 <!-- Итоговые значения по энергоузлу -->
     {% set eu_total_name = energy_unit_names.get(current_eu_id) %}
     {% if eu_total_name %}
-    {# Высота объединённой ячейки зависит от видимости строк p_ogr / p_rasp #}
+    {# Высота объединенной ячейки зависит от видимости строк p_ogr / p_rasp #}
     {% set eu_rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0) %}
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">

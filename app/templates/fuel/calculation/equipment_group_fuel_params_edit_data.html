@@ -1,0 +1,1521 @@
+{% extends 'base.html' %}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+
+{# Содержимое ячейки показателя (без обёртки <td>) — переиспользование при rowspan #}
+{% macro fuel_param_data_cell_content(attr, label, is_numeric, param) -%}
+{% if param is none %}—{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif attr == 'numb1120' %}{% set _sc = param|get_attr('numb1120') %}{% if _sc is none or (_sc|string|trim == '') or (_sc|string|trim|lower == 'none') %}—{% else %}{{ _sc }}{% endif %}{% elif is_numeric and attr in ('nt', 'nt_sum') %}{% set _v = param|get_attr(attr) %}{% if _v is none %}—{% else %}{{ _v|format_decimal(0) }}{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—', true) }}{% endif %}
+{%- endmacro %}
+
+{# Подсказка с полным значением из БД (все знаки), как title на machine_details (Мощность) #}
+{% macro fuel_param_tooltip_title(attr, is_numeric, param) -%}
+{%- if param is none -%}
+{%- elif is_numeric -%}
+{%- set v = param|get_attr(attr) -%}
+{%- if v is not none -%}{{ v|format_decimal(0) }}{%- endif -%}
+{%- elif attr == 'obor' and param.obor is not none -%}{{ param.obor }}
+{%- elif attr == 'obl' and param.obl is not none -%}{{ param.obl }}
+{%- elif attr == 'dep' and param.dep is not none -%}{{ param.dep }}
+{%- elif attr == 'oes' and param.oes is not none -%}{{ param.oes }}
+{%- elif attr == 'er' and param.er is not none -%}{{ param.er }}
+{%- elif attr == 'gk' and param.gk is not none -%}{{ param.gk }}
+{%- elif attr == 'be' and param.be is not none -%}{{ param.be }}
+{%- elif attr == 'ved' and param.ved is not none -%}{{ param.ved }}
+{%- elif attr == 'ved_cyrillic' and param.ved_cyrillic is not none -%}{{ param.ved_cyrillic }}
+{%- elif attr == 'numb1120' -%}{% set _sc = param|get_attr('numb1120') %}{% if _sc is not none and (_sc|string|trim != '') and (_sc|string|trim|lower != 'none') %}{{ _sc }}{% endif %}
+{%- else -%}{{- param|get_attr(attr)|default('', true) -}}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro fuel_param_numb1120_merged_title(group_entity, group_rows, p_first) -%}
+{%- set ns = namespace(p_resolved=none) -%}
+{%- for row in group_rows -%}
+{%- if ns.p_resolved is none -%}
+{%- set prm = row[1] -%}
+{%- if prm and prm|get_attr('numb1120') is not none -%}
+{%- set ns.p_resolved = prm -%}
+{%- endif -%}
+{%- endif -%}
+{%- endfor -%}
+{%- if ns.p_resolved is not none -%}
+{{ fuel_param_tooltip_title('numb1120', false, ns.p_resolved) | trim }}
+{%- elif group_entity and group_entity.numb is not none -%}
+{{ group_entity.numb }}
+{%- else -%}
+{{ fuel_param_tooltip_title('numb1120', false, p_first) | trim }}
+{%- endif -%}
+{%- endmacro %}
+
+{# Код станции (rowspan): не только из первого года — при «пустом» первом годе взять numb1120 из любой строки БД; иначе EquipmentGroup.numb #}
+{% macro fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) -%}
+{%- set ns = namespace(p_resolved=none) -%}
+{%- for row in group_rows -%}
+{%- if ns.p_resolved is none -%}
+{%- set prm = row[1] -%}
+{%- if prm and prm|get_attr('numb1120') is not none -%}
+{%- set ns.p_resolved = prm -%}
+{%- endif -%}
+{%- endif -%}
+{%- endfor -%}
+{%- if ns.p_resolved is not none -%}
+{{ fuel_param_data_cell_content('numb1120', 'Код станции', false, ns.p_resolved) }}
+{%- elif group_entity and group_entity.numb is not none -%}
+{{ group_entity.numb }}
+{%- else -%}
+{{ fuel_param_data_cell_content('numb1120', 'Код станции', false, p_first) }}
+{%- endif -%}
+{%- endmacro %}
+
+{# Редактируемая ячейка (как input на /fuel/distribution_parameters) #}
+{% macro fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, do_edit, rounding_digits) -%}
+{% if do_edit %}
+{% set raw = param|get_attr(attr) if param is not none else none %}
+{% if raw is none %}
+{% set display_val = '' %}
+{% elif is_numeric %}
+{% if attr in ('nt', 'nt_sum') %}
+{% set display_val = raw|format_decimal(0) %}
+{% else %}
+{% set display_val = raw|format_decimal_trim(rounding_digits) %}
+{% endif %}
+{% else %}
+{% set display_val = raw|string %}
+{% endif %}
+{% set fname = 'g' ~ gid ~ '_fuel_param_' ~ ynum ~ '_' ~ attr %}
+{% set ttip = fuel_param_tooltip_title(attr, is_numeric, param)|trim %}
+<input type="text" inputmode="{% if is_numeric %}decimal{% else %}numeric{% endif %}" autocomplete="off" name="{{ fname }}" class="form-control form-control-lg text-center fuel-param-input" value="{{ display_val }}" data-initial="{{ display_val|e }}"{% if ttip %} title="{{ ttip|e }}"{% endif %}>
+{% else %}
+{{ fuel_param_data_cell_content(attr, label, is_numeric, param) }}
+{% endif %}
+{%- endmacro %}
+
+{% block title %}Редактирование данных (расчётный модуль){% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="fuel-calc-edit-shell d-flex flex-column">
+<div class="fuel-calc-edit-top overflow-auto" style="flex: 1 1 0; min-height: 0;">
+{# body уже container-fluid — второй container-fluid давал двойной gutter только сверху, нижняя панель визуально «уезжала» #}
+<div class="fuel-calc-edit-pane-content w-100 mt-2 px-0">
+    <div class="table-responsive" id="stationsTableContainer">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <h2 class="text-center mb-4">Редактирование данных</h2>
+    </div>
+
+    {% include 'fuel/calculation/fuel_calculation_edit_data_filters.html' %}
+
+    {% if current_user.is_authenticated and current_user.has_admin and year_list_for_edit %}
+    <div class="modal fade" id="fuelEditDataHeatBulkAddYearModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddYearModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data_add_heat_year') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items() %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddYearModalLabel">Добавить год</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelEditDataHeatAddYearBase">Базовый год</label>
+                        <select name="id_base_year" id="fuelEditDataHeatAddYearBase" class="form-select form-select-lg" aria-label="Базовый год" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelEditDataHeatAddYearTarget">Расчитываемый год</label>
+                        <select name="id_target_year" id="fuelEditDataHeatAddYearTarget" class="form-select form-select-lg" aria-label="Расчитываемый год" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить в таблицу</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fuelEditDataHeatBulkAddPeriodModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddPeriodModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data_add_heat_period') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items() %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddPeriodModalLabel">Добавить период</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelEditDataHeatAddPeriodBase">Базовый год</label>
+                        <select name="id_base_year" id="fuelEditDataHeatAddPeriodBase" class="form-select form-select-lg" aria-label="Базовый год для периода" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelEditDataHeatAddPeriodFrom">Расчитываемый год с</label>
+                        <select name="id_year_from" id="fuelEditDataHeatAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelEditDataHeatAddPeriodTo">Расчитываемый год по</label>
+                        <select name="id_year_to" id="fuelEditDataHeatAddPeriodTo" class="form-select form-select-lg" aria-label="Конец периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить период в таблицу</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+{% set can_edit_bulk = current_user.is_authenticated and current_user.has_admin %}
+
+{# Подписи показателей (не марок топлива) — не подменять справочником Fuel.nazvl (коллизия с nt и др.) #}
+{% set fuel_param_header_use_fixed_label = ('numb1120', 'nust', 'nr', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'q', 'qotr', 'nt', 'turt', 'tust', 'sn_t', 'b') %}
+
+{% set fuel_param_columns = [
+    ('numb1120', 'Код станции', false),
+    ('nust', 'Руст', true), ('nr', 'Ррасп', true),
+    ('e', 'Выработка эл.эн.', true), ('ewtp', 'Этц', true), ('eotp', 'Отпуск эл.эн.', true), ('eurt', 'Уд.расх эл.эн.', true), ('eust', 'Расх топ эл.эн.', true), ('snk', 'СН, %', true),
+    ('q', 'Отпуск тепл.эн.', true), ('qotr', 'Отраб тепл.эн.', true), ('nt', 'Тепл. мощн. отборов', true), ('turt', 'Уд.расх тепл.эн.', true), ('tust', 'Расх топ тепл.эн.', true), ('sn_t', 'СН, кВтч/Гкал', true),
+    ('b', 'Расх топл.', true),
+    ('gaz', 'Газ', true), ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf', 'Торф', true), ('slan', 'Сланцы', true),
+    ('proch', 'Прочее', true), ('ugol', 'Уголь', true), ('don', 'Дон', true), ('podm', 'Подм', true), ('pech', 'Печ', true),
+    ('arkt', 'Арктикуголь', true), ('kuzn', 'Кузбасс', true), ('ural', 'Урал', true), ('bashk', 'Башкортостан', true), ('kazah', 'Казахстан', true),
+    ('kan', 'Канск', true), ('tung', 'Тунгусск', true), ('irkut', 'Иркутск', true), ('hak', 'Хакасия', true), ('tuv', 'Тува', true),
+    ('bur', 'Бурятия', true), ('chit', 'Чита', true), ('yakut', 'Якутия', true), ('amur', 'Амур', true), ('urg', 'Юрга', true),
+    ('ushum', 'Ушумун', true), ('prim', 'Приморье', true), ('mag', 'Магадан', true), ('chukot', 'Чукотка', true), ('kamch', 'Камчатка', true),
+    ('sah', 'Сахалин', true)
+] %}
+{# группа + год + показатели #}
+{% set column_count = fuel_param_columns|length + 2 %}
+{% set collapsible_ugol_attrs = ['don', 'podm', 'pech', 'arkt', 'kuzn', 'ural', 'bashk', 'kazah', 'kan', 'tung', 'irkut', 'hak', 'tuv', 'bur', 'chit', 'yakut', 'amur', 'urg', 'ushum', 'prim', 'mag', 'chukot', 'kamch', 'sah'] %}
+
+    {% if can_edit_bulk %}
+    <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data_save') }}" id="fuelParamsBulkEditForm" class="mb-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="save_return_qs" value="{{ request.query_string.decode('utf-8')|e }}">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+        <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+        <input type="hidden" name="bulk_edit_group_ids" value="{{ bulk_edit_equipment_group_ids|default([])|join(',') }}">
+    {% endif %}
+    <table class="table table-hover table-striped table-bordered table-responsive{% if can_edit_bulk %} fuel-params-edit-table{% endif %}" id="fuelParamsTable" data-auto-export-excel="off">
+        <thead class="table-success">
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="width: 120px;">Группа оборудования</th>
+                <th style="width: 72px;">Год</th>
+                {% for attr, label, is_numeric in fuel_param_columns %}
+                <th style="width: 80px;" class="fuel-param-col-{{ attr }}" data-column="{{ attr }}"
+                    {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>
+                    {% if attr in fuel_param_header_use_fixed_label %}{{ label }}{% else %}{{ fuel_nazvl_to_name.get(attr, label) }}{% endif %}<br><span class="text-muted small">({{ attr }})</span>
+                    {% if attr == 'ugol' %}
+                    <span id="ugolGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть столбцы углей по маркам" aria-label="Группировка столбцов угля">
+                        <i class="bi bi-plus-square ugol-group-icon" data-state="collapsed"></i>
+                    </span>
+                    {% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% if equipment_group_fuel_params_hierarchy and equipment_group_fuel_params_hierarchy|length > 0 %}
+            {% for est_block in equipment_group_fuel_params_hierarchy %}
+                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                </tr>
+                {% for ues_block in est_block.ues_list %}
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                    </tr>
+                    {% for res_block in ues_block.res_list %}
+                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                        </tr>
+                        {% for station_block in res_block.station_blocks %}
+                        {% for group_block in station_block.group_blocks %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set row_span = group_block.rows|length %}
+                                {% if row_span > 0 %}
+                                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                                {% set p_first = group_block.rows[0][1] if group_block.rows else none %}
+                                {% set y_first = p_first.year_number if p_first is not none and p_first.year_number is not none else start_year %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    {% set is_first_row = loop.first %}
+                                    {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
+                                    {% set can_row_edit = can_edit_bulk and gid %}
+                                    {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+                                    <tr class="text-center align-middle{% if gid %} fuel-param-detail-row{% endif %}"{% if gid %} data-fuel-detail-group-id="{{ gid }}"{% endif %}>
+                                        {% if is_first_row %}
+                                        <td rowspan="{{ row_span }}">
+                                            {% if group_entity and group_entity.id %}
+                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                                                {{ group_name }}
+                                            </a>
+                                            {% else %}
+                                                {{ group_name }}
+                                            {% endif %}
+                                        </td>
+                                        {% endif %}
+                                        <td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                                        {% for attr, label, is_numeric in fuel_param_columns %}
+                                        {% if attr == 'numb1120' %}
+                                            {% if is_first_row %}
+                                        {% set _ntt = fuel_param_numb1120_merged_title(group_entity, group_block.rows, p_first)|trim %}
+                                        <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_block.rows, p_first) }}</td>
+                                            {% endif %}
+                                        {% else %}
+                                        {% set _ttd = fuel_param_tooltip_title(attr, is_numeric, param)|trim %}
+                                        <td class="fuel-param-col-{{ attr }}{% if nust_highlight_row %} table-warning{% endif %}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}{% if _ttd %} title="{{ _ttd|e }}"{% endif %}>{{ fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, can_row_edit, rounding_digits) }}</td>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                                {% endif %}
+                        {% endfor %}
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% else %}
+            {% for group_rows in equipment_group_fuel_param_row_groups|default([]) %}
+                {% set row_span = group_rows|length %}
+                {% set group_entity = group_rows[0][0] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                {% set p_first = group_rows[0][1] if group_rows else none %}
+                {% set y_first = p_first.year_number if p_first is not none and p_first.year_number is not none else start_year %}
+                {% for row in group_rows %}
+                {% set param = row[1] %}
+                {% set is_first_row = loop.first %}
+                {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
+                {% set can_row_edit = can_edit_bulk and gid %}
+                {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+                <tr class="text-center align-middle{% if gid %} fuel-param-detail-row{% endif %}"{% if gid %} data-fuel-detail-group-id="{{ gid }}"{% endif %}>
+                    {% if is_first_row %}
+                    <td rowspan="{{ row_span }}">
+                        {% if group_entity and group_entity.id %}
+                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
+                            {{ group_name }}
+                        </a>
+                        {% else %}
+                            {{ group_name }}
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                    {% for attr, label, is_numeric in fuel_param_columns %}
+                    {% if attr == 'numb1120' %}
+                        {% if is_first_row %}
+                    {% set _ntt = fuel_param_numb1120_merged_title(group_entity, group_rows, p_first)|trim %}
+                    <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) }}</td>
+                        {% endif %}
+                    {% else %}
+                    {% set _ttd = fuel_param_tooltip_title(attr, is_numeric, param)|trim %}
+                    <td class="fuel-param-col-{{ attr }}{% if nust_highlight_row %} table-warning{% endif %}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}{% if _ttd %} title="{{ _ttd|e }}"{% endif %}>{{ fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, can_row_edit, rounding_digits) }}</td>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ column_count }}" class="text-muted text-center py-4">Нет данных за выбранный интервал лет и фильтры.</td>
+                </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+    {% if can_edit_bulk %}
+    </form>
+    {% endif %}
+
+        <!-- Пагинация (дубль строки в фильтрах, после таблицы) -->
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.equipment_group_fuel_params_edit_data' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+</div>
+
+<div class="fuel-calc-edit-bottom d-flex flex-column border-top bg-body-secondary flex-shrink-0 mt-1 mb-1" id="fuelCalcEditBottomPanel" style="flex: 0 0 auto; min-height: 0;">
+    {# Та же горизонтальная область, что и у верхней таблицы (см. .fuel-calc-edit-pane-content) #}
+    <div class="fuel-calc-edit-pane-content w-100 px-0 pb-1">
+    {# Высота по числу лет: нижняя панель прижата к низу окна, верх — flex:1 #}
+    {# 3 колонки: удельные | формулы (formtxt) | параметры топлива #}
+    <div class="fuel-calc-bottom-panels-grid w-100">
+        <div class="d-flex flex-column border-end fuel-calc-bottom-col" style="min-width: 0;">
+            <div class="px-2 py-1 bg-light border-bottom fw-semibold text-muted d-flex align-items-center gap-2 flex-shrink-0 fuel-calc-bottom-section-title">
+                <span>Удельные показатели</span>
+                <span class="spinner-border spinner-border-sm text-primary d-none flex-shrink-0 ms-auto" id="fuelDetailPanelsSpinner" role="status" aria-hidden="true"></span>
+            </div>
+            <div class="fuel-calc-bottom-table-wrap">
+                <table class="table table-sm table-bordered mb-0 fuel-calc-bottom-data-table" id="fuelDetailSpecificTable" data-auto-export-excel="off">
+                    <thead class="table-light">
+                        <tr class="text-center align-middle">
+                            {% set hdr = consumption_column_labels|default({}) %}
+                            {% set cf = consumption_formulas|default({}) %}
+                            <th class="text-center" title="Год (year)"><div class="fuel-calc-bottom-th-inner">Год<br><span class="text-muted small">(year)</span></div></th>
+                            <th class="text-center" title="{{ (hdr.get('y_calc', 'Y (расчет)') ~ ' (y_calc)')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('y_calc', 'Y (расчет)') }}{% if cf.get('y_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('y_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">(y_calc)</span></div></th>
+                            <th class="text-center" title="{{ (hdr.get('btp_calc', 'BTP (расчет)') ~ ' (btp_calc)')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('btp_calc', 'BTP (расчет)') }}{% if cf.get('btp_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('btp_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">(btp_calc)</span></div></th>
+                            <th class="text-center" title="{{ (hdr.get('sntp_calc', 'SNTP (расчет)') ~ ' (sntp_calc)')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('sntp_calc', 'SNTP (расчет)') }}{% if cf.get('sntp_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('sntp_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">(sntp_calc)</span></div></th>
+                            <th class="text-center" title="{{ (hdr.get('bk_calc', 'BK (расчет)') ~ ' (bk_calc)')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('bk_calc', 'BK (расчет)') }}{% if cf.get('bk_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('bk_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">(bk_calc)</span></div></th>
+                            <th class="text-center" title="{{ (hdr.get('snk_calc', 'SNK (расчет)') ~ ' (snk_calc)')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('snk_calc', 'SNK (расчет)') }}{% if cf.get('snk_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('snk_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">(snk_calc)</span></div></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fuelDetailSpecificBody" class="text-center">
+                        <tr><td colspan="6" class="text-muted">—</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="d-flex flex-column border-end fuel-calc-bottom-col" style="min-width: 0;">
+            <div class="px-2 py-1 bg-light border-bottom fw-semibold text-muted flex-shrink-0 d-flex align-items-center fuel-calc-bottom-section-title">Формулы топлива</div>
+            <div class="fuel-calc-bottom-table-wrap">
+                <table class="table table-sm table-bordered mb-0 fuel-calc-bottom-data-table" id="fuelDetailFormulasTable" data-auto-export-excel="off">
+                    <thead class="table-light">
+                        <tr class="text-center align-middle">
+                            <th class="text-center" title="Год (year)"><div class="fuel-calc-bottom-th-inner">Год<br><span class="text-muted small">(year)</span></div></th>
+                            <th class="text-center" title="Текст формулы (formtxt)"><div class="fuel-calc-bottom-th-inner">Текст формулы<br><span class="text-muted small">(formtxt)</span></div></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fuelDetailFormulasBody">
+                        <tr><td colspan="2" class="text-muted text-center">—</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="d-flex flex-column fuel-calc-bottom-col" style="min-width: 0;">
+            <div class="px-2 py-1 bg-light border-bottom fw-semibold text-muted flex-shrink-0 d-flex align-items-center fuel-calc-bottom-section-title">Параметры топлива</div>
+            <div class="fuel-calc-bottom-table-wrap fuel-calc-bottom-table-wrap--extra">
+                <table class="table table-sm table-bordered mb-0 fuel-calc-bottom-data-table" id="fuelDetailExtraFuelTable" data-auto-export-excel="off">
+                    <thead class="table-light" id="fuelDetailExtraFuelHead">
+                        <tr class="text-center align-middle">
+                            <th class="text-center" title="Год (year)"><div class="fuel-calc-bottom-th-inner">Год<br><span class="text-muted small">(year)</span></div></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fuelDetailExtraFuelBody" class="text-center">
+                        <tr><td class="text-muted">—</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+</div>
+
+{% set _fuel_detail_panels_url0 = url_for('fuel_bp.equipment_group_fuel_params_edit_detail_panels', equipment_group_id=0) %}
+{% set _fuel_detail_panels_save = url_for('fuel_bp.equipment_group_fuel_params_edit_detail_panels_save') %}
+<div id="fuel-edit-detail-config" hidden
+     data-detail-url-base="{{ _fuel_detail_panels_url0[:-1] }}"
+     data-detail-save-url="{{ _fuel_detail_panels_save }}"
+     data-can-edit-detail="{% if can_edit_bulk %}1{% else %}0{% endif %}">
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var cfg = document.getElementById('fuel-edit-detail-config');
+    var detailUrlBase = cfg ? (cfg.getAttribute('data-detail-url-base') || '') : '';
+    var detailSaveUrl = cfg ? (cfg.getAttribute('data-detail-save-url') || '') : '';
+    var canEditDetail = cfg && cfg.getAttribute('data-can-edit-detail') === '1';
+    var table = document.getElementById('fuelParamsTable');
+    var specBody = document.getElementById('fuelDetailSpecificBody');
+    var formBody = document.getElementById('fuelDetailFormulasBody');
+    var extraHead = document.getElementById('fuelDetailExtraFuelHead');
+    var extraBody = document.getElementById('fuelDetailExtraFuelBody');
+    var spinner = document.getElementById('fuelDetailPanelsSpinner');
+    var bottomPanel = document.getElementById('fuelCalcEditBottomPanel');
+    var bulkForm = document.getElementById('fuelParamsBulkEditForm');
+    if (!table || !specBody || !formBody || !extraHead || !extraBody || !detailUrlBase) {
+        return;
+    }
+
+    var currentDetailGroupId = null;
+    var extraFuelColumns = [];
+    var extraColumnSources = {};
+    var detailFetchAbort = null;
+    var detailFetchSeq = 0;
+    /** Число столбцов в «Удельные показатели» (нижняя панель): год + только расчётные *_calc */
+    var FUEL_DETAIL_SPEC_COLSPAN = 6;
+    var FUEL_DETAIL_SPEC_CALC_ATTRS = ['y_calc', 'btp_calc', 'sntp_calc', 'bk_calc', 'snk_calc'];
+
+    /** Обёртка шапки; полный текст — в title на <th> */
+    function wrapBottomThInner(html) {
+        return '<div class="fuel-calc-bottom-th-inner">' + html + '</div>';
+    }
+
+    var BOTTOM_THEAD_TABLE_IDS = ['fuelDetailSpecificTable', 'fuelDetailFormulasTable', 'fuelDetailExtraFuelTable'];
+    function clearBottomTheadInlineSizes() {
+        BOTTOM_THEAD_TABLE_IDS.forEach(function (id) {
+            var t = document.getElementById(id);
+            if (!t) {
+                return;
+            }
+            var tr = t.querySelector('thead tr');
+            if (!tr) {
+                return;
+            }
+            ['height', 'min-height', 'max-height'].forEach(function (p) { tr.style.removeProperty(p); });
+            tr.querySelectorAll('th').forEach(function (th) {
+                ['height', 'min-height', 'max-height', 'overflow'].forEach(function (p) { th.style.removeProperty(p); });
+            });
+            tr.querySelectorAll('.fuel-calc-bottom-th-inner').forEach(function (el) {
+                ['max-height', 'overflow'].forEach(function (p) { el.style.removeProperty(p); });
+            });
+        });
+    }
+    function syncBottomTheadHeights() {
+        if (!bottomPanel) {
+            return;
+        }
+        clearBottomTheadInlineSizes();
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                var maxH = 0;
+                BOTTOM_THEAD_TABLE_IDS.forEach(function (id) {
+                    var t = document.getElementById(id);
+                    if (!t) {
+                        return;
+                    }
+                    var tr = t.querySelector('thead tr');
+                    if (tr) {
+                        var h = tr.getBoundingClientRect().height;
+                        if (h > 0) {
+                            maxH = Math.max(maxH, Math.ceil(h * 20) / 20);
+                        }
+                    }
+                });
+                if (maxH < 0.5) {
+                    return;
+                }
+                BOTTOM_THEAD_TABLE_IDS.forEach(function (id) {
+                    var t = document.getElementById(id);
+                    if (!t) {
+                        return;
+                    }
+                    var tr = t.querySelector('thead tr');
+                    if (!tr) {
+                        return;
+                    }
+                    tr.style.minHeight = maxH + 'px';
+                    tr.style.height = maxH + 'px';
+                    tr.querySelectorAll('th').forEach(function (th) {
+                        th.style.minHeight = maxH + 'px';
+                        th.style.height = maxH + 'px';
+                        th.style.boxSizing = 'border-box';
+                        th.style.verticalAlign = 'middle';
+                        th.style.textAlign = 'center';
+                        th.style.overflow = 'visible';
+                    });
+                });
+            });
+        });
+    }
+    var syncTheadDebounceT = null;
+    window.addEventListener('resize', function () {
+        clearTimeout(syncTheadDebounceT);
+        syncTheadDebounceT = setTimeout(function () { syncBottomTheadHeights(); }, 150);
+    });
+
+    function setDetailLoading(on) {
+        if (spinner) {
+            spinner.classList.toggle('d-none', !on);
+        }
+        if (bottomPanel) {
+            bottomPanel.classList.toggle('fuel-detail-panels-loading', on);
+        }
+    }
+
+    function normForCompare(s) {
+        return String(s ?? "").trim().replace(/\s+/g, "").replace(",", ".");
+    }
+
+    function displayCell(s) {
+        if (s == null || s === '—' || s === '–' || s === '-') {
+            return '—';
+        }
+        return String(s);
+    }
+
+    function cellToInputValue(disp) {
+        var d = displayCell(disp);
+        return d === '—' ? '' : d;
+    }
+
+    function appendTextRow(tbody, cells) {
+        var tr = document.createElement('tr');
+        cells.forEach(function (text) {
+            var td = document.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    }
+
+    function setDbTitle(el, tips, key) {
+        if (!el || !tips || key === undefined || key === null) {
+            return;
+        }
+        var t = tips[key];
+        if (t != null && String(t).trim() !== '') {
+            el.setAttribute('title', String(t));
+        }
+    }
+
+    function appendSpecViewRow(row) {
+        var tr = document.createElement('tr');
+        var tips = row.db_tooltips || {};
+        function addCell(v, tipKey) {
+            var td = document.createElement('td');
+            td.className = 'text-center';
+            if (v === undefined || v === null || v === '') {
+                td.textContent = '—';
+            } else {
+                td.textContent = String(v);
+            }
+            setDbTitle(td, tips, tipKey);
+            tr.appendChild(td);
+        }
+        addCell(String(row.year), null);
+        FUEL_DETAIL_SPEC_CALC_ATTRS.forEach(function (attr) {
+            addCell(row[attr], attr);
+        });
+        specBody.appendChild(tr);
+    }
+
+    function makeFormulaRowEdit(row) {
+        var tr = document.createElement('tr');
+        var yd = document.createElement('td');
+        yd.className = 'text-center';
+        yd.textContent = String(row.year);
+        tr.appendChild(yd);
+        var fd = document.createElement('td');
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.setAttribute('autocomplete', 'off');
+        inp.className = 'form-control form-control-sm font-monospace py-0 fuel-detail-input fuel-formula-formtxt-input text-start';
+        inp.setAttribute('data-detail-field', 'fm:formtxt');
+        var ft = row.formtxt;
+        var disp = (ft == null || String(ft).trim() === '' || displayCell(ft) === '—') ? '—' : String(ft);
+        inp.setAttribute('data-initial', disp);
+        inp.value = disp === '—' ? '' : String(ft);
+        fd.appendChild(inp);
+        tr.appendChild(fd);
+        return tr;
+    }
+
+    function renderExtraFuel(pack) {
+        extraHead.innerHTML = '';
+        extraBody.innerHTML = '';
+        var ef = (pack && pack.extra_fuel) ? pack.extra_fuel : { columns: [], column_labels: {}, rows: [] };
+        var cols = ef.columns || [];
+        var labels = ef.column_labels || {};
+        var rows = ef.rows || [];
+        extraColumnSources = (ef.column_sources && typeof ef.column_sources === 'object') ? ef.column_sources : {};
+        extraFuelColumns = cols.slice();
+        var hr = document.createElement('tr');
+        hr.className = 'text-center align-middle';
+        var thY = document.createElement('th');
+        thY.className = 'text-center';
+        thY.title = 'Год (year)';
+        thY.innerHTML = wrapBottomThInner('Год<br><span class="text-muted small">(year)</span>');
+        hr.appendChild(thY);
+        cols.forEach(function (key) {
+            var th = document.createElement('th');
+            th.className = 'text-center';
+            var lab = String(labels[key] != null && labels[key] !== '' ? labels[key] : key);
+            th.title = lab + ' (' + key + ')';
+            th.innerHTML = wrapBottomThInner(
+                (labels[key] != null && labels[key] !== '' ? labels[key] : key) + '<br><span class="text-muted small">(' + key + ')</span>'
+            );
+            hr.appendChild(th);
+        });
+        extraHead.appendChild(hr);
+        if (!rows.length) {
+            var trE = document.createElement('tr');
+            var tdE = document.createElement('td');
+            tdE.colSpan = Math.max(1, 1 + cols.length);
+            tdE.className = 'text-muted text-center';
+            tdE.textContent = cols.length ? 'Нет строк за интервал лет' : 'Нет полей формулы для колонок доп. параметров';
+            trE.appendChild(tdE);
+            extraBody.appendChild(trE);
+            return;
+        }
+        rows.forEach(function (row) {
+            var tr = document.createElement('tr');
+            var td0 = document.createElement('td');
+            td0.textContent = String(row.year);
+            tr.appendChild(td0);
+            var exTips = row.db_tooltips || {};
+            if (canEditDetail) {
+                cols.forEach(function (key) {
+                    var td = document.createElement('td');
+                    var raw = row[key];
+                    var disp = displayCell(raw);
+                    var src = extraColumnSources[key] || 'extra';
+                    var fieldPrefix = (src === 'main') ? 'mp:' : 'ex:';
+                    var inp = document.createElement('input');
+                    inp.type = 'text';
+                    inp.setAttribute('autocomplete', 'off');
+                    inp.className = 'form-control form-control-sm text-center py-0 fuel-detail-input';
+                    inp.setAttribute('data-detail-field', fieldPrefix + key);
+                    inp.setAttribute('data-initial', disp);
+                    inp.value = cellToInputValue(raw);
+                    setDbTitle(inp, exTips, key);
+                    td.appendChild(inp);
+                    tr.appendChild(td);
+                });
+            } else {
+                cols.forEach(function (key) {
+                    var td = document.createElement('td');
+                    td.className = 'text-center';
+                    td.textContent = row[key] != null ? String(row[key]) : '—';
+                    setDbTitle(td, exTips, key);
+                    tr.appendChild(td);
+                });
+            }
+            extraBody.appendChild(tr);
+        });
+    }
+
+    function renderPack(pack) {
+        specBody.innerHTML = '';
+        formBody.innerHTML = '';
+        if (!pack) {
+            var tr0 = document.createElement('tr');
+            var td0 = document.createElement('td');
+            td0.colSpan = FUEL_DETAIL_SPEC_COLSPAN;
+            td0.className = 'text-muted text-center';
+            td0.textContent = 'Нет данных';
+            tr0.appendChild(td0);
+            specBody.appendChild(tr0);
+            var trF = document.createElement('tr');
+            var tdF = document.createElement('td');
+            tdF.colSpan = 2;
+            tdF.className = 'text-muted text-center';
+            tdF.textContent = '—';
+            trF.appendChild(tdF);
+            formBody.appendChild(trF);
+            extraFuelColumns = [];
+            extraColumnSources = {};
+            renderExtraFuel(null);
+            syncBottomTheadHeights();
+            return;
+        }
+        var spec = pack.specific || [];
+        if (!spec.length) {
+            var emptySpec = [];
+            for (var esi = 0; esi < FUEL_DETAIL_SPEC_COLSPAN; esi++) {
+                emptySpec.push('—');
+            }
+            appendTextRow(specBody, emptySpec);
+        } else {
+            spec.forEach(function (row) {
+                appendSpecViewRow(row);
+            });
+        }
+        var forms = pack.formulas || [];
+        if (!forms.length) {
+            appendTextRow(formBody, ['—', 'Нет формул за интервал лет']);
+        } else if (canEditDetail) {
+            forms.forEach(function (row) {
+                formBody.appendChild(makeFormulaRowEdit(row));
+            });
+        } else {
+            forms.forEach(function (row) {
+                var tr = document.createElement('tr');
+                var yd = document.createElement('td');
+                yd.className = 'text-center';
+                yd.textContent = String(row.year);
+                var fd = document.createElement('td');
+                fd.className = 'text-start font-monospace';
+                fd.textContent = row.formtxt || '—';
+                tr.appendChild(yd);
+                tr.appendChild(fd);
+                formBody.appendChild(tr);
+            });
+        }
+        renderExtraFuel(pack);
+        syncBottomTheadHeights();
+    }
+
+    function showDetailError(msg) {
+        specBody.innerHTML = '';
+        formBody.innerHTML = '';
+        var tr0 = document.createElement('tr');
+        var td0 = document.createElement('td');
+        td0.colSpan = FUEL_DETAIL_SPEC_COLSPAN;
+        td0.className = 'text-danger text-center';
+        td0.textContent = msg;
+        tr0.appendChild(td0);
+        specBody.appendChild(tr0);
+        var trF = document.createElement('tr');
+        var tdF = document.createElement('td');
+        tdF.colSpan = 2;
+        tdF.className = 'text-muted text-center';
+        tdF.textContent = '—';
+        trF.appendChild(tdF);
+        formBody.appendChild(trF);
+        extraHead.innerHTML = '';
+        extraBody.innerHTML = '';
+        var hr = document.createElement('tr');
+        hr.className = 'text-center align-middle';
+        var th = document.createElement('th');
+        th.className = 'text-center';
+        th.title = 'Год (year)';
+        th.innerHTML = wrapBottomThInner('Год<br><span class="text-muted small">(year)</span>');
+        hr.appendChild(th);
+        extraHead.appendChild(hr);
+        var trE = document.createElement('tr');
+        var tdE = document.createElement('td');
+        tdE.className = 'text-muted text-center';
+        tdE.textContent = '—';
+        trE.appendChild(tdE);
+        extraBody.appendChild(trE);
+        extraFuelColumns = [];
+        extraColumnSources = {};
+        syncBottomTheadHeights();
+    }
+
+    function buildDetailPayload() {
+        var gid = parseInt(String(currentDetailGroupId || ''), 10);
+        if (!gid) {
+            return null;
+        }
+        /* Удельные в нижней панели только просмотр (*_calc); ввод — в основной таблице страницы */
+        var specific = [];
+        var formulas = [];
+        formBody.querySelectorAll('tr').forEach(function (tr) {
+            var tds = tr.querySelectorAll('td');
+            if (tds.length < 2) {
+                return;
+            }
+            var y = parseInt(tds[0].textContent.trim(), 10);
+            if (isNaN(y)) {
+                return;
+            }
+            var fm = tr.querySelector('[data-detail-field="fm:formtxt"]');
+            if (fm) {
+                formulas.push({ year: y, formtxt: fm.value });
+            }
+        });
+        var extraRows = [];
+        extraBody.querySelectorAll('tr').forEach(function (tr) {
+            var tds = tr.querySelectorAll('td');
+            if (tds.length < 1) {
+                return;
+            }
+            var y = parseInt(tds[0].textContent.trim(), 10);
+            if (isNaN(y)) {
+                return;
+            }
+            var o = { year: y };
+            var byEx = {};
+            tr.querySelectorAll('input.fuel-detail-input').forEach(function (inp) {
+                var df = (inp.getAttribute('data-detail-field') || '');
+                if (df.indexOf('ex:') === 0 || df.indexOf('mp:') === 0) {
+                    byEx[df] = inp;
+                }
+            });
+            extraFuelColumns.forEach(function (key) {
+                var src = extraColumnSources[key] || 'extra';
+                var fp = (src === 'main') ? 'mp:' : 'ex:';
+                var inp = byEx[fp + key];
+                if (inp) {
+                    o[key] = inp.value;
+                }
+            });
+            extraRows.push(o);
+        });
+        return {
+            equipment_group_id: gid,
+            specific: specific,
+            formulas: formulas,
+            extra_fuel: {
+                columns: extraFuelColumns,
+                column_sources: extraColumnSources,
+                rows: extraRows
+            }
+        };
+    }
+
+    function anyDetailFieldChanged() {
+        if (!canEditDetail) {
+            return false;
+        }
+        var sel = specBody.querySelectorAll('.fuel-detail-input, .fuel-detail-textarea');
+        for (var i = 0; i < sel.length; i++) {
+            var el = sel[i];
+            if (normForCompare(el.getAttribute('data-initial') || '') !== normForCompare(el.value)) {
+                return true;
+            }
+        }
+        var sel2 = extraBody.querySelectorAll('.fuel-detail-input');
+        for (var j = 0; j < sel2.length; j++) {
+            var el2 = sel2[j];
+            if (normForCompare(el2.getAttribute('data-initial') || '') !== normForCompare(el2.value)) {
+                return true;
+            }
+        }
+        var selF = formBody.querySelectorAll('[data-detail-field="fm:formtxt"]');
+        for (var k = 0; k < selF.length; k++) {
+            var elf = selF[k];
+            if (normForCompare(elf.getAttribute('data-initial') || '') !== normForCompare(elf.value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function anyMainBulkChanged() {
+        if (!bulkForm) {
+            return false;
+        }
+        var inputs = bulkForm.querySelectorAll('input.fuel-param-input[name]');
+        for (var i = 0; i < inputs.length; i++) {
+            var inp = inputs[i];
+            if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getCsrfToken() {
+        var m = document.querySelector('meta[name="csrf-token"]');
+        if (m && m.getAttribute('content')) {
+            return m.getAttribute('content');
+        }
+        var hi = document.querySelector('input[name="csrf_token"]');
+        return hi ? hi.value : '';
+    }
+
+    function postDetailSave() {
+        if (!canEditDetail || !detailSaveUrl || !currentDetailGroupId) {
+            return Promise.resolve(true);
+        }
+        if (!anyDetailFieldChanged()) {
+            return Promise.resolve(true);
+        }
+        var body = buildDetailPayload();
+        if (!body) {
+            return Promise.resolve(true);
+        }
+        body.csrf_token = getCsrfToken();
+        return fetch(detailSaveUrl + (window.location.search || ''), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCsrfToken()
+            },
+            body: JSON.stringify(body)
+        }).then(function (r) {
+            return r.json().then(function (data) {
+                if (!r.ok || !data || data.ok === false) {
+                    var err = (data && (data.error || (data.errors && data.errors.join ? data.errors.join('; ') : ''))) || ('Ошибка ' + r.status);
+                    throw new Error(err);
+                }
+                return true;
+            });
+        });
+    }
+
+    function runUnifiedSave() {
+        if (!bulkForm) {
+            return;
+        }
+        var detCh = canEditDetail && currentDetailGroupId && anyDetailFieldChanged();
+        var mainCh = anyMainBulkChanged();
+        if (detCh) {
+            postDetailSave().then(function () {
+                if (mainCh) {
+                    var inputs = bulkForm.querySelectorAll('input.fuel-param-input[name]');
+                    var anyE = false;
+                    inputs.forEach(function (inp) {
+                        if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
+                            anyE = true;
+                        } else {
+                            inp.disabled = true;
+                        }
+                    });
+                    if (anyE) {
+                        bulkForm.submit();
+                    } else {
+                        inputs.forEach(function (inp) { inp.disabled = false; });
+                        window.location.reload();
+                    }
+                } else {
+                    window.location.reload();
+                }
+            }).catch(function (err) {
+                alert('Ошибка сохранения нижней панели: ' + (err && err.message ? err.message : err));
+            });
+            return;
+        }
+        if (mainCh) {
+            var inputs2 = bulkForm.querySelectorAll('input.fuel-param-input[name]');
+            var anyE2 = false;
+            inputs2.forEach(function (inp) {
+                if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
+                    anyE2 = true;
+                } else {
+                    inp.disabled = true;
+                }
+            });
+            if (anyE2) {
+                bulkForm.submit();
+            } else {
+                inputs2.forEach(function (inp) { inp.disabled = false; });
+                alert('Нет изменений для сохранения.');
+            }
+        } else {
+            alert('Нет изменений для сохранения.');
+        }
+    }
+
+    if (bulkForm && canEditDetail) {
+        bulkForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            runUnifiedSave();
+        });
+    }
+
+    if (bottomPanel && canEditDetail) {
+        bottomPanel.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter') {
+                return;
+            }
+            var t = ev.target;
+            if (!t || (!t.classList || (!t.classList.contains('fuel-detail-input') && !t.classList.contains('fuel-detail-textarea')))) {
+                return;
+            }
+            ev.preventDefault();
+            runUnifiedSave();
+        });
+    }
+
+    function loadDetailPanels(gid) {
+        currentDetailGroupId = String(gid);
+        var gidStr = String(gid);
+        var url = detailUrlBase + gidStr + (window.location.search || '');
+        if (detailFetchAbort) {
+            detailFetchAbort.abort();
+        }
+        detailFetchAbort = new AbortController();
+        var seq = ++detailFetchSeq;
+        setDetailLoading(true);
+        fetch(url, { credentials: 'same-origin', signal: detailFetchAbort.signal })
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    if (!r.ok) {
+                        throw new Error((data && data.error) ? data.error : ('Ошибка ' + r.status));
+                    }
+                    if (data && data.error) {
+                        throw new Error(data.error);
+                    }
+                    return data;
+                });
+            })
+            .then(function (pack) {
+                if (seq !== detailFetchSeq) {
+                    return;
+                }
+                renderPack(pack);
+            })
+            .catch(function (err) {
+                if (err.name === 'AbortError') {
+                    return;
+                }
+                if (seq !== detailFetchSeq) {
+                    return;
+                }
+                showDetailError(err.message || 'Не удалось загрузить данные');
+            })
+            .finally(function () {
+                if (seq === detailFetchSeq) {
+                    setDetailLoading(false);
+                }
+            });
+    }
+
+    function selectGroupAndLoad(gid) {
+        if (!gid) {
+            return;
+        }
+        loadDetailPanels(gid);
+    }
+
+    table.addEventListener('click', function (ev) {
+        if (ev.target.closest('a') || ev.target.closest('button')) {
+            return;
+        }
+        var tr = ev.target.closest('tr[data-fuel-detail-group-id]');
+        if (!tr) {
+            return;
+        }
+        var gid = tr.getAttribute('data-fuel-detail-group-id');
+        if (!gid) {
+            return;
+        }
+        selectGroupAndLoad(gid);
+    });
+
+    var firstRow = table.querySelector('tbody tr[data-fuel-detail-group-id]');
+    if (firstRow) {
+        var gidFirst = firstRow.getAttribute('data-fuel-detail-group-id');
+        if (gidFirst) {
+            selectGroupAndLoad(gidFirst);
+        }
+    }
+    syncBottomTheadHeights();
+});
+</script>
+
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list|default([], true),
+        'union_energy_system_list': union_energy_system_list|default([], true),
+        'regional_energy_system_list': regional_energy_system_list|default([], true),
+        'federal_district_list': federal_district_list|default([], true),
+        'regional_district_list': regional_district_list|default([], true),
+        'energy_system_type_filter': energy_system_type_filter|default([], true),
+        'union_energy_system_filter': union_energy_system_filter|default([], true),
+        'regional_energy_system_filter': regional_energy_system_filter|default([], true),
+        'federal_district_filter': federal_district_filter|default([], true),
+        'regional_district_filter': regional_district_filter|default([], true),
+        'regional_energy_system_mapping': regional_energy_system_mapping|default({}, true),
+        'regional_district_mapping': regional_district_mapping|default({}, true),
+        'est_to_ues_mapping': est_to_ues_mapping|default({}, true),
+        'est_to_res_mapping': est_to_res_mapping|default({}, true),
+        'est_to_rd_mapping': est_to_rd_mapping|default({}, true),
+        'est_to_fd_mapping': est_to_fd_mapping|default({}, true),
+        'ues_to_est_mapping': ues_to_est_mapping|default({}, true),
+        'ues_to_res_mapping': ues_to_res_mapping|default({}, true),
+        'ues_to_rd_mapping': ues_to_rd_mapping|default({}, true),
+        'ues_to_fd_mapping': ues_to_fd_mapping|default({}, true),
+        'res_to_est_mapping': res_to_est_mapping|default({}, true),
+        'res_to_ues_mapping_one': res_to_ues_mapping_one|default({}, true),
+        'res_to_rd_mapping': res_to_rd_mapping|default({}, true),
+        'res_to_fd_mapping': res_to_fd_mapping|default({}, true),
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one|default({}, true),
+        'rd_to_res_mapping': rd_to_res_mapping|default({}, true),
+        'rd_to_ues_mapping': rd_to_ues_mapping|default({}, true),
+        'rd_to_est_mapping': rd_to_est_mapping|default({}, true),
+        'fd_to_rd_mapping': fd_to_rd_mapping|default({}, true),
+        'fd_to_res_mapping': fd_to_res_mapping|default({}, true),
+        'fd_to_ues_mapping': fd_to_ues_mapping|default({}, true),
+        'fd_to_est_mapping': fd_to_est_mapping|default({}, true)
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+    if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+        document.querySelectorAll("#fuelDetailSpecificTable thead [data-bs-toggle=\"tooltip\"]").forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    }
+});
+</script>
+
+<style>
+    /* Высота блока: под реальную шапку (#appTopBar) и отступы body, без лишнего скролла document */
+    .fuel-calc-edit-shell {
+        height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        min-height: 560px;
+        max-height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+    }
+    /* Одна и та же ширина контентной полосы для верхней таблицы и нижних трёх таблиц */
+    .fuel-calc-edit-shell .fuel-calc-edit-pane-content {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    /* Глобальный #stationsTableContainer (style.css) даёт max-height + overflow-y — здесь скролл только у .fuel-calc-edit-top */
+    .fuel-calc-edit-shell #stationsTableContainer {
+        max-height: none !important;
+        height: auto !important;
+        overflow-y: visible !important;
+        /* как у .table-responsive: без лишней полосы, пока не нужен X (см. base.html updateHorizontalScrollFlags) */
+        overflow-x: hidden;
+    }
+    .fuel-calc-edit-shell #stationsTableContainer.table-responsive.has-x-scroll {
+        overflow-x: auto;
+    }
+    /* Нижняя панель: три равные колонки — удельные | формулы | параметры топлива */
+    .fuel-calc-bottom-panels-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto;
+        width: 100%;
+        align-items: start;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-col {
+        min-height: 0;
+    }
+    .fuel-calc-bottom-table-wrap {
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+    .fuel-calc-bottom-table-wrap--extra {
+        overflow-x: auto;
+    }
+    /* Год: одна визуальная строка в каждой из трёх таблиц */
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table tbody tr {
+        height: 2.4rem;
+        min-height: 2.4rem;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table tbody td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table .fuel-formula-formtxt-input {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-section-title {
+        font-size: 1.15rem;
+        min-height: 2.75rem;
+        height: 2.75rem;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }
+    #fuelCalcEditBottomPanel .table thead th {
+        font-size: 1rem;
+    }
+    #fuelCalcEditBottomPanel .table thead th .text-muted.small {
+        font-size: 0.9em;
+    }
+    /* Высота шапки: syncBottomTheadHeights() — max(естественной высоты) по трём таблицам, без обрезки текста */
+    #fuelCalcEditBottomPanel #fuelDetailSpecificTable,
+    #fuelCalcEditBottomPanel #fuelDetailFormulasTable {
+        table-layout: fixed;
+    }
+    #fuelCalcEditBottomPanel #fuelDetailExtraFuelTable {
+        table-layout: auto;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table > thead > tr > th {
+        padding: 0.3rem 0.25rem;
+        text-align: center;
+        vertical-align: middle;
+        line-height: 0;
+        font-size: 0;
+        box-sizing: border-box;
+    }
+    /* Верт. центр содержимого в высокой ячейке (синхронная шапка); гориз. — text-align: center + inline-block + max-width */
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table > thead > tr > th::before {
+        content: "";
+        display: inline-block;
+        width: 0;
+        height: 100%;
+        vertical-align: middle;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-th-inner {
+        display: inline-block;
+        max-width: 100%;
+        vertical-align: middle;
+        font-size: 1rem;
+        line-height: 1.2;
+        text-align: center;
+        word-wrap: break-word;
+        word-break: break-word;
+        hyphens: auto;
+    }
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-th-inner .text-muted.small {
+        font-size: 0.9em;
+    }
+    /* Одинаковая ширина столбца «Год (year)» */
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table th:first-child,
+    #fuelCalcEditBottomPanel .fuel-calc-bottom-data-table td:first-child {
+        width: 5.5rem;
+        min-width: 5.5rem;
+        max-width: 5.5rem;
+        box-sizing: border-box;
+    }
+    /* Формулы топлива: ячейки по вертикали по центру (Bootstrap .table иначе даёт top) */
+    #fuelCalcEditBottomPanel #fuelDetailFormulasTable tbody td {
+        vertical-align: middle;
+    }
+    /* Поле ввода на всю ячейку, без внутреннего «кармана» (поле в поле) */
+    #fuelCalcEditBottomPanel tbody td:has(> .fuel-detail-input),
+    #fuelCalcEditBottomPanel tbody td:has(> .fuel-detail-textarea) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    /* Текст в полях — как в колонке «Год»; ниже и компактнее строки (table-sm + min-height) */
+    #fuelCalcEditBottomPanel .table.table-sm tbody td {
+        font-size: 1rem;
+    }
+    #fuelCalcEditBottomPanel .fuel-detail-input,
+    #fuelCalcEditBottomPanel .fuel-detail-textarea {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: calc(1.15em + 2px);
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.1rem 0.25rem;
+        font-size: inherit;
+        line-height: 1.2;
+        font-family: inherit;
+        background-clip: padding-box;
+        background-color: var(--bs-body-bg, #fff);
+    }
+    #fuelCalcEditBottomPanel .fuel-detail-textarea {
+        min-height: 2.2rem;
+        max-height: 2.2rem;
+        resize: none;
+        line-height: 1.2;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    /* «Текст формулы»: однострочное поле, без многострочного растягивания */
+    #fuelCalcEditBottomPanel #fuelDetailFormulasTable .fuel-formula-formtxt-input.fuel-detail-input {
+        text-align: left;
+    }
+    #fuelCalcEditBottomPanel .fuel-detail-input:focus,
+    #fuelCalcEditBottomPanel .fuel-detail-textarea:focus {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        outline: 0;
+        z-index: 1;
+        position: relative;
+    }
+    /* Верхняя таблица: поле ввода на всю ячейку (без «поля в поле») */
+    #fuelParamsTable.fuel-params-edit-table tbody td:has(> input.fuel-param-input) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #fuelParamsTable.fuel-params-edit-table .fuel-param-input {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    #fuelParamsTable.fuel-params-edit-table tbody td.table-warning .fuel-param-input {
+        background-color: transparent;
+    }
+    #fuelParamsTable.fuel-params-edit-table .fuel-param-input:focus {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        outline: 0;
+        z-index: 1;
+        position: relative;
+    }
+    #fuelParamsTable tbody tr.fuel-param-detail-row { cursor: pointer; }
+    .fuel-detail-panels-loading #fuelDetailSpecificTable,
+    .fuel-detail-panels-loading #fuelDetailFormulasTable,
+    .fuel-detail-panels-loading #fuelDetailExtraFuelTable {
+        opacity: 0.55;
+    }
+    .cursor-pointer { cursor: pointer; }
+    .ugol-group-icon { font-size: 1rem; color: var(--bs-primary); }
+    .ugol-group-icon:hover { opacity: 0.8; }
+    #fuelParamsTable th[data-collapsible-ugol="1"],
+    #fuelParamsTable td[data-collapsible-ugol="1"] {
+        display: none;
+    }
+    #fuelParamsTable.ugol-group-expanded th[data-collapsible-ugol="1"],
+    #fuelParamsTable.ugol-group-expanded td[data-collapsible-ugol="1"] {
+        display: table-cell;
+    }
+    /* Руст изменился к предыдущему году: жёлтые ячейки (не группа и не код станции) поверх table-striped */
+    #fuelParamsTable tbody td.table-warning {
+        background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+        const table = document.getElementById('fuelParamsTable');
+        const ugolToggle = document.getElementById('ugolGroupToggle');
+        const ugolIcon = ugolToggle?.querySelector('.ugol-group-icon');
+        const UGOL_STORAGE_KEY = 'fuelParams_ugolGroupExpanded';
+
+        function updateUgolGroupState(expanded) {
+            if (expanded) {
+                table?.classList.add('ugol-group-expanded');
+                if (ugolIcon) {
+                    ugolIcon.classList.remove('bi-plus-square');
+                    ugolIcon.classList.add('bi-dash-square');
+                    ugolIcon.setAttribute('data-state', 'expanded');
+                }
+            } else {
+                table?.classList.remove('ugol-group-expanded');
+                if (ugolIcon) {
+                    ugolIcon.classList.remove('bi-dash-square');
+                    ugolIcon.classList.add('bi-plus-square');
+                    ugolIcon.setAttribute('data-state', 'collapsed');
+                }
+            }
+            try { localStorage.setItem(UGOL_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+        }
+
+        if (ugolToggle && table) {
+            const ugolSaved = typeof localStorage !== 'undefined' && localStorage.getItem(UGOL_STORAGE_KEY) === '1';
+            if (ugolSaved) updateUgolGroupState(true);
+
+            ugolToggle.addEventListener('click', function() {
+                const expanded = table.classList.contains('ugol-group-expanded');
+                updateUgolGroupState(!expanded);
+            });
+        }
+
+        document.getElementById('rounding_digits')?.addEventListener('change', function() {
+            const selectedRounding = this.value;
+            const url = new URL(window.location.href);
+            url.searchParams.set('rounding_digits', selectedRounding);
+            window.location.href = url.toString();
+        });
+    });
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const exportButton = document.getElementById("exportFuelParamsButton");
+    const form = document.getElementById("exportFuelParamsForm");
+    if (!exportButton || !form) {
+        return;
+    }
+
+    const newButton = exportButton.cloneNode(true);
+    exportButton.parentNode.replaceChild(newButton, exportButton);
+
+    newButton.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const button = this;
+        const originalHtml = button.innerHTML;
+
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        button.disabled = true;
+
+        const currentUrl = new URL(window.location.href);
+        const params = new URLSearchParams(currentUrl.search);
+        params.set('per_page', 'all');
+        params.delete('page');
+        const roundingEl = document.getElementById('rounding_digits');
+        if (roundingEl) {
+            params.set('rounding_digits', roundingEl.value);
+        }
+        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(exportUrl, {
+            method: 'GET',
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('Ошибка сервера (' + response.status + '): ' + text.substring(0, 200));
+                });
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/vnd.openxmlformats')) {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    a.download = 'Топливные_параметры_групп_оборудования_' + timestamp + '.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                });
+            }
+
+            return response.text().then(() => {
+                throw new Error('Получен неожиданный тип ответа от сервера');
+            });
+        })
+        .catch(error => {
+            console.error('[EXPORT fuel_params] Ошибка при экспорте:', error);
+            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        })
+        .finally(() => {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+    });
+});
+</script>
+
+
+{% endif %}
+{% endblock %}
