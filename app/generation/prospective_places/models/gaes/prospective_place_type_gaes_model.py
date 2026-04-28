@@ -6,7 +6,7 @@ ProspectivePlaceTypeGAES — тип перспективной площадки 
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 
 PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES = (
@@ -19,8 +19,8 @@ PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES = (
 class ProspectivePlaceTypeGAES(db.Model, AuditMixin):
     """Справочник типов площадки ГАЭС (ровно три канонических наименования)."""
 
-    __tablename__ = "gs_gen_gs_prospective_place_types_gaes"
-    __table_args__ = {"schema": SCHEMA_REFDATA}
+    __tablename__ = "gs_gen_prospective_place_types_gaes"
+    __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.Text, unique=True, nullable=False)

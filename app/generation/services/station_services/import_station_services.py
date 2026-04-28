@@ -8,6 +8,7 @@ import logging
 import time
 from flask import current_app, has_app_context
 import re
+from uuid import uuid4
 from app.logs.services.field_names_ru import format_field_change
 from app.common.services.help_services import (
     _replace_quotes_sequentially,
@@ -69,6 +70,23 @@ def _row_get_modernization_power_change_year_for_import(row) -> object:
     return None
 
 
+def _strip_pandas_duplicate_column_suffix(s: str) -> str:
+    """
+    У read_excel одинаковые заголовки становятся «p_2025», «p_2025.1», ...
+    Суффикс мешает распознать год и слить дубликаты в _canonicalize_station_import_power_columns.
+    """
+    if not s or "." not in s:
+        return s
+    base = re.sub(r"\.\d+$", "", s)
+    if base == s:
+        return s
+    if re.fullmatch(r"\d{4}", base):
+        return base
+    if re.fullmatch(r"(?i)p[_-]?\d{4}", base):
+        return base
+    return s
+
+
 def _column_name_to_power_year(col) -> int | None:
     """Извлекает год из имени колонки (2021, '2021', 'p_2021', 'P-2025' и т.п.)."""
     if col is None or isinstance(col, bool):
@@ -83,7 +101,7 @@ def _column_name_to_power_year(col) -> int | None:
             if _IMPORT_POWER_YEAR_MIN <= y <= _IMPORT_POWER_YEAR_MAX:
                 return y
         return None
-    s = str(col).strip()
+    s = _strip_pandas_duplicate_column_suffix(str(col).strip())
     if re.fullmatch(r"\d{4}", s):
         y = int(s)
         if _IMPORT_POWER_YEAR_MIN <= y <= _IMPORT_POWER_YEAR_MAX:
@@ -117,6 +135,59 @@ def _power_col_names_for_years(years: list[int]) -> set:
     return names
 
 
+def _normalize_power_cell_for_merge(value):
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped in ("", "nan", "NaN", "—", "-", "–"):
+            return None
+        return stripped
+    return value
+
+
+def _power_cell_to_decimal(value) -> Decimal | None:
+    normalized = _normalize_power_cell_for_merge(value)
+    if normalized is None:
+        return None
+    try:
+        if isinstance(normalized, Decimal):
+            return normalized
+        if isinstance(normalized, str):
+            return Decimal(normalized.replace(",", "."))
+        return Decimal(str(normalized))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
+def _prefer_power_cell_value(existing, candidate):
+    existing_norm = _normalize_power_cell_for_merge(existing)
+    candidate_norm = _normalize_power_cell_for_merge(candidate)
+
+    if candidate_norm is None:
+        return existing_norm
+    if existing_norm is None:
+        return candidate_norm
+
+    existing_dec = _power_cell_to_decimal(existing_norm)
+    candidate_dec = _power_cell_to_decimal(candidate_norm)
+
+    # Если ранняя колонка несет служебный 0, а в более поздней есть реальная мощность,
+    # берем более позднее ненулевое значение.
+    if candidate_dec is not None:
+        if existing_dec is None:
+            return candidate_norm
+        if existing_dec == 0 and candidate_dec != 0:
+            return candidate_norm
+
+    return existing_norm
+
+
 def _canonicalize_station_import_power_columns(df: pd.DataFrame) -> list[int]:
     """
     Переименовывает колонки годов в p_YYYY; при двух колонках на один год сливает в p_YYYY.
@@ -125,27 +196,22 @@ def _canonicalize_station_import_power_columns(df: pd.DataFrame) -> list[int]:
     if not years:
         return []
 
-    target_for_year: dict[int, str] = {y: f"p_{y}" for y in years}
-    renames: dict = {}
-    drop_list: list = []
-
-    for c in list(df.columns):
-        y = _column_name_to_power_year(c)
-        if y is None:
+    original_columns = list(df.columns)
+    for year in years:
+        source_columns = [c for c in original_columns if _column_name_to_power_year(c) == year]
+        if not source_columns:
             continue
-        target = target_for_year[y]
-        if c == target:
-            continue
-        if target in df.columns:
-            df[target] = df[target].where(~df[target].isna(), df[c])
-            drop_list.append(c)
-        else:
-            renames[c] = target
 
-    if drop_list:
-        df.drop(columns=[c for c in drop_list if c in df.columns], inplace=True)
-    if renames:
-        df.rename(columns=renames, inplace=True)
+        target = f"p_{year}"
+        merged = pd.Series([None] * len(df), index=df.index, dtype=object)
+        for source in source_columns:
+            merged = merged.combine(df[source], _prefer_power_cell_value)
+
+        df[target] = merged
+
+        columns_to_drop = [c for c in source_columns if c != target and c in df.columns]
+        if columns_to_drop:
+            df.drop(columns=columns_to_drop, inplace=True)
 
     return _detect_import_power_years(df.columns)
 
@@ -331,17 +397,19 @@ def _overwrite_power_columns_from_excel_raw(file, df, power_col_names, sheet_nam
     except Exception:
         cell_formats = {}
 
-    power_cols = [c for c in df.columns if (c in power_col_names or str(c) in power_col_names)]
-    if not power_cols:
+    power_col_indices: list[int] = []
+    for idx, c in enumerate(df.columns):
+        if (c in power_col_names or str(c) in power_col_names) or _column_name_to_power_year(c) is not None:
+            power_col_indices.append(idx)
+    if not power_col_indices:
         return
 
-    col_indices = {c: df.columns.get_loc(c) for c in power_cols}
     first_data_row_excel = header_row_excel + 1
     logger = _get_logger()
 
     for df_row_pos in range(len(df)):
         excel_row = first_data_row_excel + df_row_pos
-        for col_name, df_col_idx in col_indices.items():
+        for df_col_idx in power_col_indices:
             excel_col = df_col_idx + 1
             coord = f"{get_column_letter(excel_col)}{excel_row}"
             cell_data = raw_cells.get(coord)
@@ -443,6 +511,25 @@ def _apply_station_import_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
         "наименование_агрегата",
         "агрегат",
     ])
+    add_aliases("machine_number", [
+        "machine_number",
+        "machine_no",
+        "machine_num",
+        "machineno",
+        "machinenumber",
+        "станционный_номер",
+        "номер_агрегата",
+        "номер_генератора",
+        "номер",
+    ])
+    add_aliases("machine_group", [
+        "machine_group",
+        "группа_агрегатов",
+        "группа_агрегата",
+        "группа",
+        "номер_группы",
+        "код_группы",
+    ])
     add_aliases("gen_company", [
         "gen_company",
         "генкомпания",
@@ -453,6 +540,26 @@ def _apply_station_import_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     add_aliases("station_type", [
         "station_type",
         "тип_станции",
+    ])
+    add_aliases("tes_type", [
+        "tes_type",
+        "тип_тэс",
+    ])
+    add_aliases("tes_machine_type", [
+        "tes_machine_type",
+        "тип_агрегата_тэс",
+    ])
+    add_aliases("date_exploitation", [
+        "date_exploitation",
+        "date_commission",
+        "год_ввода",
+        "ввод_в_работу",
+        "ввод_в_экспл",
+        "ввод_в_эксплуатацию",
+    ])
+    add_aliases("note", [
+        "note",
+        "примечание",
     ])
     add_aliases("date_modernization_power_change_expected", [
         "date_modernization_power_change_expected",
@@ -478,6 +585,37 @@ def _apply_station_import_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     if rename_map:
         df = df.rename(columns=rename_map)
     return df
+
+
+def _row_has_nonempty_value(row, key: str) -> bool:
+    """True, если в строке есть непустое осмысленное значение по ключу."""
+    value = row.get(key)
+    if value is None:
+        return False
+    try:
+        if pd.isna(value):
+            return False
+    except Exception:
+        pass
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        return normalized not in {"", "nan", "none"}
+    return True
+
+
+def _row_has_station_payload(row) -> bool:
+    return _row_has_nonempty_value(row, "station_name") or _row_has_nonempty_value(row, "regional_district")
+
+
+def _row_has_machine_payload(row) -> bool:
+    return any(
+        _row_has_nonempty_value(row, key)
+        for key in ("machine_name", "machine_number", "machine_group")
+    )
+
+
+def _row_has_rasp_payload(row) -> bool:
+    return _row_has_nonempty_value(row, "station_type") and _row_has_nonempty_value(row, "gen_company")
 
 
 def _fuel_name_sql_normalized():
@@ -988,8 +1126,145 @@ def update_if_changed(obj, field, new_value, changes, display_name=None):
         setattr(obj, field, new_value)
 
 
+def _normalize_import_machine_group(value) -> str:
+    if pd.isna(value) or value in [None, "nan", "NaN", ""]:
+        return ""
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, numbers.Real):
+        return str(int(value)) if float(value).is_integer() else str(value)
+    return str(value).strip()
+
+
+def _normalize_import_machine_number(value) -> str:
+    if pd.isna(value) or value in [None, "nan", "NaN", ""]:
+        return ""
+    if isinstance(value, numbers.Integral):
+        return str(int(value))
+    if isinstance(value, numbers.Real):
+        return str(int(value)) if float(value).is_integer() else str(value)
+    return str(value).strip()
+
+
+def _normalize_import_machine_name(value):
+    if pd.isna(value) or value in [None, "nan", "NaN", ""]:
+        return ""
+    return _clean_multiline_text(value)
+
+
+def _normalize_import_exploitation_year(value) -> int | None:
+    if pd.isna(value):
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_import_machine_signature(row) -> dict[str, object] | None:
+    machine_name = _normalize_import_machine_name(row.get("machine_name")) or ""
+    machine_group = _normalize_import_machine_group(row.get("machine_group"))
+    machine_number = _normalize_import_machine_number(row.get("machine_number"))
+    date_exploitation = _normalize_import_exploitation_year(row.get("date_exploitation"))
+
+    # Для различения одноименных станций нужен хотя бы базовый идентификатор агрегата.
+    if not (machine_number or machine_name):
+        return None
+
+    return {
+        "machine_name": machine_name,
+        "machine_group": machine_group,
+        "machine_number": machine_number,
+        "date_exploitation": date_exploitation,
+    }
+
+
+def _station_has_any_machines(station) -> bool:
+    if station is None or getattr(station, "id", None) is None:
+        return False
+    return versioned_query(Machine).filter_by(id_station=station.id).first() is not None
+
+
+def _find_station_candidate_by_machine_signature(candidates, row):
+    machine_signature = _extract_import_machine_signature(row)
+    if not candidates or machine_signature is None:
+        return None
+
+    matched_candidates = []
+    for candidate in candidates:
+        station_id = getattr(candidate, "id", None)
+        if station_id is None:
+            continue
+
+        machine_query = versioned_query(Machine).filter_by(
+            id_station=station_id,
+            machine_number=machine_signature["machine_number"],
+            machine_group=machine_signature["machine_group"],
+            machine_name=machine_signature["machine_name"],
+        )
+        if machine_signature["date_exploitation"] is not None:
+            machine_query = machine_query.filter_by(
+                date_exploitation=machine_signature["date_exploitation"]
+            )
+        if machine_query.first() is not None:
+            matched_candidates.append(candidate)
+
+    if len(matched_candidates) == 1:
+        return matched_candidates[0]
+    return None
+
+
+def _pick_station_candidate_by_station_fields(candidates, *, station_type_id, note):
+    if not candidates:
+        return None
+
+    best_matches = []
+    best_score = 0
+    for candidate in candidates:
+        score = 0
+        if station_type_id is not None and getattr(candidate, "id_station_type", None) == station_type_id:
+            score += 1
+        if note and getattr(candidate, "note", None) == note:
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best_matches = [candidate]
+        elif score == best_score and score > 0:
+            best_matches.append(candidate)
+
+    if best_score > 0 and len(best_matches) == 1:
+        return best_matches[0]
+    return None
+
+
+def _make_station_import_scope_key(station_name, regional_district, regional_district_name):
+    district_key = (
+        getattr(regional_district, "id", None)
+        if regional_district is not None
+        else _clean_name(regional_district_name)
+    )
+    return (_clean_name(station_name), district_key)
+
+
+def _get_used_station_ids_for_import_scope(import_scope, scope_key) -> set[int]:
+    if import_scope is None:
+        return set()
+    used_station_ids_by_key = import_scope.setdefault("used_station_ids_by_key", {})
+    return used_station_ids_by_key.setdefault(scope_key, set())
+
+
+def _register_station_occurrence(import_scope, scope_key) -> int:
+    if import_scope is None:
+        return 1
+    station_occurrences = import_scope.setdefault("station_occurrences_by_key", {})
+    occurrence = station_occurrences.get(scope_key, 0) + 1
+    station_occurrences[scope_key] = occurrence
+    return occurrence
+
+
 # Вспомогательная функция: создание или обновление станции
-def handle_station(row, user):
+def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = False):
     station_name = _clean_name(row['station_name'])
 
     # Текущая версия БД для версионированных справочников/станций
@@ -1055,14 +1330,41 @@ def handle_station(row, user):
 
     note = _clean_name(row.get('note')) if not pd.isna(row.get('note')) else None
 
-    station = (
+    machine_signature = _extract_import_machine_signature(row)
+    scope_key = _make_station_import_scope_key(
+        station_name,
+        regional_district,
+        regional_district_name,
+    )
+    used_station_ids = _get_used_station_ids_for_import_scope(import_scope, scope_key)
+
+    station_candidates_all = (
         versioned_query(Station)
         .filter_by(
             name=station_name,
             id_regional_district=regional_district.id if regional_district else None
         )
-        .first()
+        .all()
     )
+    station_candidates = station_candidates_all
+    if prefer_unused_slot and used_station_ids:
+        station_candidates = [
+            candidate
+            for candidate in station_candidates_all
+            if getattr(candidate, "id", None) not in used_station_ids
+        ]
+    station = None
+    if machine_signature is not None:
+        station = _find_station_candidate_by_machine_signature(station_candidates, row)
+    else:
+        station = _pick_station_candidate_by_station_fields(
+            station_candidates,
+            station_type_id=station_type_id,
+            note=note,
+        )
+    if station is None and len(station_candidates) == 1:
+        if machine_signature is None or not _station_has_any_machines(station_candidates[0]):
+            station = station_candidates[0]
 
     if not station:
         station = Station(
@@ -1073,6 +1375,7 @@ def handle_station(row, user):
             id_energy_unit=energy_unit.id if energy_unit else None,
             id_station_type=station_type_id,
             note=note if note else None,
+            external_code=str(uuid4()) if station_candidates else None,
         )
         set_db_version_on_create(station)
         db.session.add(station)
@@ -1110,42 +1413,83 @@ def handle_station(row, user):
             log_to_db(user, "Обновление станции", f"Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
             print(f"Обновление станции, Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
 
+    if getattr(station, "id", None) is not None:
+        used_station_ids.add(station.id)
+
     return station
+
+
+def _move_matching_machine_from_sibling_station(
+    current_station,
+    *,
+    machine_number: str,
+    machine_group: str,
+    machine_name: str,
+    date_exploitation,
+):
+    if current_station is None or getattr(current_station, "id", None) is None:
+        return None
+
+    sibling_station_ids = {
+        station.id
+        for station in versioned_query(Station)
+        .filter_by(
+            name=current_station.name,
+            id_regional_district=current_station.id_regional_district,
+        )
+        .all()
+        if getattr(station, "id", None) not in (None, current_station.id)
+    }
+    if not sibling_station_ids:
+        return None
+
+    matching_machine_query = versioned_query(Machine).filter_by(
+        machine_number=machine_number,
+        machine_group=machine_group,
+        machine_name=machine_name,
+    )
+    if date_exploitation is not None:
+        matching_machine_query = matching_machine_query.filter_by(
+            date_exploitation=date_exploitation
+        )
+
+    matching_machines = [
+        machine
+        for machine in matching_machine_query.all()
+        if getattr(machine, "id_station", None) in sibling_station_ids
+    ]
+    if len(matching_machines) != 1:
+        return None
+
+    machine = matching_machines[0]
+    machine.id_station = current_station.id
+    db.session.add(machine)
+    return machine
+
+
+def _row_targets_current_station(row, current_station) -> bool:
+    if current_station is None:
+        return False
+
+    row_station_name = _clean_name(row.get("station_name"))
+    if row_station_name and row_station_name != getattr(current_station, "name", None):
+        return False
+
+    row_district_name = _clean_name(row.get("regional_district"))
+    current_district_name = None
+    if getattr(current_station, "regional_district", None) is not None:
+        current_district_name = getattr(current_station.regional_district, "name", None)
+    if row_district_name and row_district_name != current_district_name:
+        return False
+
+    return bool(row_station_name or row_district_name)
 
 
 # Вспомогательная функция: создание или обновление агрегата
 def handle_machine(row, current_station, user, import_power_years: list[int] | None = None):
-    machine_name = _clean_multiline_text(row['machine_name'])
-
-    machine_group = row.get('machine_group')
-    if pd.isna(machine_group) or machine_group in [None, 'nan', 'NaN', '']:
-        machine_group = ""
-    else:
-        if isinstance(machine_group, numbers.Integral):
-            machine_group = str(int(machine_group))
-        elif isinstance(machine_group, numbers.Real):
-            machine_group = (
-                str(int(machine_group))
-                if float(machine_group).is_integer()
-                else str(machine_group)
-            )
-        else:
-            machine_group = str(machine_group).strip()
-
-    machine_number = _clean_name(row.get('machine_number'))
-    if pd.isna(machine_number) or machine_number in [None, 'nan', 'NaN', '']:
-        machine_number = ""
-    else:
-        if isinstance(machine_number, numbers.Integral):
-            machine_number = str(int(machine_number))
-        elif isinstance(machine_number, numbers.Real):
-            machine_number = (
-                str(int(machine_number))
-                if float(machine_number).is_integer()
-                else str(machine_number)
-            )
-        else:
-            machine_number = str(machine_number).strip()
+    machine_name = _normalize_import_machine_name(row.get('machine_name'))
+    machine_group = _normalize_import_machine_group(row.get('machine_group'))
+    machine_number = _normalize_import_machine_number(row.get('machine_number'))
 
     gen_company = (
         versioned_query(GenCompany)
@@ -1157,14 +1501,7 @@ def handle_machine(row, current_station, user, import_power_years: list[int] | N
         versioned_query(ConditionType).filter_by(name="действующий").first()
     )
 
-    raw_year = row.get('date_exploitation')
-    if not pd.isna(raw_year):
-        try:
-            date_exploitation = int(str(raw_year).strip())
-        except ValueError:
-            date_exploitation = None
-    else:
-        date_exploitation = None
+    date_exploitation = _normalize_import_exploitation_year(row.get('date_exploitation'))
 
     date_commission_year = date_exploitation
 
@@ -1215,6 +1552,16 @@ def handle_machine(row, current_station, user, import_power_years: list[int] | N
         )
         .first()
     )
+    machine_reassigned = False
+    if machine is None:
+        machine = _move_matching_machine_from_sibling_station(
+            current_station,
+            machine_number=machine_number,
+            machine_group=machine_group,
+            machine_name=machine_name,
+            date_exploitation=date_exploitation,
+        )
+        machine_reassigned = machine is not None
 
     if machine:
         changes = []
@@ -1255,10 +1602,11 @@ def handle_machine(row, current_station, user, import_power_years: list[int] | N
             note_val = _clean_name(row['note'])
             update_if_changed(machine, 'note', note_val, changes)
 
-        if changes:
+        if changes or machine_reassigned:
             db.session.commit()
-            log_to_db(user, f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {', '.join(changes)}")
-            print(f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {', '.join(changes)}")
+            action_details = ', '.join(changes) if changes else "агрегат перепривязан к текущей станции при повторном импорте"
+            log_to_db(user, f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
+            print(f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
 
     else:
         machine = Machine(
@@ -1838,6 +2186,8 @@ def import_station_list_from_excel(file, user):
 
     current_station = None
     current_machine = None
+    touched_stations: dict[int, Station] = {}
+    import_scope: dict[str, object] = {}
 
     processed_rows = 0
     skipped_empty_rows = 0
@@ -1867,19 +2217,47 @@ def import_station_list_from_excel(file, user):
             )
 
         try:
-            # Строка станции
-            if not (pd.isna(row.get('regional_district')) and pd.isna(row.get('station_name'))):
+            row_has_station_payload = _row_has_station_payload(row)
+            row_has_machine_payload = _row_has_machine_payload(row)
+            row_has_rasp_payload = _row_has_rasp_payload(row)
+            row_has_gen_company = _row_has_nonempty_value(row, "gen_company")
+
+            # Строка станции или "плоская" строка, где станция и агрегат находятся вместе.
+            if row_has_station_payload:
+                occurrence_scope_key = _make_station_import_scope_key(
+                    row.get("station_name"),
+                    None,
+                    row.get("regional_district"),
+                )
+                station_occurrence = _register_station_occurrence(
+                    import_scope,
+                    occurrence_scope_key,
+                )
+                prefer_unused_slot = station_occurrence > 1
+                previous_station_id = getattr(current_station, "id", None)
                 logger.debug(
                     "[IMPORT_STATIONS] row=%s type=station station_name=%s regional_district=%s",
                     index,
                     row.get("station_name"),
                     row.get("regional_district"),
                 )
-                current_station = handle_station(row, user)
-                continue
+                current_station = handle_station(
+                    row,
+                    user,
+                    import_scope=import_scope,
+                    prefer_unused_slot=prefer_unused_slot,
+                )
+                if (
+                    not row_has_machine_payload
+                    or getattr(current_station, "id", None) != previous_station_id
+                ):
+                    current_machine = None
+                if current_station is not None and getattr(current_station, "id", None) is not None:
+                    touched_stations[current_station.id] = current_station
 
-            # Строка агрегата
-            if not pd.isna(row.get('machine_name')) and not pd.isna(row.get('gen_company')):
+            # Строка агрегата. Поддерживаем "плоский" Excel, где в одной строке есть
+            # и поля станции, и поля агрегата: такую строку нельзя обрывать после handle_station().
+            if row_has_machine_payload and row_has_gen_company:
                 if current_station is None:
                     raise ValueError("Строка агрегата встретилась до строки станции (current_station=None)")
                 logger.debug(
@@ -1895,7 +2273,7 @@ def import_station_list_from_excel(file, user):
                 continue
 
             # Строка p_rasp/ограничений
-            if not pd.isna(row.get('station_type')) and not pd.isna(row.get('gen_company')):
+            if row_has_rasp_payload:
                 if current_machine is None:
                     raise ValueError("Строка p_rasp встретилась до строки агрегата (current_machine=None)")
                 logger.debug(
@@ -1910,6 +2288,9 @@ def import_station_list_from_excel(file, user):
                 has_rasp_values = any(not pd.isna(row.get(f'p_{y}')) for y in power_years)
                 if has_rasp_values:
                     update_machine_power_ogr(current_machine, power_years, user)
+                continue
+
+            if row_has_station_payload:
                 continue
 
             skipped_unrecognized_rows += 1
@@ -1933,16 +2314,9 @@ def import_station_list_from_excel(file, user):
             continue
 
     # После всех строк: расчет агрегированных мощностей по каждой станции
-    station_ids = df['station_name'].dropna().unique()
-    for name in station_ids:
+    for station in touched_stations.values():
         try:
-            station = (
-                versioned_query(Station)
-                .filter_by(name=_clean_name(name))
-                .first()
-            )
-            if station:
-                update_station_power(station, power_years, user)
+            update_station_power(station, power_years, user)
         except Exception:
             try:
                 db.session.rollback()
@@ -1950,7 +2324,8 @@ def import_station_list_from_excel(file, user):
                 pass
             err = {
                 "stage": "update_station_power",
-                "station_name": _clean_name(name),
+                "station_name": getattr(station, "name", None),
+                "station_id": getattr(station, "id", None),
                 "filename": filename,
             }
             errors.append(err)

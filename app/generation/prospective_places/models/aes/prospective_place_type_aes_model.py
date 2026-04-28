@@ -2,20 +2,20 @@
 """
 ProspectivePlaceTypeAES — тип перспективной площадки АЭС (справочник refdata).
 
-Таблица gs_gen_gs_prospective_place_types. Только для MachineProspectivePlaceAES.
+Таблица gs_gen.gs_gen_prospective_place_types. Только для MachineProspectivePlaceAES.
 Для ГЭС см. ProspectivePlaceTypeGES.
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 
 
 class ProspectivePlaceTypeAES(db.Model, AuditMixin):
     """Справочник типов перспективной площадки АЭС."""
 
-    __tablename__ = "gs_gen_gs_prospective_place_types"
-    __table_args__ = {"schema": SCHEMA_REFDATA}
+    __tablename__ = "gs_gen_prospective_place_types"
+    __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.Text, unique=True, nullable=False)

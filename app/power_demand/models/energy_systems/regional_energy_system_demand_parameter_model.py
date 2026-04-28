@@ -67,6 +67,14 @@ class RegionalEnergySystemDemandParameter(db.Model, AuditMixin):
     # Совмещенный максимум на энергозону, МВт
     combined_on_ez = db.Column(Numeric(25, 16), nullable=True)
 
+    # Коэффициенты k (безразмерные), сохранённые по году для среднесрочного периода / плана
+    coeff_k_combined_on_oes = db.Column(Numeric(25, 16), nullable=True)
+    coeff_k_combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
+
+    # Примечание
+    note = db.Column(db.Text, nullable=True)
+
+
     created_at = db.Column(
         db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )

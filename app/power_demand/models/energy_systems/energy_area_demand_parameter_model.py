@@ -54,6 +54,10 @@ class EnergyAreaDemandParameter(db.Model, AuditMixin):
     # Совмещенный максимум на РЭС, МВт
     combined_on_es = db.Column(Numeric(25, 16), nullable=True)
 
+    # Примечание
+    note = db.Column(db.Text, nullable=True)
+
+
     created_at = db.Column(
         db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )

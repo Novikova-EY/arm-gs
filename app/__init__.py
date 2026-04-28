@@ -3,6 +3,7 @@ import os
 import json
 import datetime as dt
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from app.generation.models.boiler import boiler_model
 from app.generation.models.machine import machine_tes_type_model
 from app.refdata.models.refdata_for_stations.machine import machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
@@ -20,6 +21,8 @@ from flask_compress import Compress
 import redis
 from flask_session import Session
 from app.common.middleware import ConcurrentUpdateMiddleware
+
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 
 def create_app():
     # #region agent log
@@ -590,6 +593,24 @@ def create_app():
         if value is None:
             return ""
         return str(value).strip().lower().replace("{", "").replace("}", "")
+
+    @app.template_filter("datetime_msk")
+    def datetime_msk_filter(value, fmt="%Y-%m-%d %H:%M:%S", empty="-"):
+        """Форматирует datetime в московском часовом поясе."""
+        if value is None:
+            return empty
+        if isinstance(value, dt.datetime):
+            localized = (
+                value.replace(tzinfo=dt.timezone.utc)
+                if value.tzinfo is None
+                else value.astimezone(MOSCOW_TZ)
+            )
+            if value.tzinfo is None:
+                localized = localized.astimezone(MOSCOW_TZ)
+            return localized.strftime(fmt)
+        if isinstance(value, dt.date):
+            return value.strftime(fmt)
+        return str(value)
 
     @app.template_filter("nl2br")
     def nl2br_filter(value):

@@ -50,6 +50,21 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin):
     # Совмещенный максимум на ЕЭС, МВт
     combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
 
+    # Расчетный максимум ОЭС, МВт
+    calculated_max_power_mw = db.Column(Numeric(25, 16), nullable=True)
+
+    # Расчетный совмещенный на ЕЭС, МВт
+    calculated_combined_on_ees_mw = db.Column(Numeric(25, 16), nullable=True)
+
+    # Коэффициенты k (безразмерные) по году для среднесрочного периода / признака «План»
+    coeff_k_calculated_max_power_mw = db.Column(Numeric(25, 16), nullable=True)
+    coeff_k_combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
+    coeff_k_calculated_combined_on_ees_mw = db.Column(Numeric(25, 16), nullable=True)
+
+    # Примечание
+    note = db.Column(db.Text, nullable=True)
+
+
     created_at = db.Column(
         db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -3,7 +3,7 @@
 Миксин для добавления поля database_version_id к моделям.
 Используется для связи данных с конкретной версией базы данных.
 """
-from sqlalchemy import Column, Integer, ForeignKey, Index
+from sqlalchemy import Column, Integer, ForeignKey
 from config import SCHEMA_REFDATA
 
 

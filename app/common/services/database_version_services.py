@@ -455,7 +455,23 @@ def add_version_service(data, user):
         parent_version_ids.clear()
         refdata_source_version_ids.clear()
         extend_years_list.clear()
-        quick_fix_seq(SCHEMA_REFDATA, "gs_database_versions")
+        # После миграции e0f1a2b3c4d5 физическая таблица может называться
+        # gs_sys_database_versions, а legacy-имя gs_database_versions может быть VIEW.
+        # Для выравнивания sequence выбираем именно физическую таблицу.
+        version_table_for_seq = "gs_database_versions"
+        try:
+            new_table_exists = bool(
+                db.session.execute(
+                    text("SELECT to_regclass(:tbl) IS NOT NULL"),
+                    {"tbl": f"{SCHEMA_REFDATA}.gs_sys_database_versions"},
+                ).scalar()
+            )
+            if new_table_exists:
+                version_table_for_seq = "gs_sys_database_versions"
+        except Exception:
+            version_table_for_seq = "gs_database_versions"
+
+        quick_fix_seq(SCHEMA_REFDATA, version_table_for_seq)
         _do_insert()
         
         # Копирование данных после retry

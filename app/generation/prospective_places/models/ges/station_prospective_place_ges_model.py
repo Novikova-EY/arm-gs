@@ -72,7 +72,7 @@ class StationProspectivePlaceGES(db.Model, AuditMixin):
 
     id_prospective_place_type_ges = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_gen_gs_prospective_place_types_ges.id", ondelete="SET NULL"),
+        db.ForeignKey(f"{SCHEMA_GENERATION}.gs_gen_prospective_place_types_ges.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )

@@ -3,7 +3,7 @@
 MachineProspectivePlaceAES model (Энергоблок перспективной площадки размещения АЭС).
 
 Поля:
-- FK: id_prospective_place_type -> ProspectivePlaceTypeAES / gs_gen_gs_prospective_place_types (типы площадок АЭС)
+- FK: id_prospective_place_type -> ProspectivePlaceTypeAES / gs_gen.gs_gen_prospective_place_types (типы площадок АЭС)
 - Текстовые: станционный номер блока, тип энергоблока, мощность энергоблока, предельное годовое число часов,
   удельная топливная составляющая, удельные условно постоянные затраты, относительная величина расхода,
   удельные капиталовложения, удельные затраты на вывод, вероятность аварийного состояния,
@@ -43,7 +43,7 @@ class MachineProspectivePlaceAES(db.Model, AuditMixin):
     # FK -> ProspectivePlaceTypeAES (справочник типов площадки АЭС)
     id_prospective_place_type = db.Column(
         db.Integer,
-        db.ForeignKey(f"{SCHEMA_REFDATA}.gs_gen_gs_prospective_place_types.id", ondelete="RESTRICT"),
+        db.ForeignKey(f"{SCHEMA_GENERATION}.gs_gen_prospective_place_types.id", ondelete="RESTRICT"),
         nullable=True,
         index=True
     )

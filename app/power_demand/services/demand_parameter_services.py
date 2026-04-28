@@ -558,6 +558,13 @@ def _dash_summary_display(value: Any) -> str:
 
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
     """Строка для отображения ячейки сводки после сохранения (как в demand_summary_services)."""
+    if str(parameter_key or "").startswith("coeff_k_"):
+        if hasattr(row, "__table__") and parameter_key in row.__table__.columns:
+            v = getattr(row, parameter_key, None)
+            return _dash_summary_display(
+                format_decimal_trim_for_display(v, digits=rounding_digits)
+            )
+        return "—"
     if parameter_key == "max_power":
         v = getattr(row, "max_power_consumption_mw", None)
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
@@ -588,6 +595,8 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
     if parameter_key == "combined_on_cz":
         v = getattr(row, "combined_on_cz", None)
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+    if parameter_key in ("note", "entity_note"):
+        return _dash_summary_display(getattr(row, "note", None))
     return "—"
 
 
@@ -801,6 +810,28 @@ def _apply_summary_field_to_row(
         row.combined_on_cz = resolve_max_power_mw_for_save(
             raw_value, old_shown, rounding_digits
         )
+    elif parameter_key == "note":
+        if "note" not in row.__table__.columns:
+            raise ValueError("Это поле не относится к данной строке параметров.")
+        s = str(raw_value or "").strip()
+        row.note = s if s else None
+    elif str(parameter_key or "").startswith("coeff_k_"):
+        if parameter_key not in row.__table__.columns:
+            raise ValueError("Это поле не относится к данной строке параметров.")
+        s = str(raw_value or "").strip()
+        if s and parse_decimal(s) is None:
+            raise ValueError("Некорректное число в поле коэффициента k.")
+        prev = getattr(row, parameter_key, None)
+        old_shown = (
+            format_decimal_trim_for_display(prev, digits=rounding_digits)
+            if prev is not None
+            else ""
+        )
+        setattr(
+            row,
+            parameter_key,
+            resolve_max_power_mw_for_save(raw_value, old_shown, rounding_digits),
+        )
 
 
 def _year_number_has_plan_feature(year_number: int) -> bool:
@@ -811,15 +842,40 @@ def _year_number_has_plan_feature(year_number: int) -> bool:
     return str(nm).strip().lower().replace(" ", "") == "план"
 
 
+def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> bool:
+    """Поля, которые сводка «коэффициентов» может менять для годов с признаком «План» помимо max_power."""
+    pk = parameter_key or ""
+    if pk.startswith("coeff_k_"):
+        return True
+    dm = demand_model_name or ""
+    # РЭС на странице ОЭС: совмещённые строки и сохранённые k.
+    if dm == "RegionalEnergySystemDemandParameter":
+        return pk in ("combined_on_oes", "combined_on_ees")
+    # Строка объекта объединённой энергосистемы на странице ОЭС.
+    if dm == "UnionEnergySystemDemandParameter":
+        return pk in (
+            "combined_on_ees",
+            "calculated_max_power_mw",
+            "calculated_combined_on_ees_mw",
+        )
+    return False
+
+
 def _assert_plan_year_only_max_power_editable(
     year_number: Optional[int],
     is_hist: bool,
     parameter_key: str,
+    *,
+    demand_model_name: str,
 ) -> None:
-    """Для годов с признаком «План» в сводке разрешено менять только max_power."""
+    """Для годов с признаком «План» в сводке по умолчанию можно менять только max_power и см. extra."""
+    if parameter_key == "entity_note":
+        return
     if is_hist or year_number is None:
         return
     if _year_number_has_plan_feature(int(year_number)) and parameter_key != "max_power":
+        if _plan_year_extra_editable(demand_model_name, parameter_key):
+            return
         raise ValueError(
             "Для годов с признаком «План» редактируется только показатель "
             "«Максимальное потребление мощности, МВт»."
@@ -852,9 +908,61 @@ def save_demand_summary_cell(
         "combined_on_ez",
         "combined_on_fo",
         "combined_on_cz",
+        "coeff_k_combined_on_oes",
+        "coeff_k_combined_on_ees",
+        "coeff_k_calculated_max_power_mw",
+        "coeff_k_calculated_combined_on_ees_mw",
+        "entity_note",
     }
     if parameter_key not in allowed:
         raise ValueError("Неизвестный параметр.")
+
+    if parameter_key == "entity_note":
+        model = _summary_demand_model_class(demand_model_name)
+        _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
+        vid = get_current_version()
+        user = _username()
+        if parent_fk_column and not hasattr(model, parent_fk_column):
+            raise ValueError("Некорректная привязка к объекту.")
+        erow: Any = None
+        if row_id is not None and row_id > 0:
+            erow = model.query.get(row_id)
+            if erow is None:
+                raise ValueError("Строка не найдена.")
+            if vid is not None and getattr(erow, "database_version_id", None) != vid:
+                raise ValueError("Данные относятся к другой версии БД. Обновите страницу.")
+            if parent_fk_column is not None and parent_id is not None:
+                if getattr(erow, parent_fk_column, None) != parent_id:
+                    raise ValueError("Строка не соответствует выбранному объекту.")
+            if not getattr(erow, "is_historical_maximum", False):
+                raise ValueError("Примечание сводки привязано к строке исторического максимума.")
+        else:
+            erow = find_demand_row_for_summary_slice(
+                model,
+                parent_fk_column=parent_fk_column,
+                parent_id=parent_id,
+                is_hist=True,
+                year_n=None,
+            )
+            if erow is None:
+                if not str(raw_value or "").strip():
+                    return ""
+                erow = create_demand_row_for_summary_slice(
+                    model,
+                    parent_fk_column=parent_fk_column,
+                    parent_id=parent_id,
+                    is_hist=True,
+                    year_n=None,
+                )
+        _apply_summary_field_to_row(erow, "note", raw_value, rounding_digits=rounding_digits)
+        erow.modified_by = user
+        try:
+            db.session.commit()
+            db.session.refresh(erow)
+        except IntegrityError:
+            db.session.rollback()
+            raise ValueError("Не удалось сохранить (конфликт данных).") from None
+        return summary_cell_display_value(erow, "entity_note", rounding_digits)
 
     model = _summary_demand_model_class(demand_model_name)
     _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
@@ -880,10 +988,13 @@ def save_demand_summary_cell(
             getattr(row, "year_number", None),
             bool(getattr(row, "is_historical_maximum", False)),
             parameter_key,
+            demand_model_name=demand_model_name,
         )
     else:
         is_hist, year_n = parse_summary_slice_key(slice_key)
-        _assert_plan_year_only_max_power_editable(year_n, is_hist, parameter_key)
+        _assert_plan_year_only_max_power_editable(
+            year_n, is_hist, parameter_key, demand_model_name=demand_model_name
+        )
         row = find_demand_row_for_summary_slice(
             model,
             parent_fk_column=parent_fk_column,

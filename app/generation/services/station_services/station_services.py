@@ -6,7 +6,6 @@ from app.extensions import db
 
 logger = logging.getLogger(__name__)
 from app.logs.services.logging_service import log_to_db
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from config import (
     SCHEMA_GENERATION,
@@ -3243,16 +3242,10 @@ def recalculate_station_power(station, start_year, end_year):
     # Коммитим только если есть изменения
     if powers_to_update or powers_to_create:
         if powers_to_create:
-            # Перед вставкой убеждаемся, что последовательность PK синхронизирована (для PostgreSQL)
+            # Чиним sequence через отдельное соединение, чтобы возможная ошибка
+            # не оставляла ORM-сессию в aborted state перед основным commit().
             try:
-                seq_name = f"{SCHEMA_GENERATION}.gs_gen_station_powers_id_seq"
-                db.session.execute(
-                    text(
-                        "SELECT setval(:seq, COALESCE((SELECT MAX(id) FROM "
-                        f"{SCHEMA_GENERATION}.gs_gen_station_powers), 0))"
-                    ),
-                    {"seq": seq_name},
-                )
+                quick_fix_seq(SCHEMA_GENERATION, "gs_gen_station_powers", "id")
             except Exception:
                 # Если БД не PostgreSQL или нет последовательности — тихо пропускаем
                 pass

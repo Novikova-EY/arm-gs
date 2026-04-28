@@ -90,7 +90,7 @@
                                     <h4>v{{ comparison.version1.version_number }}</h4>
                                     <h5>{{ comparison.version1.name }}</h5>
                                     <p class="text-muted">
-                                        Создана: {{ comparison.version1.created_at.strftime('%d.%m.%Y %H:%M') if comparison.version1.created_at else '-' }}
+                                        Создана: {{ comparison.version1.created_at|datetime_msk('%d.%m.%Y %H:%M') }}
                                     </p>
                                     <hr>
                                     <p class="mb-1">
@@ -114,7 +114,7 @@
                                     <h4>v{{ comparison.version2.version_number }}</h4>
                                     <h5>{{ comparison.version2.name }}</h5>
                                     <p class="text-muted">
-                                        Создана: {{ comparison.version2.created_at.strftime('%d.%m.%Y %H:%M') if comparison.version2.created_at else '-' }}
+                                        Создана: {{ comparison.version2.created_at|datetime_msk('%d.%m.%Y %H:%M') }}
                                     </p>
                                     <hr>
                                     <p class="mb-1">

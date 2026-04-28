@@ -98,15 +98,44 @@
                 document.documentElement.style.setProperty('--app-topbar-height', h + 'px');
             }
 
+            function visibleTheadBodyRows(thead) {
+                return Array.from(thead.rows).filter(function (tr) {
+                    return tr.getClientRects().length > 0;
+                });
+            }
+
             function applyStickyTheadOffsets() {
                 document.querySelectorAll('table').forEach(function (table) {
                     const thead = table.tHead;
-                    if (!thead || !thead.rows || thead.rows.length < 2) return;
-                    const row1 = thead.rows[0];
-                    const h = row1.getBoundingClientRect().height || 0;
-                    table.style.setProperty('--sticky-thead-row1-height', h + 'px');
+                    if (!thead || !thead.rows || thead.rows.length < 2) {
+                        table.style.removeProperty('--sticky-thead-row1-height');
+                        table.style.removeProperty('--sticky-thead-row3-offset');
+                        return;
+                    }
+                    const rows = visibleTheadBodyRows(thead);
+                    if (rows.length < 2) {
+                        table.style.removeProperty('--sticky-thead-row1-height');
+                        table.style.removeProperty('--sticky-thead-row3-offset');
+                        return;
+                    }
+                    const theadRect = thead.getBoundingClientRect();
+                    if (!theadRect.height) {
+                        return;
+                    }
+                    const r1Rect = rows[1].getBoundingClientRect();
+                    const off2 = Math.max(0, r1Rect.top - theadRect.top);
+                    table.style.setProperty('--sticky-thead-row1-height', off2 + 'px');
+                    if (rows.length >= 3) {
+                        const r2Rect = rows[2].getBoundingClientRect();
+                        const off3 = Math.max(0, r2Rect.top - theadRect.top);
+                        table.style.setProperty('--sticky-thead-row3-offset', off3 + 'px');
+                    } else {
+                        table.style.removeProperty('--sticky-thead-row3-offset');
+                    }
                 });
             }
+
+            window.armGsApplyStickyTheadOffsets = applyStickyTheadOffsets;
 
             // Включаем горизонтальный скролл ТОЛЬКО если контент реально шире контейнера.
             // Иначе на Windows при настройке "always show scrollbars" полоса рисуется "везде".
@@ -173,8 +202,14 @@
                 wrapTablePages();
                 onLayoutChange();
                 // на случай, если после load подгружается что-то/меняется высота
-                setTimeout(updateHorizontalScrollFlags, 50);
-                setTimeout(updateHorizontalScrollFlags, 250);
+                setTimeout(function () {
+                    applyStickyTheadOffsets();
+                    updateHorizontalScrollFlags();
+                }, 50);
+                setTimeout(function () {
+                    applyStickyTheadOffsets();
+                    updateHorizontalScrollFlags();
+                }, 250);
             });
 
             window.addEventListener('resize', function () {

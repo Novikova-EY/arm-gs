@@ -141,10 +141,15 @@ tfoot {
     background-color: var(--bs-table-bg);
 }
 
-/* Для двухстрочных шапок: 2-я строка фиксируется ниже 1-й */
+/* Для многострочных шапок: каждая следующая строка ниже предыдущей (учёт rowspan в row1) */
 .table-responsive table thead tr:nth-child(2) th {
     top: var(--sticky-thead-row1-height, 0px);
     z-index: 49;
+}
+
+.table-responsive table thead tr:nth-child(3) th {
+    top: var(--sticky-thead-row3-offset, 0px);
+    z-index: 48;
 }
 
 /* Контейнер со скроллом для очень больших таблиц (список станций) */

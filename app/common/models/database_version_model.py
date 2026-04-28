@@ -8,6 +8,9 @@ from config import SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 class DatabaseVersion(db.Model, AuditMixin):
+    # Legacy name is a compatibility surface:
+    # - on old DBs it is a physical table
+    # - on renamed DBs it is an updatable VIEW to gs_sys_database_versions
     __tablename__ = 'gs_database_versions'
     __table_args__ = {"schema": SCHEMA_REFDATA}
 

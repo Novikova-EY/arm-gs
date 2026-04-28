@@ -41,6 +41,10 @@ class EesDemandParameter(db.Model, AuditMixin):
     # Средняя дневная температура воздуха, °C
     avg_daily_air_temp_c = db.Column(Numeric(10, 2), nullable=True)
 
+    # Примечание
+    note = db.Column(db.Text, nullable=True)
+
+
     created_at = db.Column(
         db.DateTime(timezone=True), server_default=func.now(), nullable=False
     )

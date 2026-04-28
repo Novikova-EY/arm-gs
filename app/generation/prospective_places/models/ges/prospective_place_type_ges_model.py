@@ -7,7 +7,7 @@ ProspectivePlaceTypeGES — тип перспективной площадки �
 """
 from sqlalchemy.sql import func
 from app.extensions import db
-from config import SCHEMA_REFDATA
+from config import SCHEMA_GENERATION
 from app.common.models.audit_mixin import AuditMixin
 
 # Три фиксированных вида типа площадки ГЭС (полное наименование для поля name в БД)
@@ -21,8 +21,8 @@ PROSPECTIVE_PLACE_TYPE_GES_CANONICAL_NAMES = (
 class ProspectivePlaceTypeGES(db.Model, AuditMixin):
     """Справочник типов площадки ГЭС (ровно три канонических наименования)."""
 
-    __tablename__ = "gs_gen_gs_prospective_place_types_ges"
-    __table_args__ = {"schema": SCHEMA_REFDATA}
+    __tablename__ = "gs_gen_prospective_place_types_ges"
+    __table_args__ = {"schema": SCHEMA_GENERATION}
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.Text, unique=True, nullable=False)

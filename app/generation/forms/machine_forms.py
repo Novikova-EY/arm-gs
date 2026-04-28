@@ -167,7 +167,7 @@ class MachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
     relabing_outcome = SelectField(
-        "Тип перемаркировки",
+        "Тип изменений состояния оборудования",
         coerce=_coerce_optional_str_choice,
         choices=MACHINE_RELABING_OUTCOME_CHOICES,
         validators=[Optional()],
@@ -298,7 +298,7 @@ class PGUMachineFilterForm(FlaskForm):
         validators=[Optional(), Length(max=255), validate_year_or_date_list]
     )
     relabing_outcome = SelectField(
-        "Тип перемаркировки",
+        "Тип изменений состояния оборудования",
         coerce=_coerce_optional_str_choice,
         choices=MACHINE_RELABING_OUTCOME_CHOICES,
         validators=[Optional()],

@@ -407,12 +407,12 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Тип перемаркировки:</div>
+                                    <div class="col-5 text-start fw-semibold">Тип изменения состояния оборудования:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit_generation %}
                                             {{ main_form.relabing_outcome(class="form-select") }}
                                         {% else %}
-                                            {{ main_form.relabing_outcome.data if main_form.relabing_outcome.data else '—' }}
+                                            {{ ((main_form.relabing_outcome.data or '')|trim) or '—' }}
                                         {% endif %}
                                     </div>
                                 </div>

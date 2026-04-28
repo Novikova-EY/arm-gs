@@ -3,17 +3,19 @@
 Коэффициенты для перевода цен исходных данных ТЭП в цены текущего года
 (характеристика актуальных площадок размещения новых электростанций: АЭС, ГЭС, ГАЭС, ТЭС и др.).
 По одному значению на пару (версия БД, справочный год Year).
+
+Таблица в gs_sys (`gs_sys_tep_price_conversion_coefficients`); см. миграцию m9n0o1p2q3r4.
 """
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 
 from app.extensions import db
-from config import SCHEMA_GENERATION, SCHEMA_REFDATA
+from config import SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
 
 class TepPriceConversionCoefficient(db.Model, AuditMixin):
-    __tablename__ = "gs_gen_tep_price_conversion_coefficients"
+    __tablename__ = "gs_sys_tep_price_conversion_coefficients"
     __table_args__ = (
         db.UniqueConstraint(
             "database_version_id",
@@ -24,7 +26,7 @@ class TepPriceConversionCoefficient(db.Model, AuditMixin):
             "ix_tep_price_conv_coeff_id_year",
             "id_year",
         ),
-        {"schema": SCHEMA_GENERATION},
+        {"schema": SCHEMA_REFDATA},
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

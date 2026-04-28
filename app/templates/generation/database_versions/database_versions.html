@@ -264,12 +264,12 @@
                                 {% if creator %}
                                     <span class="text-muted">{{ creator }}</span><br>
                                 {% endif %}
-                                {{ version.created_at.strftime('%Y-%m-%d %H:%M:%S') if version.created_at else '-' }}
+                                {{ version.created_at|datetime_msk('%Y-%m-%d %H:%M:%S') }}
                             </td>
 
                             <!-- Строки таблицы. Столбец "Дата обновления" -->
                             <td class="text-center align-middle">
-                                {{ version.updated_at.strftime('%Y-%m-%d %H:%M:%S') if version.updated_at else '-' }}
+                                {{ version.updated_at|datetime_msk('%Y-%m-%d %H:%M:%S') }}
                             </td>
 
                             <!-- Строки таблицы. Столбец "Загрузить" (только для admin, для остальных не отображается) -->
@@ -397,9 +397,9 @@
                             {% if creator %}
                                 <span class="text-muted">{{ creator }}</span><br>
                             {% endif %}
-                            {{ version.created_at.strftime('%Y-%m-%d %H:%M:%S') if version.created_at else '-' }}
+                            {{ version.created_at|datetime_msk('%Y-%m-%d %H:%M:%S') }}
                         </td>
-                        <td class="text-center">{{ version.updated_at.strftime('%Y-%m-%d %H:%M:%S') if version.updated_at else '-' }}</td>
+                        <td class="text-center">{{ version.updated_at|datetime_msk('%Y-%m-%d %H:%M:%S') }}</td>
                         <td class="text-center">
                             <div class="d-flex flex-column gap-1 align-items-center">
                                 {% if current_db_version and current_db_version.id == version.id %}
