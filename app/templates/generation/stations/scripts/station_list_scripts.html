@@ -126,7 +126,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "station_type_filter",
             "tes_type_filter",
             "tes_machine_type_filter",
-            "fuel_type_filter"
+            "fuel_type_filter",
+            "relabing_outcome_filter",
         ];
 
         // Найдем все чекбоксы в выпадающих фильтрах и повесим обработчик
@@ -142,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
             form.action = "{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}";
 
             // Список параметров, которые НЕ нужно добавлять
-            let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter"];
+            let excludeKeys = ["station_type_filter", "tes_type_filter", "tes_machine_type_filter", "relabing_outcome_filter"];
 
             // Jinja2 передает параметры в JSON-объекте
             let params = JSON.parse('{{ request.args.to_dict() | tojson | safe }}');
@@ -184,7 +185,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "station_type_filter",
             "tes_type_filter",
             "tes_machine_type_filter",
-            "fuel_type_filter"
+            "fuel_type_filter",
+            "relabing_outcome_filter",
         ];
 
         // Для моментальных фильтров обновляем URL сразу при изменении чекбокса
@@ -201,6 +203,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
                         params.append(filterName, cb.value);
                     });
+
+                    params.set('page', '1');
 
                     // 🔹 Перенаправляем на новый URL (без дубликатов)
                     window.location.href = window.location.pathname + "?" + params.toString();

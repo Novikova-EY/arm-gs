@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.technologies.equipment_group_forms import (
@@ -175,6 +176,15 @@ def equipment_group_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов групп оборудования: {duplicates}")
 
             if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.equipment_group_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            technology_type_filter=technology_type_filter,
+                                            technology_availability_filter=technology_availability_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir))
                 update_equipment_group_all_versions_service(
                     equipment_group_data, user
                 )
@@ -270,6 +280,15 @@ def add_equipment_group():
             }]
 
             if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.equipment_group_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            equipment_group_filter=equipment_group_filter,
+                                            technology_type_filter=technology_type_filter,
+                                            technology_availability_filter=technology_availability_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir))
                 add_equipment_group_all_versions_service(payload, user)
                 flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
             else:

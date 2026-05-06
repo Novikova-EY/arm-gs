@@ -790,3 +790,86 @@ def export_union_energy_system_service(
         entity_type="union_energy_system")
 
     return output
+
+# === all_versions_union_energy_system start ===
+@no_autoflush
+def add_union_energy_system_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        energy_system_type_id = _to_int_or_none(record.get("energy_system_type_id"), keep_zero=False)
+        if not name or not name_full or not energy_system_type_id:
+            raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'energy_system_type_id'.")
+        return {
+            "name": name,
+            "name_full": name_full,
+            "display_order": display_order,
+            "energy_system_type_id": energy_system_type_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "display_order": clean["display_order"],
+            "id_energy_system_type": fk_id_for_version(EnergySystemType, clean["energy_system_type_id"], version_id),
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=UnionEnergySystem,
+        entity_type="union_energy_system",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'name_full', 'display_order']
+    )
+
+
+@no_autoflush
+def update_union_energy_system_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+
+    def normalize_record(record):
+        union_energy_system_id = record.get("union_energy_system_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        energy_system_type_id = _to_int_or_none(record.get("energy_system_type_id"), keep_zero=False)
+        if not name or not name_full or not energy_system_type_id:
+            raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'energy_system_type_id'.")
+        return {
+            "union_energy_system_id": union_energy_system_id,
+            "name": name,
+            "name_full": name_full,
+            "display_order": display_order,
+            "energy_system_type_id": energy_system_type_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "display_order": clean["display_order"],
+            "id_energy_system_type": fk_id_for_version(EnergySystemType, clean["energy_system_type_id"], version_id),
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=UnionEnergySystem,
+        entity_type="union_energy_system",
+        pk_field="union_energy_system_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'name_full', 'display_order', 'id_energy_system_type'],
+        unique_fields=['name', 'name_full', 'display_order'],
+        temp_fields=['name', 'name_full'],
+        clear_fields=['display_order']
+    )
+# === all_versions_union_energy_system end ===

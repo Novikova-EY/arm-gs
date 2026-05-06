@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.energy_systems.union_energy_system_forms import (
@@ -24,7 +25,9 @@ from app.refdata.services.energy_systems.union_energy_system_services import (
     union_energy_system_query,
     get_union_energy_system_list, 
     update_union_energy_system_service, 
+    update_union_energy_system_all_versions_service, 
     add_union_energy_system_service, 
+    add_union_energy_system_all_versions_service, 
     delete_union_energy_system_service,
     import_union_energy_system_service, 
     export_union_energy_system_service, 
@@ -141,8 +144,21 @@ def union_energy_system_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID ОЭС: {duplicates}")
 
             # Обновление данных в базе
-            update_union_energy_system_service(union_energy_system_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.union_energy_system_list",
+                            page=page,
+                            per_page=per_page,
+                            union_energy_system_filter=union_energy_system_filter,
+                            energy_system_type_filter=energy_system_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_union_energy_system_all_versions_service(union_energy_system_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_union_energy_system_service(union_energy_system_data, user)
+                flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
@@ -231,8 +247,21 @@ def add_union_energy_system():
             }]
                         
             # Добавление новой записи
-            add_union_energy_system_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.union_energy_system_list",
+                            page=page,
+                            per_page=per_page,
+                            union_energy_system_filter=union_energy_system_filter,
+                            energy_system_type_filter=energy_system_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_union_energy_system_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_union_energy_system_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = union_energy_system_query(

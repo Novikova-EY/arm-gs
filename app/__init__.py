@@ -711,6 +711,7 @@ def create_app():
     from app.logs.routes import logs_bp
     from app.history.routes import history_bp
     from app.power_demand.routes import power_demand_bp
+    from app.energy_consumption.routes import energy_consumption_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -725,6 +726,7 @@ def create_app():
     app.register_blueprint(logs_bp, url_prefix="/log")
     app.register_blueprint(history_bp, url_prefix="/history")
     app.register_blueprint(power_demand_bp, url_prefix="/power_demand")
+    app.register_blueprint(energy_consumption_bp, url_prefix="/energy_consumption")
 
     # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')

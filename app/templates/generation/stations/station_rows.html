@@ -1,10 +1,9 @@
 <tr>
-    {# По просьбе: не объединяем ячейку "Субъект РФ" вниз (без rowspan) #}
     {% set station_header_company_colspan = 6 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 5 %}
     <td class="text-center" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.regional_district.name }}
     </td>
-    <td class="text-center align-middle" colspan="3" style="vertical-align: middle; font-weight: bold;">
+    <td class="text-center align-middle" colspan="5" style="vertical-align: middle; font-weight: bold;">
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
             {{ station.name }}
         </a>
@@ -53,7 +52,16 @@
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.modernization_display or '—' }}
+                {{ machine.modernization_power_change_display or '—' }}
+            </td>
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {{ machine.date_modernization_no_power_change_expected if machine.date_modernization_no_power_change_expected is not none else '—' }}
+            </td>
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% set ro = (machine.relabing_outcome or '') | trim %}
+                {{ ro if ro else '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -142,7 +150,7 @@
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
                 {% set p_ogr_full = p_ogr_value | format_decimal(0) if p_ogr_value is not none and p_ogr_value != 0 else '' %}
-                <td class="power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
+                <td class="text-center align-middle power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                     {% if p_ogr_value is none or p_ogr_value == 0 %}
                         &mdash;
                     {% else %}
@@ -159,7 +167,7 @@
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_rasp_value = machine.powers_by_year.get(year, {}).get("p_rasp") %}
                 {% set p_rasp_full = p_rasp_value | format_decimal(0) if p_rasp_value is not none and p_rasp_value != 0 else '' %}
-                <td class="power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
+                <td class="text-center align-middle power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                     {% if p_rasp_value is none or p_rasp_value == 0 %}
                         &mdash;
                     {% else %}
@@ -202,7 +210,16 @@
             </td>
 
             <td >
-                {{ machine.modernization_display or '—' }}
+                {{ machine.modernization_power_change_display or '—' }}
+            </td>
+
+            <td >
+                {{ machine.date_modernization_no_power_change_expected if machine.date_modernization_no_power_change_expected is not none else '—' }}
+            </td>
+
+            <td >
+                {% set ro = (machine.relabing_outcome or '') | trim %}
+                {{ ro if ro else '—' }}
             </td>
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
@@ -293,7 +310,9 @@
                 <td>{{ pgu_commission_value or '—' }}</td>
                 <td>{{ pgu_exploitation_value or '—' }}</td>
                 <td>{{ pgu_machine.decompressing_display or '—' }}</td>
-                <td>{{ pgu_machine.modernization_display or '—' }}</td>
+                <td>{{ pgu_machine.modernization_power_change_display or '—' }}</td>
+                <td>{{ pgu_machine.date_modernization_no_power_change_expected if pgu_machine.date_modernization_no_power_change_expected is not none else '—' }}</td>
+                <td>{% set ro = (machine.relabing_outcome or '') | trim %}{{ ro if ro else '—' }}</td>
                 <td>
                     {% if pgu_machine.tes_machine_type and pgu_machine.tes_machine_type.id != 0 %}
                         {% if pgu_machine.tes_machine_type.name and pgu_machine.tes_machine_type.name|lower != 'не указано' %}
@@ -339,12 +358,12 @@
             
         <!-- Вторая строка: p_ogr -->
         <tr class="text-center p-ogr-row machine-ogr-row">
-            <td colspan="{{ 7 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 6 }}"></td>
+            <td colspan="{{ 9 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 8 }}"></td>
             <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
                 {% set p_ogr_full = p_ogr_value | format_decimal(0) if p_ogr_value is not none and p_ogr_value != 0 else '' %}
-                <td class="power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
+                <td class="text-center align-middle power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                     {% if p_ogr_value is none or p_ogr_value == 0 %}
                         &mdash;
                     {% else %}
@@ -357,13 +376,13 @@
 
         <!-- Третья строка: p_rasp -->
         <tr class="text-center p-rasp-row machine-rasp-row">
-            <td colspan="{{ 6 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 5 }}"></td>
+            <td colspan="{{ 8 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 7 }}"></td>
             <td></td>
             <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_rasp_value = machine.powers_by_year.get(year, {}).get("p_rasp") %}
                 {% set p_rasp_full = p_rasp_value | format_decimal(0) if p_rasp_value is not none and p_rasp_value != 0 else '' %}
-                <td class="power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
+                <td class="text-center align-middle power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                     {% if p_rasp_value is none or p_rasp_value == 0 %}
                         &mdash;
                     {% else %}

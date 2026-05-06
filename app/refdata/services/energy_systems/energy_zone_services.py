@@ -536,3 +536,72 @@ def export_energy_zone_mappings_service(
         df.to_excel(writer, index=False, sheet_name="Энергорайоны (Топливо)")
     output.seek(0)
     return output
+
+# === all_versions_energy_zone start ===
+@no_autoflush
+def add_energy_zone_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        number = (record.get("number") or "").strip()
+        name = (record.get("name") or "").strip()
+        if not name or not number:
+            raise ValueError("Каждая запись должна содержать 'number' и 'name'.")
+        return {
+            "name": name,
+            "number": number,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "number": clean["number"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyZone,
+        entity_type="energy_zone",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'number']
+    )
+
+
+@no_autoflush
+def update_energy_zone_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        energy_zone_id = record.get("energy_zone_id")
+        number = (record.get("number") or "").strip()
+        name = (record.get("name") or "").strip()
+        if not name or not number:
+            raise ValueError("Каждая запись должна содержать 'name' и 'number'.")
+        return {
+            "energy_zone_id": energy_zone_id,
+            "name": name,
+            "number": number,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "number": clean["number"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyZone,
+        entity_type="energy_zone",
+        pk_field="energy_zone_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'number'],
+        unique_fields=['name', 'number'],
+        temp_fields=['name', 'number'],
+        clear_fields=[]
+    )
+# === all_versions_energy_zone end ===

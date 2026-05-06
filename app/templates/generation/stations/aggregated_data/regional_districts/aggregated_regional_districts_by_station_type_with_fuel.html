@@ -7,7 +7,7 @@
     {% if fuel_name|lower != 'не указано'%}
         <!-- Первая строка: Руст -->
         <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-            <td class="total-row-cell" rowspan="3" colspan="12" style="font-weight: bold; padding-left: 3cm;">
+            <td class="total-row-cell" rowspan="3" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold; padding-left: 3cm;">
                 {{ fuel_name }}
             </td>
             <td class="fw-bold">Руст</td>

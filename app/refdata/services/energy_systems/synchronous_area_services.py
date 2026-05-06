@@ -495,3 +495,78 @@ def export_synchronous_area_service(
         entity_type="synchronous_area")
 
     return output
+
+# === all_versions_synchronous_area start ===
+@no_autoflush
+def add_synchronous_area_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        number = (record.get("number") or "").strip() or None
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+            "number": number,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "number": clean["number"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=SynchronousArea,
+        entity_type="synchronous_area",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'number', 'display_order']
+    )
+
+
+@no_autoflush
+def update_synchronous_area_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        synchronous_area_id = record.get("synchronous_area_id")
+        display_order = record.get("display_order")
+        number = (record.get("number") or "").strip() or None
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "synchronous_area_id": synchronous_area_id,
+            "name": name,
+            "number": number,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "number": clean["number"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=SynchronousArea,
+        entity_type="synchronous_area",
+        pk_field="synchronous_area_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'number', 'display_order'],
+        unique_fields=['name', 'number', 'display_order'],
+        temp_fields=['name', 'number'],
+        clear_fields=['display_order']
+    )
+# === all_versions_synchronous_area end ===

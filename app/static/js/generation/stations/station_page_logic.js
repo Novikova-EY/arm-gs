@@ -61,18 +61,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // === 2. Обработка фильтров в dropdown
     function setupDropdownCheckboxFilters() {
-        // Список фильтров, которые требуют подтверждения (ОК/Отмена)
-        const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
-        
+        // Только эти чекбоксы в шапке перезагружают страницу сразу при изменении.
+        // Годовые фильтры (Ввод/Модерн./…) применяются только по кнопке «Ок» — их имя здесь не указываем.
+        const instantApplyCheckboxFilters = [
+            'station_type_filter',
+            'tes_type_filter',
+            'tes_machine_type_filter',
+            'fuel_type_filter',
+            'relabing_outcome_filter',
+            'pgu_tes_machine_type_filter',
+        ];
+
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
             menu.addEventListener('change', e => {
                 if (e.target.matches('input[type="checkbox"]')) {
                     const filterName = e.target.name;
-                    // Для дат-фильтров не применяем автоматически
-                    if (dateFilters.includes(filterName)) {
+                    if (!instantApplyCheckboxFilters.includes(filterName)) {
                         return;
                     }
-                    // Для остальных фильтров применяем как раньше
                     const params = new URLSearchParams(window.location.search);
                     params.delete(filterName);
                     document.querySelectorAll(`input[name="${filterName}"]:checked`).forEach(cb => {
@@ -86,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // === 2.1. Обработка фильтров с подтверждением (ОК/Отмена) для дат
     function setupDateFilterDropdowns() {
-        const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter'];
+        const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter', 'date_modernization_no_power_expected_filter'];
         
         // Сохраняем исходное состояние чекбоксов при открытии dropdown
         document.querySelectorAll('.date-filter-dropdown').forEach(menu => {

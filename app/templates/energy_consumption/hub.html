@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Спрос{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">Модуль «Спрос»</h2>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                                <a href="{{ url_for('energy_consumption_bp.demand_summary_oes') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                    Максимумы потребления мощности<br>по энергосистемам
+                                </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Максимумы потребления мощности<br>по федеральным округам
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Максимумы потребления мощности<br>по энергозонам
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4 border-secondary border-2 opacity-50">
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_consumption_bp.demand_summary_oes_coeff') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Коэффициенты и совмещенные максимумы<br>по энергосистемам
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <span class="btn btn-secondary disabled fs-4 w-100 py-4 user-select-none" tabindex="-1" aria-disabled="true">
+                            Коэффициенты и совмещенные максимумы<br>по федеральным округам
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <span class="btn btn-secondary disabled fs-4 w-100 py-4 user-select-none" tabindex="-1" aria-disabled="true">
+                            Коэффициенты и совмещенные максимумы<br>по энергозонам
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endif %}
+{% endblock %}

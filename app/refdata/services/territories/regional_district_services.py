@@ -766,3 +766,118 @@ def export_regional_district_service(
     output.seek(0)
     log_to_db(user, "Экспорт таблицы субъектов РФ в Excel завершен", f"Экспортировано записей: {len(data)}", entity_type="regional_district")
     return output
+
+# === all_versions_regional_district start ===
+@no_autoflush
+def add_regional_district_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.federal_district_model import FederalDistrict
+    from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
+    from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        name_rp = (record.get("name_rp") or "").strip()
+        name_dp = (record.get("name_dp") or "").strip()
+        federal_district_id = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
+        energy_zone_id = _to_int_or_none(record.get("energy_zone_id"), keep_zero=True)
+        synchronous_area_id = _to_int_or_none(record.get("synchronous_area_id"), keep_zero=True)
+        region_id = _to_int_or_none(record.get("region_id"), keep_zero=False)
+        if not name or not name_full or not name_rp or federal_district_id is None:
+            raise ValueError("Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'federal_district_id'.")
+        if not name_dp:
+            name_dp = name_full or name
+        return {
+            "name": name,
+            "name_full": name_full,
+            "name_rp": name_rp,
+            "name_dp": name_dp,
+            "region_id": region_id,
+            "federal_district_id": federal_district_id,
+            "energy_zone_id": energy_zone_id,
+            "synchronous_area_id": synchronous_area_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_rp": clean["name_rp"],
+            "name_dp": clean["name_dp"],
+            "region_id": clean["region_id"],
+            "id_federal_district": fk_id_for_version(FederalDistrict, clean["federal_district_id"], version_id),
+            "id_energy_zone": fk_id_for_version(EnergyZone, clean["energy_zone_id"], version_id) if clean["energy_zone_id"] is not None else None,
+            "id_synchronous_area": fk_id_for_version(SynchronousArea, clean["synchronous_area_id"], version_id) if clean["synchronous_area_id"] is not None else None,
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=RegionalDistrict,
+        entity_type="regional_district",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'name_full']
+    )
+
+
+@no_autoflush
+def update_regional_district_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.federal_district_model import FederalDistrict
+    from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
+    from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+
+    def normalize_record(record):
+        regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip() or None
+        name_rp = (record.get("name_rp") or "").strip() or None
+        name_dp = (record.get("name_dp") or "").strip() or None
+        region_id = _to_int_or_none(record.get("region_id"), keep_zero=False)
+        federal_district_id = _to_int_or_none(record.get("federal_district_id"), keep_zero=False)
+        energy_zone_id = _to_int_or_none(record.get("energy_zone_id"), keep_zero=True)
+        synchronous_area_id = _to_int_or_none(record.get("synchronous_area_id"), keep_zero=True)
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        if not name_dp:
+            name_dp = name_full or name
+        return {
+            "regional_district_id": regional_district_id,
+            "name": name,
+            "name_full": name_full,
+            "name_rp": name_rp,
+            "name_dp": name_dp,
+            "region_id": region_id,
+            "federal_district_id": federal_district_id,
+            "energy_zone_id": energy_zone_id,
+            "synchronous_area_id": synchronous_area_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_rp": clean["name_rp"],
+            "name_dp": clean["name_dp"],
+            "region_id": clean["region_id"],
+            "id_federal_district": fk_id_for_version(FederalDistrict, clean["federal_district_id"], version_id),
+            "id_energy_zone": fk_id_for_version(EnergyZone, clean["energy_zone_id"], version_id) if clean["energy_zone_id"] is not None else None,
+            "id_synchronous_area": fk_id_for_version(SynchronousArea, clean["synchronous_area_id"], version_id) if clean["synchronous_area_id"] is not None else None,
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=RegionalDistrict,
+        entity_type="regional_district",
+        pk_field="regional_district_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'name_full', 'name_rp', 'name_dp', 'region_id', 'id_federal_district', 'id_energy_zone', 'id_synchronous_area'],
+        unique_fields=['name', 'name_full'],
+        temp_fields=['name', 'name_full'],
+        clear_fields=[]
+    )
+# === all_versions_regional_district end ===

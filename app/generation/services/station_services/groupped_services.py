@@ -19,6 +19,9 @@ from app.refdata.models.territories.regional_district_model import RegionalDistr
 from app.refdata.models.years.year_model import Year
 from app.common.services.database_version_filter import filter_by_db_version, get_current_db_version_id
 from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
+from app.generation.services.station_services.filters_services import (
+    build_machine_note_search_condition,
+)
 
 
 def is_current_version(entity) -> bool:
@@ -267,13 +270,20 @@ def fetch_machines_with_rowspans(
     ).filter(Machine.id_station.in_(station_ids))
 
     # При фильтрах по датам: показывать Machine, если он сам или его PGUMachine-потомки совпадают
-    date_filters_present = (filters or {}).get("date_commission_filter") or (filters or {}).get("date_exploitation_filter") or (filters or {}).get("date_decompressing_expected_filter") or (filters or {}).get("date_modernization_expected_filter")
+    date_filters_present = (
+        (filters or {}).get("date_commission_filter")
+        or (filters or {}).get("date_exploitation_filter")
+        or (filters or {}).get("date_decompressing_expected_filter")
+        or (filters or {}).get("date_modernization_expected_filter")
+        or (filters or {}).get("date_modernization_no_power_expected_filter")
+    )
     if date_filters_present:
         from app.generation.services.station_services.filters_services import (
             build_date_commission_filter,
             build_date_exploitation_filter,
             build_date_decompressing_filter,
             build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
             get_pgu_date_cond_for_filter,
         )
         filter_pairs = [
@@ -281,6 +291,7 @@ def fetch_machines_with_rowspans(
             (build_date_exploitation_filter, "date_exploitation_filter"),
             (build_date_decompressing_filter, "date_decompressing_expected_filter"),
             (build_date_modernization_filter, "date_modernization_expected_filter"),
+            (build_date_modernization_no_power_filter, "date_modernization_no_power_expected_filter"),
         ]
         and_parts = []
         for build_fn, key in filter_pairs:
@@ -297,9 +308,21 @@ def fetch_machines_with_rowspans(
         if and_parts:
             machine_query = machine_query.filter(and_(*and_parts))
 
+    from app.generation.services.station_services.filters_services import build_relabing_outcome_filter
+
+    rel_cond = build_relabing_outcome_filter(Machine, filters or {})
+    if rel_cond is not None:
+        machine_query = machine_query.filter(rel_cond)
+
     # Фильтр: только агрегаты без группы оборудования
     if (filters or {}).get("machines_without_equipment_group"):
         machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+
+    note_machine_cond = build_machine_note_search_condition(
+        Machine, PGUMachine, (filters or {}).get("note_filter")
+    )
+    if note_machine_cond is not None:
+        machine_query = machine_query.filter(note_machine_cond)
 
     machines = machine_query.all()
 
@@ -416,8 +439,20 @@ def fetch_machines_with_rowspans(
     station_machine_map = defaultdict(list)
     station_totals = {}
 
+    note_filter_sub = ((filters or {}).get("note_filter") or "").strip()
+
     for m in machines:
         m.pgu_machines = [p for p in pgu_map.get(m.id, []) if _is_current_version(p)]
+        if note_filter_sub:
+            mach_note = (getattr(m, "note", None) or "")
+            if note_filter_sub.casefold() not in mach_note.casefold():
+                nf = note_filter_sub.casefold()
+                m.pgu_machines = [
+                    p
+                    for p in m.pgu_machines
+                    if (getattr(p, "note", None) or "")
+                    and nf in (p.note or "").casefold()
+                ]
         station_machine_map[m.id_station].append(m)
 
     for station_id, machine_list in station_machine_map.items():
@@ -430,6 +465,17 @@ def fetch_machines_with_rowspans(
                 return (0, num, suffix)
             return (1, float('inf'), s.lower())
 
+        def machine_group_key(value):
+            raw = str(value).strip() if value is not None else ''
+            if not raw or raw.lower() == 'не указано':
+                return (1, float('inf'), '')
+            match = re.match(r"(\d+)", raw)
+            if match:
+                num = int(match.group(1))
+                suffix = raw[match.end():].lower()
+                return (0, num, suffix)
+            return (0, float('inf'), raw.lower())
+
         def fuel_sort_key(m):
             """Ключ для сортировки: топливо по СО ЕЭС (пустое/не указано — в конец)."""
             raw = (getattr(m, 'fuel_so', None) or '').strip()
@@ -437,27 +483,49 @@ def fetch_machines_with_rowspans(
                 return (1, raw.lower())  # в конец
             return (0, raw.lower())
 
-        # Группы по топливу (по СО ЕЭС); пустое — отдельная «группа» на каждую машину
-        fuel_groups_dict = defaultdict(list)
-        for m in machine_list:
-            fkey = fuel_sort_key(m)
-            if fkey[0] == 1:
-                fkey = (1, m.id)  # уникальный ключ для пустого/не указано
-            fuel_groups_dict[fkey].append(m)
-
-        # В каждой группе сортируем по группе агрегата и станционному номеру
-        for group in fuel_groups_dict.values():
-            group.sort(key=lambda m: (
-                (m.machine_group or '').lower(),
-                machine_number_key(getattr(m, 'machine_number', None))
-            ))
-
-        # Порядок группировок — по минимальному станционному номеру в группе (сначала где есть №1 и т.д.)
+        # Порядок блоков внутри станции определяем по минимальному станционному номеру.
+        # Сначала держим агрегаты одной группы оборудования вместе, а внутри группы
+        # оставляем прежнюю группировку по топливу и номеру агрегата.
         def group_min_number_key(machines):
             return min(machine_number_key(getattr(m, 'machine_number', None)) for m in machines)
 
-        sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
-        machine_list[:] = [m for group in sorted_fuel_groups for m in group]
+        equipment_group_blocks_dict = defaultdict(list)
+        for m in machine_list:
+            group_value = (getattr(m, 'machine_group', None) or '').strip()
+            if not group_value or group_value.lower() == 'не указано':
+                block_key = ("__machine__", m.id)
+            else:
+                block_key = ("group", group_value)
+            equipment_group_blocks_dict[block_key].append(m)
+
+        ordered_group_blocks = []
+        ordered_fuel_blocks = []
+        for _, equipment_group_block in sorted(
+            equipment_group_blocks_dict.items(),
+            key=lambda item: (
+                group_min_number_key(item[1]),
+                machine_group_key(item[1][0].machine_group),
+            ),
+        ):
+            fuel_groups_dict = defaultdict(list)
+            for m in equipment_group_block:
+                fkey = fuel_sort_key(m)
+                if fkey[0] == 1:
+                    fkey = (1, m.id)  # уникальный ключ для пустого/не указано
+                fuel_groups_dict[fkey].append(m)
+
+            for group in fuel_groups_dict.values():
+                group.sort(key=lambda m: (
+                    machine_number_key(getattr(m, 'machine_number', None)),
+                    (getattr(m, 'machine_name', None) or '').strip().lower(),
+                    getattr(m, 'id', 0) or 0,
+                ))
+
+            sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
+            ordered_group_blocks.append([m for group in sorted_fuel_groups for m in group])
+            ordered_fuel_blocks.extend(sorted_fuel_groups)
+
+        machine_list[:] = [m for group in ordered_group_blocks for m in group]
 
         # Сначала задаем total_rows каждой машине (нужно для fuel_rowspan)
         for m in machine_list:
@@ -471,14 +539,8 @@ def fetch_machines_with_rowspans(
             m.total_rows = total_rows
             m.base_rows = base_rows
 
-        # Группа "гр." — внутри одного блока топлива по СО ЕЭС (чтобы ячейка не разрывалась)
-        group_dict = defaultdict(list)
-        for m in machine_list:
-            fkey = fuel_sort_key(m)
-            group_key = (fkey, (m.machine_group or '').strip())
-            group_dict[group_key].append(m)
-
-        for group in group_dict.values():
+        # Группа "гр." — одна ячейка на весь блок группы оборудования внутри станции.
+        for group in ordered_group_blocks:
             group_rowspan = sum(m.total_rows for m in group)
             group_base_rows = sum((1 + len(m.pgu_machines)) for m in group)
             group[0].group_rowspan = group_rowspan
@@ -489,17 +551,8 @@ def fetch_machines_with_rowspans(
                 m.group_base_rows = 0
                 m.group_machine_count = 0
 
-        # Топливо (по СО ЕЭС) — одна ячейка на тип топлива по станции (блоки идут подряд после сортировки)
-        fuel_dict = defaultdict(list)
-        for m in machine_list:
-            fuel_key = (m.fuel_so or '').strip()
-            if not fuel_key or fuel_key.lower() == 'не указано':
-                fuel_group_key = f"__machine_{m.id}"
-            else:
-                fuel_group_key = fuel_key
-            fuel_dict[fuel_group_key].append(m)
-
-        for group in fuel_dict.values():
+        # Топливо (по СО ЕЭС) объединяем только внутри блока группы оборудования.
+        for group in ordered_fuel_blocks:
             fuel_rowspan = sum(m.total_rows for m in group)
             fuel_base_rows = sum((1 + len(m.pgu_machines)) for m in group)
             group[0].fuel_rowspan = fuel_rowspan

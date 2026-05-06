@@ -431,3 +431,66 @@ def repair_machine_types_sequence_hard(user: str) -> None:
                   "Не удалось выполнить ремонт последовательности machine_types (HARD)",
                   str(e),
                   entity_type="machine_type")
+
+# === all_versions_machine_type start ===
+@no_autoflush
+def add_machine_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=MachineType,
+        entity_type="machine_type",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_machine_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        machine_type_id = record.get("machine_type_id")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "machine_type_id": machine_type_id,
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=MachineType,
+        entity_type="machine_type",
+        pk_field="machine_type_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_machine_type end ===

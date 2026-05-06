@@ -214,12 +214,16 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     )
     for build_fn in (
         build_date_commission_filter,
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     ):
         cond = build_fn(Machine, filters)
         if cond is not None:

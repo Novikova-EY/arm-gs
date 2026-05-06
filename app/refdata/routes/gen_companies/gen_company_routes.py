@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.gen_companies.gen_company_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.gen_companies.gen_company_services import (
     gen_company_query,
     get_gen_company_list,
     update_gen_company_service,
+    update_gen_company_all_versions_service, 
     add_gen_company_service,
+    add_gen_company_all_versions_service, 
     delete_gen_company_service,
     export_gen_company_service,
     import_gen_company_service,
@@ -114,8 +117,20 @@ def gen_company_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID генерирующих компаний: {duplicates}")
 
             # Обновление данных в базе
-            update_gen_company_service(gen_company_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.gen_company_list",
+                            page=page,
+                            per_page=per_page,
+                            gen_company_filter=gen_company_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_gen_company_all_versions_service(gen_company_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_gen_company_service(gen_company_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -187,8 +202,20 @@ def add_gen_company():
             }]
         
             # Добавление новой записи через сервис
-            add_gen_company_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.gen_company_list",
+                            page=page,
+                            per_page=per_page,
+                            gen_company_filter=gen_company_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_gen_company_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_gen_company_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = gen_company_query(

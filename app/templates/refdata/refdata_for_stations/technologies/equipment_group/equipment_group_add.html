@@ -45,10 +45,10 @@
 
         <div class="mt-4 d-flex flex-wrap gap-2">
             <button type="submit" class="btn btn-primary">Добавить</button>
-            <button type="submit" name="all_versions" value="1" class="btn btn-outline-primary"
+            {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary"
                 title="Создать такую запись в каждой версии БД (общий ref_uuid)">
-                Сохранить во всех версиях
-            </button>
+                Добавить во всех версиях
+            </button>{% endif %}
             <a href="{{ url_for('refdata_bp.equipment_group_list',
                                 page=page,
                                 per_page=per_page,

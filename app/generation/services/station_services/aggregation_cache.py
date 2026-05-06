@@ -79,7 +79,8 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
                 "fuel_type_filter", "condition_type_filter",
                 "machines_without_equipment_group",
                 "date_commission_filter", "date_exploitation_filter",
-                "date_decompressing_expected_filter", "date_modernization_expected_filter"
+                "date_decompressing_expected_filter", "date_modernization_expected_filter",
+                "date_modernization_no_power_expected_filter", "relabing_outcome_filter",
             ] and v
         }
         filters_str = str(sorted(relevant_filters.items()))

@@ -564,3 +564,80 @@ def repair_fuel_types_sequence_hard(user: str) -> None:
                   "Не удалось выполнить ремонт последовательности fuel_types (HARD)",
                   str(e),
                   entity_type="fuel_type")
+
+# === all_versions_fuel_type start ===
+@no_autoflush
+def add_fuel_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        nazvl = (record.get("nazvl") or "").strip() or None
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+            "nazvl": nazvl,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "nazvl": clean["nazvl"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=FuelType,
+        entity_type="fuel_type",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'display_order'],
+        after_commit=_invalidate_fuel_type_caches
+    )
+
+
+@no_autoflush
+def update_fuel_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        fuel_type_id = record.get("fuel_type_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        nazvl = (record.get("nazvl") or "").strip() or None
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "fuel_type_id": fuel_type_id,
+            "name": name,
+            "nazvl": nazvl,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "nazvl": clean["nazvl"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=FuelType,
+        entity_type="fuel_type",
+        pk_field="fuel_type_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'nazvl', 'display_order'],
+        unique_fields=['name', 'display_order'],
+        temp_fields=['name'],
+        clear_fields=['display_order'],
+        after_commit=_invalidate_fuel_type_caches
+    )
+# === all_versions_fuel_type end ===

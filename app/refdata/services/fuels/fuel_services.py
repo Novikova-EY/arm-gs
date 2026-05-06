@@ -544,3 +544,86 @@ def export_fuel_service(
         f"Экспортировано записей: {len(data)}", 
         entity_type="fuel")
     return output
+
+# === all_versions_fuel start ===
+@no_autoflush
+def add_fuel_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.fuels.fuel_type_model import FuelType
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        nazvl = (record.get("nazvl") or "").strip() or None
+        kmbur = (record.get("kmbur") or "").strip() or None
+        fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
+        if not name or not fuel_type_id:
+            raise ValueError("Каждая запись должна содержать 'name' и 'fuel_type_id'.")
+        return {
+            "name": name,
+            "nazvl": nazvl,
+            "kmbur": kmbur,
+            "fuel_type_id": fuel_type_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "nazvl": clean["nazvl"],
+            "kmbur": clean["kmbur"],
+            "id_fuel_type": fk_id_for_version(FuelType, clean["fuel_type_id"], version_id),
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=Fuel,
+        entity_type="fuel",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_fuel_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.fuels.fuel_type_model import FuelType
+
+    def normalize_record(record):
+        fuel_id = record.get("fuel_id")
+        name = (record.get("name") or "").strip()
+        nazvl = (record.get("nazvl") or "").strip() or None
+        kmbur = (record.get("kmbur") or "").strip() or None
+        fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "fuel_id": fuel_id,
+            "name": name,
+            "nazvl": nazvl,
+            "kmbur": kmbur,
+            "fuel_type_id": fuel_type_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "nazvl": clean["nazvl"],
+            "kmbur": clean["kmbur"],
+            "id_fuel_type": fk_id_for_version(FuelType, clean["fuel_type_id"], version_id),
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=Fuel,
+        entity_type="fuel",
+        pk_field="fuel_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'nazvl', 'kmbur', 'id_fuel_type'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_fuel end ===

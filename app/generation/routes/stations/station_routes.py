@@ -56,6 +56,28 @@ from app.generation.routes.stations.station_details_routes import _render_machin
 # Логирование
 from app.logs.services.logging_service import log_to_db
 
+STATION_LIST_FILTERS_SESSION_KEY = "station_list_last_query_args"
+
+
+def _serialize_request_args_for_session(args):
+    """Сохраняет multi-value query args в session."""
+    serialized = {}
+    for key, values in args.lists():
+        if key == "reset_filters":
+            continue
+        serialized[key] = [value for value in values if value is not None]
+    return serialized
+
+
+def _build_redirect_args_from_multi_dict(args_multi):
+    """Преобразует dict[str, list[str]] в kwargs для url_for."""
+    redirect_args = {}
+    for key, values in args_multi.items():
+        if not values:
+            continue
+        redirect_args[key] = values[0] if len(values) == 1 else values
+    return redirect_args
+
 
 @station_bp.route("/station_list", methods=["GET", "POST"])
 @login_required  # Временно отключено для отладки
@@ -73,6 +95,18 @@ def station_list():
 
     if request.method == "POST":
         return redirect(url_for("station_bp.station_list", **extract_filters_from_form(request.form)))
+
+    if request.args.get("reset_filters") == "1":
+        session.pop(STATION_LIST_FILTERS_SESSION_KEY, None)
+        return redirect(url_for("station_bp.station_list"))
+
+    if not request.args:
+        saved_args_multi = session.get(STATION_LIST_FILTERS_SESSION_KEY) or {}
+        redirect_args = _build_redirect_args_from_multi_dict(saved_args_multi)
+        if redirect_args:
+            return redirect(url_for("station_bp.station_list", **redirect_args))
+    else:
+        session[STATION_LIST_FILTERS_SESSION_KEY] = _serialize_request_args_for_session(request.args)
 
     # Получение параметров запроса
     filters             = extract_filters_from_args(request.args)
@@ -129,14 +163,7 @@ def station_list():
             target_page = max(1, page - 1)
         args_multi = request.args.to_dict(flat=False)
         args_multi["page"] = [str(target_page)]
-        redirect_args = {}
-        for key, values in args_multi.items():
-            if not values:
-                continue
-            if len(values) == 1:
-                redirect_args[key] = values[0]
-            else:
-                redirect_args[key] = values
+        redirect_args = _build_redirect_args_from_multi_dict(args_multi)
         return redirect(url_for("station_bp.station_list", **redirect_args))
 
     # Save ready dataset for export (per user and filters)

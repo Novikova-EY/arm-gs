@@ -1,3 +1,5 @@
+import uuid
+
 from config import Config
 from app.extensions import db
 from collections import defaultdict
@@ -5,11 +7,14 @@ from sqlalchemy import or_, extract, and_, func
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
+from app.common.services.database_version_filter import filter_by_db_version
+
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
+from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.fuels.fuel_type_model import FuelType
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
@@ -23,6 +28,21 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_start_year,
     get_filter_end_year,
 )
+
+def build_machine_note_search_condition(machine_cls, pgu_cls, note_filter_value):
+    """
+    Примечание агрегата (Machine) или вложенного ПГУ содержит подстроку (без учёта регистра).
+    Не включает примечание самой станции — только машины и ПГУ.
+    """
+    raw = (note_filter_value or "").strip()
+    if not raw:
+        return None
+    note_pattern = f"%{raw}%"
+    return or_(
+        machine_cls.note.ilike(note_pattern),
+        machine_cls.pgu_submachines.any(pgu_cls.note.ilike(note_pattern)),
+    )
+
 
 def _parse_year_filter(raw_list):
     """
@@ -44,6 +64,120 @@ def _parse_year_filter(raw_list):
     return result if result else None
 
 
+def _args_getlist_raw(args, key):
+    """Список значений query/form; пустые строки отбрасываем."""
+    if hasattr(args, "getlist"):
+        return [x for x in args.getlist(key) if x is not None and str(x).strip() != ""]
+    val = args.get(key, None) if hasattr(args, "get") else None
+    if val is None or (isinstance(val, str) and val.strip() == ""):
+        return []
+    return [val]
+
+
+def _normalize_uuid_strings(raw_values):
+    out = []
+    for raw in raw_values:
+        s = str(raw).strip()
+        if not s:
+            continue
+        try:
+            uuid.UUID(s)
+        except (ValueError, TypeError):
+            continue
+        out.append(s)
+    return out
+
+
+def _resolve_territorial_ids_by_ref_uuid(model_cls, uuid_strings):
+    """Сопоставляет ref_uuid справочника с id строки в текущей версии БД."""
+    uuids = _normalize_uuid_strings(uuid_strings)
+    if not uuids:
+        return []
+    q = db.session.query(model_cls).filter(model_cls.ref_uuid.in_(uuids))
+    q = filter_by_db_version(q, model_cls)
+    rows = q.all()
+    by_ref = {r.ref_uuid: r.id for r in rows}
+    out = []
+    seen = set()
+    for u in uuids:
+        cid = by_ref.get(u)
+        if cid is None or cid in seen:
+            continue
+        seen.add(cid)
+        out.append(cid)
+    return out
+
+
+def _remap_territorial_ids_for_current_version(model_cls, id_list):
+    """
+    Подменяет id из URL (другой версии БД) на id той же сущности в текущей версии
+    через стабильный ref_uuid.
+    """
+    if not id_list:
+        return []
+    ids = []
+    for x in id_list:
+        try:
+            if x is None:
+                continue
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return []
+    rows = (
+        db.session.query(model_cls.id, model_cls.ref_uuid)
+        .filter(model_cls.id.in_(ids))
+        .all()
+    )
+    id_to_ref = {rid: ru for rid, ru in rows if ru}
+    ref_set = set(id_to_ref.values())
+    if not ref_set:
+        return []
+    cur_rows = (
+        filter_by_db_version(
+            db.session.query(model_cls.id, model_cls.ref_uuid).filter(
+                model_cls.ref_uuid.in_(ref_set)
+            ),
+            model_cls,
+        ).all()
+    )
+    ref_to_cur_id = {ru: cid for cid, ru in cur_rows}
+    out = []
+    seen = set()
+    for orig in ids:
+        ru = id_to_ref.get(orig)
+        if not ru:
+            continue
+        cid = ref_to_cur_id.get(ru)
+        if cid is None or cid in seen:
+            continue
+        seen.add(cid)
+        out.append(cid)
+    return out
+
+
+_TERRITORIAL_FILTER_SPEC = (
+    ("energy_system_type_filter", "energy_system_type_ref", EnergySystemType),
+    ("union_energy_system_filter", "union_energy_system_ref", UnionEnergySystem),
+    ("regional_energy_system_filter", "regional_energy_system_ref", RegionalEnergySystem),
+    ("federal_district_filter", "federal_district_ref", FederalDistrict),
+    ("regional_district_filter", "regional_district_ref", RegionalDistrict),
+)
+
+
+def _remap_territorial_filters_for_current_db_version(filters, args):
+    """Территориальные фильтры: uuid из *_ref либо перенос id между версиями БД."""
+    for fk, refk, model_cls in _TERRITORIAL_FILTER_SPEC:
+        ref_raw = _args_getlist_raw(args, refk)
+        if ref_raw:
+            filters[fk] = _resolve_territorial_ids_by_ref_uuid(model_cls, ref_raw)
+        else:
+            filters[fk] = _remap_territorial_ids_for_current_version(
+                model_cls, filters.get(fk) or []
+            )
+
+
 def extract_filters_from_args(args):
     # Нормализуем condition_type_filter: парсим int, игнорируем None/0
     condition_type = args.get("condition_type_filter", type=int)
@@ -55,7 +189,7 @@ def extract_filters_from_args(args):
     if not _fuel_type_filter:
         _fuel_type_filter = args.getlist("station_fuel_type_filter", type=int)
 
-    return {
+    filters = {
         "page": args.get("page", 1, type=int),
         "start_year": args.get("start_year", get_filter_start_year(), type=int),
         "end_year": args.get("end_year", get_filter_end_year(), type=int),
@@ -79,12 +213,18 @@ def extract_filters_from_args(args):
         "date_exploitation_filter": _parse_year_filter(args.getlist("date_exploitation_filter")),
         "date_decompressing_expected_filter": _parse_year_filter(args.getlist("date_decompressing_expected_filter")),
         "date_modernization_expected_filter": _parse_year_filter(args.getlist("date_modernization_expected_filter")),
+        "date_modernization_no_power_expected_filter": _parse_year_filter(
+            args.getlist("date_modernization_no_power_expected_filter")
+        ),
+        "relabing_outcome_filter": args.getlist("relabing_outcome_filter"),
         "machines_without_equipment_group": args.get("machines_without_equipment_group", "0") == "1",
         "sort_by": args.get("sort_by", "id"),
         "sort_dir": args.get("sort_dir", "asc"),
         # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
         "event_type_filter": args.getlist("event_type_filter"),
     }
+    _remap_territorial_filters_for_current_db_version(filters, args)
+    return filters
 
 
 def extract_filters_from_form(form):
@@ -220,6 +360,38 @@ def build_date_modernization_filter(machine_cls, filters):
     return or_(*conds) if conds else None
 
 
+def build_date_modernization_no_power_filter(machine_cls, filters):
+    """Фильтр колонки «Модерн. без изм. мощ-ти»: только date_modernization_no_power_change_expected."""
+    vals = filters.get("date_modernization_no_power_expected_filter")
+    if not vals:
+        return None
+    return _build_year_filter_clause(
+        machine_cls.date_modernization_no_power_change_expected,
+        vals,
+        include_null_cond=machine_cls.date_modernization_no_power_change_expected.is_(None),
+    )
+
+
+def build_relabing_outcome_filter(machine_cls, filters):
+    """Фильтр «Вид изменений»: значения Machine.relabing_outcome; пустое значение — «не указано»."""
+    raw = filters.get("relabing_outcome_filter") or []
+    if not raw:
+        return None
+    specifics = [str(v).strip() for v in raw if v is not None and str(v).strip() != ""]
+    unspecified = any(v is None or str(v).strip() == "" for v in raw)
+    parts = []
+    if specifics:
+        parts.append(machine_cls.relabing_outcome.in_(specifics))
+    if unspecified:
+        parts.append(
+            or_(
+                machine_cls.relabing_outcome.is_(None),
+                func.trim(machine_cls.relabing_outcome) == "",
+            )
+        )
+    return or_(*parts) if parts else None
+
+
 def build_date_filters_for_pgu(pgu_cls, filters):
     """
     Применяет фильтры по датам для PGUMachine.
@@ -318,6 +490,17 @@ def build_date_filters_for_pgu(pgu_cls, filters):
             )
         if parts:
             conds.append(or_(*parts))
+    vals = filters.get("date_modernization_no_power_expected_filter")
+    if vals:
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(pgu_cls.date_modernization_no_power_change_expected.in_(years_only))
+        if include_null:
+            parts.append(pgu_cls.date_modernization_no_power_change_expected.is_(None))
+        if parts:
+            conds.append(or_(*parts))
     return conds
 
 
@@ -390,6 +573,18 @@ def get_pgu_date_cond_for_filter(pgu_cls, filters, filter_key):
                     pgu_cls.date_relabing_fact.is_(None),
                 )
             )
+        return or_(*parts) if parts else None
+    if filter_key == "date_modernization_no_power_expected_filter":
+        vals = filters.get("date_modernization_no_power_expected_filter")
+        if not vals:
+            return None
+        years_only = [y for y in vals if y is not None]
+        include_null = None in vals
+        parts = []
+        if years_only:
+            parts.append(pgu_cls.date_modernization_no_power_change_expected.in_(years_only))
+        if include_null:
+            parts.append(pgu_cls.date_modernization_no_power_change_expected.is_(None))
         return or_(*parts) if parts else None
     return None
 
@@ -504,36 +699,17 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         if conds:
             query = query.filter(or_(*conds))
 
-    if filters.get("date_modernization_expected_filter"):
-        vals = filters["date_modernization_expected_filter"]
-        years_only = [y for y in vals if y is not None]
-        include_null = None in vals
-        conds = []
-        if years_only:
-            # date_modernization_power_change_expected или date_relabing_fact (правило: 01.01.год → год-1)
-            # Для года Y: date_modernization_power_change_expected=Y ИЛИ date_relabing_fact содержит дату,
-            # отображаемую как Y: 01.01.(Y+1) или иная дата в году Y (но не 01.01.Y)
-            pats = []
-            for y in years_only:
-                pats.append(rf"01\.01\.{y + 1}\b")  # 01.01.(Y+1) → отображается Y
-                pats.append(rf"(?<!01\.01\.){y}(?!\d)")  # год Y не в контексте 01.01.Y
-            conds.append(
-                or_(
-                    Machine.date_modernization_power_change_expected.in_(years_only),
-                    Machine.date_modernization_no_power_change_expected.in_(years_only),
-                    Machine.date_relabing_fact.op("~")("(" + "|".join(pats) + ")"),
-                )
-            )
-        if include_null:
-            conds.append(
-                and_(
-                    Machine.date_modernization_power_change_expected.is_(None),
-                    Machine.date_modernization_no_power_change_expected.is_(None),
-                    Machine.date_relabing_fact.is_(None),
-                )
-            )
-        if conds:
-            query = query.filter(or_(*conds))
+    dm_cond = build_date_modernization_filter(Machine, filters)
+    if dm_cond is not None:
+        query = query.filter(dm_cond)
+
+    dmn_cond = build_date_modernization_no_power_filter(Machine, filters)
+    if dmn_cond is not None:
+        query = query.filter(dmn_cond)
+
+    ro_cond = build_relabing_outcome_filter(Machine, filters)
+    if ro_cond is not None:
+        query = query.filter(ro_cond)
 
     machines = query.all()
 
@@ -834,6 +1010,8 @@ def has_any_filters(args):
         args.getlist('date_exploitation_filter'),
         args.getlist('date_decompressing_expected_filter'),
         args.getlist('date_modernization_expected_filter'),
+        args.getlist('date_modernization_no_power_expected_filter'),
+        args.getlist('relabing_outcome_filter'),
         # Фильтр по состоянию
         args.get('condition_type_filter'),
     ])

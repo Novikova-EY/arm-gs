@@ -79,9 +79,12 @@
             <input type="hidden" name="technology_availability_filter"    value="{{ technology_availability_filter }}">
 
             <!-- Кнопки сохранения изменений и добавления новой записи -->
-            <div class="d-flex justify-content-between mt-3 mb-3">
-                <!-- Кнопка сохранения изменений -->
-                <button type="submit" class="btn btn-success">Сохранить изменения</button>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <!-- Кнопка сохранения изменений -->
+                    <button type="submit" class="btn btn-success">Сохранить изменения</button>
+                    {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-success" title="Применить изменения ко всем версиям БД">Сохранить во всех версиях</button>{% endif %}
+                </div>
 
                 <!-- Кнопка добавления новой записи -->
                 <a href="{{ url_for('refdata_bp.add_technology_availability', 

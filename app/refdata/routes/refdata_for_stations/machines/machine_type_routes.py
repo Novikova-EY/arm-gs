@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.machines.machine_type_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.refdata_for_stations.machines.machine_type_services im
     machine_type_query,
     get_machine_type_list,
     update_machine_type_service, 
+    update_machine_type_all_versions_service, 
     add_machine_type_service, 
+    add_machine_type_all_versions_service, 
     delete_machine_type_service,
     export_machine_type_service, 
 )
@@ -111,8 +114,20 @@ def machine_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов агрегатов: {duplicates}")
 
             # Обновление данных в базе
-            update_machine_type_service(machine_type_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.machine_type_list",
+                            page=page,
+                            per_page=per_page,
+                            machine_type_filter=machine_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_machine_type_all_versions_service(machine_type_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_machine_type_service(machine_type_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -185,8 +200,20 @@ def add_machine_type():
             }]
 
             # Добавление новой записи через сервис
-            add_machine_type_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.machine_type_list",
+                            page=page,
+                            per_page=per_page,
+                            machine_type_filter=machine_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_machine_type_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_machine_type_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = machine_type_query(

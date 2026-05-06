@@ -467,3 +467,72 @@ def quick_fix_seq(schema: str, table: str, col: str = "id"):
             text(f"SELECT setval('{seq}', {int(max_id)}, true)")
         )
 
+
+# === all_versions_tes_machine_type start ===
+@no_autoflush
+def add_tes_machine_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TesMachineType,
+        entity_type="tes_machine_type",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'display_order']
+    )
+
+
+@no_autoflush
+def update_tes_machine_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        tes_machine_type_id = record.get("tes_machine_type_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "tes_machine_type_id": tes_machine_type_id,
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TesMachineType,
+        entity_type="tes_machine_type",
+        pk_field="tes_machine_type_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'display_order'],
+        unique_fields=['name', 'display_order'],
+        temp_fields=['name'],
+        clear_fields=['display_order']
+    )
+# === all_versions_tes_machine_type end ===

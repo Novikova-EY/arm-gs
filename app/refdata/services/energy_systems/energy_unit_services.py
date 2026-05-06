@@ -613,3 +613,94 @@ def export_energy_unit_service(
         entity_type="energy_unit")
 
     return output
+
+# === all_versions_energy_unit start ===
+@no_autoflush
+def add_energy_unit_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        name_rp = (record.get("name_rp") or "").strip() or name
+        name_dp = (record.get("name_dp") or "").strip() or name
+        regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+        regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
+        if not name or not regional_district_id or not regional_energy_system_id:
+            raise ValueError("Каждая запись должна содержать 'name', 'regional_district_id' и 'regional_energy_system_id'.")
+        return {
+            "name": name,
+            "name_rp": name_rp,
+            "name_dp": name_dp,
+            "regional_district_id": regional_district_id,
+            "regional_energy_system_id": regional_energy_system_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_rp": clean["name_rp"],
+            "name_dp": clean["name_dp"],
+            "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
+            "id_regional_energy_system": fk_id_for_version(RegionalEnergySystem, clean["regional_energy_system_id"], version_id),
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyUnit,
+        entity_type="energy_unit",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_energy_unit_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+
+    def normalize_record(record):
+        energy_unit_id = record.get("energy_unit_id")
+        name = (record.get("name") or "").strip()
+        name_rp = (record.get("name_rp") or "").strip() or name
+        name_dp = (record.get("name_dp") or "").strip() or name
+        regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+        regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
+        if not name or not regional_district_id or not regional_energy_system_id:
+            raise ValueError("Каждая запись должна содержать 'name', 'regional_district_id' и 'regional_energy_system_id'.")
+        return {
+            "energy_unit_id": energy_unit_id,
+            "name": name,
+            "name_rp": name_rp,
+            "name_dp": name_dp,
+            "regional_district_id": regional_district_id,
+            "regional_energy_system_id": regional_energy_system_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_rp": clean["name_rp"],
+            "name_dp": clean["name_dp"],
+            "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
+            "id_regional_energy_system": fk_id_for_version(RegionalEnergySystem, clean["regional_energy_system_id"], version_id),
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyUnit,
+        entity_type="energy_unit",
+        pk_field="energy_unit_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'name_rp', 'name_dp', 'id_regional_district', 'id_regional_energy_system'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_energy_unit end ===

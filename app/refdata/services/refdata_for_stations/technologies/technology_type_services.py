@@ -494,3 +494,72 @@ def export_technology_type_service(
         f"Экспортировано записей: {len(data)}", 
         entity_type="technology_type")
     return output
+
+# === all_versions_technology_type start ===
+@no_autoflush
+def add_technology_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TechnologyType,
+        entity_type="technology_type",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'display_order']
+    )
+
+
+@no_autoflush
+def update_technology_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        technology_type_id = record.get("technology_type_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "technology_type_id": technology_type_id,
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TechnologyType,
+        entity_type="technology_type",
+        pk_field="technology_type_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'display_order'],
+        unique_fields=['name', 'display_order'],
+        temp_fields=['name'],
+        clear_fields=['display_order']
+    )
+# === all_versions_technology_type end ===

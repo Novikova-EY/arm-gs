@@ -582,3 +582,74 @@ def export_energy_area_service(
 
 
 
+
+# === all_versions_energy_area start ===
+@no_autoflush
+def add_energy_area_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+        if not name or not regional_district_id:
+            raise ValueError("Каждая запись должна содержать 'name' и 'regional_district_id'.")
+        return {
+            "name": name,
+            "regional_district_id": regional_district_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyArea,
+        entity_type="energy_area",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_energy_area_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+    def normalize_record(record):
+        energy_area_id = record.get("energy_area_id")
+        name = (record.get("name") or "").strip()
+        regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
+        if not name or not regional_district_id:
+            raise ValueError("Каждая запись должна содержать 'name' и 'regional_district_id'.")
+        return {
+            "energy_area_id": energy_area_id,
+            "name": name,
+            "regional_district_id": regional_district_id,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=EnergyArea,
+        entity_type="energy_area",
+        pk_field="energy_area_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'id_regional_district'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_energy_area end ===

@@ -81,6 +81,66 @@ def test_apply_station_import_column_aliases_supports_common_excel_headers():
     assert "note" in renamed.columns
 
 
+def test_apply_station_import_column_aliases_supports_owner_and_power_type_headers():
+    df = pd.DataFrame(columns=["Собственник", "Тип мощ-ти"])
+
+    renamed = service._apply_station_import_column_aliases(df)
+
+    assert "gen_company" in renamed.columns
+    assert "power_type" in renamed.columns
+
+
+def test_infer_import_power_type_uses_station_type_r_suffix_for_rasp():
+    row = pd.Series(
+        {
+            "station_type": "ВЭС (Р)",
+            "machine_name": "",
+            "gen_company": "Инвестор не определен",
+        }
+    )
+
+    assert service._infer_import_power_type(row) == "p_rasp"
+
+
+def test_infer_import_power_type_uses_station_type_without_r_suffix_for_machine_row():
+    row = pd.Series(
+        {
+            "station_type": "ВЭС",
+            "machine_name": "Ветровые агрегаты",
+            "gen_company": "Инвестор не определен",
+            "date_exploitation": "2031",
+        }
+    )
+
+    assert service._infer_import_power_type(row) == "p_ust"
+
+
+def test_resolve_import_gen_company_creates_missing_company(monkeypatch):
+    class FakeGenCompany:
+        query = _ListQuery([])
+
+        def __init__(self, name):
+            self.name = name
+            self.id = None
+            self.database_version_id = None
+
+    session = _DummySession()
+    row = pd.Series({"gen_company": "Инвестор не определен"})
+
+    monkeypatch.setattr(service, "GenCompany", FakeGenCompany)
+    monkeypatch.setattr(service, "versioned_query", lambda model: _ListQuery([]))
+    monkeypatch.setattr(service, "set_db_version_on_create", lambda obj: setattr(obj, "database_version_id", 44))
+    monkeypatch.setattr(service, "log_to_db", lambda *a, **k: None)
+    monkeypatch.setattr(service.db, "session", session)
+
+    created = service._resolve_import_gen_company(row, user="tester")
+
+    assert created is not None
+    assert created.name == "Инвестор не определен"
+    assert created.database_version_id == 44
+    assert created in session.added
+
+
 def test_canonicalize_station_import_power_columns_prefers_nonzero_duplicate_value():
     df = pd.DataFrame(
         [[0, "24.9", "16.5"]],
@@ -95,6 +155,37 @@ def test_canonicalize_station_import_power_columns_prefers_nonzero_duplicate_val
     assert df.loc[0, "p_2025"] == "16.5"
 
 
+def test_overwrite_power_columns_from_excel_raw_respects_original_excel_row_indexes(monkeypatch):
+    df = pd.DataFrame(
+        [
+            {"station_type": "ВЭС", "p_2031": "stale"},
+            {"station_type": "ВЭС (Р)", "p_2031": "stale"},
+        ],
+        index=[47, 48],
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_read_xlsx_cells_as_stored_strings",
+        lambda *args, **kwargs: {
+            "B49": ("s", "23,3333333333333"),
+            "B50": ("s", "0,"),
+        },
+    )
+    monkeypatch.setattr(service, "_xlsx_cell_number_formats", lambda *args, **kwargs: {})
+
+    service._overwrite_power_columns_from_excel_raw(
+        file=object(),
+        df=df,
+        power_col_names={"p_2031"},
+        sheet_name="список",
+        header_row_excel=1,
+    )
+
+    assert df.loc[47, "p_2031"] == "23,3333333333333"
+    assert df.loc[48, "p_2031"] == "0,"
+
+
 def test_import_station_list_from_excel_processes_combined_station_machine_row(monkeypatch):
     df = pd.DataFrame(
         [
@@ -105,6 +196,7 @@ def test_import_station_list_from_excel_processes_combined_station_machine_row(m
                 "machine_number": "1",
                 "machine_name": "Гидротурбина",
                 "gen_company": "ООО «ТГК»",
+                "date_exploitation": "1984",
                 "station_type": "ГЭС",
                 "p_2024": "24.9",
             }
@@ -126,7 +218,7 @@ def test_import_station_list_from_excel_processes_combined_station_machine_row(m
         calls["station"] += 1
         return fake_station
 
-    def fake_handle_machine(row, current_station, user, import_power_years=None):
+    def fake_handle_machine(row, current_station, user, import_power_years=None, import_scope=None):
         calls["machine"] += 1
         assert current_station is fake_station
         assert import_power_years == [2024]
@@ -163,6 +255,255 @@ def test_import_station_list_from_excel_processes_combined_station_machine_row(m
     assert calls == {"station": 1, "machine": 1, "p_ust": 1}
 
 
+def test_import_station_list_from_excel_uses_power_type_for_machine_row(monkeypatch):
+    df = pd.DataFrame(
+        [
+            {
+                "regional_district": "Республика Карелия",
+                "station_name": "Беломорская ГЭС-1",
+                "machine_group": "Г-1",
+                "machine_number": "1",
+                "machine_name": "Гидротурбина",
+                "gen_company": "ООО «ТГК»",
+                "date_exploitation": "1984",
+                "station_type": "ГЭС",
+                "power_type": "Ррасп",
+                "p_2024": "24.9",
+            }
+        ]
+    )
+    fake_excel = _FakeExcelFile(df)
+    fake_station = SimpleNamespace(id=101, name="Беломорская ГЭС-1")
+    fake_machine = SimpleNamespace(
+        id=501,
+        machine_number="1",
+        machine_name="Гидротурбина",
+        machine_station=SimpleNamespace(
+            name="Беломорская ГЭС-1",
+            regional_district=SimpleNamespace(name="Республика Карелия"),
+        ),
+    )
+    calls = {"p_ust": 0, "p_rasp": 0, "p_ogr": 0}
+
+    monkeypatch.setattr(service.pd, "ExcelFile", lambda _: fake_excel)
+    monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
+    monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
+    monkeypatch.setattr(service, "handle_station", lambda row, user, **kwargs: fake_station)
+    monkeypatch.setattr(
+        service,
+        "handle_machine",
+        lambda row, current_station, user, import_power_years=None, import_scope=None: fake_machine,
+    )
+    monkeypatch.setattr(service, "assign_machine_types", lambda *a, **k: None)
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_ust",
+        lambda *a, **k: calls.__setitem__("p_ust", calls["p_ust"] + 1),
+    )
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_rasp",
+        lambda *a, **k: calls.__setitem__("p_rasp", calls["p_rasp"] + 1),
+    )
+    monkeypatch.setattr(service, "cleanup_machine_fuel_and_tes_type", lambda *a, **k: None)
+    monkeypatch.setattr(service, "assign_machine_power_p_rasp", lambda *a, **k: calls.__setitem__("p_rasp", calls["p_rasp"] + 1))
+    monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
+    monkeypatch.setattr(
+        service,
+        "update_machine_power_ogr",
+        lambda *a, **k: calls.__setitem__("p_ogr", calls["p_ogr"] + 1),
+    )
+    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
+    monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
+    monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
+    monkeypatch.setattr(service.db, "session", _DummySession())
+
+    result = service.import_station_list_from_excel(
+        SimpleNamespace(filename="stations.xlsx"),
+        user="tester",
+    )
+
+    assert result["errors_count"] == 0
+    assert calls == {"p_ust": 0, "p_rasp": 1, "p_ogr": 1}
+
+
+def test_import_station_list_from_excel_uses_power_type_for_followup_power_row(monkeypatch):
+    df = pd.DataFrame(
+        [
+            {
+                "regional_district": "Республика Карелия",
+                "station_name": "Беломорская ГЭС-1",
+                "machine_group": "Г-1",
+                "machine_number": "1",
+                "machine_name": "Гидротурбина",
+                "gen_company": "ООО «ТГК»",
+                "date_exploitation": "1984",
+                "station_type": "ГЭС",
+                "p_2024": None,
+            },
+            {
+                "regional_district": None,
+                "station_name": None,
+                "machine_group": None,
+                "machine_number": None,
+                "machine_name": None,
+                "gen_company": "ООО «ТГК»",
+                "station_type": "ГЭС (Р)",
+                "p_2024": "24.9",
+            },
+        ]
+    )
+    fake_excel = _FakeExcelFile(df)
+    fake_station = SimpleNamespace(id=101, name="Беломорская ГЭС-1")
+    fake_machine = SimpleNamespace(
+        id=501,
+        machine_number="1",
+        machine_name="Гидротурбина",
+        machine_station=SimpleNamespace(
+            name="Беломорская ГЭС-1",
+            regional_district=SimpleNamespace(name="Республика Карелия"),
+        ),
+    )
+    calls = {"p_ust": 0, "p_rasp": 0, "p_ogr": 0}
+
+    monkeypatch.setattr(service.pd, "ExcelFile", lambda _: fake_excel)
+    monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
+    monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
+    monkeypatch.setattr(service, "handle_station", lambda row, user, **kwargs: fake_station)
+    monkeypatch.setattr(
+        service,
+        "handle_machine",
+        lambda row, current_station, user, import_power_years=None, import_scope=None: fake_machine,
+    )
+    monkeypatch.setattr(service, "assign_machine_types", lambda *a, **k: None)
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_ust",
+        lambda *a, **k: calls.__setitem__("p_ust", calls["p_ust"] + 1),
+    )
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_rasp",
+        lambda *a, **k: calls.__setitem__("p_rasp", calls["p_rasp"] + 1),
+    )
+    monkeypatch.setattr(service, "cleanup_machine_fuel_and_tes_type", lambda *a, **k: None)
+    monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
+    monkeypatch.setattr(
+        service,
+        "update_machine_power_ogr",
+        lambda *a, **k: calls.__setitem__("p_ogr", calls["p_ogr"] + 1),
+    )
+    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
+    monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
+    monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
+    monkeypatch.setattr(service.db, "session", _DummySession())
+
+    result = service.import_station_list_from_excel(
+        SimpleNamespace(filename="stations.xlsx"),
+        user="tester",
+    )
+
+    assert result["errors_count"] == 0
+    assert calls == {"p_ust": 1, "p_rasp": 1, "p_ogr": 1}
+
+
+def test_import_station_list_from_excel_parses_station_machine_and_followup_rasp_rows(monkeypatch):
+    df = pd.DataFrame(
+        [
+            {
+                "regional_district": "Воронежская область",
+                "station_name": "Новые ВЭС",
+                "machine_group": None,
+                "machine_number": None,
+                "machine_name": None,
+                "gen_company": "Инвестор не определен",
+                "date_exploitation": None,
+                "station_type": None,
+                "p_2024": None,
+            },
+            {
+                "regional_district": None,
+                "station_name": None,
+                "machine_group": None,
+                "machine_number": None,
+                "machine_name": "Ветровые агрегаты",
+                "gen_company": "Инвестор не определен",
+                "date_exploitation": "2031",
+                "station_type": "ВЭС",
+                "p_2024": "0,",
+            },
+            {
+                "regional_district": None,
+                "station_name": None,
+                "machine_group": None,
+                "machine_number": None,
+                "machine_name": None,
+                "gen_company": "Инвестор не определен",
+                "date_exploitation": None,
+                "station_type": "ВЭС (Р)",
+                "p_2024": "0,",
+            },
+        ]
+    )
+    fake_excel = _FakeExcelFile(df)
+    fake_station = SimpleNamespace(id=101, name="Новые ВЭС")
+    fake_machine = SimpleNamespace(
+        id=501,
+        machine_number="",
+        machine_name="Ветровые агрегаты",
+        machine_station=SimpleNamespace(
+            name="Новые ВЭС",
+            regional_district=SimpleNamespace(name="Воронежская область"),
+        ),
+    )
+    events = []
+
+    monkeypatch.setattr(service.pd, "ExcelFile", lambda _: fake_excel)
+    monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
+    monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
+    monkeypatch.setattr(
+        service,
+        "handle_station",
+        lambda row, user, **kwargs: events.append(("station", row.get("station_name"))) or fake_station,
+    )
+    monkeypatch.setattr(
+        service,
+        "handle_machine",
+        lambda row, current_station, user, import_power_years=None, import_scope=None: events.append(("machine", row.get("machine_name"), row.get("date_exploitation"))) or fake_machine,
+    )
+    monkeypatch.setattr(service, "assign_machine_types", lambda *a, **k: None)
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_ust",
+        lambda machine, row, years, user: events.append(("p_ust", row.get("p_2024"))),
+    )
+    monkeypatch.setattr(
+        service,
+        "assign_machine_power_p_rasp",
+        lambda machine, row, years, user: events.append(("p_rasp", row.get("p_2024"))),
+    )
+    monkeypatch.setattr(service, "cleanup_machine_fuel_and_tes_type", lambda *a, **k: None)
+    monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
+    monkeypatch.setattr(service, "update_machine_power_ogr", lambda *a, **k: None)
+    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
+    monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
+    monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
+    monkeypatch.setattr(service.db, "session", _DummySession())
+
+    result = service.import_station_list_from_excel(
+        SimpleNamespace(filename="stations.xlsx"),
+        user="tester",
+    )
+
+    assert result["errors_count"] == 0
+    assert events == [
+        ("station", "Новые ВЭС"),
+        ("machine", "Ветровые агрегаты", "2031"),
+        ("p_ust", "0,"),
+        ("p_rasp", "0,"),
+    ]
+
+
 def test_import_station_list_updates_exact_touched_station_not_name_lookup(monkeypatch):
     df = pd.DataFrame(
         [
@@ -194,7 +535,7 @@ def test_import_station_list_updates_exact_touched_station_not_name_lookup(monke
     monkeypatch.setattr(
         service,
         "handle_machine",
-        lambda row, current_station, user, import_power_years=None: fake_machine,
+        lambda row, current_station, user, import_power_years=None, import_scope=None: fake_machine,
     )
     monkeypatch.setattr(service, "assign_machine_types", lambda *a, **k: None)
     monkeypatch.setattr(service, "assign_machine_power_p_ust", lambda *a, **k: None)
@@ -264,6 +605,50 @@ def test_import_station_list_marks_non_adjacent_duplicate_station_block_as_unuse
     assert station_calls == [
         {"station_name": "ТЭС-2", "prefer_unused_slot": False},
         {"station_name": "ТЭС-1", "prefer_unused_slot": False},
+        {"station_name": "ТЭС-2", "prefer_unused_slot": True},
+    ]
+
+
+def test_import_station_list_marks_adjacent_duplicate_station_block_as_unused_slot(monkeypatch):
+    df = pd.DataFrame(
+        [
+            {
+                "regional_district": "Республика Карелия",
+                "station_name": "ТЭС-2",
+            },
+            {
+                "regional_district": "Республика Карелия",
+                "station_name": "ТЭС-2",
+            },
+        ]
+    )
+    fake_excel = _FakeExcelFile(df)
+    station_calls = []
+
+    def fake_handle_station(row, user, **kwargs):
+        station_calls.append(
+            {
+                "station_name": row.get("station_name"),
+                "prefer_unused_slot": kwargs.get("prefer_unused_slot"),
+            }
+        )
+        return SimpleNamespace(id=len(station_calls), name=row.get("station_name"))
+
+    monkeypatch.setattr(service.pd, "ExcelFile", lambda _: fake_excel)
+    monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
+    monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
+    monkeypatch.setattr(service, "handle_station", fake_handle_station)
+    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
+    monkeypatch.setattr(service.db, "session", _DummySession())
+
+    result = service.import_station_list_from_excel(
+        SimpleNamespace(filename="stations.xlsx"),
+        user="tester",
+    )
+
+    assert result["errors_count"] == 0
+    assert station_calls == [
+        {"station_name": "ТЭС-2", "prefer_unused_slot": False},
         {"station_name": "ТЭС-2", "prefer_unused_slot": True},
     ]
 
@@ -526,3 +911,200 @@ def test_move_matching_machine_from_sibling_station_reassigns_unique_match(monke
     assert moved_machine is sibling_machine
     assert sibling_machine.id_station == 202
     assert sibling_machine in session.added
+
+
+def test_handle_machine_creates_second_machine_for_duplicate_signature_in_same_import(monkeypatch):
+    class FakeMachine:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    current_station = SimpleNamespace(
+        id=202,
+        name="Новые ПЭС",
+        id_station_type=None,
+        regional_district=SimpleNamespace(name="Воронежская область"),
+    )
+    existing_machine = SimpleNamespace(
+        id=501,
+        id_station=202,
+        machine_group="",
+        machine_number="",
+        machine_name="Ветряной агрегат",
+        date_exploitation=2042,
+        date_commission_year=2042,
+        id_gen_company=None,
+        id_tes_machine_type=None,
+        id_machine_type=None,
+        date_commission_fact=None,
+        date_joining_expected=None,
+        date_joining_fact=None,
+        date_detatchment_fact=None,
+        date_decompressing_expected=None,
+        date_decompressing_fact=None,
+        date_modernization_power_change_expected=None,
+        date_modernization_no_power_change_expected=None,
+        date_relabing_fact=None,
+        date_update_fact=None,
+        relabing_outcome=None,
+        note=None,
+        _modernization_set_manually=False,
+    )
+    row = pd.Series(
+        {
+            "machine_group": "",
+            "machine_number": "",
+            "machine_name": "Ветряной агрегат",
+            "date_exploitation": "2042",
+            "gen_company": "Инвестор не определен",
+            "station_type": None,
+            "tes_machine_type": None,
+            "note": None,
+            "date_commission_fact": None,
+            "date_joining_expected": None,
+            "date_joining_fact": None,
+            "date_detatchment_fact": None,
+            "date_decompressing_expected": None,
+            "date_decompressing_fact": None,
+            "date_modernization_no_power_change_expected": None,
+            "date_relabing_fact": None,
+            "date_update_fact": None,
+            "relabing_outcome": None,
+        }
+    )
+    session = _DummySession()
+    import_scope = {}
+
+    def fake_versioned_query(model):
+        if model is service.GenCompany:
+            return _ListQuery([])
+        if model is service.ConditionType:
+            return _ListQuery([SimpleNamespace(id=1, name="действующий")])
+        if model is FakeMachine:
+            return _ListQuery([existing_machine])
+        raise AssertionError(f"unexpected model: {model}")
+
+    monkeypatch.setattr(service, "Machine", FakeMachine)
+    monkeypatch.setattr(service, "versioned_query", fake_versioned_query)
+    monkeypatch.setattr(service, "safe_lookup", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "_move_matching_machine_from_sibling_station", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "_resolve_import_gen_company", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "set_db_version_on_create", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "log_to_db", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service.db, "session", session)
+
+    first_result = service.handle_machine(
+        row,
+        current_station,
+        user="tester",
+        import_scope=import_scope,
+    )
+    second_result = service.handle_machine(
+        row,
+        current_station,
+        user="tester",
+        import_scope=import_scope,
+    )
+
+    assert first_result is existing_machine
+    assert second_result is not existing_machine
+    assert second_result in session.added
+    assert getattr(second_result, "machine_name", None) == "Ветряной агрегат"
+    assert getattr(second_result, "id_station", None) == 202
+
+
+def test_handle_machine_does_not_reassign_match_from_sibling_station(monkeypatch):
+    class FakeMachine:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    current_station = SimpleNamespace(
+        id=202,
+        name="Новые ВЭС",
+        id_station_type=None,
+        regional_district=SimpleNamespace(name="Воронежская область"),
+    )
+    sibling_machine = SimpleNamespace(
+        id=501,
+        id_station=101,
+        machine_group="",
+        machine_number="",
+        machine_name="Ветровые агрегаты",
+        date_exploitation=2031,
+        date_commission_year=2031,
+        id_gen_company=None,
+        id_tes_machine_type=None,
+        id_machine_type=None,
+        date_commission_fact=None,
+        date_joining_expected=None,
+        date_joining_fact=None,
+        date_detatchment_fact=None,
+        date_decompressing_expected=None,
+        date_decompressing_fact=None,
+        date_modernization_power_change_expected=None,
+        date_modernization_no_power_change_expected=None,
+        date_relabing_fact=None,
+        date_update_fact=None,
+        relabing_outcome=None,
+        note=None,
+        _modernization_set_manually=False,
+    )
+    row = pd.Series(
+        {
+            "machine_group": "",
+            "machine_number": "",
+            "machine_name": "Ветровые агрегаты",
+            "date_exploitation": "2031",
+            "gen_company": "Инвестор не определен",
+            "station_type": "ВЭС",
+            "tes_machine_type": None,
+            "note": None,
+            "date_commission_fact": None,
+            "date_joining_expected": None,
+            "date_joining_fact": None,
+            "date_detatchment_fact": None,
+            "date_decompressing_expected": None,
+            "date_decompressing_fact": None,
+            "date_modernization_no_power_change_expected": None,
+            "date_relabing_fact": None,
+            "date_update_fact": None,
+            "relabing_outcome": None,
+            "p_2024": "0,",
+        }
+    )
+    session = _DummySession()
+
+    def fake_versioned_query(model):
+        if model is service.GenCompany:
+            return _ListQuery([])
+        if model is service.ConditionType:
+            return _ListQuery([SimpleNamespace(id=1, name="действующий")])
+        if model is FakeMachine:
+            return _ListQuery([])
+        raise AssertionError(f"unexpected model: {model}")
+
+    monkeypatch.setattr(service, "Machine", FakeMachine)
+    monkeypatch.setattr(service, "versioned_query", fake_versioned_query)
+    monkeypatch.setattr(service, "safe_lookup", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        service,
+        "_move_matching_machine_from_sibling_station",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("sibling reassign should not be used")),
+    )
+    monkeypatch.setattr(service, "_resolve_import_gen_company", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "set_db_version_on_create", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service, "log_to_db", lambda *args, **kwargs: None)
+    monkeypatch.setattr(service.db, "session", session)
+
+    created_machine = service.handle_machine(
+        row,
+        current_station,
+        user="tester",
+        import_scope={},
+    )
+
+    assert created_machine is not sibling_machine
+    assert created_machine in session.added
+    assert getattr(created_machine, "id_station", None) == 202
+    assert getattr(sibling_machine, "id_station", None) == 101

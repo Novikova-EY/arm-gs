@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.energy_systems.synchronous_area_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.energy_systems.synchronous_area_services import (
     synchronous_area_query,
     get_synchronous_area_list,
     update_synchronous_area_service,
+    update_synchronous_area_all_versions_service, 
     add_synchronous_area_service,
+    add_synchronous_area_all_versions_service, 
     delete_synchronous_area_service,
     export_synchronous_area_service,
 )
@@ -137,8 +140,20 @@ def synchronous_area_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID синхронных зон: {duplicates}")
 
             # Обновление данных в базе
-            update_synchronous_area_service(synchronous_area_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.synchronous_area_list",
+                            page=page,
+                            per_page=per_page,
+                            synchronous_area_filter=synchronous_area_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_synchronous_area_all_versions_service(synchronous_area_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_synchronous_area_service(synchronous_area_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -211,8 +226,20 @@ def add_synchronous_area():
             }]
                         
             # Добавление новой записи
-            add_synchronous_area_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.synchronous_area_list",
+                            page=page,
+                            per_page=per_page,
+                            synchronous_area_filter=synchronous_area_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_synchronous_area_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_synchronous_area_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
              # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = synchronous_area_query(

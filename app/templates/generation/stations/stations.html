@@ -5,6 +5,7 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 {% set _list_endpoint = station_list_endpoint | default('station_bp.station_list') %}
+{% set station_list_meta_colspan = 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
@@ -58,7 +59,7 @@
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="{{ 13 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 12 }}">Электростанция</th>
+                    <th colspan="{{ 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 }}">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Электрическая мощность, МВт</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                     <th rowspan="2" style="width: 240px; min-width: 240px;">
@@ -270,7 +271,7 @@
                         <div class="d-flex align-items-center justify-content-center gap-1">
                             <div class="dropdown">
                                 <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                    <strong>Модерн.</strong>
+                                    <strong>Модерн.<br>с изм.<br>мощ-ти</strong>
                                     {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
                                 </button>
                                 <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
@@ -311,6 +312,94 @@
                             <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
                                     type="button" 
                                     data-filter-name="date_modernization_expected_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </th>
+
+                    <!-- Ожидаемый год модернизации без изменения мощности -->
+                    <th style="width: 80px; text-align: center;">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button fw-normal" type="button" data-bs-toggle="dropdown">
+                                    <strong>Модерн.<br>без изм.<br>мощ-ти</strong>
+                                    {% if request.args.getlist('date_modernization_no_power_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
+                                    <li>
+                                        <label class="dropdown-item">
+                                            <input type="checkbox" name="date_modernization_no_power_expected_filter"
+                                                value=""
+                                                {% if '' in request.args.getlist('date_modernization_no_power_expected_filter') %}checked{% endif %}>
+                                            не указано
+                                        </label>
+                                    </li>
+                                    {% for year in range(1900, end_year + 1) %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="date_modernization_no_power_expected_filter"
+                                                    value="{{ year }}"
+                                                    {% if year|string in request.args.getlist('date_modernization_no_power_expected_filter') %}checked{% endif %}>
+                                                {{ year }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
+                                                data-filter-name="date_modernization_no_power_expected_filter">
+                                            Сбросить
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary filter-apply-btn"
+                                                data-filter-name="date_modernization_no_power_expected_filter">
+                                            Ок
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('date_modernization_no_power_expected_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                                    type="button"
+                                    data-filter-name="date_modernization_no_power_expected_filter"
+                                    title="Сбросить фильтр"
+                                    style="padding: 2px 6px; line-height: 1;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </th>
+
+                    <!-- Вид изменений (перемаркировка) -->
+                    <th style="width: 108px; text-align: center;">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button fw-normal" type="button" data-bs-toggle="dropdown">
+                                    <strong>Вид<br>изме-<br>нений</strong>
+                                    {% if request.args.getlist('relabing_outcome_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% set ro_sel = request.args.getlist('relabing_outcome_filter') %}
+                                    {% for val, label in relabing_outcome_filter_choices %}
+                                        <li>
+                                            <label class="dropdown-item">
+                                                <input type="checkbox" name="relabing_outcome_filter"
+                                                    value="{{ val }}"
+                                                    {% if val == '' and '' in ro_sel %}checked{% elif val != '' and val in ro_sel %}checked{% endif %}>
+                                                {{ label }}
+                                            </label>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% if request.args.getlist('relabing_outcome_filter') %}
+                            <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                                    type="button"
+                                    data-filter-name="relabing_outcome_filter"
                                     title="Сбросить фильтр"
                                     style="padding: 2px 6px; line-height: 1;">
                                 <i class="bi bi-x-lg"></i>

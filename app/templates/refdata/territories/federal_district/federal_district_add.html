@@ -38,6 +38,7 @@
         <!-- Кнопки сохранения записи и возвращения назад -->
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Добавить</button>
+            {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary" title="Добавить запись во все версии БД">Добавить во всех версиях</button>{% endif %}
 
             <a href="{{ url_for('refdata_bp.federal_district_list', 
                                 page=page,

@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.territories.federal_district_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.territories.federal_district_services import (
     federal_district_query,
     get_federal_district_list, 
     update_federal_district_service, 
+    update_federal_district_all_versions_service, 
     add_federal_district_service, 
+    add_federal_district_all_versions_service, 
     delete_federal_district_service,
     import_federal_district_service, 
     export_federal_district_service, 
@@ -133,8 +136,20 @@ def federal_district_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID федерального округа: {duplicates}")
 
             # Обновление данных в базе
-            update_federal_district_service(federal_district_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.federal_district_list",
+                            page=page,
+                            per_page=per_page,
+                            federal_district_filter=federal_district_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_federal_district_all_versions_service(federal_district_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_federal_district_service(federal_district_data, user)
+                flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             msg = str(e)
@@ -210,8 +225,20 @@ def add_federal_district():
             }]
         
             # Добавление новой записи через сервис
-            add_federal_district_service(payload, user)            
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.federal_district_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            federal_district_filter=federal_district_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir,
+                    ))
+                add_federal_district_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_federal_district_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = federal_district_query(

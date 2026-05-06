@@ -344,6 +344,37 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         return str(max(years))
 
     @property
+    def modernization_power_change_display(self) -> str | None:
+        """
+        Год для колонки «Модерн. с изм. мощ-ти» на station_list:
+        максимум из ожидаемого года модернизации с изменением мощности и годов из фактической перемаркировки
+        (без учёта date_modernization_no_power_change_expected).
+        """
+        from app.common.services.help_services import normalize_date_list, convert_to_date
+
+        years: list[int] = []
+
+        if self.date_modernization_power_change_expected is not None:
+            years.append(self.date_modernization_power_change_expected)
+
+        if self.date_relabing_fact:
+            normalized = normalize_date_list(self.date_relabing_fact)
+            if normalized:
+                tokens = [t.strip() for t in normalized.split(",") if t.strip()]
+                for token in tokens:
+                    dt = convert_to_date(token)
+                    if dt is None:
+                        continue
+                    display_year = self._relabing_year_for_display(dt)
+                    if display_year is not None:
+                        years.append(display_year)
+
+        if not years:
+            return None
+
+        return str(max(years))
+
+    @property
     def fuel_rowspan(self):
         return getattr(self, "_fuel_rowspan", None)
 

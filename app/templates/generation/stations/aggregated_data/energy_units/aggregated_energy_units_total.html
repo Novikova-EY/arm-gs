@@ -6,7 +6,7 @@
     {% set eu_rowspan = 1 + (1 if show_p_ogr else 0) + (1 if show_p_rasp else 0) %}
     <!-- Первая строка: p_ust -->
     <tr class="table-success text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row_cell" rowspan="{{ eu_rowspan }}" colspan="12" style="font-weight: bold;">
+        <td class="total-row_cell" rowspan="{{ eu_rowspan }}" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold;">
             {{ eu_total_name }}, всего
         </td>
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>

@@ -1,1 +1,1 @@
-# Нагрузки (loads) module
+# Спрос / energy_consumption — дубликат раздела «Нагрузки»

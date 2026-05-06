@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, session, c
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.condition_type_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.refdata_for_stations.condition_type_services import (
     condition_type_query,
     get_condition_type_list,
     update_condition_type_service,
+    update_condition_type_all_versions_service, 
     add_condition_type_service,
+    add_condition_type_all_versions_service, 
     delete_condition_type_service,
     export_condition_type_service,
 )
@@ -112,8 +115,19 @@ def condition_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов состояния: {duplicates}")
 
             # Обновление данных в базе
-            update_condition_type_service(condition_type_payload, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.condition_type_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            condition_type_filter=condition_type_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir))
+                update_condition_type_all_versions_service(condition_type_payload, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_condition_type_service(condition_type_payload, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -188,8 +202,20 @@ def add_condition_type():
             }]
 
             # Добавление новой записи через сервис
-            add_condition_type_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.condition_type_list",
+                            page=page,
+                            per_page=per_page,
+                            condition_type_filter=condition_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_condition_type_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_condition_type_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = condition_type_query(

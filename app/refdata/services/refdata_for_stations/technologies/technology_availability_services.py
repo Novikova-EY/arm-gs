@@ -394,3 +394,66 @@ def export_technology_availability_service(
         f"Экспортировано записей: {len(data)}", 
         entity_type="technology_availability")
     return output
+
+# === all_versions_technology_availability start ===
+@no_autoflush
+def add_technology_availability_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TechnologyAvailability,
+        entity_type="technology_availability",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_technology_availability_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        technology_availability_id = record.get("technology_availability_id")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "technology_availability_id": technology_availability_id,
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=TechnologyAvailability,
+        entity_type="technology_availability",
+        pk_field="technology_availability_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_technology_availability end ===

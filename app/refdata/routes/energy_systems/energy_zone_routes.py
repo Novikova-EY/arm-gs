@@ -4,11 +4,12 @@
 from datetime import datetime
 from collections import Counter
 from flask import render_template, request, redirect, url_for, flash, session, current_app, send_file
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.auth.routes import roles_required
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.energy_systems.energy_zone_forms import EnergyZoneFilterForm, AddEnergyZoneForm
@@ -18,7 +19,9 @@ from app.refdata.services.energy_systems.energy_zone_services import (
     energy_zone_query,
     get_energy_zone_list,
     update_energy_zone_service,
+    update_energy_zone_all_versions_service, 
     add_energy_zone_service,
+    add_energy_zone_all_versions_service, 
     delete_energy_zone_service,
     export_energy_zone_service,
 )
@@ -123,8 +126,20 @@ def energy_zone_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID энергозоны: {duplicates}")
 
             # Обновление данных в базе
-            update_energy_zone_service(energy_zone_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.energy_zone_list",
+                            page=page,
+                            per_page=per_page,
+                            energy_zone_filter=energy_zone_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_energy_zone_all_versions_service(energy_zone_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_energy_zone_service(energy_zone_data, user)
+                flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
@@ -194,8 +209,20 @@ def add_energy_zone():
                 "name": (form.name.data or "").strip(),
             }]
 
-            add_energy_zone_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.energy_zone_list",
+                            page=page,
+                            per_page=per_page,
+                            energy_zone_filter=energy_zone_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_energy_zone_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_energy_zone_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = energy_zone_query(

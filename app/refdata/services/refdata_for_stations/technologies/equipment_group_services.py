@@ -41,7 +41,10 @@ from app.common.services.tranzaction_services import (
 )
 
 # Фильтрация по версиям
-from app.common.models.database_version_model import DatabaseVersion
+from app.refdata.services.refdata_all_versions_common import (
+    all_database_version_ids_for_refdata,
+)
+
 from app.common.services.database_version_filter import (
     apply_version_filter,
     filter_by_explicit_db_version,
@@ -76,15 +79,6 @@ def _equipment_group_dup_query_for_version(name, technology_type_id, version_id,
     if exclude_id is not None:
         query = query.filter(EquipmentGroupType.id != exclude_id)
     return query
-
-
-def _all_database_version_ids_for_refdata() -> list[int]:
-    """Все зарегистрированные id версий БД (для синхронной записи справочника по версиям)."""
-    return [
-        v.id
-        for v in DatabaseVersion.query.order_by(DatabaseVersion.version_number).all()
-        if v.id is not None
-    ]
 
 
 def _merge_equipment_group_type_into_canonical(*, from_id: int, to_id: int, user) -> None:
@@ -645,7 +639,7 @@ def add_equipment_group_all_versions_service(data, user):
     if not isinstance(data, list) or not data:
         raise ValueError("Данные должны быть предоставлены в виде непустого списка словарей.")
 
-    version_ids = _all_database_version_ids_for_refdata()
+    version_ids = all_database_version_ids_for_refdata()
     if not version_ids:
         raise ValueError(
             "В системе нет зарегистрированных версий БД — нельзя выполнить добавление «во всех версиях»."

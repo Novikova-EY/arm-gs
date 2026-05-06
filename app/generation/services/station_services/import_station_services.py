@@ -37,6 +37,9 @@ from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model impo
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.generation.services.machine_services.machine_name_sync_services import (
+    sync_missing_machine_names_from_tes_types,
+)
 from app.common.services.get_services.stations.tes_type_get_services import get_unknown_tes_type_id
 from app.generation.forms.machine_forms import MACHINE_RELABING_OUTCOME_CHOICES
 import zipfile
@@ -407,8 +410,8 @@ def _overwrite_power_columns_from_excel_raw(file, df, power_col_names, sheet_nam
     first_data_row_excel = header_row_excel + 1
     logger = _get_logger()
 
-    for df_row_pos in range(len(df)):
-        excel_row = first_data_row_excel + df_row_pos
+    for df_row_pos, df_index in enumerate(df.index):
+        excel_row = first_data_row_excel + int(df_index)
         for df_col_idx in power_col_indices:
             excel_col = df_col_idx + 1
             coord = f"{get_column_letter(excel_col)}{excel_row}"
@@ -536,6 +539,23 @@ def _apply_station_import_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
         "ген_компания",
         "генерирующая_компания",
         "гк",
+        "собственник",
+        "владелец",
+        "owner",
+        "организация_собственник",
+        "организациясобственник",
+        "инвестор",
+    ])
+    add_aliases("power_type", [
+        "power_type",
+        "тип_мощти",
+        "тип_мощности",
+        "тип_мощ",
+        "вид_мощности",
+        "показатель",
+        "мощность",
+        "power_kind",
+        "power_row_type",
     ])
     add_aliases("station_type", [
         "station_type",
@@ -616,6 +636,101 @@ def _row_has_machine_payload(row) -> bool:
 
 def _row_has_rasp_payload(row) -> bool:
     return _row_has_nonempty_value(row, "station_type") and _row_has_nonempty_value(row, "gen_company")
+
+
+def _is_station_start_row(row) -> bool:
+    """Новая станция начинается только на строке с явно заполненными регионом и названием."""
+    return _row_has_nonempty_value(row, "regional_district") and _row_has_nonempty_value(row, "station_name")
+
+
+def _is_machine_start_row(row) -> bool:
+    """Строка Руст/агрегата: есть реквизиты агрегата, владельца и года ввода."""
+    return (
+        _row_has_nonempty_value(row, "machine_name")
+        and _row_has_nonempty_value(row, "gen_company")
+        and _row_has_nonempty_value(row, "date_exploitation")
+    )
+
+
+def _normalize_import_power_type(value) -> str | None:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+
+    normalized = _normalize_column_name(_clean_multiline_text(value)).replace("_", "")
+    if not normalized:
+        return None
+    if "расп" in normalized:
+        return "p_rasp"
+    if "огр" in normalized:
+        return "p_ogr"
+    if "уст" in normalized:
+        return "p_ust"
+    return None
+
+
+def _infer_import_power_type(row) -> str | None:
+    explicit_power_type = _normalize_import_power_type(row.get("power_type"))
+    if explicit_power_type is not None:
+        return explicit_power_type
+    station_type_raw = row.get("station_type")
+    if _row_has_nonempty_value(row, "station_type"):
+        station_type_text = _clean_multiline_text(str(station_type_raw))
+        if station_type_text:
+            normalized_station_type = station_type_text.replace(" ", "").lower()
+            if "(р)" in normalized_station_type:
+                return "p_rasp"
+            if _row_has_nonempty_value(row, "machine_name"):
+                return "p_ust"
+    return None
+
+
+def _row_has_any_power_values(row, years: list[int]) -> bool:
+    return any(_row_has_nonempty_value(row, f"p_{year}") for year in years)
+
+
+def _resolve_import_gen_company(row, user):
+    raw_name = row.get("gen_company")
+    if raw_name is None:
+        return None
+    try:
+        if pd.isna(raw_name):
+            return None
+    except Exception:
+        pass
+
+    gen_company_name = _replace_quotes_sequentially(_clean_name(raw_name))
+    if not gen_company_name:
+        return None
+
+    gen_company = versioned_query(GenCompany).filter_by(name=gen_company_name).first()
+    if gen_company is not None:
+        return gen_company
+
+    # Фолбэк на глобальный справочник: имя у GenCompany уникально во всей таблице.
+    gen_company = GenCompany.query.filter_by(name=gen_company_name).first()
+    if gen_company is not None:
+        return gen_company
+
+    gen_company = GenCompany(name=gen_company_name)
+    set_db_version_on_create(gen_company)
+    db.session.add(gen_company)
+    db.session.flush()
+    log_to_db(
+        user,
+        "Создание генерирующей компании при импорте станций",
+        f"Создана генерирующая компания: {gen_company_name}",
+    )
+    _get_logger().info(
+        "[IMPORT_STATIONS] created missing gen_company name=%s id=%s",
+        gen_company_name,
+        getattr(gen_company, "id", None),
+    )
+    return gen_company
 
 
 def _fuel_name_sql_normalized():
@@ -1263,6 +1378,77 @@ def _register_station_occurrence(import_scope, scope_key) -> int:
     return occurrence
 
 
+def _make_machine_import_scope_key(
+    current_station,
+    *,
+    machine_number: str,
+    machine_group: str,
+    machine_name: str,
+    date_exploitation,
+):
+    return (
+        getattr(current_station, "id", None),
+        machine_number or "",
+        machine_group or "",
+        machine_name or "",
+        date_exploitation,
+    )
+
+
+def _register_machine_signature_occurrence(
+    import_scope,
+    current_station,
+    *,
+    machine_number: str,
+    machine_group: str,
+    machine_name: str,
+    date_exploitation,
+) -> int:
+    if import_scope is None:
+        return 1
+
+    occurrences = import_scope.setdefault("machine_occurrences_by_key", {})
+    scope_key = _make_machine_import_scope_key(
+        current_station,
+        machine_number=machine_number,
+        machine_group=machine_group,
+        machine_name=machine_name,
+        date_exploitation=date_exploitation,
+    )
+    occurrence = occurrences.get(scope_key, 0) + 1
+    occurrences[scope_key] = occurrence
+    return occurrence
+
+
+def _get_matching_machines_for_station(
+    current_station,
+    *,
+    machine_number: str,
+    machine_group: str,
+    machine_name: str,
+    date_exploitation,
+):
+    if current_station is None or getattr(current_station, "id", None) is None:
+        return []
+
+    machine_query = (
+        versioned_query(Machine)
+        .filter_by(
+            machine_number=machine_number,
+            machine_group=machine_group,
+            machine_name=machine_name,
+            id_station=current_station.id,
+        )
+    )
+    if date_exploitation is not None:
+        machine_query = machine_query.filter_by(date_exploitation=date_exploitation)
+
+    return sorted(
+        machine_query.all(),
+        key=lambda machine: getattr(machine, "id", 0) or 0,
+    )
+
+
 # Вспомогательная функция: создание или обновление станции
 def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = False):
     station_name = _clean_name(row['station_name'])
@@ -1426,6 +1612,7 @@ def _move_matching_machine_from_sibling_station(
     machine_group: str,
     machine_name: str,
     date_exploitation,
+    occurrence_index: int = 1,
 ):
     if current_station is None or getattr(current_station, "id", None) is None:
         return None
@@ -1458,10 +1645,14 @@ def _move_matching_machine_from_sibling_station(
         for machine in matching_machine_query.all()
         if getattr(machine, "id_station", None) in sibling_station_ids
     ]
-    if len(matching_machines) != 1:
+    matching_machines = sorted(
+        matching_machines,
+        key=lambda machine: getattr(machine, "id", 0) or 0,
+    )
+    if occurrence_index < 1 or len(matching_machines) < occurrence_index:
         return None
 
-    machine = matching_machines[0]
+    machine = matching_machines[occurrence_index - 1]
     machine.id_station = current_station.id
     db.session.add(machine)
     return machine
@@ -1486,16 +1677,18 @@ def _row_targets_current_station(row, current_station) -> bool:
 
 
 # Вспомогательная функция: создание или обновление агрегата
-def handle_machine(row, current_station, user, import_power_years: list[int] | None = None):
+def handle_machine(
+    row,
+    current_station,
+    user,
+    import_power_years: list[int] | None = None,
+    import_scope=None,
+):
     machine_name = _normalize_import_machine_name(row.get('machine_name'))
     machine_group = _normalize_import_machine_group(row.get('machine_group'))
     machine_number = _normalize_import_machine_number(row.get('machine_number'))
 
-    gen_company = (
-        versioned_query(GenCompany)
-        .filter_by(name=_clean_name(row['gen_company']))
-        .first()
-    )
+    gen_company = _resolve_import_gen_company(row, user)
 
     condition_type = (
         versioned_query(ConditionType).filter_by(name="действующий").first()
@@ -1542,26 +1735,26 @@ def handle_machine(row, current_station, user, import_power_years: list[int] | N
             f"Обновление типа станции {current_station.name}: {old_type} → {row.get('station_type')}"
         )
 
-    machine = (
-        versioned_query(Machine)
-        .filter_by(
-            machine_number=machine_number,
-            machine_group=machine_group,
-            machine_name=machine_name,
-            id_station=current_station.id
-        )
-        .first()
+    machine_occurrence = _register_machine_signature_occurrence(
+        import_scope,
+        current_station,
+        machine_number=machine_number,
+        machine_group=machine_group,
+        machine_name=machine_name,
+        date_exploitation=date_exploitation,
     )
-    machine_reassigned = False
-    if machine is None:
-        machine = _move_matching_machine_from_sibling_station(
-            current_station,
-            machine_number=machine_number,
-            machine_group=machine_group,
-            machine_name=machine_name,
-            date_exploitation=date_exploitation,
-        )
-        machine_reassigned = machine is not None
+    matching_machines = _get_matching_machines_for_station(
+        current_station,
+        machine_number=machine_number,
+        machine_group=machine_group,
+        machine_name=machine_name,
+        date_exploitation=date_exploitation,
+    )
+    machine = (
+        matching_machines[machine_occurrence - 1]
+        if len(matching_machines) >= machine_occurrence
+        else None
+    )
 
     if machine:
         changes = []
@@ -1602,9 +1795,9 @@ def handle_machine(row, current_station, user, import_power_years: list[int] | N
             note_val = _clean_name(row['note'])
             update_if_changed(machine, 'note', note_val, changes)
 
-        if changes or machine_reassigned:
+        if changes:
             db.session.commit()
-            action_details = ', '.join(changes) if changes else "агрегат перепривязан к текущей станции при повторном импорте"
+            action_details = ', '.join(changes)
             log_to_db(user, f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
             print(f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
 
@@ -2186,7 +2379,9 @@ def import_station_list_from_excel(file, user):
 
     current_station = None
     current_machine = None
+    awaiting_rasp_row = False
     touched_stations: dict[int, Station] = {}
+    touched_machine_ids: set[int] = set()
     import_scope: dict[str, object] = {}
 
     processed_rows = 0
@@ -2217,13 +2412,14 @@ def import_station_list_from_excel(file, user):
             )
 
         try:
-            row_has_station_payload = _row_has_station_payload(row)
-            row_has_machine_payload = _row_has_machine_payload(row)
-            row_has_rasp_payload = _row_has_rasp_payload(row)
-            row_has_gen_company = _row_has_nonempty_value(row, "gen_company")
+            station_start_row = _is_station_start_row(row)
+            machine_start_row = _is_machine_start_row(row)
+            power_row_type = _infer_import_power_type(row)
+            row_has_any_power_values = _row_has_any_power_values(row, power_years)
 
-            # Строка станции или "плоская" строка, где станция и агрегат находятся вместе.
-            if row_has_station_payload:
+            # Новая станция начинается только на строке с явно заполненными
+            # regional_district + station_name. Повтор такой строки — новый block.
+            if station_start_row:
                 occurrence_scope_key = _make_station_import_scope_key(
                     row.get("station_name"),
                     None,
@@ -2248,49 +2444,101 @@ def import_station_list_from_excel(file, user):
                     prefer_unused_slot=prefer_unused_slot,
                 )
                 if (
-                    not row_has_machine_payload
+                    not machine_start_row
                     or getattr(current_station, "id", None) != previous_station_id
                 ):
                     current_machine = None
+                    awaiting_rasp_row = False
                 if current_station is not None and getattr(current_station, "id", None) is not None:
                     touched_stations[current_station.id] = current_station
 
-            # Строка агрегата. Поддерживаем "плоский" Excel, где в одной строке есть
-            # и поля станции, и поля агрегата: такую строку нельзя обрывать после handle_station().
-            if row_has_machine_payload and row_has_gen_company:
+            # Строка агрегата (Руст): machine_name + gen_company + date_exploitation.
+            # Если в этой же строке есть реквизиты станции, current_station уже
+            # обновлен веткой выше.
+            if machine_start_row:
                 if current_station is None:
                     raise ValueError("Строка агрегата встретилась до строки станции (current_station=None)")
                 logger.debug(
-                    "[IMPORT_STATIONS] row=%s type=machine machine_name=%s gen_company=%s",
+                    "[IMPORT_STATIONS] row=%s type=machine machine_name=%s gen_company=%s power_type=%s",
                     index,
                     row.get("machine_name"),
                     row.get("gen_company"),
+                    power_row_type,
                 )
-                current_machine = handle_machine(row, current_station, user, import_power_years=power_years)
+                current_machine = handle_machine(
+                    row,
+                    current_station,
+                    user,
+                    import_power_years=power_years,
+                    import_scope=import_scope,
+                )
+                if current_machine is not None and getattr(current_machine, "id", None) is not None:
+                    touched_machine_ids.add(current_machine.id)
                 assign_machine_types(current_machine, row, power_years, user)
-                assign_machine_power_p_ust(current_machine, row, power_years, user)
+                if power_row_type == "p_rasp":
+                    assign_machine_power_p_rasp(current_machine, row, power_years, user)
+                    awaiting_rasp_row = False
+                    if row_has_any_power_values:
+                        update_machine_power_ogr(current_machine, power_years, user)
+                elif power_row_type != "p_ogr":
+                    assign_machine_power_p_ust(current_machine, row, power_years, user)
+                    awaiting_rasp_row = True
+                else:
+                    awaiting_rasp_row = False
                 cleanup_machine_fuel_and_tes_type(current_machine, row, power_years, user)
                 continue
 
-            # Строка p_rasp/ограничений
-            if row_has_rasp_payload:
-                if current_machine is None:
-                    raise ValueError("Строка p_rasp встретилась до строки агрегата (current_machine=None)")
+            # Следующая строка после Руст относится к тому же агрегату и содержит Ррасп.
+            if (
+                awaiting_rasp_row
+                and current_machine is not None
+                and not _row_has_nonempty_value(row, "machine_name")
+                and row_has_any_power_values
+            ):
                 logger.debug(
-                    "[IMPORT_STATIONS] row=%s type=rasp station_type=%s gen_company=%s",
+                    "[IMPORT_STATIONS] row=%s type=power-followup power_type=%s station_type=%s gen_company=%s",
                     index,
+                    power_row_type,
                     row.get("station_type"),
                     row.get("gen_company"),
                 )
-                assign_machine_power_p_rasp(current_machine, row, power_years, user)
+                effective_power_type = power_row_type or "p_rasp"
+                if effective_power_type == "p_ust":
+                    assign_machine_power_p_ust(current_machine, row, power_years, user)
+                elif effective_power_type == "p_rasp":
+                    assign_machine_power_p_rasp(current_machine, row, power_years, user)
+                awaiting_rasp_row = False
                 update_machine_commission_status(current_machine, start_year, end_year, user)
 
-                has_rasp_values = any(not pd.isna(row.get(f'p_{y}')) for y in power_years)
-                if has_rasp_values:
+                if row_has_any_power_values:
                     update_machine_power_ogr(current_machine, power_years, user)
                 continue
 
-            if row_has_station_payload:
+            # Редкий fallback: отдельная строка мощности с явным power_type вне strict-пары.
+            if (
+                power_row_type in {"p_ust", "p_rasp", "p_ogr"}
+                and current_machine is not None
+                and not machine_start_row
+            ):
+                logger.debug(
+                    "[IMPORT_STATIONS] row=%s type=power-explicit power_type=%s station_type=%s gen_company=%s",
+                    index,
+                    power_row_type,
+                    row.get("station_type"),
+                    row.get("gen_company"),
+                )
+                if power_row_type == "p_ust":
+                    assign_machine_power_p_ust(current_machine, row, power_years, user)
+                elif power_row_type == "p_rasp":
+                    assign_machine_power_p_rasp(current_machine, row, power_years, user)
+                awaiting_rasp_row = False
+                update_machine_commission_status(current_machine, start_year, end_year, user)
+
+                if row_has_any_power_values:
+                    update_machine_power_ogr(current_machine, power_years, user)
+                continue
+
+            if station_start_row:
                 continue
 
             skipped_unrecognized_rows += 1
@@ -2332,6 +2580,25 @@ def import_station_list_from_excel(file, user):
             logger.exception("[IMPORT_STATIONS] update_station_power failed: %s", err)
             continue
 
+    created_machine_names = 0
+    if touched_machine_ids:
+        try:
+            created_machine_names = sync_missing_machine_names_from_tes_types(
+                machine_ids=touched_machine_ids
+            )
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            err = {
+                "stage": "sync_machine_names",
+                "machine_ids_count": len(touched_machine_ids),
+                "filename": filename,
+            }
+            errors.append(err)
+            logger.exception("[IMPORT_STATIONS] sync_machine_names failed: %s", err)
+
     try:
         db.session.commit()
     except Exception:
@@ -2353,16 +2620,26 @@ def import_station_list_from_excel(file, user):
         len(errors),
         elapsed,
     )
+    logger.info(
+        "[IMPORT_STATIONS] machine_names_created filename=%s count=%s",
+        filename,
+        created_machine_names,
+    )
     if errors:
         logger.error("[IMPORT_STATIONS] errors (first 50): %s", errors[:50])
 
-    message = f"Импорт завершен. Обработано строк: {processed_rows}. Ошибок: {len(errors)}. Подробности — в логах."
+    message = (
+        f"Импорт завершен. Обработано строк: {processed_rows}. "
+        f"Создано записей MachineName: {created_machine_names}. "
+        f"Ошибок: {len(errors)}. Подробности — в логах."
+    )
     return {
         "message": message,
         "processed_rows": processed_rows,
         "skipped_empty_rows": skipped_empty_rows,
         "skipped_unrecognized_rows": skipped_unrecognized_rows,
         "errors_count": len(errors),
+        "machine_names_created": created_machine_names,
     }
 
 

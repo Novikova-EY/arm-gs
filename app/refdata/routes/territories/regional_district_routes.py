@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.territories.regional_district_forms import (
@@ -26,7 +27,9 @@ from app.refdata.services.territories.regional_district_services import (
     regional_district_query,
     get_regional_district_list,
     update_regional_district_service, 
+    update_regional_district_all_versions_service, 
     add_regional_district_service, 
+    add_regional_district_all_versions_service, 
     delete_regional_district_service,
     import_regional_district_service, 
     export_regional_district_service, 
@@ -159,8 +162,23 @@ def regional_district_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID: {duplicates}")
 
             # Обновление данных в базе
-            update_regional_district_service(regional_district_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.regional_district_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            regional_district_filter=regional_district_filter,
+                            federal_district_filter=federal_district_filter,
+                            energy_zone_filter=energy_zone_filter,
+                            synchronous_area_filter=synchronous_area_filter,
+                    ))
+                update_regional_district_all_versions_service(regional_district_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_regional_district_service(regional_district_data, user)
+                flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
@@ -271,8 +289,23 @@ def add_regional_district():
             }]
 
             # Добавление новой записи через сервис
-            add_regional_district_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.regional_district_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            regional_district_filter=regional_district_filter,
+                            federal_district_filter=federal_district_filter,
+                            energy_zone_filter=energy_zone_filter,
+                            synchronous_area_filter=synchronous_area_filter,
+                    ))
+                add_regional_district_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_regional_district_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = regional_district_query(

@@ -117,7 +117,7 @@
             </div>
     
             <div class="filter-item">
-                <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list'), reset_filters=1) }}" class="btn btn-outline-danger w-100">Сбросить</a>
             </div>
         </form>
     </div>

@@ -422,12 +422,17 @@ def get_stations_list(
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
+        build_machine_note_search_condition,
     )
     for build_fn in (
         build_date_commission_filter,
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     ):
         cond = build_fn(Machine, filters)
         if cond is not None:
@@ -436,6 +441,12 @@ def get_stations_list(
     # Фильтр: только агрегаты без группы оборудования (Machine.id_equipment_group IS NULL)
     if filters.get("machines_without_equipment_group"):
         machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+
+    note_machine_cond = build_machine_note_search_condition(
+        Machine, PGUMachine, filters.get("note_filter")
+    )
+    if note_machine_cond is not None:
+        machine_query = machine_query.filter(note_machine_cond)
 
     # 2. Subquery с подходящими агрегатами
     machine_subquery = machine_query.subquery()
@@ -524,6 +535,7 @@ def get_stations_list(
         filters.get("date_exploitation_filter"),
         filters.get("date_decompressing_expected_filter"),
         filters.get("date_modernization_expected_filter"),
+        filters.get("date_modernization_no_power_expected_filter"),
     ])
     if date_filters_present:
         from app.generation.services.station_services.filters_services import (
@@ -615,6 +627,8 @@ def get_stations_list(
             filters.get("date_exploitation_filter"),
             filters.get("date_decompressing_expected_filter"),
             filters.get("date_modernization_expected_filter"),
+            filters.get("date_modernization_no_power_expected_filter"),
+            filters.get("relabing_outcome_filter"),
             filters.get("gen_company_filter"),
             filters.get("condition_type_filter"),
         ]
@@ -1055,6 +1069,8 @@ def get_stations_list(
             filters.get("date_exploitation_filter"),
             filters.get("date_decompressing_expected_filter"),
             filters.get("date_modernization_expected_filter"),
+            filters.get("date_modernization_no_power_expected_filter"),
+            filters.get("relabing_outcome_filter"),
         ]
     ):
         from app.generation.services.station_services.filters_services import (
@@ -1062,6 +1078,8 @@ def get_stations_list(
             build_date_exploitation_filter,
             build_date_decompressing_filter,
             build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
+            build_relabing_outcome_filter,
             get_pgu_date_cond_for_filter,
         )
 
@@ -1070,6 +1088,7 @@ def get_stations_list(
             (build_date_exploitation_filter, "date_exploitation_filter"),
             (build_date_decompressing_filter, "date_decompressing_expected_filter"),
             (build_date_modernization_filter, "date_modernization_expected_filter"),
+            (build_date_modernization_no_power_filter, "date_modernization_no_power_expected_filter"),
         ]
         date_and_parts = []
         for build_fn, key in date_filter_pairs:
@@ -1083,6 +1102,10 @@ def get_stations_list(
                 date_and_parts.append(machine_cond)
             elif pgu_cond is not None:
                 date_and_parts.append(Machine.pgu_submachines.any(pgu_cond))
+
+        rel_cond = build_relabing_outcome_filter(Machine, filters)
+        if rel_cond is not None:
+            date_and_parts.append(rel_cond)
 
         if date_and_parts:
             extra_pgu_parent_machine_ids = (
@@ -1160,12 +1183,16 @@ def get_stations_list_with_pgu_machines(
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     )
     for build_fn in (
         build_date_commission_filter,
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     ):
         cond = build_fn(Machine, filters)
         if cond is not None:
@@ -1914,16 +1941,27 @@ def get_next_station_info(current_page, per_page, filters):
             build_date_exploitation_filter,
             build_date_decompressing_filter,
             build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
+            build_relabing_outcome_filter,
+            build_machine_note_search_condition,
         )
         for build_fn in (
             build_date_commission_filter,
             build_date_exploitation_filter,
             build_date_decompressing_filter,
             build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
+            build_relabing_outcome_filter,
         ):
             cond = build_fn(Machine, filters)
             if cond is not None:
                 machine_query = machine_query.filter(cond)
+
+        note_machine_cond = build_machine_note_search_condition(
+            Machine, PGUMachine, filters.get("note_filter")
+        )
+        if note_machine_cond is not None:
+            machine_query = machine_query.filter(note_machine_cond)
         
         # 2. Subquery с подходящими агрегатами
         machine_subquery = machine_query.subquery()
@@ -2158,16 +2196,27 @@ def get_filtered_station_ids(filters):
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
+        build_machine_note_search_condition,
     )
     for build_fn in (
         build_date_commission_filter,
         build_date_exploitation_filter,
         build_date_decompressing_filter,
         build_date_modernization_filter,
+        build_date_modernization_no_power_filter,
+        build_relabing_outcome_filter,
     ):
         cond = build_fn(Machine, filters)
         if cond is not None:
             machine_query = machine_query.filter(cond)
+
+    note_machine_cond = build_machine_note_search_condition(
+        Machine, PGUMachine, filters.get("note_filter")
+    )
+    if note_machine_cond is not None:
+        machine_query = machine_query.filter(note_machine_cond)
 
     machine_subquery = machine_query.subquery()
 
@@ -2253,6 +2302,8 @@ def get_filtered_station_ids(filters):
             filters.get("date_exploitation_filter"),
             filters.get("date_decompressing_expected_filter"),
             filters.get("date_modernization_expected_filter"),
+            filters.get("date_modernization_no_power_expected_filter"),
+            filters.get("relabing_outcome_filter"),
             filters.get("gen_company_filter"),
             filters.get("condition_type_filter"),
         ]
@@ -2949,6 +3000,15 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     machine_tes_types_map = get_current_machine_tes_types_map()
 
+    from app.generation.forms.machine_forms import MACHINE_RELABING_OUTCOME_CHOICES
+
+    relabing_outcome_filter_choices = []
+    for val, lab in MACHINE_RELABING_OUTCOME_CHOICES:
+        if val == "":
+            relabing_outcome_filter_choices.append(("", "не указано"))
+        else:
+            relabing_outcome_filter_choices.append((val, lab))
+
     context = {
             "form": form,
             "stations_grouped": data["stations_grouped"],
@@ -3022,6 +3082,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "federal_district_filter": filters.get("federal_district_filter"),
             "regional_district_filter": filters.get("regional_district_filter"),
             "fuel_type_filter": filters.get("fuel_type_filter"),
+            "relabing_outcome_filter_choices": relabing_outcome_filter_choices,
             "year_features": year_features,
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,

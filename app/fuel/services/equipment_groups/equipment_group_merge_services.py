@@ -884,6 +884,7 @@ def update_equipment_group_all_versions(
     from app.common.services.database_version_filter import filter_by_explicit_db_version
     from app.fuel.services.equipment_groups.equipment_group_edit_services import (
         _apply_grouping_station_on_type_station_links,
+        _effective_group_database_version_id,
         _station_id_from_group_set_rows,
     )
 
@@ -1074,13 +1075,13 @@ def update_equipment_group_all_versions(
         _, change_details = _apply_values_to_group(current_group, values)
         out_details = list(change_details or [])
         if "grouping_station_id" in form_data:
-            vid_fb = getattr(current_group, "database_version_id", None)
-            resolved_sid_fb = _resolve_grouping_station_id_for_version(vid_fb)
+            eff_fb = _effective_group_database_version_id(current_group)
+            resolved_sid_fb = _resolve_grouping_station_id_for_version(eff_fb)
             old_eff_fb = _station_id_from_group_set_rows(
                 EquipmentGroupSet.query.filter_by(
                     equipment_group_id=current_group.id
                 ).all(),
-                vid_fb,
+                eff_fb,
             )
             if old_eff_fb != resolved_sid_fb:
                 egs_err_fb = _apply_grouping_station_on_type_station_links(
@@ -1181,7 +1182,7 @@ def update_equipment_group_all_versions(
             for g in groups_to_update:
                 old_eff = _station_id_from_group_set_rows(
                     EquipmentGroupSet.query.filter_by(equipment_group_id=g.id).all(),
-                    getattr(g, "database_version_id", None),
+                    _effective_group_database_version_id(g),
                 )
                 if old_eff == resolved_sid:
                     continue
@@ -1246,6 +1247,7 @@ def update_equipment_group_all_versions(
         user_group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
         if user_group:
             vid = getattr(user_group, "database_version_id", None)
+            eff_u = _effective_group_database_version_id(user_group)
             values_to_apply = dict(values)
             if "regional_district_id" in form_data:
                 resolved_rd_id = _resolve_rd_id_for_version(vid)
@@ -1261,12 +1263,12 @@ def update_equipment_group_all_versions(
             changed, changes = _apply_values_to_group(user_group, values_to_apply)
             grouping_changed_u = False
             if "grouping_station_id" in form_data:
-                resolved_sid_u = _resolve_grouping_station_id_for_version(vid)
+                resolved_sid_u = _resolve_grouping_station_id_for_version(eff_u)
                 old_eff_u = _station_id_from_group_set_rows(
                     EquipmentGroupSet.query.filter_by(
                         equipment_group_id=user_group.id
                     ).all(),
-                    vid,
+                    eff_u,
                 )
                 if old_eff_u != resolved_sid_u:
                     egs_err_u2 = _apply_grouping_station_on_type_station_links(
@@ -1301,11 +1303,11 @@ def update_equipment_group_all_versions(
                 versions_touched_set.add(vid)
             if new_egt_anchor_id is not None:
                 tid_u = _resolve_equipment_group_type_id_for_version(
-                    new_egt_anchor_id, vid
+                    new_egt_anchor_id, eff_u
                 )
                 if tid_u is None:
                     equipment_group_type_skip_warnings.append(
-                        _equipment_group_type_skip_message(vid)
+                        _equipment_group_type_skip_message(eff_u)
                     )
                 else:
                     from app.fuel.services.equipment_groups.equipment_group_edit_services import (
@@ -1313,7 +1315,7 @@ def update_equipment_group_all_versions(
                     )
 
                     egt_err_u = _apply_equipment_group_type_change_from_form(
-                        user_group.id, tid_u, vid
+                        user_group.id, tid_u, eff_u
                     )
                     if egt_err_u:
                         return {

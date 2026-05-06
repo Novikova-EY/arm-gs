@@ -705,3 +705,84 @@ def export_federal_district_mappings_service(
         entity_type="federal_district",
     )
     return output
+
+# === all_versions_federal_district start ===
+@no_autoflush
+def add_federal_district_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        name_abr = (record.get("name_abr") or "").strip()
+        if not name or not name_full or not name_abr:
+            raise ValueError("Каждая запись должна содержать 'name', 'name_full' и 'name_abr'.")
+        return {
+            "name": name,
+            "name_full": name_full,
+            "name_abr": name_abr,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_abr": clean["name_abr"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=FederalDistrict,
+        entity_type="federal_district",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'name_full', 'name_abr']
+    )
+
+
+@no_autoflush
+def update_federal_district_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        federal_district_id = record.get("federal_district_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        name_abr = (record.get("name_abr") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "federal_district_id": federal_district_id,
+            "name": name,
+            "name_full": name_full or None,
+            "name_abr": name_abr or None,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_abr": clean["name_abr"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=FederalDistrict,
+        entity_type="federal_district",
+        pk_field="federal_district_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'name_full', 'name_abr', 'display_order'],
+        unique_fields=['name', 'name_full', 'name_abr'],
+        temp_fields=['name', 'name_full', 'name_abr'],
+        clear_fields=[]
+    )
+# === all_versions_federal_district end ===

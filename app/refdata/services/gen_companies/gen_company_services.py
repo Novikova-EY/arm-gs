@@ -592,3 +592,70 @@ def export_gen_company_mappings_service(
         entity_type="gen_company",
     )
     return output
+
+# === all_versions_gen_company start ===
+@no_autoflush
+def add_gen_company_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        name_to_clean = (record.get("name") or "").strip()
+        name_clean = _clean_name(name_to_clean)
+        name = _replace_quotes_sequentially(name_clean)
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=GenCompany,
+        entity_type="gen_company",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name']
+    )
+
+
+@no_autoflush
+def update_gen_company_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        gen_company_id = record.get("gen_company_id")
+        name_to_clean = (record.get("name") or "").strip()
+        name_clean = _clean_name(name_to_clean)
+        name = _replace_quotes_sequentially(name_clean)
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "gen_company_id": gen_company_id,
+            "name": name,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=GenCompany,
+        entity_type="gen_company",
+        pk_field="gen_company_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name'],
+        unique_fields=['name'],
+        temp_fields=['name'],
+        clear_fields=[]
+    )
+# === all_versions_gen_company end ===

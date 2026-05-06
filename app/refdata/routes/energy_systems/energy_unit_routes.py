@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.energy_systems.energy_unit_forms import (
@@ -32,7 +33,9 @@ from app.refdata.services.energy_systems.energy_unit_services import (
     energy_unit_query, 
     get_energy_unit_list, 
     update_energy_unit_service, 
+    update_energy_unit_all_versions_service, 
     add_energy_unit_service, 
+    add_energy_unit_all_versions_service, 
     delete_energy_unit_service, 
     export_energy_unit_service, 
 )
@@ -164,8 +167,23 @@ def energy_unit_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID энергоузлы: {duplicates}")
 
             # Обновление данных в базе
-            update_energy_unit_service(energy_unit_data, user)
-            flash("Изменения энергоузлов успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.energy_unit_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            energy_unit_filter=energy_unit_filter,
+                            regional_district_filter=regional_district_filter,
+                            regional_energy_system_filter=regional_energy_system_filter,
+                            union_energy_system_filter=union_energy_system_filter,
+                    ))
+                update_energy_unit_all_versions_service(energy_unit_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_energy_unit_service(energy_unit_data, user)
+                flash("Изменения энергоузлов успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -280,8 +298,23 @@ def add_energy_unit():
                     "regional_energy_system_id": form.regional_energy_system.data
             }]
 
-            add_energy_unit_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.energy_unit_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            energy_unit_filter=energy_unit_filter,
+                            regional_district_filter=regional_district_filter,
+                            regional_energy_system_filter=regional_energy_system_filter,
+                            union_energy_system_filter=union_energy_system_filter,
+                    ))
+                add_energy_unit_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_energy_unit_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = energy_unit_query(

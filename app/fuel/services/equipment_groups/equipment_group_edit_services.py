@@ -66,6 +66,43 @@ def _effective_group_database_version_id(group) -> int | None:
     return get_current_db_version_id()
 
 
+def _display_relevant_set_station_links(set_rows, preferred_version_id):
+    """
+    Возвращает связи EquipmentGroupSetStation для отображения карточки группы.
+
+    Приоритет:
+    1. Связи явной текущей/эффективной версии.
+    2. Если таких нет, legacy-связи с database_version_id = NULL.
+    3. Если и их нет, любые имеющиеся связи группы, чтобы карточка не выглядела пустой
+       после merge между legacy/версионированными записями.
+    """
+    exact_links = []
+    legacy_links = []
+    other_links = []
+
+    for es in set_rows or []:
+        lnk = getattr(es, "equipment_group_set_station", None)
+        if not lnk:
+            continue
+        link_vid = getattr(lnk, "database_version_id", None)
+        if preferred_version_id is None:
+            if link_vid is None:
+                legacy_links.append(lnk)
+            continue
+        if link_vid == preferred_version_id:
+            exact_links.append(lnk)
+        elif link_vid is None:
+            legacy_links.append(lnk)
+        else:
+            other_links.append(lnk)
+
+    if exact_links:
+        return exact_links
+    if legacy_links:
+        return legacy_links
+    return other_links
+
+
 def get_equipment_group_edit_context(equipment_group_id):
     """
     Загружает EquipmentGroup и справочники для выпадающих списков.
@@ -106,23 +143,17 @@ def _station_id_from_group_set_rows(set_rows, group_version_id) -> int | None:
     Станция(и), с которыми группа связана через EquipmentGroupSet → EquipmentGroupSetStation.
     При нескольких связях (редко) — первая по порядку обхода.
     """
-    sids: list[int] = []
-    for es in set_rows:
-        lnk = es.equipment_group_set_station
-        if not lnk:
-            continue
-        if group_version_id is None:
-            if lnk.database_version_id is not None:
-                continue
-        elif lnk.database_version_id != group_version_id:
-            continue
-        sids.append(lnk.station_id)
-    if not sids:
-        return None
-    return sids[0]
+    relevant_links = _display_relevant_set_station_links(set_rows, group_version_id)
+    for lnk in relevant_links:
+        if lnk.station_id is not None:
+            return lnk.station_id
+    return None
 
 
 def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
+    # Для групп с legacy NULL database_version_id связи EquipmentGroupSetStation
+    # обычно хранят явную версию — совпадаем с сессией/эффективной версией (как у типов ЕГО).
+    effective_vid = _effective_group_database_version_id(group)
     # Справочники для выпадающих списков (external_id -> display_name)
     obl_choices = [
         ("", "—"),
@@ -252,10 +283,11 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         )
         .all()
     )
-    station_from_sets = _station_id_from_group_set_rows(set_rows, group_version_id)
+    display_links = _display_relevant_set_station_links(set_rows, effective_vid)
+    station_from_sets = _station_id_from_group_set_rows(set_rows, effective_vid)
     grouping_station_effective_id = station_from_sets
     station_q = filter_by_explicit_db_version(
-        Station.query, Station, group_version_id
+        Station.query, Station, effective_vid
     ).order_by(Station.name, Station.id)
     all_stations = list(station_q.all())
     _station_ids = {s.id for s in all_stations}
@@ -263,20 +295,24 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         if not extra_sid or extra_sid in _station_ids:
             continue
         st_e = (
-            filter_by_explicit_db_version(Station.query, Station, group_version_id)
+            filter_by_explicit_db_version(Station.query, Station, effective_vid)
             .filter(Station.id == extra_sid)
             .first()
         )
         if not st_e:
             extra_lnk = (
                 filter_by_explicit_db_version(
-                    EquipmentGroupSetStation.query, EquipmentGroupSetStation, group_version_id
+                    EquipmentGroupSetStation.query,
+                    EquipmentGroupSetStation,
+                    effective_vid,
                 )
                 .filter(EquipmentGroupSetStation.station_id == extra_sid)
                 .first()
             )
             if extra_lnk and extra_lnk.station:
                 st_e = extra_lnk.station
+        if not st_e:
+            st_e = Station.query.get(extra_sid)
         if st_e and st_e.id not in _station_ids:
             all_stations.append(st_e)
             all_stations.sort(
@@ -291,14 +327,8 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
     def _grouping_station_label_from_set_chain(sid) -> str | None:
         if sid is None:
             return None
-        for es in set_rows:
-            lnk = es.equipment_group_set_station
-            if not lnk or lnk.station_id != sid:
-                continue
-            if group_version_id is None:
-                if lnk.database_version_id is not None:
-                    continue
-            elif lnk.database_version_id != group_version_id:
+        for lnk in display_links:
+            if lnk.station_id != sid:
                 continue
             st = lnk.station
             if st:
@@ -352,9 +382,8 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ],
     ]
     tids = set()
-    for s in EquipmentGroupSet.query.filter_by(equipment_group_id=group.id).all():
-        lnk = EquipmentGroupSetStation.query.get(s.equipment_group_set_station_id)
-        if lnk:
+    for lnk in display_links:
+        if lnk.equipment_group_type_id is not None:
             tids.add(lnk.equipment_group_type_id)
     equipment_group_type_selected = str(next(iter(tids))) if len(tids) == 1 else ""
 
@@ -665,12 +694,13 @@ def persist_equipment_group_grouping_station_if_in_form(
     grouping_station_val = form_data.get("grouping_station_id")
     new_grouping_station_id = _parse_int(grouping_station_val)
     group_version_id = getattr(target_group, "database_version_id", None)
+    effective_vid = _effective_group_database_version_id(target_group)
 
     if grouping_station_val is not None and new_grouping_station_id is not None:
         station_obj = filter_by_explicit_db_version(
             Station.query,
             Station,
-            group_version_id,
+            effective_vid,
         ).filter(Station.id == new_grouping_station_id).first()
         if station_obj is None:
             return "Выбранная станция для группировки не найдена в текущей версии БД."
@@ -913,7 +943,7 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
             EquipmentGroupSet.query.filter_by(
                 equipment_group_id=target_id
             ).all(),
-            group_version_id,
+            _effective_group_database_version_id(target_group),
         )
         new_grouping_station_id = _parse_int(form_data.get("grouping_station_id"))
         gerr = persist_equipment_group_grouping_station_if_in_form(

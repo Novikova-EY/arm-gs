@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.technologies.technology_availability_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.refdata_for_stations.technologies.technology_availabil
     technology_availability_query,
     get_technology_availability_list,
     update_technology_availability_service, 
+    update_technology_availability_all_versions_service, 
     add_technology_availability_service, 
+    add_technology_availability_all_versions_service, 
     delete_technology_availability_service,
     export_technology_availability_service, 
 )
@@ -111,8 +114,20 @@ def technology_availability_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID доступности технологий: {duplicates}")
 
             # Обновление данных в базе
-            update_technology_availability_service(technology_availability_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.technology_availability_list",
+                            page=page,
+                            per_page=per_page,
+                            technology_availability_filter=technology_availability_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_technology_availability_all_versions_service(technology_availability_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_technology_availability_service(technology_availability_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -185,8 +200,20 @@ def add_technology_availability():
             }]
 
             # Добавление новой записи через сервис
-            add_technology_availability_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.technology_availability_list",
+                            page=page,
+                            per_page=per_page,
+                            technology_availability_filter=technology_availability_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_technology_availability_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_technology_availability_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = technology_availability_query(

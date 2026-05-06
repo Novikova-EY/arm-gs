@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.machines.tes_machine_type_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.refdata_for_stations.machines.tes_machine_type_service
     tes_machine_type_query,
     get_tes_machine_type_list,
     update_tes_machine_type_service, 
+    update_tes_machine_type_all_versions_service, 
     add_tes_machine_type_service, 
+    add_tes_machine_type_all_versions_service, 
     delete_tes_machine_type_service,
     export_tes_machine_type_service, 
 )
@@ -132,8 +135,20 @@ def tes_machine_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов агрегатов ТЭС: {duplicates}")
 
             # Обновление данных в базе
-            update_tes_machine_type_service(tes_machine_type_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.tes_machine_type_list",
+                            page=page,
+                            per_page=per_page,
+                            tes_machine_type_filter=tes_machine_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                update_tes_machine_type_all_versions_service(tes_machine_type_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_tes_machine_type_service(tes_machine_type_data, user)
+                flash("Изменения успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -206,8 +221,20 @@ def add_tes_machine_type():
             }]
 
             # Добавление новой записи через сервис
-            add_tes_machine_type_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.tes_machine_type_list",
+                            page=page,
+                            per_page=per_page,
+                            tes_machine_type_filter=tes_machine_type_filter,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                    ))
+                add_tes_machine_type_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_tes_machine_type_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = tes_machine_type_query(

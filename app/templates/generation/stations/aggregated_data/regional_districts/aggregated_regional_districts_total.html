@@ -2,7 +2,7 @@
 {% if regional_districts_yearly_p_ust.get(current_rd_id, {}) %}
     <!-- Первая строка: p_ust -->
     <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
-        <td class="total-row-cell" rowspan="3" colspan="12" style="font-weight: bold;">
+        <td class="total-row-cell" rowspan="3" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold;">
             {{ regional_district_names[current_rd_id] }}, всего
         </td>
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>

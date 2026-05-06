@@ -478,3 +478,72 @@ def repair_station_types_sequence_hard(user: str) -> None:
                   "Не удалось выполнить ремонт последовательности station_types (HARD)",
                   str(e),
                   entity_type="station_type")
+
+# === all_versions_station_type start ===
+@no_autoflush
+def add_station_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Каждая запись должна содержать 'name'.")
+        return {
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=StationType,
+        entity_type="station_type",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=['name', 'display_order']
+    )
+
+
+@no_autoflush
+def update_station_type_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
+
+    def normalize_record(record):
+        station_type_id = record.get("station_type_id")
+        display_order = record.get("display_order")
+        name = (record.get("name") or "").strip()
+        if not name:
+            raise ValueError("Поле 'name' обязательно для заполнения.")
+        return {
+            "station_type_id": station_type_id,
+            "name": name,
+            "display_order": display_order,
+        }
+
+    def resolve_for_version(clean, version_id):
+        return {
+            "name": clean["name"],
+            "display_order": clean["display_order"],
+        }
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=StationType,
+        entity_type="station_type",
+        pk_field="station_type_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=['name', 'display_order'],
+        unique_fields=['name', 'display_order'],
+        temp_fields=['name'],
+        clear_fields=['display_order']
+    )
+# === all_versions_station_type end ===

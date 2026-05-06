@@ -4,10 +4,11 @@ from flask import render_template, request, redirect, url_for, flash, send_file,
 from collections import Counter
 from datetime import datetime
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.refdata_for_stations.machines.pgu_machine_type_forms import (
@@ -20,7 +21,9 @@ from app.refdata.services.refdata_for_stations.machines.pgu_tes_machine_type_ser
     pgu_tes_machine_type_query,
     get_pgu_tes_machine_type_list,
     update_pgu_tes_machine_type_service, 
+    update_pgu_tes_machine_type_all_versions_service, 
     add_pgu_tes_machine_type_service, 
+    add_pgu_tes_machine_type_all_versions_service, 
     delete_pgu_tes_machine_type_service,
     export_pgu_tes_machine_type_service, 
 )
@@ -111,8 +114,20 @@ def pgu_tes_machine_type_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID типов агрегатов ПГУ: {duplicates}")
 
             # Обновление данных в базе
-            update_pgu_tes_machine_type_service(pgu_tes_machine_type_data, user)
-            flash("Изменения типов агрегатов ПГУ успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.pgu_tes_machine_type_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            pgu_tes_machine_type_filter=pgu_tes_machine_type_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir,
+                    ))
+                update_pgu_tes_machine_type_all_versions_service(pgu_tes_machine_type_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_pgu_tes_machine_type_service(pgu_tes_machine_type_data, user)
+                flash("Изменения типов агрегатов ПГУ успешно сохранены.", "success")
 
         except ValueError as e:
             flash(str(e), "danger")
@@ -185,8 +200,20 @@ def add_pgu_tes_machine_type():
             }]
 
             # Добавление новой записи через сервис
-            add_pgu_tes_machine_type_service(payload, user)
-            flash("Новая запись типа агрегата ПГУ успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.pgu_tes_machine_type_list",
+                                            page=page,
+                                            per_page=per_page,
+                                            pgu_tes_machine_type_filter=pgu_tes_machine_type_filter,
+                                            sort_by=sort_by,
+                                            sort_dir=sort_dir,
+                    ))
+                add_pgu_tes_machine_type_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_pgu_tes_machine_type_service(payload, user)
+                flash("Новая запись типа агрегата ПГУ успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = pgu_tes_machine_type_query(

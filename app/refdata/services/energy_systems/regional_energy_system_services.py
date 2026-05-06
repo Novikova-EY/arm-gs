@@ -796,3 +796,150 @@ def export_regional_energy_system_mappings_service(
         df.to_excel(writer, index=False, sheet_name="РЭС (Топливо)")
     output.seek(0)
     return output
+
+# === all_versions_regional_energy_system start ===
+@no_autoflush
+def add_regional_energy_system_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import (
+        add_all_versions_records,
+        fk_id_for_version,
+    )
+
+    def normalize_record(record):
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        name_rp = (record.get("name_rp") or "").strip()
+        union_energy_system_id = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
+        regional_district_ids = [
+            _to_int_or_none(value, keep_zero=False)
+            for value in (record.get("regional_districts") or record.get("regional_district_ids") or [])
+        ]
+        regional_district_ids = [value for value in regional_district_ids if value is not None]
+        if not name or not name_full or not name_rp or not union_energy_system_id:
+            raise ValueError(
+                "Каждая запись должна содержать 'name', 'name_full', 'name_rp' и 'union_energy_system_id'."
+            )
+        return {
+            "name": name,
+            "name_full": name_full,
+            "name_rp": name_rp,
+            "union_energy_system_id": union_energy_system_id,
+            "regional_district_ids": regional_district_ids,
+        }
+
+    def resolve_for_version(clean, version_id):
+        district_ids = [
+            fk_id_for_version(RegionalDistrict, district_id, version_id)
+            for district_id in clean["regional_district_ids"]
+        ]
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_rp": clean["name_rp"],
+            "id_union_energy_system": fk_id_for_version(
+                UnionEnergySystem,
+                clean["union_energy_system_id"],
+                version_id,
+            ),
+            "regional_district_ids": district_ids,
+        }
+
+    def create_instance(final):
+        obj = RegionalEnergySystem(
+            name=final["name"],
+            name_full=final["name_full"],
+            name_rp=final["name_rp"],
+            id_union_energy_system=final["id_union_energy_system"],
+        )
+        if final["regional_district_ids"]:
+            obj.regional_districts = [
+                db.session.get(RegionalDistrict, district_id)
+                for district_id in final["regional_district_ids"]
+                if db.session.get(RegionalDistrict, district_id)
+            ]
+        return obj
+
+    return add_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=RegionalEnergySystem,
+        entity_type="regional_energy_system",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        unique_fields=["name", "name_full"],
+        create_instance=create_instance,
+    )
+
+
+@no_autoflush
+def update_regional_energy_system_all_versions_service(data, user):
+    from app.refdata.services.refdata_all_versions_common import (
+        update_all_versions_records,
+        fk_id_for_version,
+    )
+
+    def normalize_record(record):
+        regional_energy_system_id = record.get("regional_energy_system_id")
+        name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip()
+        name_rp = (record.get("name_rp") or "").strip()
+        union_energy_system_id = _to_int_or_none(record.get("union_energy_system_id"), keep_zero=False)
+        regional_district_ids = [
+            _to_int_or_none(value, keep_zero=False)
+            for value in (record.get("regional_district_ids") or [])
+        ]
+        regional_district_ids = [value for value in regional_district_ids if value is not None]
+        if not name or union_energy_system_id is None:
+            raise ValueError("Каждая запись должна содержать 'name' и 'union_energy_system_id'.")
+        return {
+            "regional_energy_system_id": regional_energy_system_id,
+            "name": name,
+            "name_full": name_full or None,
+            "name_rp": name_rp or None,
+            "union_energy_system_id": union_energy_system_id,
+            "regional_district_ids": regional_district_ids,
+        }
+
+    def resolve_for_version(clean, version_id):
+        district_ids = [
+            fk_id_for_version(RegionalDistrict, district_id, version_id)
+            for district_id in clean["regional_district_ids"]
+        ]
+        return {
+            "name": clean["name"],
+            "name_full": clean["name_full"],
+            "name_rp": clean["name_rp"],
+            "id_union_energy_system": fk_id_for_version(
+                UnionEnergySystem,
+                clean["union_energy_system_id"],
+                version_id,
+            ),
+            "regional_district_ids": district_ids,
+        }
+
+    def apply_changes(obj, final):
+        obj.name = final["name"]
+        obj.name_full = final["name_full"]
+        obj.name_rp = final["name_rp"]
+        obj.id_union_energy_system = final["id_union_energy_system"]
+        obj.regional_districts = [
+            db.session.get(RegionalDistrict, district_id)
+            for district_id in final["regional_district_ids"]
+            if db.session.get(RegionalDistrict, district_id)
+        ]
+
+    return update_all_versions_records(
+        data=data,
+        user=user,
+        model_cls=RegionalEnergySystem,
+        entity_type="regional_energy_system",
+        pk_field="regional_energy_system_id",
+        normalize_record=normalize_record,
+        resolve_for_version=resolve_for_version,
+        tracked_fields=["name", "name_full", "name_rp", "id_union_energy_system"],
+        unique_fields=["name", "name_full"],
+        temp_fields=["name", "name_full"],
+        clear_fields=[],
+        apply_changes=apply_changes,
+    )
+# === all_versions_regional_energy_system end ===

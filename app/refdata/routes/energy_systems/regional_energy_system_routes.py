@@ -5,10 +5,11 @@ from collections import Counter
 from datetime import datetime
 from collections import defaultdict
 
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 # Блюпринт
 from app.refdata.routes import refdata_bp
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 
 # Формы
 from app.refdata.forms.energy_systems.regional_energy_system_forms import (
@@ -28,7 +29,9 @@ from app.refdata.services.energy_systems.regional_energy_system_services import 
     regional_energy_system_query, 
     get_regional_energy_system_list, 
     update_regional_energy_system_service, 
+    update_regional_energy_system_all_versions_service, 
     add_regional_energy_system_service, 
+    add_regional_energy_system_all_versions_service, 
     delete_regional_energy_system_service, 
     import_regional_energy_system_service, 
     export_regional_energy_system_service, 
@@ -149,8 +152,21 @@ def regional_energy_system_list():
                 raise ValueError(f"Обнаружены дублирующиеся ID региональных энергосистем: {duplicates}")
 
             # Обновление данных в базе
-            update_regional_energy_system_service(regional_energy_system_data, user)
-            flash("Изменения успешно сохранены.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.regional_energy_system_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            regional_energy_system_filter=regional_energy_system_filter,
+                            union_energy_system_filter=union_energy_system_filter,
+                    ))
+                update_regional_energy_system_all_versions_service(regional_energy_system_data, user)
+                flash("Изменения применены во всех версиях БД (по ref_uuid).", "success")
+            else:
+                update_regional_energy_system_service(regional_energy_system_data, user)
+                flash("Изменения успешно сохранены.", "success")
             
         except ValueError as e:
             flash(str(e), "danger")
@@ -238,8 +254,21 @@ def add_regional_energy_system():
             }]
 
             # Добавление новой записи через сервис
-            add_regional_energy_system_service(payload, user)
-            flash("Новая запись успешно добавлена.", "success")
+            if request.values.get("all_versions") == "1":
+                if block_all_versions_without_admin(current_user):
+                    return redirect(url_for("refdata_bp.regional_energy_system_list",
+                            page=page,
+                            per_page=per_page,
+                            sort_by=sort_by,
+                            sort_dir=sort_dir,
+                            regional_energy_system_filter=regional_energy_system_filter,
+                            union_energy_system_filter=union_energy_system_filter,
+                    ))
+                add_regional_energy_system_all_versions_service(payload, user)
+                flash("Новая запись добавлена во всех версиях БД (общий ref_uuid).", "success")
+            else:
+                add_regional_energy_system_service(payload, user)
+                flash("Новая запись успешно добавлена.", "success")
 
             # Перенаправление на список с сохранением параметров и переходом к новой записи
             total_records = regional_energy_system_query(
