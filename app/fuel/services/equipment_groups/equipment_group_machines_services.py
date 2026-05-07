@@ -98,7 +98,7 @@ def get_equipment_group_machines_data(
         if m.id_station:
             machines_by_station[m.id_station].append(m)
 
-    # Загружаем станции
+    # Загружаем электростанции
     station_ids = list(machines_by_station.keys())
     stations = (
         db.session.query(Station)
@@ -182,7 +182,7 @@ def get_equipment_group_machines_data(
 
         _apply_machine_display_names(machines)
 
-        # Прикрепляем данные к машинам и считаем итоги по станции
+        # Прикрепляем данные к машинам и считаем итоги по электростанции
         station_powers_by_year = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
         station_nt_sum = Decimal(0)
         for m in machines:

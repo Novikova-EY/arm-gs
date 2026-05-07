@@ -6,10 +6,16 @@ from flask import (
 from flask_login import login_required
 from datetime import datetime
 
-@generation_bp.route("/generation")
+@generation_bp.route("", strict_slashes=False)
 def generation_start():
     """Простой роут для главной страницы модуля Генерация."""
     return render_template("generation/generation_start.html")
+
+
+@generation_bp.route("/generation")
+def generation_start_legacy_redirect():
+    """Совместимость со старым URL /generation/generation."""
+    return redirect(url_for("generation_bp.generation_start"), code=301)
 
 @generation_bp.route("/totals_summary_export")
 @login_required

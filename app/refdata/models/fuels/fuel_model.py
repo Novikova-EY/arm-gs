@@ -43,7 +43,7 @@ class Fuel(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
         index=True
     )
 
-    # связь с таблицей топлив агрегатов электростанции
+    # связь с таблицей топлив агрегатов  электростанции
     machine_fuels = db.relationship('MachineFuel', back_populates='fuel')
 
     def __repr__(self) -> str:

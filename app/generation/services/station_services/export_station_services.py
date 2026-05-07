@@ -503,14 +503,14 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 tes_machine_type_name = machine.tes_machine_type.name
 
         row_ust = {
-            "ID электростанции": machine.machine_station.id if machine.machine_station else "",
+            "ID  электростанции": machine.machine_station.id if machine.machine_station else "",
             "ID агрегата": machine.id,
             "Электростанция": machine.machine_number,
             " ": machine.machine_name,
             "Генерирующая компания": machine.gen_company.name if machine.gen_company else "—",
             "Год ввода": machine.date_exploitation,
             "Тип мощности": "Руст",
-            "Тип станции": machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—",
+            "Тип электростанции": machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else "—",
             "Тип ТЭС": machine.tes_types or "—",
             "Тип агрегата ТЭС": tes_machine_type_name,
             "Примечание": machine.note or "",
@@ -524,7 +524,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             row_ogr = {k: "" for k in row_ust}
             row_ogr.update({
                 "Тип мощности": "Рогр",
-                "ID электростанции": "",
+                "ID  электростанции": "",
                 "ID агрегата": "",
             })
             for year in range(start_year, end_year + 1):
@@ -535,7 +535,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             row_rasp = {k: "" for k in row_ust}
             row_rasp.update({
                 "Тип мощности": "Ррасп",
-                "ID электростанции": "",
+                "ID  электростанции": "",
                 "ID агрегата": "",
             })
             for year in range(start_year, end_year + 1):
@@ -545,14 +545,14 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     def add_station_total_row(station):
         def total_row(label, power_key, show_name=False):
             row = {
-                "ID электростанции": "",
+                "ID  электростанции": "",
                 "ID агрегата": "",
                 "Электростанция": f"{station.name}, всего" if show_name else "",
                 " ": "",
                 "Генерирующая компания": "",
                 "Год ввода": "",
                 "Тип мощности": label,
-                "Тип станции": "",
+                "Тип электростанции": "",
                 "Тип ТЭС": "",
                 "Тип агрегата ТЭС": "",
                 "Примечание": "",
@@ -563,7 +563,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 row[f"Топливо {year}"] = ""
             rows.append(row)
 
-        # Только для p_ust выводим название станции
+        # Только для p_ust выводим название электростанции
         total_row("Руст", "p_ust", show_name=True)
         if show_p_ogr:
             total_row("Рогр", "p_ogr", show_name=False)
@@ -811,7 +811,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 "Генерирующая компания": "",
                 "Год ввода": "",
                 "Тип мощности": label,
-                "Тип станции": "",
+                "Тип электростанции": "",
                 "Тип ТЭС": "",
                 "Тип агрегата ТЭС": "",
                 "Примечание": "",
@@ -885,7 +885,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
 
             station_type_name = station_type_names.get(station_type_id, f"id={station_type_id}")
 
-            # Если тип станции имеет служебное или неопределенное название,
+            # Если тип электростанции имеет служебное или неопределенное название,
             # то не отображаем его агрегации:
             #  - "не указано"/"не указан"
             #  - технические подписи вида "id=0", "id=123" и т.п.
@@ -898,7 +898,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                     "Генерирующая компания": "",
                     "Год ввода": "",
                     "Тип мощности": "Руст",
-                    "Тип станции": "",
+                    "Тип электростанции": "",
                     "Тип ТЭС": "",
                     "Тип агрегата ТЭС": "",
                     "Примечание": ""
@@ -924,7 +924,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         row_rasp[str(year)] = round_val(val) if val is not None else None
                     rows.append(row_rasp)
 
-            # Проверяем, является ли тип станции тепловым (показываем детализацию по ТЭС)
+            # Проверяем, является ли тип электростанции тепловым (показываем детализацию по ТЭС)
             if "тэс" in st_name_lower:
                 tes_type_section = data.get(config["tes_type_key"], {})
                 # Извлекаем агрегаты по типам ТЭС с учетом текущей версии для России
@@ -982,7 +982,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             "Генерирующая компания": "",
                             "Год ввода": "",
                             "Тип мощности": "Руст",
-                            "Тип станции": "",
+                            "Тип электростанции": "",
                             "Тип ТЭС": "",
                             "Тип агрегата ТЭС": "",
                             "Примечание": ""
@@ -1041,7 +1041,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 "Генерирующая компания": "",
                                 "Год ввода": "",
                                 "Тип мощности": "Руст",
-                                "Тип станции": "",
+                                "Тип электростанции": "",
                                 "Тип ТЭС": "",
                                 "Тип агрегата ТЭС": "",
                                 "Примечание": ""
@@ -1114,7 +1114,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 "Генерирующая компания": "",
                                 "Год ввода": "",
                                 "Тип мощности": "Руст",
-                                "Тип станции": "",
+                                "Тип электростанции": "",
                                 "Тип ТЭС": "",
                                 "Тип агрегата ТЭС": "",
                                 "Примечание": ""
@@ -1199,7 +1199,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                     "Генерирующая компания": "",
                                     "Год ввода": "",
                                     "Тип мощности": "Руст",
-                                    "Тип станции": "",
+                                    "Тип электростанции": "",
                                     "Тип ТЭС": "",
                                     "Тип агрегата ТЭС": "",
                                     "Примечание": ""
@@ -1240,7 +1240,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                 "Генерирующая компания": "",
                 "Год ввода": "",
                 "Тип мощности": "Руст",
-                "Тип станции": "",
+                "Тип электростанции": "",
                 "Тип ТЭС": "",
                 "Тип агрегата ТЭС": "",
                 "Примечание": ""
@@ -1279,7 +1279,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         "Генерирующая компания": "",
                         "Год ввода": "",
                         "Тип мощности": "Руст",
-                        "Тип станции": "",
+                        "Тип электростанции": "",
                         "Тип ТЭС": "",
                         "Тип агрегата ТЭС": "",
                         "Примечание": ""
@@ -1342,7 +1342,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                 "Генерирующая компания": "",
                                 "Год ввода": "",
                                 "Тип мощности": "",
-                                "Тип станции": "",
+                                "Тип электростанции": "",
                                 "Тип ТЭС": "",
                                 "Тип агрегата ТЭС": "",
                                 "Примечание": "",
@@ -1369,7 +1369,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                                     "Генерирующая компания": "",
                                     "Год ввода": "",
                                     "Тип мощности": "",
-                                    "Тип станции": "",
+                                    "Тип электростанции": "",
                                     "Тип ТЭС": "",
                                     "Тип агрегата ТЭС": "",
                                     "Примечание": "",
@@ -1378,14 +1378,14 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             for station in eu_group:
                                 first_machine = True
                                 row_station = {
-                                    "ID электростанции": station.id,
+                                    "ID  электростанции": station.id,
                                     "ID агрегата": "",
                                     "Электростанция": station.name,
                                     " ": "",
                                     "Генерирующая компания": "",
                                     "Год ввода": "",
                                     "Тип мощности": "",
-                                    "Тип станции": "",
+                                    "Тип электростанции": "",
                                     "Тип ТЭС": "",
                                     "Тип агрегата ТЭС": "",
                                     "Примечание": station.note,
@@ -1469,7 +1469,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         rows.pop()
 
     # Защитное удаление полностью дублирующихся подряд строк (например, повторяющихся
-    # строк с располагаемой мощностью по одному и тому же типу станции / энергосистемы).
+    # строк с располагаемой мощностью по одному и тому же типу электростанции / энергосистемы).
     # Логика формирования агрегатов местами сложная и в редких случаях может
     # сформировать одинаковые строки дважды, поэтому здесь аккуратно очищаем только
     # ПОЛНЫЕ дубликаты, не затрагивая реальные данные.
@@ -1490,12 +1490,12 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     fuel_columns = [f"{year} (топливо)" for year in range(start_year, end_year + 1)]
 
     columns = [
-        "ID электростанции",
+        "ID  электростанции",
         "ID агрегата",
         "Электростанция", " ", "Генерирующая компания",
         "Год ввода", "Тип мощности"
     ] + year_columns + fuel_columns + [
-        "Тип станции", "Тип ТЭС", "Тип агрегата ТЭС", "Примечание"
+        "Тип электростанции", "Тип ТЭС", "Тип агрегата ТЭС", "Примечание"
     ]
 
     try:
@@ -1780,7 +1780,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
             attr_name="group_rowspan",
         )
 
-        # rowspan по виду топлива (по СО ЕЭС) — одна ячейка на тип топлива по станции
+        # rowspan по виду топлива (по СО ЕЭС) — одна ячейка на тип топлива по электростанции
         def _fuel_rowspan_key(m):
             fuel_key = (getattr(m, "fuel_so", None) or "").strip()
             if not fuel_key or fuel_key.lower() == "не указано":
@@ -1805,7 +1805,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
     output_files = []
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
 
-    # Группируем станции по субъекту РФ
+    # Группируем электростанции по субъекту РФ
     regional_districts = {"Без субъекта": []}
     regional_systems = {}
     for station in station_list:
@@ -1900,7 +1900,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 "Есть группы": "",
             })
 
-            # Определяем наличие групп по агрегатам станции
+            # Определяем наличие групп по агрегатам электростанции
 
             def extract_year(date_input):
                 """Возвращает год из строки или числа (YYYY-MM-DD / DD.MM.YYYY / YYYY)."""
@@ -1920,17 +1920,17 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     except Exception:
                         return None
 
-            # Группируем станции по энергоузлам
+            # Группируем электростанции по энергоузлам
             stations_by_energy_unit = defaultdict(list)
             for station in stations:
                 energy_unit_id = station.id_energy_unit if station.energy_unit else None
                 stations_by_energy_unit[energy_unit_id].append(station)
 
-            # Функция для определения порядка типа станции
+            # Функция для определения порядка типа электростанции
             def get_station_type_order(station):
-                """Возвращает порядковый номер типа станции для сортировки."""
+                """Возвращает порядковый номер типа электростанции для сортировки."""
                 if not station.station_type or not station.station_type.name:
-                    return 99  # Станции без типа в конец
+                    return 99  # электростанции без типа в конец
                 station_type_name = station.station_type.name.lower()
                 if "аэс" in station_type_name:
                     return 0
@@ -1947,9 +1947,9 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                 else:
                     return 99  # Остальные типы в конец
 
-            # Функция для получения суммарной мощности станции на последний год
+            # Функция для получения суммарной мощности электростанции на последний год
             def get_station_total_power_last_year(station, last_year, current_version_id):
-                """Возвращает суммарную установленную мощность станции на последний год."""
+                """Возвращает суммарную установленную мощность электростанции на последний год."""
                 total_power = 0
                 for machine in station.machines:
                     mp_query = (
@@ -1967,9 +1967,9 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         total_power += machine_power.p_ust
                 return total_power
 
-            # Обрабатываем станции, сгруппированные по энергоузлам
+            # Обрабатываем электростанции, сгруппированные по энергоузлам
             for energy_unit_id, stations_group in stations_by_energy_unit.items():
-                # Сортируем станции: сначала по типу, затем по мощности на последний год
+                # Сортируем электростанции: сначала по типу, затем по мощности на последний год
                 last_year = all_years[-1]  # Последний год периода
                 stations_group.sort(key=lambda s: (
                     get_station_type_order(s),
@@ -2014,7 +2014,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     
                     processed_stations += 1
                     
-                    # Мощности станции с учетом активной версии БД
+                    # Мощности электростанции с учетом активной версии БД
                     power_query = (
                         StationPower.query
                         .filter_by(id_station=station.id)
@@ -2034,7 +2034,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         for sp in power_query.all()
                     }
 
-                    # Предварительно проверяем, есть ли у станции агрегаты с ненулевой мощностью
+                    # Предварительно проверяем, есть ли у электростанции агрегаты с ненулевой мощностью
                     # Собираем мощности всех агрегатов для предварительной проверки
                     preliminary_station_total = {year: 0 for year in all_years}
                     for machine in station.machines:
@@ -2056,7 +2056,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         for year in all_years:
                             preliminary_station_total[year] += (machine_power_data.get(year) or 0)
 
-                    # Если суммарная установленная мощность станции по всем годам равна нулю
+                    # Если суммарная установленная мощность электростанции по всем годам равна нулю
                     # (рассчитанная из агрегатов), станцию полностью не отображаем в Приложении А.
                     has_nonzero_power = any(
                         (preliminary_station_total.get(year) or 0) != 0
@@ -2065,7 +2065,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     if not has_nonzero_power:
                         continue
 
-                    # Добавляем строку с названием электростанции
+                    # Добавляем строку с названием  электростанции
                     data.append({
                         "Электростанция": station.name,
                         "Генерирующая компания": station.gen_companies,
@@ -2080,7 +2080,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         "Есть группы": "",
                     })
 
-                    # Добавляем строки с установленной мощностью по машинам электростанции
+                    # Добавляем строки с установленной мощностью по машинам  электростанции
                     # Собираем мощности всех агрегатов для расчета итоговой суммы
                     station_total_p_ust_from_machines = {year: 0 for year in all_years}
                     
@@ -2111,7 +2111,7 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                         if machine_total_power == 0:
                             continue
 
-                        # Накапливаем мощность станции из агрегатов
+                        # Накапливаем мощность электростанции из агрегатов
                         for year in all_years:
                             station_total_p_ust_from_machines[year] += (machine_power_data.get(year) or 0)
 
@@ -2177,11 +2177,11 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
 
                         data.append(row)
 
-                    # Добавляем строку "Установленная мощность, всего" по станции.
+                    # Добавляем строку "Установленная мощность, всего" по электростанции.
                     # Сумма считается из агрегатов, которые реально попали в таблицу.
                     # Если в каком-то году суммарная мощность равна нулю или отсутствует,
                     # ячейка должна быть пустой.
-                    # Итого по станции — без округления; отображение 1 знак после запятой — формат ячейки в Excel
+                    # Итого по электростанции — без округления; отображение 1 знак после запятой — формат ячейки в Excel
                     total_year_values = {}
                     for year in all_years:
                         p_ust = station_total_p_ust_from_machines.get(year, 0)

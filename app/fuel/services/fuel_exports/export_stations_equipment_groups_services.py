@@ -65,7 +65,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "numb1120",
         "name_ext",
         "equipment_group",
-        "ID станции",
+        "ID электростанции",
         "Станция",
         "Тип",
         "ст. №",
@@ -75,10 +75,10 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "Региональная энергосистема",
         "Генерирующая компания",
         "Признак группы оборудования (niv)",
-        "Признак станции, разбитой на группы (comp)",
-        "Код станции (main)",
-        "Признак действующей станции (d)",
-        "Признак расширяемой станции (r)",
+        "Признак электростанции, разбитой на группы (comp)",
+        "Код электростанции (main)",
+        "Признак действующей электростанции (d)",
+        "Признак расширяемой электростанции (r)",
         "Признак ФОРЭМ (forem)",
         "Ведомство (vedomstvo)",
         "Субъект РФ (obl)",
@@ -86,13 +86,13 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         "ОЭС (oes)",
         "Экономический район (er)",
         "Федеральный округ (fo)",
-        "Код станции (numb)",
+        "Код электростанции (numb)",
         "Типы турбин (tm)",
         "Мощность блока (вар. 1) (n1)",
         "Мощность блока (вар. 2) (n2)",
         "Давление пара (вар. 1) (p1)",
         "Давление пара (вар. 2) (p2)",
-        "Порядковый номер станции (ordnumb)",
+        "Порядковый номер электростанции (ordnumb)",
         "Адрес (addr)",
         "Примечание (note)",
         "Код города (codegor)",
@@ -158,7 +158,7 @@ def export_stations_equipment_groups_to_excel(filters, start_year, end_year):
         if r_val and str(r_val) == "1":
             row[IX_FIRST_GROUP_DETAIL + 7] = "да"
         elif r_val and str(r_val) == "2":
-            row[IX_FIRST_GROUP_DETAIL + 7] = "новая часть действующей станции"
+            row[IX_FIRST_GROUP_DETAIL + 7] = "новая часть действующей электростанции"
         else:
             row[IX_FIRST_GROUP_DETAIL + 7] = r_val or "—"
         row[IX_FIRST_GROUP_DETAIL + 8] = "да" if forem_val and str(forem_val) == "1" else (forem_val or "—")

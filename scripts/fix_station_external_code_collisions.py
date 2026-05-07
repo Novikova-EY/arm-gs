@@ -219,7 +219,7 @@ def _build_station_update_plan_sql(sync_all: bool = False) -> tuple[dict[int, st
             )
 
     if sync_all:
-        # При смене формулы ключа (например, добавлен ref_uuid) привести все станции к uuid5(semantic_key).
+        # При смене формулы ключа (например, добавлен ref_uuid) привести все электростанции к uuid5(semantic_key).
         targets_to_rows: dict[str, list] = defaultdict(list)
         for row in rows:
             mm = _m(row)

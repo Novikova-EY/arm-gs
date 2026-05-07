@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EquipmentGroupSetStation model (привязка типа группы оборудования к станции).
+EquipmentGroupSetStation model (привязка типа группы оборудования к электростанции).
 """
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.sql import func

@@ -1130,7 +1130,7 @@ def delete_station_equipment_group_type_station_links(
     EquipmentGroupSet. Карточки EquipmentGroup не удаляет.
 
     Идентификаторы должны принадлежать station_id и входить в активный набор
-    для текущей версии БД (та же логика отбора, что у списка связей станции).
+    для текущей версии БД (та же логика отбора, что у списка связей электростанции).
     При all_versions=True дополнительно удаляются все EquipmentGroupSetStation
     с теми же парами (station_id, equipment_group_type_id) в любых версиях.
     """

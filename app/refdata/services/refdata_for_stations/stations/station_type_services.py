@@ -177,7 +177,7 @@ def update_station_type_service(data, user):
             if changes:
                 log_to_db(
                     user, 
-                    f"Обновлен тип электростанции: {name}", 
+                    f"Обновлен тип  электростанции: {name}", 
                     f"Изменения: {'; '.join(changes)}", 
                     entity_type="station_type", 
                     entity_id=station_type_id)
@@ -224,7 +224,7 @@ def update_station_type_service(data, user):
 
 @no_autoflush
 def add_station_type_service(data, user):
-    """Создание новой записи: тип электростанции"""
+    """Создание новой записи: тип  электростанции"""
     if not isinstance(data, list):
         raise ValueError("Данные должны быть предоставлены в виде списка словарей.")
 
@@ -267,7 +267,7 @@ def add_station_type_service(data, user):
 
                 log_to_db(
                     user, 
-                    "Создан тип электростанции", 
+                    "Создан тип  электростанции", 
                     f"Наименование: {name}",
                     entity_type="station_type", 
                     entity_id=obj.id)
@@ -287,10 +287,10 @@ def add_station_type_service(data, user):
         db.session.rollback()
         log_to_db(
             user, 
-            "Ошибка сохранения нового типа электростанции", 
+            "Ошибка сохранения нового типа  электростанции", 
             str(e), 
             entity_type="station_type")
-        raise ValueError(f"Ошибка сохранения нового типа электростанции: {e}") from e
+        raise ValueError(f"Ошибка сохранения нового типа  электростанции: {e}") from e
 
 
 @no_autoflush
@@ -332,7 +332,7 @@ def delete_station_type_service(ids, user):
             deleted_names.append(name)
             log_to_db(
                 user, 
-                "Удален тип электростанции", 
+                "Удален тип  электростанции", 
                 f"{name}", 
                 entity_type="station_type", 
                 entity_id=station_type_id)
@@ -385,7 +385,7 @@ def export_station_type_service(
     log_to_db(
         user, "Начата выгрузка таблицы типов электростанций. Параметры экспорта",
         (
-            f"Фильтр по столбцу: Наименование типа электростанции = {station_type_filter},"
+            f"Фильтр по столбцу: Наименование типа  электростанции = {station_type_filter},"
             f"Сортировка по = {sort_by}, направление сортировки = {sort_dir}."
         )
         , entity_type="station_type"

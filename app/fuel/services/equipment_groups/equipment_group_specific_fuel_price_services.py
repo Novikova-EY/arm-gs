@@ -114,7 +114,7 @@ _SPECIFIC_FUEL_PRICE_BASE = [
     ("bering_c", "bering_c", True),
     ("kamch_c", "KAMCH_c", True),
     ("sah_c", "SAH_c", True),
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("sost", "sost", False),
     ("group", "group", False),
 ]

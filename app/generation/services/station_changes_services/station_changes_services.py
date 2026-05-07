@@ -465,7 +465,7 @@ def get_station_changes_list_data(
             per_page_int = 10
             show_all = False
 
-    # 1. Все станции без пагинации
+    # 1. Все электростанции без пагинации
     station_data = get_station_changes_list(
         page=1,
         per_page="all",
@@ -605,10 +605,10 @@ def get_station_changes_list_data(
         eu_events[eu_id][ev][year] += val
         eu_by_station_events[eu_id][st_id][ev][year] += val
     
-    # 5. Применяем rowspans к машинам каждой станции
+    # 5. Применяем rowspans к машинам каждой электростанции
     for station in all_stations:
         station.machines = [m for m in all_machines if m.id_station == station.id]
-        # Сортируем машины внутри станции по генкомпании
+        # Сортируем машины внутри электростанции по генкомпании
         station.machines.sort(key=lambda m: (
             m.gen_company.id if m.gen_company else 999999,
             m.id
@@ -927,8 +927,8 @@ def load_all_machines_with_changes(
 
 def apply_all_rowspans_for_station(machines: list[Machine]):
     """
-    Применяет rowspans для всех машин одной станции.
-    В списке машины одной станции, но могут быть с разными генкомпаниями.
+    Применяет rowspans для всех машин одной электростанции.
+    В списке машины одной электростанции, но могут быть с разными генкомпаниями.
     
     Устанавливает начальные значения для station_rowspan и fuel_rowspan.
     region_rowspan и gen_company_rowspan устанавливаются глобально.
@@ -965,11 +965,11 @@ def apply_all_rowspans_for_station(machines: list[Machine]):
     if not machines:
         return
     
-    # Все машины относятся к одной станции, но могут быть с разными генкомпаниями
+    # Все машины относятся к одной электростанции, но могут быть с разными генкомпаниями
     # Устанавливаем только station_rowspan и fuel_rowspan
     # region_rowspan и gen_company_rowspan будут установлены глобально
     
-    # 1. Станция - объединяем все машины одной станции (по станциям внутри генкомпании)
+    # 1. Станция - объединяем все машины одной электростанции (по станциям внутри генкомпании)
     apply_rowspan_grouping(
         machines,
         key_func=lambda m: (
@@ -1097,7 +1097,7 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
     eu_names = {}
 
     for station in stations:
-        # Пропускаем станции без регионального округа или энергосистем
+        # Пропускаем электростанции без регионального округа или энергосистем
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
@@ -1201,7 +1201,7 @@ def build_hierarchy_structure_for_changes(stations: list[Station], include_names
 def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], include_names: bool = False):
     """
     Строит иерархию для страницы station_changes_list в требуемом порядке:
-    Синхронная зона -> Тип энергосистемы -> ОЭС -> Субъект РФ -> Станции
+    Синхронная зона -> Тип энергосистемы -> ОЭС -> Субъект РФ -> электростанции
 
     Важно:
     - Синхронная зона берется из RegionalDistrict.id_synchronous_area (может быть None -> 0).
@@ -1304,7 +1304,7 @@ def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], inc
         return min(indices) if indices else 10**9
 
     for station in stations:
-        # Пропускаем станции без субъекта РФ или без энергосистем
+        # Пропускаем электростанции без субъекта РФ или без энергосистем
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
@@ -1390,7 +1390,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
     Тип энергосистемы (ЕЭС -> ТИТЭС -> прочее) ->
       - для ЕЭС/прочих: Синхронная зона (Калининград -> 1 -> 2 -> прочее)
       - для ТИТЭС: без второго уровня (одна группа), далее ОЭС -> РЭС -> субъект
-    -> ОЭС -> РЭС -> Субъект РФ -> Станции
+    -> ОЭС -> РЭС -> Субъект РФ -> электростанции
     """
     from collections import defaultdict, OrderedDict
     import re
@@ -1539,7 +1539,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
             sa_obj = sa_by_id.get(sa_id)
             sa_names[sa_id] = (getattr(sa_obj, "name", None) if sa_obj else None) or ("Не указано" if sa_id == 0 else f"id={sa_id}")
 
-        # Предпочитаем прямую РЭС станции, если она задана (избегаем размножения станции по всем РЭС субъекта)
+        # Предпочитаем прямую РЭС электростанции, если она задана (избегаем размножения электростанции по всем РЭС субъекта)
         res_candidates = []
         direct_res = getattr(station, "regional_energy_system_obj", None)
         if direct_res is not None:
@@ -1547,7 +1547,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
         else:
             res_candidates = list(station.regional_district.regional_energy_systems or [])
 
-        # Дедуп станции в рамках (est_id, second_level_id, ues_id, res_id)
+        # Дедуп электростанции в рамках (est_id, second_level_id, ues_id, res_id)
         seen_keys: set[tuple[int, int, int, int]] = set()
         for res in res_candidates:
             ues = getattr(res, "union_energy_system", None)
@@ -2591,7 +2591,7 @@ def compute_regional_district_rowspans(
 
     Считаем количество реально отображаемых строк:
       - по каждому событию, если есть агрегаты для субъекта
-      - по каждому событию и типу станции, если есть агрегаты
+      - по каждому событию и типу электростанции, если есть агрегаты
     """
     rd_event_map = data.get("aggregate_changes_by_regional_districts", {}).get("aggregated", {}).get("p_ust", {})
     rd_by_station_map = data.get("aggregate_changes_regional_districts_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
@@ -2635,7 +2635,7 @@ def compute_union_energy_system_rowspans(
 
     Считаем количество реально отображаемых строк:
       - по каждому событию, если есть агрегаты для ОЭС
-      - по каждому событию и типу станции, если есть агрегаты
+      - по каждому событию и типу электростанции, если есть агрегаты
     """
     ues_event_map = data.get("aggregate_changes_by_union_energy_systems", {}).get("aggregated", {}).get("p_ust", {})
     ues_by_station_map = data.get("aggregate_changes_union_energy_systems_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
@@ -2679,7 +2679,7 @@ def compute_energy_system_type_rowspans(
 
     Считаем количество реально отображаемых строк:
       - по каждому событию, если есть агрегаты для типа энергосистемы
-      - по каждому событию и типу станции, если есть агрегаты
+      - по каждому событию и типу электростанции, если есть агрегаты
     """
     es_type_event_map = data.get("aggregate_changes_by_energy_system_types", {}).get("aggregated", {}).get("p_ust", {})
     es_type_by_station_map = data.get("aggregate_changes_energy_system_types_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
@@ -2723,7 +2723,7 @@ def compute_total_energy_system_type_rowspans(
 
     Считаем количество реально отображаемых строк:
       - по каждому событию, если есть агрегаты для России
-      - по каждому событию и типу станции, если есть агрегаты
+      - по каждому событию и типу электростанции, если есть агрегаты
     """
     total_event_map = data.get("aggregate_changes_by_total_energy_system_types", {}).get("aggregated", {}).get("p_ust", {})
     total_by_station_map = data.get("aggregate_changes_total_energy_system_types_by_station_types", {}).get("aggregated", {}).get("p_ust", {})

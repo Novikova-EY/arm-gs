@@ -1,8 +1,8 @@
-{# Таблица агрегатов по группе оборудования — формат как на station_details. Строка станции (colspan) перед агрегатами с гиперссылкой. Только просмотр (can_edit=False). #}
+{# Таблица агрегатов по группе оборудования — формат как на station_details. Строка электростанции (colspan) перед агрегатами с гиперссылкой. Только просмотр (can_edit=False). #}
 {% set can_edit = false %}
 
 {% for station, machines in stations_with_machines %}
-{# Строка с названием станции (объединенная на все столбцы) перед агрегатами #}
+{# Строка с названием электростанции (объединенная на все столбцы) перед агрегатами #}
 {% set _colspan = 13 + (end_year - start_year + 1) + (end_year - start_year + 1) + 1 %}
 <tr class="station-header-row">
     <td colspan="{{ _colspan }}" class="bg-light border-bottom border-2 py-2">
@@ -231,7 +231,7 @@
     {% endif %}
 {% endfor %}
 
-<!-- Итоги по станции -->
+<!-- Итоги по электростанции -->
 <tr class="text-center total-power-row" style="vertical-align: middle; font-size: 1.2rem;">
     <td class="total-row-cell text-start" colspan="12" style="font-weight: bold;">
         Всего по агрегатам группы оборудования {{ equipment_group.name or equipment_group.name_ext or '' }}:

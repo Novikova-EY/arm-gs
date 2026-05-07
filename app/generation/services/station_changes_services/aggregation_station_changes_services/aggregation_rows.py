@@ -39,7 +39,7 @@ def get_res_id(machine):
     """
     Определяем РЭС для агрегата.
     Приоритет:
-    1) Прямая РЭС станции (Station.id_regional_energy_system / regional_energy_system_obj)
+    1) Прямая РЭС электростанции (Station.id_regional_energy_system / regional_energy_system_obj)
     2) Fallback: первая РЭС из связей субъекта РФ (старое поведение)
     """
     st = getattr(machine, "machine_station", None)
@@ -62,7 +62,7 @@ def get_res_id(machine):
 def get_ues_id(machine):
     """
     Определяем ОЭС для агрегата.
-    Приоритет: ОЭС прямой РЭС станции, иначе fallback по субъекту РФ (старое поведение).
+    Приоритет: ОЭС прямой РЭС электростанции, иначе fallback по субъекту РФ (старое поведение).
     """
     st = getattr(machine, "machine_station", None)
     if not st:
@@ -90,7 +90,7 @@ def get_ues_id(machine):
 def get_energy_system_type_id(machine):
     """
     Определяем тип энергосистемы.
-    Приоритет: тип энергосистемы прямой РЭС станции, иначе fallback по субъекту РФ.
+    Приоритет: тип энергосистемы прямой РЭС электростанции, иначе fallback по субъекту РФ.
     """
     st = getattr(machine, "machine_station", None)
     if not st:

@@ -1,57 +1,57 @@
 from __future__ import annotations
 
 import copy
-import math
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy.orm import selectinload
 
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import format_decimal_for_display, format_decimal_trim_for_display
 from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
-    EesDemandParameter,
+    EesEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.centralized_zone_energy_consumption_parameter_model import (
-    CentralizedZoneDemandParameter,
+    CentralizedZoneEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
-    EesRussiaDemandParameter,
+    EesRussiaEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_with_nt_energy_consumption_parameter_model import (
-    EesRussiaWithNtDemandParameter,
+    EesRussiaWithNtEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
-    EnergySystemTypeDemandParameter,
+    EnergySystemTypeEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
-    EnergyUnitDemandParameter,
+    EnergyUnitEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
-    RegionalEnergySystemDemandParameter,
+    RegionalEnergySystemEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.synchronous_area_energy_consumption_parameter_model import (
-    SynchronousAreaDemandParameter,
+    SynchronousAreaEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
-    UnionEnergySystemDemandParameter,
+    UnionEnergySystemEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
-    FederalDistrictDemandParameter,
+    FederalDistrictEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.regional_district_energy_consumption_parameter_model import (
-    RegionalDistrictDemandParameter,
+    RegionalDistrictEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
-    RussiaFederationDemandParameter,
+    RussiaFederationEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.russia_federation_with_nt_energy_consumption_parameter_model import (
-    RussiaFederationWithNtDemandParameter,
+    RussiaFederationWithNtEnergyConsumptionParameter,
 )
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
 from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
-    EnergyZoneDemandParameter,
+    EnergyZoneEnergyConsumptionParameter,
 )
 from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 from app.refdata.models.energy_systems.regional_energy_system_model import (
@@ -84,61 +84,54 @@ def _federal_district_excluded_from_summary(fd: FederalDistrict) -> bool:
 # Округление из URL влияет только на эти показатели; полная точность — в title/data-db-full.
 _NUMERIC_ROUNDING_TOOLTIP_KEYS = frozenset(
     {
-        "max_power",
-        "combined_on_oes",
-        "combined_on_ees",
-        "combined_on_es",
-        "combined_on_ez",
-        "combined_on_fo",
-        "combined_on_cz",
-        "calculated_max_power_mw",
-        "calculated_combined_on_ees_mw",
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_yoy_growth_pct",
+        "energy_consumption_sipr_abs_growth_mln",
+        "energy_consumption_sipr_yoy_growth_pct",
     }
 )
 
-BASE_PARAMETERS: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимальное потребление мощности, МВт"),
-    ("peak_datetime", "Дата и время, мск"),
-    ("avg_temp", "Среднесуточная ТНВ, °C"),
+ENERGY_CONSUMPTION_YOY_PARAMETER_KEY = "energy_consumption_yoy_growth_pct"
+ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY = "energy_consumption_sipr_abs_growth_mln"
+ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY = "energy_consumption_sipr_yoy_growth_pct"
+
+# Годовой темп прироста, % — всегда с точностью до 5 знаков после запятой (независимо от rounding_digits в URL).
+_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS = 2
+
+PARAMETERS_ENERGY_CONSUMPTION: tuple[tuple[str, str], ...] = (
+    ("energy_consumption_mln_kvt_ch", "Потребление электрической энергии, млн кВт·ч"),
+    ("energy_consumption_sipr_mln_kvt_ch", "Потребление электрической энергии (СиПР), млн кВт·ч"),
+    (ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY, "Абсолютный прирост потребления электрической энергии (СиПР), млн кВт·ч"),
+    (ENERGY_CONSUMPTION_YOY_PARAMETER_KEY, "Годовой темп прироста, %"),
+    (ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY, "Годовой темп прироста (СиПР), %"),
 )
-# Строка объединённой энергосистемы (ОЭС) в сводке «по энергосистемам».
-PARAMETERS_UES_OES: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("calculated_max_power_mw", "Расчетный максимум ОЭС, МВт"),
-    ("combined_on_ees", "Совмещенный на ЕЭС, МВт"),
-    ("calculated_combined_on_ees_mw", "Расчетный совмещенный на ЕЭС, МВт"),
-)
-PARAMETERS_WITH_OES_AND_EES: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_oes", "Совмещенный на ОЭС, МВт"),
-    ("combined_on_ees", "Совмещенный на ЕЭС, МВт"),
-)
-PARAMETERS_WITH_OES_EES_AND_ES: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_oes", "Совмещенный на ОЭС, МВт"),
-    ("combined_on_ees", "Совмещенный на ЕЭС, МВт"),
-    ("combined_on_es", "Совмещенный на ЭС, МВт"),
-)
-# Федеральный округ
-PARAMETERS_FEDERAL_DISTRICT: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_cz", "Совмещенный на централизованную зону, МВт"),
-)
-# Субъект РФ на сводке по ФО: без ОЭС / ЕЭС / ЭС / ценовой зоны (только базовые + «на ФО»)
-PARAMETERS_SUBJECT_FD_SUMMARY: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_fo", "Совмещенный на ФО, МВт"),
-)
-# Региональная энергосистема на сводке по энергозонам: «на энергозону» (ОЭС/ЕЭС — на странице по ОЭС)
-PARAMETERS_RES: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_ez", "Совмещенный на энергозону, МВт"),
-)
-# Энергозона (в модели только базовые показатели + совмещённый на ЕЭС)
-PARAMETERS_ENERGY_ZONE: tuple[tuple[str, str], ...] = (
-    *BASE_PARAMETERS,
-    ("combined_on_ees", "Совмещенный на ЕЭС, МВт"),
-)
+
+
+def _decimal_or_none(value: Any) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+
+def _yoy_growth_pct_value(curr: Any, prev: Any) -> Any:
+    """Текущий / прошлый × 100 − 100; иначе None."""
+    c = _decimal_or_none(curr)
+    p = _decimal_or_none(prev)
+    if c is None or p is None or p == 0:
+        return None
+    return (c / p) * Decimal(100) - Decimal(100)
+
+
+def _abs_diff_value(curr: Any, prev: Any) -> Any:
+    """Текущий год минус прошлый; иначе None."""
+    c = _decimal_or_none(curr)
+    p = _decimal_or_none(prev)
+    if c is None or p is None:
+        return None
+    return c - p
 
 
 @dataclass(slots=True)
@@ -186,8 +179,8 @@ def _oes_promote_subjects_only_under_ees_russia(
     """При фильтре по субъекту — под «ЕЭС России (без НТ)» только субъекты (без уровней ОЭС и РЭС)."""
     if not f_rd:
         return entities
-    ues_dn = UnionEnergySystemDemandParameter.__name__
-    rd_dn = RegionalDistrictDemandParameter.__name__
+    ues_dn = UnionEnergySystemEnergyConsumptionParameter.__name__
+    rd_dn = RegionalDistrictEnergyConsumptionParameter.__name__
     out: list[SummaryEntity] = []
     for e in entities:
         if e.entity_kind != "group-root" or e.label != "ЕЭС России (без НТ)":
@@ -219,7 +212,7 @@ def _oes_promote_energy_units_only_under_ees_russia(
     """При фильтре по энергоузлу — под «ЕЭС России (без НТ)» только энергоузлы (без ОЭС, РЭС, субъекта)."""
     if not f_eu:
         return entities
-    eu_dn = EnergyUnitDemandParameter.__name__
+    eu_dn = EnergyUnitEnergyConsumptionParameter.__name__
 
     def walk_collect(node: SummaryEntity, promoted: list[SummaryEntity]) -> None:
         if node.demand_model_name == eu_dn:
@@ -253,8 +246,8 @@ def _oes_promote_res_only_under_ees_russia(
     """При фильтре по РЭС — только строки РЭС (без ОЭС, субъектов и энергоузлов)."""
     if not f_res:
         return entities
-    ues_dn = UnionEnergySystemDemandParameter.__name__
-    res_dn = RegionalEnergySystemDemandParameter.__name__
+    ues_dn = UnionEnergySystemEnergyConsumptionParameter.__name__
+    res_dn = RegionalEnergySystemEnergyConsumptionParameter.__name__
     out: list[SummaryEntity] = []
     for e in entities:
         if e.entity_kind != "group-root" or e.label != "ЕЭС России (без НТ)":
@@ -287,34 +280,34 @@ def _build_oes_raw_entities(
     entities: list[SummaryEntity] = [
         _standalone_entity(
             "Россия (с НТ)",
-            RussiaFederationWithNtDemandParameter,
-            BASE_PARAMETERS,
+            RussiaFederationWithNtEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="oes_top_aggregate",
         ),
         _standalone_entity(
             "Россия (без НТ)",
-            RussiaFederationDemandParameter,
-            BASE_PARAMETERS,
+            RussiaFederationEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="oes_top_aggregate",
         ),
         _standalone_entity(
             "ЭЭС",
-            EesDemandParameter,
-            BASE_PARAMETERS,
+            EesEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="oes_top_aggregate",
         ),
         _standalone_entity(
             "ЕЭС России (с НТ)",
-            EesRussiaWithNtDemandParameter,
-            BASE_PARAMETERS,
+            EesRussiaWithNtEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="oes_top_aggregate",
         ),
     ]
 
     ees_without_nt = _standalone_entity(
         "ЕЭС России (без НТ)",
-        EesRussiaDemandParameter,
-        BASE_PARAMETERS,
+        EesRussiaEnergyConsumptionParameter,
+        PARAMETERS_ENERGY_CONSUMPTION,
         entity_kind="group-root",
     )
     ees_without_nt.children = (
@@ -352,12 +345,25 @@ def _strip_oes_ees_russia_nt_parent_aggregate(entities: list[SummaryEntity]) -> 
     return out
 
 
+def _effective_data_year_bounds(
+    start_year: int,
+    end_year: int,
+    data_start_year: int | None,
+    data_end_year: int | None,
+) -> tuple[int, int]:
+    if data_start_year is not None and data_end_year is not None:
+        return data_start_year, data_end_year
+    return start_year, end_year
+
+
 def build_oes_summary_context(
     rounding_digits: int,
     *,
     start_year: int,
     end_year: int,
     filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
     oes_territory_ordered: tuple[list[int], list[int], list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
 ) -> dict[str, Any]:
@@ -374,7 +380,10 @@ def build_oes_summary_context(
     Ровно один id: для одной РЭС, одного субъекта или одного энергорайона — прежнее поднятие
     строки под «ЕЭС России (без НТ)»; для одной ОЭС — полное поддерево (РЭС и ниже).
     """
-    years = list(range(start_year, end_year + 1))
+    dsy, dey = _effective_data_year_bounds(
+        start_year, end_year, data_start_year, data_end_year
+    )
+    years = list(range(dsy, dey + 1))
     ues_l, res_l, rd_l, eu_l = ([], [], [], [])
     if oes_territory_ordered is not None:
         ues_l, res_l, rd_l, eu_l = oes_territory_ordered
@@ -405,11 +414,13 @@ def build_oes_summary_context(
         )
         ctx = _build_summary_context(
             entities=[],
-            page_title="Максимумы потребления мощности по энергосистемам",
+            page_title="Потребление электрической энергии по энергосистемам",
             active_summary="oes",
             rounding_digits=rounding_digits,
             start_year=start_year,
             end_year=end_year,
+            data_start_year=data_start_year,
+            data_end_year=data_end_year,
             filter_year_list=filter_year_list,
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
@@ -419,11 +430,13 @@ def build_oes_summary_context(
     entities = _build_oes_raw_entities(always_show_subject_row_under_res=False)
     return _build_summary_context(
         entities=entities,
-        page_title="Максимумы потребления мощности по энергосистемам",
+        page_title="Потребление электрической энергии по энергосистемам",
         active_summary="oes",
         rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year,
+        data_start_year=data_start_year,
+        data_end_year=data_end_year,
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
@@ -435,6 +448,8 @@ def build_federal_district_summary_context(
     start_year: int,
     end_year: int,
     filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
     fo_filter_sets: tuple[frozenset[int], frozenset[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
 ) -> dict[str, Any]:
@@ -456,8 +471,8 @@ def build_federal_district_summary_context(
     entities: list[SummaryEntity] = [
         _standalone_entity(
             "Централизованная зона",
-            CentralizedZoneDemandParameter,
-            BASE_PARAMETERS,
+            CentralizedZoneEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="centralized_zone",
         ),
     ]
@@ -470,11 +485,13 @@ def build_federal_district_summary_context(
 
     return _build_summary_context(
         entities=entities,
-        page_title="Максимумы потребления мощности по ФО",
+        page_title="Потребление электрической энергии по ФО",
         active_summary="fo",
         rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year,
+        data_start_year=data_start_year,
+        data_end_year=data_end_year,
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
@@ -484,8 +501,8 @@ def _build_ez_raw_entities() -> list[SummaryEntity]:
     entities: list[SummaryEntity] = [
         _standalone_entity(
             "Централизованная зона",
-            CentralizedZoneDemandParameter,
-            BASE_PARAMETERS,
+            CentralizedZoneEnergyConsumptionParameter,
+            PARAMETERS_ENERGY_CONSUMPTION,
             entity_kind="centralized_zone",
         ),
     ]
@@ -499,6 +516,8 @@ def build_energy_zones_summary_context(
     start_year: int,
     end_year: int,
     filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
     ez_territory_ordered: tuple[list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
 ) -> dict[str, Any]:
@@ -516,7 +535,10 @@ def build_energy_zones_summary_context(
 
     Только ``ds_res`` (без ``ds_ez``) — плоский список по выбранным РЭС без строки энергозоны.
     """
-    years = list(range(start_year, end_year + 1))
+    dsy, dey = _effective_data_year_bounds(
+        start_year, end_year, data_start_year, data_end_year
+    )
+    years = list(range(dsy, dey + 1))
     ez_l: list[int] = []
     res_l: list[int] = []
     if ez_territory_ordered is not None:
@@ -534,11 +556,13 @@ def build_energy_zones_summary_context(
         )
         ctx = _build_summary_context(
             entities=[],
-            page_title="Максимумы потребления мощности по энергозонам",
+            page_title="Потребление электрической энергии по энергозонам",
             active_summary="ez",
             rounding_digits=rounding_digits,
             start_year=start_year,
             end_year=end_year,
+            data_start_year=data_start_year,
+            data_end_year=data_end_year,
             filter_year_list=filter_year_list,
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
@@ -548,75 +572,16 @@ def build_energy_zones_summary_context(
     entities = _build_ez_raw_entities()
     return _build_summary_context(
         entities=entities,
-        page_title="Максимумы потребления мощности по энергозонам",
+        page_title="Потребление электрической энергии по энергозонам",
         active_summary="ez",
         rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year,
+        data_start_year=data_start_year,
+        data_end_year=data_end_year,
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
-
-
-def build_oes_summary_context_coeff(
-    rounding_digits: int,
-    *,
-    start_year: int,
-    end_year: int,
-    filter_year_list: list[int],
-    oes_territory_ordered: tuple[list[int], list[int], list[int], list[int]] | None = None,
-) -> dict[str, Any]:
-    """Те же данные и логика, что у «Максимумы по энергосистемам»; отдельный экран и заголовок."""
-    ctx = build_oes_summary_context(
-        rounding_digits,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=filter_year_list,
-        oes_territory_ordered=oes_territory_ordered,
-        avg_temp_uses_global_rounding=True,
-    )
-    ctx["page_title"] = "Коэффициенты и совмещенные максимумы по энергосистемам"
-    return ctx
-
-
-def build_federal_district_summary_context_coeff(
-    rounding_digits: int,
-    *,
-    start_year: int,
-    end_year: int,
-    filter_year_list: list[int],
-    fo_filter_sets: tuple[frozenset[int], frozenset[int]] | None = None,
-) -> dict[str, Any]:
-    ctx = build_federal_district_summary_context(
-        rounding_digits,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=filter_year_list,
-        fo_filter_sets=fo_filter_sets,
-        avg_temp_uses_global_rounding=True,
-    )
-    ctx["page_title"] = "Коэффициенты и совмещенные максимумы по ФО"
-    return ctx
-
-
-def build_energy_zones_summary_context_coeff(
-    rounding_digits: int,
-    *,
-    start_year: int,
-    end_year: int,
-    filter_year_list: list[int],
-    ez_territory_ordered: tuple[list[int], list[int]] | None = None,
-) -> dict[str, Any]:
-    ctx = build_energy_zones_summary_context(
-        rounding_digits,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=filter_year_list,
-        ez_territory_ordered=ez_territory_ordered,
-        avg_temp_uses_global_rounding=True,
-    )
-    ctx["page_title"] = "Коэффициенты и совмещенные максимумы по энергозонам"
-    return ctx
 
 
 def _build_summary_context(
@@ -628,9 +593,14 @@ def _build_summary_context(
     start_year: int,
     end_year: int,
     filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
     avg_temp_uses_global_rounding: bool = False,
 ) -> dict[str, Any]:
-    years = list(range(start_year, end_year + 1))
+    dsy, dey = _effective_data_year_bounds(
+        start_year, end_year, data_start_year, data_end_year
+    )
+    years = list(range(dsy, dey + 1))
     _yf = get_year_feature_dict() or {}
     year_is_plan: dict[int, bool] = {}
     for y in years:
@@ -656,34 +626,65 @@ def _build_summary_context(
 
 OES_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
     {
-        "max_power",
-        "peak_datetime",
-        "avg_temp",
-        "combined_on_oes",
-        "calculated_max_power_mw",
-        "combined_on_ees",
-        "calculated_combined_on_ees_mw",
-        "combined_on_es",
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
+        ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
     }
 )
 FO_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
     {
-        "max_power",
-        "peak_datetime",
-        "avg_temp",
-        "combined_on_cz",
-        "combined_on_fo",
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
+        ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
     }
 )
 EZ_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
     {
-        "max_power",
-        "peak_datetime",
-        "avg_temp",
-        "combined_on_ez",
-        "combined_on_ees",
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
+        ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
     }
 )
+
+
+def slice_energy_consumption_summary_context_for_export_years(
+    context: dict[str, Any],
+    export_years: list[int],
+) -> dict[str, Any]:
+    """Ограничить годовые столбцы списком лет с экрана (видимые колонки после переключателей периодов)."""
+    full_years = list(context.get("years") or [])
+    if not export_years or not full_years:
+        return context
+    if export_years == full_years:
+        return context
+    idx_map = [full_years.index(y) for y in export_years if y in full_years]
+    if len(idx_map) != len(export_years):
+        return context
+    new_context = dict(context)
+    yf_all = context.get("year_features") or {}
+    yip_all = context.get("year_is_plan") or {}
+    new_context["years"] = list(export_years)
+    new_context["year_features"] = {y: yf_all.get(y) for y in export_years}
+    new_context["year_is_plan"] = {y: yip_all.get(y, False) for y in export_years}
+    new_rows: list[dict[str, Any]] = []
+    list_keys = ("year_values", "year_row_ids", "year_numeric_tooltips")
+    for row in context.get("summary_rows") or []:
+        rc = dict(row)
+        for lk in list_keys:
+            old = row.get(lk)
+            if isinstance(old, list):
+                rc[lk] = [old[i] for i in idx_map if i < len(old)]
+            else:
+                rc[lk] = old
+        new_rows.append(rc)
+    new_context["summary_rows"] = new_rows
+    return new_context
 
 
 def filter_summary_rows_for_parameter_keys(
@@ -716,424 +717,6 @@ def filter_summary_rows_for_parameter_keys(
     return out
 
 
-def _parse_summary_cell_float(value: Any) -> float | None:
-    """Разбор числа из ячейки сводки (как на экране: пробелы, запятая)."""
-    if value in (None, ""):
-        return None
-    s = str(value).strip()
-    if s in ("—", "-"):
-        return None
-    s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
-    s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
-    try:
-        x = float(s)
-    except ValueError:
-        return None
-    return x if math.isfinite(x) else None
-
-
-def _union_energy_system_id_from_flat_row(row: dict[str, Any]) -> int | None:
-    """id ОЭС в строке сводки: id_union_energy_system или parent_id при parent_fk = id_union_energy_system."""
-    raw = row.get("id_union_energy_system")
-    if raw is not None:
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            pass
-    if row.get("parent_fk_column") == "id_union_energy_system" and row.get("parent_id") is not None:
-        try:
-            return int(row["parent_id"])
-        except (TypeError, ValueError):
-            pass
-    return None
-
-
-def _coeff_union_res_sum_year(y: int, coeff_base_year: int) -> bool:
-    """Год входит в отчётный интервал (N−9…N) или среднесрочный (N+1…N+6) сводки коэффициентов."""
-    return (
-        (coeff_base_year - 9) <= y <= coeff_base_year
-        or (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-    )
-
-
-def slice_coeff_summary_for_lazy_long_segment(
-    context: dict[str, Any],
-    coeff_n: int,
-    *,
-    include_long: bool,
-) -> None:
-    """
-    Без coeff_include_long в URL на «Коэффициенты…» не отдаём долгосрочные годы (N+7…N+18) в разметке.
-    Полный диапазон остаётся в экспорте и при coeff_include_long=1.
-    """
-    context["coeff_include_long"] = include_long
-    if include_long:
-        return
-    years_full: list[int] = list(context.get("years") or [])
-    if not years_full:
-        return
-    cutoff = int(coeff_n) + 6
-    keep_idx = [i for i, y in enumerate(years_full) if int(y) <= cutoff]
-    if len(keep_idx) == len(years_full):
-        return
-    new_years = [years_full[i] for i in keep_idx]
-    context["years"] = new_years
-    yip = context.get("year_is_plan") or {}
-    context["year_is_plan"] = {y: bool(yip.get(y, False)) for y in new_years}
-    context["start_year"] = min(new_years)
-    context["end_year"] = max(new_years)
-    slice_keys = (
-        "year_values",
-        "year_row_ids",
-        "year_numeric_tooltips",
-        "year_k_values",
-        "year_k_full_tooltips",
-    )
-    for row in context.get("summary_rows") or []:
-        if not isinstance(row, dict):
-            continue
-        for key in slice_keys:
-            lst = row.get(key)
-            if not isinstance(lst, list) or not keep_idx:
-                continue
-            if len(lst) == len(years_full):
-                row[key] = [lst[i] for i in keep_idx]
-            elif all(i < len(lst) for i in keep_idx):
-                row[key] = [lst[i] for i in keep_idx]
-
-
-def _aggregate_res_combined_on_oes_mw_sum_by_union_for_medium_years(
-    summary_rows: list[dict[str, Any]],
-    years: list[int],
-    coeff_base_year: int,
-) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный на ОЭС, МВт» по строкам РЭС внутри каждого ОЭС (отчётный N−9…N и среднесрочный N+1…N+6).
-
-    На УЭС для «Расчетный максимум ОЭС, МВт» эти годы задаются этой суммой.
-    """
-    n_y = len(years)
-    out: dict[int, list[float | None]] = {}
-
-    def _tot(uid: int) -> list[float | None]:
-        if uid not in out:
-            out[uid] = [None] * n_y
-        return out[uid]
-
-    dm_res = RegionalEnergySystemDemandParameter.__name__
-    for r in summary_rows:
-        if r.get("demand_model_name") != dm_res:
-            continue
-        if r.get("parameter_key") != "combined_on_oes":
-            continue
-        uid = _union_energy_system_id_from_flat_row(r)
-        if uid is None:
-            continue
-        row_tot = _tot(uid)
-        yvals = r.get("year_values") or []
-        for j in range(n_y):
-            y = years[j]
-            if not _coeff_union_res_sum_year(y, coeff_base_year):
-                continue
-            add = _parse_summary_cell_float(yvals[j] if j < len(yvals) else None)
-            if add is None:
-                continue
-            if row_tot[j] is None:
-                row_tot[j] = float(add)
-            else:
-                row_tot[j] = float(row_tot[j]) + float(add)
-    return out
-
-
-def _aggregate_res_combined_on_ees_mw_sum_by_union_for_medium_years(
-    summary_rows: list[dict[str, Any]],
-    years: list[int],
-    coeff_base_year: int,
-) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный на ЕЭС, МВт» по строкам РЭС внутри каждого ОЭС (отчётный N−9…N и среднесрочный N+1…N+6).
-
-    На УЭС для «Расчетный совмещенный на ЕЭС, МВт» эти годы задаются этой суммой.
-    """
-    n_y = len(years)
-    out: dict[int, list[float | None]] = {}
-
-    def _tot(uid: int) -> list[float | None]:
-        if uid not in out:
-            out[uid] = [None] * n_y
-        return out[uid]
-
-    dm_res = RegionalEnergySystemDemandParameter.__name__
-    for r in summary_rows:
-        if r.get("demand_model_name") != dm_res:
-            continue
-        if r.get("parameter_key") != "combined_on_ees":
-            continue
-        uid = _union_energy_system_id_from_flat_row(r)
-        if uid is None:
-            continue
-        row_tot = _tot(uid)
-        yvals = r.get("year_values") or []
-        for j in range(n_y):
-            y = years[j]
-            if not _coeff_union_res_sum_year(y, coeff_base_year):
-                continue
-            add = _parse_summary_cell_float(yvals[j] if j < len(yvals) else None)
-            if add is None:
-                continue
-            if row_tot[j] is None:
-                row_tot[j] = float(add)
-            else:
-                row_tot[j] = float(row_tot[j]) + float(add)
-    return out
-
-
-def enrich_summary_rows_coeff_k_columns(
-    summary_rows: list[dict[str, Any]],
-    years: list[int],
-    rounding_digits: int,
-    year_is_plan: dict[int, bool],
-    *,
-    coeff_base_year: int | None = None,
-) -> None:
-    """k = значение показателя / макс. мощность того же года (строка max_power в блоке — знаменатель; для самой строки max_power k не считается)."""
-    n_y = len(years)
-    res_ees_sum_by_union: dict[int, list[float | None]] = {}
-    res_oes_sum_by_union: dict[int, list[float | None]] = {}
-    if coeff_base_year is not None:
-        res_ees_sum_by_union = _aggregate_res_combined_on_ees_mw_sum_by_union_for_medium_years(
-            summary_rows, years, coeff_base_year
-        )
-        res_oes_sum_by_union = _aggregate_res_combined_on_oes_mw_sum_by_union_for_medium_years(
-            summary_rows, years, coeff_base_year
-        )
-    i = 0
-    n = len(summary_rows)
-    while i < n:
-        row = summary_rows[i]
-        if not row.get("show_entity_cell"):
-            i += 1
-            continue
-        block_size = int(row.get("entity_rowspan") or 1)
-        if block_size < 1:
-            block_size = 1
-        block = summary_rows[i : i + block_size]
-        max_row = next((r for r in block if r.get("parameter_key") == "max_power"), None)
-        denoms: list[float | None] = [None] * n_y
-        if max_row is not None:
-            yv = max_row.get("year_values") or []
-            denoms = [
-                _parse_summary_cell_float(yv[j] if j < len(yv) else None) for j in range(n_y)
-            ]
-
-        block_uid = _union_energy_system_id_from_flat_row(block[0])
-        for r in block:
-            pk = r.get("parameter_key") or ""
-            dm_n_pre = r.get("demand_model_name")
-            if (
-                coeff_base_year is not None
-                and dm_n_pre == UnionEnergySystemDemandParameter.__name__
-                and pk == "calculated_max_power_mw"
-                and block_uid is not None
-            ):
-                mids = res_oes_sum_by_union.get(block_uid)
-                if mids is None:
-                    mids = [None] * n_y
-                yv_p = list(r.get("year_values") or [])
-                ynt_p = list(r.get("year_numeric_tooltips") or [])
-                while len(yv_p) < n_y:
-                    yv_p.append("—")
-                while len(ynt_p) < n_y:
-                    ynt_p.append("")
-                for j in range(n_y):
-                    yt = years[j]
-                    if not _coeff_union_res_sum_year(yt, coeff_base_year):
-                        continue
-                    s = mids[j]
-                    if s is not None:
-                        yv_p[j] = _format_numeric(s, rounding_digits)
-                        ynt_p[j] = _format_full_numeric_tooltip(s)
-                    else:
-                        yv_p[j] = "—"
-                        ynt_p[j] = ""
-                r["year_values"] = yv_p
-                r["year_numeric_tooltips"] = ynt_p
-            if (
-                coeff_base_year is not None
-                and dm_n_pre == UnionEnergySystemDemandParameter.__name__
-                and pk == "calculated_combined_on_ees_mw"
-                and block_uid is not None
-            ):
-                mids = res_ees_sum_by_union.get(block_uid)
-                if mids is None:
-                    mids = [None] * n_y
-                yv_p = list(r.get("year_values") or [])
-                ynt_p = list(r.get("year_numeric_tooltips") or [])
-                while len(yv_p) < n_y:
-                    yv_p.append("—")
-                while len(ynt_p) < n_y:
-                    ynt_p.append("")
-                for j in range(n_y):
-                    yt = years[j]
-                    if not _coeff_union_res_sum_year(yt, coeff_base_year):
-                        continue
-                    s = mids[j]
-                    if s is not None:
-                        yv_p[j] = _format_numeric(s, rounding_digits)
-                        ynt_p[j] = _format_full_numeric_tooltip(s)
-                    else:
-                        yv_p[j] = "—"
-                        ynt_p[j] = ""
-                r["year_values"] = yv_p
-                r["year_numeric_tooltips"] = ynt_p
-            yvals = r.get("year_values") or []
-            k_list: list[str] = []
-            k_tt: list[str] = []
-            for j in range(n_y):
-                y = years[j]
-                dm_n = r.get("demand_model_name")
-                res_oes_or_ees_medium = (
-                    coeff_base_year is not None
-                    and (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-                    and pk in ("combined_on_oes", "combined_on_ees")
-                    and dm_n == "RegionalEnergySystemDemandParameter"
-                )
-                ues_plan_k_exempt = False
-                if (
-                    coeff_base_year is not None
-                    and dm_n == UnionEnergySystemDemandParameter.__name__
-                ):
-                    if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw"):
-                        ues_plan_k_exempt = _coeff_union_res_sum_year(y, coeff_base_year)
-                    elif pk == "combined_on_ees":
-                        ues_plan_k_exempt = (
-                            (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-                        )
-                yrsk = r.get("year_coeff_k_stored") or []
-                sk_val = yrsk[j] if j < len(yrsk) else None
-                sk_parsed = (
-                    _parse_summary_cell_float(sk_val)
-                    if sk_val not in (None, "", "—")
-                    else None
-                )
-                if sk_parsed is not None and pk not in (
-                    "peak_datetime",
-                    "avg_temp",
-                    "max_power",
-                ):
-                    if dm_n == "RegionalEnergySystemDemandParameter" and pk in (
-                        "combined_on_oes",
-                        "combined_on_ees",
-                    ):
-                        k_list.append(_format_numeric(sk_parsed, rounding_digits))
-                        k_tt.append(_format_full_numeric_tooltip(sk_parsed))
-                        continue
-                    if dm_n == "UnionEnergySystemDemandParameter" and pk in (
-                        "calculated_max_power_mw",
-                        "combined_on_ees",
-                        "calculated_combined_on_ees_mw",
-                    ):
-                        if (
-                            coeff_base_year is not None
-                            and pk
-                            in (
-                                "calculated_max_power_mw",
-                                "calculated_combined_on_ees_mw",
-                            )
-                            and _coeff_union_res_sum_year(y, coeff_base_year)
-                        ):
-                            # МВт для этих лет только что заданы суммой по РЭС (см. выше).
-                            # Старый coeff_k из БД мог относиться к другой семантике — пересчитываем k из year_values/max_power.
-                            pass
-                        else:
-                            k_list.append(_format_numeric(sk_parsed, rounding_digits))
-                            k_tt.append(_format_full_numeric_tooltip(sk_parsed))
-                            continue
-                if (
-                    year_is_plan.get(y)
-                    and pk != "max_power"
-                    and not res_oes_or_ees_medium
-                    and not ues_plan_k_exempt
-                ):
-                    k_list.append("—")
-                    k_tt.append("")
-                    continue
-                if pk in ("peak_datetime", "avg_temp", "max_power"):
-                    k_list.append("—")
-                    k_tt.append("")
-                    continue
-                num = _parse_summary_cell_float(yvals[j] if j < len(yvals) else None)
-                d = denoms[j] if j < len(denoms) else None
-                if num is not None and d is not None and d > 0:
-                    ratio = num / d
-                    k_list.append(_format_numeric(ratio, rounding_digits))
-                    k_tt.append(_format_full_numeric_tooltip(ratio))
-                else:
-                    k_list.append("—")
-                    k_tt.append("")
-            r["year_k_values"] = k_list
-            r["year_k_full_tooltips"] = k_tt
-            if (
-                coeff_base_year is not None
-                and r.get("demand_model_name") == UnionEnergySystemDemandParameter.__name__
-                and (r.get("parameter_key") or "")
-                in ("calculated_max_power_mw", "calculated_combined_on_ees_mw")
-            ):
-                yc = list(r.get("year_coeff_k_stored") or [])
-                if len(yc) < n_y:
-                    yc.extend(["—"] * (n_y - len(yc)))
-                for j in range(n_y):
-                    yt = years[j]
-                    if _coeff_union_res_sum_year(yt, coeff_base_year):
-                        yc[j] = k_list[j] if j < len(k_list) else "—"
-                r["year_coeff_k_stored"] = yc
-            dm_block = r.get("demand_model_name")
-            pk_medium_res = ("combined_on_oes", "combined_on_ees")
-            pk_medium_ues_sync = (
-                "calculated_max_power_mw",
-                "combined_on_ees",
-            )
-            if coeff_base_year is not None and dm_block == "RegionalEnergySystemDemandParameter" and pk in pk_medium_res:
-                yv_mw = list(r.get("year_values") or [])
-                if len(yv_mw) < n_y:
-                    yv_mw.extend(["—"] * (n_y - len(yv_mw)))
-                ynt = list(r.get("year_numeric_tooltips") or [])
-                if len(ynt) < n_y:
-                    ynt.extend([""] * (n_y - len(ynt)))
-                for j in range(n_y):
-                    y = years[j]
-                    if not ((coeff_base_year + 1) <= y <= (coeff_base_year + 6)):
-                        continue
-                    k_parsed = _parse_summary_cell_float(k_list[j] if j < len(k_list) else None)
-                    d = denoms[j] if j < len(denoms) else None
-                    if k_parsed is None or d is None or not (d > 0):
-                        continue
-                    prod = k_parsed * d
-                    yv_mw[j] = _format_numeric(prod, rounding_digits)
-                    ynt[j] = _format_full_numeric_tooltip(prod)
-                r["year_values"] = yv_mw
-                r["year_numeric_tooltips"] = ynt
-            elif coeff_base_year is not None and dm_block == "UnionEnergySystemDemandParameter" and pk in pk_medium_ues_sync:
-                yv_mw = list(r.get("year_values") or [])
-                if len(yv_mw) < n_y:
-                    yv_mw.extend(["—"] * (n_y - len(yv_mw)))
-                ynt = list(r.get("year_numeric_tooltips") or [])
-                if len(ynt) < n_y:
-                    ynt.extend([""] * (n_y - len(ynt)))
-                for j in range(n_y):
-                    y = years[j]
-                    if not _coeff_union_res_sum_year(y, coeff_base_year):
-                        continue
-                    k_parsed = _parse_summary_cell_float(k_list[j] if j < len(k_list) else None)
-                    d = denoms[j] if j < len(denoms) else None
-                    if k_parsed is None or d is None or not (d > 0):
-                        continue
-                    prod = k_parsed * d
-                    yv_mw[j] = _format_numeric(prod, rounding_digits)
-                    ynt[j] = _format_full_numeric_tooltip(prod)
-                r["year_values"] = yv_mw
-                r["year_numeric_tooltips"] = ynt
-        i += block_size
-
-
 def _flatten_entities(
     entities: list[SummaryEntity],
     years: list[int],
@@ -1155,79 +738,15 @@ def _flatten_entities(
 
 
 def _slice_row_ids(demand_rows: list[Any]) -> dict[Any, int]:
-    """Ключ среза «hist» или номер года → id строки параметров."""
+    """Номер года → id строки параметров."""
     out: dict[Any, int] = {}
     for row in demand_rows:
-        if getattr(row, "is_historical_maximum", False):
-            sk: Any = "hist"
-        else:
-            sk = getattr(row, "year_number", None)
-        if sk is not None:
-            rid = getattr(row, "id", None)
-            if rid is not None:
-                out[sk] = int(rid)
-    return out
-
-
-def _indexed_demand_rows_by_slice(demand_rows: list[Any]) -> dict[Any, Any]:
-    """hist → объект строки; календарный год → объект строки."""
-    out: dict[Any, Any] = {}
-    for row in demand_rows:
-        if getattr(row, "is_historical_maximum", False):
-            out["hist"] = row
-        else:
-            yn = getattr(row, "year_number", None)
-            if yn is not None:
-                out[int(yn)] = row
-    return out
-
-
-_COEFF_PARAM_TO_K_ATTR = {
-    "combined_on_oes": "coeff_k_combined_on_oes",
-    "combined_on_ees": "coeff_k_combined_on_ees",
-    "calculated_max_power_mw": "coeff_k_calculated_max_power_mw",
-    "calculated_combined_on_ees_mw": "coeff_k_calculated_combined_on_ees_mw",
-}
-
-
-def _year_coeff_k_stored_for_flat(
-    *,
-    parameter_key: str,
-    demand_model_name: str | None,
-    years: list[int],
-    by_slice: dict[Any, Any],
-    rounding_digits: int,
-) -> list[str]:
-    """Подписи сохранённого k для строки параметра сводки (совпадают с округлением столбца k)."""
-    if demand_model_name not in (
-        "RegionalEnergySystemDemandParameter",
-        "UnionEnergySystemDemandParameter",
-    ):
-        return []
-    attr = _COEFF_PARAM_TO_K_ATTR.get(parameter_key)
-    if attr is None:
-        return []
-    if demand_model_name == "RegionalEnergySystemDemandParameter":
-        if parameter_key not in ("combined_on_oes", "combined_on_ees"):
-            return []
-    elif demand_model_name == "UnionEnergySystemDemandParameter":
-        if parameter_key not in (
-            "calculated_max_power_mw",
-            "combined_on_ees",
-            "calculated_combined_on_ees_mw",
-        ):
-            return []
-    out: list[str] = []
-    for year in years:
-        row = by_slice.get(year)
-        if row is None:
-            out.append("—")
+        y = getattr(row, "year_number", None)
+        if y is None:
             continue
-        v = getattr(row, attr, None)
-        if v is None:
-            out.append("—")
-        else:
-            out.append(_format_numeric(v, rounding_digits))
+        rid = getattr(row, "id", None)
+        if rid is not None:
+            out[int(y)] = int(rid)
     return out
 
 
@@ -1247,7 +766,6 @@ def _flatten_entity(
     )
     slice_ids = _slice_row_ids(entity.demand_rows)
     dm_name = entity.demand_model_name
-    demand_by_slice = _indexed_demand_rows_by_slice(entity.demand_rows)
     ues_id_flat = getattr(entity, "id_union_energy_system", None)
     if (
         ues_id_flat is None
@@ -1256,12 +774,15 @@ def _flatten_entity(
     ):
         ues_id_flat = entity.parent_id
 
-    hist_note_row = next(
-        (r for r in entity.demand_rows if getattr(r, "is_historical_maximum", False)),
-        None,
-    )
-    entity_note_rid = getattr(hist_note_row, "id", None) if hist_note_row is not None else None
-    raw_note = getattr(hist_note_row, "note", None) if hist_note_row is not None else None
+    anchor_y = years[0] if years else None
+    note_row = None
+    if anchor_y is not None:
+        for r in entity.demand_rows:
+            if getattr(r, "year_number", None) == anchor_y:
+                note_row = r
+                break
+    entity_note_rid = getattr(note_row, "id", None) if note_row is not None else None
+    raw_note = getattr(note_row, "note", None) if note_row is not None else None
     entity_note_text = "" if raw_note in (None, "") else str(raw_note)
 
     for index, (parameter_key, parameter_label) in enumerate(entity.parameters):
@@ -1280,20 +801,13 @@ def _flatten_entity(
                 "demand_model_name": dm_name,
                 "parent_fk_column": entity.parent_fk_column,
                 "parent_id": entity.parent_id,
-                "hist_row_id": slice_ids.get("hist"),
+                "hist_row_id": None,
                 "year_row_ids": year_row_ids,
-                "hist_value": values.get("hist", "—"),
+                "hist_value": "—",
                 "year_values": [values.get(year, "—") for year in years],
-                "hist_numeric_tooltip": tt.get("hist", ""),
+                "hist_numeric_tooltip": "",
                 "year_numeric_tooltips": [tt.get(year, "") for year in years],
                 "id_union_energy_system": ues_id_flat,
-                "year_coeff_k_stored": _year_coeff_k_stored_for_flat(
-                    parameter_key=parameter_key,
-                    demand_model_name=dm_name,
-                    years=years,
-                    by_slice=demand_by_slice,
-                    rounding_digits=rounding_digits,
-                ),
                 "entity_note_text": entity_note_text,
                 "entity_note_row_id": entity_note_rid,
                 "show_entity_note_cell": index == 0,
@@ -1313,7 +827,7 @@ def _flatten_entity(
 
 
 def _format_full_numeric_tooltip(value: Any) -> str:
-    """Полное отображение числа для title (как format_decimal_trim(0) на странице demand_edit)."""
+    """Полное отображение числа для title (как format_decimal_trim(0) на странице energy_consumption_edit)."""
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
@@ -1327,121 +841,86 @@ def _build_parameter_maps(
     *,
     avg_temp_uses_global_rounding: bool = False,
 ) -> tuple[dict[str, dict[Any, str]], dict[str, dict[Any, str]]]:
+    del avg_temp_uses_global_rounding
     result: dict[str, dict[Any, str]] = {param_key: {} for param_key, _ in parameters}
     param_keys = {pk for pk, _ in parameters}
     tooltip_keys = param_keys & _NUMERIC_ROUNDING_TOOLTIP_KEYS
     tooltips: dict[str, dict[Any, str]] = {pk: {} for pk in tooltip_keys}
-    if avg_temp_uses_global_rounding and "avg_temp" in param_keys:
-        tooltips["avg_temp"] = {}
 
+    raw_ec: dict[int, Any] = {}
+    raw_sipr: dict[int, Any] = {}
     for row in demand_rows:
-        slice_key = "hist" if getattr(row, "is_historical_maximum", False) else getattr(row, "year_number", None)
-        if slice_key is None:
+        y = getattr(row, "year_number", None)
+        if y is None:
             continue
+        sk = int(y)
+        raw_ec[sk] = getattr(row, "energy_consumption_mln_kvt_ch", None)
+        raw_sipr[sk] = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
 
-        if "max_power" in result:
-            result["max_power"][slice_key] = _format_numeric(
-                getattr(row, "max_power_consumption_mw", None),
+        if "energy_consumption_mln_kvt_ch" in result:
+            result["energy_consumption_mln_kvt_ch"][sk] = _format_numeric(
+                raw_ec[sk],
                 rounding_digits,
             )
-        if "max_power" in tooltips:
-            tooltips["max_power"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "max_power_consumption_mw", None)
+        if "energy_consumption_mln_kvt_ch" in tooltips:
+            tooltips["energy_consumption_mln_kvt_ch"][sk] = _format_full_numeric_tooltip(raw_ec[sk])
+
+        if "energy_consumption_sipr_mln_kvt_ch" in result:
+            result["energy_consumption_sipr_mln_kvt_ch"][sk] = _format_numeric(
+                raw_sipr[sk],
+                rounding_digits,
             )
-        if "peak_datetime" in result:
-            result["peak_datetime"][slice_key] = _dash(
-                dps.format_peak_datetime_for_slice(
-                    getattr(row, "peak_datetime_msk", None),
-                    slice_key == "hist",
+
+    if "energy_consumption_sipr_mln_kvt_ch" in result:
+        sipr_hover: dict[Any, str] = {}
+        for sk in set(raw_ec.keys()) | set(raw_sipr.keys()):
+            sipr_hover[sk] = _format_full_numeric_tooltip(raw_ec.get(sk))
+        tooltips["energy_consumption_sipr_mln_kvt_ch"] = sipr_hover
+
+    if ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY in result:
+        for sk, curr in raw_sipr.items():
+            diff_v = _abs_diff_value(curr, raw_sipr.get(sk - 1))
+            result[ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][sk] = _format_numeric(
+                diff_v, rounding_digits
+            )
+            if ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY in tooltips:
+                tooltips[ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][sk] = _format_full_numeric_tooltip(
+                    diff_v
                 )
-            )
-        if "avg_temp" in result:
-            result["avg_temp"][slice_key] = _format_numeric(
-                getattr(row, "avg_daily_air_temp_c", None),
-                rounding_digits if avg_temp_uses_global_rounding else 0,
-            )
-        if "avg_temp" in tooltips:
-            tooltips["avg_temp"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "avg_daily_air_temp_c", None)
-            )
-        if "combined_on_oes" in result:
-            result["combined_on_oes"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_oes", None),
-                rounding_digits,
-            )
-        if "combined_on_oes" in tooltips:
-            tooltips["combined_on_oes"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_oes", None)
-            )
-        if "combined_on_ees" in result:
-            result["combined_on_ees"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_ees", None),
-                rounding_digits,
-            )
-        if "combined_on_ees" in tooltips:
-            tooltips["combined_on_ees"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_ees", None)
-            )
-        if "calculated_max_power_mw" in result:
-            result["calculated_max_power_mw"][slice_key] = _format_numeric(
-                getattr(row, "calculated_max_power_mw", None),
-                rounding_digits,
-            )
-        if "calculated_max_power_mw" in tooltips:
-            tooltips["calculated_max_power_mw"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "calculated_max_power_mw", None)
-            )
-        if "calculated_combined_on_ees_mw" in result:
-            result["calculated_combined_on_ees_mw"][slice_key] = _format_numeric(
-                getattr(row, "calculated_combined_on_ees_mw", None),
-                rounding_digits,
-            )
-        if "calculated_combined_on_ees_mw" in tooltips:
-            tooltips["calculated_combined_on_ees_mw"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "calculated_combined_on_ees_mw", None)
-            )
-        if "combined_on_es" in result:
-            result["combined_on_es"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_es", None),
-                rounding_digits,
-            )
-        if "combined_on_es" in tooltips:
-            tooltips["combined_on_es"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_es", None)
-            )
-        if "combined_on_ez" in result:
-            result["combined_on_ez"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_ez", None),
-                rounding_digits,
-            )
-        if "combined_on_ez" in tooltips:
-            tooltips["combined_on_ez"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_ez", None)
-            )
-        if "combined_on_fo" in result:
-            result["combined_on_fo"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_fo", None),
-                rounding_digits,
-            )
-        if "combined_on_fo" in tooltips:
-            tooltips["combined_on_fo"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_fo", None)
-            )
-        if "combined_on_cz" in result:
-            result["combined_on_cz"][slice_key] = _format_numeric(
-                getattr(row, "combined_on_cz", None),
-                rounding_digits,
-            )
-        if "combined_on_cz" in tooltips:
-            tooltips["combined_on_cz"][slice_key] = _format_full_numeric_tooltip(
-                getattr(row, "combined_on_cz", None)
-            )
+
+    if ENERGY_CONSUMPTION_YOY_PARAMETER_KEY in result:
+        for sk, curr in raw_ec.items():
+            pct = _yoy_growth_pct_value(curr, raw_ec.get(sk - 1))
+            disp = _format_yoy_pct_for_display(pct)
+            result[ENERGY_CONSUMPTION_YOY_PARAMETER_KEY][sk] = disp
+            if ENERGY_CONSUMPTION_YOY_PARAMETER_KEY in tooltips:
+                tooltips[ENERGY_CONSUMPTION_YOY_PARAMETER_KEY][sk] = (
+                    disp if pct is not None else ""
+                )
+
+    if ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY in result:
+        for sk, curr in raw_sipr.items():
+            pct_s = _yoy_growth_pct_value(curr, raw_sipr.get(sk - 1))
+            disp_s = _format_yoy_pct_for_display(pct_s)
+            result[ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY][sk] = disp_s
+            if ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY in tooltips:
+                tooltips[ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY][sk] = (
+                    disp_s if pct_s is not None else ""
+                )
 
     return result, tooltips
 
 
 def _format_numeric(value: Any, digits: int) -> str:
     return _dash(format_decimal_trim_for_display(value, digits=digits))
+
+
+def _format_yoy_pct_for_display(value: Any) -> str:
+    """Годовой темп прироста: ровно два знака после запятой (например 2,30)."""
+    if value is None:
+        return "—"
+    s = format_decimal_for_display(value, digits=_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS)
+    return s if s else "—"
 
 
 def _dash(value: Any) -> str:
@@ -1512,15 +991,15 @@ def _build_ues_entities_filtered(
             SummaryEntity(
                 label=ues.name,
                 depth=1,
-                parameters=PARAMETERS_UES_OES,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    UnionEnergySystemDemandParameter,
+                    UnionEnergySystemEnergyConsumptionParameter,
                     "id_union_energy_system",
                     ues.id,
                 ),
                 entity_kind="group",
                 children=child_entities,
-                demand_model_name=UnionEnergySystemDemandParameter.__name__,
+                demand_model_name=UnionEnergySystemEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_union_energy_system",
                 parent_id=ues.id,
                 id_union_energy_system=ues.id,
@@ -1556,7 +1035,7 @@ def _build_regional_energy_system_entity(
                     regional_district.energy_units,
                     res.id,
                 ),
-                parameters=PARAMETERS_WITH_OES_EES_AND_ES,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 ues_id=ues_id,
                 res_id=res.id,
             )
@@ -1575,7 +1054,7 @@ def _build_regional_energy_system_entity(
                     rd0.energy_units,
                     res.id,
                 ),
-                parameters=PARAMETERS_WITH_OES_EES_AND_ES,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 ues_id=ues_id,
                 res_id=res.id,
             )
@@ -1592,15 +1071,15 @@ def _build_regional_energy_system_entity(
     return SummaryEntity(
         label=res.name,
         depth=2,
-        parameters=PARAMETERS_WITH_OES_AND_EES,
+        parameters=PARAMETERS_ENERGY_CONSUMPTION,
         demand_rows=dps.get_demand_rows(
-            RegionalEnergySystemDemandParameter,
+            RegionalEnergySystemEnergyConsumptionParameter,
             "id_regional_energy_system",
             res.id,
         ),
         entity_kind="child",
         children=subject_children,
-        demand_model_name=RegionalEnergySystemDemandParameter.__name__,
+        demand_model_name=RegionalEnergySystemEnergyConsumptionParameter.__name__,
         parent_fk_column="id_regional_energy_system",
         parent_id=res.id,
         id_union_energy_system=ues_id,
@@ -1656,15 +1135,15 @@ def _build_regional_energy_system_entity_for_energy_zone(
     return SummaryEntity(
         label=res.name,
         depth=1,
-        parameters=PARAMETERS_RES,
+        parameters=PARAMETERS_ENERGY_CONSUMPTION,
         demand_rows=dps.get_demand_rows(
-            RegionalEnergySystemDemandParameter,
+            RegionalEnergySystemEnergyConsumptionParameter,
             "id_regional_energy_system",
             res.id,
         ),
         entity_kind="child",
         children=subject_children,
-        demand_model_name=RegionalEnergySystemDemandParameter.__name__,
+        demand_model_name=RegionalEnergySystemEnergyConsumptionParameter.__name__,
         parent_fk_column="id_regional_energy_system",
         parent_id=res.id,
         id_energy_zone=energy_zone_id,
@@ -1706,15 +1185,15 @@ def _build_energy_zone_entities() -> list[SummaryEntity]:
             SummaryEntity(
                 label=f"{ez.number} — {ez.name}",
                 depth=0,
-                parameters=PARAMETERS_ENERGY_ZONE,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    EnergyZoneDemandParameter,
+                    EnergyZoneEnergyConsumptionParameter,
                     "id_energy_zone",
                     ez.id,
                 ),
                 entity_kind="group",
                 children=res_children,
-                demand_model_name=EnergyZoneDemandParameter.__name__,
+                demand_model_name=EnergyZoneEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_energy_zone",
                 parent_id=ez.id,
                 id_energy_zone=ez.id,
@@ -1743,14 +1222,14 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
             SummaryEntity(
                 label=_synchronous_area_display_label(sa),
                 depth=depth,
-                parameters=PARAMETERS_ENERGY_ZONE,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    SynchronousAreaDemandParameter,
+                    SynchronousAreaEnergyConsumptionParameter,
                     "id_synchronous_area",
                     sa.id,
                 ),
                 entity_kind="synchronous_area",
-                demand_model_name=SynchronousAreaDemandParameter.__name__,
+                demand_model_name=SynchronousAreaEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_synchronous_area",
                 parent_id=sa.id,
                 id_synchronous_area=sa.id,
@@ -1769,7 +1248,7 @@ def _build_tites_entity() -> SummaryEntity | None:
         return SummaryEntity(
             label="ТИТЭС",
             depth=0,
-            parameters=BASE_PARAMETERS,
+            parameters=PARAMETERS_ENERGY_CONSUMPTION,
             demand_rows=[],
             entity_kind="group-root",
             children=children,
@@ -1781,15 +1260,15 @@ def _build_tites_entity() -> SummaryEntity | None:
     return SummaryEntity(
         label=getattr(energy_system_type, "name", None) or "ТИТЭС",
         depth=0,
-        parameters=BASE_PARAMETERS,
+        parameters=PARAMETERS_ENERGY_CONSUMPTION,
         demand_rows=dps.get_demand_rows(
-            EnergySystemTypeDemandParameter,
+            EnergySystemTypeEnergyConsumptionParameter,
             "id_energy_system_type",
             energy_system_type.id,
         ),
         entity_kind="group-root",
         children=children,
-        demand_model_name=EnergySystemTypeDemandParameter.__name__,
+        demand_model_name=EnergySystemTypeEnergyConsumptionParameter.__name__,
         parent_fk_column="id_energy_system_type",
         parent_id=energy_system_type.id,
     )
@@ -1800,7 +1279,7 @@ def _build_regional_district_entity(
     *,
     depth: int,
     energy_units: list[EnergyUnit] | None = None,
-    parameters: tuple[tuple[str, str], ...] = PARAMETERS_WITH_OES_EES_AND_ES,
+    parameters: tuple[tuple[str, str], ...] = PARAMETERS_ENERGY_CONSUMPTION,
     ues_id: int | None = None,
     res_id: int | None = None,
 ) -> SummaryEntity:
@@ -1809,7 +1288,7 @@ def _build_regional_district_entity(
         depth=depth,
         parameters=parameters,
         demand_rows=dps.get_demand_rows(
-            RegionalDistrictDemandParameter,
+            RegionalDistrictEnergyConsumptionParameter,
             "id_regional_district",
             regional_district.id,
         ),
@@ -1821,7 +1300,7 @@ def _build_regional_district_entity(
             id_regional_energy_system=res_id,
             id_regional_district=regional_district.id,
         ),
-        demand_model_name=RegionalDistrictDemandParameter.__name__,
+        demand_model_name=RegionalDistrictEnergyConsumptionParameter.__name__,
         parent_fk_column="id_regional_district",
         parent_id=regional_district.id,
         id_union_energy_system=ues_id,
@@ -1854,14 +1333,14 @@ def _build_energy_unit_entities(
             SummaryEntity(
                 label=energy_unit.name,
                 depth=depth,
-                parameters=PARAMETERS_WITH_OES_AND_EES,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    EnergyUnitDemandParameter,
+                    EnergyUnitEnergyConsumptionParameter,
                     "id_energy_unit",
                     energy_unit.id,
                 ),
                 entity_kind="child",
-                demand_model_name=EnergyUnitDemandParameter.__name__,
+                demand_model_name=EnergyUnitEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_energy_unit",
                 parent_id=energy_unit.id,
                 id_union_energy_system=ues,
@@ -1894,14 +1373,14 @@ def _build_federal_district_entities() -> list[SummaryEntity]:
             SummaryEntity(
                 label=regional_district.name,
                 depth=1,
-                parameters=PARAMETERS_SUBJECT_FD_SUMMARY,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    RegionalDistrictDemandParameter,
+                    RegionalDistrictEnergyConsumptionParameter,
                     "id_regional_district",
                     regional_district.id,
                 ),
                 entity_kind="child",
-                demand_model_name=RegionalDistrictDemandParameter.__name__,
+                demand_model_name=RegionalDistrictEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_regional_district",
                 parent_id=regional_district.id,
                 id_federal_district=federal_district.id,
@@ -1914,15 +1393,15 @@ def _build_federal_district_entities() -> list[SummaryEntity]:
             SummaryEntity(
                 label=federal_district.name,
                 depth=0,
-                parameters=PARAMETERS_FEDERAL_DISTRICT,
+                parameters=PARAMETERS_ENERGY_CONSUMPTION,
                 demand_rows=dps.get_demand_rows(
-                    FederalDistrictDemandParameter,
+                    FederalDistrictEnergyConsumptionParameter,
                     "id_federal_district",
                     federal_district.id,
                 ),
                 entity_kind="group",
                 children=child_entities,
-                demand_model_name=FederalDistrictDemandParameter.__name__,
+                demand_model_name=FederalDistrictEnergyConsumptionParameter.__name__,
                 parent_fk_column="id_federal_district",
                 parent_id=federal_district.id,
                 id_federal_district=federal_district.id,
@@ -2037,21 +1516,21 @@ def _oes_leaf_matches_filters(
 def _oes_is_union_energy_system_group(e: SummaryEntity) -> bool:
     return (
         e.entity_kind == "group"
-        and e.demand_model_name == UnionEnergySystemDemandParameter.__name__
+        and e.demand_model_name == UnionEnergySystemEnergyConsumptionParameter.__name__
         and e.id_union_energy_system is not None
     )
 
 
 def _oes_is_regional_energy_system_node(e: SummaryEntity) -> bool:
     return (
-        e.demand_model_name == RegionalEnergySystemDemandParameter.__name__
+        e.demand_model_name == RegionalEnergySystemEnergyConsumptionParameter.__name__
         and e.id_regional_energy_system is not None
     )
 
 
 def _oes_is_regional_district_node(e: SummaryEntity) -> bool:
     return (
-        e.demand_model_name == RegionalDistrictDemandParameter.__name__
+        e.demand_model_name == RegionalDistrictEnergyConsumptionParameter.__name__
         and e.id_regional_district is not None
     )
 

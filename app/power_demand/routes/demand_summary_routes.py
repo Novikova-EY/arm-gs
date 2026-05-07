@@ -428,7 +428,7 @@ def demand_summary_oes():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
     context["summary_route_variant"] = "max"
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/energy-zones/")
@@ -449,7 +449,7 @@ def demand_summary_energy_zones():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(ez_l or res_l)
     context["summary_route_variant"] = "max"
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/federal-districts/")
@@ -470,7 +470,7 @@ def demand_summary_federal_districts():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(f_fd or f_rd)
     context["summary_route_variant"] = "max"
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/oes/")
@@ -500,7 +500,7 @@ def demand_summary_oes_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/federal-districts/")
@@ -530,7 +530,7 @@ def demand_summary_federal_districts_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/energy-zones/")
@@ -560,4 +560,4 @@ def demand_summary_energy_zones_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("power_demand/demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)

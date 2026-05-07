@@ -112,7 +112,7 @@ SPECIFIC_FUEL_COST_COLUMNS = [
     ("dep", "DEP", False),
     ("oes", "OES", False),
     ("er", "ER", False),
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("numb1", "NUMB1", False),
 ]
 

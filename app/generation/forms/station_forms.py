@@ -5,12 +5,12 @@ from wtforms.validators import DataRequired, Length, Optional, NumberRange
 class StationFilterForm(FlaskForm):
     csrf_token = HiddenField()
 
-    # ID электростанции (автогенерация)
+    # ID  электростанции (автогенерация)
     station_id = HiddenField("ID")
 
-    # ID состояния станции
+    # ID состояния электростанции
     id_condition_type = SelectField(
-        'Состояние станции',
+        'Состояние электростанции',
         coerce=int,
         choices=[],  # Список заполняется динамически (например, из базы данных)
         validators=[DataRequired(message="Пожалуйста, выберите тип состояния.")]
@@ -42,7 +42,7 @@ class StationFilterForm(FlaskForm):
 
     # Список генерирующих компаний
     station_type = TextAreaField(
-        'Тип электростанции',
+        'Тип  электростанции',
         validators=[Optional(), Length(max=256)]
     )
 
@@ -69,14 +69,14 @@ class StationFilterForm(FlaskForm):
     )
 
     id_energy_unit = SelectField(
-        'Энергоузел электростанции',
+        'Энергоузел  электростанции',
         coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),
         choices=[],        
         validators=[Optional()]
     )
 
     id_station_type = SelectField(
-        'Тип электростанции',
+        'Тип  электростанции',
         coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),
         choices=[],
         validators=[Optional()]
@@ -122,19 +122,19 @@ class StationFilterForm(FlaskForm):
     
     # Фильтры
     condition_type_filter = StringField(
-        "Фильтр по состоянию электростанции",
+        "Фильтр по состоянию  электростанции",
         validators=[Length(max=100)],
         render_kw={'multiple': True}
     )
     
     station_name_filter = StringField(
-        "Фильтр по названию электростанции",
+        "Фильтр по названию  электростанции",
         validators=[Length(max=100)],
-        render_kw={"placeholder": "Введите название электростанции"}
+        render_kw={"placeholder": "Введите название  электростанции"}
     )
 
     gen_company_filter = StringField(
-        "Фильтр по названию электростанции",
+        "Фильтр по названию  электростанции",
         validators=[Length(max=100)],
         render_kw={"placeholder": "Введите название генерирующей компании"}
     )
@@ -146,7 +146,7 @@ class StationFilterForm(FlaskForm):
     )
 
     station_type_filter = StringField(
-        "Фильтр по типу электростанции",
+        "Фильтр по типу  электростанции",
         validators=[Length(max=100)],
         render_kw={'multiple': True}
     )
@@ -246,7 +246,7 @@ class AddStationForm(FlaskForm):
     )
 
     id_station_type = SelectField(
-        'Тип электростанции',
+        'Тип  электростанции',
         coerce=int,
         choices=[],
         validators=[Optional()]

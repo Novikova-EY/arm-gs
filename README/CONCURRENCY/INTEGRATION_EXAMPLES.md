@@ -14,7 +14,7 @@
 
 ## Обработка concurrent updates в маршрутах
 
-### Пример 1: Обновление станции
+### Пример 1: Обновление электростанции
 
 **До:**
 ```python
@@ -180,7 +180,7 @@ from app.common.services.cache_decorator import cached_query
 
 @cached_query(timeout=600, key_prefix='station_details')
 def get_station_with_relations(station_id):
-    """Получение станции со всеми связанными данными."""
+    """Получение электростанции со всеми связанными данными."""
     return Station.query\
         .options(
             joinedload(Station.machines),
@@ -211,7 +211,7 @@ def update_station(id):
     station.name = request.form['name']
     db.session.commit()
     
-    # Инвалидация кэша для конкретной станции
+    # Инвалидация кэша для конкретной электростанции
     invalidate_cache('station_details', station_id=id)
     
     # Инвалидация всех кэшей списков станций
@@ -298,10 +298,10 @@ def downgrade():
 ```python
 def update_station_with_version_check(station_id, data, expected_version):
     """
-    Обновление станции с явной проверкой версии.
+    Обновление электростанции с явной проверкой версии.
     
     Args:
-        station_id: ID станции
+        station_id: ID электростанции
         data: Данные для обновления
         expected_version: Ожидаемая версия записи
     
@@ -416,7 +416,7 @@ logger = logging.getLogger(__name__)
 @cached_query(timeout=600, key_prefix='station_full')
 def get_station_full(station_id):
     """
-    Получение станции со всеми связанными данными с кэшированием.
+    Получение электростанции со всеми связанными данными с кэшированием.
     """
     return Station.query\
         .options(
@@ -432,10 +432,10 @@ def get_station_full(station_id):
 @with_db_retry(max_attempts=3, backoff_factor=0.5)
 def update_station_safe(station_id, data, expected_version=None):
     """
-    Безопасное обновление станции с проверкой версии и retry.
+    Безопасное обновление электростанции с проверкой версии и retry.
     
     Args:
-        station_id: ID станции
+        station_id: ID электростанции
         data: Словарь с данными для обновления
         expected_version: Ожидаемая версия (опционально)
     
@@ -497,7 +497,7 @@ def bulk_update_stations(station_ids, update_func):
                 update_func(station)
                 db.session.commit()
                 
-                # Инвалидация кэша для каждой станции
+                # Инвалидация кэша для каждой электростанции
                 invalidate_cache('station_full', station_id=station_id)
                 
                 stats['success'] += 1
@@ -508,13 +508,13 @@ def bulk_update_stations(station_ids, update_func):
         except StaleDataError:
             db.session.rollback()
             stats['failed'] += 1
-            stats['errors'].append(f"Конфликт версии для станции {station_id}")
+            stats['errors'].append(f"Конфликт версии для электростанции {station_id}")
             logger.warning(f"StaleDataError for station {station_id}")
             
         except Exception as e:
             db.session.rollback()
             stats['failed'] += 1
-            stats['errors'].append(f"Ошибка для станции {station_id}: {str(e)}")
+            stats['errors'].append(f"Ошибка для электростанции {station_id}: {str(e)}")
             logger.error(f"Error updating station {station_id}: {str(e)}")
     
     # Инвалидация кэша списков
@@ -544,7 +544,7 @@ from app.logs.services.logging_service import log_to_db
 @login_required
 def enhanced_station_details(id):
     """
-    Детальная информация о станции с кэшированием.
+    Детальная информация о электростанции с кэшированием.
     """
     station = get_station_full(id)
     
@@ -563,7 +563,7 @@ def enhanced_station_details(id):
 @handle_stale_data
 def enhanced_update_station(id):
     """
-    Обновление станции с версионированием и кэшированием.
+    Обновление электростанции с версионированием и кэшированием.
     """
     # Получение данных из формы
     data = {
@@ -598,7 +598,7 @@ def enhanced_update_station(id):
 @handle_stale_data
 def api_enhanced_update_station(id):
     """
-    API для обновления станции (AJAX).
+    API для обновления электростанции (AJAX).
     """
     data = request.get_json()
     expected_version = data.pop('version', None)
@@ -631,7 +631,7 @@ def enhanced_batch_update():
     update_type = request.form.get('update_type')
     
     if not station_ids:
-        flash('Не выбраны станции для обновления', 'error')
+        flash('Не выбраны электростанции для обновления', 'error')
         return redirect(url_for('station_bp.station_list'))
     
     # Определяем функцию обновления

@@ -34,7 +34,7 @@ class EquipmentGroupSet(db.Model):
         backref="equipment_group_links_v2",
     )
 
-    # FK -> EquipmentGroupSetStation (тип группы оборудования на станции)
+    # FK -> EquipmentGroupSetStation (тип группы оборудования на электростанции)
     equipment_group_set_station_id = db.Column(
         db.Integer,
         db.ForeignKey(

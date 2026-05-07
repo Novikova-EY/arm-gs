@@ -67,16 +67,16 @@ class EquipmentGroup(db.Model):
     # Признак группы оборудования
     niv = db.Column(db.Integer, nullable=True)
 
-    # Признак станции, разбитой на группы оборудования
+    # Признак электростанции, разбитой на группы оборудования
     comp = db.Column(db.Integer, nullable=True)
 
-    # Код станции, в которую входит группа оборудования
+    # Код электростанции, в которую входит группа оборудования
     main = db.Column(db.Integer, nullable=True)
 
-    # Признак действующей станции
+    # Признак действующей электростанции
     d = db.Column(db.Integer, nullable=True)
 
-    # Признак расширяемой станции
+    # Признак расширяемой электростанции
     r = db.Column(db.Integer, nullable=True)
 
     # Признак ФОРЭМ
@@ -166,7 +166,7 @@ class EquipmentGroup(db.Model):
         uselist=False,
     )
 
-    # Код станции
+    # Код электростанции
     numb = db.Column(db.Integer, nullable=True)
 
     # Название типов турбин, которое соответствует коду (необязательное)
@@ -184,7 +184,7 @@ class EquipmentGroup(db.Model):
     # Давление пара перед турбиной_вариант 2
     p2 = db.Column(db.String(255), nullable=True)
 
-    # Порядковый номер станции
+    # Порядковый номер электростанции
     ordnumb = db.Column(db.String(255), nullable=True)
 
     # Адрес

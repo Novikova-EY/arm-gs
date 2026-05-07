@@ -45,7 +45,7 @@
 {%- endif -%}
 {%- endmacro %}
 
-{# Код станции (rowspan): не только из первого года — при «пустом» первом годе взять numb1120 из любой строки БД; иначе EquipmentGroup.numb #}
+{# Код электростанции (rowspan): не только из первого года — при «пустом» первом годе взять numb1120 из любой строки БД; иначе EquipmentGroup.numb #}
 {% macro fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) -%}
 {%- set ns = namespace(p_resolved=none) -%}
 {%- for row in group_rows -%}
@@ -57,11 +57,11 @@
 {%- endif -%}
 {%- endfor -%}
 {%- if ns.p_resolved is not none -%}
-{{ fuel_param_data_cell_content('numb1120', 'Код станции', false, ns.p_resolved) }}
+{{ fuel_param_data_cell_content('numb1120', 'Код электростанции', false, ns.p_resolved) }}
 {%- elif group_entity and group_entity.numb is not none -%}
 {{ group_entity.numb }}
 {%- else -%}
-{{ fuel_param_data_cell_content('numb1120', 'Код станции', false, p_first) }}
+{{ fuel_param_data_cell_content('numb1120', 'Код электростанции', false, p_first) }}
 {%- endif -%}
 {%- endmacro %}
 
@@ -112,7 +112,7 @@
         <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5"> электростанции</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -154,7 +154,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-primary">Добавить в таблицу</button>
                 </div>
                 </form>
@@ -202,7 +202,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-primary">Добавить период в таблицу</button>
                 </div>
                 </form>
@@ -217,7 +217,7 @@
 {% set fuel_param_header_use_fixed_label = ('numb1120', 'nust', 'nr', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'q', 'qotr', 'nt', 'turt', 'tust', 'sn_t', 'b') %}
 
 {% set fuel_param_columns = [
-    ('numb1120', 'Код станции', false),
+    ('numb1120', 'Код электростанции', false),
     ('nust', 'Руст', true), ('nr', 'Ррасп', true),
     ('e', 'Выработка эл.эн.', true), ('ewtp', 'Этц', true), ('eotp', 'Отпуск эл.эн.', true), ('eurt', 'Уд.расх эл.эн.', true), ('eust', 'Расх топ эл.эн.', true), ('snk', 'СН, %', true),
     ('q', 'Отпуск тепл.эн.', true), ('qotr', 'Отраб тепл.эн.', true), ('nt', 'Тепл. мощн. отборов', true), ('turt', 'Уд.расх тепл.эн.', true), ('tust', 'Расх топ тепл.эн.', true), ('sn_t', 'СН, кВтч/Гкал', true),
@@ -1389,7 +1389,7 @@ document.addEventListener("DOMContentLoaded", function() {
     #fuelParamsTable.ugol-group-expanded td[data-collapsible-ugol="1"] {
         display: table-cell;
     }
-    /* Руст изменился к предыдущему году: жёлтые ячейки (не группа и не код станции) поверх table-striped */
+    /* Руст изменился к предыдущему году: жёлтые ячейки (не группа и не код электростанции) поверх table-striped */
     #fuelParamsTable tbody td.table-warning {
         background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
     }

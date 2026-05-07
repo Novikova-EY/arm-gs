@@ -1,27 +1,24 @@
 /**
- * В списках «Срез / год» скрывает уже занятые на других строках варианты
- * (исторический максимум и календарные годы). Текущая строка всегда показывает свой выбор.
+ * В списке «Год» скрывает уже занятые на других строках календарные года.
  */
 (function () {
-    'use strict';
+    "use strict";
 
     function initSliceYearExclusive() {
-        var container = document.getElementById('demand-rows');
-        var jsonEl = document.getElementById('power-demand-year-options-json');
+        var container = document.getElementById("demand-rows");
+        var jsonEl = document.getElementById("power-demand-year-options-json");
         if (!container || !jsonEl) {
             return;
         }
         var YEARS;
         try {
-            YEARS = JSON.parse(jsonEl.textContent || '[]');
+            YEARS = JSON.parse(jsonEl.textContent || "[]");
         } catch (e) {
             YEARS = [];
         }
 
         function getSelects() {
-            return Array.prototype.slice.call(
-                container.querySelectorAll('select[name="slice_year[]"]')
-            );
+            return Array.prototype.slice.call(container.querySelectorAll('select[name="slice_year[]"]'));
         }
 
         function rebuildAll() {
@@ -33,41 +30,27 @@
             selects.forEach(function (sel, idx) {
                 var taken = new Set();
                 snapshot.forEach(function (v, j) {
-                    if (j !== idx && v !== '' && v != null) {
+                    if (j !== idx && v !== "" && v != null) {
                         taken.add(String(v));
                     }
                 });
 
-                var tr = sel.closest('tr');
-                var isNew = tr && tr.classList.contains('table-light');
                 var current = snapshot[idx];
 
                 var frag = document.createDocumentFragment();
 
-                if (current === 'hist' || !taken.has('hist')) {
-                    var oh = document.createElement('option');
-                    oh.value = 'hist';
-                    oh.textContent = 'Исторический максимум';
-                    if (current === 'hist') {
-                        oh.selected = true;
-                    }
-                    frag.appendChild(oh);
+                var blank = document.createElement("option");
+                blank.value = "";
+                blank.textContent = "—";
+                if (current === "") {
+                    blank.selected = true;
                 }
-
-                if (isNew) {
-                    var oe = document.createElement('option');
-                    oe.value = '';
-                    oe.textContent = '—';
-                    if (current === '') {
-                        oe.selected = true;
-                    }
-                    frag.appendChild(oe);
-                }
+                frag.appendChild(blank);
 
                 YEARS.forEach(function (yn) {
                     var ys = String(yn);
                     if (current === ys || !taken.has(ys)) {
-                        var oy = document.createElement('option');
+                        var oy = document.createElement("option");
                         oy.value = ys;
                         oy.textContent = ys;
                         if (current === ys) {
@@ -77,7 +60,7 @@
                     }
                 });
 
-                sel.innerHTML = '';
+                sel.innerHTML = "";
                 sel.appendChild(frag);
                 if (sel.options.length && sel.selectedIndex < 0) {
                     sel.options[0].selected = true;
@@ -86,7 +69,7 @@
         }
 
         getSelects().forEach(function (sel) {
-            sel.addEventListener('change', rebuildAll);
+            sel.addEventListener("change", rebuildAll);
         });
 
         rebuildAll();

@@ -12,9 +12,9 @@ class StationTypeFilterForm(FlaskForm):
     # Пакетное обновление
     ids = HiddenField("ID записей")
     name = StringField(
-        "Тип электростанции",
+        "Тип  электростанции",
         validators=[
-            DataRequired(message="Поле «Тип электростанции» обязательно."),
+            DataRequired(message="Поле «Тип  электростанции» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
@@ -47,9 +47,9 @@ class AddStationTypeForm(FlaskForm):
     csrf_token = HiddenField()
 
     name = StringField(
-        "Тип электростанции",
+        "Тип  электростанции",
         validators=[
-            DataRequired(message="Поле «Тип электростанции» обязательно."),
+            DataRequired(message="Поле «Тип  электростанции» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )

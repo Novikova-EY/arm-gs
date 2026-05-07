@@ -185,7 +185,7 @@ def station_type_list():
 @refdata_bp.route("/add_station_type", methods=["GET", "POST"])
 @login_required
 def add_station_type():
-    """ Маршрут для добавления нового типа электростанции. """
+    """ Маршрут для добавления нового типа  электростанции. """
 
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(

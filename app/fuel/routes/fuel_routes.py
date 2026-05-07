@@ -2293,7 +2293,7 @@ def export_fuel_economic_region():
 
 
 def _force_tes_station_type_filter(filters):
-    """Ограничивает станции только типом 'ТЭС' (по справочнику)."""
+    """Ограничивает электростанции только типом 'ТЭС' (по справочнику)."""
     filters = filters.copy()
     try:
         tes_type = (
@@ -2309,13 +2309,13 @@ def _force_tes_station_type_filter(filters):
                 .first()
             )
         if tes_type is None:
-            current_app.logger.warning("[stations_equipment_groups] Тип станции 'ТЭС' не найден.")
+            current_app.logger.warning("[stations_equipment_groups] Тип электростанции 'ТЭС' не найден.")
             filters["station_type_filter"] = [-1]
         else:
             filters["station_type_filter"] = [tes_type.id]
     except Exception as exc:
         current_app.logger.warning(
-            f"[stations_equipment_groups] Ошибка фильтрации по типу станции 'ТЭС': {exc}"
+            f"[stations_equipment_groups] Ошибка фильтрации по типу электростанции 'ТЭС': {exc}"
         )
         filters["station_type_filter"] = [-1]
     return filters
@@ -3710,7 +3710,7 @@ def equipment_group_edit(equipment_group_id):
     )
     equipment_group_logs = _format_logs_for_display(equipment_group_logs_raw)
 
-    # Станции с данной группой оборудования (для обратной совместимости, если нужно)
+    # электростанции с данной группой оборудования (для обратной совместимости, если нужно)
     stations_with_group = []
     sets = EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id).all()
     seen_station_ids = set()

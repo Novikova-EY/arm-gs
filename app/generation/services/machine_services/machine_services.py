@@ -93,7 +93,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         perf_segments.append((stage, now - perf_last))
         perf_last = now
 
-    # Оптимизированная загрузка станции с связанными данными
+    # Оптимизированная загрузка электростанции с связанными данными
     station = Station.query.options(
         db.joinedload(Station.regional_district)
     ).get_or_404(station_id)
@@ -544,7 +544,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         clear_station_aggregation_cache("after PGU delete")
 
         if deleted_names:
-            log_to_db(user, f"Удаление ПГУ агрегатов на станции {station.name}", details="; ".join(deleted_names))
+            log_to_db(user, f"Удаление ПГУ агрегатов на электростанции {station.name}", details="; ".join(deleted_names))
             flash("Выбранные ПГУ агрегаты успешно удалены!", "success")
 
         return redirect(url_for("station_bp.machine_details", 
@@ -623,7 +623,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             db.session.add(machine)
             db.session.flush()  # Получаем ID для новой записи
 
-        # Определяем тип станции для логики обработки названий
+        # Определяем тип электростанции для логики обработки названий
         try:
             st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
         except Exception:
@@ -887,7 +887,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
         year_dict = {y.number: y for y in years}
 
-        # Определяем тип станции и "текущий год" версии БД
+        # Определяем тип электростанции и "текущий год" версии БД
         try:
             st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
         except Exception:
@@ -1042,7 +1042,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                     new_fuel = None
 
             # Обрабатываем типы ТЭС и топливо только для ТЭС станций
-            # Распознаем тип станции по названию
+            # Распознаем тип электростанции по названию
             try:
                 st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
             except Exception:
@@ -1252,15 +1252,15 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             clear_machine_choices_cache()
 
         if pgu_changes:
-            log_to_db(user, f"Изменения по ПГУ агрегату {pgu_machine.machine_name} станции {station.name}", details="; ".join(pgu_changes))
+            log_to_db(user, f"Изменения по ПГУ агрегату {pgu_machine.machine_name} электростанции {station.name}", details="; ".join(pgu_changes))
             flash("Данные ПГУ агрегата успешно обновлены!", "success")
 
         if changes:
             if is_new:
-                log_to_db(user, f"Создан новый агрегат на станции {station.name} ({station.regional_district.name})", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
+                log_to_db(user, f"Создан новый агрегат на электростанции {station.name} ({station.regional_district.name})", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
                 flash("Новый агрегат успешно создан!", "success")
             else:
-                log_to_db(user, f"Изменения в станции {station.name} ({station.regional_district.name}), агрегат №{machine.machine_number}", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
+                log_to_db(user, f"Изменения в электростанции {station.name} ({station.regional_district.name}), агрегат №{machine.machine_number}", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
                 flash("Данные агрегата успешно обновлены!", "success")
 
         if not changes and not pgu_changes and not is_new:
@@ -1276,12 +1276,12 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         traceback.print_exc()
         flash(f"Ошибка при обновлении данных: {exc}", "danger")
         if is_new:
-            log_to_db(user, f"Ошибка создания нового агрегата на станции {station.name}", details=str(exc))
+            log_to_db(user, f"Ошибка создания нового агрегата на электростанции {station.name}", details=str(exc))
             # Для нового агрегата при ошибке устанавливаем machine=None
             machine = None
         else:
             machine_info = f"№{machine.machine_number} {machine.machine_name}" if machine else "неизвестный агрегат"
-            log_to_db(user, f"Ошибка обновления агрегата {machine_info} станции {station.name}", details=str(exc), entity_type="machine", entity_id=machine.id if machine else None)
+            log_to_db(user, f"Ошибка обновления агрегата {machine_info} электростанции {station.name}", details=str(exc), entity_type="machine", entity_id=machine.id if machine else None)
         print(f"[DEBUG] Ошибка в handle_machine_post: tes_types entries: {len(advanced_form.tes_types.entries)}")
         print(f"[DEBUG] Ошибка в handle_machine_post: fuels entries: {len(advanced_form.fuels.entries)}")
         # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
@@ -1811,7 +1811,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         if is_new:
             log_to_db(
                 user, 
-                f"Добавлен ПГУ агрегат '{pgu_form.machine_name.data}' на станции {station.name}", 
+                f"Добавлен ПГУ агрегат '{pgu_form.machine_name.data}' на электростанции {station.name}", 
                 details="; ".join(changes) if changes else f"ID: {pgu_machine.id}",
                 entity_type="pgu_machine",
                 entity_id=pgu_machine.id,
@@ -1821,7 +1821,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             if changes:
                 log_to_db(
                     user, 
-                    f"Изменения на станции {station.name} в агрегате ПГУ '{pgu_machine.machine_name}' (UID: {pgu_machine.id}) ", 
+                    f"Изменения на электростанции {station.name} в агрегате ПГУ '{pgu_machine.machine_name}' (UID: {pgu_machine.id}) ", 
                     details="; ".join(changes),
                     entity_type="pgu_machine",
                     entity_id=pgu_machine.id,
@@ -1840,7 +1840,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
         db.session.rollback()
         traceback.print_exc()
         flash(f"Ошибка при сохранении: {e}", "danger")
-        log_to_db(user, f"Ошибка при сохранении ПГУ агрегата на станции {station.name}", details=str(e))
+        log_to_db(user, f"Ошибка при сохранении ПГУ агрегата на электростанции {station.name}", details=str(e))
         _, version_year_end = get_current_version_year_range_from_name()
         year_features = get_year_feature_dict()
         all_documents = choices_cache.get_choices(Document, Document.name)
@@ -1889,7 +1889,7 @@ def _get_machine_fuel_param_for_version(
 
 
 def _fill_fuel_equipment_group_choices(main_form, station_id: int, machine=None):
-    """Список итоговых групп оборудования станции (топливный модуль) + авто-привязка."""
+    """Список итоговых групп оборудования электростанции (топливный модуль) + авто-привязка."""
     version_id = get_current_db_version_id()
     tuples = get_station_fuel_equipment_group_choice_tuples(station_id, version_id)
     auto_label = "— по типу группы и плановому году (авто)"

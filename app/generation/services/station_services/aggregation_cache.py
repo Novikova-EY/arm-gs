@@ -294,7 +294,7 @@ def warmup_station_cache(force=False):
         
         print(f"[CACHE WARMUP] Загружено {len(stations)} станций")
         
-        # Сортируем станции как на station_list: территориальная иерархия + нижний уровень (тип/название)
+        # Сортируем электростанции как на station_list: территориальная иерархия + нижний уровень (тип/название)
         def get_sorting_key(station):
             station_type_name = ""
             if getattr(station, "station_type", None) is not None and getattr(station.station_type, "name", None):
@@ -498,7 +498,7 @@ def get_cached_sorted_stations(filters):
 _page_positions_cache = {}
 
 def cache_page_position(filters, page, end_position, last_station_info=None):
-    """Кэширует реальную конечную позицию страницы и информацию о последней станции в Redis."""
+    """Кэширует реальную конечную позицию страницы и информацию о последней электростанции в Redis."""
     base_key = get_sorted_stations_cache_key(filters).replace('stations:sorted:', 'stations:page:')
     page_key = f"{base_key}:{page}"
     redis_client = get_redis_client()
@@ -526,7 +526,7 @@ def cache_page_position(filters, page, end_position, last_station_info=None):
     print(f"[PAGE POSITION MEMORY] Сохранена позиция page={page}, end_position={end_position}")
 
 def get_cached_page_position(filters, page):
-    """Получает реальную позицию начала страницы и информацию о последней станции предыдущей страницы из Redis."""
+    """Получает реальную позицию начала страницы и информацию о последней электростанции предыдущей страницы из Redis."""
     base_key = get_sorted_stations_cache_key(filters).replace('stations:sorted:', 'stations:page:')
     prev_page_key = f"{base_key}:{page - 1}"
     redis_client = get_redis_client()

@@ -30,13 +30,10 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
 )
 from app.logs.models.log_model import Log
+from app.logs.services.log_display_utils import format_logs_for_display as _format_logs_for_display
 from sqlalchemy import or_
 from app.common.middleware import handle_stale_data
 from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
-from datetime import timezone
-from zoneinfo import ZoneInfo
-
-MOSCOW = ZoneInfo("Europe/Moscow")
 
 
 def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
@@ -48,81 +45,6 @@ def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int
     if start_year > end_year:
         return end_year, start_year
     return start_year, end_year
-
-
-def _format_logs_for_display(logs):
-    """
-    Предварительное форматирование логов для оптимизации рендеринга шаблона.
-    Форматирует даты и применяет lower() в Python вместо Jinja2.
-    """
-    if not logs:
-        return []
-    
-    # Получаем все уникальные версии БД одним запросом для оптимизации
-    from app.common.models.database_version_model import DatabaseVersion
-    version_ids = {log.database_version_id for log in logs if log.database_version_id}
-    versions_map = {}
-    if version_ids:
-        # Используем оптимизированный запрос с загрузкой только нужных полей
-        try:
-            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).filter(
-                DatabaseVersion.id.in_(version_ids)
-            ).all()
-            versions_map = {v.id: v.version_number for v in versions}
-        except Exception:
-            # Если ошибка - просто показываем ID версии вместо названия
-            versions_map = {vid: str(vid) for vid in version_ids}
-    
-    def _suppress_noop_changes(details_text: str) -> str:
-        if not details_text:
-            return ''
-        def _norm(s: str) -> str:
-            if s is None:
-                return ''
-            # нормализуем регистр, пробелы (включая NBSP) и множественные пробелы
-            s2 = s.replace('\u00A0', ' ').replace('\xa0', ' ').strip().lower()
-            while '  ' in s2:
-                s2 = s2.replace('  ', ' ')
-            return s2
-        parts = [p.strip() for p in details_text.split(';')]
-        filtered = []
-        for p in parts:
-            if not p:
-                continue
-            if '→' in p:
-                left, right = p.split('→', 1)
-                if _norm(left) == _norm(right):
-                    continue
-                left_value = left.rsplit('-', 1)[-1].strip() if '-' in left else left
-                right_value = right
-                if _norm(left_value) == _norm(right_value):
-                    continue
-            filtered.append(p)
-        return '; '.join(filtered)
-
-    formatted_logs = []
-    for log in logs:
-        details_clean = _suppress_noop_changes(log.details or '')
-        ts = log.timestamp
-        if ts is not None:
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            ts_msk = ts.astimezone(MOSCOW)
-        else:
-            ts_msk = None
-        formatted_log = {
-            'date': ts_msk.strftime('%Y-%m-%d') if ts_msk else '',
-            'time': ts_msk.strftime('%H:%M:%S') if ts_msk else '',
-            'username': log.username or '',
-            'username_lower': (log.username or '').lower(),
-            'action': log.action or '',
-            'action_lower': (log.action or '').lower(),
-            'details': details_clean,
-            'details_lower': details_clean.lower(),
-            'database_version': versions_map.get(log.database_version_id, '—') if log.database_version_id else '—',
-        }
-        formatted_logs.append(formatted_log)
-    return formatted_logs
 
 
 def _query_machine_logs_fast(machine_id: int, machine_number: int | None, limit: int = 20):

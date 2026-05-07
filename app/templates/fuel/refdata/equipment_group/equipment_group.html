@@ -69,7 +69,7 @@
                     </button>
 
                     <a href="{{ url_for('fuel_bp.fuel_equipment_group_list') }}"
-                       class="btn btn-outline-secondary fw-bold"
+                       class="btn btn-outline-danger fs-5"
                        data-no-preloader>
                         Сбросить
                     </a>
@@ -92,7 +92,7 @@
         <input type="hidden" name="filter_{{ k }}" value="{{ v }}">
         {% endfor %}
         <div class="mb-2">
-            <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+            <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
         </div>
     {% endif %}
 

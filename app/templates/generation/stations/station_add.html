@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Создание новой электростанции{% endblock %}
+{% block title %}Создание новой  электростанции{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -16,10 +16,10 @@
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5"> электростанции РФ</a>
     </div>
 
-    <h2 class="mb-4">Создание новой электростанции</h2>
+    <h2 class="mb-4">Создание новой  электростанции</h2>
     
     <form method="POST" id="addStationForm">
         {{ form.hidden_tag() }}
@@ -36,7 +36,7 @@
                                 {{ form.id_regional_district(class="form-select d-inline-block w-auto fs-5") }}
                             </span>
                         </p>
-                        <p class="fs-5"><strong>Тип электростанции:</strong> 
+                        <p class="fs-5"><strong>Тип  электростанции:</strong> 
                             {{ form.id_station_type(class="form-select d-inline-block w-auto fs-5") }}
                         </p>
                         <!-- Кнопка "Сохранить" -->
@@ -49,7 +49,7 @@
     </form>
 </div>
 
-{# Модальное окно подтверждения при дубликате станции #}
+{# Модальное окно подтверждения при дубликате электростанции #}
 <div class="modal fade" id="duplicateConfirmModal" tabindex="-1" aria-labelledby="duplicateConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content p-3">
@@ -66,7 +66,7 @@
                 </p>
             </div>
             <div class="modal-footer border-0 pt-3">
-                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                 <button type="button" class="btn btn-danger btn-lg" id="confirmCreateDuplicateBtn">Да, создать станцию</button>
             </div>
         </div>
@@ -116,7 +116,7 @@
             });
         }
         
-        // Поле "Тип электростанции" остается обычным выпадающим списком без select2
+        // Поле "Тип  электростанции" остается обычным выпадающим списком без select2
     }
     
     // Запускаем инициализацию при загрузке DOM

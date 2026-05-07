@@ -50,7 +50,7 @@ FUEL_PARAM_LABELS = {
     "ushum": "Ушумун", "prim": "Приморье", "mag": "Магадан", "chukot": "Чукотка", "kamch": "Камчатка",
     "sah": "Сахалин",
     "nt": "Тепл. мощн. отборов", "nt_sum": "Сумма NT",
-    "numb1120": "Код станции", "numb1": "Номер",
+    "numb1120": "Код электростанции", "numb1": "Номер",
     "obor": "OBOR", "ved": "VED", "ved_cyrillic": "вед", "obl": "OBL", "dep": "DEP",
     "oes": "OES", "ees": "EES", "er": "ER", "gk": "GK", "be": "BE",
 }
@@ -68,7 +68,7 @@ MAIN_PARAM_LABELS = {
     "er": "Экономический район",
     "gk": "Генерирующая компания",
     "be": "Тип генерирующей компании",
-    "numb1120": "Код станции",
+    "numb1120": "Код электростанции",
     "numb1": "Номер",
 }
 
@@ -100,7 +100,7 @@ def should_suppress_fuel_params_station_summary_row(
 ) -> bool:
     """
     Жёлтая строка «станция, всего» не показывается для котельных:
-    у standalone-групп нет привязки к станции — в таблице подпись «—», а не «котельная».
+    у standalone-групп нет привязки к электростанции — в таблице подпись «—», а не «котельная».
     Если в одном блоке РЭС несколько таких групп, сумма по столбцам не нужна.
     """
     normalized_station_name = (station_name or "").strip()
@@ -731,7 +731,7 @@ def _get_equipment_group_station_mapping(equipment_group_ids, all_versions=False
     Возвращает equipment_group_id -> list[(station_id, station_name)].
     Группа оборудования может быть привязана к нескольким станциям через EquipmentGroupSetStation.
 
-    :param all_versions: если True, включать станции для всех версий БД (для страницы stations_equipment_group_fuel_params)
+    :param all_versions: если True, включать электростанции для всех версий БД (для страницы stations_equipment_group_fuel_params)
     """
     mapping_with_order = _get_equipment_group_station_mapping_with_display_order(
         equipment_group_ids,
@@ -764,10 +764,10 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
     """
     Строит иерархию по группам оборудования: energy_system_type → UES → РЭС → станция → группа оборудования.
 
-    Суммарные строки «станция, всего» показываются для групп, относящихся к одной станции.
+    Суммарные строки «станция, всего» показываются для групп, относящихся к одной электростанции.
 
     :param use_equipment_group_hierarchy_only: если True — без подуровня «станция» (одна виртуальная
-        станция на группу); если False — дополнительная группировка по первой привязанной станции.
+        станция на группу); если False — дополнительная группировка по первой привязанной электростанции.
         Уровни ЕЭС/ОЭС/РЭС всегда берутся из актуальных связей EquipmentGroup (как в карточке группы),
         а не из полей obl/oes в строке параметров по годам.
     """
@@ -863,7 +863,7 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
         return summary
 
     def _get_primary_station(eg_id):
-        """Возвращает (station_id, station_name) для первой станции группы или None."""
+        """Возвращает (station_id, station_name) для первой электростанции группы или None."""
         stations = eg_to_stations.get(eg_id, [])
         if not stations:
             return None
@@ -889,7 +889,7 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
                     ),
                 )
 
-                # Группируем по станции (если не use_equipment_group_hierarchy_only): station_key -> [(eg, rows), ...]
+                # Группируем по электростанции (если не use_equipment_group_hierarchy_only): station_key -> [(eg, rows), ...]
                 # Для stations_equipment_group_fuel_params: одна «виртуальная» станция, без подуровня «станция, всего»
                 by_station = defaultdict(list)
                 for eg_id, eg_rows in eg_items:

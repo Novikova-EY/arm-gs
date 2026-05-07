@@ -387,7 +387,7 @@ def rename_or_merge_equipment_group_for_station(
 ) -> dict:
     """
     При переименовании группы оборудования: если уже есть группа с таким именем
-    на станции — объединяем (EquipmentGroupSetStation → одна EquipmentGroup,
+    на электростанции — объединяем (EquipmentGroupSetStation → одна EquipmentGroup,
     параметры сливаем, дубликат удаляем). Иначе — просто обновляем name.
 
     Returns:
@@ -490,7 +490,7 @@ def rename_or_merge_equipment_group_all_versions(
     Переименование группы оборудования во ВСЕХ версиях БД.
 
     Логика:
-    - Берем external_code станции и id типа группы оборудования (в текущей версии)
+    - Берем external_code электростанции и id типа группы оборудования (в текущей версии)
     - equipment_group_type_id версионируем: в каждой версии у одного логического типа
       может быть свой ID. Ищем EquipmentGroupType по ref_uuid (или по имени) в каждой версии.
     - Для каждой версии: находим Station.id по external_code (Station в этой версии)
@@ -623,7 +623,7 @@ def rename_or_merge_equipment_group_all_versions(
             .filter(name_expr == new_name_norm, eg_version_filter)
             .all()
         )
-        # Объединяем: все группы по станции+типу + все с таким же именем (дедупликация по id)
+        # Объединяем: все группы по электростанции+типу + все с таким же именем (дедупликация по id)
         seen_ids: set[int] = set()
         groups_with_new: list[EquipmentGroup] = []
         for g in all_station_groups + same_name_in_version:
@@ -803,10 +803,10 @@ _EQUIPMENT_GROUP_FIELD_LABELS = {
     "name": "Наименование",
     "name_ext": "Название (БД Топливо)",
     "niv": "Признак группы оборудования",
-    "comp": "Признак станции, разбитой на группы",
-    "main": "Код станции",
-    "d": "Признак действующей станции",
-    "r": "Признак расширяемой станции",
+    "comp": "Признак электростанции, разбитой на группы",
+    "main": "Код электростанции",
+    "d": "Признак действующей электростанции",
+    "r": "Признак расширяемой электростанции",
     "forem": "Признак ФОРЭМ",
     "vedomstvo": "Ведомство",
     "obl": "Код субъекта РФ",

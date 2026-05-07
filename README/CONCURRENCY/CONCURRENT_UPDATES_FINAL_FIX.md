@@ -184,7 +184,7 @@ if conflicts:
    - Добавлены декораторы `@handle_stale_data`
 
 8. **Шаблоны:**
-   - `station_details.html` - скрытое поле version для станции
+   - `station_details.html` - скрытое поле version для электростанции
    - `machine_details.html` - скрытое поле version для агрегата
    - `pgu_machine_details.html` - скрытое поле version для ПГУ
    - `_machines_tbody.html` - скрытые поля version для каждого агрегата в таблице
@@ -230,7 +230,7 @@ print(f"[VERSION CHECK] Machine ID=...")
 - ✅ Изменения мощностей ПГУ
 
 ### На странице station_details:
-- ✅ Изменения самой станции (name, location, note и т.д.)
+- ✅ Изменения самой электростанции (name, location, note и т.д.)
 - ✅ **Изменения агрегатов в таблице:**
   - Собственник (`id_gen_company`)
   - Топливо по СО ЕЭС (`fuel_so`)

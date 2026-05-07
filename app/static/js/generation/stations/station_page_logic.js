@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
-    // === 2.1. Обработка фильтров с подтверждением (ОК/Отмена) для дат
+    // === 2.1. Обработка фильтров с подтверждением (ОК/Сбросить) для дат
     function setupDateFilterDropdowns() {
         const dateFilters = ['date_commission_filter', 'date_exploitation_filter', 'date_decompressing_expected_filter', 'date_modernization_expected_filter', 'date_modernization_no_power_expected_filter'];
         
@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
             
-            // Обработчик кнопки Отмена - восстанавливаем исходное состояние
+            // Обработчик кнопки Сбросить - восстанавливаем исходное состояние
             const cancelButton = menu.querySelector('.date-filter-cancel');
             if (cancelButton) {
                 cancelButton.addEventListener('click', (e) => {
@@ -258,14 +258,14 @@ document.addEventListener("DOMContentLoaded", () => {
             if (showPOgr) showEls(aggregatedOgrRows); else hideEls(aggregatedOgrRows);
             if (showPRasp) showEls(aggregatedRaspRows); else hideEls(aggregatedRaspRows);
 
-            // Итоговые строки по станции подчиняются соответствующим переключателям
+            // Итоговые строки по электростанции подчиняются соответствующим переключателям
             document.querySelectorAll('.station-ogr-row').forEach(row => { showPOgr ? showEl(row) : hideEl(row); });
             document.querySelectorAll('.station-rasp-row').forEach(row => { showPRasp ? showEl(row) : hideEl(row); });
 
             // Количество отображаемых строк на агрегат (1..3)
             const aggregatorRows = 1 + (showPOgr ? 1 : 0) + (showPRasp ? 1 : 0);
 
-            // Обновляем rowspan для ячеек "Всего по станции"
+            // Обновляем rowspan для ячеек "Всего по электростанции"
             document.querySelectorAll('.total-row-cell').forEach(td => td.setAttribute('rowspan', String(aggregatorRows)));
 
             // Меняем rowspan для ячеек агрегатов: baseRows + extras
@@ -433,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
 
-            // НЕ скрываем первую строку с названием станции
+            // НЕ скрываем первую строку с названием электростанции
             // Она остается всегда видимой
 
             // Обновляем стиль кнопки и текст

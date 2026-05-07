@@ -230,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window.updateRows = update;
     }
 
-    // === 4. Переключатель "все станции / постранично" + выпадающий список
+    // === 4. Переключатель "все электростанции / постранично" + выпадающий список
     function setupPerPageToggle() {
         const perPageSelect = document.getElementById("per_page_select");
 

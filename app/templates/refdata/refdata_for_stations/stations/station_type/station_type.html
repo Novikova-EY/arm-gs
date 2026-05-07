@@ -32,7 +32,7 @@
                     </button>
 
                     <a href="{{ url_for('refdata_bp.station_type_list') }}"
-                            class="btn btn-outline-secondary fw-bold"
+                            class="btn btn-outline-danger fs-5"
                             data-no-preloader>
                             Сбросить
                     </a>
@@ -82,7 +82,7 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <!-- Кнопка сохранения изменений -->
-                    <button type="submit" class="btn btn-success">Сохранить изменения</button>
+                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
                     {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-success" title="Применить изменения ко всем версиям БД">Сохранить во всех версиях</button>{% endif %}
                 </div>
 
@@ -142,7 +142,7 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Тип электростанции" -->
+                            <!-- Шапка таблицы. Столбец "Тип  электростанции" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('refdata_bp.station_type_list', 
                                             page=pagination.page, 
@@ -151,7 +151,7 @@
                                             sort_by='name', 
                                             sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                             class="text-black">
-                                    Тип электростанции
+                                    Тип  электростанции
                                     {% if sort_by == 'name' %}
                                         {% if sort_dir == 'asc' %}
                                             ▲
@@ -189,7 +189,7 @@
                                 >
                             </td>
 
-                            <!-- Строки таблицы. Столбец "Тип электростанции" -->
+                            <!-- Строки таблицы. Столбец "Тип  электростанции" -->
                             <td>
                                 <input type="text" name="station_type_names[]" class="form-control" value="{{ station_type.name }}">
                             </td>
@@ -254,7 +254,7 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Тип электростанции" -->
+                        <!-- Шапка таблицы. Столбец "Тип  электростанции" -->
                         <th class="text-center align-middle">
                             <a href="{{ url_for('refdata_bp.station_type_list', 
                                         page=pagination.page, 
@@ -263,7 +263,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Тип электростанции
+                                Тип  электростанции
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -290,7 +290,7 @@
                             {{ station_type.display_order if station_type.display_order is not none else '' }}
                         </td>
 
-                        <!-- Строки таблицы. Столбец "Тип электростанции" -->
+                        <!-- Строки таблицы. Столбец "Тип  электростанции" -->
                         <td> {{ station_type.name }} </td>
                     </tr>
                     {% else %}

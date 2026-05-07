@@ -968,7 +968,7 @@ def export_prospective_places_aes():
         cell.border = thin_border
 
     row_num = 2
-    station_cols = [1, 2, 3, 4, 5, 6, 7, 12]  # столбцы с данными станции (rowspan при нескольких машинах)
+    station_cols = [1, 2, 3, 4, 5, 6, 7, 12]  # столбцы с данными электростанции (rowspan при нескольких машинах)
 
     for idx, s in enumerate(stations, 1):
         ues_name = (s.regional_energy_system.union_energy_system.name if s.regional_energy_system and s.regional_energy_system.union_energy_system else None) or "—"
@@ -994,7 +994,7 @@ def export_prospective_places_aes():
                     cell.alignment = center_align if col != 2 and col != 4 else left_align
                 row_num += 1
 
-            # Объединение ячеек для столбцов станции
+            # Объединение ячеек для столбцов электростанции
             if row_num - 1 > first_row:
                 for sc in station_cols:
                     ws.merge_cells(start_row=first_row, start_column=sc, end_row=row_num - 1, end_column=sc)

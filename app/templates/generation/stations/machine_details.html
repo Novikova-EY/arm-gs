@@ -23,7 +23,7 @@
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">  электростанции</a>
         <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
     </div>
 
@@ -34,7 +34,7 @@
 
     <div class="container-fluid">
         <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате электростанции
+            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате  электростанции
                 {% if can_edit_any %}
                     <span class="edit-indicator ms-3">Режим редактирования</span>
                 {% else %}
@@ -103,7 +103,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Состояние агрегата станции:</div>
+                                    <div class="col-5 text-start fw-semibold">Состояние агрегата электростанции:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit_generation %}
                                             {{ main_form.id_condition_type(class="form-select") }}
@@ -113,7 +113,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата электростанции:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit_generation %}
                                             {{ main_form.id_energy_area(class="form-select") }}
@@ -1226,7 +1226,7 @@
     }
 
     /* Единые горизонтальные отступы у всех таблиц на странице агрегата */
-    /* Отменяем прежнее выравнивание — как на странице станции */
+    /* Отменяем прежнее выравнивание — как на странице электростанции */
 
 
 </style>

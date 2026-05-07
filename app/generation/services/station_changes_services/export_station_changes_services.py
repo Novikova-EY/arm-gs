@@ -275,7 +275,7 @@ def export_station_changes_to_excel(
         "Генерирующая компания",
         "Электростанция",
         "Вид мероприятия",
-        "Тип электростанции",
+        "Тип  электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
@@ -453,7 +453,7 @@ def export_station_changes_to_excel(
                 st_ids.append(st_id)
         
         # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа станции
+        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
         
         # Общее количество строк в блоке
         total_block_height = len(event_types) * rows_per_event
@@ -500,9 +500,9 @@ def export_station_changes_to_excel(
             worksheet.write(current_row, note_col, "", text_center_format)
             current_row += 1
             
-            # Следующие строки: по каждому типу станции
+            # Следующие строки: по каждому типу электростанции
             for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип станции {st_id}")
+                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
                 
                 # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
                 worksheet.write(current_row, event_col, "", text_center_format)
@@ -643,7 +643,7 @@ def export_station_changes_to_excel(
                             merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
                             row_cursor += block_rows
 
-                        # Станции: объединение по фактической высоте станции в выгрузке
+                        # электростанции: объединение по фактической высоте электростанции в выгрузке
                         station_row_cursor = rd_start_row
                         for station, station_rows, machine_plans in rd_station_plans:
                             merge_if_needed(
@@ -1004,7 +1004,7 @@ def export_station_changes_pril_b_to_excel(
         "Генерирующая компания",
         "Электростанция",
         "Вид мероприятия",
-        "Тип электростанции",
+        "Тип  электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
@@ -1203,7 +1203,7 @@ def export_station_changes_pril_b_to_excel(
                 st_ids.append(st_id)
 
         # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа станции
+        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
 
         # Общее количество строк в блоке
         total_block_height = len(event_types) * rows_per_event
@@ -1250,9 +1250,9 @@ def export_station_changes_pril_b_to_excel(
             worksheet.write(current_row, note_col, "", text_center_format)
             current_row += 1
 
-            # Следующие строки: по каждому типу станции
+            # Следующие строки: по каждому типу электростанции
             for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип станции {st_id}")
+                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
 
                 # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
                 worksheet.write(current_row, event_col, "", text_center_format)
@@ -1385,7 +1385,7 @@ def export_station_changes_pril_b_to_excel(
                             merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
                             row_cursor += block_rows
 
-                        # Станции: объединение по фактической высоте станции в выгрузке
+                        # электростанции: объединение по фактической высоте электростанции в выгрузке
                         station_row_cursor = rd_start_row
                         for station, station_rows, machine_plans in rd_station_plans:
                             merge_if_needed(
@@ -1699,7 +1699,7 @@ def export_station_changes_pril_2_russia_to_excel(
         "Генерирующая компания",
         "Электростанция",
         "Вид мероприятия",
-        "Тип электростанции",
+        "Тип  электростанции",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
@@ -1943,7 +1943,7 @@ def export_station_changes_pril_2_russia_to_excel(
                 st_ids.append(st_id)
         
         # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа станции
+        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
         
         # Общее количество строк в блоке
         total_block_height = len(event_types) * rows_per_event
@@ -1990,9 +1990,9 @@ def export_station_changes_pril_2_russia_to_excel(
             worksheet.write(current_row, note_col, "", text_center_format)
             current_row += 1
             
-            # Следующие строки: по каждому типу станции
+            # Следующие строки: по каждому типу электростанции
             for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип станции {st_id}")
+                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
                 
                 # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
                 worksheet.write(current_row, event_col, "", text_center_format)
@@ -2133,7 +2133,7 @@ def export_station_changes_pril_2_russia_to_excel(
                             merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
                             row_cursor += block_rows
 
-                        # Станции: объединение по фактической высоте станции в выгрузке
+                        # электростанции: объединение по фактической высоте электростанции в выгрузке
                         station_row_cursor = rd_start_row
                         for station, station_rows, machine_plans in rd_station_plans:
                             merge_if_needed(

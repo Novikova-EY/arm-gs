@@ -46,7 +46,7 @@
 
                 {% if not hide_filters_third_row_reset|default(false) %}
                 <div class="filter-item flex-shrink-0">
-                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 </div>
                 {% endif %}
             </form>
@@ -113,7 +113,7 @@
             <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddPeriodModal">Добавить период</button>
             {% endif %}
             {% if show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false) and current_user.is_authenticated and current_user.has_admin %}
-            <button type="submit" form="fuelParamsBulkEditForm" class="btn btn-success flex-shrink-0">Сохранить</button>
+            <button type="submit" form="fuelParamsBulkEditForm" class="btn btn-outline-primary fs-5 flex-shrink-0">Сохранить</button>
             {% endif %}
             <form id="perPageForm" method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}">
                 {% for key, value in request.args.items() %}

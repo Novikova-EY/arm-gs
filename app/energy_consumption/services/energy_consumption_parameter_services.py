@@ -1,24 +1,35 @@
 # -*- coding: utf-8 -*-
 """
-CRUD и выборки для таблиц параметров спроса (app.energy_consumption; ORM-канон — app.power_demand, схема gs_pd).
+CRUD и выборки для параметров потребления электроэнергии (app.energy_consumption, схема gs_ec).
 """
 from __future__ import annotations
 
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Optional, Type
 
 from flask import session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from app.extensions import db
+from app.common.services.database_version_filter import filter_by_explicit_db_version
 from app.common.services.database_version_services import get_current_version
-from app.common.services.get_services.years.year_feature_services import (
-    get_year_feature_dict,
-)
 from app.common.services.get_services.years.years_get_services import get_year_list_full
 from app.common.services.help_services import format_decimal_trim_for_display
+from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
+    EnergyZoneEnergyConsumptionParameter,
+)
+from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
+    RegionalEnergySystemEnergyConsumptionParameter,
+)
 
 
 def _username() -> str:
@@ -27,8 +38,7 @@ def _username() -> str:
 
 def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
     """
-    Одно поле формы: «Исторический максимум» (hist) или номер года.
-    Пустое значение — срез «год» без выбранного года (новая незаполненная строка).
+    Устаревший разбор для совместимости: для потребления год календарный; «hist» не используется.
     """
     s = str(raw or "").strip()
     if s == "hist":
@@ -38,6 +48,31 @@ def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
     if s.isdigit():
         return False, int(s)
     return False, None
+
+
+def _decimal_round_half_up_to_int(val: Any) -> Optional[Decimal]:
+    """Целое значение (до ближайшего целого, от половины вверх). Для None → None."""
+    if val is None:
+        return None
+    try:
+        d = val if isinstance(val, Decimal) else Decimal(str(val))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return d.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+
+def _is_energy_consumption_parameter_model(model: Type[Any]) -> bool:
+    tbl = getattr(model, "__table__", None)
+    if tbl is None:
+        return False
+    return "energy_consumption_mln_kvt_ch" in tbl.columns
+
+
+def _parse_calendar_year_slice(raw: Any) -> Optional[int]:
+    s = str(raw or "").strip()
+    if not s or s == "hist" or not s.isdigit():
+        return None
+    return int(s)
 
 
 def parse_decimal(value: Any) -> Optional[Decimal]:
@@ -166,11 +201,155 @@ def get_demand_rows(demand_model, fk_column_name: Optional[str], parent_id: Opti
     q = filter_demand_by_version(q, demand_model)
     if fk_column_name is not None and parent_id is not None:
         q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
-    rows = q.order_by(
-        demand_model.is_historical_maximum.desc(),
-        demand_model.year_number.asc().nullsfirst(),
-    ).all()
+    order_parts = []
+    if "is_historical_maximum" in demand_model.__table__.columns:
+        order_parts.append(demand_model.is_historical_maximum.desc())
+    order_parts.append(demand_model.year_number.asc().nullsfirst())
+    rows = q.order_by(*order_parts).all()
     return rows
+
+
+def _demand_rows_for_version(
+    demand_model: Type[Any],
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+    database_version_id: Optional[int],
+) -> list[Any]:
+    q = demand_model.query
+    if database_version_id is not None and hasattr(demand_model, "database_version_id"):
+        q = q.filter(demand_model.database_version_id == database_version_id)
+    if fk_column_name is not None and parent_id is not None:
+        q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
+    order_parts = []
+    if "is_historical_maximum" in demand_model.__table__.columns:
+        order_parts.append(demand_model.is_historical_maximum.desc())
+    order_parts.append(demand_model.year_number.asc().nullsfirst())
+    return q.order_by(*order_parts).all()
+
+
+def _sum_non_null_decimals(values: list[Any]) -> Optional[Decimal]:
+    acc: Optional[Decimal] = None
+    for v in values:
+        if v is None:
+            continue
+        try:
+            d = v if isinstance(v, Decimal) else Decimal(str(v))
+        except (InvalidOperation, TypeError, ValueError):
+            continue
+        acc = d if acc is None else acc + d
+    return acc
+
+
+def sync_energy_zone_consumption_aggregates(
+    *,
+    database_version_id: Optional[int] = None,
+    id_energy_zone: Optional[int] = None,
+    id_regional_energy_system: Optional[int] = None,
+) -> None:
+    """Пересчёт потребления по энергозоне как суммы показателей РЭС, входящих в зону (по субъектам зоны).
+
+    Обновляет ``energy_consumption_mln_kvt_ch`` и ``energy_consumption_sipr_mln_kvt_ch`` в
+    :class:`EnergyZoneEnergyConsumptionParameter`. Примечания к строкам не меняет.
+    """
+    vid = database_version_id if database_version_id is not None else get_current_version()
+
+    def _filter_version(q, model: Type[Any]):
+        if vid is not None and hasattr(model, "database_version_id"):
+            q = q.filter(model.database_version_id == vid)
+        return q
+
+    ez_q = EnergyZone.query.options(selectinload(EnergyZone.regional_districts))
+    ez_q = _filter_version(ez_q, EnergyZone)
+    if id_energy_zone is not None:
+        ez_q = ez_q.filter(EnergyZone.id == int(id_energy_zone))
+    zones = list(ez_q.all())
+
+    if id_regional_energy_system is not None:
+        res_q = RegionalEnergySystem.query.filter(
+            RegionalEnergySystem.id == int(id_regional_energy_system)
+        )
+        res_q = _filter_version(res_q, RegionalEnergySystem)
+        res_obj = res_q.first()
+        if res_obj is None:
+            zones = []
+        else:
+            rd_ids_res = {rd.id for rd in res_obj.regional_districts}
+            zones = [
+                z
+                for z in zones
+                if rd_ids_res & {rd.id for rd in z.regional_districts}
+            ]
+
+    res_q = RegionalEnergySystem.query.options(
+        selectinload(RegionalEnergySystem.regional_districts)
+    )
+    res_q = _filter_version(res_q, RegionalEnergySystem)
+    all_res = list(res_q.all())
+
+    user = _username()
+
+    for ez in zones:
+        zone_rd_ids = {rd.id for rd in ez.regional_districts}
+        res_in_zone: list[RegionalEnergySystem] = []
+        for res in all_res:
+            if any(rd.id in zone_rd_ids for rd in res.regional_districts):
+                res_in_zone.append(res)
+
+        mln_by_year: dict[int, list[Any]] = {}
+        sipr_by_year: dict[int, list[Any]] = {}
+        for res in res_in_zone:
+            for r in _demand_rows_for_version(
+                RegionalEnergySystemEnergyConsumptionParameter,
+                "id_regional_energy_system",
+                res.id,
+                vid,
+            ):
+                y = getattr(r, "year_number", None)
+                if y is None:
+                    continue
+                yi = int(y)
+                mln_by_year.setdefault(yi, []).append(
+                    getattr(r, "energy_consumption_mln_kvt_ch", None)
+                )
+                sipr_by_year.setdefault(yi, []).append(
+                    getattr(r, "energy_consumption_sipr_mln_kvt_ch", None)
+                )
+
+        existing_ez_rows = _demand_rows_for_version(
+            EnergyZoneEnergyConsumptionParameter,
+            "id_energy_zone",
+            ez.id,
+            vid,
+        )
+        existing_years = {
+            int(r.year_number)
+            for r in existing_ez_rows
+            if getattr(r, "year_number", None) is not None
+        }
+        all_years = existing_years | set(mln_by_year.keys()) | set(sipr_by_year.keys())
+
+        for y in sorted(all_years):
+            sum_mln = _sum_non_null_decimals(mln_by_year.get(y, []))
+            sum_sipr = _sum_non_null_decimals(sipr_by_year.get(y, []))
+            row = next(
+                (r for r in existing_ez_rows if getattr(r, "year_number", None) == y),
+                None,
+            )
+            if row is None:
+                if sum_mln is None and sum_sipr is None:
+                    continue
+                row = EnergyZoneEnergyConsumptionParameter()
+                row.id_energy_zone = ez.id
+                if vid is not None:
+                    row.database_version_id = vid
+                row.year_number = y
+                row.created_by = user
+                db.session.add(row)
+                existing_ez_rows.append(row)
+
+            row.energy_consumption_mln_kvt_ch = sum_mln
+            row.energy_consumption_sipr_mln_kvt_ch = sum_sipr
+            row.modified_by = user
 
 
 def apply_version_to_row(row, demand_model):
@@ -232,30 +411,19 @@ def resolve_max_power_mw_for_save(
     return vis
 
 
-def validate_demand_post_complete(
-    form_data,
-    require_combined_oe_ees: bool,
-    *,
-    require_combined_on_ez: bool = False,
+def validate_energy_consumption_post_complete(
+    form_data, *, skip_mln_sipr_validation: bool = False
 ) -> None:
-    """
-    Проверяет, что все строки, которые должны сохраниться, заполнены.
-    Строки, отмеченные на удаление, не проверяются.
-    Полностью пустая новая строка (без id) допустима — пропускается.
-    """
+    """Поля формы: row_id[], slice_year[], ec_mln[], ec_sipr[], ec_mln_db[], ec_sipr_db[], note[], del[]."""
     ids = form_data.getlist("row_id[]")
     slice_years = form_data.getlist("slice_year[]")
-    p_maxs = form_data.getlist("p_max[]")
-    dts = form_data.getlist("dt[]")
-    tnvs = form_data.getlist("tnv[]")
-    oess = form_data.getlist("oes[]")
-    eess = form_data.getlist("ees[]")
-    ess = form_data.getlist("es[]")
-    ezss = form_data.getlist("ez[]")
+    ec_mlns = form_data.getlist("ec_mln[]")
+    ec_siprs = form_data.getlist("ec_sipr[]")
+    notes = form_data.getlist("note[]")
     dels = form_data.getlist("del[]")
     deleted = {int(x) for x in dels if str(x).strip().isdigit()}
 
-    n = max(len(ids), len(slice_years), len(ess), len(ezss) if require_combined_on_ez else 0)
+    n = max(len(ids), len(slice_years), len(ec_mlns), len(ec_siprs), len(notes))
     issues: list[str] = []
 
     for i in range(n):
@@ -265,84 +433,42 @@ def validate_demand_post_complete(
             continue
 
         sl_st = (slice_years[i] if i < len(slice_years) else "").strip()
-        p_max = p_maxs[i] if i < len(p_maxs) else ""
-        dt = dts[i] if i < len(dts) else ""
-        tnv = tnvs[i] if i < len(tnvs) else ""
-        oes = oess[i] if i < len(oess) else ""
-        ees = eess[i] if i < len(eess) else ""
-        es_s = ess[i] if i < len(ess) else ""
-        ez_s = ezss[i] if i < len(ezss) else ""
+        ec_m = ec_mlns[i] if i < len(ec_mlns) else ""
+        ec_s = ec_siprs[i] if i < len(ec_siprs) else ""
+        note_v = notes[i] if i < len(notes) else ""
 
         row_label = f"строка таблицы №{i + 1}"
 
         if not rid:
-            core_empty = (
+            all_empty = (
                 not sl_st
-                and not _field_nonempty(p_max)
-                and not _field_nonempty(dt)
-                and not _field_nonempty(tnv)
+                and not _field_nonempty(ec_m)
+                and not _field_nonempty(ec_s)
+                and not _field_nonempty(note_v)
             )
-            oe_empty = not _field_nonempty(oes)
-            ee_empty = not _field_nonempty(ees)
-            ez_empty = not _field_nonempty(ez_s)
-            if (
-                core_empty
-                and not _field_nonempty(es_s)
-                and (not require_combined_oe_ees or (oe_empty and ee_empty))
-                and (not require_combined_on_ez or ez_empty)
-            ):
+            if all_empty:
                 continue
             row_label = "новая строка"
 
-        is_hist, year_n = parse_slice_year(sl_st)
-        if not sl_st or (not is_hist and year_n is None):
-            issues.append(f"{row_label}: не выбран срез или год.")
+        if sl_st == "hist":
+            issues.append(
+                f"{row_label}: выберите календарный год (исторический максимум не используется)."
+            )
             continue
 
-        if not _field_nonempty(p_max):
-            issues.append(f"{row_label}: не заполнено «Максимальное потребление, МВт».")
-        elif parse_decimal(p_max) is None:
-            issues.append(f"{row_label}: некорректное число в «Максимальное потребление, МВт».")
+        year_n = _parse_calendar_year_slice(sl_st)
+        if year_n is None:
+            issues.append(f"{row_label}: не выбран год.")
+            continue
 
-        if not _field_nonempty(dt):
-            issues.append(f"{row_label}: не заполнено «Дата и время».")
-        else:
-            dt_parsed = parse_peak_datetime(dt)
-            if dt_parsed is None:
+        if not skip_mln_sipr_validation:
+            if _field_nonempty(ec_m) and parse_decimal(ec_m) is None:
                 issues.append(
-                    f"{row_label}: «Дата и время»: несуществующая дата или неверный формат "
-                    f"(ДД.ММ.ГГГГ ЧЧ:ММ или только год ГГГГ)."
+                    f"{row_label}: некорректное число в «Потребление электрической энергии, млн кВт·ч»."
                 )
-            elif not is_hist and year_n is not None and dt_parsed.year != year_n:
+            if _field_nonempty(ec_s) and parse_decimal(ec_s) is None:
                 issues.append(
-                    f"{row_label}: год в «Дата и время» ({dt_parsed.year}) должен совпадать "
-                    f"с годом в столбце «Срез / год» ({year_n})."
-                )
-
-        if not _field_nonempty(tnv):
-            issues.append(f"{row_label}: не заполнено «Среднесуточная ТНВ».")
-        elif parse_decimal(tnv) is None:
-            issues.append(f"{row_label}: некорректное число в «Среднесуточная ТНВ».")
-
-        if _field_nonempty(es_s) and parse_decimal(es_s) is None:
-            issues.append(f"{row_label}: некорректное число в «Совмещенный на ЭС, МВт».")
-
-        if require_combined_oe_ees:
-            if not _field_nonempty(oes):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на ОЭС».")
-            elif parse_decimal(oes) is None:
-                issues.append(f"{row_label}: некорректное число в «Совмещённый на ОЭС».")
-            if not _field_nonempty(ees):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на ЕЭС».")
-            elif parse_decimal(ees) is None:
-                issues.append(f"{row_label}: некорректное число в «Совмещённый на ЕЭС».")
-
-        if require_combined_on_ez:
-            if not _field_nonempty(ez_s):
-                issues.append(f"{row_label}: не заполнено «Совмещённый на энергозону, МВт».")
-            elif parse_decimal(ez_s) is None:
-                issues.append(
-                    f"{row_label}: некорректное число в «Совмещённый на энергозону, МВт»."
+                    f"{row_label}: некорректное число в «Потребление (СиПР), млн кВт·ч»."
                 )
 
     if issues:
@@ -354,51 +480,64 @@ def validate_demand_post_complete(
         raise ValueError(msg)
 
 
-def save_demand_rows_from_post(
+def validate_demand_post_complete(
+    form_data,
+    demand_model: Type[Any],
+    require_combined_oe_ees: bool,
+    *,
+    require_combined_on_ez: bool = False,
+) -> None:
+    """
+    Для маршрутов потребления — только модели gs_ec.
+    Аргументы combined_* оставлены для совместимости вызовов из маршрутов.
+    """
+    del require_combined_oe_ees, require_combined_on_ez
+    if not _is_energy_consumption_parameter_model(demand_model):
+        raise ValueError("Ожидается модель параметров потребления (gs_ec).")
+    skip_nums = (
+        getattr(demand_model, "__tablename__", None) == "gs_ec_energy_zone_consumption_params"
+    )
+    validate_energy_consumption_post_complete(
+        form_data, skip_mln_sipr_validation=skip_nums
+    )
+
+
+def save_energy_consumption_rows_from_post(
     demand_model: Type[Any],
     fk_column_name: Optional[str],
     parent_id: Optional[int],
     form_data,
-    *,
-    require_combined_oe_ees: bool = True,
-    require_combined_on_ez: bool = False,
 ) -> tuple[int, int]:
-    """
-    Обрабатывает POST с полями row_id[], slice_year[], p_max[], dt[], tnv[], oes[], ees[], es[], ez[], del[].
-    slice_year[]: «hist» — исторический максимум; иначе — номер года (строка цифр).
-    Возвращает (saved_count, deleted_count).
-    """
     validate_demand_post_complete(
         form_data,
-        require_combined_oe_ees,
-        require_combined_on_ez=require_combined_on_ez,
+        demand_model,
+        False,
+        require_combined_on_ez=False,
     )
 
     rd_save = rounding_digits_from_form(form_data)
 
     ids = form_data.getlist("row_id[]")
     slice_years = form_data.getlist("slice_year[]")
-    p_maxs = form_data.getlist("p_max[]")
-    p_max_dbs = form_data.getlist("p_max_db[]")
-    dts = form_data.getlist("dt[]")
-    tnvs = form_data.getlist("tnv[]")
-    oess = form_data.getlist("oes[]")
-    eess = form_data.getlist("ees[]")
-    ess = form_data.getlist("es[]")
-    ezss = form_data.getlist("ez[]")
-    ez_mode = (
-        require_combined_on_ez
-        and "combined_on_ez" in demand_model.__table__.columns
-        and form_data.get("demand_form_ez_mode") == "1"
-    )
+    ec_mlns = form_data.getlist("ec_mln[]")
+    ec_sipr_raw = form_data.getlist("ec_sipr[]")
+    ec_mln_dbs = form_data.getlist("ec_mln_db[]")
+    ec_sipr_dbs = form_data.getlist("ec_sipr_db[]")
+    notes = form_data.getlist("note[]")
     dels = form_data.getlist("del[]")
     deleted = set(int(x) for x in dels if str(x).strip().isdigit())
 
     saved = 0
     deleted_n = 0
     user = _username()
+    is_ez_tbl = (
+        getattr(demand_model, "__tablename__", None) == "gs_ec_energy_zone_consumption_params"
+    )
+    is_res_tbl = (
+        getattr(demand_model, "__tablename__", None)
+        == "gs_ec_regional_energy_system_consumption_params"
+    )
 
-    # Удаление
     for rid in deleted:
         row = demand_model.query.get(rid)
         if row is not None:
@@ -410,40 +549,29 @@ def save_demand_rows_from_post(
             db.session.delete(row)
             deleted_n += 1
 
-    n = max(len(ids), len(slice_years), len(ess), len(ezss) if ez_mode else 0)
+    n = max(len(ids), len(slice_years), len(ec_mlns), len(ec_sipr_raw), len(notes))
     for i in range(n):
         rid_s = ids[i] if i < len(ids) else ""
         rid = int(rid_s) if str(rid_s).strip().isdigit() else None
         raw_sl = slice_years[i] if i < len(slice_years) else ""
-        is_hist, year_n = parse_slice_year(raw_sl)
+        year_n = _parse_calendar_year_slice(raw_sl)
 
-        db_snap = p_max_dbs[i] if i < len(p_max_dbs) else ""
-        p_max = resolve_max_power_mw_for_save(
-            p_maxs[i] if i < len(p_maxs) else "",
-            db_snap,
+        db_mln = ec_mln_dbs[i] if i < len(ec_mln_dbs) else ""
+        db_sipr = ec_sipr_dbs[i] if i < len(ec_sipr_dbs) else ""
+        ec_mln = resolve_max_power_mw_for_save(
+            ec_mlns[i] if i < len(ec_mlns) else "",
+            db_mln,
             rd_save,
         )
-        dt_val = parse_peak_datetime(dts[i] if i < len(dts) else None)
-        tnv = parse_decimal(tnvs[i] if i < len(tnvs) else None)
-        if ez_mode:
-            oes = None
-            ees = None
-        else:
-            oes = parse_decimal(oess[i] if i < len(oess) else None)
-            ees = parse_decimal(eess[i] if i < len(eess) else None)
-        es_raw = ess[i] if i < len(ess) else ""
-        combined_es = parse_decimal(es_raw) if str(es_raw or "").strip() else None
-        ez_val = (
-            parse_decimal(ezss[i] if i < len(ezss) else None)
-            if ez_mode
-            else None
+        ec_sipr = resolve_max_power_mw_for_save(
+            ec_sipr_raw[i] if i < len(ec_sipr_raw) else "",
+            db_sipr,
+            rd_save,
         )
+        note_v = str(notes[i] if i < len(notes) else "").strip()
+        note_val = note_v if note_v else None
 
-        if is_hist:
-            year_n = None
-        elif year_n is None and not rid:
-            continue
-        elif not is_hist and year_n is None:
+        if year_n is None and not rid:
             continue
 
         if rid:
@@ -461,20 +589,22 @@ def save_demand_rows_from_post(
             row.created_by = user
             db.session.add(row)
 
-        row.is_historical_maximum = is_hist
         row.year_number = year_n
-        row.max_power_consumption_mw = p_max
-        row.peak_datetime_msk = dt_val
-        row.avg_daily_air_temp_c = tnv
-        row.combined_on_oes = oes
-        row.combined_on_ees = ees
-        if "combined_on_es" in demand_model.__table__.columns:
-            row.combined_on_es = combined_es
-        if "combined_on_ez" in demand_model.__table__.columns and ez_mode:
-            row.combined_on_ez = ez_val
+        if is_ez_tbl:
+            pass
+        else:
+            row.energy_consumption_mln_kvt_ch = ec_mln
+            row.energy_consumption_sipr_mln_kvt_ch = ec_sipr
+        row.note = note_val
         row.modified_by = user
 
         saved += 1
+
+    db.session.flush()
+    if is_ez_tbl and parent_id is not None:
+        sync_energy_zone_consumption_aggregates(id_energy_zone=int(parent_id))
+    elif is_res_tbl and parent_id is not None:
+        sync_energy_zone_consumption_aggregates(id_regional_energy_system=int(parent_id))
 
     try:
         db.session.commit()
@@ -484,69 +614,93 @@ def save_demand_rows_from_post(
     return saved, deleted_n
 
 
+def save_demand_rows_from_post(
+    demand_model: Type[Any],
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+    form_data,
+    *,
+    require_combined_oe_ees: bool = True,
+    require_combined_on_ez: bool = False,
+) -> tuple[int, int]:
+    """
+    POST: row_id[], slice_year[], ec_mln[], ec_sipr[], ec_mln_db[], ec_sipr_db[], note[], del[].
+    Год — только календарный номер (целое).
+    """
+    del require_combined_oe_ees, require_combined_on_ez
+    if not _is_energy_consumption_parameter_model(demand_model):
+        raise ValueError("Ожидается модель параметров потребления (gs_ec).")
+    return save_energy_consumption_rows_from_post(
+        demand_model,
+        fk_column_name,
+        parent_id,
+        form_data,
+    )
+
+
 def _summary_demand_model_class(name: str) -> Type[Any]:
     from app.energy_consumption.models.energy_systems.centralized_zone_energy_consumption_parameter_model import (
-        CentralizedZoneDemandParameter,
+        CentralizedZoneEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
-        EesDemandParameter,
+        EesEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
-        EesRussiaDemandParameter,
+        EesRussiaEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.ees_russia_with_nt_energy_consumption_parameter_model import (
-        EesRussiaWithNtDemandParameter,
+        EesRussiaWithNtEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
-        EnergySystemTypeDemandParameter,
+        EnergySystemTypeEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
-        EnergyUnitDemandParameter,
+        EnergyUnitEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
-        EnergyZoneDemandParameter,
+        EnergyZoneEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
-        RegionalEnergySystemDemandParameter,
+        RegionalEnergySystemEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.synchronous_area_energy_consumption_parameter_model import (
-        SynchronousAreaDemandParameter,
+        SynchronousAreaEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
-        UnionEnergySystemDemandParameter,
+        UnionEnergySystemEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
-        FederalDistrictDemandParameter,
+        FederalDistrictEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.territories.regional_district_energy_consumption_parameter_model import (
-        RegionalDistrictDemandParameter,
+        RegionalDistrictEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
-        RussiaFederationDemandParameter,
+        RussiaFederationEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.territories.russia_federation_with_nt_energy_consumption_parameter_model import (
-        RussiaFederationWithNtDemandParameter,
+        RussiaFederationWithNtEnergyConsumptionParameter,
     )
 
     mapping: dict[str, Type[Any]] = {
-        "CentralizedZoneDemandParameter": CentralizedZoneDemandParameter,
-        "EesDemandParameter": EesDemandParameter,
-        "EesRussiaDemandParameter": EesRussiaDemandParameter,
-        "EesRussiaWithNtDemandParameter": EesRussiaWithNtDemandParameter,
-        "EnergySystemTypeDemandParameter": EnergySystemTypeDemandParameter,
-        "EnergyUnitDemandParameter": EnergyUnitDemandParameter,
-        "EnergyZoneDemandParameter": EnergyZoneDemandParameter,
-        "RegionalEnergySystemDemandParameter": RegionalEnergySystemDemandParameter,
-        "SynchronousAreaDemandParameter": SynchronousAreaDemandParameter,
-        "UnionEnergySystemDemandParameter": UnionEnergySystemDemandParameter,
-        "FederalDistrictDemandParameter": FederalDistrictDemandParameter,
-        "RegionalDistrictDemandParameter": RegionalDistrictDemandParameter,
-        "RussiaFederationDemandParameter": RussiaFederationDemandParameter,
-        "RussiaFederationWithNtDemandParameter": RussiaFederationWithNtDemandParameter,
+        "CentralizedZoneEnergyConsumptionParameter": CentralizedZoneEnergyConsumptionParameter,
+        "EesEnergyConsumptionParameter": EesEnergyConsumptionParameter,
+        "EesRussiaEnergyConsumptionParameter": EesRussiaEnergyConsumptionParameter,
+        "EesRussiaWithNtEnergyConsumptionParameter": EesRussiaWithNtEnergyConsumptionParameter,
+        "EnergySystemTypeEnergyConsumptionParameter": EnergySystemTypeEnergyConsumptionParameter,
+        "EnergyUnitEnergyConsumptionParameter": EnergyUnitEnergyConsumptionParameter,
+        "EnergyZoneEnergyConsumptionParameter": EnergyZoneEnergyConsumptionParameter,
+        "RegionalEnergySystemEnergyConsumptionParameter": RegionalEnergySystemEnergyConsumptionParameter,
+        "SynchronousAreaEnergyConsumptionParameter": SynchronousAreaEnergyConsumptionParameter,
+        "UnionEnergySystemEnergyConsumptionParameter": UnionEnergySystemEnergyConsumptionParameter,
+        "FederalDistrictEnergyConsumptionParameter": FederalDistrictEnergyConsumptionParameter,
+        "RegionalDistrictEnergyConsumptionParameter": RegionalDistrictEnergyConsumptionParameter,
+        "RussiaFederationEnergyConsumptionParameter": RussiaFederationEnergyConsumptionParameter,
+        "RussiaFederationWithNtEnergyConsumptionParameter": RussiaFederationWithNtEnergyConsumptionParameter,
     }
     cls = mapping.get(name)
     if cls is None:
-        raise ValueError(f"Неизвестная модель параметров нагрузки: {name}")
+        raise ValueError(f"Неизвестная модель параметров потребления: {name}")
     return cls
 
 
@@ -557,43 +711,12 @@ def _dash_summary_display(value: Any) -> str:
 
 
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
-    """Строка для отображения ячейки сводки после сохранения (как в energy_consumption_summary_services)."""
-    if str(parameter_key or "").startswith("coeff_k_"):
-        if hasattr(row, "__table__") and parameter_key in row.__table__.columns:
-            v = getattr(row, parameter_key, None)
-            return _dash_summary_display(
-                format_decimal_trim_for_display(v, digits=rounding_digits)
-            )
-        return "—"
-    if parameter_key == "max_power":
-        v = getattr(row, "max_power_consumption_mw", None)
+    """Строка для отображения ячейки сводки после сохранения."""
+    if parameter_key == "energy_consumption_mln_kvt_ch":
+        v = getattr(row, "energy_consumption_mln_kvt_ch", None)
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "peak_datetime":
-        s = format_peak_datetime_for_slice(
-            getattr(row, "peak_datetime_msk", None),
-            bool(getattr(row, "is_historical_maximum", False)),
-        )
-        return _dash_summary_display(s)
-    if parameter_key == "avg_temp":
-        v = getattr(row, "avg_daily_air_temp_c", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=0))
-    if parameter_key == "combined_on_oes":
-        v = getattr(row, "combined_on_oes", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "combined_on_ees":
-        v = getattr(row, "combined_on_ees", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "combined_on_es":
-        v = getattr(row, "combined_on_es", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "combined_on_ez":
-        v = getattr(row, "combined_on_ez", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "combined_on_fo":
-        v = getattr(row, "combined_on_fo", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
-    if parameter_key == "combined_on_cz":
-        v = getattr(row, "combined_on_cz", None)
+    if parameter_key == "energy_consumption_sipr_mln_kvt_ch":
+        v = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
@@ -602,12 +725,12 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
 
 _SUMMARY_STANDALONE_DEMAND_MODELS = frozenset(
     {
-        "CentralizedZoneDemandParameter",
-        "EesDemandParameter",
-        "EesRussiaDemandParameter",
-        "EesRussiaWithNtDemandParameter",
-        "RussiaFederationDemandParameter",
-        "RussiaFederationWithNtDemandParameter",
+        "CentralizedZoneEnergyConsumptionParameter",
+        "EesEnergyConsumptionParameter",
+        "EesRussiaEnergyConsumptionParameter",
+        "EesRussiaWithNtEnergyConsumptionParameter",
+        "RussiaFederationEnergyConsumptionParameter",
+        "RussiaFederationWithNtEnergyConsumptionParameter",
     }
 )
 
@@ -626,15 +749,17 @@ def _validate_summary_parent_binding(
 
 
 def parse_summary_slice_key(slice_key: Any) -> tuple[bool, Optional[int]]:
-    """«hist» → исторический максимум; иначе — номер года."""
+    """Календарный год; «hist» не допускается."""
     if slice_key is None or slice_key == "":
-        raise ValueError("Не указан срез (год или исторический максимум).")
+        raise ValueError("Не указан год среза.")
     if slice_key == "hist":
-        return True, None
+        raise ValueError(
+            "Срез «исторический максимум» для показателей потребления не поддерживается."
+        )
     try:
         y = int(slice_key)
     except (TypeError, ValueError) as exc:
-        raise ValueError("Некорректный срез.") from exc
+        raise ValueError("Некорректный год среза.") from exc
     return False, y
 
 
@@ -646,19 +771,16 @@ def find_demand_row_for_summary_slice(
     is_hist: bool,
     year_n: Optional[int],
 ) -> Any:
+    del is_hist
+    if year_n is None:
+        return None
     q = model.query
     q = filter_demand_by_version(q, model)
     if parent_fk_column is not None:
         if parent_id is None:
             return None
         q = q.filter(getattr(model, parent_fk_column) == parent_id)
-    q = q.filter(model.is_historical_maximum == is_hist)
-    if is_hist:
-        q = q.filter(model.year_number.is_(None))
-    else:
-        if year_n is None:
-            return None
-        q = q.filter(model.year_number == year_n)
+    q = q.filter(model.year_number == year_n)
     return q.first()
 
 
@@ -670,12 +792,12 @@ def create_demand_row_for_summary_slice(
     is_hist: bool,
     year_n: Optional[int],
 ) -> Any:
+    del is_hist
     row = model()
     if parent_fk_column is not None:
         setattr(row, parent_fk_column, parent_id)
     apply_version_to_row(row, model)
-    row.is_historical_maximum = is_hist
-    row.year_number = None if is_hist else year_n
+    row.year_number = year_n
     row.created_by = _username()
     db.session.add(row)
     return row
@@ -687,127 +809,39 @@ def _apply_summary_field_to_row(
     raw_value: Any,
     *,
     rounding_digits: int,
+    sipr_summary_mode: bool = False,
 ) -> None:
-    if parameter_key == "max_power":
+    if parameter_key == "energy_consumption_mln_kvt_ch":
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Максимальное потребление, МВт».")
+            raise ValueError(
+                "Некорректное число в поле «Потребление электрической энергии, млн кВт·ч»."
+            )
         old_shown = (
-            format_decimal_trim_for_display(row.max_power_consumption_mw, digits=rounding_digits)
-            if row.max_power_consumption_mw is not None
+            format_decimal_trim_for_display(row.energy_consumption_mln_kvt_ch, digits=rounding_digits)
+            if row.energy_consumption_mln_kvt_ch is not None
             else ""
         )
-        row.max_power_consumption_mw = resolve_max_power_mw_for_save(
+        row.energy_consumption_mln_kvt_ch = resolve_max_power_mw_for_save(
             raw_value, old_shown, rounding_digits
         )
-    elif parameter_key == "peak_datetime":
-        s = str(raw_value or "").strip()
-        if not s:
-            row.peak_datetime_msk = None
-        else:
-            dt_val = parse_peak_datetime(raw_value)
-            if dt_val is None:
-                raise ValueError(
-                    "Дата и время: несуществующая дата или неверный формат "
-                    "(ДД.ММ.ГГГГ ЧЧ:ММ или только год ГГГГ)."
-                )
-            if (
-                not row.is_historical_maximum
-                and row.year_number is not None
-                and dt_val.year != row.year_number
-            ):
-                raise ValueError(
-                    f"Год в дате ({dt_val.year}) должен совпадать с годом среза ({row.year_number})."
-                )
-            row.peak_datetime_msk = dt_val
-    elif parameter_key == "avg_temp":
+        if (
+            not sipr_summary_mode
+            and "energy_consumption_sipr_mln_kvt_ch" in row.__table__.columns
+        ):
+            row.energy_consumption_sipr_mln_kvt_ch = _decimal_round_half_up_to_int(
+                row.energy_consumption_mln_kvt_ch
+            )
+    elif parameter_key == "energy_consumption_sipr_mln_kvt_ch":
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Среднесуточная ТНВ».")
+            raise ValueError("Некорректное число в поле «Потребление (СиПР), млн кВт·ч».")
         old_shown = (
-            format_decimal_trim_for_display(row.avg_daily_air_temp_c, digits=0)
-            if row.avg_daily_air_temp_c is not None
+            format_decimal_trim_for_display(row.energy_consumption_sipr_mln_kvt_ch, digits=rounding_digits)
+            if row.energy_consumption_sipr_mln_kvt_ch is not None
             else ""
         )
-        row.avg_daily_air_temp_c = resolve_max_power_mw_for_save(
-            raw_value, old_shown, 0
-        )
-    elif parameter_key == "combined_on_oes":
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на ОЭС».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_oes, digits=rounding_digits)
-            if row.combined_on_oes is not None
-            else ""
-        )
-        row.combined_on_oes = resolve_max_power_mw_for_save(
-            raw_value, old_shown, rounding_digits
-        )
-    elif parameter_key == "combined_on_ees":
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на ЕЭС».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_ees, digits=rounding_digits)
-            if row.combined_on_ees is not None
-            else ""
-        )
-        row.combined_on_ees = resolve_max_power_mw_for_save(
-            raw_value, old_shown, rounding_digits
-        )
-    elif parameter_key == "combined_on_es":
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на ЭС, МВт».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_es, digits=rounding_digits)
-            if row.combined_on_es is not None
-            else ""
-        )
-        row.combined_on_es = resolve_max_power_mw_for_save(
-            raw_value, old_shown, rounding_digits
-        )
-    elif parameter_key == "combined_on_ez":
-        if "combined_on_ez" not in row.__table__.columns:
-            raise ValueError("Это поле не относится к данной строке параметров.")
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на энергозону».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_ez, digits=rounding_digits)
-            if row.combined_on_ez is not None
-            else ""
-        )
-        row.combined_on_ez = resolve_max_power_mw_for_save(
-            raw_value, old_shown, rounding_digits
-        )
-    elif parameter_key == "combined_on_fo":
-        if "combined_on_fo" not in row.__table__.columns:
-            raise ValueError("Это поле не относится к данной строке параметров.")
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на ФО».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_fo, digits=rounding_digits)
-            if row.combined_on_fo is not None
-            else ""
-        )
-        row.combined_on_fo = resolve_max_power_mw_for_save(
-            raw_value, old_shown, rounding_digits
-        )
-    elif parameter_key == "combined_on_cz":
-        if "combined_on_cz" not in row.__table__.columns:
-            raise ValueError("Это поле не относится к данной строке параметров.")
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на централизованную зону».")
-        old_shown = (
-            format_decimal_trim_for_display(row.combined_on_cz, digits=rounding_digits)
-            if row.combined_on_cz is not None
-            else ""
-        )
-        row.combined_on_cz = resolve_max_power_mw_for_save(
+        row.energy_consumption_sipr_mln_kvt_ch = resolve_max_power_mw_for_save(
             raw_value, old_shown, rounding_digits
         )
     elif parameter_key == "note":
@@ -815,50 +849,8 @@ def _apply_summary_field_to_row(
             raise ValueError("Это поле не относится к данной строке параметров.")
         s = str(raw_value or "").strip()
         row.note = s if s else None
-    elif str(parameter_key or "").startswith("coeff_k_"):
-        if parameter_key not in row.__table__.columns:
-            raise ValueError("Это поле не относится к данной строке параметров.")
-        s = str(raw_value or "").strip()
-        if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле коэффициента k.")
-        prev = getattr(row, parameter_key, None)
-        old_shown = (
-            format_decimal_trim_for_display(prev, digits=rounding_digits)
-            if prev is not None
-            else ""
-        )
-        setattr(
-            row,
-            parameter_key,
-            resolve_max_power_mw_for_save(raw_value, old_shown, rounding_digits),
-        )
-
-
-def _year_number_has_plan_feature(year_number: int) -> bool:
-    yf = get_year_feature_dict() or {}
-    nm = yf.get(year_number)
-    if nm is None:
-        return False
-    return str(nm).strip().lower().replace(" ", "") == "план"
-
-
-def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> bool:
-    """Поля, которые сводка «коэффициентов» может менять для годов с признаком «План» помимо max_power."""
-    pk = parameter_key or ""
-    if pk.startswith("coeff_k_"):
-        return True
-    dm = demand_model_name or ""
-    # РЭС на странице ОЭС: совмещённые строки и сохранённые k.
-    if dm == "RegionalEnergySystemDemandParameter":
-        return pk in ("combined_on_oes", "combined_on_ees")
-    # Строка объекта объединённой энергосистемы на странице ОЭС.
-    if dm == "UnionEnergySystemDemandParameter":
-        return pk in (
-            "combined_on_ees",
-            "calculated_max_power_mw",
-            "calculated_combined_on_ees_mw",
-        )
-    return False
+    else:
+        raise ValueError("Неизвестный параметр для сохранения.")
 
 
 def _assert_plan_year_only_max_power_editable(
@@ -868,18 +860,174 @@ def _assert_plan_year_only_max_power_editable(
     *,
     demand_model_name: str,
 ) -> None:
-    """Для годов с признаком «План» в сводке по умолчанию можно менять только max_power и см. extra."""
+    del demand_model_name
     if parameter_key == "entity_note":
         return
     if is_hist or year_number is None:
         return
-    if _year_number_has_plan_feature(int(year_number)) and parameter_key != "max_power":
-        if _plan_year_extra_editable(demand_model_name, parameter_key):
-            return
-        raise ValueError(
-            "Для годов с признаком «План» редактируется только показатель "
-            "«Максимальное потребление мощности, МВт»."
+
+
+def _summary_row_tri_snapshot(row: Any) -> dict[str, Any]:
+    if row is None:
+        return {"mln": None, "sipr": None, "note": None}
+    mln = getattr(row, "energy_consumption_mln_kvt_ch", None)
+    sipr = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
+    note = getattr(row, "note", None) if hasattr(row, "note") else None
+    return {"mln": mln, "sipr": sipr, "note": note}
+
+
+def _fmt_tri_snap_val(val: Any, key: str, rounding_digits: int) -> str:
+    if val is None:
+        return "—"
+    if key in ("mln", "sipr"):
+        return format_decimal_trim_for_display(val, digits=rounding_digits) or "—"
+    s = str(val).strip()
+    return s if s else "—"
+
+
+def _tri_snap_numeric_equal(a: Any, b: Any) -> bool:
+    """Сравнение значений показателей млн/СиПР для журнала (учёт Decimal/чисел из БД)."""
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+    try:
+        return Decimal(str(a)) == Decimal(str(b))
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+
+def _diff_tri_snap_for_log(
+    before: dict,
+    after: dict,
+    rounding_digits: int,
+    *,
+    parameter_key: str,
+) -> list[str]:
+    """Только поля, которые пользователь менял по запросу (без автосинхронизации СиПР с млн)."""
+    labels = {
+        "mln": "Потребление, млн кВт·ч",
+        "sipr": "Потребление (СиПР), млн кВт·ч",
+        "note": "Примечание",
+    }
+    pk = (parameter_key or "").strip()
+    if pk == "entity_note":
+        keys_order = ["note"]
+    elif pk == "energy_consumption_mln_kvt_ch":
+        keys_order = ["mln"]
+    elif pk == "energy_consumption_sipr_mln_kvt_ch":
+        keys_order = ["sipr"]
+    else:
+        keys_order = list(labels.keys())
+
+    parts: list[str] = []
+    for k in keys_order:
+        label = labels[k]
+        vb, va = before.get(k), after.get(k)
+        if k in ("mln", "sipr"):
+            if _tri_snap_numeric_equal(vb, va):
+                continue
+        else:
+            fb_check = _fmt_tri_snap_val(vb, k, rounding_digits)
+            fa_check = _fmt_tri_snap_val(va, k, rounding_digits)
+            if fb_check == fa_check:
+                continue
+        fb = _fmt_tri_snap_val(vb, k, rounding_digits)
+        fa = _fmt_tri_snap_val(va, k, rounding_digits)
+        if k in ("mln", "sipr") and fb == fa:
+            fb = format_decimal_trim_for_display(vb, digits=0) or "—"
+            fa = format_decimal_trim_for_display(va, digits=0) or "—"
+        parts.append(f"{label}: {fb} → {fa}")
+    return parts
+
+
+_EC_SUMMARY_PARENT_FK_LABELS: dict[str, tuple[Type[Any], str]] = {
+    "id_regional_district": (RegionalDistrict, "субъект РФ"),
+    "id_regional_energy_system": (RegionalEnergySystem, "РЭС"),
+    "id_union_energy_system": (UnionEnergySystem, "ОЭС"),
+    "id_federal_district": (FederalDistrict, "федеральный округ"),
+    "id_energy_zone": (EnergyZone, "энергозона"),
+}
+
+
+def _parent_binding_label_for_ec_summary_log(
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    *,
+    database_version_id: Optional[int],
+) -> Optional[str]:
+    """Подпись родительского объекта для журнала: id + наименование из справочника."""
+    if not parent_fk_column or parent_id is None:
+        return None
+    spec = _EC_SUMMARY_PARENT_FK_LABELS.get(parent_fk_column)
+    if not spec:
+        return f"{parent_fk_column}={parent_id}"
+    model_cls, ru_short = spec
+    q = model_cls.query.filter(model_cls.id == int(parent_id))
+    if database_version_id is not None:
+        q = filter_by_explicit_db_version(q, model_cls, int(database_version_id))
+    ent = q.first()
+    pid = int(parent_id)
+    if ent is None:
+        return f"{parent_fk_column}={pid}; {ru_short}=— (нет в справочнике для версии БД)"
+    nm = getattr(ent, "name", None)
+    name_s = str(nm).strip() if nm is not None else ""
+    if name_s:
+        return f"{parent_fk_column}={pid}; {ru_short}={name_s}"
+    return f"{parent_fk_column}={pid}"
+
+
+def _maybe_log_ec_summary_cell(
+    summary_log_scope: Optional[str],
+    *,
+    demand_model_name: str,
+    parameter_key: str,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    row: Any,
+    snap_before: dict[str, Any],
+    rounding_digits: int,
+) -> None:
+    if not summary_log_scope or summary_log_scope not in ("oes", "fo", "ez") or row is None:
+        return
+    rid_log = getattr(row, "id", None)
+    if rid_log is not None:
+        model_cls = type(row)
+        fresh = model_cls.query.get(int(rid_log))
+        if fresh is not None:
+            row = fresh
+    snap_after = _summary_row_tri_snapshot(row)
+    diff_lines = _diff_tri_snap_for_log(
+        snap_before, snap_after, rounding_digits, parameter_key=parameter_key
+    )
+    if not diff_lines:
+        return
+    header_bits = [f"модель={demand_model_name}"]
+    if parent_fk_column and parent_id is not None:
+        pl = _parent_binding_label_for_ec_summary_log(
+            parent_fk_column,
+            parent_id,
+            database_version_id=getattr(row, "database_version_id", None),
         )
+        if pl:
+            header_bits.append(pl)
+    yn = getattr(row, "year_number", None)
+    if yn is not None:
+        header_bits.append(f"год={yn}")
+    rid = getattr(row, "id", None)
+    if rid is not None:
+        header_bits.append(f"id_записи={rid}")
+    chunks: list[str] = [", ".join(header_bits)] + diff_lines
+    from app.energy_consumption.services.energy_consumption_summary_logging import (
+        log_ec_summary_cell_change,
+    )
+
+    log_ec_summary_cell_change(
+        _username(),
+        summary_log_scope,
+        detail_chunks=chunks,
+        database_version_id=getattr(row, "database_version_id", None),
+    )
 
 
 def save_demand_summary_cell(
@@ -888,30 +1036,19 @@ def save_demand_summary_cell(
     raw_value: Any,
     *,
     rounding_digits: int,
+    sipr_summary_mode: bool = False,
     row_id: Optional[int] = None,
     slice_key: Any = None,
     parent_fk_column: Optional[str] = None,
     parent_id: Optional[int] = None,
+    summary_log_scope: Optional[str] = None,
 ) -> str:
     """
-    Создаёт или обновляет одно поле строки параметров нагрузки (сводная таблица).
-    Если row_id не передан — ищет или создаёт строку по срезу и привязке к объекту.
-    Возвращает отформатированное значение для отображения.
+    Создаёт или обновляет одно поле строки параметров потребления (сводная таблица).
     """
     allowed = {
-        "max_power",
-        "peak_datetime",
-        "avg_temp",
-        "combined_on_oes",
-        "combined_on_ees",
-        "combined_on_es",
-        "combined_on_ez",
-        "combined_on_fo",
-        "combined_on_cz",
-        "coeff_k_combined_on_oes",
-        "coeff_k_combined_on_ees",
-        "coeff_k_calculated_max_power_mw",
-        "coeff_k_calculated_combined_on_ees_mw",
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
         "entity_note",
     }
     if parameter_key not in allowed:
@@ -934,15 +1071,14 @@ def save_demand_summary_cell(
             if parent_fk_column is not None and parent_id is not None:
                 if getattr(erow, parent_fk_column, None) != parent_id:
                     raise ValueError("Строка не соответствует выбранному объекту.")
-            if not getattr(erow, "is_historical_maximum", False):
-                raise ValueError("Примечание сводки привязано к строке исторического максимума.")
         else:
+            _, note_year = parse_summary_slice_key(slice_key)
             erow = find_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
                 parent_id=parent_id,
-                is_hist=True,
-                year_n=None,
+                is_hist=False,
+                year_n=note_year,
             )
             if erow is None:
                 if not str(raw_value or "").strip():
@@ -951,10 +1087,17 @@ def save_demand_summary_cell(
                     model,
                     parent_fk_column=parent_fk_column,
                     parent_id=parent_id,
-                    is_hist=True,
-                    year_n=None,
+                    is_hist=False,
+                    year_n=note_year,
                 )
-        _apply_summary_field_to_row(erow, "note", raw_value, rounding_digits=rounding_digits)
+        snap_before = _summary_row_tri_snapshot(erow)
+        _apply_summary_field_to_row(
+            erow,
+            "note",
+            raw_value,
+            rounding_digits=rounding_digits,
+            sipr_summary_mode=sipr_summary_mode,
+        )
         erow.modified_by = user
         try:
             db.session.commit()
@@ -962,10 +1105,33 @@ def save_demand_summary_cell(
         except IntegrityError:
             db.session.rollback()
             raise ValueError("Не удалось сохранить (конфликт данных).") from None
+        _maybe_log_ec_summary_cell(
+            summary_log_scope,
+            demand_model_name=demand_model_name,
+            parameter_key="entity_note",
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            row=erow,
+            snap_before=snap_before,
+            rounding_digits=rounding_digits,
+        )
         return summary_cell_display_value(erow, "entity_note", rounding_digits)
 
     model = _summary_demand_model_class(demand_model_name)
     _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
+
+    if (
+        model.__tablename__ == "gs_ec_energy_zone_consumption_params"
+        and parameter_key
+        in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        )
+    ):
+        raise ValueError(
+            "Показатели по энергозоне считаются автоматически как сумма по РЭС; "
+            "измените данные на уровне региональных энергосистем."
+        )
 
     vid = get_current_version()
     user = _username()
@@ -1013,8 +1179,23 @@ def save_demand_summary_cell(
                 year_n=year_n,
             )
 
-    _apply_summary_field_to_row(row, parameter_key, raw_value, rounding_digits=rounding_digits)
+    snap_before = _summary_row_tri_snapshot(row)
+    _apply_summary_field_to_row(
+        row,
+        parameter_key,
+        raw_value,
+        rounding_digits=rounding_digits,
+        sipr_summary_mode=sipr_summary_mode,
+    )
     row.modified_by = user
+
+    if (
+        model.__tablename__ == "gs_ec_regional_energy_system_consumption_params"
+        and parent_fk_column == "id_regional_energy_system"
+        and parent_id is not None
+    ):
+        db.session.flush()
+        sync_energy_zone_consumption_aggregates(id_regional_energy_system=int(parent_id))
 
     try:
         db.session.commit()
@@ -1022,5 +1203,16 @@ def save_demand_summary_cell(
     except IntegrityError:
         db.session.rollback()
         raise ValueError("Не удалось сохранить (конфликт данных).") from None
+
+    _maybe_log_ec_summary_cell(
+        summary_log_scope,
+        demand_model_name=demand_model_name,
+        parameter_key=parameter_key,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+        row=row,
+        snap_before=snap_before,
+        rounding_digits=rounding_digits,
+    )
 
     return summary_cell_display_value(row, parameter_key, rounding_digits)

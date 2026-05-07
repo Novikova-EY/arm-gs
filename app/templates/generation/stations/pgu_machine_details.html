@@ -24,7 +24,7 @@
 <div class="container-fluid mt-4 machine-details-page">
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> Электростанции РФ</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">  электростанции РФ</a>
         <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-secondary fs-5">
             {{ station.name }} - {{ parent_machine.machine_name }}
@@ -97,7 +97,7 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Состояние агрегата станции:</div>
+                                    <div class="col-5 text-start fw-semibold">Состояние агрегата электростанции:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                                             {{ pgu_form.id_condition_type(class="form-select") }}
@@ -116,7 +116,7 @@
 
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата станции:</div>
+                                    <div class="col-5 text-start fw-semibold">Энергорайон агрегата электростанции:</div>
                                     <div class="col-7 text-start">
                                         {{ parent_machine.energy_area.name if parent_machine.energy_area else '—' }}
                                     </div>

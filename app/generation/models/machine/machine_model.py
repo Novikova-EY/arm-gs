@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Machine model (Агрегат электростанции).
+Machine model (Агрегат  электростанции).
 - Сохранены все исходные связи и индексы.
 - Добавлены серверные таймстемпы (UTC).
 """
@@ -559,7 +559,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     def id_regional_energy_system(self):
         """
         Вычисляемый id РЭС для агрегата.
-        Берем со станции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
+        Берем со электростанции (Station.id_regional_energy_system), при отсутствии — пытаемся получить через субъект РФ.
 
         ВАЖНО: это НЕ колонка БД, а runtime-helper для группировки/отображения.
         """
@@ -712,7 +712,7 @@ def _find_existing_machine_external_code(connection, target) -> str | None:
 
     Приоритет:
     1. По id_ti, если он есть и однозначен.
-    2. По жёсткой сигнатуре внутри семейства станции:
+    2. По жёсткой сигнатуре внутри семейства электростанции:
        station.external_code + machine_number + machine_name + date_exploitation.
 
     Если однозначного матча нет, считаем машину genuinely new и генерируем

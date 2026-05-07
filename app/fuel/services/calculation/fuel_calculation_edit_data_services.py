@@ -154,7 +154,7 @@ def _apply_nust_nr_for_target_from_source_or_machines(
 ) -> None:
     """
     Руст/Ррасп: для «план» / «текущий (оценка)» — суммы p_ust/p_rasp (MachinePower) за целевой
-    год, если у группы есть привязка к станции и есть агрегаты; иначе — как у базового года
+    год, если у группы есть привязка к электростанции и есть агрегаты; иначе — как у базового года
     (source). Суммы 0 с MachinePower не подменяются с базового года: 0 допустим (агрегат не введён
     / выведен и т.д.).
 
@@ -207,7 +207,7 @@ def _fuel_equipment_group_has_station_links(
     equipment_group_id: int,
     version_id: int | None,
 ) -> bool:
-    """Есть ли у группы реальная привязка к станции, а не standalone-link с `station_id = NULL`."""
+    """Есть ли у группы реальная привязка к электростанции, а не standalone-link с `station_id = NULL`."""
     from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
     from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
 

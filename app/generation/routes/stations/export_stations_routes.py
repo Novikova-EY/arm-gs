@@ -331,7 +331,7 @@ def export_station_list_to_excel(user, filters=None):
     query = get_filtered_station_ids(**filters)
     station_list = query.all()
 
-    # Собираем уникальные компании для каждой станции
+    # Собираем уникальные компании для каждой электростанции
     for station in station_list:
         gen_companies = {machine.gen_company.name for machine in station.machines if machine.gen_company}
         station.gen_companies = "\n".join(gen_companies)
@@ -362,7 +362,7 @@ def export_station_list_to_excel(user, filters=None):
     for station in station_list:
         station_total_p_ust = {year: 0 for year in all_years}  # Словарь для суммарной мощности
             
-        # Добавляем строку с названием электростанции
+        # Добавляем строку с названием  электростанции
         data.append({
             "Электростанция": station.name,
             "Генерирующая компания": station.gen_companies,
@@ -395,7 +395,7 @@ def export_station_list_to_excel(user, filters=None):
 
             data.append(row)
 
-        # 🔹 Добавляем строку "Установленная мощность, всего" по станции
+        # 🔹 Добавляем строку "Установленная мощность, всего" по электростанции
         total_row = {
             "Электростанция": "Установленная мощность, всего",
             "Генерирующая компания": "",

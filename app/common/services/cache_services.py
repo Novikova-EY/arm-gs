@@ -46,7 +46,7 @@ class CacheService:
     
     @staticmethod
     def get_station_details_form_data():
-        """Получение всех данных для форм деталей станции одним вызовом."""
+        """Получение всех данных для форм деталей электростанции одним вызовом."""
         return {
             'condition_types': CacheService.get_condition_types_cached(),
             'station_groups': CacheService.get_station_groups_cached(),

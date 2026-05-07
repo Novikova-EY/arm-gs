@@ -120,7 +120,7 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
         # ----- Определяем РЭС и ОЭС -----
         res = None
 
-        # 1) Приоритет: прямая связь станции с РЭС (Station.id_regional_energy_system)
+        # 1) Приоритет: прямая связь электростанции с РЭС (Station.id_regional_energy_system)
         if getattr(station, "id_regional_energy_system", None):
             direct_res = getattr(station, "regional_energy_system_obj", None)
             if direct_res and is_current_version(direct_res):
@@ -483,7 +483,7 @@ def fetch_machines_with_rowspans(
                 return (1, raw.lower())  # в конец
             return (0, raw.lower())
 
-        # Порядок блоков внутри станции определяем по минимальному станционному номеру.
+        # Порядок блоков внутри электростанции определяем по минимальному станционному номеру.
         # Сначала держим агрегаты одной группы оборудования вместе, а внутри группы
         # оставляем прежнюю группировку по топливу и номеру агрегата.
         def group_min_number_key(machines):
@@ -539,7 +539,7 @@ def fetch_machines_with_rowspans(
             m.total_rows = total_rows
             m.base_rows = base_rows
 
-        # Группа "гр." — одна ячейка на весь блок группы оборудования внутри станции.
+        # Группа "гр." — одна ячейка на весь блок группы оборудования внутри электростанции.
         for group in ordered_group_blocks:
             group_rowspan = sum(m.total_rows for m in group)
             group_base_rows = sum((1 + len(m.pgu_machines)) for m in group)

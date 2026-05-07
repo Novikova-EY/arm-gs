@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Boiler model (Котел электростанции).
+Boiler model (Котел  электростанции).
 - Связь: Boiler.boiler_station -> Station.boilers (back_populates).
 - Таймстемпы на стороне БД (UTC) через func.now().
 """

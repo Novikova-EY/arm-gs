@@ -302,6 +302,7 @@ def create_app():
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import external_mapping
         importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
+        importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
 
         # Проброс мапперов
         db.configure_mappers()

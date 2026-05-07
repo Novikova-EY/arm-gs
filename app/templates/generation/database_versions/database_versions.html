@@ -32,7 +32,7 @@
                     </button>
 
                     <a href="{{ url_for('station_bp.database_versions') }}"
-                            class="btn btn-outline-secondary fw-bold"
+                            class="btn btn-outline-danger fs-5"
                             data-no-preloader>
                             Сбросить
                     </a>
@@ -96,7 +96,7 @@
             <!-- Кнопки сохранения изменений и добавления новой записи -->
             <div class="d-flex justify-content-between mt-3 mb-3">
                 <!-- Кнопка сохранения изменений -->
-                <button type="submit" class="btn btn-success" id="saveChangesBtn" name="action" value="save">Сохранить изменения</button>
+                <button type="submit" class="btn btn-outline-primary fs-5" id="saveChangesBtn" name="action" value="save">Сохранить изменения</button>
 
                 <!-- Кнопка добавления новой записи -->
                 <a href="{{ url_for('station_bp.add_database_version', 

@@ -52,7 +52,7 @@ class RegionalDistrict(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMix
         back_populates="regional_districts"
     )
 
-    # One-to-many: Станции
+    # One-to-many: электростанции
     stations = db.relationship('Station', back_populates='regional_district')
 
     # One-to-many: Энергорайоны (каскад был сохранен)

@@ -67,7 +67,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     )
     regional_district = db.relationship('RegionalDistrict', back_populates='stations')
 
-    # FK -> RegionalEnergySystem (прямая связь станции с РЭС)
+    # FK -> RegionalEnergySystem (прямая связь электростанции с РЭС)
     id_regional_energy_system = db.Column(
         db.Integer,
         db.ForeignKey(f'{SCHEMA_REFDATA}.gs_sys_regional_energy_systems.id', ondelete='RESTRICT'),
@@ -100,6 +100,16 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
 
     # Children
     station_powers = db.relationship('StationPower', back_populates='station_power', cascade="all, delete-orphan")
+    station_energy_generations = db.relationship(
+        'StationEnergyGeneration',
+        back_populates='station',
+        cascade="all, delete-orphan",
+    )
+    station_gaes_charge_consumptions = db.relationship(
+        'StationGaesChargeConsumption',
+        back_populates='station',
+        cascade="all, delete-orphan",
+    )
     machines = db.relationship('Machine', back_populates='machine_station')
     boilers = db.relationship('Boiler', back_populates='boiler_station')
     equipment_group_type_links_v2 = db.relationship(
@@ -135,7 +145,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         Агрегированное текстовое поле с названием(ями) РЭС.
         Приоритет: прямая связь id_regional_energy_system, затем связь через субъект РФ.
         """
-        # 1) Если у станции явно указана РЭС — используем ее
+        # 1) Если у электростанции явно указана РЭС — используем ее
         if self.regional_energy_system_obj:
             return self.regional_energy_system_obj.name
 
@@ -148,9 +158,9 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     def union_energy_system(self):
         """
         Агрегированное текстовое поле ОЭС.
-        Приоритет: прямая связь РЭС у станции, затем связь через субъект РФ.
+        Приоритет: прямая связь РЭС у электростанции, затем связь через субъект РФ.
         """
-        # 1) Если у станции явно указана РЭС с ОЭС — используем ее
+        # 1) Если у электростанции явно указана РЭС с ОЭС — используем ее
         if self.regional_energy_system_obj and self.regional_energy_system_obj.union_energy_system:
             return self.regional_energy_system_obj.union_energy_system.name
 
@@ -172,9 +182,9 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     def energy_system_type(self):
         """
         Агрегированное текстовое поле «Часть энергосистемы России».
-        Приоритет: прямая связь РЭС у станции, затем связь через субъект РФ.
+        Приоритет: прямая связь РЭС у электростанции, затем связь через субъект РФ.
         """
-        # 1) Если у станции явно указана РЭС с типом энергосистемы — используем ее
+        # 1) Если у электростанции явно указана РЭС с типом энергосистемы — используем ее
         if (
             self.regional_energy_system_obj
             and self.regional_energy_system_obj.union_energy_system
@@ -351,7 +361,7 @@ def _find_existing_station_external_code(connection, target, district_key) -> st
 
 @event.listens_for(Station, 'before_insert')
 def generate_external_code_before_insert(mapper, connection, target):
-    """Генерирует стабильный external_code перед вставкой станции."""
+    """Генерирует стабильный external_code перед вставкой электростанции."""
     if target.external_code:
         return
     district_key = _resolve_regional_district_key(connection, target)

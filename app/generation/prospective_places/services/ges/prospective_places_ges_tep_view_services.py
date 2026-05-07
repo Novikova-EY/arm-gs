@@ -238,7 +238,7 @@ def build_tep_view_rows(
     tep_main_current_year_prices: bool = False,
     tep_main_scaling_target_year: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Строки для шаблона: группировка по станции, merged TEP при совпадении значений.
+    """Строки для шаблона: группировка по электростанции, merged TEP при совпадении значений.
 
     ``tep_main_scaling_target_year`` — год конца цепочки пересчёта капзатрат (как в подписи
     «в ценах N года»). Если не передан, используется год «текущий» из справочника годов; при

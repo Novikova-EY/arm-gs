@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationPower model (Мощности электростанции).
+StationPower model (Мощности  электростанции).
 - Связи сохранены: year (Year.station_powers), station_power (Station.station_powers).
 """
 from sqlalchemy.sql import func
@@ -15,7 +15,7 @@ class StationPower(db.Model, AuditMixin):
     __table_args__ = (
         Index('ix_station_power_id_station', 'id_station'),
         Index('ix_station_power_year_number', 'year_number'),
-        # Составной индекс для оптимизации запросов по станции и году
+        # Составной индекс для оптимизации запросов по электростанции и году
         Index('ix_station_powers_station_year', 'id_station', 'year_number'),
         {"schema": SCHEMA_GENERATION},
     )

@@ -29,7 +29,7 @@ class GenCompany(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
         index=True
     )
 
-    # связь с таблицей "Агрегаты станции"
+    # связь с таблицей "Агрегаты  электростанции"
     machines = db.relationship('Machine', back_populates='gen_company')
 
     def __repr__(self) -> str:

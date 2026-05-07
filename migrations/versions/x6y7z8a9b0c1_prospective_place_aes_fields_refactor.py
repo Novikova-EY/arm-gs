@@ -30,7 +30,7 @@ def upgrade():
         schema=SCHEMA_GEN,
     )
 
-    # 2. Скопировать selection_factor из machine в station (первое непустое значение по станции)
+    # 2. Скопировать selection_factor из machine в station (первое непустое значение по электростанции)
     op.execute(
         f"""
         UPDATE {SCHEMA_GEN}.{TABLE_STATION} s
@@ -97,7 +97,7 @@ def downgrade():
         schema=SCHEMA_GEN,
     )
 
-    # 4. Скопировать selection_factor из station в machine (в первый агрегат каждой станции)
+    # 4. Скопировать selection_factor из station в machine (в первый агрегат каждой электростанции)
     op.execute(
         f"""
         UPDATE {SCHEMA_GEN}.{TABLE_MACHINE} m

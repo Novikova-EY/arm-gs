@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Спрос{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">Модуль «Спрос»</h2>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                                <a href="{{ url_for('energy_consumption_bp.demand_summary_oes') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                    Потребление электрической энергии<br>по энергосистемам
+                                </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Потребление электрической энергии<br>по федеральным округам
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Потребление электрической энергии<br>по энергозонам
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endif %}
+{% endblock %}

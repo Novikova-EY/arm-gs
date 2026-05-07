@@ -19,12 +19,12 @@ COMMON_FIELDS = {
 
 # Поля для электростанций (Station)
 STATION_FIELDS = {
-    "station_name": "Название станции",
+    "station_name": "Название электростанции",
     "name": "Название",
     "location": "Местоположение",
     "id_regional_district": "Субъект РФ",
     "id_gen_company": "Организация-собственник",
-    "id_station_type": "Тип электростанции",
+    "id_station_type": "Тип  электростанции",
     "id_condition_type": "Состояние",
     "federal_district": "Федеральный округ",
     "regional_energy_system": "Региональная энергосистема",
@@ -38,9 +38,9 @@ MACHINE_FIELDS = {
     "machine_name": "Название агрегата",
     "machine_group": "Номер/название группы агрегата",
     "fuel_so": "Топливо по СО",
-    "id_condition_type": "Состояние агрегата станции",
+    "id_condition_type": "Состояние агрегата электростанции",
     "id_gen_company": "Организация-собственник",
-    "id_energy_area": "Энергорайон агрегата станции",
+    "id_energy_area": "Энергорайон агрегата электростанции",
     "id_tes_machine_type": "Тип агрегата ТЭС",
     "id_equipment_group": "Тип технологии",
     "id_machine_type": "Тип агрегата",
@@ -113,7 +113,7 @@ CONDITION_TYPE_FIELDS = {
 
 # Поля для типов станций
 STATION_TYPE_FIELDS = {
-    "name": "Тип электростанции",
+    "name": "Тип  электростанции",
 }
 
 # Поля для типов ТЭС

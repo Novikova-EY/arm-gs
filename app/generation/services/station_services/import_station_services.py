@@ -1449,7 +1449,7 @@ def _get_matching_machines_for_station(
     )
 
 
-# Вспомогательная функция: создание или обновление станции
+# Вспомогательная функция: создание или обновление электростанции
 def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = False):
     station_name = _clean_name(row['station_name'])
 
@@ -1566,8 +1566,8 @@ def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = F
         set_db_version_on_create(station)
         db.session.add(station)
         db.session.commit()
-        log_to_db(user, "Создание станции", f"Создана станция: {station_name}")
-        print(f"Создание станции, Создана станция: {station_name}")
+        log_to_db(user, "Создание электростанции", f"Создана станция: {station_name}")
+        print(f"Создание электростанции, Создана станция: {station_name}")
     else:
         changes = {}
         new_district_id = regional_district.id if regional_district else None
@@ -1576,7 +1576,7 @@ def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = F
             changes['id_regional_district'] = new_district_id
 
         # Автоподстановка/обновление РЭС:
-        # - если у станции еще нет прямой РЭС, но есть main_res_id;
+        # - если у электростанции еще нет прямой РЭС, но есть main_res_id;
         # - либо если сменился субъект и новая «основная» РЭС отличается.
         if main_res_id and (
             station.id_regional_energy_system is None
@@ -1596,8 +1596,8 @@ def handle_station(row, user, *, import_scope=None, prefer_unused_slot: bool = F
             for k, v in changes.items():
                 setattr(station, k, v)
             db.session.commit()
-            log_to_db(user, "Обновление станции", f"Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
-            print(f"Обновление станции, Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
+            log_to_db(user, "Обновление электростанции", f"Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
+            print(f"Обновление электростанции, Обновлена станция: {station.name} ({station.regional_district.name}), изменения: {changes}")
 
     if getattr(station, "id", None) is not None:
         used_station_ids.add(station.id)
@@ -1728,11 +1728,11 @@ def handle_machine(
         db.session.commit()
         log_to_db(
             user,
-            f"Обновление типа станции {current_station.name}",
-            f"Тип станции: {old_type} → {row.get('station_type')}",
+            f"Обновление типа электростанции {current_station.name}",
+            f"Тип электростанции: {old_type} → {row.get('station_type')}",
         )
         print(
-            f"Обновление типа станции {current_station.name}: {old_type} → {row.get('station_type')}"
+            f"Обновление типа электростанции {current_station.name}: {old_type} → {row.get('station_type')}"
         )
 
     machine_occurrence = _register_machine_signature_occurrence(
@@ -1798,8 +1798,8 @@ def handle_machine(
         if changes:
             db.session.commit()
             action_details = ', '.join(changes)
-            log_to_db(user, f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
-            print(f"Обновление агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
+            log_to_db(user, f"Обновление агрегата  электростанции {current_station.name} ({current_station.regional_district.name})", f"Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
+            print(f"Обновление агрегата  электростанции {current_station.name} ({current_station.regional_district.name}), Агрегат группы {machine_group} № {machine_number}, {machine_name} обновлен: {action_details}")
 
     else:
         machine = Machine(
@@ -1831,8 +1831,8 @@ def handle_machine(
         set_db_version_on_create(machine)
         db.session.add(machine)
         db.session.flush()
-        log_to_db(user, f"Создание агрегата электростанции {current_station.name} ({current_station.regional_district.name})", f"Создан агрегат: {machine_number} - {machine_name}")
-        print(f"Создание агрегата электростанции {current_station.name} ({current_station.regional_district.name}), Создан агрегат: {machine_number} - {machine_name}")
+        log_to_db(user, f"Создание агрегата  электростанции {current_station.name} ({current_station.regional_district.name})", f"Создан агрегат: {machine_number} - {machine_name}")
+        print(f"Создание агрегата  электростанции {current_station.name} ({current_station.regional_district.name}), Создан агрегат: {machine_number} - {machine_name}")
 
     # Если в Excel явно указана дата модернизации — установим флаг, чтобы не переопределять автоматически
     if not pd.isna(_row_get_modernization_power_change_year_for_import(row)):
@@ -1864,10 +1864,10 @@ def assign_machine_types(machine, row, years: list[int], user):
                 old_name = record.tes_type.name if record.tes_type else 'не указано'
                 record.id_tes_type = tes_type_id
                 log_to_db(
-                    user, f"Обновление типа ТЭС электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                    user, f"Обновление типа ТЭС  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {tes_type_name}"
                 )
-                print(f"Обновление типа ТЭС электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}). Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {tes_type_name}")
+                print(f"Обновление типа ТЭС  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}). Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {tes_type_name}")
         else:
             new_record = MachineTesType(
                 year_number=year,
@@ -1877,10 +1877,10 @@ def assign_machine_types(machine, row, years: list[int], user):
             set_db_version_on_create(new_record)
             db.session.add(new_record)
             log_to_db(
-                user, f"Создание типа ТЭС электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                user, f"Создание типа ТЭС  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                 f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {tes_type_name}"
             )
-            print(f"Создание типа ТЭС электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}). Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {tes_type_name}")
+            print(f"Создание типа ТЭС  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}). Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {tes_type_name}")
 
 
 # Вспомогательная функция: запись установленной мощности агрегата на диапазон лет
@@ -1901,10 +1901,10 @@ def assign_machine_power_p_ust(machine, row, years: list[int], user):
                 power.p_ust = p_ust
                 db.session.add(power)
                 log_to_db(
-                    user, f"Обновление мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                    user, f"Обновление мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {old_val} → {p_ust}"
                 )
-                print(f"Обновление мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {old_val} → {p_ust}")
+                print(f"Обновление мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {old_val} → {p_ust}")
         else:
             new_power = MachinePower(
                 year_number=year,
@@ -1914,10 +1914,10 @@ def assign_machine_power_p_ust(machine, row, years: list[int], user):
             set_db_version_on_create(new_power)
             db.session.add(new_power)
             log_to_db(
-                user, f"Создание мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                user, f"Создание мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                 f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {p_ust}"
             )
-            print(f"Создание мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {p_ust}")
+            print(f"Создание мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ust {p_ust}")
 
 
 # Вспомогательная функция: запись располагаемой мощности и автоматическое удаление/добавление топлива
@@ -1943,10 +1943,10 @@ def assign_machine_power_p_rasp(machine, row, years: list[int], user):
                 old_val = machine_power.p_rasp
                 machine_power.p_rasp = p_rasp
                 log_to_db(
-                    user, f"Обновление p_rasp электростанции {machine.machine_station.name} ({district_name})",
+                    user, f"Обновление p_rasp  электростанции {machine.machine_station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {old_val} → {p_rasp}"
                 )
-                print(f"Обновление p_rasp электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}")
+                print(f"Обновление p_rasp  электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}")
         else:
             machine_power = MachinePower(
                 year_number=year,
@@ -1958,10 +1958,10 @@ def assign_machine_power_p_rasp(machine, row, years: list[int], user):
             set_db_version_on_create(machine_power)
             db.session.add(machine_power)
             log_to_db(
-                user, f"Создание p_rasp электростанции {machine.machine_station.name} ({district_name})",
+                user, f"Создание p_rasp  электростанции {machine.machine_station.name} ({district_name})",
                 f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}"
             )
-            print(f"Создание p_rasp электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}")
+            print(f"Создание p_rasp  электростанции {machine.machine_station.name} ({district_name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_rasp {p_rasp}")
 
 
 # Отдельная функция для пересчета ограничений мощности
@@ -1984,13 +1984,13 @@ def update_machine_power_ogr(machine, years: list[int], user):
             # Логируем только если значения действительно изменились
             if old_ogr_normalized != new_ogr_normalized:
                 log_to_db(
-                    user, f"Пересчет ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}))",
+                    user, f"Пересчет ограничения мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}))",
                     f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}"
                 )
-                print(f"Пересчет ограничения мощности электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}")
+                print(f"Пересчет ограничения мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}")
 
 
-# Вспомогательная функция: расчет агрегированной мощности станции по годам
+# Вспомогательная функция: расчет агрегированной мощности электростанции по годам
 def update_station_power(station, years: list[int], user):
     for year in years:
         total_values = db.session.query(
@@ -2036,9 +2036,9 @@ def update_station_power(station, years: list[int], user):
                 record.p_rasp = total_p_rasp
 
             if updates:
-                log_to_db(user, f"Обновление мощности электростанции {station.name} ({station.regional_district.name})",
+                log_to_db(user, f"Обновление мощности  электростанции {station.name} ({station.regional_district.name})",
                           f"Станция: {station.name}, год {year}: " + ", ".join(updates))
-                print(f"Обновление мощности электростанции {station.name} ({station.regional_district.name}), Станция: {station.name}, год {year}: " + ", ".join(updates))
+                print(f"Обновление мощности  электростанции {station.name} ({station.regional_district.name}), Станция: {station.name}, год {year}: " + ", ".join(updates))
         else:
             record = StationPower(
                 id_station=station.id,
@@ -2049,14 +2049,14 @@ def update_station_power(station, years: list[int], user):
             )
             set_db_version_on_create(record)
             db.session.add(record)
-            log_to_db(user, f"Создание мощности электростанции ({station.name})",
+            log_to_db(user, f"Создание мощности  электростанции ({station.name})",
                       f"Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
-            print(f"Создание мощности электростанции ({station.name}), Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
+            print(f"Создание мощности  электростанции ({station.name}), Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
 
 
 # Вспомогательная функция: запись топлива агрегата по годам
 def assign_machine_fuel(machine, row, years: list[int], user):
-    # Получаем тип станции из связанной станции
+    # Получаем тип электростанции из связанной электростанции
     station_type_name = None
     if machine.machine_station and machine.machine_station.id_station_type:
         station_type_obj = (
@@ -2083,9 +2083,9 @@ def assign_machine_fuel(machine, row, years: list[int], user):
             if fuel_record.id_fuel != fuel.id:
                 old_name = fuel_record.fuel.name if fuel_record.fuel else 'не указано'
                 fuel_record.id_fuel = fuel.id
-                log_to_db(user, f"Обновление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+                log_to_db(user, f"Обновление топлива  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                           f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {fuel.name}")
-                print(f"Обновление топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {fuel.name}")
+                print(f"Обновление топлива  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {old_name} → {fuel.name}")
         else:
             new_fuel = MachineFuel(
                 year_number=year,
@@ -2094,9 +2094,9 @@ def assign_machine_fuel(machine, row, years: list[int], user):
             )
             set_db_version_on_create(new_fuel)
             db.session.add(new_fuel)
-            log_to_db(user, f"Создание топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
+            log_to_db(user, f"Создание топлива  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name})",
                       f"Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {fuel.name}")
-            print(f"Создание топлива электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {fuel.name}")
+            print(f"Создание топлива  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: {fuel.name}")
 
 
 # Вспомогательная функция: автоматическое удаление/добавление топлива и типа ТЭС
@@ -2143,7 +2143,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 db.session.delete(machine_fuel)
                 log_to_db(
                     user,
-                    f"Удаление топлива электростанции {station.name} ({district_name})",
+                    f"Удаление топлива  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: удалено топливо (p_ust = 0)"
                 )
                 print(f"Удалено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}")
@@ -2154,7 +2154,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 machine_tes_type.id_tes_type = unknown_tes_type_id
                 log_to_db(
                     user,
-                    f"Сброс типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Сброс типа ТЭС  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: тип ТЭС {old_tes_type_name} → не известно"
                 )
                 print(f"Сброс типа ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}, был: {old_tes_type_name}")
@@ -2176,7 +2176,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 db.session.add(machine_fuel)
                 log_to_db(
                     user,
-                    f"Добавление топлива электростанции {station.name} ({district_name})",
+                    f"Добавление топлива  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: добавлено топливо {fuel.name}"
                 )
                 print(f"Добавлено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {fuel.name}")
@@ -2185,7 +2185,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 machine_fuel.id_fuel = fuel.id
                 log_to_db(
                     user,
-                    f"Обновление топлива электростанции {station.name} ({district_name})",
+                    f"Обновление топлива  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: топливо {old_fuel_name} → {fuel.name}"
                 )
                 print(f"Обновлено топливо: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {old_fuel_name} → {fuel.name}")
@@ -2211,7 +2211,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 db.session.add(machine_tes_type)
                 log_to_db(
                     user,
-                    f"Добавление типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Добавление типа ТЭС  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: добавлен тип ТЭС {tes_type.name}"
                 )
                 print(f"Добавлен тип ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {tes_type.name}")
@@ -2220,7 +2220,7 @@ def cleanup_machine_fuel_and_tes_type(machine, row, years: list[int], user):
                 machine_tes_type.id_tes_type = tes_type.id
                 log_to_db(
                     user,
-                    f"Обновление типа ТЭС электростанции {station.name} ({district_name})",
+                    f"Обновление типа ТЭС  электростанции {station.name} ({district_name})",
                     f"Агрегат: {machine.machine_number}, год {year}: тип ТЭС {old_tes_type_name} → {tes_type.name}"
                 )
                 print(f"Обновлен тип ТЭС: {station.name} ({district_name}), Агрегат {machine.machine_number}, год {year}: {old_tes_type_name} → {tes_type.name}")
@@ -2246,7 +2246,7 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             log_to_db(
                 user,
                 f"Удалена ожидаемая модернизация агрегата {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} станции '{station.name}': дата модернизации {old_year} удалена, т.к. указаны фактические даты"
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': дата модернизации {old_year} удалена, т.к. указаны фактические даты"
             )
             print(f"[Сброс модернизации] {station.name} — агрегат {machine.machine_number}: была {old_year}, удалена из-за наличия фактической даты")
         if machine.date_modernization_no_power_change_expected is not None:
@@ -2256,7 +2256,7 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             log_to_db(
                 user,
                 f"Удалён ожидаемый год модернизации без изм. мощности агрегата {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} станции '{station.name}': год {old_np} удалён (фактические даты перемаркировки/уточнения)"
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': год {old_np} удалён (фактические даты перемаркировки/уточнения)"
             )
             print(f"[Сброс модерн. без изм. мощности] {station.name} — агрегат {machine.machine_number}: был {old_np}")
 
@@ -2270,8 +2270,8 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             db.session.add(machine)
             log_to_db(
                 user,
-                f"Автоматический вывод агрегата электростанции {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} станции '{station.name}': плановый вывод из эксплуатации в {year + 1}"
+                f"Автоматический вывод агрегата  электростанции {station.name} ({district_name})",
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': плановый вывод из эксплуатации в {year + 1}"
             )
             print(f"Автоматический вывод агрегата: {station.name} ({district_name}), агрегат {machine.machine_number} — вывод в {year + 1}")
 
@@ -2282,8 +2282,8 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             db.session.add(machine)
             log_to_db(
                 user,
-                f"Автоматический ввод агрегата электростанции {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} станции '{station.name}': расчетный плановый ввод в эксплуатацию в {year + 1}"
+                f"Автоматический ввод агрегата  электростанции {station.name} ({district_name})",
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': расчетный плановый ввод в эксплуатацию в {year + 1}"
             )
             print(
                 f"Автоматический ввод агрегата: {station.name} ({district_name}), "
@@ -2302,7 +2302,7 @@ def update_machine_commission_status(machine, start_year, end_year, user):
             log_to_db(
                 user,
                 f"Автоматическая модернизация агрегата {station.name} ({district_name})",
-                f"Агрегат {machine.machine_number} станции '{station.name}': изменение мощности ({curr} → {next_}) в {year + 1} — год модернизации"
+                f"Агрегат {machine.machine_number} электростанции '{station.name}': изменение мощности ({curr} → {next_}) в {year + 1} — год модернизации"
             )
             print(f"[Модернизация] {station.name} — агрегат {machine.machine_number}: {curr} → {next_} в {year + 1}")
 
@@ -2453,11 +2453,11 @@ def import_station_list_from_excel(file, user):
                     touched_stations[current_station.id] = current_station
 
             # Строка агрегата (Руст): machine_name + gen_company + date_exploitation.
-            # Если в этой же строке есть реквизиты станции, current_station уже
+            # Если в этой же строке есть реквизиты электростанции, current_station уже
             # обновлен веткой выше.
             if machine_start_row:
                 if current_station is None:
-                    raise ValueError("Строка агрегата встретилась до строки станции (current_station=None)")
+                    raise ValueError("Строка агрегата встретилась до строки электростанции (current_station=None)")
                 logger.debug(
                     "[IMPORT_STATIONS] row=%s type=machine machine_name=%s gen_company=%s power_type=%s",
                     index,
@@ -2561,7 +2561,7 @@ def import_station_list_from_excel(file, user):
             logger.exception("[IMPORT_STATIONS] row failed: %s", err)
             continue
 
-    # После всех строк: расчет агрегированных мощностей по каждой станции
+    # После всех строк: расчет агрегированных мощностей по каждой электростанции
     for station in touched_stations.values():
         try:
             update_station_power(station, power_years, user)
@@ -2820,10 +2820,10 @@ def import_fuel_tes_station_from_excel(file, user):
                             if updated_machines > 0:
                                 db.session.commit()
                                 total_updated_machines += updated_machines
-                                # 1) Сводное событие по станции
+                                # 1) Сводное событие по электростанции
                                 log_to_db(
                                     user,
-                                    "Подгрузка топлива (СО): обновление топлива по станции",
+                                    "Подгрузка топлива (СО): обновление топлива по электростанции",
                                     details=(
                                         f"station_id={station.id}; station_name={station.name}; "
                                         f"gen_company={gen_company_name}; sheet={sheet}; row_index={index}; "
@@ -2950,7 +2950,7 @@ def import_fuel_tes_station_from_excel(file, user):
 
             for sample in examples:
                 # Пытаемся вытащить station_id из sample, если он там есть,
-                # чтобы привязать запись к конкретной станции.
+                # чтобы привязать запись к конкретной электростанции.
                 entity_type = "import_fuel"
                 entity_id = None
 

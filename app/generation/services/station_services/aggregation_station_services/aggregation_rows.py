@@ -66,10 +66,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
 
     # ---------------- Обычные агрегаты (машины) ----------------
     # Разделяем выборку на 2 части:
-    # 1) Станции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
-    # 2) Остальные станции — через субъект РФ, как в старой логике
+    # 1) электростанции с прямой связью с РЭС (Station.id_regional_energy_system IS NOT NULL)
+    # 2) Остальные электростанции — через субъект РФ, как в старой логике
 
-    # 1) Прямая связь станции с РЭС
+    # 1) Прямая связь электростанции с РЭС
     query_direct = (
         db.session.query(
             EnergySystemType.id.label("energy_system_type_id"),
@@ -272,7 +272,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             )
         )
 
-    # Применяем фильтры по станции
+    # Применяем фильтры по электростанции
     if filters.get("station_type_filter"):
         query_direct = query_direct.filter(Station.id_station_type.in_(filters["station_type_filter"]))
         query_via_district = query_via_district.filter(Station.id_station_type.in_(filters["station_type_filter"]))

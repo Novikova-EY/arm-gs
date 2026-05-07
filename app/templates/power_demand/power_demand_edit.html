@@ -9,10 +9,10 @@
 {% set show_ez = show_combined_on_ez is defined and show_combined_on_ez %}
 {% set view_ncols = 4 + (2 if show_oe else 0) + (1 if show_es else 0) + (1 if show_ez else 0) %}
 {% set rd = rounding_digits if rounding_digits is defined else 1 %}
-{% set hub_href = url_for('energy_consumption_bp.hub') %}
+{% set hub_href = url_for('power_demand_bp.hub') %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <a href="{{ hub_href }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Спрос»</a>
+        <a href="{{ hub_href }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»</a>
         {% if back_url != hub_href %}
         <a href="{{ back_url }}" class="btn btn-secondary fs-5">К списку</a>
         {% endif %}
@@ -41,7 +41,7 @@
         <script type="application/json" id="power-demand-year-options-json">{{ year_options|tojson }}</script>
 
         <div class="d-flex justify-content-end mt-2 mb-3">
-            <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+            <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
         </div>
 
         <div class="table-responsive">
@@ -177,7 +177,7 @@
         </div>
 
         <div class="d-flex justify-content-end mt-3 mb-4">
-            <button type="submit" class="btn btn-success fw-bold">Сохранить изменения</button>
+            <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
         </div>
     </form>
     {% else %}
@@ -273,9 +273,9 @@
     }
 </style>
 
-<script src="{{ url_for('static', filename='js/energy_consumption/table_sort.js') }}"></script>
-<script src="{{ url_for('static', filename='js/energy_consumption/slice_year_exclusive.js') }}"></script>
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_save_validate.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/table_sort.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/slice_year_exclusive.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_save_validate.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("rounding_digits")?.addEventListener("change", function () {

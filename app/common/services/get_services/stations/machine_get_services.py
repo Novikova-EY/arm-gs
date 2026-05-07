@@ -1,4 +1,4 @@
-"""Get-модуль: Агрегат электростанции."""
+"""Get-модуль: Агрегат  электростанции."""
 
 from app.extensions import db
 from sqlalchemy.orm import joinedload

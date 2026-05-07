@@ -1,36 +1,41 @@
 from __future__ import annotations
 
-from flask import jsonify, render_template, request, send_file
+from flask import current_app, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
-
 from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
     get_filter_start_year,
     get_ges_tep_current_price_year_number,
     get_year_list_full,
 )
+from app.common.services.database_version_services import get_current_version
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services.energy_consumption_summary_export_services import (
     build_demand_summary_excel_stream,
 )
+from app.energy_consumption.services.energy_consumption_summary_import_services import (
+    import_energy_consumption_summary_from_xlsx_bytes,
+)
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
+from app.energy_consumption.services.energy_consumption_summary_logging import (
+    count_ec_summary_logs,
+    load_ec_summary_logs_raw,
+    load_formatted_ec_summary_logs,
+)
+from app.logs.services.log_display_utils import format_logs_for_display
 from app.energy_consumption.services.energy_consumption_summary_services import (
     EZ_EXPORT_PARAMETER_KEYS,
     FO_EXPORT_PARAMETER_KEYS,
     OES_EXPORT_PARAMETER_KEYS,
     build_energy_zones_summary_context,
-    build_energy_zones_summary_context_coeff,
     build_federal_district_summary_context,
-    build_federal_district_summary_context_coeff,
     build_oes_summary_context,
-    build_oes_summary_context_coeff,
-    enrich_summary_rows_coeff_k_columns,
     filter_summary_rows_for_parameter_keys,
     get_demand_summary_filter_refdata,
     get_energy_consumption_ez_filter_cascade_data,
     get_energy_consumption_fo_filter_cascade_data,
     get_energy_consumption_oes_filter_cascade_data,
-    slice_coeff_summary_for_lazy_long_segment,
+    slice_energy_consumption_summary_context_for_export_years,
 )
 
 
@@ -56,50 +61,26 @@ def _filter_year_list_for_summary() -> list[int]:
     return list(range(get_filter_start_year(), get_filter_end_year() + 1))
 
 
-def _coeff_base_year_n() -> int:
-    """
-    N — календарный год с признаком «текущий», иначе «текущий (оценка)»,
-    иначе конец стандартного диапазона (как get_ges_tep_current_price_year_number + fallback).
-    """
+def _summary_period_base_year_n() -> int:
+    """N для колонок «отчётный N−9…N», «среднесрочный N+1…N+6» (как на странице коэффициентов спроса)."""
     n = get_ges_tep_current_price_year_number()
     if n is not None:
         return int(n)
     return int(get_filter_end_year())
 
 
-def _parse_coeff_summary_year_range() -> tuple[int, int, int]:
-    """(N, start_year, end_year) для «Коэффициенты…»: N−9…N+18 (28 лет)."""
-    n = _coeff_base_year_n()
-    return n, n - 9, n + 18
-
-
-def _coeff_period_header_groups(n: int) -> list[dict[str, str | int]]:
-    """По два столбца (k, МВт) на каждый год периода."""
-    return [
-        {"label": "Отчетный период", "colspan": 20, "key": "reporting"},
-        {"label": "Среднесрочный период", "colspan": 12, "key": "medium"},
-        {"label": "Долгосрочный период", "colspan": 24, "key": "long"},
-    ]
-
-
-def _coeff_period_header_groups_html(*, include_long: bool) -> list[dict[str, str | int]]:
-    """Шапка «Коэффициенты…»: без догрузки долгосрочного сегмента третья группа не выводится."""
-    groups: list[dict[str, str | int]] = [
-        {"label": "Отчетный период", "colspan": 20, "key": "reporting"},
-        {"label": "Среднесрочный период", "colspan": 12, "key": "medium"},
-    ]
-    if include_long:
-        groups.append({"label": "Долгосрочный период", "colspan": 24, "key": "long"})
-    return groups
-
-
-def _parse_coeff_include_long() -> bool:
-    return str(request.args.get("coeff_include_long") or "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+def _expand_summary_years_for_period_segments(sy: int, ey: int, n: int) -> tuple[int, int]:
+    """Объединить выбранный диапазон с окнами отчётного и среднесрочного периода: N−9…N и N+1…N+6."""
+    bounds = _filter_year_list_for_summary()
+    if not bounds:
+        lo, hi = sy, ey
+    else:
+        lo, hi = bounds[0], bounds[-1]
+    eff_sy = max(lo, min(sy, n - 9))
+    eff_ey = min(hi, max(ey, n + 6))
+    if eff_sy > eff_ey:
+        eff_sy, eff_ey = eff_ey, eff_sy
+    return eff_sy, eff_ey
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
@@ -181,35 +162,34 @@ def _parse_summary_export_visible_keys(allowed: frozenset[str]) -> frozenset[str
     return frozenset(keys)
 
 
-def _apply_coeff_year_k_columns(context: dict) -> None:
-    """Для «Коэффициенты…»: k = значение / макс. мощность года (блок строк)."""
-    coeff_n = context.get("coeff_base_year")
-    if coeff_n is None:
-        coeff_n = _coeff_base_year_n()
-    enrich_summary_rows_coeff_k_columns(
-        context["summary_rows"],
-        context["years"],
-        context["rounding_digits"],
-        context.get("year_is_plan") or {},
-        coeff_base_year=int(coeff_n),
-    )
+def _parse_export_years_list(full_years: list[int]) -> list[int] | None:
+    """GET export_years=2015,2016,... — подмножество full_years, порядок как в запросе."""
+    raw = request.args.get("export_years")
+    if raw is None or str(raw).strip() == "":
+        return None
+    allowed = set(full_years)
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    if not parts:
+        return None
+    out: list[int] = []
+    for p in parts:
+        try:
+            y = int(p)
+        except (TypeError, ValueError):
+            return None
+        if y not in allowed:
+            return None
+        if y not in out:
+            out.append(y)
+    return out
 
 
-def _demand_summary_excel_response(
-    context: dict, filename_prefix: str, *, export_coeff_k_columns: bool = False
-):
-    coeff_excel = None
-    if export_coeff_k_columns:
-        coeff_excel = context.get("coeff_base_year")
-        if coeff_excel is None:
-            coeff_excel = _coeff_base_year_n()
+def _demand_summary_excel_response(context: dict, filename_prefix: str):
     stream = build_demand_summary_excel_stream(
         summary_rows=context["summary_rows"],
         years=context["years"],
         sheet_title=context["page_title"],
-        year_is_plan=context.get("year_is_plan"),
-        export_coeff_k_columns=export_coeff_k_columns,
-        coeff_base_year=int(coeff_excel) if coeff_excel is not None else None,
+        year_features=context.get("year_features") or {},
     )
     fn = f"{filename_prefix}_{context['start_year']}_{context['end_year']}.xlsx"
     return send_file(
@@ -220,18 +200,35 @@ def _demand_summary_excel_response(
     )
 
 
+def _attach_ec_summary_logs(context: dict) -> None:
+    scope = context.get("active_summary")
+    if scope not in ("oes", "fo", "ez"):
+        return
+    vid = get_current_version()
+    context["ec_summary_logs_formatted"] = load_formatted_ec_summary_logs(
+        str(scope), vid, limit=50
+    )
+
+
 @energy_consumption_bp.route("/summary/oes/export.xlsx")
 @login_required
 def demand_summary_oes_export():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     oes_ordered = _parse_oes_territory_ordered()
     context = build_oes_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
     )
+    sub_years = _parse_export_years_list(list(context.get("years") or []))
+    if sub_years is not None:
+        context = slice_energy_consumption_summary_context_for_export_years(context, sub_years)
     visible = _parse_oes_export_visible_keys()
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -243,15 +240,22 @@ def demand_summary_oes_export():
 @energy_consumption_bp.route("/summary/federal-districts/export.xlsx")
 @login_required
 def demand_summary_federal_districts_export():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     fo_sets = _parse_fo_filter_sets()
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
     )
+    sub_years = _parse_export_years_list(list(context.get("years") or []))
+    if sub_years is not None:
+        context = slice_energy_consumption_summary_context_for_export_years(context, sub_years)
     visible = _parse_summary_export_visible_keys(FO_EXPORT_PARAMETER_KEYS)
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -263,15 +267,22 @@ def demand_summary_federal_districts_export():
 @energy_consumption_bp.route("/summary/energy-zones/export.xlsx")
 @login_required
 def demand_summary_energy_zones_export():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     ez_ordered = _parse_ez_territory_ordered()
     context = build_energy_zones_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
     )
+    sub_years = _parse_export_years_list(list(context.get("years") or []))
+    if sub_years is not None:
+        context = slice_energy_consumption_summary_context_for_export_years(context, sub_years)
     visible = _parse_summary_export_visible_keys(EZ_EXPORT_PARAMETER_KEYS)
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -280,76 +291,67 @@ def demand_summary_energy_zones_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_ez")
 
 
-# --- «Коэффициенты и совмещенные максимумы» (независимые URL и выгрузки, те же данные) ---
-
-
-@energy_consumption_bp.route("/summary/coeff/oes/export.xlsx")
+@energy_consumption_bp.route("/summary/fo-ez/import.xlsx", methods=["POST"])
 @login_required
-def demand_summary_oes_export_coeff():
-    _n, start_year, end_year = _parse_coeff_summary_year_range()
-    oes_ordered = _parse_oes_territory_ordered()
-    context = build_oes_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
-    )
-    visible = _parse_oes_export_visible_keys()
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
+def demand_summary_fo_ez_import_xlsx():
+    """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО — для страниц сводки по ОЭС, ФО и энергозонам."""
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    upload = request.files.get("file")
+    if upload is None or upload.filename is None or str(upload.filename).strip() == "":
+        return jsonify(ok=False, error="Файл не выбран."), 400
+    raw_name = str(upload.filename).strip().lower()
+    if not (raw_name.endswith(".xlsx") or raw_name.endswith(".xlsm")):
+        return jsonify(ok=False, error="Ожидается файл в формате .xlsx или .xlsm."), 400
+    raw = upload.read()
+    if not raw:
+        return jsonify(ok=False, error="Пустой файл."), 400
+    try:
+        stats = import_energy_consumption_summary_from_xlsx_bytes(raw)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception:
+        current_app.logger.exception("Импорт сводки потребления из Excel (не ValueError)")
+        return (
+            jsonify(
+                ok=False,
+                error=(
+                    "Не удалось выполнить импорт (ошибка при обработке файла или записи в БД). "
+                    "Подробности — в журнале сервера приложения."
+                ),
+            ),
+            400,
         )
-    _apply_coeff_year_k_columns(context)
-    return _demand_summary_excel_response(
-        context, "energy_consumption_svodka_oes_coeff", export_coeff_k_columns=True
+    msg = (
+        "Импорт выполнен по версиям БД: "
+        f"{stats['database_versions_processed']}. Лист «млн. кВт.ч»: записано ячеек — "
+        f"{stats['cells_written_mln_kvt_ch']}; лист «СиПР»: записано ячеек — "
+        f"{stats['cells_written_sipr']}."
     )
-
-
-@energy_consumption_bp.route("/summary/coeff/federal-districts/export.xlsx")
-@login_required
-def demand_summary_federal_districts_export_coeff():
-    _n, start_year, end_year = _parse_coeff_summary_year_range()
-    fo_sets = _parse_fo_filter_sets()
-    context = build_federal_district_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-    )
-    visible = _parse_summary_export_visible_keys(FO_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
+    if stats.get("mln_sheet_absent"):
+        msg += " Лист «млн. кВт.ч» в файле отсутствует — данные для него не импортировались."
+    if stats.get("sipr_sheet_absent"):
+        msg += " Лист «СиПР» в файле отсутствует — данные для него не импортировались."
+    if stats.get("mln_sheet_skipped_no_data_grid"):
+        msg += (
+            " Лист «млн. кВт.ч» без таблицы (заглушка) — поля «млн. кВт·ч» из этого листа не обновлялись."
         )
-    _apply_coeff_year_k_columns(context)
-    return _demand_summary_excel_response(
-        context, "energy_consumption_svodka_fo_coeff", export_coeff_k_columns=True
-    )
-
-
-@energy_consumption_bp.route("/summary/coeff/energy-zones/export.xlsx")
-@login_required
-def demand_summary_energy_zones_export_coeff():
-    _n, start_year, end_year = _parse_coeff_summary_year_range()
-    ez_ordered = _parse_ez_territory_ordered()
-    context = build_energy_zones_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-    )
-    visible = _parse_summary_export_visible_keys(EZ_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
+    extras = []
+    um = stats.get("unmatched_labels_mln") or []
+    us = stats.get("unmatched_labels_sipr") or []
+    if um:
+        extras.append(
+            "Не сопоставлены строки (лист «млн. кВт.ч», первые наименования): "
+            + "; ".join(um[:12])
+            + (" …" if len(um) > 12 else "")
         )
-    _apply_coeff_year_k_columns(context)
-    return _demand_summary_excel_response(
-        context, "energy_consumption_svodka_ez_coeff", export_coeff_k_columns=True
-    )
+    if us:
+        extras.append(
+            "Не сопоставлены строки (лист «СиПР», первые наименования): "
+            + "; ".join(us[:12])
+            + (" …" if len(us) > 12 else "")
+        )
+    return jsonify(ok=True, message=msg, hints=extras, **stats)
 
 
 @energy_consumption_bp.route("/summary/cell", methods=["POST"])
@@ -392,34 +394,87 @@ def demand_summary_save_cell():
             return jsonify(ok=False, error="Неверный parent_id"), 400
 
     if row_id is None and (slice_key is None or str(slice_key).strip() == ""):
-        return jsonify(ok=False, error="Укажите срез (год или исторический максимум)."), 400
+        return jsonify(ok=False, error="Укажите год среза или существующую строку (row_id)."), 400
+
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
 
     try:
+        sipr_summary_mode = bool(data.get("sipr_summary_mode"))
         display = dps.save_demand_summary_cell(
             demand_model_name,
             parameter_key,
             raw_value,
             rounding_digits=rounding_digits,
+            sipr_summary_mode=sipr_summary_mode,
             row_id=row_id,
             slice_key=slice_key,
             parent_fk_column=parent_fk_column,
             parent_id=parent_id,
+            summary_log_scope=summary_log_scope,
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
     return jsonify(ok=True, display_value=display)
 
 
+@energy_consumption_bp.route("/summary/logs/<scope>", methods=["GET"])
+@login_required
+def demand_summary_scope_logs(scope: str):
+    """AJAX: журнал изменений (ОЭС / ФО / энергозоны) для текущей версии БД."""
+    if scope not in ("oes", "fo", "ez"):
+        return jsonify(ok=False, error="Неверная область журнала."), 400
+    offset = request.args.get("offset", 0, type=int) or 0
+    limit = request.args.get("limit", 150, type=int)
+    if limit == 0:
+        vid = get_current_version()
+        total = count_ec_summary_logs(scope, vid)
+        return jsonify(
+            ok=True,
+            logs=[],
+            offset=0,
+            limit=0,
+            count=0,
+            total=total,
+            has_more=False,
+        )
+    if limit is None:
+        limit = 150
+    limit = max(1, min(int(limit), 500))
+    vid = get_current_version()
+    rows = load_ec_summary_logs_raw(scope, vid, limit=limit, offset=offset)
+    formatted = format_logs_for_display(rows)
+    total = count_ec_summary_logs(scope, vid)
+    n = len(formatted)
+    return jsonify(
+        ok=True,
+        logs=formatted,
+        offset=offset,
+        limit=limit,
+        count=n,
+        total=total,
+        has_more=(offset + n) < total,
+    )
+
+
 @energy_consumption_bp.route("/summary/oes/")
 @login_required
 def demand_summary_oes():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     oes_ordered = _parse_oes_territory_ordered()
     ues_l, res_l, rd_l, eu_l = oes_ordered
     context = build_oes_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
     )
@@ -428,19 +483,25 @@ def demand_summary_oes():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
     context["summary_route_variant"] = "max"
-    return render_template("energy_consumption/demand_summary.html", **context)
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    _attach_ec_summary_logs(context)
+    return render_template("energy_consumption/energy_consumption_summary.html", **context)
 
 
 @energy_consumption_bp.route("/summary/energy-zones/")
 @login_required
 def demand_summary_energy_zones():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     ez_ordered = _parse_ez_territory_ordered()
     ez_l, res_l = ez_ordered
     context = build_energy_zones_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
     )
@@ -449,19 +510,25 @@ def demand_summary_energy_zones():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(ez_l or res_l)
     context["summary_route_variant"] = "max"
-    return render_template("energy_consumption/demand_summary.html", **context)
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    _attach_ec_summary_logs(context)
+    return render_template("energy_consumption/energy_consumption_summary.html", **context)
 
 
 @energy_consumption_bp.route("/summary/federal-districts/")
 @login_required
 def demand_summary_federal_districts():
-    start_year, end_year = _parse_summary_year_range()
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(sy, ey, n)
     fo_sets = _parse_fo_filter_sets()
     f_fd, f_rd = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
+        start_year=sy,
+        end_year=ey,
+        data_start_year=eff_sy,
+        data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
     )
@@ -470,94 +537,6 @@ def demand_summary_federal_districts():
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
     context["has_active_summary_filters"] = bool(f_fd or f_rd)
     context["summary_route_variant"] = "max"
-    return render_template("energy_consumption/demand_summary.html", **context)
-
-
-@energy_consumption_bp.route("/summary/coeff/oes/")
-@login_required
-def demand_summary_oes_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    return render_template("energy_consumption/demand_summary.html", **context)
-
-
-@energy_consumption_bp.route("/summary/coeff/federal-districts/")
-@login_required
-def demand_summary_federal_districts_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    fo_sets = _parse_fo_filter_sets()
-    f_fd, f_rd = fo_sets
-    context = build_federal_district_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_rd)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    return render_template("energy_consumption/demand_summary.html", **context)
-
-
-@energy_consumption_bp.route("/summary/coeff/energy-zones/")
-@login_required
-def demand_summary_energy_zones_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    ez_ordered = _parse_ez_territory_ordered()
-    ez_l, res_l = ez_ordered
-    context = build_energy_zones_summary_context_coeff(
-        _parse_rounding_digits(),
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l or res_l)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    return render_template("energy_consumption/demand_summary.html", **context)
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    _attach_ec_summary_logs(context)
+    return render_template("energy_consumption/energy_consumption_summary.html", **context)

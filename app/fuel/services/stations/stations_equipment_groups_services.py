@@ -275,7 +275,7 @@ def _territorial_filter_or_fk_or_obl(eg, filters, version_id):
 def get_standalone_equipment_group_ids(version_id=None, strict_version=False):
     """
     Возвращает множество ID групп оборудования (EquipmentGroup), не привязанных
-    ни к одной станции (нет записей в EquipmentGroupSet).
+    ни к одной электростанции (нет записей в EquipmentGroupSet).
 
     :param strict_version: если True, при выбранной версии только database_version_id == version_id.
     """
@@ -542,7 +542,7 @@ def _linked_equipment_group_ids_matching_station_filters(
 ):
     """
     ID групп оборудования со связью на станцию, удовлетворяющую фильтрам
-    названия станции и/или генерирующей компании (логика как у station_list).
+    названия электростанции и/или генерирующей компании (логика как у station_list).
 
     Возвращает None, если оба фильтра пусты — тогда ограничение не применяется.
     Standalone-группы (без station_id) в результат не входят.
@@ -614,10 +614,10 @@ def get_filtered_equipment_group_ids_all(
     и standalone), отфильтрованных по атрибутам самой EquipmentGroup.
 
     Фильтры: территориальные (EST, ОЭС, РЭС, ФО, субъект), название группы,
-    тип станции ТЭС (для привязанных групп — только если станция ТЭС; standalone всегда включаются).
+    тип электростанции ТЭС (для привязанных групп — только если станция ТЭС; standalone всегда включаются).
 
     :param standalone_ids_precalc: если передан (например из build_equipment_group_hierarchy_eg_first),
-        не вызывается повторный запрос get_standalone_equipment_group_ids при фильтре по типу станции.
+        не вызывается повторный запрос get_standalone_equipment_group_ids при фильтре по типу электростанции.
     """
     from app.extensions import db
     from app.generation.models.station.station_model import Station
@@ -669,7 +669,7 @@ def get_filtered_equipment_group_ids_all(
     if station_pick is not None:
         territorial_ids &= station_pick
 
-    # Фильтр по типу станции ТЭС: оставляем группы, привязанные к ТЭС, или standalone
+    # Фильтр по типу электростанции ТЭС: оставляем группы, привязанные к ТЭС, или standalone
     station_type_filter = _filters.get("station_type_filter")
     if not station_type_filter:
         return territorial_ids
@@ -1137,7 +1137,7 @@ def _group_block_display_sort_key(block) -> tuple:
     """
     Ключ отображения блока на странице stations_equipment_groups.
 
-    Внутри ветки РЭС строки должны идти подряд по станции, иначе визуальное
+    Внутри ветки РЭС строки должны идти подряд по электростанции, иначе визуальное
     объединение station-level ячеек работает только в узкой выборке и ломается
     в полном списке.
 
@@ -1690,8 +1690,8 @@ def _eg_station_regional_district_consistent(station, equipment_group) -> bool:
     """
     Одна запись EquipmentGroup может быть ошибочно связана с несколькими станциями
     в разных субъектах РФ. Для строки таблицы «группа + станция» показываем связь
-    только если субъект станции совпадает с субъектом группы (модуль «Топливо»),
-    когда оба заданы. Иначе строка дублируется под «чужой» ОЭС с тем же названием станции.
+    только если субъект электростанции совпадает с субъектом группы (модуль «Топливо»),
+    когда оба заданы. Иначе строка дублируется под «чужой» ОЭС с тем же названием электростанции.
     """
     if not station or not equipment_group:
         return True
@@ -1749,8 +1749,8 @@ def _eg_station_name_consistent(
     Отсекает ложные связи одной EquipmentGroup с несколькими станциями одного региона.
 
     При штатном импорте name группы формируется как "<станция> (<тип группы>)".
-    Если такая группа уже явно названа по одной станции, но в выборку попадает
-    другая станция, на странице она ошибочно отображается как "две станции одной
+    Если такая группа уже явно названа по одной электростанции, но в выборку попадает
+    другая станция, на странице она ошибочно отображается как "две электростанции одной
     группы". Для generic/legacy названий, где это уверенно определить нельзя,
     связь сохраняем.
     """
@@ -1759,7 +1759,7 @@ def _eg_station_name_consistent(
 
     # После ручного объединения одна группа оборудования может быть намеренно
     # связана с несколькими станциями. В этом сценарии нельзя требовать, чтобы
-    # имя каждой станции полностью входило в name группы, иначе часть станций
+    # имя каждой электростанции полностью входило в name группы, иначе часть станций
     # скрывается на витрине stations_equipment_groups.
     linked_station_ids = set()
     for link in (getattr(equipment_group, "equipment_group_links_v2", None) or []):
@@ -1771,7 +1771,7 @@ def _eg_station_name_consistent(
                 return True
 
     # Ровно одна станция в связях — связь в БД однозначна; не требуем, чтобы
-    # `name` группы оставалось в формате «<имя той же станции> (тип)» после
+    # `name` группы оставалось в формате «<имя той же электростанции> (тип)» после
     # ручного переименования (иначе скобки вызывали return False и строка
     # пропадала на stations_equipment_groups).
     if len(linked_station_ids) == 1:
@@ -1779,7 +1779,7 @@ def _eg_station_name_consistent(
 
     # Для котельных и других grouping-only связей без агрегатов
     # показываем группу под явно выбранной «Станцией для группировки»,
-    # даже если имя группы не похоже на имя станции.
+    # даже если имя группы не похоже на имя электростанции.
     if equipment_group_type_id is not None:
         current_version_id = get_current_db_version_id()
         station_machines = [
@@ -1810,8 +1810,8 @@ def _eg_station_name_consistent(
         if station_name in equipment_group_name:
             return True
         # Типовой импорт задает station-specific name в формате
-        # "<станция> (<тип группы>)"; если имя станции не совпало,
-        # значит связь, скорее всего, подтянулась от другой станции.
+        # "<станция> (<тип группы>)"; если имя электростанции не совпало,
+        # значит связь, скорее всего, подтянулась от другой электростанции.
         if _eg_name_has_station_type_suffix_brackets(equipment_group_name):
             return False
 
@@ -1892,12 +1892,12 @@ def _resolve_regional_energy_system_for_hierarchy(station, equipment_group=None)
     РЭС для построения EST/ОЭС/РЭС в таблице групп оборудования.
 
     Нельзя опираться только на station.regional_energy_system_obj: при ошибочном
-    id_regional_energy_system у станции строка попадала в чужой регион иерархии,
+    id_regional_energy_system у электростанции строка попадала в чужой регион иерархии,
     при этом столбец «Субъект» оставался верным (из regional_district).
 
     Приоритет:
-    1) РЭС группы оборудования, если она входит в список РЭС субъекта станции;
-    2) прямой FK станции на РЭС, если он согласован с субъектом станции;
+    1) РЭС группы оборудования, если она входит в список РЭС субъекта электростанции;
+    2) прямой FK электростанции на РЭС, если он согласован с субъектом электростанции;
     3) первая РЭС из M2M субъекта (стабильный порядок по id);
     4) только FK, если у субъекта нет списка РЭС (legacy).
     """
@@ -1931,14 +1931,14 @@ def _resolve_regional_energy_system_for_hierarchy(station, equipment_group=None)
 
 def _hierarchy_key_from_station(station, equipment_group=None) -> tuple | None:
     """
-    Иерархический ключ для станции.
+    Иерархический ключ для электростанции.
 
     Важно для случаев, когда одна EquipmentGroup ошибочно связана с несколькими
     станциями из разных регионов: такие station_entry нужно раскладывать по
-    иерархии станции, а не по полям самой EquipmentGroup.
+    иерархии электростанции, а не по полям самой EquipmentGroup.
 
     :param equipment_group: используется для согласования РЭС с данными «Топливо»,
-        если у станции несколько РЭС через субъект или конфликт FK.
+        если у электростанции несколько РЭС через субъект или конфликт FK.
     """
     if not station:
         return None
@@ -1959,7 +1959,7 @@ def _hierarchy_key_from_station(station, equipment_group=None) -> tuple | None:
 def _station_matches_selected_territory_filters(station, filters=None, equipment_group=None) -> bool:
     """
     Для linked-групп территориальные фильтры должны отсеивать и station-level строки,
-    иначе при фильтре по субъекту / ФО / РЭС в блоке остаются станции из соседних
+    иначе при фильтре по субъекту / ФО / РЭС в блоке остаются электростанции из соседних
     территорий той же EquipmentGroup.
 
     Для standalone-котельных эта проверка не применяется: они фильтруются отдельно
@@ -2004,7 +2004,7 @@ def _station_matches_selected_territory_filters(station, filters=None, equipment
 
 def _split_group_block_by_station_hierarchy(block):
     """
-    Делит block EquipmentGroup -> station_entries на подблоки по иерархии станции.
+    Делит block EquipmentGroup -> station_entries на подблоки по иерархии электростанции.
 
     Это устраняет ситуацию, когда одна и та же EquipmentGroup уже связана в БД
     с несколькими станциями из разных РЭС/субъектов: без разбиения весь блок
@@ -2021,7 +2021,7 @@ def _split_group_block_by_station_hierarchy(block):
         station = station_entry.get("station")
         # Станция и группа с одним субъектом РФ: иерархию ЕЭС/ОЭС/РЭС берём из
         # EquipmentGroup (модуль «Топливо»). Иначе при нескольких РЭС у субъекта
-        # или при ошибочном id_regional_energy_system у станции строка попадала
+        # или при ошибочном id_regional_energy_system у электростанции строка попадала
         # не в ту ветку, хотя столбец «Субъект» был верным.
         st_rd = getattr(station, "id_regional_district", None)
         eg_rd = (
@@ -2126,12 +2126,12 @@ def _merge_adjacent_group_blocks_for_display(group_blocks):
 def _merge_adjacent_station_entries_for_display(group_blocks):
     """
     Объединяет station-level ячейки для подряд идущих station_entry одной и той же
-    станции по отображаемому названию, если эта станция встречается более чем в
+    электростанции по отображаемому названию, если эта станция встречается более чем в
     одной группе оборудования.
 
     Используется только для отображения на странице: сами блоки остаются
     EquipmentGroup-first, но колонки модуля «Генерация» визуально объединяются
-    по станции на высоту нескольких групп оборудования.
+    по электростанции на высоту нескольких групп оборудования.
     """
     ordered_entries = []
     for block in group_blocks or []:
@@ -2261,7 +2261,7 @@ def build_equipment_group_hierarchy_eg_first(
 ):
     """
     EquipmentGroup-first: строит иерархию EST -> UES -> РЭС из групп оборудования.
-    Фильтры применяются к EquipmentGroup, затем подтягиваются станции и агрегаты.
+    Фильтры применяются к EquipmentGroup, затем подтягиваются электростанции и агрегаты.
 
     Возвращает:
       - иерархию для текущей страницы;
@@ -2300,7 +2300,7 @@ def build_equipment_group_hierarchy_eg_first(
             )
         )
 
-    # Раскладываем блоки по иерархии станции, а не только по полям EquipmentGroup.
+    # Раскладываем блоки по иерархии электростанции, а не только по полям EquipmentGroup.
     # Это важно для ошибочно "склеенных" групп, связанных со станциями из разных регионов.
     blocks_by_key = defaultdict(list)
     for block in blocks:
@@ -2329,7 +2329,7 @@ def build_equipment_group_blocks_from_eg_ids(
 ):
     """
     EquipmentGroup-first: строит блоки по списку ID групп оборудования.
-    Подтягивает все станции и агрегаты для каждой группы (без фильтра по станциям).
+    Подтягивает все электростанции и агрегаты для каждой группы (без фильтра по станциям).
 
     :param equipment_group_ids: множество ID групп оборудования (EquipmentGroup)
     :return: list of blocks (формат как reorganize_by_equipment_group_first)
@@ -2734,7 +2734,7 @@ def reorganize_by_station_first(stations, v2_groups_map):
     """
     Reorganizes per-station equipment groups into station-first structure.
 
-    Если несколько групп оборудования входят в состав одной станции,
+    Если несколько групп оборудования входят в состав одной электростанции,
     ячейка «Станция» объединяется (rowspan) на все группы оборудования.
 
     Иерархия: Station -> EquipmentGroup -> EquipmentGroupType -> Machines
@@ -2742,7 +2742,7 @@ def reorganize_by_station_first(stations, v2_groups_map):
     Returns: list of blocks, each:
         {
             "station": Station,
-            "station_rowspan": int,  # суммарное число строк для всех групп этой станции
+            "station_rowspan": int,  # суммарное число строк для всех групп этой электростанции
             "group_entries": [
                 {
                     "equipment_group": EquipmentGroup|None,

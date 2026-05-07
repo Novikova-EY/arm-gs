@@ -293,8 +293,8 @@
         {% if can_edit %}
         <div class="row mt-4 mb-3">
             <div class="col-12 d-flex justify-content-end gap-2">
-                <button type="submit" class="btn btn-outline-success btn-lg">Сохранить</button>
-                <a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=place.id) }}" class="btn btn-outline-secondary btn-lg">Отмена</a>
+                <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                <a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=place.id) }}" class="btn btn-outline-danger fs-5">Отмена</a>
             </div>
         </div>
         {% endif %}

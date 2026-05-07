@@ -64,7 +64,7 @@ _GE_NUMB_SOURCE_COLUMN_NORMALS = frozenset(
     (
         "numb1120",
         "topl_numb",
-        _normalize_column_name("Код станции (numb)"),
+        _normalize_column_name("Код электростанции (numb)"),
     )
 )
 
@@ -181,7 +181,7 @@ for _fld in EQUIPMENT_GROUP_UPDATE_FIELDS:
         lst.append(_fld)
 # name и name_ext оба берут значение из topl_name (ge_name_ext)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS.setdefault("name", []).insert(0, "ge_name_ext")
-# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код станции (numb)» — см. _coalesce_ge_numb_source_columns)
+# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код электростанции (numb)» — см. _coalesce_ge_numb_source_columns)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS["numb"] = ["ge_numb"]
 MACHINE_FUEL_PARAM_INTEGER_FIELDS = frozenset([
     "numb1120", "numb", "stnumb", "yearin",
@@ -244,7 +244,7 @@ def _collect_rows_with_empty_station_and_machine_ids(df: pd.DataFrame) -> set[in
 
 def _coalesce_duplicate_station_machine_id_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Если одновременно есть каноническое имя (id_station) и русский заголовок (ID станции),
+    Если одновременно есть каноническое имя (id_station) и русский заголовок (ID электростанции),
     шаблон часто оставляет пустой id_station — тогда переименование второй колонки
     блокировалось already_canonical и данные терялись при cols_to_keep.
     Объединяем значения в одну колонку с каноническим именем.
@@ -321,9 +321,9 @@ def _coalesce_equipment_group_name_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _coalesce_ge_numb_source_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    numb1120, topl_NUMB и «Код станции (numb)» (экспорт /fuel/stations_equipment_groups) → одна колонка ge_numb.
+    numb1120, topl_NUMB и «Код электростанции (numb)» (экспорт /fuel/stations_equipment_groups) → одна колонка ge_numb.
 
-    В экспорте нет topl_NUMB: numb дублируется в numb1120 и в «Код станции (numb)»; без слияния импорт
+    В экспорте нет topl_NUMB: numb дублируется в numb1120 и в «Код электростанции (numb)»; без слияния импорт
     не получал ge_numb и шаг 4.2 не сопоставлял строки с EquipmentGroup.numb в БД.
     """
     norms = _GE_NUMB_SOURCE_COLUMN_NORMALS | {"ge_numb"}
@@ -360,7 +360,7 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
             alias_to_canonical[_normalize_column_name(a)] = canonical
 
     add_aliases("id_machine", ["id_machine", "ID агрегата"])
-    add_aliases("id_station", ["id_station", "ID станции"])
+    add_aliases("id_station", ["id_station", "ID электростанции"])
     add_aliases("equipment_group_id", ["equipment_group_id", "id_equipment_group", "ID группы оборудования"])
     add_aliases("ge_name_ext", ["topl_name", "name_ext"])
     add_aliases("ge_niv", ["topl_niv"])
@@ -435,7 +435,7 @@ ALLOWED_IMPORT_COLUMNS = frozenset([
     "machine_nt", "machine_grcode", "machine_station_name", "machine_opesname", "machine_note",
 ])
 
-# Значение "Котельные" — группа без привязки к станции (EquipmentGroup напрямую)
+# Значение "Котельные" — группа без привязки к электростанции (EquipmentGroup напрямую)
 KOTELNYE_GROUP_NAME = "Котельные"
 NEW_EQUIPMENT_GROUP_SUFFIX = " (нов)"
 
@@ -547,7 +547,7 @@ def _equipment_group_matches_station_link(
     Проверяет, что EquipmentGroup уже связана именно с той станцией/типом/версией,
     для которых сейчас обрабатывается строка импорта.
 
-    Если в Excel попал equipment_group_id от одноименной станции из другого региона,
+    Если в Excel попал equipment_group_id от одноименной электростанции из другого региона,
     слепое переиспользование этой группы создаёт вторую связь EquipmentGroupSet и
     переносит субъект/РЭС в карточке группы на "чужую" станцию.
 
@@ -907,12 +907,12 @@ def _find_equipment_group_by_numb_for_station_external_code(
     со станцией из того же «семейства», что и station_id (см. _get_station_family_for_import),
     и только для того же типа группы оборудования.
 
-    Глобальный поиск только по numb и external_code давал .first() по «любой» станции
-    с тем же кодом — в т.ч. одноимённые станции в разных субъектах. Ограничение по
-    family_ids сохраняет перенос между версиями одной станции и не подтягивает группу
-    «соседней» станции с тем же external_code. Дополнительная фильтрация по
+    Глобальный поиск только по numb и external_code давал .first() по «любой» электростанции
+    с тем же кодом — в т.ч. одноимённые электростанции в разных субъектах. Ограничение по
+    family_ids сохраняет перенос между версиями одной электростанции и не подтягивает группу
+    «соседней» электростанции с тем же external_code. Дополнительная фильтрация по
     equipment_group_type_id не дает склеивать в одну EquipmentGroup разные типы
-    оборудования с одинаковым numb на одной станции.
+    оборудования с одинаковым numb на одной электростанции.
     """
     station = Station.query.get(station_id)
     if not station:
@@ -1054,15 +1054,15 @@ def _normalized_station_identity_name(station: Station | None) -> str:
 
 def _get_station_family_for_import(station: Station | None) -> list[Station]:
     """
-    Возвращает "семейство" одной станции для переноса между версиями.
+    Возвращает "семейство" одной электростанции для переноса между версиями.
 
-    Ранее логика брала все станции с тем же external_code, из-за чего станции
+    Ранее логика брала все электростанции с тем же external_code, из-за чего электростанции
     из разных субъектов с одинаковым кодом считались одной и той же станцией.
     Это приводило к созданию пустых лишних групп и переносу параметров не туда.
 
     Сиблинг с пустым субъектом/РЭС при заполненном субъекте/РЭС у источника
     отбрасывается, если нормализованное имя не совпадает (иначе в семью попадали
-    одноимённые станции в разных регионах).
+    одноимённые электростанции в разных регионах).
     """
     if not station or not station.external_code:
         return []
@@ -1082,7 +1082,7 @@ def _get_station_family_for_import(station: Station | None) -> list[Station]:
 
         if source_rd_id is not None and sibling_rd_id is not None and sibling_rd_id != source_rd_id:
             continue
-        # У субъекта задано, у «сиблинга» нет — не смешиваем разные одноимённые станции
+        # У субъекта задано, у «сиблинга» нет — не смешиваем разные одноимённые электростанции
         if source_rd_id is not None and sibling_rd_id is None and source_name:
             if sibling_name and sibling_name != source_name:
                 continue
@@ -1313,11 +1313,11 @@ def _get_machine_family_for_import(
 ) -> list[Machine]:
     """
     Агрегаты с тем же external_code, что у machine, но только на станциях из «семейства»
-    якорной станции.
+    якорной электростанции.
 
-    anchor_station_id: id станции из Excel (id_station). Если задан, семейство берётся по
-    этой станции — иначе по станции агрегата в БД. Иначе при расхождении id_station в
-    файле и id_station у машины группа и связи создавались по «чужой» станции.
+    anchor_station_id: id электростанции из Excel (id_station). Если задан, семейство берётся по
+    этой электростанции — иначе по электростанции агрегата в БД. Иначе при расхождении id_station в
+    файле и id_station у машины группа и связи создавались по «чужой» электростанции.
     """
     if not machine:
         return []
@@ -1361,7 +1361,7 @@ def _get_machine_family_for_import(
             for station_id in allowed_station_ids
             if not _get_station_machine_company_ids_for_import(station_id).isdisjoint(anchor_company_ids)
         }
-        # Не смешиваем одноимённые станции с одинаковым external_code, если у них
+        # Не смешиваем одноимённые электростанции с одинаковым external_code, если у них
         # полностью разные генкомпании: это разные семейства, как у ТЭС-2 в Карелии.
         if company_filtered_station_ids:
             allowed_station_ids = company_filtered_station_ids
@@ -1642,7 +1642,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     ) -> EquipmentGroupType | None:
         """
         При импорте считаем текущую выбранную версию канонической.
-        Если в ней тип не найден, допускаем fallback к версии исходной станции.
+        Если в ней тип не найден, допускаем fallback к версии исходной электростанции.
         """
         if current_version in valid_version_ids:
             canonical_type = _find_eg_cached(group_text, current_version)
@@ -1700,11 +1700,11 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     def _get_station_variants_for_all_versions(anchor_station: Station | None) -> list[Station]:
         """
-        Возвращает по одной станции на каждую версию БД для того же объекта.
+        Возвращает по одной электростанции на каждую версию БД для того же объекта.
 
         Сохраняем текущую защиту от legacy-коллизий по external_code: сначала
-        предпочитаем станции из _get_station_family_for_import, а если в версии
-        такой станции нет, берем лучший кандидат с тем же external_code.
+        предпочитаем электростанции из _get_station_family_for_import, а если в версии
+        такой электростанции нет, берем лучший кандидат с тем же external_code.
         """
         anchor_station_id = getattr(anchor_station, "id", None)
         if anchor_station_id is None:
@@ -1793,7 +1793,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
     ) -> list[tuple[int, int, int | None]]:
         """
         Возвращает пары (station_id, equipment_group_type_id, version_id) для всех версий БД,
-        где найдены эквиваленты станции и типа группы оборудования.
+        где найдены эквиваленты электростанции и типа группы оборудования.
         """
         cache_key = (station_id, equipment_group_type_id)
         if cache_key in expanded_station_type_pairs_cache:
@@ -1893,9 +1893,9 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         version_id: int | None,
     ) -> tuple[EquipmentGroupSetStation | None, bool, int]:
         """
-        Возвращает корректный EquipmentGroupSetStation для станции/типа/версии.
+        Возвращает корректный EquipmentGroupSetStation для электростанции/типа/версии.
 
-        Если в БД уже есть "битый" link той же станции и версии, но с type_id из другой
+        Если в БД уже есть "битый" link той же электростанции и версии, но с type_id из другой
         версии (при этом ref_uuid типа совпадает), link чинится автоматически.
         """
         desired_type = EquipmentGroupType.query.get(equipment_group_type_id)
@@ -2085,7 +2085,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 _set_row_result(
                     index,
                     "step3",
-                    f"Пропуск: нет агрегатов с external_code этого id_machine на станции id_station={station_id_row}",
+                    f"Пропуск: нет агрегатов с external_code этого id_machine на электростанции id_station={station_id_row}",
                 )
                 continue
 
@@ -2573,7 +2573,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 db_version_id = _resolve_version_id(st)
 
                 # Для station-only строк данные EquipmentGroup должны ложиться на все группы
-                # этой станции/семейства с тем же numb. Не сужаем выборку по type/equipment_group.
+                # этой электростанции/семейства с тем же numb. Не сужаем выборку по type/equipment_group.
                 candidate_groups = _find_equipment_groups_by_numb_for_station_external_code(
                     excel_numb,
                     st.id,
@@ -2855,7 +2855,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
                 _set_row_result(
                     index,
                     "step4_3",
-                    f"Пропуск: нет агрегатов с таким external_code на станции id_station={station_id_row}",
+                    f"Пропуск: нет агрегатов с таким external_code на электростанции id_station={station_id_row}",
                 )
                 continue
 

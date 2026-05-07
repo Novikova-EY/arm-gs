@@ -34,7 +34,7 @@
 {% set url_list = url_for('prospective_places_bp.prospective_places_ges') + qs_suffix %}
 {% set url_prospective_start = url_for('prospective_places_bp.prospective_places_start') %}
 <div class="container-fluid mt-2">
-    {# Как «Электростанции РФ» на station_details / station_list: первая строка, выравнивание вправо #}
+    {# Как « электростанции РФ» на station_details / station_list: первая строка, выравнивание вправо #}
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
         <a href="{{ url_list }}" class="btn btn-secondary fs-5">Характеристика актуальных площадок размещения новых ГЭС</a>
         <a href="{{ url_prospective_start }}" class="btn btn-secondary fs-5">Перспективные площадки размещения новых электростанций</a>
@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 "<td class=\"align-middle\">" + selHtml + "</td>" +
                 "<td class=\"align-middle\"><input type=\"text\" class=\"form-control form-control-sm text-center ges-tep-coeff-input\" inputmode=\"decimal\"></td>" +
                 "<td class=\"text-center align-middle text-nowrap\">" +
-                "<button type=\"button\" class=\"btn btn-sm btn-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
+                "<button type=\"button\" class=\"btn btn-sm btn-outline-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
                 "<button type=\"button\" class=\"btn btn-sm btn-outline-danger ges-tep-coeff-del\">Удалить</button>" +
                 "</td>";
             const inpEl = tr.querySelector(".ges-tep-coeff-input");
@@ -357,8 +357,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 "<td class=\"align-middle\">" + selHtml + "</td>" +
                 "<td class=\"align-middle\"><input type=\"text\" class=\"form-control form-control-sm text-center ges-tep-coeff-input\" inputmode=\"decimal\" placeholder=\"\"></td>" +
                 "<td class=\"text-center align-middle text-nowrap\">" +
-                "<button type=\"button\" class=\"btn btn-sm btn-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
-                "<button type=\"button\" class=\"btn btn-sm btn-outline-secondary ges-tep-coeff-del\">Отмена</button>" +
+                "<button type=\"button\" class=\"btn btn-sm btn-outline-primary me-1 ges-tep-coeff-save\">Сохранить</button>" +
+                "<button type=\"button\" class=\"btn btn-sm btn-outline-danger ges-tep-coeff-del\">Отмена</button>" +
                 "</td>";
             tbody.appendChild(tr);
             wireRow(tr, true);

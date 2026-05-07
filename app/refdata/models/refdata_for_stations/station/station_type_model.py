@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationType model (Тип электростанции).
+StationType model (Тип  электростанции).
 """
 from sqlalchemy.sql import func
 from app.extensions import db

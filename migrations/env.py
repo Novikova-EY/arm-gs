@@ -46,6 +46,8 @@ def import_all_models():
         "app.generation.models.station_group_model",
         "app.generation.models.station_model",
         "app.generation.models.station_power_model",
+        "app.generation.models.station.station_energy_generation_model",
+        "app.generation.models.station.station_gaes_charge_consumption_model",
         "app.generation.models.boiler_model",
         "app.generation.models.machine_model",
         "app.generation.models.machine_power_model",

@@ -191,7 +191,7 @@ def ensure_equipment_group_set_for_station(
     Логика аналогична import_fuel_db_equipment_groups (шаг 4.1).
 
     Args:
-        station_id: ID станции
+        station_id: ID электростанции
         equipment_group_type_id: ID типа группы оборудования (EquipmentGroupType)
         version_id: ID версии БД (если None — использует текущую)
 
@@ -330,7 +330,7 @@ def get_station_fuel_equipment_group_choice_tuples(
 ) -> list[tuple[int, str]]:
     """
     Список (id, название) итоговых групп оборудования (gs_fue_equipment_groups),
-    привязанных к станции через v2-связки для указанной версии БД.
+    привязанных к электростанции через v2-связки для указанной версии БД.
     """
     if version_id is None:
         version_id = get_current_db_version_id()

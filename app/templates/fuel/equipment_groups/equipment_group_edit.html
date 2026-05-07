@@ -63,7 +63,7 @@
 <div class="container-fluid mt-4 equipment-group-edit-page">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Группы оборудования</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5"> электростанции</a>
     </div>
 
     <body>
@@ -144,7 +144,7 @@
                         {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код станции (numb)</label>
+                        <label class="form-label fw-semibold">Код электростанции (numb)</label>
                         {% if can_edit %}<input type="number" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
@@ -176,7 +176,7 @@
                         {% if can_edit %}<input type="number" name="comp" class="form-control" value="{{ equipment_group.comp if equipment_group.comp is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код станции (main)</label>
+                        <label class="form-label fw-semibold">Код электростанции (main)</label>
                         {% if can_edit %}<input type="number" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
                     </div>
                     <div class="w-100"></div>
@@ -355,7 +355,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted ms-3">Нет привязанных станций или агрегатов. Группа оборудования связана со станциями через страницу деталей станции.</p>
+                    <p class="text-muted ms-3">Нет привязанных станций или агрегатов. Группа оборудования связана со станциями через страницу деталей электростанции.</p>
                     {% endif %}
                 </div>
             </div>
@@ -712,7 +712,7 @@
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3">
             <input type="hidden" name="save_fuel_params" value="1">
-            <button type="submit" class="btn btn-outline-success fs-5" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
+            <button type="submit" class="btn btn-outline-primary fs-5" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
         </div>
         </form>
         {% endif %}

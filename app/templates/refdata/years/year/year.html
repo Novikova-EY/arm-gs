@@ -24,7 +24,7 @@
                     <button type="submit" class="btn btn-outline-primary fw-bold" onclick="this.form.page.value=1">
                         Поиск
                     </button>
-                    <a href="{{ url_for('refdata_bp.years_list') }}" class="btn btn-outline-secondary fw-bold" data-no-preloader>
+                    <a href="{{ url_for('refdata_bp.years_list') }}" class="btn btn-outline-danger fs-5" data-no-preloader>
                         Сбросить
                     </a>
                 </div>
@@ -63,7 +63,7 @@
             <input type="hidden" name="year_filter" value="{{ year_filter }}">
 
             <div class="d-flex justify-content-between mt-3 mb-3">
-                <button type="submit" class="btn btn-success" {% if not version_id %}disabled{% endif %}>
+                <button type="submit" class="btn btn-outline-primary fs-5" {% if not version_id %}disabled{% endif %}>
                     Сохранить изменения
                 </button>
                 <a href="{{ url_for('refdata_bp.add_year',

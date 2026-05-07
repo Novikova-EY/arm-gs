@@ -22,7 +22,7 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="http://msk-arm-gs01.ntcees.ru/fuel/refdata" class="btn btn-secondary fs-5">Справочники БД Топливо</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5"> электростанции</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -62,7 +62,7 @@
 {% set _v9 = (eg.comp if eg and eg.comp else '') or '—' %}
 {% set _v10 = (eg.main if eg and eg.main else '') or '—' %}
 {% set _v11 = ('да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '')) or '—' %}
-{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей станции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
+{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
 {% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '—' %}
 {% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '—' %}
 {% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '—' %}
@@ -86,7 +86,7 @@
 data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3="{{ _v3 }}" data-col-4="{{ _v4 }}" data-col-5="{{ _v7 }}" data-col-6="{{ _v5 }}" data-col-7="{{ _v6 }}" data-col-8="{{ _v20 }}" data-col-9="{{ _v11 }}" data-col-10="{{ _v12 }}" data-col-11="{{ _v14 }}" data-col-12="{{ _v30 }}" data-col-13="{{ _v31 }}" data-col-14="{{ _v32 }}" data-col-15="{{ _v18 }}" data-col-16="{{ _v22 }}" data-col-17="{{ _v23 }}" data-col-18="{{ _v24 }}" data-col-19="{{ _v25 }}" data-col-20="{{ _v27 }}" data-col-21="{{ _v29 }}" data-col-22="{{ _v28 }}"
 {% endmacro %}
 
-{# То же для блока «одна группа — несколько станций»: субъект и РЭС по станции, не по полям группы оборудования #}
+{# То же для блока «одна группа — несколько станций»: субъект и РЭС по электростанции, не по полям группы оборудования #}
 {% macro get_row_values_multi(eg, station, group_type, machine) %}
 {% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '—' %}
 {% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '—' %}
@@ -100,7 +100,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 {% set _v9 = (eg.comp if eg and eg.comp else '') or '—' %}
 {% set _v10 = (eg.main if eg and eg.main else '') or '—' %}
 {% set _v11 = ('да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '')) or '—' %}
-{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей станции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
+{% set _v12 = ('да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else ''))) or '—' %}
 {% set _v13 = ('да' if eg and eg.forem and eg.forem|string == '1' else (eg.forem if eg and eg.forem else '')) or '—' %}
 {% set _v14 = ('станция отрасли' if eg and eg.vedomstvo and eg.vedomstvo|string == '1' else ('пром. предприятие' if eg and eg.vedomstvo and eg.vedomstvo|string == '2' else (eg.vedomstvo if eg and eg.vedomstvo else ''))) or '—' %}
 {% set _v15 = ((eg.territories_energy_external_mapping.external_name if eg and eg.territories_energy_external_mapping else '') or (eg.obl if eg and eg.obl else '')) or '—' %}
@@ -190,10 +190,10 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     {% if show_merged_group_cells and not group_cell.fields %}
                         {% set eg = group_entity %}
                         {% set eg_fuel_mismatch = station and eg and station.id_regional_district and eg.regional_district_id and station.id_regional_district != eg.regional_district_id %}
-                        {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой станции (одна запись на несколько регионов). Нужна отдельная группа для этой станции: повторный импорт или разделение в БД.">—</span>' %}
+                        {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой электростанции (одна запись на несколько регионов). Нужна отдельная группа для этой электростанции: повторный импорт или разделение в БД.">—</span>' %}
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.numb if eg and eg.numb else '—' }}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '—') }}{% endif %}</td>
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей станции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else '—')) }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else '—')) }}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '—' }}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{% if eg and eg.vedomstvo %}{% if eg.vedomstvo|string == '1' %}станция<br>отрасли{% elif eg.vedomstvo|string == '2' %}пром.<br>предприятие{% else %}{{ eg.vedomstvo }}{% endif %}{% else %}—{% endif %}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ (eg.business_unit_external_mapping.external_name or eg.be) if eg and eg.business_unit_external_mapping else (eg.be if eg and eg.be else '—') }}{% endif %}</td>
@@ -234,9 +234,9 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     <th style="width: 150px;">Генерирующая компания</th>
                     <th style="width: 120px;">Субъект РФ</th>
                     <th style="width: 150px;">Региональная энергосистема</th>
-                    <th style="width: 80px;">Код станции<br><span class="text-muted small">(numb)</span></th>
-                    <th style="width: 80px;">Признак действующей станции<br><span class="text-muted small">(d)</span></th>
-                    <th style="width: 80px;">Признак расширяемой станции<br><span class="text-muted small">(r)</span></th>
+                    <th style="width: 80px;">Код электростанции<br><span class="text-muted small">(numb)</span></th>
+                    <th style="width: 80px;">Признак действующей электростанции<br><span class="text-muted small">(d)</span></th>
+                    <th style="width: 80px;">Признак расширяемой электростанции<br><span class="text-muted small">(r)</span></th>
                     <th style="width: 120px;">Название<br><span class="text-muted small">(name_ext)</span></th>
                     <th style="width: 100px;">Ведомство<br><span class="text-muted small">(vedomstvo)</span></th>
                     <th style="width: 80px;">Тип генерирующей компании<br><span class="text-muted small">(be)</span></th>

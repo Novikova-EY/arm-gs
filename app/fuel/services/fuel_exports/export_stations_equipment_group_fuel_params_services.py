@@ -27,7 +27,7 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
 )
 
 FUEL_PARAM_COLUMNS = [
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("nust", "Руст", True),
     ("nr", "Ррасп", True),
     ("e", "Выр", True),

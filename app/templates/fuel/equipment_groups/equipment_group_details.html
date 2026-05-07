@@ -20,7 +20,7 @@
 <div class="container-fluid mt-4 machine-details-page">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">Электростанции</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5"> электростанции</a>
     </div>
 
     <div class="container-fluid">
@@ -429,7 +429,7 @@
 
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3">
-            <button type="submit" form="fuelParamsForm" class="btn btn-outline-success fs-5">Сохранить</button>
+            <button type="submit" form="fuelParamsForm" class="btn btn-outline-primary fs-5">Сохранить</button>
         </div>
         </form>
         {% endif %}

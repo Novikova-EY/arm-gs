@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Добавить новый тип электростанции{% endblock %}
+{% block title %}Добавить новый тип  электростанции{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
   <div class="container mt-5">
-      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип электростанции</h2>
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип  электростанции</h2>
 
       <form action="{{ url_for('refdata_bp.add_station_type') }}" method="POST">
         {{ form.hidden_tag() }}
@@ -18,7 +18,7 @@
         <input type="hidden" name="station_type_filter"   value="{{ station_type_filter }}">
 
         <div class="mb-3">
-            <label for="name" class="form-label">Тип электростанции</label>
+            <label for="name" class="form-label">Тип  электростанции</label>
             {{ form.name(class="form-control", id="name") }}
             {% if form.name.errors %}
                 <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
@@ -35,7 +35,7 @@
                                 sort_dir=sort_dir,
                                 station_type_filter=station_type_filter,
                                 ) }}" 
-                                class="btn btn-secondary">
+                                class="btn btn-outline-danger fs-5">
                         Отмена
             </a>
         </div>

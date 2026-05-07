@@ -23,6 +23,13 @@ from app.refdata.models.energy_systems.energy_system_type_model import EnergySys
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
+from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
+from app.refdata.models.refdata_for_stations.condition_type_model import ConditionType
+from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import (
+    PGUTesMachineType,
+)
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
     get_filter_start_year,
@@ -32,7 +39,7 @@ from app.common.services.get_services.years.years_get_services import (
 def build_machine_note_search_condition(machine_cls, pgu_cls, note_filter_value):
     """
     Примечание агрегата (Machine) или вложенного ПГУ содержит подстроку (без учёта регистра).
-    Не включает примечание самой станции — только машины и ПГУ.
+    Не включает примечание самой электростанции — только машины и ПГУ.
     """
     raw = (note_filter_value or "").strip()
     if not raw:
@@ -157,25 +164,51 @@ def _remap_territorial_ids_for_current_version(model_cls, id_list):
     return out
 
 
-_TERRITORIAL_FILTER_SPEC = (
+_VERSIONED_REF_LIST_FILTER_SPEC = (
     ("energy_system_type_filter", "energy_system_type_ref", EnergySystemType),
     ("union_energy_system_filter", "union_energy_system_ref", UnionEnergySystem),
     ("regional_energy_system_filter", "regional_energy_system_ref", RegionalEnergySystem),
     ("federal_district_filter", "federal_district_ref", FederalDistrict),
     ("regional_district_filter", "regional_district_ref", RegionalDistrict),
+    ("station_type_filter", "station_type_ref", StationType),
+    ("fuel_type_filter", "fuel_type_ref", FuelType),
+    ("tes_type_filter", "tes_type_ref", TesType),
+    ("tes_machine_type_filter", "tes_machine_type_ref", TesMachineType),
+    ("pgu_tes_machine_type_filter", "pgu_tes_machine_type_ref", PGUTesMachineType),
+)
+
+_REF_FILTER_PARAM_NAMES = tuple(r for _, r, __ in _VERSIONED_REF_LIST_FILTER_SPEC) + (
+    "station_fuel_type_ref",
+    "condition_type_ref",
 )
 
 
-def _remap_territorial_filters_for_current_db_version(filters, args):
-    """Территориальные фильтры: uuid из *_ref либо перенос id между версиями БД."""
-    for fk, refk, model_cls in _TERRITORIAL_FILTER_SPEC:
+def _remap_versioned_ref_list_filters(filters, args):
+    """Справочники с id в query/form: uuid из *_ref либо перенос pk между версиями БД."""
+    for fk, refk, model_cls in _VERSIONED_REF_LIST_FILTER_SPEC:
         ref_raw = _args_getlist_raw(args, refk)
+        if fk == "fuel_type_filter":
+            ref_raw = ref_raw + _args_getlist_raw(args, "station_fuel_type_ref")
         if ref_raw:
             filters[fk] = _resolve_territorial_ids_by_ref_uuid(model_cls, ref_raw)
         else:
             filters[fk] = _remap_territorial_ids_for_current_version(
                 model_cls, filters.get(fk) or []
             )
+
+
+def _remap_condition_type_filter(filters, args):
+    """Состояние агрегата: одно значение; в URL — condition_type_ref или condition_type_filter."""
+    ref_raw = _args_getlist_raw(args, "condition_type_ref")
+    if ref_raw:
+        ids = _resolve_territorial_ids_by_ref_uuid(ConditionType, ref_raw)
+        filters["condition_type_filter"] = ids[0] if ids else None
+        return
+    ct = filters.get("condition_type_filter")
+    if ct is None:
+        return
+    mapped = _remap_territorial_ids_for_current_version(ConditionType, [ct])
+    filters["condition_type_filter"] = mapped[0] if mapped else None
 
 
 def extract_filters_from_args(args):
@@ -209,6 +242,7 @@ def extract_filters_from_args(args):
         "fuel_type_filter": _fuel_type_filter,
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
         "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
+        "pgu_tes_machine_type_filter": args.getlist("pgu_tes_machine_type_filter", type=int),
         "date_commission_filter": _parse_year_filter(args.getlist("date_commission_filter")),
         "date_exploitation_filter": _parse_year_filter(args.getlist("date_exploitation_filter")),
         "date_decompressing_expected_filter": _parse_year_filter(args.getlist("date_decompressing_expected_filter")),
@@ -223,7 +257,8 @@ def extract_filters_from_args(args):
         # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
         "event_type_filter": args.getlist("event_type_filter"),
     }
-    _remap_territorial_filters_for_current_db_version(filters, args)
+    _remap_versioned_ref_list_filters(filters, args)
+    _remap_condition_type_filter(filters, args)
     return filters
 
 
@@ -718,7 +753,7 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
     for m in machines:
         station_machine_map[m.id_station].append(m)
 
-    # Для каждой станции сортируем и проставляем rowspan
+    # Для каждой электростанции сортируем и проставляем rowspan
     for machine_list in station_machine_map.values():
         machine_list.sort(key=lambda m: (
             (m.machine_group or '').lower(),
@@ -799,7 +834,7 @@ def get_filtered_station_ids(
         
         query = query.join(Station.machines).filter(Machine.id_gen_company.in_(gen_company_ids))
 
-    # Фильтрация по названию электростанции
+    # Фильтрация по названию  электростанции
     if station_name_filter:
         query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
     
@@ -820,7 +855,7 @@ def get_filtered_station_ids(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
-        # Учитываем как прямую привязку станции к РЭС с нужной ОЭС,
+        # Учитываем как прямую привязку электростанции к РЭС с нужной ОЭС,
         # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
         query = query.filter(
             or_(
@@ -868,7 +903,7 @@ def get_filtered_station_ids(
             )
         )
 
-    # Фильтрация по состоянию электростанции
+    # Фильтрация по состоянию  электростанции
     if condition_type_filter:
         query = query.join(Station.machines).filter(Machine.id_condition_type == condition_type_filter)
 
@@ -889,7 +924,7 @@ def get_stations_all(
     end_year=None,
 ):
     """
-    Фильтрует станции по переданным параметрам и по диапазону лет (если заданы).
+    Фильтрует электростанции по переданным параметрам и по диапазону лет (если заданы).
     Если заданы start_year и end_year, фильтруются только агрегаты с мощностью в указанный период.
     Также отбрасываются агрегаты с планируемым выводом до START_YEAR_SIPR.
     """
@@ -926,7 +961,7 @@ def get_stations_all(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
-        # Учитываем как прямую привязку станции к РЭС с нужной ОЭС,
+        # Учитываем как прямую привязку электростанции к РЭС с нужной ОЭС,
         # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
         query = query.filter(
             or_(
@@ -988,6 +1023,8 @@ def has_any_filters(args):
     Проверяет, применены ли какие-либо фильтры.
     Возвращает True, если хотя бы один фильтр активен.
     """
+    if hasattr(args, "getlist") and any(args.getlist(k) for k in _REF_FILTER_PARAM_NAMES):
+        return True
     return any([
         # Территориальные фильтры
         args.getlist('energy_system_type_filter'),
@@ -1005,6 +1042,8 @@ def has_any_filters(args):
         args.getlist('tes_type_filter'),
         args.getlist('tes_machine_type_filter'),
         args.getlist('fuel_type_filter'),
+        args.getlist('station_fuel_type_filter'),
+        args.getlist('pgu_tes_machine_type_filter'),
         # Фильтры по датам
         args.getlist('date_commission_filter'),
         args.getlist('date_exploitation_filter'),

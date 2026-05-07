@@ -121,7 +121,7 @@ def upload_and_update_machines():
                 p_ust = float(row.get("p_ust") or 0)
                 id_ti = row.get("id_ti")
 
-                # Поиск станции по подстроке
+                # Поиск электростанции по подстроке
                 candidate_stations_query = Station.query
                 candidate_stations_query = filter_by_db_version(candidate_stations_query, Station)
                 candidate_stations = candidate_stations_query.all()
@@ -179,7 +179,7 @@ def upload_and_update_machines():
                             break
 
                 if not matched_machine:
-                    msg = "⛔ Не найден агрегат ни по (ген. компания + номер), ни по (имя + номер), ни по (имя станции + ген. компания + имя)"
+                    msg = "⛔ Не найден агрегат ни по (ген. компания + номер), ни по (имя + номер), ни по (имя электростанции + ген. компания + имя)"
                     log_rows.append([station_name, gen_company_name, machine_number, machine_name, msg])
                     skipped += 1
                     continue

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 # Полный набор как на stations_equipment_group_fuel_params / пакетный пересчёт.
 FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("nust", "Руст", True),
     ("nr", "Ррасп", True),
     ("e", "Выработка эл.эн.", True),
@@ -57,7 +57,7 @@ FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
 
 # Входы и результаты этапов Коэфф / Распред / расчётных формул по строке (без долей по видам топлива).
 FUEL_PARAM_PREVIEW_COLUMNS_CALCULATION: list[tuple[str, str, bool]] = [
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("nust", "Руст", True),
     ("nr", "Ррасп", True),
     ("y", "Уд. выработка эл.эн. (Y)", True),

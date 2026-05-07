@@ -15,46 +15,46 @@ from app.energy_consumption.services import energy_consumption_parameter_service
 
 # Модели demand
 from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
-    RegionalEnergySystemDemandParameter,
+    RegionalEnergySystemEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_area_energy_consumption_parameter_model import (
-    EnergyAreaDemandParameter,
+    EnergyAreaEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
-    EnergyUnitDemandParameter,
+    EnergyUnitEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
-    EnergyZoneDemandParameter,
+    EnergyZoneEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.synchronous_area_energy_consumption_parameter_model import (
-    SynchronousAreaDemandParameter,
+    SynchronousAreaEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
-    UnionEnergySystemDemandParameter,
+    UnionEnergySystemEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
-    EnergySystemTypeDemandParameter,
+    EnergySystemTypeEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
-    FederalDistrictDemandParameter,
+    FederalDistrictEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.regional_district_energy_consumption_parameter_model import (
-    RegionalDistrictDemandParameter,
+    RegionalDistrictEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
-    RussiaFederationDemandParameter,
+    RussiaFederationEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.russia_federation_with_nt_energy_consumption_parameter_model import (
-    RussiaFederationWithNtDemandParameter,
+    RussiaFederationWithNtEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
-    EesDemandParameter,
+    EesEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
-    EesRussiaDemandParameter,
+    EesRussiaEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_with_nt_energy_consumption_parameter_model import (
-    EesRussiaWithNtDemandParameter,
+    EesRussiaWithNtEnergyConsumptionParameter,
 )
 
 # Родительские справочники
@@ -82,7 +82,7 @@ def _csrf():
 
 
 def _parse_energy_consumption_rounding_digits() -> int:
-    """Знаки после запятой для отображения/ввода Макс. потребления (как на страницах топлива)."""
+    """Знаки после запятой для отображения полей потребления (млн кВт·ч), как на страницах топлива."""
     raw = request.args.get("rounding_digits")
     if request.method == "POST" and (raw is None or str(raw).strip() == ""):
         raw = request.form.get("rounding_digits")
@@ -114,7 +114,7 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @energy_consumption_bp.route("/")
 @login_required
 def hub():
-    return render_template("energy_consumption/hub.html")
+    return render_template("energy_consumption/energy_consumption_start.html")
 
 
 # --- Россия (без родителя) ---
@@ -128,7 +128,7 @@ def russia_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                RussiaFederationDemandParameter,
+                RussiaFederationEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
@@ -139,10 +139,10 @@ def russia_demand():
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.russia_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationDemandParameter, None, None)
+    rows = dps.get_demand_rows(RussiaFederationEnergyConsumptionParameter, None, None)
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
-        "energy_consumption/demand_edit.html",
+        "energy_consumption/energy_consumption_edit.html",
         form=form,
         page_title="Нагрузки: Россия (без НТ)",
         parent_label="Россия (без НТ)",
@@ -150,7 +150,6 @@ def russia_demand():
         rows=rows,
         fk_column=None,
         parent_id=None,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
@@ -168,7 +167,7 @@ def russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                RussiaFederationWithNtDemandParameter,
+                RussiaFederationWithNtEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
@@ -179,10 +178,10 @@ def russia_with_nt_demand():
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationWithNtDemandParameter, None, None)
+    rows = dps.get_demand_rows(RussiaFederationWithNtEnergyConsumptionParameter, None, None)
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
-        "energy_consumption/demand_edit.html",
+        "energy_consumption/energy_consumption_edit.html",
         form=form,
         page_title="Нагрузки: Россия (с НТ)",
         parent_label="Россия (с НТ)",
@@ -190,7 +189,6 @@ def russia_with_nt_demand():
         rows=rows,
         fk_column=None,
         parent_id=None,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
@@ -208,7 +206,7 @@ def ees_russia_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesRussiaDemandParameter,
+                EesRussiaEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
@@ -219,10 +217,10 @@ def ees_russia_demand():
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_demand")
 
-    rows = dps.get_demand_rows(EesRussiaDemandParameter, None, None)
+    rows = dps.get_demand_rows(EesRussiaEnergyConsumptionParameter, None, None)
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
-        "energy_consumption/demand_edit.html",
+        "energy_consumption/energy_consumption_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (без НТ)",
         parent_label="ЕЭС России (без НТ)",
@@ -230,7 +228,6 @@ def ees_russia_demand():
         rows=rows,
         fk_column=None,
         parent_id=None,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
@@ -248,7 +245,7 @@ def ees_russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesRussiaWithNtDemandParameter,
+                EesRussiaWithNtEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
@@ -259,10 +256,10 @@ def ees_russia_with_nt_demand():
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(EesRussiaWithNtDemandParameter, None, None)
+    rows = dps.get_demand_rows(EesRussiaWithNtEnergyConsumptionParameter, None, None)
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
-        "energy_consumption/demand_edit.html",
+        "energy_consumption/energy_consumption_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (с НТ)",
         parent_label="ЕЭС России (с НТ)",
@@ -270,7 +267,6 @@ def ees_russia_with_nt_demand():
         rows=rows,
         fk_column=None,
         parent_id=None,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
@@ -288,7 +284,7 @@ def ees_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesDemandParameter,
+                EesEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
@@ -299,10 +295,10 @@ def ees_demand():
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.ees_demand")
 
-    rows = dps.get_demand_rows(EesDemandParameter, None, None)
+    rows = dps.get_demand_rows(EesEnergyConsumptionParameter, None, None)
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
-        "energy_consumption/demand_edit.html",
+        "energy_consumption/energy_consumption_edit.html",
         form=form,
         page_title="Нагрузки: ЭЭС",
         parent_label="ЭЭС",
@@ -310,7 +306,6 @@ def ees_demand():
         rows=rows,
         fk_column=None,
         parent_id=None,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
@@ -325,7 +320,7 @@ def _parent_list(
     demand_endpoint,
     label_fn,
     *order_columns,
-    template_name: str = "energy_consumption/parent_list.html",
+    template_name: str = "energy_consumption/energy_consumption_parent_list.html",
     exclude_names: tuple[str, ...] = (),
     custom_order_by: tuple[Any, ...] | None = None,
     post_sort_key: Callable[[Any], tuple] | None = None,
@@ -407,14 +402,13 @@ def _demand_detail(
         rows=rows,
         fk_column=fk_column,
         parent_id=parent_id,
-        format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         rounding_digits=rd,
     )
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess
     ctx["show_combined_on_ez"] = show_combined_on_ez
-    return render_template("energy_consumption/demand_edit.html", **ctx)
+    return render_template("energy_consumption/energy_consumption_edit.html", **ctx)
 
 
 # Региональные энергосистемы
@@ -437,7 +431,7 @@ def regional_energy_system_list():
 def regional_energy_system_demand(parent_id: int):
     p = RegionalEnergySystem.query.get_or_404(parent_id)
     return _demand_detail(
-        RegionalEnergySystemDemandParameter,
+        RegionalEnergySystemEnergyConsumptionParameter,
         "id_regional_energy_system",
         RegionalEnergySystem,
         parent_id,
@@ -445,7 +439,7 @@ def regional_energy_system_demand(parent_id: int):
         p.name,
         "energy_consumption_bp.regional_energy_system_list",
         show_combined_oess_eess=False,
-        show_combined_on_ez=True,
+        show_combined_on_ez=False,
     )
 
 
@@ -469,7 +463,7 @@ def energy_area_list():
 def energy_area_demand(parent_id: int):
     p = EnergyArea.query.get_or_404(parent_id)
     return _demand_detail(
-        EnergyAreaDemandParameter,
+        EnergyAreaEnergyConsumptionParameter,
         "id_energy_area",
         EnergyArea,
         parent_id,
@@ -494,7 +488,7 @@ def federal_district_list():
             FederalDistrict.name.asc(),
             FederalDistrict.id.asc(),
         ),
-        template_name="energy_consumption/parent_list_cards.html",
+        template_name="energy_consumption/energy_consumption_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -504,7 +498,7 @@ def federal_district_list():
 def federal_district_demand(parent_id: int):
     p = FederalDistrict.query.get_or_404(parent_id)
     return _demand_detail(
-        FederalDistrictDemandParameter,
+        FederalDistrictEnergyConsumptionParameter,
         "id_federal_district",
         FederalDistrict,
         parent_id,
@@ -535,7 +529,7 @@ def energy_unit_list():
 def energy_unit_demand(parent_id: int):
     p = EnergyUnit.query.get_or_404(parent_id)
     return _demand_detail(
-        EnergyUnitDemandParameter,
+        EnergyUnitEnergyConsumptionParameter,
         "id_energy_unit",
         EnergyUnit,
         parent_id,
@@ -565,7 +559,7 @@ def energy_zone_list():
 def energy_zone_demand(parent_id: int):
     p = EnergyZone.query.get_or_404(parent_id)
     return _demand_detail(
-        EnergyZoneDemandParameter,
+        EnergyZoneEnergyConsumptionParameter,
         "id_energy_zone",
         EnergyZone,
         parent_id,
@@ -595,14 +589,14 @@ def regional_district_list():
 def regional_district_demand(parent_id: int):
     p = RegionalDistrict.query.get_or_404(parent_id)
     return _demand_detail(
-        RegionalDistrictDemandParameter,
+        RegionalDistrictEnergyConsumptionParameter,
         "id_regional_district",
         RegionalDistrict,
         parent_id,
         "Нагрузки: субъект РФ",
         p.name,
         "energy_consumption_bp.regional_district_list",
-        show_combined_on_es=True,
+        show_combined_on_es=False,
     )
 
 
@@ -617,7 +611,7 @@ def synchronous_area_list():
         "energy_consumption_bp.synchronous_area_demand",
         lambda o: o.name,
         SynchronousArea.id,
-        template_name="energy_consumption/parent_list_cards.html",
+        template_name="energy_consumption/energy_consumption_parent_list_cards.html",
         exclude_names=("не указано",),
         post_sort_key=_synchronous_area_by_display_order,
     )
@@ -628,7 +622,7 @@ def synchronous_area_list():
 def synchronous_area_demand(parent_id: int):
     p = SynchronousArea.query.get_or_404(parent_id)
     return _demand_detail(
-        SynchronousAreaDemandParameter,
+        SynchronousAreaEnergyConsumptionParameter,
         "id_synchronous_area",
         SynchronousArea,
         parent_id,
@@ -654,7 +648,7 @@ def union_energy_system_list():
             UnionEnergySystem.name.asc(),
             UnionEnergySystem.id.asc(),
         ),
-        template_name="energy_consumption/parent_list_cards.html",
+        template_name="energy_consumption/energy_consumption_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -664,7 +658,7 @@ def union_energy_system_list():
 def union_energy_system_demand(parent_id: int):
     p = UnionEnergySystem.query.get_or_404(parent_id)
     return _demand_detail(
-        UnionEnergySystemDemandParameter,
+        UnionEnergySystemEnergyConsumptionParameter,
         "id_union_energy_system",
         UnionEnergySystem,
         parent_id,
@@ -688,7 +682,7 @@ def energy_system_type_list():
         q = q.filter(EnergySystemType.name.ilike(f"%{search}%"))
     items = q.all()
     return render_template(
-        "energy_consumption/parent_list.html",
+        "energy_consumption/energy_consumption_parent_list.html",
         form=_csrf(),
         page_title="Нагрузки: типы энергосистем",
         items=items,
@@ -705,7 +699,7 @@ def energy_system_type_list():
 def energy_system_type_demand(parent_id: int):
     p = EnergySystemType.query.get_or_404(parent_id)
     return _demand_detail(
-        EnergySystemTypeDemandParameter,
+        EnergySystemTypeEnergyConsumptionParameter,
         "id_energy_system_type",
         EnergySystemType,
         parent_id,

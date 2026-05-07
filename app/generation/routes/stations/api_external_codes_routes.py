@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload
 @station_bp.route('/api/external_codes/station/<external_code>', methods=['GET'])
 def get_station_by_external_code(external_code):
     """
-    Получить данные станции по external_code.
+    Получить данные электростанции по external_code.
     
     Пример запроса:
         GET /api/external_codes/station/abc-123-def-456
@@ -29,9 +29,9 @@ def get_station_by_external_code(external_code):
             "database_version_id": 7,
             "database_version": "Наименование версии базы данных",
             "id": 123,
-            "name": "Название станции",
+            "name": "Название электростанции",
             "regional_district": "Наименование субъекта",
-            "station_type": "Наименование типа станции",
+            "station_type": "Наименование типа электростанции",
             "gen_company": "Наименование генерирующей компании",
         }
     """
@@ -154,7 +154,7 @@ def get_multiple_by_external_codes():
         "machines": []
     }
     
-    # Получаем станции
+    # Получаем электростанции
     station_codes = data.get("stations", [])
     if station_codes:
         stations = db.session.query(Station).filter(Station.external_code.in_(station_codes)).all()

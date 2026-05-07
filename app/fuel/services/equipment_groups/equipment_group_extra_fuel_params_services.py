@@ -175,7 +175,7 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows):
     """
     Строит иерархию как на stations_equipment_group_fuel_params:
     energy_system_type → UES → РЭС → станция → группа оборудования.
-    Группировка по regional_energy_system_id и по одной станции.
+    Группировка по regional_energy_system_id и по одной электростанции.
     """
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
         get_energy_system_type_map,

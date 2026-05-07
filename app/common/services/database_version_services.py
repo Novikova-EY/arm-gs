@@ -743,7 +743,7 @@ def extend_version_period_by_copying_last_year(
 
     # 3) Копируем данные последнего года (base_end_year) на каждый новый год
     copy_specs = [
-        # station_powers: мощности станции
+        # station_powers: мощности электростанции
         {
             "table": f"{SCHEMA_GENERATION}.gs_gen_station_powers",
             "key_cols": ["id_station"],
@@ -2263,7 +2263,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
     # ВАЖНО: Порядок должен соответствовать иерархии зависимостей!
     generation_tables = [
         'gs_gen_station_groups',            # 1. Сначала группы станций (независимые)
-        'gs_gen_stations',                  # 2. Затем станции (зависят от групп станций)
+        'gs_gen_stations',                  # 2. Затем электростанции (зависят от групп станций)
         'gs_gen_station_powers',            # 5. Мощности станций (зависят от станций)
         'gs_gen_machines',                  # 6. Машины (зависят от станций)
         'gs_gen_machine_powers',            # 7. Мощности машин (зависят от машин)
@@ -3123,19 +3123,19 @@ def _update_version_relationships_fixed(id_mappings, target_version_id, user):
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
         },
-        # 2. station_powers -> stations (мощности станций ссылаются на станции)
+        # 2. station_powers -> stations (мощности станций ссылаются на электростанции)
         {
             'table': 'gs_gen.gs_gen_station_powers',
             'foreign_key': 'id_station',
             'reference_table': 'gs_gen.gs_gen_stations'
         },
-        # 3. machines -> stations (машины ссылаются на станции)
+        # 3. machines -> stations (машины ссылаются на электростанции)
         {
             'table': 'gs_gen.gs_gen_machines',
             'foreign_key': 'id_station',
             'reference_table': 'gs_gen.gs_gen_stations'
         },
-        # 4. boilers -> stations (котлы ссылаются на станции)
+        # 4. boilers -> stations (котлы ссылаются на электростанции)
         {
             'table': 'gs_gen.gs_gen_boilers',
             'foreign_key': 'id_station',
@@ -3799,7 +3799,7 @@ def _delete_version_data(version_id, user):
         'gs_gen_machines',            # Машины (зависят от станций)
         'gs_gen_station_powers',      # Мощности станций (зависят от станций)
         'gs_gen_boilers',             # Котлы (зависят от станций)
-        'gs_gen_stations',            # Станции (зависят от групп станций)
+        'gs_gen_stations',            # электростанции (зависят от групп станций)
         'gs_gen_station_groups',      # Группы станций
         'gs_gen_documents_kommod'     # Документы
     ]
@@ -5105,7 +5105,7 @@ def _verify_version_data_integrity(version_id, user):
             """)
         },
         {
-            'name': 'Машины -> Станции',
+            'name': 'Машины -> электростанции',
             'query': text("""
                 SELECT COUNT(*) as broken_links
                 FROM gs_gen.gs_gen_machines m

@@ -1,0 +1,39 @@
+{# Одна строка: потребление электроэнергии ГАЭС на заряд (округление — AJAX). #}
+<tr>
+    <td class="text-start align-middle fw-semibold" style="min-width: 260px; vertical-align: middle; white-space: normal;">
+        Потребление электрической<br>энергии ГАЭС на заряд,<br>млн кВт·ч
+    </td>
+    {% for year in range(start_year, end_year + 1) %}
+    <td class="text-center align-middle">
+        {% set v = station.station_gaes_charge_by_year.get(year) %}
+        {% if can_edit %}
+            {% if v is none %}
+            <input type="hidden" name="st_gaes_charge_{{ year }}_orig" value="">
+            <input type="text"
+                   class="form-control text-center"
+                   name="st_gaes_charge_{{ year }}"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   value=""
+                   style="min-width: 6rem;">
+            {% else %}
+            {% set disp = format_station_energy_for_display(v) %}
+            <input type="hidden" name="st_gaes_charge_{{ year }}_orig" value="{{ disp }}">
+            <input type="text"
+                   class="form-control text-center"
+                   name="st_gaes_charge_{{ year }}"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   value="{{ disp }}"
+                   style="min-width: 6rem;">
+            {% endif %}
+        {% else %}
+            {% if v is not none %}
+                {{ format_station_energy_for_display(v) }}
+            {% else %}
+                —
+            {% endif %}
+        {% endif %}
+    </td>
+    {% endfor %}
+</tr>

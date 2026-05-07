@@ -27,7 +27,7 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
 
 # Как в stations_equipment_group_extra_fuel_params.html (extra_fuel_param_columns)
 EXTRA_FUEL_STATIONS_COLUMNS = [
-    ("numb1120", "Код станции", False),
+    ("numb1120", "Код электростанции", False),
     ("gaz_prir", "gaz_prir", True),
     ("gazpp", "gazpp", True),
     ("disel", "disel", True),

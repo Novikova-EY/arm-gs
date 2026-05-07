@@ -27,7 +27,7 @@ class MachineFilterForm(FlaskForm):
     id_machine = HiddenField("ID")
 
     id_condition_type = SelectField(
-        'Состояние агрегата станции',
+        'Состояние агрегата электростанции',
         coerce=int,
         choices=[],
         validators=[Optional()]
@@ -50,7 +50,7 @@ class MachineFilterForm(FlaskForm):
     )
 
     id_energy_area = SelectField(
-        'Энергорайон агрегата станции',
+        'Энергорайон агрегата электростанции',
         coerce=int,
         choices=[],        
         validators=[Optional()]
@@ -209,7 +209,7 @@ class PGUMachineFilterForm(FlaskForm):
     id_pgu_machine = HiddenField("ID")
 
     id_condition_type = SelectField(
-        'Состояние агрегата станции',
+        'Состояние агрегата электростанции',
         coerce=int,
         choices=[],
         validators=[Optional()]

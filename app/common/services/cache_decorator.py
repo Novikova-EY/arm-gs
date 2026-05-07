@@ -120,7 +120,7 @@ def invalidate_cache(key_prefix, *args, **kwargs):
         **kwargs: Именованные аргументы для создания ключа
     
     Использование:
-        # После обновления станции
+        # После обновления  электростанции
         invalidate_cache('station', station_id=123)
     """
     cache_key = f"{key_prefix}:{make_cache_key(*args, **kwargs)}"
@@ -135,7 +135,7 @@ def invalidate_cache_pattern(pattern):
         pattern: Шаблон для поиска ключей (например, 'station:*')
     
     Использование:
-        # После обновления любой станции
+        # После обновления любой электростанции
         invalidate_cache_pattern('station:*')
     """
     try:

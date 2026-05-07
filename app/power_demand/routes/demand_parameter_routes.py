@@ -114,7 +114,7 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @power_demand_bp.route("/")
 @login_required
 def hub():
-    return render_template("power_demand/hub.html")
+    return render_template("power_demand/power_demand_start.html")
 
 
 # --- Россия (без родителя) ---
@@ -142,7 +142,7 @@ def russia_demand():
     rows = dps.get_demand_rows(RussiaFederationDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: Россия (без НТ)",
         parent_label="Россия (без НТ)",
@@ -182,7 +182,7 @@ def russia_with_nt_demand():
     rows = dps.get_demand_rows(RussiaFederationWithNtDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: Россия (с НТ)",
         parent_label="Россия (с НТ)",
@@ -222,7 +222,7 @@ def ees_russia_demand():
     rows = dps.get_demand_rows(EesRussiaDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (без НТ)",
         parent_label="ЕЭС России (без НТ)",
@@ -262,7 +262,7 @@ def ees_russia_with_nt_demand():
     rows = dps.get_demand_rows(EesRussiaWithNtDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (с НТ)",
         parent_label="ЕЭС России (с НТ)",
@@ -302,7 +302,7 @@ def ees_demand():
     rows = dps.get_demand_rows(EesDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЭЭС",
         parent_label="ЭЭС",
@@ -325,7 +325,7 @@ def _parent_list(
     demand_endpoint,
     label_fn,
     *order_columns,
-    template_name: str = "power_demand/parent_list.html",
+    template_name: str = "power_demand/power_demand_parent_list.html",
     exclude_names: tuple[str, ...] = (),
     custom_order_by: tuple[Any, ...] | None = None,
     post_sort_key: Callable[[Any], tuple] | None = None,
@@ -414,7 +414,7 @@ def _demand_detail(
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess
     ctx["show_combined_on_ez"] = show_combined_on_ez
-    return render_template("power_demand/demand_edit.html", **ctx)
+    return render_template("power_demand/power_demand_edit.html", **ctx)
 
 
 # Региональные энергосистемы
@@ -494,7 +494,7 @@ def federal_district_list():
             FederalDistrict.name.asc(),
             FederalDistrict.id.asc(),
         ),
-        template_name="power_demand/parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -617,7 +617,7 @@ def synchronous_area_list():
         "power_demand_bp.synchronous_area_demand",
         lambda o: o.name,
         SynchronousArea.id,
-        template_name="power_demand/parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано",),
         post_sort_key=_synchronous_area_by_display_order,
     )
@@ -654,7 +654,7 @@ def union_energy_system_list():
             UnionEnergySystem.name.asc(),
             UnionEnergySystem.id.asc(),
         ),
-        template_name="power_demand/parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -688,7 +688,7 @@ def energy_system_type_list():
         q = q.filter(EnergySystemType.name.ilike(f"%{search}%"))
     items = q.all()
     return render_template(
-        "power_demand/parent_list.html",
+        "power_demand/power_demand_parent_list.html",
         form=_csrf(),
         page_title="Нагрузки: типы энергосистем",
         items=items,

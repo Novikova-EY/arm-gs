@@ -361,7 +361,7 @@ def apply_prospective_places_filters(query, filters):
             )
         )
 
-    # Фильтр по фактору отбора (на станции, список значений)
+    # Фильтр по фактору отбора (на электростанции, список значений)
     selection_factor_filter = filters.get("selection_factor_filter") or []
     if selection_factor_filter:
         has_empty = "" in selection_factor_filter

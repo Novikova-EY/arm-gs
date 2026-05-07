@@ -12,7 +12,7 @@ from app.generation.prospective_places.services.tep_capital_cost_current_year_se
     rows_match_for_scaled_thousand_rub_pair,
 )
 
-# Поля ТЭП, которые при одинаковых значениях по всем блокам станции объединяются (как merged_values на карточке)
+# Поля ТЭП, которые при одинаковых значениях по всем блокам электростанции объединяются (как merged_values на карточке)
 TEP_MERGE_FIELDS = (
     "service_life_years",
     "construction_period_years",
@@ -201,7 +201,7 @@ def build_tep_view_rows(
     tep_main_current_year_prices: bool = False,
     tep_main_scaling_target_year: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Строки для шаблона: группировка по станции, merged TEP при совпадении значений."""
+    """Строки для шаблона: группировка по электростанции, merged TEP при совпадении значений."""
     if not machines:
         return []
 

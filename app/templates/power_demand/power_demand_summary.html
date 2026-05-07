@@ -13,7 +13,7 @@
     <div class="d-flex flex-wrap align-items-start gap-2 mb-3 w-100">
         <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;">
             {% if summary_route_variant == 'coeff' %}
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_oes_coeff') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_oes_coeff') }}"
                    class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по энергосистемам
                 </a>
@@ -25,32 +25,32 @@
                     Коэффициенты и совмещенные максимумы по энергозонам
                 </span>
                 {% else %}
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts_coeff') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts_coeff') }}"
                    class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по ФО
                 </a>
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones_coeff') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones_coeff') }}"
                    class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по энергозонам
                 </a>
                 {% endif %}
             {% else %}
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_oes') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}"
                    class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
                     Максимумы потребления мощности по энергосистемам
                 </a>
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts') }}"
                    class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
                     Максимумы потребления мощности по ФО
                 </a>
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones') }}"
+                <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones') }}"
                    class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
                     Максимумы потребления мощности по энергозонам
                 </a>
             {% endif %}
         </div>
-        <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
-            <i class="bi bi-gear-wide-connected"></i> Модуль «Спрос»
+        <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
+            <i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»
         </a>
     </div>
 
@@ -58,19 +58,19 @@
 
     {% if summary_route_variant == 'coeff' %}
         {% if active_summary == 'oes' %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_oes_export_coeff' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_oes_export_coeff' %}
         {% elif active_summary == 'fo' %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_federal_districts_export_coeff' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_federal_districts_export_coeff' %}
         {% else %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_energy_zones_export_coeff' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_energy_zones_export_coeff' %}
         {% endif %}
     {% else %}
         {% if active_summary == 'oes' %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_oes_export' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_oes_export' %}
         {% elif active_summary == 'fo' %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_federal_districts_export' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_federal_districts_export' %}
         {% else %}
-        {% set export_endpoint = 'energy_consumption_bp.demand_summary_energy_zones_export' %}
+        {% set export_endpoint = 'power_demand_bp.demand_summary_energy_zones_export' %}
         {% endif %}
     {% endif %}
 
@@ -101,7 +101,7 @@
                 <p class="mb-0 fw-bold">&nbsp;</p>
             </div>
             {% if can_edit_summary_cells %}
-            <button type="button" id="demandSummarySaveBtn" class="btn btn-success fs-5 flex-shrink-0">Сохранить</button>
+            <button type="button" id="demandSummarySaveBtn" class="btn btn-outline-primary fs-5 flex-shrink-0">Сохранить</button>
             {% endif %}
         </div>
     </div>
@@ -154,7 +154,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 </div>
             </form>
             {% elif active_summary == 'fo' and federal_district_list is defined %}
@@ -186,7 +186,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 </div>
             </form>
             {% elif active_summary == 'ez' and energy_zone_list is defined %}
@@ -218,7 +218,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                 </div>
             </form>
             {% endif %}
@@ -229,16 +229,24 @@
     <div class="col-12 mb-2">
         <div class="collapse mt-2" id="importExportCollapse">
             <div class="d-flex justify-content-start align-items-center w-100 flex-wrap gap-2">
-                <a href="{{ url_for(export_endpoint) }}{% if request.query_string %}?{{ request.query_string }}{% endif %}"
-                   class="btn btn-outline-success pd-demand-summary-export-xlsx d-inline-flex align-items-center justify-content-center gap-2"
-                   style="white-space: nowrap;"
-                   data-pd-visible-rows-key="{% if active_summary == 'oes' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryOesCoeffVisibleRowKeysV2{% else %}powerDemandSummaryOesVisibleRowKeysV2{% endif %}{% elif active_summary == 'fo' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryFoCoeffVisibleRowKeys{% else %}powerDemandSummaryFoVisibleRowKeys{% endif %}{% else %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryEzCoeffVisibleRowKeys{% else %}powerDemandSummaryEzVisibleRowKeys{% endif %}{% endif %}"
-                   {% if active_summary == 'oes' %}id="powerDemandOesExportXlsx{% if summary_route_variant == 'coeff' %}Coeff{% endif %}"
-                   {% elif active_summary == 'fo' %}id="powerDemandFoExportXlsx{% if summary_route_variant == 'coeff' %}Coeff{% endif %}"
-                   {% elif active_summary == 'ez' %}id="powerDemandEzExportXlsx{% if summary_route_variant == 'coeff' %}Coeff{% endif %}"
-                   {% endif %}>
-                    <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
-                </a>
+                {# Как stations_equipment_group_fuel_params: форма GET + type="button" + fetch; спиннер только на кнопке #}
+                <form method="GET"
+                      action="{{ url_for(export_endpoint) }}"
+                      id="powerDemandSummaryExportForm"
+                      class="d-inline m-0">
+                    {% for key, values in request.args.lists() %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endfor %}
+                    <button type="button"
+                            id="powerDemandSummaryExportBtn"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                            style="white-space: nowrap;"
+                            data-pd-visible-rows-key="{% if active_summary == 'oes' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryOesCoeffVisibleRowKeysV2{% else %}powerDemandSummaryOesVisibleRowKeysV2{% endif %}{% elif active_summary == 'fo' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryFoCoeffVisibleRowKeys{% else %}powerDemandSummaryFoVisibleRowKeys{% endif %}{% else %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryEzCoeffVisibleRowKeys{% else %}powerDemandSummaryEzVisibleRowKeys{% endif %}{% endif %}">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -269,7 +277,7 @@
                 </select>
                 <button type="submit" class="btn btn-outline-success">Применить</button>
                 <div class="filter-item">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger w-100 fs-5">Сбросить</a>
                 </div>
             </form>
             {% endif %}
@@ -415,7 +423,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-primary" id="powerDemandOesRowsApply">Применить</button>
                 </div>
             </div>
@@ -457,7 +465,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-primary" id="powerDemandFoRowsApply">Применить</button>
                 </div>
             </div>
@@ -499,7 +507,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-primary" id="powerDemandEzRowsApply">Применить</button>
                 </div>
             </div>
@@ -507,21 +515,11 @@
     </div>
     {% endif %}
 
-    {# «Максимумы…»: доля % для «Наименование…»/ист.; столбец «Энергосистема» — 7см. #}
-    {% set summary_narrow_col_pct = 11 %}
+    {# «Энергосистема» и «Наименование параметров» — фиксированная ширина; столбцы годов делят остаток ширины таблицы. #}
     {% set summary_entity_col_w = "7cm" %}
-    {% set summary_hist_col_pct = (summary_narrow_col_pct * 0.6)|round(4) %}
+    {% set summary_parameter_col_w = "18rem" %}
+    {% set summary_hist_col_w = "6.5rem" %}
     {% set _coeff_mixin_n = 6 %}
-    {% set _coeff_mixin_col_pct = 2.3 %}
-    {% if show_hist_col %}
-    {% set _year_share = ((100.0 - 2 * summary_narrow_col_pct - summary_hist_col_pct) / (years|length if years|length > 0 else 1))|round(6) %}
-    {% else %}
-    {% if summary_route_variant == 'coeff' %}
-    {% set _year_share = ((100.0 - 2 * summary_narrow_col_pct - _coeff_mixin_n * _coeff_mixin_col_pct) / (years|length if years|length > 0 else 1))|round(6) %}
-    {% else %}
-    {% set _year_share = ((100.0 - 2 * summary_narrow_col_pct) / (years|length if years|length > 0 else 1))|round(6) %}
-    {% endif %}
-    {% endif %}
     {# Для coeff ширины числовых колонок не задаём в % — см. комментарий выше. #}
     {% if summary_route_variant == 'coeff' %}
     <style>
@@ -562,21 +560,21 @@
                {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}"{% endif %}
                {% if summary_route_variant == 'coeff' and coeff_base_year is defined %}data-coeff-base-year="{{ coeff_base_year }}"{% endif %}
                {% if can_edit_summary_cells %}
-               data-save-cell-url="{{ url_for('energy_consumption_bp.demand_summary_save_cell') }}"
+               data-save-cell-url="{{ url_for('power_demand_bp.demand_summary_save_cell') }}"
                data-rounding-digits="{{ rounding_digits }}"
                {% endif %}>
             <colgroup>
                 {% if years|length > 0 %}
-                {# «Исторический…» — 60% от доли «Наименование параметров»; годы делят остаток (без исторического столбца — на «Коэффициенты…»). #}
+                {# Фиксированные ширины: энергосистема, параметры, при необходимости «Исторический…» и миксины; годы — авто в остатке. #}
                 <col class="summary-col-entity" style="width: {{ summary_entity_col_w }}; min-width: {{ summary_entity_col_w }}; max-width: {{ summary_entity_col_w }}; box-sizing: border-box;" />
-                <col class="summary-col-parameter" />
+                <col class="summary-col-parameter" style="width: {{ summary_parameter_col_w }}; min-width: {{ summary_parameter_col_w }}; max-width: {{ summary_parameter_col_w }}; box-sizing: border-box;" />
                 {% if summary_route_variant == 'coeff' %}
                 {% for _i in range(_coeff_mixin_n) %}
                 <col class="summary-col-coeff-mixin" />
                 {% endfor %}
                 {% endif %}
                 {% if show_hist_col %}
-                <col class="summary-col-hist" />
+                <col class="summary-col-hist" style="width: {{ summary_hist_col_w }}; min-width: {{ summary_hist_col_w }}; max-width: {{ summary_hist_col_w }}; box-sizing: border-box;" />
                 {% endif %}
                 {% for y in years %}
                 {% if summary_route_variant == 'coeff' %}
@@ -589,20 +587,20 @@
                     data-coeff-year-segment="{% if y >= coeff_base_year - 9 and y <= coeff_base_year %}reporting{% elif y >= coeff_base_year + 1 and y <= coeff_base_year + 6 %}medium{% else %}long{% endif %}"
                     {% endif %} />
                 {% else %}
-                <col class="summary-col-year" style="width: {{ _year_share }}%;" />
+                <col class="summary-col-year" />
                 {% endif %}
                 {% endfor %}
                 <col class="summary-col-note" style="width: 9%; min-width: 6rem;" />
                 {% else %}
                 <col class="summary-col-entity" style="width: {{ summary_entity_col_w }}; min-width: {{ summary_entity_col_w }}; max-width: {{ summary_entity_col_w }}; box-sizing: border-box;" />
-                <col class="summary-col-parameter" />
+                <col class="summary-col-parameter" style="width: {{ summary_parameter_col_w }}; min-width: {{ summary_parameter_col_w }}; max-width: {{ summary_parameter_col_w }}; box-sizing: border-box;" />
                 {% if summary_route_variant == 'coeff' %}
                 {% for _i in range(_coeff_mixin_n) %}
                 <col class="summary-col-coeff-mixin" />
                 {% endfor %}
                 {% endif %}
                 {% if show_hist_col %}
-                <col class="summary-col-hist" />
+                <col class="summary-col-hist" style="width: {{ summary_hist_col_w }}; min-width: {{ summary_hist_col_w }}; max-width: {{ summary_hist_col_w }}; box-sizing: border-box;" />
                 {% endif %}
                 <col class="summary-col-note" style="width: 9%; min-width: 6rem;" />
                 {% endif %}
@@ -1067,6 +1065,253 @@
     </div>
 </div>
 
+<script>
+const summaryTable = document.getElementById("powerDemandSummaryTable");
+if (summaryTable) {
+    const FILTER_STORAGE_KEY = "powerDemandSummaryRowFilter";
+
+    function initPdSummaryRowPicker(spec) {
+        var ROW_KEYS = spec.rowKeys;
+        var storageKey = spec.storageKey;
+        var modalId = spec.modalId;
+        var applyBtnId = spec.applyBtnId;
+        var lastApplied = null;
+        var defaultHiddenKeys = spec.defaultHiddenKeys || [];
+
+        function buildDefaultKeyMap() {
+            var def = {};
+            ROW_KEYS.forEach(function (k) {
+                def[k] = true;
+            });
+            defaultHiddenKeys.forEach(function (k) {
+                if (Object.prototype.hasOwnProperty.call(def, k)) {
+                    def[k] = false;
+                }
+            });
+            return def;
+        }
+
+        /**
+         * Ячейка «Энергосистема» в разметке только у первой строки блока (обычно max_power).
+         * Если эту строку скрывают, без переноса ячейки таблица «ломается» (колонки съезжают).
+         * Переносим td.summary-entity-cell на первую видимую строку блока и выставляем rowspan.
+         */
+        function repositionEntityCellsAndRowspans() {
+            var tbody = summaryTable.querySelector("tbody");
+            if (!tbody) {
+                return;
+            }
+            var startRows = tbody.querySelectorAll(
+                'tr.summary-row-param[data-is-block-start="1"]'
+            );
+            Array.prototype.forEach.call(startRows, function (startTr) {
+                var blockSize = parseInt(startTr.getAttribute("data-entity-block-size") || "1", 10);
+                if (blockSize < 1) {
+                    blockSize = 1;
+                }
+                var blockRows = [];
+                var tr = startTr;
+                for (var j = 0; j < blockSize && tr; j++) {
+                    if (!tr.classList.contains("summary-row-param")) {
+                        break;
+                    }
+                    blockRows.push(tr);
+                    tr = tr.nextElementSibling;
+                }
+                if (blockRows.length === 0) {
+                    return;
+                }
+                var entityTd = null;
+                for (var k = 0; k < blockRows.length; k++) {
+                    var et = blockRows[k].querySelector("td.summary-entity-cell");
+                    if (et) {
+                        entityTd = et;
+                        break;
+                    }
+                }
+                if (!entityTd) {
+                    return;
+                }
+                var visibleRows = blockRows.filter(function (r) {
+                    return !r.classList.contains("summary-row-hidden");
+                });
+                if (visibleRows.length === 0) {
+                    entityTd.setAttribute("rowspan", "1");
+                    return;
+                }
+                var firstVis = visibleRows[0];
+                var paramCell = firstVis.querySelector("td.summary-parameter-cell");
+                if (paramCell && entityTd.parentNode !== firstVis) {
+                    firstVis.insertBefore(entityTd, paramCell);
+                }
+                entityTd.setAttribute("rowspan", String(visibleRows.length));
+
+                var noteTd = null;
+                for (var kn = 0; kn < blockRows.length; kn++) {
+                    var nt = blockRows[kn].querySelector("td.summary-entity-note-cell");
+                    if (nt) {
+                        noteTd = nt;
+                        break;
+                    }
+                }
+                if (noteTd && visibleRows.length > 0) {
+                    var firstVisNote = visibleRows[0];
+                    if (noteTd.parentNode !== firstVisNote) {
+                        firstVisNote.appendChild(noteTd);
+                    }
+                    noteTd.setAttribute("rowspan", String(visibleRows.length));
+                }
+            });
+        }
+
+        function readKeysFromCheckboxes() {
+            var set = {};
+            ROW_KEYS.forEach(function (k) {
+                set[k] = false;
+            });
+            document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
+                var k = inp.getAttribute("data-pd-row-key");
+                if (!k) {
+                    return;
+                }
+                set[k] = inp.checked;
+            });
+            return set;
+        }
+
+        function syncCheckboxesFromKeys(keyMap) {
+            document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
+                var k = inp.getAttribute("data-pd-row-key");
+                if (!k) {
+                    return;
+                }
+                inp.checked = keyMap[k] !== false;
+            });
+        }
+
+        function applyVisibilityFromKeys(keyMap) {
+            summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
+                var pk = tr.getAttribute("data-parameter-key") || "";
+                var show = keyMap[pk] !== false;
+                if (show) {
+                    tr.classList.remove("summary-row-hidden");
+                } else {
+                    tr.classList.add("summary-row-hidden");
+                }
+            });
+            repositionEntityCellsAndRowspans();
+        }
+
+        function parseFromStorage(raw) {
+            var def = buildDefaultKeyMap();
+            if (!raw) {
+                return def;
+            }
+            try {
+                var arr = JSON.parse(raw);
+                if (!Array.isArray(arr) || arr.length === 0) {
+                    return def;
+                }
+                var out = {};
+                ROW_KEYS.forEach(function (k) {
+                    out[k] = arr.indexOf(k) !== -1;
+                });
+                defaultHiddenKeys.forEach(function (k) {
+                    if (Object.prototype.hasOwnProperty.call(out, k)) {
+                        out[k] = false;
+                    }
+                });
+                return out;
+            } catch (e) {
+                return def;
+            }
+        }
+
+        function serializeKeys(keyMap) {
+            return ROW_KEYS.filter(function (k) {
+                return keyMap[k] !== false;
+            });
+        }
+
+        try {
+            var stored = sessionStorage.getItem(storageKey);
+            if (!stored) {
+                var legacy = sessionStorage.getItem(FILTER_STORAGE_KEY);
+                if (legacy === "max_power") {
+                    var onlyMax = {};
+                    ROW_KEYS.forEach(function (k) {
+                        onlyMax[k] = k === "max_power";
+                    });
+                    lastApplied = onlyMax;
+                }
+            }
+            if (!lastApplied) {
+                lastApplied = parseFromStorage(stored);
+            }
+        } catch (e) {
+            lastApplied = parseFromStorage(null);
+        }
+
+        syncCheckboxesFromKeys(lastApplied);
+        applyVisibilityFromKeys(lastApplied);
+        try {
+            sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(lastApplied)));
+        } catch (e2) { /* */ }
+
+        var modalEl = document.getElementById(modalId);
+        if (modalEl) {
+            modalEl.addEventListener("show.bs.modal", function () {
+                syncCheckboxesFromKeys(lastApplied);
+            });
+        }
+        var applyBtn = document.getElementById(applyBtnId);
+        if (applyBtn && modalEl) {
+            applyBtn.addEventListener("click", function () {
+                var keyMap = readKeysFromCheckboxes();
+                lastApplied = keyMap;
+                applyVisibilityFromKeys(keyMap);
+                try {
+                    sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(keyMap)));
+                } catch (e3) { /* */ }
+                var inst = bootstrap.Modal.getInstance(modalEl);
+                if (inst) {
+                    inst.hide();
+                }
+            });
+        }
+    }
+
+    var summaryView = summaryTable.getAttribute("data-summary-view");
+    var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
+    var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
+    if (summaryView === "oes") {
+        initPdSummaryRowPicker({
+            rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_oes", "calculated_max_power_mw", "combined_on_ees", "calculated_combined_on_ees_mw", "combined_on_es"],
+            defaultHiddenKeys: coeffDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV2",
+            modalId: "powerDemandOesRowsModal",
+            applyBtnId: "powerDemandOesRowsApply"
+        });
+    } else if (summaryView === "fo") {
+        initPdSummaryRowPicker({
+            rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_cz", "combined_on_fo"],
+            defaultHiddenKeys: coeffDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeys" : "powerDemandSummaryFoVisibleRowKeys",
+            modalId: "powerDemandFoRowsModal",
+            applyBtnId: "powerDemandFoRowsApply"
+        });
+    } else if (summaryView === "ez") {
+        initPdSummaryRowPicker({
+            rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_ez", "combined_on_ees"],
+            defaultHiddenKeys: coeffDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
+            modalId: "powerDemandEzRowsModal",
+            applyBtnId: "powerDemandEzRowsApply"
+        });
+    }
+}
+</script>
+
 <style>
     .power-demand-summary-scroll {
         width: 100%;
@@ -1087,10 +1332,22 @@
         box-sizing: border-box;
     }
     .power-demand-summary-table col.summary-col-parameter {
-        width: {{ summary_narrow_col_pct }}%;
+        width: {{ summary_parameter_col_w }};
+        min-width: {{ summary_parameter_col_w }};
+        max-width: {{ summary_parameter_col_w }};
+        box-sizing: border-box;
     }
     .power-demand-summary-table col.summary-col-hist {
-        width: {{ summary_hist_col_pct }}%;
+        width: {{ summary_hist_col_w }};
+        min-width: {{ summary_hist_col_w }};
+        max-width: {{ summary_hist_col_w }};
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table:not(.pd-coeff-year-seg-table) col.summary-col-year {
+        width: auto;
+        min-width: 2.75rem;
+        max-width: none;
+        box-sizing: border-box;
     }
     .power-demand-summary-table thead th {
         font-size: 1.28rem;
@@ -1105,28 +1362,36 @@
         word-break: break-word;
     }
     .summary-parameter-col {
-        width: {{ summary_narrow_col_pct }}%;
-        min-width: 0;
+        width: {{ summary_parameter_col_w }};
+        min-width: {{ summary_parameter_col_w }};
+        max-width: {{ summary_parameter_col_w }};
+        box-sizing: border-box;
         overflow-wrap: anywhere;
         word-break: break-word;
     }
     .pd-coeff-year-seg-table th.summary-entity-col,
     .pd-coeff-year-seg-table td.summary-entity-cell {
-        min-width: 0;
+        width: {{ summary_entity_col_w }};
+        min-width: {{ summary_entity_col_w }};
+        max-width: {{ summary_entity_col_w }};
         box-sizing: border-box;
         white-space: normal;
         word-break: normal;
         overflow-wrap: break-word;
     }
     .pd-coeff-year-seg-table th.summary-parameter-col {
-        min-width: 0;
+        width: {{ summary_parameter_col_w }};
+        min-width: {{ summary_parameter_col_w }};
+        max-width: {{ summary_parameter_col_w }};
         box-sizing: border-box;
         white-space: normal;
         word-break: normal;
         overflow-wrap: break-word;
     }
     .pd-coeff-year-seg-table td.summary-parameter-cell {
-        min-width: 0;
+        width: {{ summary_parameter_col_w }};
+        min-width: {{ summary_parameter_col_w }};
+        max-width: {{ summary_parameter_col_w }};
         box-sizing: border-box;
         white-space: normal;
         word-break: break-word;
@@ -1166,8 +1431,10 @@
         background: #f8f9fa;
     }
     .summary-hist-col {
-        width: {{ summary_hist_col_pct }}%;
-        min-width: 0;
+        width: {{ summary_hist_col_w }};
+        min-width: {{ summary_hist_col_w }};
+        max-width: {{ summary_hist_col_w }};
+        box-sizing: border-box;
         white-space: normal;
     }
     .summary-year-col {
@@ -1200,8 +1467,10 @@
         box-sizing: border-box;
     }
     .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-parameter {
-        width: min(24rem, 22%);
-        min-width: min(11rem, 30vw);
+        width: {{ summary_parameter_col_w }};
+        min-width: {{ summary_parameter_col_w }};
+        max-width: {{ summary_parameter_col_w }};
+        box-sizing: border-box;
     }
     /* Миксины — фиксированная ширина; годы k/МВт — мин. 5.5rem и доля остатка при узком наборе столбцов
        (например, только среднесрочный период), чтобы таблица заполняла ширину экрана. */
@@ -1223,10 +1492,6 @@
         min-width: {{ summary_entity_col_w }};
         max-width: {{ summary_entity_col_w }};
         box-sizing: border-box;
-    }
-    .pd-coeff-year-seg-table th.summary-parameter-col,
-    .pd-coeff-year-seg-table td.summary-parameter-cell {
-        min-width: min(11rem, 30vw);
     }
     /* Горизонтальный скролл у нижней кромки блока; «Энергосистема» и «Наименование параметров» не смещаются */
     .pd-coeff-summary-scroll-wrap {
@@ -1849,250 +2114,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     })();
 
-    const summaryTable = document.getElementById("powerDemandSummaryTable");
-    if (summaryTable) {
-        const FILTER_STORAGE_KEY = "powerDemandSummaryRowFilter";
 
-        function initPdSummaryRowPicker(spec) {
-            var ROW_KEYS = spec.rowKeys;
-            var storageKey = spec.storageKey;
-            var modalId = spec.modalId;
-            var applyBtnId = spec.applyBtnId;
-            var lastApplied = null;
-            var defaultHiddenKeys = spec.defaultHiddenKeys || [];
-
-            function buildDefaultKeyMap() {
-                var def = {};
-                ROW_KEYS.forEach(function (k) {
-                    def[k] = true;
-                });
-                defaultHiddenKeys.forEach(function (k) {
-                    if (Object.prototype.hasOwnProperty.call(def, k)) {
-                        def[k] = false;
-                    }
-                });
-                return def;
-            }
-
-            /**
-             * Ячейка «Энергосистема» в разметке только у первой строки блока (обычно max_power).
-             * Если эту строку скрывают, без переноса ячейки таблица «ломается» (колонки съезжают).
-             * Переносим td.summary-entity-cell на первую видимую строку блока и выставляем rowspan.
-             */
-            function repositionEntityCellsAndRowspans() {
-                var tbody = summaryTable.querySelector("tbody");
-                if (!tbody) {
-                    return;
-                }
-                var startRows = tbody.querySelectorAll(
-                    'tr.summary-row-param[data-is-block-start="1"]'
-                );
-                Array.prototype.forEach.call(startRows, function (startTr) {
-                    var blockSize = parseInt(startTr.getAttribute("data-entity-block-size") || "1", 10);
-                    if (blockSize < 1) {
-                        blockSize = 1;
-                    }
-                    var blockRows = [];
-                    var tr = startTr;
-                    for (var j = 0; j < blockSize && tr; j++) {
-                        if (!tr.classList.contains("summary-row-param")) {
-                            break;
-                        }
-                        blockRows.push(tr);
-                        tr = tr.nextElementSibling;
-                    }
-                    if (blockRows.length === 0) {
-                        return;
-                    }
-                    var entityTd = null;
-                    for (var k = 0; k < blockRows.length; k++) {
-                        var et = blockRows[k].querySelector("td.summary-entity-cell");
-                        if (et) {
-                            entityTd = et;
-                            break;
-                        }
-                    }
-                    if (!entityTd) {
-                        return;
-                    }
-                    var visibleRows = blockRows.filter(function (r) {
-                        return !r.classList.contains("summary-row-hidden");
-                    });
-                    if (visibleRows.length === 0) {
-                        entityTd.setAttribute("rowspan", "1");
-                        return;
-                    }
-                    var firstVis = visibleRows[0];
-                    var paramCell = firstVis.querySelector("td.summary-parameter-cell");
-                    if (paramCell && entityTd.parentNode !== firstVis) {
-                        firstVis.insertBefore(entityTd, paramCell);
-                    }
-                    entityTd.setAttribute("rowspan", String(visibleRows.length));
-
-                    var noteTd = null;
-                    for (var kn = 0; kn < blockRows.length; kn++) {
-                        var nt = blockRows[kn].querySelector("td.summary-entity-note-cell");
-                        if (nt) {
-                            noteTd = nt;
-                            break;
-                        }
-                    }
-                    if (noteTd && visibleRows.length > 0) {
-                        var firstVisNote = visibleRows[0];
-                        if (noteTd.parentNode !== firstVisNote) {
-                            firstVisNote.appendChild(noteTd);
-                        }
-                        noteTd.setAttribute("rowspan", String(visibleRows.length));
-                    }
-                });
-            }
-
-            function readKeysFromCheckboxes() {
-                var set = {};
-                ROW_KEYS.forEach(function (k) {
-                    set[k] = false;
-                });
-                document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
-                    var k = inp.getAttribute("data-pd-row-key");
-                    if (!k) {
-                        return;
-                    }
-                    set[k] = inp.checked;
-                });
-                return set;
-            }
-
-            function syncCheckboxesFromKeys(keyMap) {
-                document.querySelectorAll("#" + modalId + " input[data-pd-row-key]").forEach(function (inp) {
-                    var k = inp.getAttribute("data-pd-row-key");
-                    if (!k) {
-                        return;
-                    }
-                    inp.checked = keyMap[k] !== false;
-                });
-            }
-
-            function applyVisibilityFromKeys(keyMap) {
-                summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
-                    var pk = tr.getAttribute("data-parameter-key") || "";
-                    var show = keyMap[pk] !== false;
-                    if (show) {
-                        tr.classList.remove("summary-row-hidden");
-                    } else {
-                        tr.classList.add("summary-row-hidden");
-                    }
-                });
-                repositionEntityCellsAndRowspans();
-            }
-
-            function parseFromStorage(raw) {
-                var def = buildDefaultKeyMap();
-                if (!raw) {
-                    return def;
-                }
-                try {
-                    var arr = JSON.parse(raw);
-                    if (!Array.isArray(arr) || arr.length === 0) {
-                        return def;
-                    }
-                    var out = {};
-                    ROW_KEYS.forEach(function (k) {
-                        out[k] = arr.indexOf(k) !== -1;
-                    });
-                    defaultHiddenKeys.forEach(function (k) {
-                        if (Object.prototype.hasOwnProperty.call(out, k)) {
-                            out[k] = false;
-                        }
-                    });
-                    return out;
-                } catch (e) {
-                    return def;
-                }
-            }
-
-            function serializeKeys(keyMap) {
-                return ROW_KEYS.filter(function (k) {
-                    return keyMap[k] !== false;
-                });
-            }
-
-            try {
-                var stored = sessionStorage.getItem(storageKey);
-                if (!stored) {
-                    var legacy = sessionStorage.getItem(FILTER_STORAGE_KEY);
-                    if (legacy === "max_power") {
-                        var onlyMax = {};
-                        ROW_KEYS.forEach(function (k) {
-                            onlyMax[k] = k === "max_power";
-                        });
-                        lastApplied = onlyMax;
-                    }
-                }
-                if (!lastApplied) {
-                    lastApplied = parseFromStorage(stored);
-                }
-            } catch (e) {
-                lastApplied = parseFromStorage(null);
-            }
-
-            syncCheckboxesFromKeys(lastApplied);
-            applyVisibilityFromKeys(lastApplied);
-            try {
-                sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(lastApplied)));
-            } catch (e2) { /* */ }
-
-            var modalEl = document.getElementById(modalId);
-            if (modalEl) {
-                modalEl.addEventListener("show.bs.modal", function () {
-                    syncCheckboxesFromKeys(lastApplied);
-                });
-            }
-            var applyBtn = document.getElementById(applyBtnId);
-            if (applyBtn && modalEl) {
-                applyBtn.addEventListener("click", function () {
-                    var keyMap = readKeysFromCheckboxes();
-                    lastApplied = keyMap;
-                    applyVisibilityFromKeys(keyMap);
-                    try {
-                        sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(keyMap)));
-                    } catch (e3) { /* */ }
-                    var inst = bootstrap.Modal.getInstance(modalEl);
-                    if (inst) {
-                        inst.hide();
-                    }
-                });
-            }
-        }
-
-        var summaryView = summaryTable.getAttribute("data-summary-view");
-        var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
-        var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
-        if (summaryView === "oes") {
-            initPdSummaryRowPicker({
-                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_oes", "calculated_max_power_mw", "combined_on_ees", "calculated_combined_on_ees_mw", "combined_on_es"],
-                defaultHiddenKeys: coeffDefaultHidden,
-                storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV2",
-                modalId: "powerDemandOesRowsModal",
-                applyBtnId: "powerDemandOesRowsApply"
-            });
-        } else if (summaryView === "fo") {
-            initPdSummaryRowPicker({
-                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_cz", "combined_on_fo"],
-                defaultHiddenKeys: coeffDefaultHidden,
-                storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeys" : "powerDemandSummaryFoVisibleRowKeys",
-                modalId: "powerDemandFoRowsModal",
-                applyBtnId: "powerDemandFoRowsApply"
-            });
-        } else if (summaryView === "ez") {
-            initPdSummaryRowPicker({
-                rowKeys: ["max_power", "peak_datetime", "avg_temp", "combined_on_ez", "combined_on_ees"],
-                defaultHiddenKeys: coeffDefaultHidden,
-                storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
-                modalId: "powerDemandEzRowsModal",
-                applyBtnId: "powerDemandEzRowsApply"
-            });
-        }
-    }
 
     (function initPowerDemandCoeffManualSourceUi() {
         var table = document.getElementById("powerDemandSummaryTable");
@@ -3186,101 +3208,120 @@ document.addEventListener("DOMContentLoaded", function () {
         window.location.href = url.toString();
     });
 
-    /* Экспорт без второй вкладки: window.open переводит фокус на новую вкладку — в Chrome таймеры на фоновой
-       основной вкладке сильно замедляются, сброс спиннера задерживается («висит» вся страница). Скрытый iframe
-       не уводит фокус; спиннер только на кнопке; сброс по таймеру + при возврате на вкладку (visibilitychange). */
+    /* Экспорт как на stations_equipment_group_fuel_params и energy_consumption: fetch + blob, только кнопка disabled. */
     (function () {
-        var exportLink = document.querySelector("a.pd-demand-summary-export-xlsx");
-        if (!exportLink) {
+        var form = document.getElementById("powerDemandSummaryExportForm");
+        var exportBtn = document.getElementById("powerDemandSummaryExportBtn");
+        if (!form || !exportBtn) {
             return;
         }
-        exportLink.addEventListener("click", function (e) {
-            var u = new URL(this.getAttribute("href") || this.href, window.location.origin);
-            var storageKey = this.getAttribute("data-pd-visible-rows-key") || "";
+
+        function parseFilenameFromContentDisposition(cd) {
+            if (!cd) {
+                return "export.xlsx";
+            }
+            var mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+            if (mUtf && mUtf[1]) {
+                try {
+                    return decodeURIComponent(mUtf[1].trim());
+                } catch (e1) {
+                    return mUtf[1].trim();
+                }
+            }
+            var mQuot = /filename="([^"]+)"/i.exec(cd);
+            if (mQuot && mQuot[1]) {
+                return mQuot[1].trim();
+            }
+            var mBare = /filename=([^;\n]+)/i.exec(cd);
+            if (mBare && mBare[1]) {
+                return mBare[1].trim().replace(/^["']|["']$/g, "");
+            }
+            return "export.xlsx";
+        }
+
+        var newBtn = exportBtn.cloneNode(true);
+        exportBtn.parentNode.replaceChild(newBtn, exportBtn);
+
+        newBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var button = this;
+            if (button.disabled) {
+                return;
+            }
+
+            var params = new URLSearchParams(window.location.search);
+            var rdSel = document.getElementById("rounding_digits");
+            if (rdSel) {
+                params.set("rounding_digits", rdSel.value);
+            }
+            var storageKey = button.getAttribute("data-pd-visible-rows-key") || "";
             if (storageKey) {
                 try {
                     var raw = sessionStorage.getItem(storageKey);
                     if (raw) {
                         var arr = JSON.parse(raw);
                         if (Array.isArray(arr) && arr.length > 0) {
-                            u.searchParams.set("visible_rows", arr.join(","));
+                            params.set("visible_rows", arr.join(","));
                         }
                     }
                 } catch (err) { /* */ }
             }
-            var exportUrl = u.pathname + u.search;
-            this.setAttribute("href", exportUrl);
-            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
-                return;
-            }
-            e.preventDefault();
 
-            if (this.getAttribute("data-pd-exporting") === "1") {
-                return;
-            }
-            this.setAttribute("data-pd-exporting", "1");
+            var exportUrl = form.action + (params.toString() ? "?" + params.toString() : "");
+            var originalHtml = button.innerHTML;
 
-            var originalHtml = this.innerHTML;
-            var w = this.offsetWidth;
-            if (w) {
-                this.style.minWidth = w + "px";
-            }
+            button.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Экспорт…';
+            button.disabled = true;
 
-            this.innerHTML =
-                '<span class="spinner-border spinner-border-sm flex-shrink-0" role="status" aria-hidden="true"></span>' +
-                '<span>Экспорт в Excel</span>';
-            this.classList.add("disabled");
-            this.setAttribute("aria-busy", "true");
-            this.setAttribute("aria-disabled", "true");
-
-            var self = this;
-            var ifr = null;
-            var finished = false;
-
-            function finishExport() {
-                if (finished) {
-                    return;
-                }
-                finished = true;
-                document.removeEventListener("visibilitychange", onVis);
-                if (timerId !== null) {
-                    clearTimeout(timerId);
-                    timerId = null;
-                }
-                try {
-                    if (ifr && ifr.parentNode) {
-                        ifr.remove();
+            fetch(exportUrl, { credentials: "same-origin", cache: "no-store" })
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function (text) {
+                            throw new Error(
+                                "Ошибка сервера (" +
+                                    response.status +
+                                    "): " +
+                                    (text ? text.substring(0, 200) : "")
+                            );
+                        });
                     }
-                } catch (eRm) { /* */ }
-                self.innerHTML = originalHtml;
-                self.style.minWidth = "";
-                self.classList.remove("disabled");
-                self.removeAttribute("aria-busy");
-                self.removeAttribute("aria-disabled");
-                self.removeAttribute("data-pd-exporting");
-            }
-
-            function onVis() {
-                if (document.visibilityState === "visible") {
-                    finishExport();
-                }
-            }
-
-            var timerId = null;
-
-            window.requestAnimationFrame(function () {
-                window.requestAnimationFrame(function () {
-                    ifr = document.createElement("iframe");
-                    ifr.setAttribute("aria-hidden", "true");
-                    ifr.tabIndex = -1;
-                    ifr.style.cssText =
-                        "position:absolute;width:0;height:0;border:0;clip:rect(0,0,0,0);visibility:hidden";
-                    ifr.src = exportUrl;
-                    document.body.appendChild(ifr);
-                    document.addEventListener("visibilitychange", onVis);
-                    timerId = window.setTimeout(finishExport, 450);
+                    var contentType = response.headers.get("content-type") || "";
+                    var ctLow = contentType.toLowerCase();
+                    if (
+                        ctLow.indexOf("application/vnd.openxmlformats") !== -1 ||
+                        ctLow.indexOf("application/octet-stream") !== -1
+                    ) {
+                        var fn = parseFilenameFromContentDisposition(response.headers.get("Content-Disposition"));
+                        return response.blob().then(function (blob) {
+                            var url = window.URL.createObjectURL(blob);
+                            var a = document.createElement("a");
+                            a.href = url;
+                            a.download = fn || "export.xlsx";
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        });
+                    }
+                    return response.text().then(function () {
+                        throw new Error("Получен неожиданный тип ответа от сервера");
+                    });
+                })
+                .catch(function (error) {
+                    console.error("[EXPORT power_demand summary]", error);
+                    alert(
+                        "Ошибка при экспорте: " +
+                            (error && error.message ? error.message : String(error)) +
+                            "\n\nПроверьте консоль браузера (F12) для подробностей."
+                    );
+                })
+                .finally(function () {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
                 });
-            });
         });
     })();
 
@@ -3488,15 +3529,15 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 {% if active_summary == 'oes' and pd_oes_filters_cascade is defined %}
 <script type="application/json" id="pd-oes-filters-data">{{ pd_oes_filters_cascade | tojson | safe }}</script>
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_oes_cascade.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_oes_cascade.js') }}"></script>
 {% endif %}
 {% if active_summary == 'fo' and pd_fo_filters_cascade is defined %}
 <script type="application/json" id="pd-fo-filters-data">{{ pd_fo_filters_cascade | tojson | safe }}</script>
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_fo_cascade.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_fo_cascade.js') }}"></script>
 {% endif %}
 {% if active_summary == 'ez' and pd_ez_filters_cascade is defined %}
 <script type="application/json" id="pd-ez-filters-data">{{ pd_ez_filters_cascade | tojson | safe }}</script>
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_ez_cascade.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_ez_cascade.js') }}"></script>
 {% endif %}
 {% endif %}
 {% endblock %}
