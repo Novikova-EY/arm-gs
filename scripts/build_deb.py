@@ -10,10 +10,12 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -70,6 +72,20 @@ def parse_args() -> argparse.Namespace:
         default="dpkg-deb",
         help="Путь до утилиты dpkg-deb (если не в PATH).",
     )
+    parser.add_argument(
+        "--compress",
+        choices=("default", "gzip", "xz", "zstd", "none"),
+        default="default",
+        help="Тип сжатия для dpkg-deb -Z. «default» — как у dpkg. "
+        "При EIO/zstd попробуйте xz или gzip.",
+    )
+    parser.add_argument(
+        "--temp-dir",
+        type=Path,
+        default=None,
+        help="Каталог для промежуточного .deb (по умолчанию системный temp). "
+        "Помогает, если целевой каталог packaging на проблемном томе.",
+    )
     return parser.parse_args()
 
 
@@ -110,78 +126,60 @@ def ensure_app_payload(build_dir: Path) -> Path:
 
 
 def copy_payload(payload_root: Path) -> None:
-    # #region agent log
-    log_path = Path(__file__).resolve().parents[1] / ".cursor" / "debug.log"
+    log_path = PROJECT_ROOT / ".cursor" / "debug.log"
     try:
         with open(log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "sessionId": "debug-session",
-                "runId": "pre-fix",
-                "hypothesisId": "A",
-                "location": "build_deb.py:111",
-                "message": "Начало copy_payload",
-                "data": {"ignore_patterns": IGNORE_PATTERNS, "payload_items": PAYLOAD_ITEMS},
-                "timestamp": int(dt.datetime.now().timestamp() * 1000)
-            }, ensure_ascii=False) + "\n")
-    except Exception:
+            f.write(
+                json.dumps(
+                    {
+                        "sessionId": "debug-session",
+                        "runId": "pre-fix",
+                        "hypothesisId": "A",
+                        "location": "build_deb.py:copy_payload",
+                        "message": "Начало copy_payload",
+                        "data": {"ignore_patterns": IGNORE_PATTERNS, "payload_items": PAYLOAD_ITEMS},
+                        "timestamp": int(dt.datetime.now().timestamp() * 1000),
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    except OSError:
         pass
-    # #endregion
+
     ignore = shutil.ignore_patterns(*IGNORE_PATTERNS)
     for item in PAYLOAD_ITEMS:
         src = PROJECT_ROOT / item
-        # #region agent log
         try:
             with open(log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({
-                    "sessionId": "debug-session",
-                    "runId": "pre-fix",
-                    "hypothesisId": "A",
-                    "location": "build_deb.py:125",
-                    "message": "Проверка элемента payload",
-                    "data": {"item": item, "src_exists": src.exists(), "src_is_dir": src.is_dir() if src.exists() else None},
-                    "timestamp": int(dt.datetime.now().timestamp() * 1000)
-                }, ensure_ascii=False) + "\n")
-        except Exception:
+                f.write(
+                    json.dumps(
+                        {
+                            "sessionId": "debug-session",
+                            "runId": "pre-fix",
+                            "hypothesisId": "A",
+                            "location": "build_deb.py:item",
+                            "message": "Проверка элемента payload",
+                            "data": {
+                                "item": item,
+                                "src_exists": src.exists(),
+                                "src_is_dir": src.is_dir() if src.exists() else None,
+                            },
+                            "timestamp": int(dt.datetime.now().timestamp() * 1000),
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+        except OSError:
             pass
-        # #endregion
+
         if not src.exists():
             continue
 
         dest = payload_root / src.name
         if src.is_dir():
-            # #region agent log
-            try:
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps({
-                        "sessionId": "debug-session",
-                        "runId": "pre-fix",
-                        "hypothesisId": "A",
-                        "location": "build_deb.py:138",
-                        "message": "Копирование директории",
-                        "data": {"item": item, "src": str(src), "dest": str(dest)},
-                        "timestamp": int(dt.datetime.now().timestamp() * 1000)
-                    }, ensure_ascii=False) + "\n")
-            except Exception:
-                pass
-            # #endregion
             shutil.copytree(src, dest, dirs_exist_ok=True, ignore=ignore)
-            # #region agent log
-            try:
-                logs_dir = dest / "logs" if item == "logs" else None
-                logs_exists = logs_dir.exists() if logs_dir else None
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps({
-                        "sessionId": "debug-session",
-                        "runId": "pre-fix",
-                        "hypothesisId": "A",
-                        "location": "build_deb.py:150",
-                        "message": "После копирования директории",
-                        "data": {"item": item, "dest_exists": dest.exists(), "logs_dir_exists": logs_exists},
-                        "timestamp": int(dt.datetime.now().timestamp() * 1000)
-                    }, ensure_ascii=False) + "\n")
-            except Exception:
-                pass
-            # #endregion
         else:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
@@ -192,7 +190,6 @@ def copy_static_files(build_dir: Path) -> None:
     Копирует статические файлы в /usr/share/generation-app/static
     чтобы nginx всегда раздавал их из стабильного места.
     """
-    # ВАЖНО: в проекте статика лежит в app/app/static
     static_src = PROJECT_ROOT / "app" / "static"
     static_dest = build_dir / "usr" / "share" / "generation-app" / "static"
 
@@ -206,7 +203,6 @@ def copy_static_files(build_dir: Path) -> None:
     static_dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(static_src, static_dest)
     print(f"Статические файлы скопированы в {static_dest}")
-
 
 
 def patch_control_version(build_dir: Path, version: str) -> None:
@@ -231,43 +227,62 @@ def make_scripts_executable(build_dir: Path) -> None:
             script_path.chmod(script_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-import os
-import subprocess
-from pathlib import Path
-
-def build_package(build_dir: Path, version: str, dpkg_bin: str) -> Path:
+def build_package(
+    build_dir: Path,
+    version: str,
+    dpkg_bin: str,
+    *,
+    compress: str = "default",
+    temp_dir: Path | None = None,
+) -> Path:
     deb_root = Path(build_dir)
     control_dir = deb_root / "DEBIAN"
 
     if control_dir.exists():
-        # Папка DEBIAN
         os.chmod(control_dir, 0o755)
-
-        # Файлы внутри DEBIAN
         maint_scripts = {"postinst", "preinst", "prerm", "postrm"}
         for item in control_dir.iterdir():
             if item.is_file():
                 if item.name in maint_scripts:
-                    # maintainer-скрипты должны быть исполняемыми
                     os.chmod(item, 0o755)
                 else:
-                    # все остальное (control, md5sums и т.п.)
                     os.chmod(item, 0o644)
 
-    output_path = DEB_OUTPUT_TEMPLATE.with_name(
-        DEB_OUTPUT_TEMPLATE.name.format(version=version)
-    )
+    output_path = DEB_OUTPUT_TEMPLATE.with_name(DEB_OUTPUT_TEMPLATE.name.format(version=version))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists():
         output_path.unlink()
 
-    subprocess.run(
-        [dpkg_bin, "--build", str(deb_root), str(output_path)],
-        check=True,
-    )
+    cmd = [dpkg_bin, "--build"]
+    if compress != "default":
+        cmd.extend(["-Z", compress])
+
+    tmp_fd: int | None = None
+    tmp_path: Path | None = None
+    try:
+        base_dir = os.fspath(temp_dir) if temp_dir else None
+        tmp_fd, tmp_name = tempfile.mkstemp(suffix=".deb", prefix="generation-app_", dir=base_dir)
+        tmp_path = Path(tmp_name)
+        os.close(tmp_fd)
+        tmp_fd = None
+
+        subprocess.run(cmd + [str(deb_root), str(tmp_path)], check=True)
+
+        try:
+            os.replace(tmp_path, output_path)
+        except OSError:
+            shutil.copy2(tmp_path, output_path)
+            tmp_path.unlink(missing_ok=True)
+    finally:
+        if tmp_fd is not None:
+            try:
+                os.close(tmp_fd)
+            except OSError:
+                pass
+        if tmp_path is not None and tmp_path.exists() and tmp_path.resolve() != output_path.resolve():
+            tmp_path.unlink(missing_ok=True)
 
     return output_path
-
-
 
 
 def main() -> int:
@@ -280,13 +295,16 @@ def main() -> int:
     patch_control_version(build_dir, version)
     normalize_debian_scripts_line_endings(build_dir)
     make_scripts_executable(build_dir)
-    output_path = build_package(build_dir, version, args.dpkg)
+    output_path = build_package(
+        build_dir,
+        version,
+        args.dpkg,
+        compress=args.compress,
+        temp_dir=args.temp_dir,
+    )
     print(f"Готово: {output_path}")
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-

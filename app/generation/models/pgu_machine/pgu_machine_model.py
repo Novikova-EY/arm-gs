@@ -84,22 +84,32 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     date_commission_year = db.Column(db.Integer, nullable=True)
     # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
+    # фактическая дата присоединения
     date_commission_fact = db.Column(db.String(10), nullable=True)
+    # ожидаемая дата присоединения
     date_joining_expected = db.Column(db.String(10), nullable=True)
+    # фактическая дата присоединения
     date_joining_fact = db.Column(db.String(10), nullable=True)
+    # фактическая дата отсоединения
     date_detatchment_fact = db.Column(db.String(10), nullable=True)
+    # ожидаемый год модернизации с изменением мощности
     date_decompressing_expected = db.Column(db.Integer, nullable=True)
+    # фактическая дата перемаркировки (может содержать несколько дат)
     date_decompressing_fact = db.Column(db.String(10), nullable=True)
+    # ожидаемый год модернизации с изменением мощности
     date_modernization_power_change_expected = db.Column(
         "date_modernization_power_change_expected", db.Integer, nullable=True
     )
+    # ожидаемый год модернизации без изменения мощности
     date_modernization_no_power_change_expected = db.Column(
         "date_modernization_no_power_change_expected", db.Integer, nullable=True
     )
 
     # Поля могут содержать несколько дат в текстовом формате
     date_relabing_fact = db.Column(db.String(255), nullable=True)
+    # фактическая дата уточнения (может содержать несколько дат)
     date_update_fact = db.Column(db.String(255), nullable=True)
+    # примечание
     note = db.Column(db.String(512), nullable=True)
 
     # Документ-основание для изменения параметров агрегата

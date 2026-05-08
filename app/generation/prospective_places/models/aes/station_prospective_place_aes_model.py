@@ -5,11 +5,14 @@ StationProspectivePlaceAES model (Перспективная площадка р
 Поля:
 - Текстовые: наименование площадки, субъект РФ, географическое расположение, планируемая мощность
 """
+from sqlalchemy import and_
+from sqlalchemy.orm import foreign
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
+from app.generation.models.station.station_model import Station
 
 
 class StationProspectivePlaceAES(db.Model, AuditMixin):
@@ -20,6 +23,9 @@ class StationProspectivePlaceAES(db.Model, AuditMixin):
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Стабильный код логической электростанции для связи со Station между версиями БД.
+    external_code = db.Column(db.String(36), nullable=True, index=True)
 
     # Текстовые поля
     # Наименование площадки размещения АЭС
@@ -67,6 +73,17 @@ class StationProspectivePlaceAES(db.Model, AuditMixin):
         db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
         nullable=True,
         index=True
+    )
+
+    station = db.relationship(
+        "Station",
+        primaryjoin=lambda: and_(
+            foreign(StationProspectivePlaceAES.external_code) == Station.external_code,
+            foreign(StationProspectivePlaceAES.database_version_id) == Station.database_version_id,
+        ),
+        viewonly=True,
+        uselist=False,
+        lazy="select",
     )
 
     # Связь один-ко-многим: у одной площадки может быть несколько энергоблоков

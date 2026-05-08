@@ -5,8 +5,16 @@ Revision ID: r3s4t5u6v7w8
 Revises: p1q2r3s4t5u6
 Create Date: 2026-04-22
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "r3s4t5u6v7w8"
 down_revision = "p1q2r3s4t5u6"
@@ -17,12 +25,15 @@ SCHEMA_GEN = "gs_gen"
 
 
 def upgrade():
+    conn = op.get_bind()
     for table, col in (
-        ("station_prospective_place_ges", "construction_period_years"),
-        ("station_prospective_place_gaes", "construction_period_years"),
-        ("ges_tep_source_project_indicators", "construction_period_years"),
-        ("gaes_tep_source_project_indicators", "construction_period_years"),
+        (column_utils.station_prospective_place_ges_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.station_prospective_place_gaes_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.ges_tep_source_project_indicators_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.gaes_tep_source_project_indicators_table_name(conn, SCHEMA_GEN), "construction_period_years"),
     ):
+        if table is None:
+            continue
         op.alter_column(
             table,
             col,
@@ -33,12 +44,15 @@ def upgrade():
 
 
 def downgrade():
+    conn = op.get_bind()
     for table, col in (
-        ("station_prospective_place_ges", "construction_period_years"),
-        ("station_prospective_place_gaes", "construction_period_years"),
-        ("ges_tep_source_project_indicators", "construction_period_years"),
-        ("gaes_tep_source_project_indicators", "construction_period_years"),
+        (column_utils.station_prospective_place_ges_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.station_prospective_place_gaes_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.ges_tep_source_project_indicators_table_name(conn, SCHEMA_GEN), "construction_period_years"),
+        (column_utils.gaes_tep_source_project_indicators_table_name(conn, SCHEMA_GEN), "construction_period_years"),
     ):
+        if table is None:
+            continue
         op.alter_column(
             table,
             col,

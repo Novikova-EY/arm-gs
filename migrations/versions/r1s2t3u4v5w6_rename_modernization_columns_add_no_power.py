@@ -42,46 +42,50 @@ def _rename_column(table: str, old: str, new: str) -> None:
 
 def upgrade():
     conn = op.get_bind()
+    machines_table = column_utils.machines_table_name(conn, SCHEMA)
+    pgu_table = column_utils.pgu_machines_table_name(conn, SCHEMA)
 
-    if column_utils.table_has_column(conn, SCHEMA, "machines", OLD_COL) and not column_utils.table_has_column(
-        conn, SCHEMA, "machines", NEW_POWER_COL
-    ):
+    if machines_table and column_utils.table_has_column(
+        conn, SCHEMA, machines_table, OLD_COL
+    ) and not column_utils.table_has_column(conn, SCHEMA, machines_table, NEW_POWER_COL):
         if column_utils.index_exists(conn, SCHEMA, MACHINES_OLD_MODERN_INDEX):
             op.drop_index(
                 MACHINES_OLD_MODERN_INDEX,
-                table_name="machines",
+                table_name=machines_table,
                 schema=SCHEMA,
             )
-        _rename_column("machines", OLD_COL, NEW_POWER_COL)
+        _rename_column(machines_table, OLD_COL, NEW_POWER_COL)
         if not column_utils.index_exists(conn, SCHEMA, MACHINES_POWER_INDEX):
             op.create_index(
                 MACHINES_POWER_INDEX,
-                "machines",
+                machines_table,
                 [NEW_POWER_COL],
                 unique=False,
                 schema=SCHEMA,
             )
-    else:
+    elif machines_table:
         if (
-            column_utils.table_has_column(conn, SCHEMA, "machines", NEW_POWER_COL)
+            column_utils.table_has_column(conn, SCHEMA, machines_table, NEW_POWER_COL)
             and not column_utils.index_exists(conn, SCHEMA, MACHINES_POWER_INDEX)
         ):
             op.create_index(
                 MACHINES_POWER_INDEX,
-                "machines",
+                machines_table,
                 [NEW_POWER_COL],
                 unique=False,
                 schema=SCHEMA,
             )
 
-    if column_utils.table_has_column(
-        conn, SCHEMA, "pgu_machines", OLD_COL
-    ) and not column_utils.table_has_column(
-        conn, SCHEMA, "pgu_machines", NEW_POWER_COL
+    if (
+        pgu_table
+        and column_utils.table_has_column(conn, SCHEMA, pgu_table, OLD_COL)
+        and not column_utils.table_has_column(conn, SCHEMA, pgu_table, NEW_POWER_COL)
     ):
-        _rename_column("pgu_machines", OLD_COL, NEW_POWER_COL)
+        _rename_column(pgu_table, OLD_COL, NEW_POWER_COL)
 
-    for table in ("machines", "pgu_machines"):
+    for table in (machines_table, pgu_table):
+        if not table:
+            continue
         if not column_utils.table_has_column(conn, SCHEMA, table, NO_POWER_COL):
             op.add_column(
                 table,
@@ -90,12 +94,13 @@ def upgrade():
             )
 
     if (
-        column_utils.table_has_column(conn, SCHEMA, "machines", NO_POWER_COL)
+        machines_table
+        and column_utils.table_has_column(conn, SCHEMA, machines_table, NO_POWER_COL)
         and not column_utils.index_exists(conn, SCHEMA, MACHINES_NO_POWER_INDEX)
     ):
         op.create_index(
             MACHINES_NO_POWER_INDEX,
-            "machines",
+            machines_table,
             [NO_POWER_COL],
             unique=False,
             schema=SCHEMA,
@@ -104,40 +109,42 @@ def upgrade():
 
 def downgrade():
     conn = op.get_bind()
+    machines_table = column_utils.machines_table_name(conn, SCHEMA)
+    pgu_table = column_utils.pgu_machines_table_name(conn, SCHEMA)
 
-    if column_utils.index_exists(conn, SCHEMA, MACHINES_NO_POWER_INDEX):
+    if machines_table and column_utils.index_exists(conn, SCHEMA, MACHINES_NO_POWER_INDEX):
         op.drop_index(
             MACHINES_NO_POWER_INDEX,
-            table_name="machines",
+            table_name=machines_table,
             schema=SCHEMA,
         )
-    for table in ("pgu_machines", "machines"):
-        if column_utils.table_has_column(conn, SCHEMA, table, NO_POWER_COL):
+    for table in (pgu_table, machines_table):
+        if table and column_utils.table_has_column(conn, SCHEMA, table, NO_POWER_COL):
             op.drop_column(table, NO_POWER_COL, schema=SCHEMA)
 
-    if column_utils.table_has_column(
-        conn, SCHEMA, "pgu_machines", NEW_POWER_COL
-    ) and not column_utils.table_has_column(
-        conn, SCHEMA, "pgu_machines", OLD_COL
+    if (
+        pgu_table
+        and column_utils.table_has_column(conn, SCHEMA, pgu_table, NEW_POWER_COL)
+        and not column_utils.table_has_column(conn, SCHEMA, pgu_table, OLD_COL)
     ):
-        _rename_column("pgu_machines", NEW_POWER_COL, OLD_COL)
+        _rename_column(pgu_table, NEW_POWER_COL, OLD_COL)
 
-    if column_utils.table_has_column(
-        conn, SCHEMA, "machines", NEW_POWER_COL
-    ) and not column_utils.table_has_column(
-        conn, SCHEMA, "machines", OLD_COL
+    if (
+        machines_table
+        and column_utils.table_has_column(conn, SCHEMA, machines_table, NEW_POWER_COL)
+        and not column_utils.table_has_column(conn, SCHEMA, machines_table, OLD_COL)
     ):
         if column_utils.index_exists(conn, SCHEMA, MACHINES_POWER_INDEX):
             op.drop_index(
                 MACHINES_POWER_INDEX,
-                table_name="machines",
+                table_name=machines_table,
                 schema=SCHEMA,
             )
-        _rename_column("machines", NEW_POWER_COL, OLD_COL)
+        _rename_column(machines_table, NEW_POWER_COL, OLD_COL)
         if not column_utils.index_exists(conn, SCHEMA, MACHINES_OLD_MODERN_INDEX):
             op.create_index(
                 MACHINES_OLD_MODERN_INDEX,
-                "machines",
+                machines_table,
                 [OLD_COL],
                 unique=False,
                 schema=SCHEMA,

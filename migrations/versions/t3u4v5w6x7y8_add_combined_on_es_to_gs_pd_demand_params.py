@@ -5,9 +5,17 @@ Revision ID: t3u4v5w6x7y8
 Revises: q1r2s3t4u5v6
 Create Date: 2026-04-10
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "t3u4v5w6x7y8"
@@ -19,7 +27,7 @@ SCHEMA_PD = "gs_pd"
 COLUMN = "combined_on_es"
 COL_TYPE = sa.Numeric(precision=25, scale=16)
 
-_DEMAND_PARAM_TABLES = (
+_DEMAND_PARAM_TABLES_LEGACY = (
     "gs_energy_area_demand_params",
     "gs_ees_demand_params",
     "gs_energy_system_type_demand_params",
@@ -50,11 +58,14 @@ def _column_exists(connection, schema: str, table: str, column: str) -> bool:
 
 def upgrade():
     conn = op.get_bind()
-    for table in _DEMAND_PARAM_TABLES:
-        if _column_exists(conn, SCHEMA_PD, table, COLUMN):
+    for legacy in _DEMAND_PARAM_TABLES_LEGACY:
+        physical = column_utils.gs_pd_demand_params_physical_table_name(conn, SCHEMA_PD, legacy)
+        if physical is None:
+            continue
+        if _column_exists(conn, SCHEMA_PD, physical, COLUMN):
             continue
         op.add_column(
-            table,
+            physical,
             sa.Column(COLUMN, COL_TYPE, nullable=True),
             schema=SCHEMA_PD,
         )
@@ -62,7 +73,10 @@ def upgrade():
 
 def downgrade():
     conn = op.get_bind()
-    for table in reversed(_DEMAND_PARAM_TABLES):
-        if not _column_exists(conn, SCHEMA_PD, table, COLUMN):
+    for legacy in reversed(_DEMAND_PARAM_TABLES_LEGACY):
+        physical = column_utils.gs_pd_demand_params_physical_table_name(conn, SCHEMA_PD, legacy)
+        if physical is None:
             continue
-        op.drop_column(table, COLUMN, schema=SCHEMA_PD)
+        if not _column_exists(conn, SCHEMA_PD, physical, COLUMN):
+            continue
+        op.drop_column(physical, COLUMN, schema=SCHEMA_PD)

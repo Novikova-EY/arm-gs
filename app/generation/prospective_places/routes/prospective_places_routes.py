@@ -40,6 +40,153 @@ def no_compress(f):
     return decorated_function
 
 
+def _prospective_place_can_edit() -> bool:
+    if not current_user.is_authenticated:
+        return False
+    edit_roles = ("admin", "generation-admin", "generation-editor")
+    return any(role in current_user.role_names for role in edit_roles)
+
+
+def _station_choice_label(station) -> str:
+    return ((getattr(station, "name", None) or "").strip() or "—")
+
+
+def _version_id_for_station_link(place) -> int | None:
+    """Версия БД для списка станций и валидации связи.
+
+    У перспективной площадки database_version_id часто NULL: тогда показываем
+    электростанции текущей активной версии (как на остальных экранах), а не
+    только записи с NULL (их обычно нет).
+    """
+    from app.common.services.database_version_filter import get_current_db_version_id
+
+    vid = getattr(place, "database_version_id", None)
+    if vid is not None:
+        return vid
+    return get_current_db_version_id()
+
+
+def _get_station_link_context(place) -> dict:
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_model import Station
+
+    version_id = _version_id_for_station_link(place)
+    stations = list(
+        filter_by_explicit_db_version(
+            Station.query.options(joinedload(Station.regional_district)),
+            Station,
+            version_id,
+        )
+        .order_by(Station.name, Station.id)
+        .all()
+    )
+
+    linked_station = None
+    place_external_code = (getattr(place, "external_code", None) or "").strip()
+    if place_external_code:
+        linked_station = next(
+            (
+                station
+                for station in stations
+                if ((getattr(station, "external_code", None) or "").strip() == place_external_code)
+            ),
+            None,
+        )
+        if linked_station is None:
+            linked_station = (
+                filter_by_explicit_db_version(
+                    Station.query.options(joinedload(Station.regional_district)),
+                    Station,
+                    version_id,
+                )
+                .filter(Station.external_code == place_external_code)
+                .first()
+            )
+            if linked_station and all(st.id != linked_station.id for st in stations):
+                stations.append(linked_station)
+                stations.sort(
+                    key=lambda st: (((st.name or "").strip()).lower(), st.id)
+                )
+
+    return {
+        "station_link_choices": [
+            ("", "не указано"),
+            *[(str(st.id), _station_choice_label(st)) for st in stations],
+        ],
+        "linked_station_id": str(linked_station.id) if linked_station else "",
+        "linked_station_display": (
+            _station_choice_label(linked_station) if linked_station else "не указано"
+        ),
+    }
+
+
+def _assign_prospective_place_station(place, station_id: int | None):
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_model import Station
+
+    if station_id is None:
+        place.external_code = None
+        return None
+
+    station = (
+        filter_by_explicit_db_version(
+            Station.query,
+            Station,
+            _version_id_for_station_link(place),
+        )
+        .filter(Station.id == station_id)
+        .first()
+    )
+    if not station:
+        raise LookupError("Выбранная электростанция не найдена для соответствующей версии БД.")
+
+    station_external_code = (getattr(station, "external_code", None) or "").strip()
+    if not station_external_code:
+        raise ValueError("У выбранной электростанции отсутствует external_code, связь невозможна.")
+
+    place.external_code = station_external_code
+    return station
+
+
+def _navigation_redirect_to_station(place, *, back_endpoint: str, back_id: int):
+    """GET с параметром station_id: открыть карточку электростанции в версии БД площадки."""
+    from app.common.middleware.database_version_middleware import set_session_version
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_model import Station
+
+    station_id_raw = (request.args.get("station_id") or "").strip()
+    try:
+        station_id = int(station_id_raw) if station_id_raw else None
+    except ValueError:
+        station_id = None
+
+    def _back():
+        return redirect(url_for(back_endpoint, id=back_id))
+
+    if station_id is None:
+        flash("Выберите электростанцию или укажите связь перед переходом.", "warning")
+        return _back()
+
+    station = (
+        filter_by_explicit_db_version(
+            Station.query,
+            Station,
+            _version_id_for_station_link(place),
+        )
+        .filter(Station.id == station_id)
+        .first()
+    )
+    if not station:
+        flash("Электростанция не найдена для версии БД этой площадки.", "danger")
+        return _back()
+
+    effective_version_id = _version_id_for_station_link(place)
+    if effective_version_id is not None:
+        set_session_version(effective_version_id)
+
+    return redirect(url_for("station_bp.station_details", station_id=station.id))
+
+
 def _load_prospective_places_aes_stations_and_filters():
     """Станции и контекст фильтров по request.args (список и страницы ТЭП)."""
     from app.generation.prospective_places.models import StationProspectivePlaceAES, MachineProspectivePlaceAES
@@ -312,10 +459,7 @@ def prospective_place_aes_details(id):
     )
     sort_machines_by_station_block_number(place)
 
-    edit_roles = ["admin", "generation-admin", "generation-editor"]
-    can_edit = current_user.is_authenticated and any(
-        role in current_user.role_names for role in edit_roles
-    )
+    can_edit = _prospective_place_can_edit()
 
     form = ProspectivePlaceAESEditForm()
     rd_list = get_regional_district_list_full()
@@ -396,6 +540,7 @@ def prospective_place_aes_details(id):
         "ozp": _all_same(lambda mp: mp.ozp),
         "vlp": _all_same(lambda mp: mp.vlp),
     }
+    station_link_ctx = _get_station_link_context(place)
 
     return render_template(
         "generation/prospective_places/aes/prospective_place_aes_details.html",
@@ -405,6 +550,65 @@ def prospective_place_aes_details(id):
         res_auto_map=res_auto_map,
         total_capacity_mw=total_capacity_mw,
         merged_values=merged_values,
+        **station_link_ctx,
+    )
+
+
+@prospective_places_bp.route("/aes/<int:id>/link-station/", methods=["POST"])
+@login_required
+def prospective_place_aes_link_station(id):
+    from app.generation.prospective_places.models import StationProspectivePlaceAES
+
+    if not _prospective_place_can_edit():
+        flash("Недостаточно прав для изменения связи с электростанцией.", "warning")
+        return redirect(url_for("prospective_places_bp.prospective_place_aes_details", id=id))
+
+    place = StationProspectivePlaceAES.query.get_or_404(id)
+    station_id_raw = (request.form.get("linked_station_id") or "").strip()
+
+    try:
+        station_id = int(station_id_raw) if station_id_raw else None
+    except ValueError:
+        flash("Некорректно выбрана электростанция.", "danger")
+        return redirect(url_for("prospective_places_bp.prospective_place_aes_details", id=id))
+
+    try:
+        station = _assign_prospective_place_station(place, station_id)
+        db.session.commit()
+        if station is None:
+            flash("Связь с электростанцией снята.", "success")
+        else:
+            flash("Связь с электростанцией сохранена.", "success")
+        log_to_db(
+            current_user,
+            "Изменена связь перспективной площадки АЭС с электростанцией",
+            details=(
+                f"id_place={place.id}; site_name={place.site_name!r}; "
+                f"station_id={(station.id if station else None)}"
+            ),
+            entity_type="prospective_place_aes",
+            entity_id=place.id,
+        )
+    except (LookupError, ValueError) as e:
+        db.session.rollback()
+        flash(str(e), "danger")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Ошибка при сохранении связи: {str(e)}", "danger")
+
+    return redirect(url_for("prospective_places_bp.prospective_place_aes_details", id=id))
+
+
+@prospective_places_bp.route("/aes/<int:id>/go-station/", methods=["GET"])
+@login_required
+def prospective_place_aes_go_station(id):
+    from app.generation.prospective_places.models import StationProspectivePlaceAES
+
+    place = StationProspectivePlaceAES.query.get_or_404(id)
+    return _navigation_redirect_to_station(
+        place,
+        back_endpoint="prospective_places_bp.prospective_place_aes_details",
+        back_id=id,
     )
 
 

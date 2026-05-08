@@ -5,9 +5,17 @@ Revision ID: 9baedd89c064
 Revises: t3u4v5w6x7y8
 Create Date: 2026-04-10
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "9baedd89c064"
@@ -18,8 +26,7 @@ depends_on = None
 SCHEMA_PD = "gs_pd"
 COL_TYPE = sa.Numeric(precision=25, scale=16)
 
-# (table, column)
-_ADD_COLUMNS = (
+_ADD_COLUMNS_LEGACY = (
     ("gs_federal_district_demand_params", "combined_on_cz"),
     ("gs_regional_district_demand_params", "combined_on_fo"),
     ("gs_regional_district_demand_params", "combined_on_cz"),
@@ -40,19 +47,25 @@ def _column_exists(connection, schema: str, table: str, column: str) -> bool:
 
 def upgrade():
     conn = op.get_bind()
-    for table, column in _ADD_COLUMNS:
-        if _column_exists(conn, SCHEMA_PD, table, column):
+    for legacy, col in _ADD_COLUMNS_LEGACY:
+        physical = column_utils.gs_pd_demand_params_physical_table_name(conn, SCHEMA_PD, legacy)
+        if physical is None:
+            continue
+        if _column_exists(conn, SCHEMA_PD, physical, col):
             continue
         op.add_column(
-            table,
-            sa.Column(column, COL_TYPE, nullable=True),
+            physical,
+            sa.Column(col, COL_TYPE, nullable=True),
             schema=SCHEMA_PD,
         )
 
 
 def downgrade():
     conn = op.get_bind()
-    for table, column in reversed(_ADD_COLUMNS):
-        if not _column_exists(conn, SCHEMA_PD, table, column):
+    for legacy, col in reversed(_ADD_COLUMNS_LEGACY):
+        physical = column_utils.gs_pd_demand_params_physical_table_name(conn, SCHEMA_PD, legacy)
+        if physical is None:
             continue
-        op.drop_column(table, column, schema=SCHEMA_PD)
+        if not _column_exists(conn, SCHEMA_PD, physical, col):
+            continue
+        op.drop_column(physical, col, schema=SCHEMA_PD)

@@ -5,9 +5,17 @@ Revision ID: f2e3d4c5b6a8
 Revises: f1e2d3c4b5a7
 Create Date: 2026-04-03
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "f2e3d4c5b6a8"
@@ -34,6 +42,9 @@ def _column_exists(connection, column: str) -> bool:
 
 def upgrade():
     conn = op.get_bind()
+    table_years = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, "gs_years")
+    if table_years is None:
+        return
     if not _column_exists(conn, COL):
         op.add_column(
             TABLE,
@@ -43,7 +54,7 @@ def upgrade():
         op.create_foreign_key(
             f"fk_{TABLE}_{COL}",
             TABLE,
-            "gs_years",
+            table_years,
             [COL],
             ["id"],
             source_schema=SCHEMA_FUEL,
@@ -64,7 +75,7 @@ def upgrade():
                 f"""
                 UPDATE {SCHEMA_FUEL}.{TABLE} AS dp
                 SET {COL} = y.id
-                FROM {SCHEMA_REFDATA}.gs_years AS y
+                FROM {SCHEMA_REFDATA}.{table_years} AS y
                 WHERE dp.year_number = y.number
                   AND (
                     (dp.database_version_id IS NULL AND y.database_version_id IS NULL)
@@ -79,7 +90,7 @@ def upgrade():
         if n_null and int(n_null) > 0:
             raise RuntimeError(
                 f"Миграция: для {n_null} строк gs_fue_distribution_parameters не найден "
-                f"Year в gs_years (number + database_version_id). Заполните вручную или добавьте годы в справочник."
+                f"Year в {table_years} (number + database_version_id). Заполните вручную или добавьте годы в справочник."
             )
         op.alter_column(
             TABLE,
@@ -103,12 +114,15 @@ def downgrade():
         schema=SCHEMA_FUEL,
     )
     conn = op.get_bind()
+    table_years = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, "gs_years")
+    if table_years is None:
+        return
     conn.execute(
         text(
             f"""
             UPDATE {SCHEMA_FUEL}.{TABLE} AS dp
             SET year_number = y.number
-            FROM {SCHEMA_REFDATA}.gs_years AS y
+            FROM {SCHEMA_REFDATA}.{table_years} AS y
             WHERE dp.{COL} = y.id
             """
         )

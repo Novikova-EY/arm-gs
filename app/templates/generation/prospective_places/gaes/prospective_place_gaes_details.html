@@ -58,6 +58,23 @@
     padding: 0.65rem 0.85rem;
     text-align: left;
 }
+.linked-station-dropdown .dropdown-menu {
+    width: 100%;
+    min-width: 100%;
+}
+.linked-station-dropdown .linked-station-row {
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.125rem;
+}
+.linked-station-dropdown .linked-station-row:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.08);
+}
+.linked-station-dropdown .linked-station-row.is-selected {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+    font-weight: 600;
+}
 </style>
 
 {% if current_user.is_authenticated %}
@@ -77,6 +94,12 @@
             {% endif %}
         </h2>
     </div>
+
+    {% if can_edit %}
+    <form id="gaes-link-station-form" method="POST" action="{{ url_for('prospective_places_bp.prospective_place_gaes_link_station', id=place.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    </form>
+    {% endif %}
 
     <form method="POST" id="gaes-place-edit-form" action="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=place.id) }}">
         {{ form.hidden_tag() }}
@@ -177,6 +200,38 @@
                         <div class="col-12 col-xl-6">
                             <div class="p-0">
                                 <h4 class="card-title text-decoration-underline mb-3"><strong>Параметры площадки</strong></h4>
+                                <div class="row g-2 align-items-start mb-2">
+                                    <div class="col-5 text-start fw-semibold">Электростанция:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit %}
+                                        <div class="d-flex gap-2 align-items-start flex-wrap">
+                                            <div class="flex-grow-1" style="min-width: 12rem;">
+                                                <select
+                                                    name="linked_station_id"
+                                                    id="linked_station_id"
+                                                    class="form-select"
+                                                    form="gaes-link-station-form"
+                                                >
+                                                    {% for val, label in station_link_choices %}
+                                                    <option value="{{ val }}" {% if linked_station_id == (val|string) %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="d-flex gap-2 align-items-start">
+                                                <button type="submit" class="btn btn-outline-primary text-nowrap" form="gaes-link-station-form">Связать</button>
+                                                <a id="gaes-go-station-link" class="btn btn-outline-secondary text-nowrap disabled" href="#" aria-disabled="true">Перейти</a>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <span>{{ linked_station_display }}</span>
+                                            {% if linked_station_id %}
+                                            <a class="btn btn-outline-secondary btn-sm text-nowrap" href="{{ url_for('prospective_places_bp.prospective_place_gaes_go_station', id=place.id, station_id=linked_station_id) }}">Перейти</a>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 <div class="row g-2 align-items-start mb-2">
                                     <div class="col-5 text-start fw-semibold">{{ form.id_prospective_place_type_gaes.label.text }}:</div>
                                     <div class="col-7 text-start">
@@ -307,6 +362,185 @@
 })();
 </script>
 <script>
+(function() {
+    function ensureLinkedStationDropdown() {
+        const selectEl = document.getElementById('linked_station_id');
+        if (!selectEl || selectEl.dataset.linkedStationDropdownInit === '1') return;
+
+        selectEl.dataset.linkedStationDropdownInit = '1';
+
+        const titleText = 'Электростанция';
+        const placeholderBtn = 'не указано';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'dropdown w-100 linked-station-dropdown';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'form-select w-100 text-start';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.setAttribute('data-bs-auto-close', 'outside');
+        btn.setAttribute('aria-expanded', 'false');
+
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu p-2 filter-dropdown-menu';
+
+        selectEl.classList.add('d-none');
+
+        const parent = selectEl.parentNode;
+        if (!parent) return;
+        parent.replaceChild(wrapper, selectEl);
+        wrapper.appendChild(btn);
+        wrapper.appendChild(menu);
+        wrapper.appendChild(selectEl);
+
+        function currentValue() {
+            const opt = selectEl.selectedOptions[0];
+            return opt ? String(opt.value) : '';
+        }
+
+        function setButtonText() {
+            const opt = selectEl.selectedOptions[0];
+            if (!opt || String(opt.value) === '') {
+                const emptyOpt = Array.from(selectEl.options).find(function(option) {
+                    return String(option.value) === '';
+                });
+                btn.textContent = (emptyOpt && (emptyOpt.textContent || '').trim()) || placeholderBtn;
+                return;
+            }
+            btn.textContent = (opt.textContent || '').trim() || placeholderBtn;
+        }
+
+        function selectValue(value) {
+            const normalizedValue = String(value);
+            Array.from(selectEl.options).forEach(function(option) {
+                option.selected = String(option.value) === normalizedValue;
+            });
+            setButtonText();
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function hideDropdown() {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                const inst = bootstrap.Dropdown.getInstance(btn)
+                    || bootstrap.Dropdown.getOrCreateInstance(btn);
+                inst.hide();
+            }
+        }
+
+        let searchInputRef = null;
+
+        function renderMenu() {
+            menu.innerHTML = '';
+
+            const actions = document.createElement('div');
+            actions.className = 'd-flex justify-content-between align-items-center mb-2 gap-2';
+
+            const title = document.createElement('div');
+            title.className = 'fw-bold';
+            title.textContent = titleText;
+
+            const clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'btn btn-sm btn-outline-danger';
+            clearBtn.textContent = 'Сбросить';
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectValue('');
+                renderMenu();
+            });
+
+            actions.appendChild(title);
+            actions.appendChild(clearBtn);
+            menu.appendChild(actions);
+
+            const searchWrap = document.createElement('div');
+            searchWrap.className = 'mb-2';
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control form-control-sm';
+            searchInput.placeholder = 'Поиск...';
+            searchInput.setAttribute('autocomplete', 'off');
+            searchWrap.appendChild(searchInput);
+            menu.appendChild(searchWrap);
+            searchInputRef = searchInput;
+
+            const list = document.createElement('div');
+            list.className = 'd-flex flex-column';
+
+            const selectedValue = currentValue();
+            Array.from(selectEl.options).forEach(function(opt) {
+                const value = (opt.value ?? '').toString();
+                const row = document.createElement('div');
+                row.className = 'linked-station-row';
+                row.setAttribute('role', 'button');
+                row.tabIndex = 0;
+                const optText = (opt.textContent || '').trim();
+                row.textContent = optText;
+                row.setAttribute('data-search-text', optText.toLowerCase());
+                row.setAttribute('data-opt-value', value);
+
+                if (String(value) === selectedValue) {
+                    row.classList.add('is-selected');
+                }
+
+                row.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectValue(value);
+                    renderMenu();
+                    hideDropdown();
+                });
+                row.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        row.click();
+                    }
+                });
+
+                list.appendChild(row);
+            });
+
+            function applyFilter() {
+                const q = (searchInput.value || '').trim().toLowerCase();
+                const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+                list.querySelectorAll('[data-search-text]').forEach(function(el) {
+                    const hay = el.getAttribute('data-search-text') || '';
+                    const match = terms.length === 0 || terms.every(function(term) {
+                        return hay.indexOf(term) !== -1;
+                    });
+                    el.classList.toggle('d-none', !match);
+                });
+            }
+
+            searchInput.addEventListener('input', applyFilter);
+            searchInput.addEventListener('keyup', applyFilter);
+            searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
+
+            menu.appendChild(list);
+            setButtonText();
+        }
+
+        btn.addEventListener('shown.bs.dropdown', function() {
+            if (searchInputRef) {
+                searchInputRef.value = '';
+                searchInputRef.dispatchEvent(new Event('input', { bubbles: true }));
+                setTimeout(function() { searchInputRef.focus(); }, 0);
+            }
+        });
+
+        renderMenu();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ensureLinkedStationDropdown);
+    } else {
+        ensureLinkedStationDropdown();
+    }
+})();
+</script>
+<script>
 {% include 'generation/prospective_places/gaes/_gaes_tep_derived_specific_capital_script.html' %}
 </script>
 <script>
@@ -340,6 +574,41 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+</script>
+<script>
+(function() {
+    const goStationBaseUrl = {{ url_for('prospective_places_bp.prospective_place_gaes_go_station', id=place.id) | tojson }};
+    function wireProspectivePlaceGoStation() {
+        const sel = document.getElementById('linked_station_id');
+        const link = document.getElementById('gaes-go-station-link');
+        if (!sel || !link) return;
+        function refreshGoStationHref() {
+            const v = (sel.value || '').trim();
+            if (!v) {
+                link.href = '#';
+                link.classList.add('disabled');
+                link.setAttribute('aria-disabled', 'true');
+                return;
+            }
+            const url = new URL(goStationBaseUrl, window.location.origin);
+            url.searchParams.set('station_id', v);
+            link.pathname = url.pathname;
+            link.search = url.search;
+            link.classList.remove('disabled');
+            link.removeAttribute('aria-disabled');
+        }
+        sel.addEventListener('change', refreshGoStationHref);
+        link.addEventListener('click', function(e) {
+            if (!(sel.value || '').trim()) e.preventDefault();
+        });
+        refreshGoStationHref();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireProspectivePlaceGoStation);
+    } else {
+        wireProspectivePlaceGoStation();
+    }
+})();
 </script>
 {% endif %}
 {% endblock %}

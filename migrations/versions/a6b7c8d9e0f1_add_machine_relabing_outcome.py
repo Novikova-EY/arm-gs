@@ -24,18 +24,21 @@ branch_labels = None
 depends_on = None
 
 SCHEMA = "gs_gen"
-TABLE = "machines"
 
 
 def upgrade():
     conn = op.get_bind()
-    if not column_utils.table_has_column(conn, SCHEMA, TABLE, "relabing_outcome"):
+    table = column_utils.machines_table_name(conn, SCHEMA)
+    if table and not column_utils.table_has_column(conn, SCHEMA, table, "relabing_outcome"):
         op.add_column(
-            TABLE,
+            table,
             sa.Column("relabing_outcome", sa.String(64), nullable=True),
             schema=SCHEMA,
         )
 
 
 def downgrade():
-    op.drop_column(TABLE, "relabing_outcome", schema=SCHEMA)
+    conn = op.get_bind()
+    table = column_utils.machines_table_name(conn, SCHEMA)
+    if table and column_utils.table_has_column(conn, SCHEMA, table, "relabing_outcome"):
+        op.drop_column(table, "relabing_outcome", schema=SCHEMA)

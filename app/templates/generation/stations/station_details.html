@@ -10,28 +10,24 @@
     min-width: 100%;
 }
 
-/* Область «Агрегаты»: ширина и высота в пределах окна, прокрутка внутри блока */
+/* Область «Агрегаты»: на всю высоту контента; при узком окне — только горизонтальный скролл */
 .station-machines-table-viewport {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    max-height: max(12rem, calc(100vh - 240px));
-    max-height: max(12rem, calc(100dvh - 240px));
+    max-height: none !important;
+    height: auto !important;
     /* Перекрываем app/static/css/style.css: .table-responsive { overflow-x: hidden } —
        иначе широкая таблица раздвигает страницу, а не скроллится внутри блока */
     overflow-x: auto !important;
-    overflow-y: auto !important;
+    /* При overflow-x:auto значение visible для Y в спецификации часто сводится к auto — тогда
+       появляется лишний вертикальный скролл; clip даёт только горизонтальную прокрутку блока */
+    overflow-y: clip;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
-}
-@media (max-width: 991.98px) {
-    .station-machines-table-viewport {
-        max-height: max(12rem, calc(100vh - 280px));
-        max-height: max(12rem, calc(100dvh - 280px));
-    }
 }
 
 /* Фиксированные ширины столбцов - только нужные */
@@ -331,14 +327,31 @@
 .station-info .form-control { font-size: 1.05rem; }
 /* Крупнее и жирнее название  электростанции */
 .station-info .station-name { font-size: 1.35rem; font-weight: 700; }
+
+/* Кнопка перехода к перечню ТЭП перспективной площадки: серый текст, выравнивание с заголовком */
+.station-header-tep .btn.station-tep-btn,
+.station-header-tep .btn.station-tep-btn:focus {
+    color: var(--bs-secondary-color, #6c757d);
+    border-color: var(--bs-border-color-translucent, rgba(0, 0, 0, 0.175));
+    background-color: transparent;
+}
+.station-header-tep .btn.station-tep-btn:hover {
+    color: var(--bs-emphasis-color, #212529);
+    border-color: var(--bs-secondary-color, #6c757d);
+    background-color: var(--bs-tertiary-bg, rgba(0, 0, 0, 0.05));
+}
+.station-header-tep .btn.station-tep-btn .bi {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
 </style>
 
 <div class="container-fluid mt-4">
    
     <!-- Кнопки возврата -->
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">  электростанции РФ</a>
-        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-0">
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Изменения установленной мощности</a>
     </div>
     
     <body>
@@ -347,14 +360,30 @@
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
         {% endfor %}
 
-        <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">Информация об  электростанции
+        <div class="station-header-tep d-flex align-items-center justify-content-between flex-wrap gap-3 mt-4 mb-4">
+            <h2 class="mb-0 ms-3 d-flex align-items-center gap-3 flex-grow-1 min-w-0">Информация об  электростанции
                 {% if can_edit %}
                     <span class="edit-indicator ms-3">Режим редактирования</span>
                 {% else %}
                     <span class="readonly-indicator ms-3">Режим просмотра</span>
                 {% endif %}
             </h2>
+            {% if station_prospective_place_tep_links %}
+                {% if station_prospective_place_tep_links|length == 1 %}
+                <a href="{{ station_prospective_place_tep_links[0].url }}" class="btn station-tep-btn fs-5 text-nowrap me-3 d-inline-flex align-items-center gap-2 flex-shrink-0"><i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span></a>
+                {% else %}
+                <div class="btn-group me-3 flex-shrink-0">
+                    <button type="button" class="btn station-tep-btn fs-5 dropdown-toggle text-nowrap d-inline-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for item in station_prospective_place_tep_links %}
+                        <li><a class="dropdown-item" href="{{ item.url }}">{{ item.menu_label }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            {% endif %}
         </div>
 
         <!-- Карточка с основной информацией (поля привязываются к форме сохранения внизу страницы через атрибут form) -->

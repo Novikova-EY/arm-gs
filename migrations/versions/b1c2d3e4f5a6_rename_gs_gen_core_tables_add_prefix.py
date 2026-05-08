@@ -8,7 +8,15 @@ Create Date: 2026-04-24
 Переименование таблиц в схеме gs_gen: префикс gs_gen_ в имени таблицы
 (модели app/generation/models).
 """
+import os
+import sys
+
 from alembic import op
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "b1c2d3e4f5a6"
 down_revision = "a6b7c8d9e0f1"
@@ -36,10 +44,18 @@ _RENAMES = [
 
 
 def upgrade():
+    conn = op.get_bind()
     for old, new in _RENAMES:
-        op.rename_table(old, new, schema=SCHEMA)
+        if column_utils.table_exists(conn, SCHEMA, old) and not column_utils.table_exists(
+            conn, SCHEMA, new
+        ):
+            op.rename_table(old, new, schema=SCHEMA)
 
 
 def downgrade():
+    conn = op.get_bind()
     for old, new in reversed(_RENAMES):
-        op.rename_table(new, old, schema=SCHEMA)
+        if column_utils.table_exists(conn, SCHEMA, new) and not column_utils.table_exists(
+            conn, SCHEMA, old
+        ):
+            op.rename_table(new, old, schema=SCHEMA)

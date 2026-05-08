@@ -5,9 +5,17 @@ Revision ID: w4x5y6z7a8b9
 Revises: f7e8d9c0b1a2
 Create Date: 2026-05-06
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "w4x5y6z7a8b9"
@@ -64,6 +72,13 @@ def _short_prefix(table: str) -> str:
 
 def upgrade():
     conn = op.get_bind()
+    ref_db_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REFDATA)
+    if ref_db_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REFDATA} "
+            "(ожидались gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
+
     if not _schema_exists(conn, SCHEMA_EC):
         op.execute(sa.text(f'CREATE SCHEMA "{SCHEMA_EC}"'))
 
@@ -114,7 +129,7 @@ def upgrade():
         fks.append(
             sa.ForeignKeyConstraint(
                 ["database_version_id"],
-                [f"{SCHEMA_REFDATA}.gs_database_versions.id"],
+                [f"{SCHEMA_REFDATA}.{ref_db_versions}.id"],
                 ondelete="SET NULL",
             ),
         )

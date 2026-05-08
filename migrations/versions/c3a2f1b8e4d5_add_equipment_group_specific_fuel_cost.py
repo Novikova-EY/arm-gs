@@ -5,9 +5,17 @@ Revises: b2fee91e9f68
 Create Date: 2026-03-12 18:00:00.000000
 
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 # revision identifiers, used by Alembic.
@@ -35,6 +43,12 @@ def upgrade():
     conn = op.get_bind()
     if _table_exists(conn):
         return
+    ref_versions = column_utils.database_versions_physical_table_name(conn, "gs_sys")
+    if ref_versions is None:
+        raise RuntimeError(
+            "Не найдена таблица версий БД в gs_sys "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
     op.create_table(TABLE,
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('equipment_group_id', sa.Integer(), nullable=True),
@@ -136,7 +150,7 @@ def upgrade():
         sa.Column('database_version_id', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.ForeignKeyConstraint(['database_version_id'], ['gs_sys.gs_database_versions.id'], ondelete='SET NULL'),
+        sa.ForeignKeyConstraint(['database_version_id'], [f'gs_sys.{ref_versions}.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['equipment_group_id'], ['gs_fue.gs_fue_equipment_groups.id'], ondelete='RESTRICT'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('equipment_group_id', 'year_number', name='uq_equipment_group_specific_fuel_cost_group_year'),

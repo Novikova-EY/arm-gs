@@ -8,8 +8,16 @@ Create Date: 2026-03-31
 Таблицы справочника типов площадки ГАЭС (ProspectivePlaceTypeGAES) и
 площадок (StationProspectivePlaceGAES). Отдельно от таблиц ГЭС (ges / без «a»).
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "f1e2d3c4b5a6"
@@ -39,8 +47,21 @@ def _has_table(bind, schema: str, table: str) -> bool:
 
 def upgrade():
     bind = op.get_bind()
+    ref_versions = column_utils.database_versions_physical_table_name(bind, SCHEMA_REF)
+    table_rd = column_utils.refdata_table_name(bind, SCHEMA_REF, "gs_regional_districts")
+    table_res = column_utils.refdata_table_name(bind, SCHEMA_REF, "gs_regional_energy_systems")
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REF} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
 
-    if not _has_table(bind, SCHEMA_REF, TABLE_TYPES_GAES):
+    table_types_gaes = column_utils.prospective_place_types_gaes_table_name(bind, SCHEMA_REF)
+    table_station_gaes = column_utils.station_prospective_place_gaes_table_name(bind, SCHEMA_GEN)
+    if table_rd is None or table_res is None:
+        return
+
+    if table_types_gaes is None:
         op.create_table(
             TABLE_TYPES_GAES,
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -63,16 +84,17 @@ def upgrade():
             sa.UniqueConstraint("name", name="uq_gs_prospective_place_types_gaes_name"),
             schema=SCHEMA_REF,
         )
+        table_types_gaes = TABLE_TYPES_GAES
 
         bind = op.get_bind()
         ins = sa.text(
-            f'INSERT INTO "{SCHEMA_REF}"."{TABLE_TYPES_GAES}" (name, created_at, updated_at) '
+            f'INSERT INTO "{SCHEMA_REF}"."{table_types_gaes}" (name, created_at, updated_at) '
             "VALUES (:n, now(), now()) ON CONFLICT (name) DO NOTHING"
         )
         for name in CANONICAL_TYPE_NAMES:
             bind.execute(ins, {"n": name})
 
-    if not _has_table(bind, SCHEMA_GEN, TABLE_STATION_GAES):
+    if table_station_gaes is None:
         op.create_table(
             TABLE_STATION_GAES,
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -104,76 +126,60 @@ def upgrade():
             sa.PrimaryKeyConstraint("id"),
             schema=SCHEMA_GEN,
         )
-        op.create_index(
-            "ix_station_prospective_place_gaes_site_name",
-            TABLE_STATION_GAES,
-            ["site_name"],
-            schema=SCHEMA_GEN,
-        )
-        op.create_index(
-            "ix_station_prospective_place_gaes_id_regional_district",
-            TABLE_STATION_GAES,
-            ["id_regional_district"],
-            schema=SCHEMA_GEN,
-        )
-        op.create_index(
-            "ix_station_prospective_place_gaes_id_regional_energy_system",
-            TABLE_STATION_GAES,
-            ["id_regional_energy_system"],
-            schema=SCHEMA_GEN,
-        )
-        op.create_index(
-            "ix_station_pp_gaes_id_place_type_gaes",
-            TABLE_STATION_GAES,
-            ["id_prospective_place_type_gaes"],
-            schema=SCHEMA_GEN,
-        )
-        op.create_index(
-            "ix_station_prospective_place_gaes_database_version_id",
-            TABLE_STATION_GAES,
-            ["database_version_id"],
-            schema=SCHEMA_GEN,
-        )
-        op.create_foreign_key(
-            "fk_station_prospective_place_gaes_regional_district",
-            TABLE_STATION_GAES,
-            "gs_regional_districts",
-            ["id_regional_district"],
-            ["id"],
-            source_schema=SCHEMA_GEN,
-            referent_schema=SCHEMA_REF,
-            ondelete="SET NULL",
-        )
-        op.create_foreign_key(
-            "fk_station_prospective_place_gaes_regional_energy_system",
-            TABLE_STATION_GAES,
-            "gs_regional_energy_systems",
-            ["id_regional_energy_system"],
-            ["id"],
-            source_schema=SCHEMA_GEN,
-            referent_schema=SCHEMA_REF,
-            ondelete="SET NULL",
-        )
-        op.create_foreign_key(
-            "fk_station_prospective_place_gaes_prospective_place_type_gaes",
-            TABLE_STATION_GAES,
-            TABLE_TYPES_GAES,
-            ["id_prospective_place_type_gaes"],
-            ["id"],
-            source_schema=SCHEMA_GEN,
-            referent_schema=SCHEMA_REF,
-            ondelete="SET NULL",
-        )
-        op.create_foreign_key(
-            "fk_station_prospective_place_gaes_database_version",
-            TABLE_STATION_GAES,
-            "gs_database_versions",
-            ["database_version_id"],
-            ["id"],
-            source_schema=SCHEMA_GEN,
-            referent_schema=SCHEMA_REF,
-            ondelete="SET NULL",
-        )
+        table_station_gaes = TABLE_STATION_GAES
+        for index_name, cols in (
+            ("ix_station_prospective_place_gaes_site_name", ["site_name"]),
+            ("ix_station_prospective_place_gaes_id_regional_district", ["id_regional_district"]),
+            ("ix_station_prospective_place_gaes_id_regional_energy_system", ["id_regional_energy_system"]),
+            ("ix_station_pp_gaes_id_place_type_gaes", ["id_prospective_place_type_gaes"]),
+            ("ix_station_prospective_place_gaes_database_version_id", ["database_version_id"]),
+        ):
+            if not column_utils.index_exists(bind, SCHEMA_GEN, index_name):
+                op.create_index(index_name, table_station_gaes, cols, schema=SCHEMA_GEN)
+        if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_station_prospective_place_gaes_regional_district"):
+            op.create_foreign_key(
+                "fk_station_prospective_place_gaes_regional_district",
+                table_station_gaes,
+                table_rd,
+                ["id_regional_district"],
+                ["id"],
+                source_schema=SCHEMA_GEN,
+                referent_schema=SCHEMA_REF,
+                ondelete="SET NULL",
+            )
+        if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_station_prospective_place_gaes_regional_energy_system"):
+            op.create_foreign_key(
+                "fk_station_prospective_place_gaes_regional_energy_system",
+                table_station_gaes,
+                table_res,
+                ["id_regional_energy_system"],
+                ["id"],
+                source_schema=SCHEMA_GEN,
+                referent_schema=SCHEMA_REF,
+                ondelete="SET NULL",
+            )
+        if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_station_prospective_place_gaes_prospective_place_type_gaes"):
+            op.create_foreign_key(
+                "fk_station_prospective_place_gaes_prospective_place_type_gaes",
+                table_station_gaes,
+                table_types_gaes,
+                ["id_prospective_place_type_gaes"],
+                ["id"],
+                source_schema=SCHEMA_GEN,
+                referent_schema=SCHEMA_REF,
+                ondelete="SET NULL",
+            )
+        if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_station_prospective_place_gaes_database_version"):
+            op.create_foreign_key(
+                "fk_station_prospective_place_gaes_database_version",
+                table_station_gaes,
+                ref_versions,
+                ["database_version_id"],
+                ["id"],
+                source_schema=SCHEMA_GEN,
+                referent_schema=SCHEMA_REF,
+                ondelete="SET NULL",
+            )
 
 
 def downgrade():

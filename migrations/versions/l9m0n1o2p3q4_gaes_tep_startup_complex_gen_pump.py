@@ -5,55 +5,86 @@ Revision ID: l9m0n1o2p3q4
 Revises: k9l0m1n2o3p4
 Create Date: 2026-04-13
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "l9m0n1o2p3q4"
 down_revision = "k9l0m1n2o3p4"
 branch_labels = None
 depends_on = None
 
-TABLE = "gaes_tep_source_project_indicators"
 SCHEMA_GEN = "gs_gen"
 
 
 def upgrade():
-    op.add_column(
-        TABLE,
-        sa.Column("startup_complex_capacity_mw_generator_mode", sa.String(length=100), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column("startup_complex_capacity_mw_pump_mode", sa.String(length=100), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.execute(
-        f"""
-        UPDATE {SCHEMA_GEN}.{TABLE}
-        SET startup_complex_capacity_mw_generator_mode = startup_complex_capacity_mw,
-            startup_complex_capacity_mw_pump_mode = startup_complex_capacity_mw
-        WHERE startup_complex_capacity_mw IS NOT NULL
-        """
-    )
-    op.drop_column(TABLE, "startup_complex_capacity_mw", schema=SCHEMA_GEN)
+    conn = op.get_bind()
+    table = column_utils.gaes_tep_source_project_indicators_table_name(conn, SCHEMA_GEN)
+    if table is None:
+        return
+    gen_col = "startup_complex_capacity_mw_generator_mode"
+    pump_col = "startup_complex_capacity_mw_pump_mode"
+    merged_col = "startup_complex_capacity_mw"
+
+    if not column_utils.table_has_column(conn, SCHEMA_GEN, table, gen_col):
+        op.add_column(
+            table,
+            sa.Column(gen_col, sa.String(length=100), nullable=True),
+            schema=SCHEMA_GEN,
+        )
+    if not column_utils.table_has_column(conn, SCHEMA_GEN, table, pump_col):
+        op.add_column(
+            table,
+            sa.Column(pump_col, sa.String(length=100), nullable=True),
+            schema=SCHEMA_GEN,
+        )
+
+    if column_utils.table_has_column(conn, SCHEMA_GEN, table, merged_col):
+        op.execute(
+            sa.text(
+                f"""
+                UPDATE {SCHEMA_GEN}.{table}
+                SET {gen_col} = {merged_col},
+                    {pump_col} = {merged_col}
+                WHERE {merged_col} IS NOT NULL
+                """
+            )
+        )
+        op.drop_column(table, merged_col, schema=SCHEMA_GEN)
 
 
 def downgrade():
-    op.add_column(
-        TABLE,
-        sa.Column("startup_complex_capacity_mw", sa.String(length=100), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.execute(
-        f"""
-        UPDATE {SCHEMA_GEN}.{TABLE}
-        SET startup_complex_capacity_mw = COALESCE(
-            startup_complex_capacity_mw_generator_mode,
-            startup_complex_capacity_mw_pump_mode
+    conn = op.get_bind()
+    table = column_utils.gaes_tep_source_project_indicators_table_name(conn, SCHEMA_GEN)
+    if table is None:
+        return
+    gen_col = "startup_complex_capacity_mw_generator_mode"
+    pump_col = "startup_complex_capacity_mw_pump_mode"
+    merged_col = "startup_complex_capacity_mw"
+
+    if not column_utils.table_has_column(conn, SCHEMA_GEN, table, merged_col):
+        op.add_column(
+            table,
+            sa.Column(merged_col, sa.String(length=100), nullable=True),
+            schema=SCHEMA_GEN,
         )
-        """
+
+    op.execute(
+        sa.text(
+            f"""
+            UPDATE {SCHEMA_GEN}.{table}
+            SET {merged_col} = COALESCE({gen_col}, {pump_col})
+            """
+        )
     )
-    op.drop_column(TABLE, "startup_complex_capacity_mw_generator_mode", schema=SCHEMA_GEN)
-    op.drop_column(TABLE, "startup_complex_capacity_mw_pump_mode", schema=SCHEMA_GEN)
+    if column_utils.table_has_column(conn, SCHEMA_GEN, table, gen_col):
+        op.drop_column(table, gen_col, schema=SCHEMA_GEN)
+    if column_utils.table_has_column(conn, SCHEMA_GEN, table, pump_col):
+        op.drop_column(table, pump_col, schema=SCHEMA_GEN)

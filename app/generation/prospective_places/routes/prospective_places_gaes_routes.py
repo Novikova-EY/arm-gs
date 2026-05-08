@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """Маршруты для перспективных площадок ГАЭС (дубликат логики ГЭС)."""
 from . import prospective_places_bp
-from .prospective_places_routes import no_compress
+from .prospective_places_routes import (
+    _assign_prospective_place_station,
+    _get_station_link_context,
+    _navigation_redirect_to_station,
+    _prospective_place_can_edit,
+    no_compress,
+)
 from flask import render_template, send_file, request, redirect, url_for, flash, g
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
@@ -302,10 +308,7 @@ def prospective_place_gaes_details(id):
     )
     sort_machines_by_station_block_number(place)
 
-    edit_roles = ["admin", "generation-admin", "generation-editor"]
-    can_edit = current_user.is_authenticated and any(
-        role in current_user.role_names for role in edit_roles
-    )
+    can_edit = _prospective_place_can_edit()
 
     form = ProspectivePlaceGAESEditForm()
     rd_list = get_regional_district_list_full()
@@ -452,6 +455,7 @@ def prospective_place_gaes_details(id):
             flash("Исправьте ошибки в полях и повторите сохранение.", "danger")
 
     ctx = _gaes_tep_derive_template_context()
+    station_link_ctx = _get_station_link_context(place)
     return render_template(
         "generation/prospective_places/gaes/prospective_place_gaes_details.html",
         place=place,
@@ -459,7 +463,66 @@ def prospective_place_gaes_details(id):
         can_edit=can_edit,
         res_auto_map=res_auto_map,
         tep_form_entries=tep_form_entries,
+        **station_link_ctx,
         **ctx,
+    )
+
+
+@prospective_places_bp.route("/gaes/<int:id>/link-station/", methods=["POST"])
+@login_required
+def prospective_place_gaes_link_station(id):
+    from app.generation.prospective_places.models import StationProspectivePlaceGAES
+
+    if not _prospective_place_can_edit():
+        flash("Недостаточно прав для изменения связи с электростанцией.", "warning")
+        return redirect(url_for("prospective_places_bp.prospective_place_gaes_details", id=id))
+
+    place = StationProspectivePlaceGAES.query.get_or_404(id)
+    station_id_raw = (request.form.get("linked_station_id") or "").strip()
+
+    try:
+        station_id = int(station_id_raw) if station_id_raw else None
+    except ValueError:
+        flash("Некорректно выбрана электростанция.", "danger")
+        return redirect(url_for("prospective_places_bp.prospective_place_gaes_details", id=id))
+
+    try:
+        station = _assign_prospective_place_station(place, station_id)
+        db.session.commit()
+        if station is None:
+            flash("Связь с электростанцией снята.", "success")
+        else:
+            flash("Связь с электростанцией сохранена.", "success")
+        log_to_db(
+            current_user,
+            "Изменена связь перспективной площадки ГАЭС с электростанцией",
+            details=(
+                f"id_place={place.id}; site_name={place.site_name!r}; "
+                f"station_id={(station.id if station else None)}"
+            ),
+            entity_type="prospective_place_gaes",
+            entity_id=place.id,
+        )
+    except (LookupError, ValueError) as e:
+        db.session.rollback()
+        flash(str(e), "danger")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Ошибка при сохранении связи: {str(e)}", "danger")
+
+    return redirect(url_for("prospective_places_bp.prospective_place_gaes_details", id=id))
+
+
+@prospective_places_bp.route("/gaes/<int:id>/go-station/", methods=["GET"])
+@login_required
+def prospective_place_gaes_go_station(id):
+    from app.generation.prospective_places.models import StationProspectivePlaceGAES
+
+    place = StationProspectivePlaceGAES.query.get_or_404(id)
+    return _navigation_redirect_to_station(
+        place,
+        back_endpoint="prospective_places_bp.prospective_place_gaes_details",
+        back_id=id,
     )
 
 

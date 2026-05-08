@@ -5,9 +5,17 @@ Revision ID: f3e4d5c6b7a9
 Revises: f2e3d4c5b6a8
 Create Date: 2026-04-03
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "f3e4d5c6b7a9"
@@ -34,6 +42,9 @@ def _column_exists(connection, column: str) -> bool:
 
 def upgrade():
     conn = op.get_bind()
+    table_years = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, "gs_years")
+    if table_years is None:
+        return
     if not _column_exists(conn, COL):
         op.add_column(
             TABLE,
@@ -43,7 +54,7 @@ def upgrade():
         op.create_foreign_key(
             f"fk_{TABLE}_{COL}",
             TABLE,
-            "gs_years",
+            table_years,
             [COL],
             ["id"],
             source_schema=SCHEMA_FUEL,
@@ -64,7 +75,7 @@ def upgrade():
                 f"""
                 UPDATE {SCHEMA_FUEL}.{TABLE} AS dp
                 SET {COL} = y.id
-                FROM {SCHEMA_REFDATA}.gs_years AS y
+                FROM {SCHEMA_REFDATA}.{table_years} AS y
                 WHERE dp.byear IS NOT NULL
                   AND dp.byear = y.number
                   AND (
@@ -89,12 +100,15 @@ def downgrade():
         schema=SCHEMA_FUEL,
     )
     conn = op.get_bind()
+    table_years = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, "gs_years")
+    if table_years is None:
+        return
     conn.execute(
         text(
             f"""
             UPDATE {SCHEMA_FUEL}.{TABLE} AS dp
             SET byear = y.number
-            FROM {SCHEMA_REFDATA}.gs_years AS y
+            FROM {SCHEMA_REFDATA}.{table_years} AS y
             WHERE dp.{COL} = y.id
             """
         )

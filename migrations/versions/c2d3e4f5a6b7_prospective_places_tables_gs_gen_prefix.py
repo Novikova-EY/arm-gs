@@ -8,7 +8,15 @@ Create Date: 2026-04-24
 Префикс gs_gen_ в именах таблиц моделей app/generation/prospective_places/models
 (схема gs_gen — перспективные площадки, ТЭП, коэффициенты; схема gs_sys — справочники типов площадок).
 """
+import os
+import sys
+
 from alembic import op
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "c2d3e4f5a6b7"
 down_revision = "b1c2d3e4f5a6"
@@ -38,14 +46,28 @@ _RENAMES_REF = [
 
 
 def upgrade():
+    conn = op.get_bind()
     for old, new in _RENAMES_REF:
-        op.rename_table(old, new, schema=SCHEMA_REF)
+        if column_utils.table_exists(conn, SCHEMA_REF, old) and not column_utils.table_exists(
+            conn, SCHEMA_REF, new
+        ):
+            op.rename_table(old, new, schema=SCHEMA_REF)
     for old, new in _RENAMES_GEN:
-        op.rename_table(old, new, schema=SCHEMA_GEN)
+        if column_utils.table_exists(conn, SCHEMA_GEN, old) and not column_utils.table_exists(
+            conn, SCHEMA_GEN, new
+        ):
+            op.rename_table(old, new, schema=SCHEMA_GEN)
 
 
 def downgrade():
+    conn = op.get_bind()
     for old, new in reversed(_RENAMES_GEN):
-        op.rename_table(new, old, schema=SCHEMA_GEN)
+        if column_utils.table_exists(conn, SCHEMA_GEN, new) and not column_utils.table_exists(
+            conn, SCHEMA_GEN, old
+        ):
+            op.rename_table(new, old, schema=SCHEMA_GEN)
     for old, new in reversed(_RENAMES_REF):
-        op.rename_table(new, old, schema=SCHEMA_REF)
+        if column_utils.table_exists(conn, SCHEMA_REF, new) and not column_utils.table_exists(
+            conn, SCHEMA_REF, old
+        ):
+            op.rename_table(new, old, schema=SCHEMA_REF)

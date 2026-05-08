@@ -24,18 +24,23 @@ branch_labels = None
 depends_on = None
 
 SCHEMA = "gs_gen"
-TABLE = "pgu_machines"
 
 
 def upgrade():
     conn = op.get_bind()
-    if not column_utils.table_has_column(conn, SCHEMA, TABLE, "change_document"):
+    table = column_utils.pgu_machines_table_name(conn, SCHEMA)
+    if table is None:
+        return
+    if not column_utils.table_has_column(conn, SCHEMA, table, "change_document"):
         op.add_column(
-            TABLE,
+            table,
             sa.Column("change_document", sa.Text(), nullable=True),
             schema=SCHEMA,
         )
 
 
 def downgrade():
-    op.drop_column(TABLE, "change_document", schema=SCHEMA)
+    conn = op.get_bind()
+    table = column_utils.pgu_machines_table_name(conn, SCHEMA)
+    if table is not None and column_utils.table_has_column(conn, SCHEMA, table, "change_document"):
+        op.drop_column(table, "change_document", schema=SCHEMA)

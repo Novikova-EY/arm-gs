@@ -244,6 +244,93 @@ def _filter_items_by_version(items, version_id):
     ]
 
 
+def _prospective_place_version_for_station_link(place) -> Optional[int]:
+    """Та же версия БД, что используется для списка станций на карточке площадки."""
+    vid = getattr(place, "database_version_id", None)
+    if vid is not None:
+        return vid
+    return get_current_db_version_id()
+
+
+def _station_prospective_place_tep_links(station: Station, station_version_id: Optional[int]) -> list[dict]:
+    """
+    Карточки перспективных площадок с тем же external_code и согласованной версией БД.
+    Обратное соответствие правилу привязки на экранах prospective_places.
+    """
+    ec = (getattr(station, "external_code", None) or "").strip()
+    if not ec:
+        return []
+
+    from app.generation.prospective_places.models import (
+        StationProspectivePlaceAES,
+        StationProspectivePlaceGES,
+        StationProspectivePlaceGAES,
+    )
+
+    tuples: list[tuple[int, object, str, str]] = []
+    sort_key = {"aes": 0, "ges": 1, "gaes": 2}
+
+    for place_row in StationProspectivePlaceAES.query.filter(
+        StationProspectivePlaceAES.external_code == ec,
+    ).all():
+        if _prospective_place_version_for_station_link(place_row) == station_version_id:
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            tuples.append(
+                (
+                    sort_key["aes"],
+                    place_row,
+                    "prospective_places_bp.prospective_place_aes_details",
+                    f"АЭС — {sn}",
+                )
+            )
+
+    for place_row in StationProspectivePlaceGES.query.filter(
+        StationProspectivePlaceGES.external_code == ec,
+    ).all():
+        if _prospective_place_version_for_station_link(place_row) == station_version_id:
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            tuples.append(
+                (
+                    sort_key["ges"],
+                    place_row,
+                    "prospective_places_bp.prospective_place_ges_details",
+                    f"ГЭС — {sn}",
+                )
+            )
+
+    for place_row in StationProspectivePlaceGAES.query.filter(
+        StationProspectivePlaceGAES.external_code == ec,
+    ).all():
+        if _prospective_place_version_for_station_link(place_row) == station_version_id:
+            sn = ((getattr(place_row, "site_name", None) or "").strip() or "—")
+            tuples.append(
+                (
+                    sort_key["gaes"],
+                    place_row,
+                    "prospective_places_bp.prospective_place_gaes_details",
+                    f"ГАЭС — {sn}",
+                )
+            )
+
+    tuples.sort(key=lambda t: (t[0], getattr(t[1], "id", 0)))
+
+    out: list[dict] = []
+    seen_ids: set[tuple[str, int]] = set()
+    for _k, place_row, endpoint, menu_label in tuples:
+        pid = int(getattr(place_row, "id"))
+        dedup = (endpoint, pid)
+        if dedup in seen_ids:
+            continue
+        seen_ids.add(dedup)
+        out.append(
+            {
+                "url": url_for(endpoint, id=pid, **request.args),
+                "menu_label": menu_label,
+            }
+        )
+    return out
+
+
 @station_bp.route("/station_details/<int:station_id>", methods=["GET", "POST"])
 @login_required
 @handle_stale_data
@@ -990,6 +1077,10 @@ def station_details(station_id):
     def format_station_energy_for_display(val):
         return format_decimal_for_display(val, digits=rounding_digits)
 
+    station_prospective_place_tep_links = _station_prospective_place_tep_links(
+        station, station_version_id
+    )
+
     html = render_template(
         "generation/stations/station_details.html",
         form=form,
@@ -1015,6 +1106,7 @@ def station_details(station_id):
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
         res_auto_map=res_auto_map,
+        station_prospective_place_tep_links=station_prospective_place_tep_links,
     )
 
     after_render_at = time.perf_counter()

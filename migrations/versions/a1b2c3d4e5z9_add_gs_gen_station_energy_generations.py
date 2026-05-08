@@ -4,8 +4,16 @@ Revision ID: a1b2c3d4e5z9
 Revises: w4x5y6z7a8b9
 Create Date: 2026-05-07
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "a1b2c3d4e5z9"
@@ -20,6 +28,12 @@ TABLE = "gs_gen_station_energy_generations"
 
 def upgrade():
     conn = op.get_bind()
+    ref_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REF)
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REF} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
     inspector = sa.inspect(conn)
     if TABLE in inspector.get_table_names(schema=SCHEMA_GEN):
         op.drop_table(TABLE, schema=SCHEMA_GEN)
@@ -80,7 +94,7 @@ def upgrade():
     op.create_foreign_key(
         "fk_station_energy_gen_database_version",
         TABLE,
-        "gs_database_versions",
+        ref_versions,
         ["database_version_id"],
         ["id"],
         source_schema=SCHEMA_GEN,

@@ -8,7 +8,15 @@ Create Date: 2026-04-24
 Переименование таблиц в схеме gs_pd: gs_*_demand_params -> gs_pd_*_demand_params
 (модели app/power_demand/models).
 """
+import os
+import sys
+
 from alembic import op
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "a7b8c9d0e1f2"
 down_revision = "c2d3e4f5a6b7"
@@ -37,10 +45,14 @@ _RENAMES = [
 
 
 def upgrade():
+    conn = op.get_bind()
     for old, new in _RENAMES:
-        op.rename_table(old, new, schema=SCHEMA_PD)
+        if column_utils.table_exists(conn, SCHEMA_PD, old) and not column_utils.table_exists(conn, SCHEMA_PD, new):
+            op.rename_table(old, new, schema=SCHEMA_PD)
 
 
 def downgrade():
+    conn = op.get_bind()
     for old, new in reversed(_RENAMES):
-        op.rename_table(new, old, schema=SCHEMA_PD)
+        if column_utils.table_exists(conn, SCHEMA_PD, new) and not column_utils.table_exists(conn, SCHEMA_PD, old):
+            op.rename_table(new, old, schema=SCHEMA_PD)

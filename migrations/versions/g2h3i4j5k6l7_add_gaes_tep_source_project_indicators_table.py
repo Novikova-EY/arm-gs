@@ -8,8 +8,16 @@ Create Date: 2026-03-31
 Таблица перечня исходных ТЭП ГАЭС (ProspectivePlaceGaesTepSource).
 Ранее миграции только добавляли колонки (e7f8a9b0c1d2), сама таблица не создавалась.
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "g2h3i4j5k6l7"
@@ -35,8 +43,19 @@ def _has_table(bind, schema: str, table: str) -> bool:
 
 def upgrade():
     bind = op.get_bind()
-    if _has_table(bind, SCHEMA_GEN, TABLE_TEP):
+    table_tep = column_utils.gaes_tep_source_project_indicators_table_name(bind, SCHEMA_GEN)
+    if table_tep is not None:
         return
+    table_station = column_utils.station_prospective_place_gaes_table_name(bind, SCHEMA_GEN)
+    table_types = column_utils.prospective_place_types_gaes_table_name(bind, SCHEMA_REF)
+    ref_versions = column_utils.database_versions_physical_table_name(bind, SCHEMA_REF)
+    if table_station is None or table_types is None:
+        return
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REF} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
 
     op.create_table(
         TABLE_TEP,
@@ -96,54 +115,46 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
         schema=SCHEMA_GEN,
     )
-    op.create_index(
-        "ix_gaes_tep_source_id_station",
-        TABLE_TEP,
-        ["id_station_prospective_place_gaes"],
-        schema=SCHEMA_GEN,
-    )
-    op.create_index(
-        "ix_gaes_tep_source_id_prospective_place_type_gaes",
-        TABLE_TEP,
-        ["id_prospective_place_type_gaes"],
-        schema=SCHEMA_GEN,
-    )
-    op.create_index(
-        "ix_gaes_tep_source_project_indicators_database_version_id",
-        TABLE_TEP,
-        ["database_version_id"],
-        schema=SCHEMA_GEN,
-    )
-    op.create_foreign_key(
-        "fk_gaes_tep_station_prospective_place_gaes",
-        TABLE_TEP,
-        TABLE_STATION,
-        ["id_station_prospective_place_gaes"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_GEN,
-        ondelete="CASCADE",
-    )
-    op.create_foreign_key(
-        "fk_gaes_tep_prospective_place_type_gaes",
-        TABLE_TEP,
-        TABLE_TYPES,
-        ["id_prospective_place_type_gaes"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_REF,
-        ondelete="RESTRICT",
-    )
-    op.create_foreign_key(
-        "fk_gaes_tep_database_version",
-        TABLE_TEP,
-        "gs_database_versions",
-        ["database_version_id"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_REF,
-        ondelete="SET NULL",
-    )
+    for index_name, cols in (
+        ("ix_gaes_tep_source_id_station", ["id_station_prospective_place_gaes"]),
+        ("ix_gaes_tep_source_id_prospective_place_type_gaes", ["id_prospective_place_type_gaes"]),
+        ("ix_gaes_tep_source_project_indicators_database_version_id", ["database_version_id"]),
+    ):
+        if not column_utils.index_exists(bind, SCHEMA_GEN, index_name):
+            op.create_index(index_name, TABLE_TEP, cols, schema=SCHEMA_GEN)
+    if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_gaes_tep_station_prospective_place_gaes"):
+        op.create_foreign_key(
+            "fk_gaes_tep_station_prospective_place_gaes",
+            TABLE_TEP,
+            table_station,
+            ["id_station_prospective_place_gaes"],
+            ["id"],
+            source_schema=SCHEMA_GEN,
+            referent_schema=SCHEMA_GEN,
+            ondelete="CASCADE",
+        )
+    if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_gaes_tep_prospective_place_type_gaes"):
+        op.create_foreign_key(
+            "fk_gaes_tep_prospective_place_type_gaes",
+            TABLE_TEP,
+            table_types,
+            ["id_prospective_place_type_gaes"],
+            ["id"],
+            source_schema=SCHEMA_GEN,
+            referent_schema=SCHEMA_REF,
+            ondelete="RESTRICT",
+        )
+    if not column_utils.constraint_exists(bind, SCHEMA_GEN, "fk_gaes_tep_database_version"):
+        op.create_foreign_key(
+            "fk_gaes_tep_database_version",
+            TABLE_TEP,
+            ref_versions,
+            ["database_version_id"],
+            ["id"],
+            source_schema=SCHEMA_GEN,
+            referent_schema=SCHEMA_REF,
+            ondelete="SET NULL",
+        )
 
 
 def downgrade():

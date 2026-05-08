@@ -6,8 +6,16 @@ Create Date: 2026-03-19
 
 Создает таблицу machine_prospective_place_aes (энергоблоки перспективных площадок размещения АЭС).
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "p8q9r0s1t2u3"
@@ -21,6 +29,19 @@ TABLE = "machine_prospective_place_aes"
 
 
 def upgrade():
+    conn = op.get_bind()
+    # Уже есть под старым или новым именем (в т.ч. после c2d3e4f5a6b7).
+    if column_utils.machine_prospective_place_aes_table_name(conn, SCHEMA) is not None:
+        return
+    ref_station = column_utils.station_prospective_place_aes_table_name(conn, SCHEMA)
+    if ref_station is None:
+        return
+    ref_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REF)
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REF} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
     op.create_table(
         TABLE,
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -59,7 +80,7 @@ def upgrade():
     op.create_foreign_key(
         "fk_machine_prospective_place_aes_station",
         TABLE,
-        "station_prospective_place_aes",
+        ref_station,
         ["id_station_prospective_place_aes"],
         ["id"],
         source_schema=SCHEMA,
@@ -69,7 +90,7 @@ def upgrade():
     op.create_foreign_key(
         "fk_machine_prospective_place_aes_database_version",
         TABLE,
-        "gs_database_versions",
+        ref_versions,
         ["database_version_id"],
         ["id"],
         source_schema=SCHEMA,
@@ -79,21 +100,25 @@ def upgrade():
 
 
 def downgrade():
+    conn = op.get_bind()
+    tbl = column_utils.machine_prospective_place_aes_table_name(conn, SCHEMA)
+    if tbl is None:
+        return
     op.drop_constraint(
         "fk_machine_prospective_place_aes_database_version",
-        TABLE,
+        tbl,
         schema=SCHEMA,
         type_="foreignkey",
     )
     op.drop_constraint(
         "fk_machine_prospective_place_aes_station",
-        TABLE,
+        tbl,
         schema=SCHEMA,
         type_="foreignkey",
     )
     op.drop_index(
         "ix_machine_prospective_place_aes_id_station_prospective_place",
-        table_name=TABLE,
+        table_name=tbl,
         schema=SCHEMA,
     )
-    op.drop_table(TABLE, schema=SCHEMA)
+    op.drop_table(tbl, schema=SCHEMA)

@@ -6,9 +6,17 @@ Revision ID: j0k1l2m3n4o5
 Revises: i9j0k1l2m3n4
 Create Date: 2026-04-09
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "j0k1l2m3n4o5"
@@ -40,22 +48,11 @@ def _schema_exists(connection, schema: str) -> bool:
     return r.fetchone() is not None
 
 
-def _table_exists(connection, schema: str, table: str) -> bool:
-    r = connection.execute(
-        text(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema = :schema AND table_name = :table"
-        ),
-        {"schema": schema, "table": table},
-    )
-    return r.fetchone() is not None
-
-
 def _create_demand_params_table(
     table: str,
     fk_col: str,
-    ref_table: str,
-    ix_suffix: str,
+    ref_versions: str,
+    resolved_ref_table: str,
 ) -> None:
     op.create_table(
         table,
@@ -90,43 +87,36 @@ def _create_demand_params_table(
         ),
         sa.ForeignKeyConstraint(
             [fk_col],
-            [f"{SCHEMA_REFDATA}.{ref_table}.id"],
+            [f"{SCHEMA_REFDATA}.{resolved_ref_table}.id"],
             ondelete="RESTRICT",
         ),
         sa.ForeignKeyConstraint(
             ["database_version_id"],
-            [f"{SCHEMA_REFDATA}.gs_database_versions.id"],
+            [f"{SCHEMA_REFDATA}.{ref_versions}.id"],
             ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id"),
         schema=SCHEMA_PD,
     )
-    op.create_index(
-        f"ix_{table}_{fk_col}",
-        table,
-        [fk_col],
-        unique=False,
-        schema=SCHEMA_PD,
-    )
-    op.create_index(
-        f"ix_{table}_year_number",
-        table,
-        ["year_number"],
-        unique=False,
-        schema=SCHEMA_PD,
-    )
-    op.create_index(
-        f"ix_{table}_database_version_id",
-        table,
-        ["database_version_id"],
-        unique=False,
-        schema=SCHEMA_PD,
-    )
+
+
+def _ensure_demand_params_indexes(
+    conn, physical_table: str, index_name_table: str, fk_col: str, ix_suffix: str
+) -> None:
+    ix_fk = f"ix_{index_name_table}_{fk_col}"
+    if not column_utils.index_exists(conn, SCHEMA_PD, ix_fk):
+        op.create_index(ix_fk, physical_table, [fk_col], unique=False, schema=SCHEMA_PD)
+    ix_year = f"ix_{index_name_table}_year_number"
+    if not column_utils.index_exists(conn, SCHEMA_PD, ix_year):
+        op.create_index(ix_year, physical_table, ["year_number"], unique=False, schema=SCHEMA_PD)
+    ix_dbver = f"ix_{index_name_table}_database_version_id"
+    if not column_utils.index_exists(conn, SCHEMA_PD, ix_dbver):
+        op.create_index(ix_dbver, physical_table, ["database_version_id"], unique=False, schema=SCHEMA_PD)
     op.execute(
         sa.text(
             f"""
-            CREATE UNIQUE INDEX uq_{ix_suffix}_demand_params_hist
-            ON "{SCHEMA_PD}"."{table}" (
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_{ix_suffix}_demand_params_hist
+            ON "{SCHEMA_PD}"."{physical_table}" (
                 {fk_col},
                 COALESCE(database_version_id, 0)
             )
@@ -137,8 +127,8 @@ def _create_demand_params_table(
     op.execute(
         sa.text(
             f"""
-            CREATE UNIQUE INDEX uq_{ix_suffix}_demand_params_year
-            ON "{SCHEMA_PD}"."{table}" (
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_{ix_suffix}_demand_params_year
+            ON "{SCHEMA_PD}"."{physical_table}" (
                 {fk_col},
                 year_number,
                 COALESCE(database_version_id, 0)
@@ -151,17 +141,30 @@ def _create_demand_params_table(
 
 def upgrade():
     conn = op.get_bind()
+    ref_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REFDATA)
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REFDATA} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
     if not _schema_exists(conn, SCHEMA_PD):
         op.execute(sa.text(f'CREATE SCHEMA "{SCHEMA_PD}"'))
 
-    for table, fk_col, ref_table, ix_suffix in _DEMAND_PARAM_TABLES:
-        if _table_exists(conn, SCHEMA_PD, table):
-            continue
-        _create_demand_params_table(table, fk_col, ref_table, ix_suffix)
+    for legacy, fk_col, ref_table, ix_suffix in _DEMAND_PARAM_TABLES:
+        resolved_ref_table = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, ref_table)
+        if resolved_ref_table is None:
+            return
+        physical = column_utils.gs_pd_demand_params_physical_table_name(conn, SCHEMA_PD, legacy)
+        if physical is None:
+            _create_demand_params_table(legacy, fk_col, ref_versions, resolved_ref_table)
+            physical = legacy
+        _ensure_demand_params_indexes(conn, physical, legacy, fk_col, ix_suffix)
 
 
 def downgrade():
     conn = op.get_bind()
-    for table, _, _, _ in reversed(_DEMAND_PARAM_TABLES):
-        if _table_exists(conn, SCHEMA_PD, table):
-            op.execute(sa.text(f'DROP TABLE IF EXISTS "{SCHEMA_PD}"."{table}" CASCADE'))
+    for legacy, _, _, _ in reversed(_DEMAND_PARAM_TABLES):
+        pd_tbl = "gs_pd_" + legacy[len("gs_") :]
+        for tbl in (pd_tbl, legacy):
+            if column_utils.table_exists(conn, SCHEMA_PD, tbl):
+                op.execute(sa.text(f'DROP TABLE IF EXISTS "{SCHEMA_PD}"."{tbl}" CASCADE'))

@@ -7,7 +7,15 @@ Create Date: 2026-04-24
 
 Переименование таблиц в схеме gs_sys: gs_* -> gs_sys_*.
 """
+import os
+import sys
+
 from alembic import op
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "b8c9d0e1f2a3"
 down_revision = "a7b8c9d0e1f2"
@@ -52,10 +60,18 @@ _RENAMES = [
 
 
 def upgrade():
+    conn = op.get_bind()
     for old, new in _RENAMES:
-        op.rename_table(old, new, schema=SCHEMA_REFDATA)
+        if column_utils.table_exists(conn, SCHEMA_REFDATA, old) and not column_utils.table_exists(
+            conn, SCHEMA_REFDATA, new
+        ):
+            op.rename_table(old, new, schema=SCHEMA_REFDATA)
 
 
 def downgrade():
+    conn = op.get_bind()
     for old, new in reversed(_RENAMES):
-        op.rename_table(new, old, schema=SCHEMA_REFDATA)
+        if column_utils.table_exists(conn, SCHEMA_REFDATA, new) and not column_utils.table_exists(
+            conn, SCHEMA_REFDATA, old
+        ):
+            op.rename_table(new, old, schema=SCHEMA_REFDATA)

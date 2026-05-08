@@ -25,25 +25,33 @@ branch_labels = None
 depends_on = None
 
 SCHEMA = "gs_gen"
-TABLE = "pgu_machines"
 
 
 def upgrade():
     conn = op.get_bind()
-    if not column_utils.table_has_column(conn, SCHEMA, TABLE, "date_commission_year"):
+    table = column_utils.pgu_machines_table_name(conn, SCHEMA)
+    if table is None:
+        return
+    if not column_utils.table_has_column(conn, SCHEMA, table, "date_commission_year"):
         op.add_column(
-            TABLE,
+            table,
             sa.Column("date_commission_year", sa.Integer(), nullable=True),
             schema=SCHEMA,
         )
-    if not column_utils.table_has_column(conn, SCHEMA, TABLE, "date_exploitation_expected"):
+    if not column_utils.table_has_column(conn, SCHEMA, table, "date_exploitation_expected"):
         op.add_column(
-            TABLE,
+            table,
             sa.Column("date_exploitation_expected", sa.Integer(), nullable=True),
             schema=SCHEMA,
         )
 
 
 def downgrade():
-    op.drop_column(TABLE, "date_commission_year", schema=SCHEMA)
-    op.drop_column(TABLE, "date_exploitation_expected", schema=SCHEMA)
+    conn = op.get_bind()
+    table = column_utils.pgu_machines_table_name(conn, SCHEMA)
+    if table is None:
+        return
+    if column_utils.table_has_column(conn, SCHEMA, table, "date_commission_year"):
+        op.drop_column(table, "date_commission_year", schema=SCHEMA)
+    if column_utils.table_has_column(conn, SCHEMA, table, "date_exploitation_expected"):
+        op.drop_column(table, "date_exploitation_expected", schema=SCHEMA)

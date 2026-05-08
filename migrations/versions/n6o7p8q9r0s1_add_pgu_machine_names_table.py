@@ -30,7 +30,17 @@ TABLE = "pgu_machine_names"
 
 def upgrade():
     conn = op.get_bind()
-    if column_utils.table_exists(conn, SCHEMA, TABLE):
+    # Уже создана под старым или новым именем (в т.ч. после rename b1) — не дублируем индексы.
+    if column_utils.pgu_machine_names_table_name(conn, SCHEMA) is not None:
+        return
+    ref_versions = column_utils.database_versions_physical_table_name(conn, SCHEMA_REF)
+    if ref_versions is None:
+        raise RuntimeError(
+            f"Не найдена таблица версий БД в {SCHEMA_REF} "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
+    ref_pgu = column_utils.pgu_machines_table_name(conn, SCHEMA)
+    if ref_pgu is None:
         return
     op.create_table(
         TABLE,
@@ -64,22 +74,22 @@ def upgrade():
         ["id_pgu_machine", "year_number"],
         schema=SCHEMA,
     )
-    # FK на pgu_machines
+    # FK на gs_gen_pgu_machines / pgu_machines (порядок миграций относительно rename b1c2d3e4f5a6)
     op.create_foreign_key(
         None,
         TABLE,
-        "pgu_machines",
+        ref_pgu,
         ["id_pgu_machine"],
         ["id"],
         source_schema=SCHEMA,
         referent_schema=SCHEMA,
         ondelete="RESTRICT",
     )
-    # FK на gs_database_versions
+    # FK на физическую таблицу версий БД (не VIEW gs_database_versions)
     op.create_foreign_key(
         None,
         TABLE,
-        "gs_database_versions",
+        ref_versions,
         ["database_version_id"],
         ["id"],
         source_schema=SCHEMA,
@@ -90,9 +100,13 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_constraint(None, TABLE, schema=SCHEMA, type_="foreignkey")
-    op.drop_constraint(None, TABLE, schema=SCHEMA, type_="foreignkey")
-    op.drop_index("ix_pgu_machine_names_pgu_machine_year", table_name=TABLE, schema=SCHEMA)
-    op.drop_index("ix_pgu_machine_name_year_number", table_name=TABLE, schema=SCHEMA)
-    op.drop_index("ix_pgu_machine_name_id_pgu_machine", table_name=TABLE, schema=SCHEMA)
-    op.drop_table(TABLE, schema=SCHEMA)
+    conn = op.get_bind()
+    tbl = column_utils.pgu_machine_names_table_name(conn, SCHEMA)
+    if tbl is None:
+        return
+    op.drop_constraint(None, tbl, schema=SCHEMA, type_="foreignkey")
+    op.drop_constraint(None, tbl, schema=SCHEMA, type_="foreignkey")
+    op.drop_index("ix_pgu_machine_names_pgu_machine_year", table_name=tbl, schema=SCHEMA)
+    op.drop_index("ix_pgu_machine_name_year_number", table_name=tbl, schema=SCHEMA)
+    op.drop_index("ix_pgu_machine_name_id_pgu_machine", table_name=tbl, schema=SCHEMA)
+    op.drop_table(tbl, schema=SCHEMA)

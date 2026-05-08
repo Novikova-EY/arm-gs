@@ -5,8 +5,16 @@ Revision ID: y0z1a2b3c4d5
 Revises: x9a0b1c2d3e4
 Create Date: 2026-04-13
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "y0z1a2b3c4d5"
@@ -20,93 +28,46 @@ SCHEMA_REFDATA = "gs_sys"
 
 
 def upgrade():
-    op.add_column(
-        TABLE,
-        sa.Column("capital_cost_wo_pir_total_million_rub", sa.Numeric(24, 4), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column("id_year_capital_cost_wo_pir_total", sa.Integer(), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column(
-            "capital_cost_wo_pir_ges_with_reservoir_million_rub",
-            sa.Numeric(24, 4),
-            nullable=True,
-        ),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column("id_year_capital_cost_wo_pir_ges_with_reservoir", sa.Integer(), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column("capital_cost_wo_pir_svm_million_rub", sa.Numeric(24, 4), nullable=True),
-        schema=SCHEMA_GEN,
-    )
-    op.add_column(
-        TABLE,
-        sa.Column("id_year_capital_cost_wo_pir_svm", sa.Integer(), nullable=True),
-        schema=SCHEMA_GEN,
-    )
+    conn = op.get_bind()
+    table = column_utils.ges_tep_source_project_indicators_table_name(conn, SCHEMA_GEN)
+    table_years = column_utils.refdata_table_name(conn, SCHEMA_REFDATA, "gs_years")
+    if table is None or table_years is None:
+        return
+    for col, coltype in (
+        ("capital_cost_wo_pir_total_million_rub", sa.Numeric(24, 4)),
+        ("id_year_capital_cost_wo_pir_total", sa.Integer()),
+        ("capital_cost_wo_pir_ges_with_reservoir_million_rub", sa.Numeric(24, 4)),
+        ("id_year_capital_cost_wo_pir_ges_with_reservoir", sa.Integer()),
+        ("capital_cost_wo_pir_svm_million_rub", sa.Numeric(24, 4)),
+        ("id_year_capital_cost_wo_pir_svm", sa.Integer()),
+    ):
+        if not column_utils.table_has_column(conn, SCHEMA_GEN, table, col):
+            op.add_column(table, sa.Column(col, coltype, nullable=True), schema=SCHEMA_GEN)
 
-    op.create_foreign_key(
-        "fk_ges_tep_cap_cost_total_year",
-        TABLE,
-        "gs_years",
-        ["id_year_capital_cost_wo_pir_total"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_REFDATA,
-        ondelete="SET NULL",
-    )
-    op.create_foreign_key(
-        "fk_ges_tep_cap_cost_ges_year",
-        TABLE,
-        "gs_years",
-        ["id_year_capital_cost_wo_pir_ges_with_reservoir"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_REFDATA,
-        ondelete="SET NULL",
-    )
-    op.create_foreign_key(
-        "fk_ges_tep_cap_cost_svm_year",
-        TABLE,
-        "gs_years",
-        ["id_year_capital_cost_wo_pir_svm"],
-        ["id"],
-        source_schema=SCHEMA_GEN,
-        referent_schema=SCHEMA_REFDATA,
-        ondelete="SET NULL",
-    )
+    for fk_name, col in (
+        ("fk_ges_tep_cap_cost_total_year", "id_year_capital_cost_wo_pir_total"),
+        ("fk_ges_tep_cap_cost_ges_year", "id_year_capital_cost_wo_pir_ges_with_reservoir"),
+        ("fk_ges_tep_cap_cost_svm_year", "id_year_capital_cost_wo_pir_svm"),
+    ):
+        if not column_utils.constraint_exists(conn, SCHEMA_GEN, fk_name):
+            op.create_foreign_key(
+                fk_name,
+                table,
+                table_years,
+                [col],
+                ["id"],
+                source_schema=SCHEMA_GEN,
+                referent_schema=SCHEMA_REFDATA,
+                ondelete="SET NULL",
+            )
 
-    op.create_index(
-        "ix_ges_tep_cap_cost_total_year",
-        TABLE,
-        ["id_year_capital_cost_wo_pir_total"],
-        unique=False,
-        schema=SCHEMA_GEN,
-    )
-    op.create_index(
-        "ix_ges_tep_cap_cost_ges_year",
-        TABLE,
-        ["id_year_capital_cost_wo_pir_ges_with_reservoir"],
-        unique=False,
-        schema=SCHEMA_GEN,
-    )
-    op.create_index(
-        "ix_ges_tep_cap_cost_svm_year",
-        TABLE,
-        ["id_year_capital_cost_wo_pir_svm"],
-        unique=False,
-        schema=SCHEMA_GEN,
-    )
+    for ix_name, col in (
+        ("ix_ges_tep_cap_cost_total_year", "id_year_capital_cost_wo_pir_total"),
+        ("ix_ges_tep_cap_cost_ges_year", "id_year_capital_cost_wo_pir_ges_with_reservoir"),
+        ("ix_ges_tep_cap_cost_svm_year", "id_year_capital_cost_wo_pir_svm"),
+    ):
+        if not column_utils.index_exists(conn, SCHEMA_GEN, ix_name):
+            op.create_index(ix_name, table, [col], unique=False, schema=SCHEMA_GEN)
 
 
 def downgrade():

@@ -5,9 +5,17 @@ Revision ID: b4c5d6e7f8a0
 Revises: a2b3c4d5e6f8
 Create Date: 2026-03-31
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import text
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 
 revision = "b4c5d6e7f8a0"
@@ -34,6 +42,12 @@ def upgrade():
     conn = op.get_bind()
     if _table_exists(conn, TABLE):
         return
+    ref_versions = column_utils.database_versions_physical_table_name(conn, "gs_sys")
+    if ref_versions is None:
+        raise RuntimeError(
+            "Не найдена таблица версий БД в gs_sys "
+            "(gs_sys_database_versions или gs_database_versions как BASE TABLE)"
+        )
 
     op.create_table(
         TABLE,
@@ -76,7 +90,7 @@ def upgrade():
         ),
         sa.ForeignKeyConstraint(
             ["database_version_id"],
-            ["gs_sys.gs_database_versions.id"],
+            [f"gs_sys.{ref_versions}.id"],
             ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id"),
