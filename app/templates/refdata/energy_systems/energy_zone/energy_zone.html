@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Энергозоны{% endblock %}
 
@@ -26,13 +26,13 @@
                     </div>
 
                     <button type="submit"
-                            class="btn btn-outline-primary fw-bold"
+                            class="btn btn-outline-primary"
                             onclick="this.form.page.value=1">
                             Поиск
                     </button>
 
                     <a href="{{ url_for('refdata_bp.energy_zone_list') }}"
-                            class="btn btn-outline-danger fs-5"
+                            class="btn btn-outline-danger"
                             data-no-preloader>
                             Сбросить
                     </a>
@@ -82,7 +82,7 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     <!-- Кнопка сохранения изменений -->
-                    <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
+                    <button type="submit" class="btn btn-outline-primary">Сохранить изменения</button>
                     {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-success" title="Применить изменения ко всем версиям БД">Сохранить во всех версиях</button>{% endif %}
                 </div>
 

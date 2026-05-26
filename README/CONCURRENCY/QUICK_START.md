@@ -162,13 +162,6 @@ SQLALCHEMY_POOL_SIZE=20
 SQLALCHEMY_MAX_OVERFLOW=40
 ```
 
-### Высокая (200+ пользователей):
-```env
-GUNICORN_WORKERS=17
-SQLALCHEMY_POOL_SIZE=40
-SQLALCHEMY_MAX_OVERFLOW=80
-```
-
 ## Что было добавлено?
 
 ✅ **Gunicorn (Linux/Mac)** - production WSGI сервер с gevent workers  

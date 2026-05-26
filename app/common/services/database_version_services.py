@@ -5177,3 +5177,30 @@ def _verify_version_data_integrity(version_id, user):
     
     return len(integrity_issues) == 0
 
+
+def build_database_version_numbers_by_id() -> dict[int, str]:
+    """id версии БД → номер версии (version_number) для текстов журнала."""
+    return {
+        int(dv.id): dv.version_number
+        for dv in DatabaseVersion.query.filter(DatabaseVersion.id.isnot(None)).all()
+        if dv.id is not None and dv.version_number
+    }
+
+
+def database_version_log_prefix(
+    version_id: Optional[int],
+    version_numbers: Optional[dict[int, str]] = None,
+) -> str:
+    """
+    Подпись версии БД для журнала изменений, напр. Версия БД "ГС 2023-2042 (2)".
+    """
+    if version_id is None:
+        return 'Версия БД "—"'
+    num = (version_numbers or {}).get(version_id)
+    if not num:
+        dv = DatabaseVersion.query.get(version_id)
+        num = dv.version_number if dv else None
+    if num:
+        return f'Версия БД "{num}"'
+    return f'Версия БД "неизвестна (id={version_id})"'
+

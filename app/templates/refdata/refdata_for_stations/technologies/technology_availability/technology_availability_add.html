@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Добавить новую доступность технологии{% endblock %}
 
@@ -25,7 +25,7 @@
             {% endif %}
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
             <button type="submit" class="btn btn-primary">Добавить</button>
             {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary" title="Добавить запись во все версии БД">Добавить во всех версиях</button>{% endif %}
             <a href="{{ url_for('refdata_bp.technology_availability_list',
@@ -35,7 +35,7 @@
                                 sort_dir=sort_dir,
                                 technology_availability_filter=technology_availability_filter,
                                 ) }}" 
-                                class="btn btn-outline-danger fs-5">
+                                class="btn btn-outline-danger">
                         Отмена
             </a>
         </div>

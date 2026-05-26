@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Параметры потребления для ЕЭС России (без НТ)."""
+"""Параметры потребления для ЕЭС России."""
 from sqlalchemy import Numeric
 from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_ENERGY_CONSUMPTION, SCHEMA_REFDATA
 
 
-class EesRussiaEnergyConsumptionParameter(db.Model, AuditMixin):
+class EesRussiaEnergyConsumptionParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     __tablename__ = "gs_ec_ees_russia_consumption_params"
     __table_args__ = {"schema": SCHEMA_ENERGY_CONSUMPTION}
 
-
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
 
     year_number = db.Column(db.Integer, nullable=True, index=True)
 

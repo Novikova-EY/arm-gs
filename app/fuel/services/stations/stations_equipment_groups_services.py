@@ -1197,12 +1197,14 @@ def _machine_belongs_to_fuel_equipment_group(
     return bound_equipment_group_id is None or bound_equipment_group_id == equipment_group_id
 
 
-def build_station_equipment_groups_v2(stations, filters=None, start_year=None, end_year=None):
+def build_station_equipment_groups_v2(
+    stations, filters=None, start_year=None, end_year=None, version_id=None
+):
     """
     Builds v2 equipment-group tree per station.
 
     Список групп оборудования формируется по модели EquipmentGroup с учетом
-    применяемых фильтров (если filters передан).
+    применяемых фильтров (если filters передан) и только для указанной версии БД.
 
     Result: dict[station_id] = {"groups": [..], "total_rows": int}
     Each group: {"equipment_group": EquipmentGroup|None, "links": [...], "rowspan": int}
@@ -1219,12 +1221,21 @@ def build_station_equipment_groups_v2(stations, filters=None, start_year=None, e
             filters, start_year=start_year, end_year=end_year
         )
 
-    current_version_id = get_current_db_version_id()
+    if version_id is None:
+        version_id = get_current_db_version_id()
+
+    links_q = EquipmentGroupSetStation.query.filter(
+        EquipmentGroupSetStation.station_id.in_(station_ids)
+    )
+    if version_id is None:
+        links_q = links_q.filter(EquipmentGroupSetStation.database_version_id.is_(None))
+    else:
+        links_q = links_q.filter(
+            EquipmentGroupSetStation.database_version_id == version_id
+        )
 
     links = (
-        EquipmentGroupSetStation.query.filter(
-            EquipmentGroupSetStation.station_id.in_(station_ids)
-        )
+        links_q
         .options(
             selectinload(EquipmentGroupSetStation.equipment_group_type),
             selectinload(EquipmentGroupSetStation.equipment_group_links_v2)
@@ -1270,23 +1281,15 @@ def build_station_equipment_groups_v2(stations, filters=None, start_year=None, e
         links_by_station_raw[link.station_id].append(link)
 
     for station_id, station_links in links_by_station_raw.items():
-        station_links = _filter_by_version_with_fallback(station_links, current_version_id)
         for link in station_links:
             group_links = [
                 gl
                 for gl in (link.equipment_group_links_v2 or [])
-                if gl.equipment_group and _is_current_version(gl.equipment_group, current_version_id)
+                if gl.equipment_group and _is_current_version(gl.equipment_group, version_id)
             ]
-            if not group_links and current_version_id is not None:
-                group_links = [
-                    gl
-                    for gl in (link.equipment_group_links_v2 or [])
-                    if gl.equipment_group and gl.equipment_group.database_version_id is None
-                ]
+            # Не показывать «тип группы без итоговой группы» — это остаток привязок к
+            # группам оборудования из других версий БД (или незаполненная топливная связка).
             if not group_links:
-                links_by_station[station_id].append(
-                    {"equipment_group": None, "link": link}
-                )
                 continue
             for gl in group_links:
                 links_by_station[station_id].append(
@@ -1300,8 +1303,8 @@ def build_station_equipment_groups_v2(stations, filters=None, start_year=None, e
         machines = [
             m
             for m in (station.machines or [])
-            if current_version_id is None
-            or getattr(m, "database_version_id", None) == current_version_id
+            if version_id is None
+            or getattr(m, "database_version_id", None) == version_id
         ]
         _apply_machine_display_names(machines)
         machines_by_type = defaultdict(list)

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Добавить новый тип группы оборудования{% endblock %}
 
@@ -43,7 +43,7 @@
             {% endif %}
         </div>
 
-        <div class="mt-4 d-flex flex-wrap gap-2">
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
             <button type="submit" class="btn btn-primary">Добавить</button>
             {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary"
                 title="Создать такую запись в каждой версии БД (общий ref_uuid)">
@@ -58,7 +58,7 @@
                                 technology_type_filter=technology_type_filter,
                                 technology_availability_filter=technology_availability_filter,
                                 ) }}" 
-                                class="btn btn-outline-danger fs-5">
+                                class="btn btn-outline-danger">
                         Отмена
             </a>
         </div>

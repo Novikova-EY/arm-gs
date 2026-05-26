@@ -14,6 +14,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
+from app.common.perimeter_variant.registry import (
+    filter_query_by_perimeter_variant,
+    model_supports_perimeter_variant,
+    normalize_perimeter_variant_code,
+    perimeter_entity_context_for_model,
+    validate_perimeter_variant_for_entity,
+)
 from app.common.services.database_version_filter import filter_by_explicit_db_version
 from app.common.services.database_version_services import get_current_version
 from app.common.services.get_services.years.years_get_services import get_year_list_full
@@ -30,10 +37,50 @@ from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption
 from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
     RegionalEnergySystemEnergyConsumptionParameter,
 )
+from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
+    FederalDistrictEnergyConsumptionParameter,
+)
+
+_FEDERAL_DISTRICT_SYNC_EXCLUDED_NAMES_CF = frozenset({"новые территории"})
+
+
+class _UnsetType:
+    pass
+
+
+_UNSET = _UnsetType()
 
 
 def _username() -> str:
     return session.get("username", "Неизвестный пользователь")
+
+
+def _resolve_perimeter_variant_for_save(raw: object) -> str | None:
+    if raw is _UNSET:
+        return _UNSET  # type: ignore[return-value]
+    return normalize_perimeter_variant_code(raw, known_only=True)
+
+
+def _resolve_perimeter_variant_for_context(
+    raw: object,
+    model: Type[Any],
+    parent_fk_column: str | None,
+    parent_id: int | None,
+) -> str | None | _UnsetType:
+    if raw is _UNSET:
+        return _UNSET
+    code = normalize_perimeter_variant_code(raw, known_only=True) if raw not in (None, "") else None
+    if not model_supports_perimeter_variant(model):
+        return _UNSET
+    ctx = perimeter_entity_context_for_model(
+        model.__name__,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+    )
+    if ctx is not None:
+        entity_kind, entity_name = ctx
+        validate_perimeter_variant_for_entity(entity_kind, entity_name, code)
+    return code
 
 
 def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
@@ -193,7 +240,13 @@ def filter_demand_by_version(query, demand_model):
     return query
 
 
-def get_demand_rows(demand_model, fk_column_name: Optional[str], parent_id: Optional[int]):
+def get_demand_rows(
+    demand_model,
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+    *,
+    perimeter_variant_code: str | None = None,
+):
     """
     Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
     """
@@ -201,12 +254,63 @@ def get_demand_rows(demand_model, fk_column_name: Optional[str], parent_id: Opti
     q = filter_demand_by_version(q, demand_model)
     if fk_column_name is not None and parent_id is not None:
         q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
+    q = filter_query_by_perimeter_variant(q, demand_model, perimeter_variant_code)
     order_parts = []
     if "is_historical_maximum" in demand_model.__table__.columns:
         order_parts.append(demand_model.is_historical_maximum.desc())
     order_parts.append(demand_model.year_number.asc().nullsfirst())
     rows = q.order_by(*order_parts).all()
     return rows
+
+
+def dedupe_duplicate_energy_consumption_rows_without_parent(
+    model: Type[Any],
+    *,
+    database_version_id: int,
+    year_n: int,
+    perimeter_variant_code: str | None = None,
+) -> None:
+    """Оставляет одну строку параметра без FK-родителя на (версия, год, вариант периметра)."""
+    q = model.query.filter(model.year_number == year_n)
+    q = filter_by_explicit_db_version(q, model, database_version_id)
+    if model_supports_perimeter_variant(model):
+        q = filter_query_by_perimeter_variant(q, model, perimeter_variant_code)
+    rows = q.order_by(model.id.asc()).all()
+    for row in rows[1:]:
+        db.session.delete(row)
+
+
+def dedupe_duplicate_energy_consumption_rows_for_parent(
+    model: Type[Any],
+    fk_column: str,
+    parent_id: int,
+    *,
+    database_version_id: int,
+    perimeter_variant_code: str | None | _UnsetType = _UNSET,
+) -> None:
+    """Оставляет одну строку на (родитель, год[, вариант]) в указанной версии БД."""
+    from collections import defaultdict
+
+    q = model.query.filter(getattr(model, fk_column) == parent_id)
+    q = filter_by_explicit_db_version(q, model, database_version_id)
+    if perimeter_variant_code is not _UNSET and model_supports_perimeter_variant(model):
+        q = filter_query_by_perimeter_variant(q, model, perimeter_variant_code)  # type: ignore[arg-type]
+    rows = q.order_by(model.year_number.asc().nullsfirst(), model.id.asc()).all()
+    if len(rows) <= 1:
+        return
+
+    grouped: dict[tuple[Any, ...], list[Any]] = defaultdict(list)
+    for row in rows:
+        key: tuple[Any, ...] = (row.year_number,)
+        if model_supports_perimeter_variant(model) and perimeter_variant_code is _UNSET:
+            key = (row.year_number, getattr(row, "perimeter_variant_code", None))
+        grouped[key].append(row)
+
+    for group_rows in grouped.values():
+        if len(group_rows) <= 1:
+            continue
+        for row in group_rows[1:]:
+            db.session.delete(row)
 
 
 def _demand_rows_for_version(
@@ -346,6 +450,173 @@ def sync_energy_zone_consumption_aggregates(
                 row.created_by = user
                 db.session.add(row)
                 existing_ez_rows.append(row)
+
+            row.energy_consumption_mln_kvt_ch = sum_mln
+            row.energy_consumption_sipr_mln_kvt_ch = sum_sipr
+            row.modified_by = user
+
+
+def _federal_district_excluded_from_sync(fd: FederalDistrict) -> bool:
+    name = (getattr(fd, "name", None) or "").strip()
+    cf = name.casefold()
+    for prefix in ("фо - ", "фо — "):
+        p = prefix.casefold()
+        if cf.startswith(p):
+            cf = cf[len(prefix) :].strip()
+            break
+    return cf in _FEDERAL_DISTRICT_SYNC_EXCLUDED_NAMES_CF
+
+
+def compute_federal_district_res_aggregates(
+    *,
+    database_version_id: Optional[int] = None,
+    id_federal_district: Optional[int] = None,
+    id_regional_energy_system: Optional[int] = None,
+    id_regional_district: Optional[int] = None,
+) -> dict[tuple[int, str | None], dict[int, tuple[Optional[Decimal], Optional[Decimal]]]]:
+    """Суммы mln/sipr по (id ФО, вариант периметра) → год → (mln, sipr) из РЭС, входящих в ФО."""
+    vid = database_version_id if database_version_id is not None else get_current_version()
+
+    def _filter_version(q, model: Type[Any]):
+        if vid is not None and hasattr(model, "database_version_id"):
+            q = q.filter(model.database_version_id == vid)
+        return q
+
+    fd_q = FederalDistrict.query.options(selectinload(FederalDistrict.regional_districts))
+    fd_q = _filter_version(fd_q, FederalDistrict)
+    if id_federal_district is not None:
+        fd_q = fd_q.filter(FederalDistrict.id == int(id_federal_district))
+    federal_districts = [
+        fd for fd in fd_q.all() if not _federal_district_excluded_from_sync(fd)
+    ]
+
+    scope_rd_ids: set[int] | None = None
+    if id_regional_district is not None:
+        scope_rd_ids = {int(id_regional_district)}
+    elif id_regional_energy_system is not None:
+        res_q = RegionalEnergySystem.query.options(
+            selectinload(RegionalEnergySystem.regional_districts)
+        )
+        res_q = _filter_version(res_q, RegionalEnergySystem)
+        res_q = res_q.filter(RegionalEnergySystem.id == int(id_regional_energy_system))
+        res_obj = res_q.first()
+        scope_rd_ids = {rd.id for rd in res_obj.regional_districts} if res_obj else set()
+
+    res_q = RegionalEnergySystem.query.options(
+        selectinload(RegionalEnergySystem.regional_districts)
+    )
+    res_q = _filter_version(res_q, RegionalEnergySystem)
+    all_res = list(res_q.all())
+
+    res_supports_variant = model_supports_perimeter_variant(
+        RegionalEnergySystemEnergyConsumptionParameter
+    )
+    out: dict[tuple[int, str | None], dict[int, tuple[Optional[Decimal], Optional[Decimal]]]] = {}
+
+    for fd in federal_districts:
+        fd_rd_ids = {rd.id for rd in fd.regional_districts}
+        if scope_rd_ids is not None and not (fd_rd_ids & scope_rd_ids):
+            continue
+        res_in_fd = [
+            res
+            for res in all_res
+            if any(rd.id in fd_rd_ids for rd in res.regional_districts)
+        ]
+        bucket: dict[tuple[str | None, int], tuple[list[Any], list[Any]]] = {}
+        for res in res_in_fd:
+            for row in _demand_rows_for_version(
+                RegionalEnergySystemEnergyConsumptionParameter,
+                "id_regional_energy_system",
+                res.id,
+                vid,
+            ):
+                year_n = getattr(row, "year_number", None)
+                if year_n is None:
+                    continue
+                pvc = (
+                    getattr(row, "perimeter_variant_code", None)
+                    if res_supports_variant
+                    else None
+                )
+                key = (pvc, int(year_n))
+                mln_list, sipr_list = bucket.setdefault(key, ([], []))
+                mln_list.append(getattr(row, "energy_consumption_mln_kvt_ch", None))
+                sipr_list.append(getattr(row, "energy_consumption_sipr_mln_kvt_ch", None))
+
+        for (pvc, year_n), (mln_vals, sipr_vals) in bucket.items():
+            target = out.setdefault((fd.id, pvc), {})
+            target[year_n] = (
+                _sum_non_null_decimals(mln_vals),
+                _sum_non_null_decimals(sipr_vals),
+            )
+
+    return out
+
+
+def sync_federal_district_consumption_aggregates(
+    *,
+    database_version_id: Optional[int] = None,
+    id_federal_district: Optional[int] = None,
+    id_regional_energy_system: Optional[int] = None,
+    id_regional_district: Optional[int] = None,
+) -> None:
+    """Пересчёт потребления по ФО как суммы показателей РЭС, входящих в округ (по субъектам ФО)."""
+    vid = database_version_id if database_version_id is not None else get_current_version()
+    aggregates = compute_federal_district_res_aggregates(
+        database_version_id=vid,
+        id_federal_district=id_federal_district,
+        id_regional_energy_system=id_regional_energy_system,
+        id_regional_district=id_regional_district,
+    )
+    if not aggregates:
+        return
+
+    user = _username()
+    fd_supports_variant = model_supports_perimeter_variant(
+        FederalDistrictEnergyConsumptionParameter
+    )
+
+    for (fd_id, pvc), by_year in aggregates.items():
+        existing_fd_rows = _demand_rows_for_version(
+            FederalDistrictEnergyConsumptionParameter,
+            "id_federal_district",
+            fd_id,
+            vid,
+        )
+        existing_years = {
+            int(r.year_number)
+            for r in existing_fd_rows
+            if getattr(r, "year_number", None) is not None
+        }
+        all_years = existing_years | set(by_year.keys())
+
+        for year_n in sorted(all_years):
+            sum_mln, sum_sipr = by_year.get(year_n, (None, None))
+            row = next(
+                (
+                    r
+                    for r in existing_fd_rows
+                    if getattr(r, "year_number", None) == year_n
+                    and (
+                        not fd_supports_variant
+                        or getattr(r, "perimeter_variant_code", None) == pvc
+                    )
+                ),
+                None,
+            )
+            if row is None:
+                if sum_mln is None and sum_sipr is None:
+                    continue
+                row = FederalDistrictEnergyConsumptionParameter()
+                row.id_federal_district = fd_id
+                if vid is not None:
+                    row.database_version_id = vid
+                row.year_number = year_n
+                if fd_supports_variant:
+                    row.perimeter_variant_code = pvc
+                row.created_by = user
+                db.session.add(row)
+                existing_fd_rows.append(row)
 
             row.energy_consumption_mln_kvt_ch = sum_mln
             row.energy_consumption_sipr_mln_kvt_ch = sum_sipr
@@ -507,6 +778,8 @@ def save_energy_consumption_rows_from_post(
     fk_column_name: Optional[str],
     parent_id: Optional[int],
     form_data,
+    *,
+    perimeter_variant_code: str | None = None,
 ) -> tuple[int, int]:
     validate_demand_post_complete(
         form_data,
@@ -597,6 +870,8 @@ def save_energy_consumption_rows_from_post(
             row.energy_consumption_sipr_mln_kvt_ch = ec_sipr
         row.note = note_val
         row.modified_by = user
+        if perimeter_variant_code is not None and hasattr(row, "perimeter_variant_code"):
+            row.perimeter_variant_code = perimeter_variant_code
 
         saved += 1
 
@@ -605,6 +880,9 @@ def save_energy_consumption_rows_from_post(
         sync_energy_zone_consumption_aggregates(id_energy_zone=int(parent_id))
     elif is_res_tbl and parent_id is not None:
         sync_energy_zone_consumption_aggregates(id_regional_energy_system=int(parent_id))
+        sync_federal_district_consumption_aggregates(
+            id_regional_energy_system=int(parent_id)
+        )
 
     try:
         db.session.commit()
@@ -635,6 +913,7 @@ def save_demand_rows_from_post(
         fk_column_name,
         parent_id,
         form_data,
+        perimeter_variant_code=perimeter_variant_code,
     )
 
 
@@ -647,9 +926,6 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
     )
     from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
         EesRussiaEnergyConsumptionParameter,
-    )
-    from app.energy_consumption.models.energy_systems.ees_russia_with_nt_energy_consumption_parameter_model import (
-        EesRussiaWithNtEnergyConsumptionParameter,
     )
     from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
         EnergySystemTypeEnergyConsumptionParameter,
@@ -678,15 +954,12 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
     from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
         RussiaFederationEnergyConsumptionParameter,
     )
-    from app.energy_consumption.models.territories.russia_federation_with_nt_energy_consumption_parameter_model import (
-        RussiaFederationWithNtEnergyConsumptionParameter,
-    )
-
     mapping: dict[str, Type[Any]] = {
         "CentralizedZoneEnergyConsumptionParameter": CentralizedZoneEnergyConsumptionParameter,
         "EesEnergyConsumptionParameter": EesEnergyConsumptionParameter,
         "EesRussiaEnergyConsumptionParameter": EesRussiaEnergyConsumptionParameter,
-        "EesRussiaWithNtEnergyConsumptionParameter": EesRussiaWithNtEnergyConsumptionParameter,
+        # Устаревшие имена классов (отдельные таблицы *_with_nt_*): одна модель + perimeter_variant_code.
+        "EesRussiaWithNtEnergyConsumptionParameter": EesRussiaEnergyConsumptionParameter,
         "EnergySystemTypeEnergyConsumptionParameter": EnergySystemTypeEnergyConsumptionParameter,
         "EnergyUnitEnergyConsumptionParameter": EnergyUnitEnergyConsumptionParameter,
         "EnergyZoneEnergyConsumptionParameter": EnergyZoneEnergyConsumptionParameter,
@@ -696,7 +969,7 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
         "FederalDistrictEnergyConsumptionParameter": FederalDistrictEnergyConsumptionParameter,
         "RegionalDistrictEnergyConsumptionParameter": RegionalDistrictEnergyConsumptionParameter,
         "RussiaFederationEnergyConsumptionParameter": RussiaFederationEnergyConsumptionParameter,
-        "RussiaFederationWithNtEnergyConsumptionParameter": RussiaFederationWithNtEnergyConsumptionParameter,
+        "RussiaFederationWithNtEnergyConsumptionParameter": RussiaFederationEnergyConsumptionParameter,
     }
     cls = mapping.get(name)
     if cls is None:
@@ -710,6 +983,88 @@ def _dash_summary_display(value: Any) -> str:
     return str(value)
 
 
+_GAES_CHARGE_PARAMETER_KEY = "gaes_charge_consumption_mln_kvt_ch"
+_SUMMARY_FORMULA_PROTECTED_PARAMETER_KEYS = frozenset(
+    {
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
+        "entity_note",
+    }
+)
+_FIRST_SA_FORMULA_PERIMETER_VARIANT_CODES = frozenset(
+    {
+        "with_nt_with_gaes_with_kaliningrad_es",
+        "with_nt_without_gaes_without_kaliningrad_es",
+        "without_nt_with_gaes_without_kaliningrad_es",
+        "without_nt_without_gaes_without_kaliningrad_es",
+    }
+)
+_EES_RUSSIA_FORMULA_PERIMETER_VARIANT_CODES = frozenset(
+    {
+        "with_nt_with_gaes",
+        "without_nt_with_gaes",
+    }
+)
+
+
+def _is_calculated_sync_area_base_row(parent_id: int | None) -> bool:
+    if parent_id is None:
+        return False
+
+    from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+
+    row = SynchronousArea.query.get(parent_id)
+    if row is None:
+        return False
+    name_cf = str(getattr(row, "name", "") or "").strip().casefold()
+    return name_cf.startswith("вторая синхронная зона") or "калининград" in name_cf
+
+
+def _is_summary_formula_protected_context(
+    demand_model_name: str,
+    parameter_key: str,
+    *,
+    parent_id: int | None,
+    perimeter_variant_code: str | None | _UnsetType,
+) -> bool:
+    if parameter_key not in _SUMMARY_FORMULA_PROTECTED_PARAMETER_KEYS:
+        return False
+
+    pvc = "" if perimeter_variant_code is _UNSET else str(perimeter_variant_code or "").strip()
+    if "without_gaes" in pvc:
+        return True
+    if demand_model_name in (
+        "EesRussiaEnergyConsumptionParameter",
+        "EesRussiaWithNtEnergyConsumptionParameter",
+    ):
+        return pvc in _EES_RUSSIA_FORMULA_PERIMETER_VARIANT_CODES
+    if demand_model_name == "SynchronousAreaEnergyConsumptionParameter":
+        if pvc in _FIRST_SA_FORMULA_PERIMETER_VARIANT_CODES:
+            return True
+        if not pvc and _is_calculated_sync_area_base_row(parent_id):
+            return True
+    return False
+
+
+def _assert_summary_formula_row_editable(
+    demand_model_name: str,
+    parameter_key: str,
+    *,
+    parent_id: int | None,
+    perimeter_variant_code: str | None | _UnsetType,
+) -> None:
+    if _is_summary_formula_protected_context(
+        demand_model_name,
+        parameter_key,
+        parent_id=parent_id,
+        perimeter_variant_code=perimeter_variant_code,
+    ):
+        raise ValueError(
+            "Эта строка рассчитывается по формуле и не редактируется вручную. "
+            "Измените исходные строки, затем пересчёт обновит значение."
+        )
+
+
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
     """Строка для отображения ячейки сводки после сохранения."""
     if parameter_key == "energy_consumption_mln_kvt_ch":
@@ -717,6 +1072,9 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
     if parameter_key == "energy_consumption_sipr_mln_kvt_ch":
         v = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
+        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+    if parameter_key == _GAES_CHARGE_PARAMETER_KEY:
+        v = getattr(row, "charge_consumption", None)
         return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
@@ -770,6 +1128,7 @@ def find_demand_row_for_summary_slice(
     parent_id: Optional[int],
     is_hist: bool,
     year_n: Optional[int],
+    perimeter_variant_code: str | None | _UnsetType = _UNSET,
 ) -> Any:
     del is_hist
     if year_n is None:
@@ -780,6 +1139,8 @@ def find_demand_row_for_summary_slice(
         if parent_id is None:
             return None
         q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    if perimeter_variant_code is not _UNSET and model_supports_perimeter_variant(model):
+        q = filter_query_by_perimeter_variant(q, model, perimeter_variant_code)  # type: ignore[arg-type]
     q = q.filter(model.year_number == year_n)
     return q.first()
 
@@ -791,6 +1152,7 @@ def create_demand_row_for_summary_slice(
     parent_id: Optional[int],
     is_hist: bool,
     year_n: Optional[int],
+    perimeter_variant_code: str | None | _UnsetType = _UNSET,
 ) -> Any:
     del is_hist
     row = model()
@@ -798,6 +1160,8 @@ def create_demand_row_for_summary_slice(
         setattr(row, parent_fk_column, parent_id)
     apply_version_to_row(row, model)
     row.year_number = year_n
+    if perimeter_variant_code is not _UNSET and model_supports_perimeter_variant(model):
+        row.perimeter_variant_code = perimeter_variant_code
     row.created_by = _username()
     db.session.add(row)
     return row
@@ -1030,6 +1394,90 @@ def _maybe_log_ec_summary_cell(
     )
 
 
+def _save_gaes_charge_summary_cell(
+    raw_value: Any,
+    *,
+    rounding_digits: int,
+    row_id: Optional[int],
+    slice_key: Any,
+    gaes_station_id: Optional[int],
+) -> str:
+    """Сохранение заряда ГАЭС по станции из сводной таблицы."""
+    from app.common.services.database_version_filter import set_db_version_on_create
+    from app.generation.models.station.station_gaes_charge_consumption_model import (
+        StationGaesChargeConsumption,
+    )
+    from app.generation.models.station.station_model import Station
+
+    if gaes_station_id is None:
+        raise ValueError("Для заряда ГАЭС укажите станцию.")
+
+    vid = get_current_version()
+    station_q = Station.query.filter(Station.id == int(gaes_station_id))
+    if vid is not None:
+        station_q = filter_by_explicit_db_version(station_q, Station, vid)
+    if station_q.first() is None:
+        raise ValueError("Станция ГАЭС не найдена для текущей версии БД.")
+
+    row: Any = None
+    if row_id is not None and row_id > 0:
+        row = StationGaesChargeConsumption.query.get(row_id)
+        if row is None:
+            raise ValueError("Строка не найдена.")
+        if int(row.id_station or 0) != int(gaes_station_id):
+            raise ValueError("Строка не соответствует выбранной станции ГАЭС.")
+        if vid is not None and getattr(row, "database_version_id", None) != vid:
+            raise ValueError("Данные относятся к другой версии БД. Обновите страницу.")
+        year_n = getattr(row, "year_number", None)
+    else:
+        _, year_n = parse_summary_slice_key(slice_key)
+        q = StationGaesChargeConsumption.query.filter(
+            StationGaesChargeConsumption.id_station == int(gaes_station_id),
+            StationGaesChargeConsumption.year_number == year_n,
+        )
+        q = filter_demand_by_version(q, StationGaesChargeConsumption)
+        row = q.first()
+
+    s = str(raw_value or "").strip()
+    if not s:
+        new_val = None
+    else:
+        if parse_decimal(s) is None:
+            raise ValueError(
+                "Некорректное число в поле «Потребление электрической энергии ГАЭС на заряд, млн кВт·ч»."
+            )
+        old_shown = (
+            format_decimal_trim_for_display(row.charge_consumption, digits=rounding_digits)
+            if row is not None and row.charge_consumption is not None
+            else ""
+        )
+        new_val = resolve_max_power_mw_for_save(raw_value, old_shown, rounding_digits)
+
+    if row is None:
+        if new_val is None:
+            return "—"
+        row = StationGaesChargeConsumption(
+            id_station=int(gaes_station_id),
+            year_number=year_n,
+            charge_consumption=new_val,
+        )
+        set_db_version_on_create(row)
+        row.created_by = _username()
+        db.session.add(row)
+    else:
+        row.charge_consumption = new_val
+
+    row.modified_by = _username()
+    try:
+        db.session.commit()
+        db.session.refresh(row)
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError("Не удалось сохранить (конфликт данных).") from None
+
+    return summary_cell_display_value(row, _GAES_CHARGE_PARAMETER_KEY, rounding_digits)
+
+
 def save_demand_summary_cell(
     demand_model_name: str,
     parameter_key: str,
@@ -1042,6 +1490,8 @@ def save_demand_summary_cell(
     parent_fk_column: Optional[str] = None,
     parent_id: Optional[int] = None,
     summary_log_scope: Optional[str] = None,
+    gaes_station_id: Optional[int] = None,
+    perimeter_variant_code: str | None | _UnsetType = _UNSET,
 ) -> str:
     """
     Создаёт или обновляет одно поле строки параметров потребления (сводная таблица).
@@ -1050,13 +1500,29 @@ def save_demand_summary_cell(
         "energy_consumption_mln_kvt_ch",
         "energy_consumption_sipr_mln_kvt_ch",
         "entity_note",
+        _GAES_CHARGE_PARAMETER_KEY,
     }
     if parameter_key not in allowed:
         raise ValueError("Неизвестный параметр.")
 
+    if parameter_key == _GAES_CHARGE_PARAMETER_KEY:
+        return _save_gaes_charge_summary_cell(
+            raw_value,
+            rounding_digits=rounding_digits,
+            row_id=row_id,
+            slice_key=slice_key,
+            gaes_station_id=gaes_station_id,
+        )
+
     if parameter_key == "entity_note":
         model = _summary_demand_model_class(demand_model_name)
         _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
+        pvc_resolved = _resolve_perimeter_variant_for_context(
+            perimeter_variant_code,
+            model,
+            parent_fk_column,
+            parent_id,
+        )
         vid = get_current_version()
         user = _username()
         if parent_fk_column and not hasattr(model, parent_fk_column):
@@ -1071,14 +1537,27 @@ def save_demand_summary_cell(
             if parent_fk_column is not None and parent_id is not None:
                 if getattr(erow, parent_fk_column, None) != parent_id:
                     raise ValueError("Строка не соответствует выбранному объекту.")
+            _assert_summary_formula_row_editable(
+                demand_model_name,
+                parameter_key,
+                parent_id=parent_id,
+                perimeter_variant_code=getattr(erow, "perimeter_variant_code", pvc_resolved),
+            )
         else:
             _, note_year = parse_summary_slice_key(slice_key)
+            _assert_summary_formula_row_editable(
+                demand_model_name,
+                parameter_key,
+                parent_id=parent_id,
+                perimeter_variant_code=pvc_resolved,
+            )
             erow = find_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
                 parent_id=parent_id,
                 is_hist=False,
                 year_n=note_year,
+                perimeter_variant_code=pvc_resolved,
             )
             if erow is None:
                 if not str(raw_value or "").strip():
@@ -1089,6 +1568,7 @@ def save_demand_summary_cell(
                     parent_id=parent_id,
                     is_hist=False,
                     year_n=note_year,
+                    perimeter_variant_code=pvc_resolved,
                 )
         snap_before = _summary_row_tri_snapshot(erow)
         _apply_summary_field_to_row(
@@ -1119,6 +1599,12 @@ def save_demand_summary_cell(
 
     model = _summary_demand_model_class(demand_model_name)
     _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
+    pvc_resolved = _resolve_perimeter_variant_for_context(
+        perimeter_variant_code,
+        model,
+        parent_fk_column,
+        parent_id,
+    )
 
     if (
         model.__tablename__ == "gs_ec_energy_zone_consumption_params"
@@ -1150,6 +1636,16 @@ def save_demand_summary_cell(
         if parent_fk_column is not None and parent_id is not None:
             if getattr(row, parent_fk_column, None) != parent_id:
                 raise ValueError("Строка не соответствует выбранному объекту.")
+        if pvc_resolved is not _UNSET and model_supports_perimeter_variant(model):
+            row_pvc = getattr(row, "perimeter_variant_code", None)
+            if row_pvc != pvc_resolved:
+                raise ValueError("Строка не соответствует выбранному варианту периметра.")
+        _assert_summary_formula_row_editable(
+            demand_model_name,
+            parameter_key,
+            parent_id=parent_id,
+            perimeter_variant_code=getattr(row, "perimeter_variant_code", pvc_resolved),
+        )
         _assert_plan_year_only_max_power_editable(
             getattr(row, "year_number", None),
             bool(getattr(row, "is_historical_maximum", False)),
@@ -1161,12 +1657,19 @@ def save_demand_summary_cell(
         _assert_plan_year_only_max_power_editable(
             year_n, is_hist, parameter_key, demand_model_name=demand_model_name
         )
+        _assert_summary_formula_row_editable(
+            demand_model_name,
+            parameter_key,
+            parent_id=parent_id,
+            perimeter_variant_code=pvc_resolved,
+        )
         row = find_demand_row_for_summary_slice(
             model,
             parent_fk_column=parent_fk_column,
             parent_id=parent_id,
             is_hist=is_hist,
             year_n=year_n,
+            perimeter_variant_code=pvc_resolved,
         )
         if row is None:
             if not str(raw_value or "").strip():
@@ -1177,6 +1680,7 @@ def save_demand_summary_cell(
                 parent_id=parent_id,
                 is_hist=is_hist,
                 year_n=year_n,
+                perimeter_variant_code=pvc_resolved,
             )
 
     snap_before = _summary_row_tri_snapshot(row)
@@ -1196,6 +1700,9 @@ def save_demand_summary_cell(
     ):
         db.session.flush()
         sync_energy_zone_consumption_aggregates(id_regional_energy_system=int(parent_id))
+        sync_federal_district_consumption_aggregates(
+            id_regional_energy_system=int(parent_id)
+        )
 
     try:
         db.session.commit()

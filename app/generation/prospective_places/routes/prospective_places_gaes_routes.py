@@ -583,15 +583,15 @@ def _populate_gaes_tep_form_from_row(form, tep_row):
     form.id_year_specific_semifixed_operating_costs.data = (
         tep_row.id_year_specific_semifixed_operating_costs
     )
-    form.generation_average_multiyear_billion_kwh.data = tep_row.generation_average_multiyear_billion_kwh
+    form.generation_average_multiyear_million_kwh.data = tep_row.generation_average_multiyear_million_kwh
     form.generation_average_multiyear_million_kwh_stage_1.data = (
         tep_row.generation_average_multiyear_million_kwh_stage_1
     )
     form.generation_average_multiyear_million_kwh_stage_2.data = (
         tep_row.generation_average_multiyear_million_kwh_stage_2
     )
-    form.generation_medium_water_50pct_billion_kwh.data = tep_row.generation_medium_water_50pct_billion_kwh
-    form.generation_low_water_95pct_billion_kwh.data = tep_row.generation_low_water_95pct_billion_kwh
+    form.generation_medium_water_50pct_million_kwh.data = tep_row.generation_medium_water_50pct_million_kwh
+    form.generation_low_water_95pct_million_kwh.data = tep_row.generation_low_water_95pct_million_kwh
     form.annual_charging_electricity_consumption_million_kwh.data = (
         tep_row.annual_charging_electricity_consumption_million_kwh
     )
@@ -686,15 +686,15 @@ def _apply_gaes_tep_form_to_row(row, form, place):
     row.id_year_specific_semifixed_operating_costs = (
         form.id_year_specific_semifixed_operating_costs.data
     )
-    row.generation_average_multiyear_billion_kwh = _s(form.generation_average_multiyear_billion_kwh.data)
+    row.generation_average_multiyear_million_kwh = _s(form.generation_average_multiyear_million_kwh.data)
     row.generation_average_multiyear_million_kwh_stage_1 = _s(
         form.generation_average_multiyear_million_kwh_stage_1.data
     )
     row.generation_average_multiyear_million_kwh_stage_2 = _s(
         form.generation_average_multiyear_million_kwh_stage_2.data
     )
-    row.generation_medium_water_50pct_billion_kwh = _s(form.generation_medium_water_50pct_billion_kwh.data)
-    row.generation_low_water_95pct_billion_kwh = _s(form.generation_low_water_95pct_billion_kwh.data)
+    row.generation_medium_water_50pct_million_kwh = _s(form.generation_medium_water_50pct_million_kwh.data)
+    row.generation_low_water_95pct_million_kwh = _s(form.generation_low_water_95pct_million_kwh.data)
     row.annual_charging_electricity_consumption_million_kwh = _s(
         form.annual_charging_electricity_consumption_million_kwh.data
     )
@@ -1027,7 +1027,7 @@ def export_prospective_places_gaes():
                     first_row = row_num
                     for loop_idx, tr in enumerate(indicators):
                         gen_mw = _fmt_multiyear_generation(
-                            tr.generation_average_multiyear_billion_kwh
+                            tr.generation_average_multiyear_million_kwh
                         )
                         if loop_idx == 0:
                             ws.cell(row=row_num, column=1, value=idx).border = thin_border

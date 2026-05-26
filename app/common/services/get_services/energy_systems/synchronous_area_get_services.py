@@ -10,6 +10,14 @@ from app.refdata.models.energy_systems.synchronous_area_model import Synchronous
 from app.common.services.database_version_services import get_current_version
 
 
+def synchronous_area_display_order_sort_key(sa: SynchronousArea) -> tuple:
+    """Порядок строк/карточек: ``display_order`` по возрастанию, NULL в конце, затем имя, id."""
+    d = getattr(sa, "display_order", None)
+    if d is not None:
+        return (0, int(d), (getattr(sa, "name", None) or "").casefold(), int(sa.id))
+    return (1, 0, (getattr(sa, "name", None) or "").casefold(), int(sa.id))
+
+
 @lru_cache(maxsize=1)
 def get_synchronous_area_list_full():
     """Получает полный список синхронных зон."""

@@ -696,7 +696,17 @@ def create_app():
         # Получаем CSRF токен
         csrf_token = session.get('csrf_token', '')
         
-        return dict(current_db_version=current_version, csrf_token=csrf_token)
+        from app.common.perimeter_variant.registry import (
+            perimeter_variant_display_label,
+            perimeter_variant_display_label_for_entity,
+        )
+
+        return dict(
+            current_db_version=current_version,
+            csrf_token=csrf_token,
+            perimeter_variant_display_label=perimeter_variant_display_label,
+            perimeter_variant_display_label_for_entity=perimeter_variant_display_label_for_entity,
+        )
     
     # Регистрация блюпринтов
     from app.auth.routes import auth_bp
@@ -713,8 +723,10 @@ def create_app():
     from app.history.routes import history_bp
     from app.power_demand.routes import power_demand_bp
     from app.energy_consumption.routes import energy_consumption_bp
+    from app.common.perimeter_variant.admin_routes import perimeter_variant_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
+    app.register_blueprint(perimeter_variant_bp)
     app.register_blueprint(users_bp, url_prefix="/users")
     app.register_blueprint(refdata_bp, url_prefix="/refdata")
     app.register_blueprint(generation_bp, url_prefix="/generation")

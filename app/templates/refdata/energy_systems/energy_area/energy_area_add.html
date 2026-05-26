@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Добавить новый энергоузел{% endblock %}
 
@@ -53,7 +53,7 @@
         </div>
 
         <!-- Кнопки сохранения записи и возвращения назад -->
-        <div class="mt-4">
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
             <button type="submit" class="btn btn-primary">Добавить</button>
             {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary" title="Добавить запись во все версии БД">Добавить во всех версиях</button>{% endif %}
 
@@ -67,7 +67,7 @@
                                 regional_energy_system_filter=regional_energy_system_filter,
                                 union_energy_system_filter=union_energy_system_filter,
                                 ) }}" 
-                                class="btn btn-outline-danger fs-5">
+                                class="btn btn-outline-danger">
                         Отмена
             </a>
         </div>

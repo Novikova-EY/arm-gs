@@ -69,9 +69,6 @@ from app.common.services.get_services.energy_systems.energy_system_type_get_serv
     get_energy_system_type_list_full,
     get_energy_system_type_map,
 )
-from app.common.services.get_services.energy_systems.energy_unit_get_services import (
-    get_energy_unit_list_full,
-)
 from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
     get_union_energy_system_list_full,
     get_union_energy_systems_map,
@@ -2913,9 +2910,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     from app.common.services.database_version_services import get_current_version
     from app.extensions import db
     
-    # Очищаем LRU кэш для энергоузлов
-    from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
-    get_energy_unit_list_full.cache_clear()
+    # Очищаем LRU кэш отфильтрованного списка энергоузлов (полный список без @lru_cache — см. energy_unit_get_services)
+    from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list
+    get_energy_unit_list.cache_clear()
     
     current_version = get_current_version()
     query = EnergyUnit.query

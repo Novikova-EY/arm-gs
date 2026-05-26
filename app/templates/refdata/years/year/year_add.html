@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}Добавить год{% endblock %}
 
@@ -32,7 +32,7 @@
             {% endif %}
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
             <button type="submit" class="btn btn-primary">Добавить</button>
             <a href="{{ url_for('refdata_bp.years_list',
                                 page=page,
@@ -40,7 +40,7 @@
                                 sort_by=sort_by,
                                 sort_dir=sort_dir,
                                 year_filter=year_filter) }}"
-               class="btn btn-outline-danger fs-5">
+               class="btn btn-outline-danger">
                 Отмена
             </a>
         </div>

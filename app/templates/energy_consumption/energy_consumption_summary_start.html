@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Сводная таблица{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="container content-start-container">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 class="text-center align-middle mb-0 flex-grow-1">Сводная таблица</h2>
+                <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-secondary">
+                    <i class="bi bi-gear-wide-connected"></i> Модуль «Спрос»
+                </a>
+            </div>
+
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.summary_table_hub') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Потребление электрической энергии<br>по энергосистемам
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.demand_summary_table_federal_districts') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Потребление электрической энергии<br>по федеральным округам
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.demand_summary_table_energy_zones') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Потребление электрической энергии<br>по энергозонам
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

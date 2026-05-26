@@ -156,7 +156,7 @@
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '—' }}</td>
                             <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{{ station.planned_capacity_mw or '—' }}</td>
                             {% endif %}
-                            <td class="text-center">{% set _gavg = (tr.generation_average_multiyear_billion_kwh or '')|trim %}{% if _gavg %}{{ _gavg|replace('.', ',') }}{% else %}—{% endif %}</td>
+                            <td class="text-center">{% set _gavg = (tr.generation_average_multiyear_million_kwh or '')|trim %}{% if _gavg %}{{ _gavg|replace('.', ',') }}{% else %}—{% endif %}</td>
                             {% if loop.first %}
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.regulation_type or '—' }}</td>
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>

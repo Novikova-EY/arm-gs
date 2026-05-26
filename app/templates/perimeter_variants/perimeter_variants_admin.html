@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}Варианты периметра{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<style>
+.edit-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+    gap: 0.5rem;
+}
+.edit-indicator::before {
+    content: "✏️";
+    font-size: 1rem;
+}
+
+.perimeter-variants-page .station-info { font-size: 1.15rem; }
+.perimeter-variants-page .station-info .card-title { font-size: 1.25rem; }
+.perimeter-variants-page .station-info .form-label { font-size: 1.1rem; margin-bottom: 0.2rem; }
+.perimeter-variants-page .station-info .form-control,
+.perimeter-variants-page .station-info .form-select { font-size: 1.15rem; padding: 0.35rem 0.75rem; line-height: 1.4; }
+.perimeter-variants-page .btn { font-size: 1.1rem; padding: 0.5rem 1rem; }
+.perimeter-variants-page .page-title { font-size: 1.35rem; font-weight: 700; }
+
+.perimeter-variants-page .variants-table { font-size: 1.05rem; }
+.perimeter-variants-page .variants-table thead th { font-size: 1.08rem; }
+.perimeter-variants-page .variants-table tbody td { font-size: 1.05rem; padding: 10px 8px; vertical-align: middle; }
+.perimeter-variants-page .variants-table tbody td .form-control,
+.perimeter-variants-page .variants-table tbody td .form-select { font-size: 1.05rem; }
+
+.perimeter-variants-page .binding-group-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+.perimeter-variants-page .binding-group-card .binding-group-header {
+    background-color: rgba(var(--bs-success-rgb), 0.12);
+    padding: 0.75rem 1rem;
+    font-size: 1.1rem;
+}
+.perimeter-variants-page .binding-group-card .list-group-item {
+    font-size: 1.05rem;
+    padding: 0.75rem 1rem;
+}
+</style>
+
+<div class="container-fluid mt-4 perimeter-variants-page">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-0">
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">На главную</a>
+    </div>
+
+    <div class="d-flex align-items-center flex-wrap gap-3 mt-4 mb-4">
+        <h2 class="mb-0 ms-3 d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+            Варианты периметра
+            <span class="edit-indicator ms-3">Режим редактирования</span>
+        </h2>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row g-3">
+            <div class="col-12">
+                <h3 class="mb-0 ms-3">Справочник вариантов</h3>
+            </div>
+        </div>
+
+        <form method="post" class="mt-3">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="action" value="save_variants">
+
+            <div class="table-responsive mt-3">
+                <table class="table table-hover table-striped table-bordered variants-table align-middle mb-3 w-100" data-auto-export-excel="off">
+                    <thead class="table-success">
+                        <tr class="text-center align-middle">
+                            <th style="width:3rem">Удл.</th>
+                            <th>Код</th>
+                            <th>Подпись (суффикс)</th>
+                            <th>Год с</th>
+                            <th>Год по</th>
+                            <th>Порядок</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in variants %}
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox" name="variant_delete[]" value="{{ v.id }}" title="Удалить">
+                                <input type="hidden" name="variant_id[]" value="{{ v.id }}">
+                            </td>
+                            <td><input class="form-control" name="variant_code[]" value="{{ v.code }}" required></td>
+                            <td><input class="form-control" name="variant_label[]" value="{{ v.label_suffix }}" required></td>
+                            <td><input class="form-control" name="variant_from_year[]" value="{{ v.effective_from_year or '' }}" inputmode="numeric"></td>
+                            <td><input class="form-control" name="variant_to_year[]" value="{{ v.effective_to_year or '' }}" inputmode="numeric"></td>
+                            <td><input class="form-control" name="variant_display_order[]" value="{{ v.display_order or '' }}" inputmode="numeric"></td>
+                            <td><input class="form-control" name="variant_note[]" value="{{ v.note or '' }}"></td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="table-secondary">
+                            <td></td>
+                            <td><input class="form-control" name="variant_code[]" placeholder="новый код"></td>
+                            <td><input class="form-control" name="variant_label[]" placeholder="подпись"></td>
+                            <td><input class="form-control" name="variant_from_year[]" placeholder="год"></td>
+                            <td><input class="form-control" name="variant_to_year[]" placeholder="год"></td>
+                            <td><input class="form-control" name="variant_display_order[]"></td>
+                            <td><input class="form-control" name="variant_note[]"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 flex-wrap mb-4">
+                <button type="submit" class="btn btn-outline-primary fs-5">Сохранить варианты</button>
+            </div>
+        </form>
+    </div>
+
+    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+
+    <div class="container-fluid">
+        <div class="row g-3">
+            <div class="col-12">
+                <h3 class="mb-0 ms-3">Привязки к сущностям</h3>
+            </div>
+        </div>
+
+        <form method="post" class="station-info mt-3 mb-4">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="action" value="add_binding">
+            <div class="mb-4 p-3" style="background: transparent; border: none;">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label fw-semibold">Тип сущности</label>
+                        <select class="form-select" name="bind_entity_kind" required>
+                            <option value="">—</option>
+                            {% for ek, elbl in entity_kind_choices %}
+                            <option value="{{ ek }}">{{ elbl }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label fw-semibold">Наименование (как в справочнике)</label>
+                        <input class="form-control" name="bind_entity_name" placeholder="ОЭС Юга" required>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label fw-semibold">Префикс подписи на сводке</label>
+                        <input class="form-control" name="bind_label_prefix" placeholder="ОЭС Юга">
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <label class="form-label fw-semibold">Вариант</label>
+                        <select class="form-select" name="bind_variant_id" required>
+                            <option value="">—</option>
+                            {% for v in variants %}
+                            <option value="{{ v.id }}">{{ v.code }} — {{ v.label_suffix }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-xl-1">
+                        <button type="submit" class="btn btn-outline-success w-100 fs-5">+</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <form method="post">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="action" value="delete_bindings">
+
+            {% if not binding_groups %}
+            <p class="text-muted ms-3 mb-4">
+                Привязок нет. Добавьте вариант к сущности выше или сохраните варианты и привязки из fallback вручную.
+            </p>
+            {% endif %}
+
+            {% for group in binding_groups %}
+            <div class="binding-group-card ms-3 me-3">
+                <div class="binding-group-header d-flex flex-wrap align-items-center gap-2">
+                    <strong class="page-title">{{ group.entity_name }}</strong>
+                    <span class="text-muted">({{ group.entity_kind }})</span>
+                    {% if group.label_prefix %}
+                    <span class="badge bg-secondary ms-2">префикс: {{ group.label_prefix }}</span>
+                    {% endif %}
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in group['items'] %}
+                    <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                        <input type="checkbox" name="binding_delete[]" value="{{ item.binding_id }}">
+                        <code>{{ item.variant_code }}</code>
+                        <span>{{ item.variant_label }}</span>
+                        <span class="text-muted small">
+                            {% if item.effective_from_year %}с {{ item.effective_from_year }}{% endif %}
+                            {% if item.effective_to_year %} по {{ item.effective_to_year }}{% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+
+            {% if binding_groups %}
+            <div class="d-flex justify-content-end gap-2 flex-wrap mt-3 mb-4 me-3">
+                <button type="submit" class="btn btn-outline-danger fs-5">Удалить отмеченные привязки</button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

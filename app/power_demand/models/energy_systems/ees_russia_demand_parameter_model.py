@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Параметры нагрузки для ЕЭС России (без НТ)."""
+"""Параметры нагрузки для ЕЭС России без НТ."""
 from sqlalchemy import CheckConstraint, Numeric, text
 from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_POWER_DEMAND, SCHEMA_REFDATA
 
 
-class EesRussiaDemandParameter(db.Model, AuditMixin):
+class EesRussiaDemandParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     __tablename__ = "gs_pd_ees_russia_demand_params"
     __table_args__ = (
         CheckConstraint(
@@ -29,7 +30,7 @@ class EesRussiaDemandParameter(db.Model, AuditMixin):
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Максимальное потребление мощности, МВт
-    max_power_consumption_mw = db.Column(Numeric(25, 16), nullable=True)
+    max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Дата и время максимального потребления мощности, МВт
     peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -60,5 +61,6 @@ class EesRussiaDemandParameter(db.Model, AuditMixin):
     def __repr__(self) -> str:
         return (
             f"<EesRussiaDemandParameter id={self.id} "
+            f"perimeter_variant={self.perimeter_variant_code} "
             f"hist={self.is_historical_maximum} year={self.year_number}>"
         )

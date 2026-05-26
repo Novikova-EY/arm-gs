@@ -102,7 +102,6 @@ def import_all_models():
         "app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model",
         "app.power_demand.models.energy_systems.ees_demand_parameter_model",
         "app.power_demand.models.energy_systems.ees_russia_demand_parameter_model",
-        "app.power_demand.models.energy_systems.ees_russia_with_nt_demand_parameter_model",
         "app.power_demand.models.energy_systems.energy_area_demand_parameter_model",
         "app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model",
         "app.power_demand.models.energy_systems.energy_unit_demand_parameter_model",
@@ -110,10 +109,11 @@ def import_all_models():
         "app.power_demand.models.energy_systems.regional_energy_system_demand_parameter_model",
         "app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model",
         "app.power_demand.models.energy_systems.union_energy_system_demand_parameter_model",
+        "app.common.models.perimeter_variant.perimeter_variant_model",
+        "app.common.models.perimeter_variant.entity_perimeter_binding_model",
         "app.power_demand.models.territories.federal_district_demand_parameter_model",
         "app.power_demand.models.territories.regional_district_demand_parameter_model",
         "app.power_demand.models.territories.russia_federation_demand_parameter_model",
-        "app.power_demand.models.territories.russia_federation_with_nt_demand_parameter_model",
     ]
     for m in modules:
         try:

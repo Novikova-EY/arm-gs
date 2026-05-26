@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{# Отдельное имя шаблона для раздела «ГАЭС на заряд»; общая разметка — energy_consumption_summary_body.html #}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% include 'energy_consumption/energy_consumption_summary_body.html' %}
+{% endblock %}

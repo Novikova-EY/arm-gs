@@ -44,17 +44,12 @@ from app.energy_consumption.models.territories.regional_district_energy_consumpt
 from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
     RussiaFederationEnergyConsumptionParameter,
 )
-from app.energy_consumption.models.territories.russia_federation_with_nt_energy_consumption_parameter_model import (
-    RussiaFederationWithNtEnergyConsumptionParameter,
-)
+from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
 from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
     EesEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
     EesRussiaEnergyConsumptionParameter,
-)
-from app.energy_consumption.models.energy_systems.ees_russia_with_nt_energy_consumption_parameter_model import (
-    EesRussiaWithNtEnergyConsumptionParameter,
 )
 
 # Родительские справочники
@@ -67,14 +62,14 @@ from app.refdata.models.energy_systems.union_energy_system_model import UnionEne
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+    synchronous_area_display_order_sort_key,
+)
 
 
 def _synchronous_area_by_display_order(sa: SynchronousArea) -> tuple:
-    """Карточки синхронных зон: display_order по возрастанию, NULL в конце, затем name, id."""
-    d = getattr(sa, "display_order", None)
-    if d is not None:
-        return (0, int(d), (getattr(sa, "name", None) or "").casefold(), sa.id)
-    return (1, 0, (getattr(sa, "name", None) or "").casefold(), sa.id)
+    """Карточки синхронных зон: как :func:`synchronous_area_display_order_sort_key`."""
+    return synchronous_area_display_order_sort_key(sa)
 
 
 def _csrf():
@@ -133,19 +128,22 @@ def russia_demand():
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITHOUT_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.russia_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationEnergyConsumptionParameter, None, None)
+    rows = dps.get_demand_rows(
+        RussiaFederationEnergyConsumptionParameter, None, None, perimeter_variant_code=CODE_WITHOUT_NT
+    )
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
-        page_title="Нагрузки: Россия (без НТ)",
-        parent_label="Россия (без НТ)",
+        page_title="Нагрузки: Россия без НТ",
+        parent_label="Россия без НТ",
         back_url=url_for("energy_consumption_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -153,13 +151,19 @@ def russia_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        **dps.demand_edit_template_extras(
+            RussiaFederationEnergyConsumptionParameter,
+            parent_fk_column=None,
+            parent_id=None,
+            fixed_perimeter_variant_code=CODE_WITHOUT_NT,
+        ),
     )
 
 
 @energy_consumption_bp.route("/russia-with-nt/", methods=["GET", "POST"])
 @login_required
 def russia_with_nt_demand():
-    """Те же поля и логика, что у /russia/, отдельная таблица (сценарий с новыми территориями)."""
+    """Россия с НТ — те же поля, что у /russia/, вариант периметра with_nt."""
     form = _csrf()
     if request.method == "POST":
         if not form.validate_on_submit():
@@ -167,24 +171,27 @@ def russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                RussiaFederationWithNtEnergyConsumptionParameter,
+                RussiaFederationEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITH_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationWithNtEnergyConsumptionParameter, None, None)
+    rows = dps.get_demand_rows(
+        RussiaFederationEnergyConsumptionParameter, None, None, perimeter_variant_code=CODE_WITH_NT
+    )
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
-        page_title="Нагрузки: Россия (с НТ)",
-        parent_label="Россия (с НТ)",
+        page_title="Нагрузки: Россия с НТ",
+        parent_label="Россия с НТ",
         back_url=url_for("energy_consumption_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -192,6 +199,12 @@ def russia_with_nt_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        **dps.demand_edit_template_extras(
+            RussiaFederationEnergyConsumptionParameter,
+            parent_fk_column=None,
+            parent_id=None,
+            fixed_perimeter_variant_code=CODE_WITH_NT,
+        ),
     )
 
 
@@ -211,19 +224,22 @@ def ees_russia_demand():
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITHOUT_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_demand")
 
-    rows = dps.get_demand_rows(EesRussiaEnergyConsumptionParameter, None, None)
+    rows = dps.get_demand_rows(
+        EesRussiaEnergyConsumptionParameter, None, None, perimeter_variant_code=CODE_WITHOUT_NT
+    )
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
-        page_title="Нагрузки: ЕЭС России (без НТ)",
-        parent_label="ЕЭС России (без НТ)",
+        page_title="Нагрузки: ЕЭС России без НТ",
+        parent_label="ЕЭС России без НТ",
         back_url=url_for("energy_consumption_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -231,13 +247,19 @@ def ees_russia_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        **dps.demand_edit_template_extras(
+            EesRussiaEnergyConsumptionParameter,
+            parent_fk_column=None,
+            parent_id=None,
+            fixed_perimeter_variant_code=CODE_WITHOUT_NT,
+        ),
     )
 
 
 @energy_consumption_bp.route("/ees-russia-with-nt/", methods=["GET", "POST"])
 @login_required
 def ees_russia_with_nt_demand():
-    """ЕЭС России с НТ — отдельная таблица."""
+    """ЕЭС России с НТ — вариант периметра with_nt в общей таблице."""
     form = _csrf()
     if request.method == "POST":
         if not form.validate_on_submit():
@@ -245,18 +267,21 @@ def ees_russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesRussiaWithNtEnergyConsumptionParameter,
+                EesRussiaEnergyConsumptionParameter,
                 None,
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITH_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("energy_consumption_bp.ees_russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(EesRussiaWithNtEnergyConsumptionParameter, None, None)
+    rows = dps.get_demand_rows(
+        EesRussiaEnergyConsumptionParameter, None, None, perimeter_variant_code=CODE_WITH_NT
+    )
     rd = _parse_energy_consumption_rounding_digits()
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
@@ -270,6 +295,12 @@ def ees_russia_with_nt_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        **dps.demand_edit_template_extras(
+            EesRussiaEnergyConsumptionParameter,
+            parent_fk_column=None,
+            parent_id=None,
+            fixed_perimeter_variant_code=CODE_WITH_NT,
+        ),
     )
 
 
@@ -309,6 +340,11 @@ def ees_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        **dps.demand_edit_template_extras(
+            EesEnergyConsumptionParameter,
+            parent_fk_column=None,
+            parent_id=None,
+        ),
     )
 
 
@@ -408,6 +444,13 @@ def _demand_detail(
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess
     ctx["show_combined_on_ez"] = show_combined_on_ez
+    ctx.update(
+        dps.demand_edit_template_extras(
+            demand_model,
+            parent_fk_column=fk_column,
+            parent_id=parent_id,
+        )
+    )
     return render_template("energy_consumption/energy_consumption_edit.html", **ctx)
 
 

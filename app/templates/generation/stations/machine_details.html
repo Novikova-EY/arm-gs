@@ -17,13 +17,14 @@
 {% set can_edit_fuel = current_user.role_names | select('in', fuel_edit_roles) | list | length > 0 %}
 {% set can_edit_generation = current_user.role_names | select('in', generation_edit_roles) | list | length > 0 %}
 {% set can_edit_any = can_edit_fuel or can_edit_generation %}
+{% set can_save_machine_all_versions = can_save_machine_all_versions | default(false) %}
 {% set hide_pgu_parent_date_fields = (machine and machine.tes_machine_type and machine.tes_machine_type.name and (machine.tes_machine_type.name|lower) == 'пгу' and pgu_machines is defined and pgu_machines|length > 0) %}
 
 <div class="container-fluid mt-4 machine-details-page">
     <!-- Кнопки возврата -->
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
-        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">  электростанции</a>
+        <a href="{{ url_for('station_bp.station_list', **request.args) }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
         <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
     </div>
 
@@ -151,6 +152,7 @@
                             </div>
 
                             <div class="col-12 col-lg-3">
+                                {% if station.station_type and station.station_type.name and station.station_type.name|lower == 'тэс' %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Группа оборудования:</div>
                                     <div class="col-7 text-start">
@@ -165,6 +167,7 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% endif %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип группы оборудования:</div>
                                     <div class="col-7 text-start">
@@ -846,11 +849,18 @@
             {% endif %}
 
             <!-- Контейнер для кнопок -->
-            <div class="d-flex justify-content-end mt-3 gap-3">
+            <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
                 <!-- Кнопка "Сохранить" -->
                  {% if can_edit_any %}
                     <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
-                
+                    {% if can_save_machine_all_versions %}
+                    <button type="submit"
+                            name="all_versions"
+                            value="1"
+                            class="btn btn-outline-success fs-5"
+                            title="Применить топливо (СО), примечание и собственника во всех версиях БД (по external_code)"
+                            onclick="return confirmMachineDetailsSaveAllVersions(this);">Сохранить во всех версиях</button>
+                    {% endif %}
                     <!-- Кнопка "Сбросить" -->
                     <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id if machine else 0, **request.args) }}" 
                     class="btn btn-outline-danger fs-5">
@@ -2902,6 +2912,40 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 });
+</script>
+
+<script>
+/**
+ * Двойное подтверждение сохранения агрегата во всех версиях БД (machine_details).
+ */
+window.confirmMachineDetailsSaveAllVersions = function (btn) {
+    var form = btn && btn.form ? btn.form : null;
+    if (!form) return false;
+
+    var msg1 = 'Сохранить данные агрегата во ВСЕХ версиях базы данных?\n\n'
+        + 'Будут применены те же данные формы, что и при обычном «Сохранить» '
+        + '(мощности, даты, типы ТЭС/топливо, примечание и др.) — для всех копий агрегата '
+        + 'с тем же external_code в каждой версии БД.';
+    if (!confirm(msg1)) {
+        return false;
+    }
+
+    var msg2 = 'ПОДТВЕРЖДЕНИЕ: вы уверены, что хотите перезаписать эти данные во всех версиях БД?\n\n'
+        + 'Это действие нельзя отменить автоматически.';
+    if (!confirm(msg2)) {
+        return false;
+    }
+
+    var confirmInput = form.querySelector('input[name="all_versions_confirm"]');
+    if (!confirmInput) {
+        confirmInput = document.createElement('input');
+        confirmInput.type = 'hidden';
+        confirmInput.name = 'all_versions_confirm';
+        form.appendChild(confirmInput);
+    }
+    confirmInput.value = '1';
+    return true;
+};
 </script>
 
 {% endif %}

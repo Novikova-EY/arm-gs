@@ -589,7 +589,7 @@
                                                     <div class="d-flex gap-1 flex-shrink-0">
                                                         <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="btn btn-outline-success btn-sm">Открыть</a>
                                                         <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить</button>
-                                                        <button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>
+                                                        {% if can_save_machines_all_versions %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>{% endif %}
                                                     </div>
                                                 </form>
                                                 {% if missing_eg_name_row and can_add_equipment_group %}
@@ -690,14 +690,14 @@
 
                             <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
                             <select name="start_year" id="start_year" class="form-select" style="width: auto;">
-                                {% for year in range(2021, 2043) %}
+                                {% for year in (filter_year_list|default([])) %}
                                 <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
                             </select>
 
                             <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
                             <select name="end_year" id="end_year" class="form-select" style="width: auto;">
-                                {% for year in range(2022, 2043) %}
+                                {% for year in (filter_year_list|default([])) %}
                                 <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                                 {% endfor %}
                             </select>
@@ -814,12 +814,12 @@
                         <div class="d-flex align-items-center gap-2 ms-auto">
                             <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
                                 <label for="rounding_digits_gen" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
-                                <select id="rounding_digits_gen" class="form-select" style="min-width: 150px;" aria-label="Округление для выработки электроэнергии">
-                                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                                <select id="rounding_digits_gen" name="rounding_digits_gen" class="form-select" style="min-width: 150px;" aria-label="Округление для выработки электроэнергии">
+                                    <option value="0" {% if rounding_digits_gen == 0 %}selected{% endif %}>Не округлять</option>
+                                    <option value="1" {% if rounding_digits_gen == 1 %}selected{% endif %}>1 знак</option>
+                                    <option value="2" {% if rounding_digits_gen == 2 %}selected{% endif %}>2 знака</option>
+                                    <option value="3" {% if rounding_digits_gen == 3 %}selected{% endif %}>3 знака</option>
+                                    <option value="-1" {% if rounding_digits_gen == -1 %}selected{% endif %}>Целое число</option>
                                 </select>
                             </div>
                         </div>
@@ -869,12 +869,12 @@
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
                                     <label for="rounding_digits_gaes" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
-                                    <select id="rounding_digits_gaes" class="form-select" style="min-width: 150px;" aria-label="Округление для потребления ГАЭС на заряд">
-                                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                                    <select id="rounding_digits_gaes" name="rounding_digits_gaes" class="form-select" style="min-width: 150px;" aria-label="Округление для потребления ГАЭС на заряд">
+                                        <option value="0" {% if rounding_digits_gaes == 0 %}selected{% endif %}>Не округлять</option>
+                                        <option value="1" {% if rounding_digits_gaes == 1 %}selected{% endif %}>1 знак</option>
+                                        <option value="2" {% if rounding_digits_gaes == 2 %}selected{% endif %}>2 знака</option>
+                                        <option value="3" {% if rounding_digits_gaes == 3 %}selected{% endif %}>3 знака</option>
+                                        <option value="-1" {% if rounding_digits_gaes == -1 %}selected{% endif %}>Целое число</option>
                                     </select>
                                 </div>
                             </div>
@@ -901,8 +901,16 @@
                         </div>
                         {% endif %}
                         {% if can_edit %}
-                        <div class="d-flex justify-content-end mt-3 gap-3">
+                        <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
                             <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                            {% if can_save_machines_all_versions %}
+                            <button type="submit"
+                                    name="all_versions"
+                                    value="1"
+                                    class="btn btn-outline-success fs-5"
+                                    title="Применить общую информацию, агрегаты, выработку и заряд ГАЭС во всех версиях БД (по external_code)"
+                                    onclick="return confirmStationMachinesSaveAllVersions(this);">Сохранить во всех версиях</button>
+                            {% endif %}
                             <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                         </div>
                         {% endif %}
@@ -1650,76 +1658,74 @@
         const roundingGen = document.getElementById('rounding_digits_gen');
         const roundingGaes = document.getElementById('rounding_digits_gaes');
 
-        function syncRoundingSelects(sourceEl) {
-            const v = sourceEl.value;
-            if (roundingMain && roundingMain !== sourceEl) roundingMain.value = v;
-            if (roundingGen && roundingGen !== sourceEl) roundingGen.value = v;
-            if (roundingGaes && roundingGaes !== sourceEl) roundingGaes.value = v;
-        }
-
-        function applyRoundingChange(selectedRounding) {
-            const tbody = document.getElementById('machines-tbody');
-            if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="{{ 15 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
-                tbody.dataset.loaded = '0';
-                const url = `{{ url_for('station_bp.station_details_tbody', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
-                fetch(url, { cache: 'no-store' })
-                    .then(r => r.text())
-                    .then(html => {
-                        tbody.innerHTML = html;
-                        tbody.dataset.loaded = '1';
-                        if (typeof window.updateRows === 'function') {
-                            window.updateRows();
-                        }
-                        if (typeof window.linkStationUnifiedSaveForm === 'function') {
-                            window.linkStationUnifiedSaveForm();
-                        }
-                    })
-                    .catch(err => console.error('Ошибка загрузки агрегатов:', err));
-            }
-
-            const genTbody = document.getElementById('station-energy-generation-tbody');
-            if (genTbody) {
-                const genUrl = `{{ url_for('station_bp.station_details_station_energy_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
-                fetch(genUrl, { cache: 'no-store' })
-                    .then(r => r.text())
-                    .then(html => { genTbody.innerHTML = html; })
-                    .catch(err => console.error('Ошибка обновления выработки:', err));
-            }
-
-            const gaesTbody = document.getElementById('station-gaes-charge-tbody');
-            if (gaesTbody) {
-                const gaesUrl = `{{ url_for('station_bp.station_details_station_gaes_charge_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
-                fetch(gaesUrl, { cache: 'no-store' })
-                    .then(r => {
-                        if (r.status === 204) {
-                            gaesTbody.innerHTML = '';
-                            return Promise.resolve(null);
-                        }
-                        return r.text();
-                    })
-                    .then(html => {
-                        if (html !== null) gaesTbody.innerHTML = html;
-                    })
-                    .catch(err => console.error('Ошибка обновления потребления ГАЭС:', err));
-            }
-
+        function setUrlSearchParamPreserveOthers(paramName, value) {
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('rounding_digits', selectedRounding);
+            newUrl.searchParams.set(paramName, value);
             window.history.replaceState({}, '', newUrl.toString());
         }
 
-        function bindRounding(el) {
+        function reloadMachinesTbody(selectedRounding) {
+            const tbody = document.getElementById('machines-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = `<tr><td colspan="{{ 15 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
+            tbody.dataset.loaded = '0';
+            const url = `{{ url_for('station_bp.station_details_tbody', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${encodeURIComponent(selectedRounding)}`;
+            fetch(url, { cache: 'no-store' })
+                .then(r => r.text())
+                .then(html => {
+                    tbody.innerHTML = html;
+                    tbody.dataset.loaded = '1';
+                    if (typeof window.updateRows === 'function') {
+                        window.updateRows();
+                    }
+                    if (typeof window.linkStationUnifiedSaveForm === 'function') {
+                        window.linkStationUnifiedSaveForm();
+                    }
+                })
+                .catch(err => console.error('Ошибка загрузки агрегатов:', err));
+            setUrlSearchParamPreserveOthers('rounding_digits', selectedRounding);
+        }
+
+        function reloadEnergyGenerationRow(selectedRounding) {
+            const genTbody = document.getElementById('station-energy-generation-tbody');
+            if (!genTbody) return;
+            const genUrl = `{{ url_for('station_bp.station_details_station_energy_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits_gen=${encodeURIComponent(selectedRounding)}`;
+            fetch(genUrl, { cache: 'no-store' })
+                .then(r => r.text())
+                .then(html => { genTbody.innerHTML = html; })
+                .catch(err => console.error('Ошибка обновления выработки:', err));
+            setUrlSearchParamPreserveOthers('rounding_digits_gen', selectedRounding);
+        }
+
+        function reloadGaesChargeRow(selectedRounding) {
+            const gaesTbody = document.getElementById('station-gaes-charge-tbody');
+            if (!gaesTbody) return;
+            const gaesUrl = `{{ url_for('station_bp.station_details_station_gaes_charge_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits_gaes=${encodeURIComponent(selectedRounding)}`;
+            fetch(gaesUrl, { cache: 'no-store' })
+                .then(r => {
+                    if (r.status === 204) {
+                        gaesTbody.innerHTML = '';
+                        return Promise.resolve(null);
+                    }
+                    return r.text();
+                })
+                .then(html => {
+                    if (html !== null) gaesTbody.innerHTML = html;
+                })
+                .catch(err => console.error('Ошибка обновления потребления ГАЭС:', err));
+            setUrlSearchParamPreserveOthers('rounding_digits_gaes', selectedRounding);
+        }
+
+        function bindRounding(el, applyFn) {
             if (!el) return;
             el.addEventListener('change', function () {
-                syncRoundingSelects(this);
-                applyRoundingChange(this.value);
+                applyFn(this.value);
             });
         }
 
-        bindRounding(roundingMain);
-        bindRounding(roundingGen);
-        bindRounding(roundingGaes);
+        bindRounding(roundingMain, reloadMachinesTbody);
+        bindRounding(roundingGen, reloadEnergyGenerationRow);
+        bindRounding(roundingGaes, reloadGaesChargeRow);
     })();
 </script>
 
@@ -1794,6 +1800,38 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
+/**
+ * Двойное подтверждение сохранения агрегатов во всех версиях БД (station_details).
+ */
+window.confirmStationMachinesSaveAllVersions = function (btn) {
+    var form = btn && btn.form ? btn.form : document.getElementById('stationUnifiedSaveForm');
+    if (!form) return false;
+
+    var msg1 = 'Сохранить данные страницы во ВСЕХ версиях базы данных?\n\n'
+        + 'Будут синхронизированы: общая информация и местоположение станции, '
+        + 'агрегаты (топливо, собственник, примечание), выработка электроэнергии '
+        + 'и потребление ГАЭС на заряд (для ГАЭС).'
+    if (!confirm(msg1)) {
+        return false;
+    }
+
+    var msg2 = 'ПОДТВЕРЖДЕНИЕ: вы уверены, что хотите перезаписать эти данные во всех версиях БД?\n\n'
+        + 'Это действие нельзя отменить автоматически.';
+    if (!confirm(msg2)) {
+        return false;
+    }
+
+    var confirmInput = form.querySelector('input[name="all_versions_confirm"]');
+    if (!confirmInput) {
+        confirmInput = document.createElement('input');
+        confirmInput.type = 'hidden';
+        confirmInput.name = 'all_versions_confirm';
+        form.appendChild(confirmInput);
+    }
+    confirmInput.value = '1';
+    return true;
+};
+
 // Единая форма сохранения внизу страницы: поля карточки и агрегатов связываются через атрибут form (в т.ч. после AJAX-подгрузки tbody).
 window.linkStationUnifiedSaveForm = function () {
     var fid = 'stationUnifiedSaveForm';
@@ -1817,6 +1855,12 @@ document.addEventListener('DOMContentLoaded', function () {
     window.linkStationUnifiedSaveForm();
 
     var saveForm = document.getElementById('stationUnifiedSaveForm');
+    if (saveForm) {
+        saveForm.addEventListener('submit', function () {
+            this.action = window.location.pathname + window.location.search;
+        });
+    }
+
     var machinesRoot = document.getElementById('machinesForm');
     if (!saveForm || !machinesRoot) return;
 

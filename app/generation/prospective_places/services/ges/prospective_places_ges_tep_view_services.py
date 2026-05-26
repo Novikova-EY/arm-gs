@@ -169,20 +169,20 @@ def fmt_tep_source_row_full(r: ProspectivePlaceGesTepSource) -> dict[str, str]:
         "specific_semifixed_operating_costs_thous_rub_per_kw": _fmt_excel_like(
             r.specific_semifixed_operating_costs_thous_rub_per_kw or "—"
         ),
-        "generation_average_multiyear_billion_kwh": _fmt_excel_like(
-            r.generation_average_multiyear_billion_kwh or "—"
+        "generation_average_multiyear_million_kwh": _fmt_excel_like(
+            r.generation_average_multiyear_million_kwh or "—"
         ),
         "generation_medium_water_management_year": _fmt_excel_like(
             r.generation_medium_water_management_year or "—"
         ),
-        "generation_medium_water_50pct_billion_kwh": _fmt_excel_like(
-            r.generation_medium_water_50pct_billion_kwh or "—"
+        "generation_medium_water_50pct_million_kwh": _fmt_excel_like(
+            r.generation_medium_water_50pct_million_kwh or "—"
         ),
         "generation_low_water_management_year": _fmt_excel_like(
             r.generation_low_water_management_year or "—"
         ),
-        "generation_low_water_95pct_billion_kwh": _fmt_excel_like(
-            r.generation_low_water_95pct_billion_kwh or "—"
+        "generation_low_water_95pct_million_kwh": _fmt_excel_like(
+            r.generation_low_water_95pct_million_kwh or "—"
         ),
         "capital_cost_wo_pir_total_million_rub": _fmt_numeric_million_rub(
             r.capital_cost_wo_pir_total_million_rub

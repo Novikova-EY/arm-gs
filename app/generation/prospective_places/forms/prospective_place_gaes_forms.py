@@ -188,8 +188,8 @@ class ProspectivePlaceGaesTepSourceEditForm(FlaskForm):
         choices=[],
         validators=[Optional()],
     )
-    generation_average_multiyear_billion_kwh = StringField(
-        "Годовая выработка электроэнергии, млрд кВт·ч",
+    generation_average_multiyear_million_kwh = StringField(
+        "Годовая выработка электроэнергии, млн кВт·ч",
         validators=[Optional(), Length(max=100)],
     )
     generation_average_multiyear_million_kwh_stage_1 = StringField(
@@ -200,11 +200,11 @@ class ProspectivePlaceGaesTepSourceEditForm(FlaskForm):
         "Годовая выработка электроэнергии, 2 очередь, млн кВт·ч",
         validators=[Optional(), Length(max=100)],
     )
-    generation_medium_water_50pct_billion_kwh = StringField(
+    generation_medium_water_50pct_million_kwh = StringField(
         "Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВт·ч",
         validators=[Optional(), Length(max=100)],
     )
-    generation_low_water_95pct_billion_kwh = StringField(
+    generation_low_water_95pct_million_kwh = StringField(
         "Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВт·ч",
         validators=[Optional(), Length(max=100)],
     )

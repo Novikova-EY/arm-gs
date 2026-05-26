@@ -60,6 +60,52 @@ def _is_gaes_station(station: Station) -> bool:
         return False
 
 
+_ALLOWED_STATION_ROUNDINGS = frozenset({-1, 0, 1, 2, 3})
+
+
+def _station_rounding_from_args(param: str):
+    raw = request.args.get(param)
+    if raw is None or raw == "":
+        return None
+    try:
+        v = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return v if v in _ALLOWED_STATION_ROUNDINGS else None
+
+
+def get_station_details_rounding_triplet() -> tuple[int, int, int]:
+    """Округление для агрегатов, выработки и потребления ГАЭС (независимые query-параметры)."""
+    rd_main = _station_rounding_from_args("rounding_digits")
+    if rd_main is None:
+        rd_main = 1
+
+    rd_gen = _station_rounding_from_args("rounding_digits_gen")
+    if rd_gen is None:
+        rd_gen = _station_rounding_from_args("rounding_digits")
+    if rd_gen is None:
+        rd_gen = rd_main
+
+    rd_gaes = _station_rounding_from_args("rounding_digits_gaes")
+    if rd_gaes is None:
+        rd_gaes = _station_rounding_from_args("rounding_digits")
+    if rd_gaes is None:
+        rd_gaes = rd_main
+
+    return rd_main, rd_gen, rd_gaes
+
+
+def _rounding_for_station_energy_fragment(primary_param: str) -> int:
+    """AJAX «выработка» / «ГАЭС заряд»: primary_param или legacy rounding_digits."""
+    v = _station_rounding_from_args(primary_param)
+    if v is not None:
+        return v
+    v = _station_rounding_from_args("rounding_digits")
+    if v is not None:
+        return v
+    return 1
+
+
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
     get_energy_system_type_list_full,
     get_energy_system_type_map,
@@ -97,6 +143,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_start_year,
     get_filter_end_year,
     get_year_feature_dict,
+    get_year_list_full,
 )
 from app.common.services.get_services.gen_companies.gen_company_get_services import (
     get_gen_company_list_full,
@@ -123,6 +170,159 @@ from app.generation.services.station_services.import_station_services import (
 from app.common.services.cache_services import CacheService
 from app.common.middleware import handle_stale_data
 from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
+from app.refdata.routes.refdata_all_versions_guard import (
+    block_all_versions_without_role_admin,
+)
+from app.generation.services.machine_services.machine_all_versions_services import (
+    update_station_machines_all_versions_from_form,
+)
+
+
+def _handle_station_machines_all_versions_save(
+    user,
+    station: Station,
+    *,
+    start_year: int,
+    end_year: int,
+    is_gaes_station: bool,
+) -> bool:
+    """
+    Синхронизация данных station_details во всех версиях БД.
+    Возвращает True, если запрос был с all_versions=1 (вызвавший обработку или отказ).
+    """
+    if request.values.get("all_versions") != "1":
+        return False
+
+    if block_all_versions_without_role_admin(current_user):
+        return True
+
+    if request.values.get("all_versions_confirm") != "1":
+        flash(
+            "Сохранение во всех версиях БД отменено: не пройдено подтверждение.",
+            "warning",
+        )
+        log_to_db(
+            user,
+            "Отклонено сохранение station_details во всех версиях БД: "
+            "отсутствует подтверждение all_versions_confirm",
+            entity_type="station",
+            entity_id=station.id,
+        )
+        return True
+
+    form_keys = set(request.form.keys())
+    is_unified_page_save = request.form.get("station_details_unified_save") == "1"
+    sync_station_general_info = is_unified_page_save or any(
+        k
+        in {
+            "name",
+            "id_condition_type",
+            "id_station_type",
+            "id_station_group",
+            "id_energy_unit",
+            "id_regional_energy_system",
+            "id_regional_district",
+            "location",
+            "note",
+        }
+        for k in form_keys
+    )
+    sync_station_energy = (
+        is_unified_page_save
+        or request.form.get("station_energy_generation_submit") == "1"
+        or request.form.get("station_gaes_combined_energy_submit") == "1"
+        or any(isinstance(k, str) and k.startswith("st_gen_") for k in form_keys)
+    )
+    sync_station_gaes_charge = is_gaes_station and (
+        is_unified_page_save
+        or request.form.get("station_gaes_charge_submit") == "1"
+        or request.form.get("station_gaes_combined_energy_submit") == "1"
+        or any(isinstance(k, str) and k.startswith("st_gaes_charge_") for k in form_keys)
+    )
+
+    request_meta = {
+        "path": request.path,
+        "query": (request.query_string.decode("utf-8", errors="replace")[:500] if request.query_string else ""),
+        "remote_addr": request.remote_addr,
+        "user_agent": (request.headers.get("User-Agent") or "")[:300],
+    }
+    try:
+        result = update_station_machines_all_versions_from_form(
+            user=user,
+            station=station,
+            form_data=request.form,
+            start_year=start_year,
+            end_year=end_year,
+            sync_station_energy=sync_station_energy,
+            sync_station_gaes_charge=sync_station_gaes_charge,
+            sync_station_general_info=sync_station_general_info,
+            request_meta=request_meta,
+        )
+        vt = result.get("versions_touched", 0)
+        uc = result.get("updated_machines", 0)
+        us = result.get("updated_stations", 0)
+        ue = result.get("updated_energy_rows", 0)
+        ug = result.get("updated_gaes_rows", 0)
+        warnings = result.get("warnings") or []
+
+        if result.get("no_changes") and not warnings:
+            flash("Изменений для синхронизации во всех версиях нет.", "info")
+        elif result.get("no_changes"):
+            for msg in warnings:
+                flash(msg, "warning")
+        else:
+            parts = [
+                f"затронуто версий БД: {vt}",
+                f"агрегатов: {uc}",
+            ]
+            if sync_station_general_info:
+                parts.append(f"станций (общая информация): {us}")
+            if sync_station_energy:
+                parts.append(f"строк выработки: {ue}")
+            if sync_station_gaes_charge:
+                parts.append(f"строк заряда ГАЭС: {ug}")
+            flash(
+                "Данные применены во всех версиях БД (" + ", ".join(parts) + ").",
+                "success",
+            )
+            for msg in warnings:
+                flash(msg, "warning")
+            invalidate_cache("station_full", station_id=station.id)
+            invalidate_cache_pattern("station_list:*")
+    except Exception as e:
+        import traceback
+
+        db.session.rollback()
+        traceback.print_exc()
+        current_app.logger.exception(
+            "[station_details] all_versions save failed station_id=%s", station.id
+        )
+        flash(f"Ошибка при сохранении во всех версиях БД: {e}", "danger")
+
+    return True
+
+
+def _station_log_entity_ids(station: Station) -> list[int]:
+    """Идентификаторы всех копий станции во всех версиях БД (по external_code)."""
+    from app.common.services.version_entity_resolve_services import (
+        entity_log_ids_by_external_code,
+    )
+
+    return entity_log_ids_by_external_code(Station, station.id)
+
+
+def _station_logs_base_query(station: Station):
+    """Запрос логов станции по всем версиям БД (общий external_code)."""
+    entity_ids = _station_log_entity_ids(station)
+    return (
+        db.session.query(Log)
+        .filter(
+            Log.entity_type == "station",
+            Log.entity_id.in_(entity_ids),
+        )
+        .filter(~Log.action.ilike("%Открыта страница  электростанции%"))
+        .order_by(Log.timestamp.desc())
+    )
 
 
 def _format_logs_for_display(logs):
@@ -203,31 +403,12 @@ def _format_logs_for_display(logs):
     return formatted_logs
 
 
-def _load_station_with_version(query_factory, requested_version_id):
-    """
-    Возвращает станцию и фактический ID версии (None, если базовая).
-    Без fallback: если запись отсутствует в запрошенной версии, возвращает None.
-    """
-    def _apply_version_filter(q, version_id):
-        if not hasattr(Station, "database_version_id"):
-            return q
-        if version_id is None:
-            return q.filter(Station.database_version_id.is_(None))
-        return q.filter(Station.database_version_id == version_id)
+def _load_station_with_version(query_factory, requested_version_id, station_id=None):
+    from app.common.services.version_entity_resolve_services import load_station_with_version
 
-    # Если запрашивается базовая версия (None)
-    if requested_version_id is None:
-        station = _apply_version_filter(query_factory(), None).first()
-        if station:
-            return station, station.database_version_id
-        return None, None
-
-    # Ищем станцию в запрошенной версии
-    station = _apply_version_filter(query_factory(), requested_version_id).first()
-    if station:
-        return station, station.database_version_id
-
-    return None, requested_version_id
+    return load_station_with_version(
+        query_factory, requested_version_id, station_id=station_id
+    )
 
 
 def _filter_items_by_version(items, version_id):
@@ -371,11 +552,18 @@ def station_details(station_id):
             .filter_by(id=station_id)
         )
 
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
-    
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
+
     if not station:
         abort(404)
-    
+
+    if request.method == "GET" and station.id != station_id:
+        return redirect(
+            url_for("station_bp.station_details", station_id=station.id, **request.args)
+        )
+
     station.machines = _filter_items_by_version(station.machines, station_version_id)
     
     # Диагностика для понимания объема данных
@@ -588,14 +776,8 @@ def station_details(station_id):
     form.id_station_type.choices = _get_versioned_choices(StationType, StationType.id, station_version_id)
     form.id_energy_unit.choices = _get_versioned_choices(EnergyUnit, EnergyUnit.id, station_version_id)
 
-    try:
-        rounding_digits = int(request.args.get('rounding_digits'))
-    except (ValueError, TypeError):
-        rounding_digits = 1
+    rounding_digits, rounding_digits_gen, rounding_digits_gaes = get_station_details_rounding_triplet()
 
-    if rounding_digits is None or rounding_digits < 0:
-        rounding_digits = 1
-    
     if request.method == "GET":
         form.process(obj=station)
         if form.id_condition_type.data is None:
@@ -648,23 +830,37 @@ def station_details(station_id):
                     traceback.print_exc()
                     flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
-            if is_machines_form:
-                if not form_machines.validate():
-                    print("Ошибки в form_machines:", form_machines.errors)
-                elif form_machines.validate_on_submit():
-                    try:
-                        changes = update_machines_from_form_service(user, station, form_machines, request.form)
-                        if changes:
-                            flash("Изменения агрегатов сохранены!", "success")
-                            invalidate_cache("station_full", station_id=station.id)
-                            invalidate_cache_pattern("station_list:*")
-                    except Exception as e:
-                        import traceback
+            machines_all_versions_handled = False
+            if is_machines_form or request.values.get("all_versions") == "1":
+                machines_all_versions_handled = _handle_station_machines_all_versions_save(
+                    user,
+                    station,
+                    start_year=start_year,
+                    end_year=end_year,
+                    is_gaes_station=is_gaes_station,
+                )
+                if not machines_all_versions_handled:
+                    if not form_machines.validate():
+                        print("Ошибки в form_machines:", form_machines.errors)
+                    elif form_machines.validate_on_submit():
+                        try:
+                            changes = update_machines_from_form_service(
+                                user, station, form_machines, request.form
+                            )
+                            if changes:
+                                flash("Изменения агрегатов сохранены!", "success")
+                                invalidate_cache("station_full", station_id=station.id)
+                                invalidate_cache_pattern("station_list:*")
+                        except Exception as e:
+                            import traceback
 
-                        traceback.print_exc()
-                        flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
+                            traceback.print_exc()
+                            flash(f"Ошибка при обновлении агрегатов: {e}", "danger")
 
-            if any(k in submitted_keys for k in station_meta_field_keys):
+            if (
+                any(k in submitted_keys for k in station_meta_field_keys)
+                and request.values.get("all_versions") != "1"
+            ):
                 form.process(formdata=request.form)
                 if form.validate():
                     try:
@@ -681,7 +877,7 @@ def station_details(station_id):
                 else:
                     print("Ошибки в form (unified save):", form.errors)
 
-            if is_station_gaes_combined_energy_form:
+            if is_station_gaes_combined_energy_form and request.values.get("all_versions") != "1":
                 if not is_gaes_station:
                     flash("Совместное сохранение доступно только для электростанций типа ГАЭС.", "warning")
                 else:
@@ -784,7 +980,14 @@ def station_details(station_id):
                     traceback.print_exc()
                     flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
-            if form_machines.validate_on_submit():
+            machines_all_versions_handled = _handle_station_machines_all_versions_save(
+                user,
+                station,
+                start_year=start_year,
+                end_year=end_year,
+                is_gaes_station=is_gaes_station,
+            )
+            if form_machines.validate_on_submit() and not machines_all_versions_handled:
                 try:
                     changes = update_machines_from_form_service(user, station, form_machines, request.form)
                     if changes:
@@ -995,21 +1198,8 @@ def station_details(station_id):
     t0 = time.perf_counter()
     station_logs_formatted = []
     if request.method == "GET":
-        # Используем только entity_type + entity_id (индексированные поля).
-        # Log.details.ilike("%station_id=...") вызывает полное сканирование таблицы и занимает 100+ сек.
-        # Логи по электростанции пишутся с entity_type="station", entity_id=station.id.
-        logs_filter = and_(
-            Log.entity_type == "station",
-            Log.entity_id == station.id,
-        )
-        station_logs_raw = (
-            db.session.query(Log)
-            .filter(logs_filter)
-            .filter(~Log.action.ilike("%Открыта страница  электростанции%"))
-            .order_by(Log.timestamp.desc())
-            .limit(20)  # Ограничиваем количество для ускорения
-            .all()
-        )
+        # entity_id — id станции в версии, из которой сохраняли; ищем по всем копиям (external_code).
+        station_logs_raw = _station_logs_base_query(station).limit(20).all()
         station_logs_formatted = _format_logs_for_display(station_logs_raw)
     print(f"[DIAG] Логи: {(time.perf_counter() - t0)*1000:.0f} мс")
     
@@ -1019,6 +1209,9 @@ def station_details(station_id):
     # Создание группы оборудования — как в fuel_bp.add_equipment_group (только администраторы)
     can_add_equipment_group = current_user.is_authenticated and getattr(
         current_user, "has_admin", False
+    )
+    can_save_machines_all_versions = current_user.is_authenticated and getattr(
+        current_user, "is_admin", False
     )
 
     # Группы оборудования электростанции (по версии) — только для ТЭС
@@ -1034,7 +1227,9 @@ def station_details(station_id):
             from app.fuel.services.stations.stations_equipment_groups_services import (
                 build_station_equipment_groups_v2,
             )
-            v2_groups_map = build_station_equipment_groups_v2([station])
+            v2_groups_map = build_station_equipment_groups_v2(
+                [station], version_id=station_version_id
+            )
             v2_info = v2_groups_map.get(station.id) or {"groups": [], "total_rows": 0}
             station.equipment_group_v2_groups = v2_info["groups"]
             station.equipment_group_v2_total_rows = v2_info["total_rows"]
@@ -1074,11 +1269,21 @@ def station_details(station_id):
     t4 = time.perf_counter()
     from app.common.services.help_services import format_decimal_for_display
 
-    def format_station_energy_for_display(val):
-        return format_decimal_for_display(val, digits=rounding_digits)
+    def format_station_energy_gen_display(val):
+        return format_decimal_for_display(val, digits=rounding_digits_gen)
+
+    def format_station_energy_gaes_display(val):
+        return format_decimal_for_display(val, digits=rounding_digits_gaes)
 
     station_prospective_place_tep_links = _station_prospective_place_tep_links(
         station, station_version_id
+    )
+
+    _years_from_db = [y.number for y in get_year_list_full()]
+    filter_year_list = (
+        _years_from_db
+        if _years_from_db
+        else list(range(get_filter_start_year(), get_filter_end_year() + 1))
     )
 
     html = render_template(
@@ -1087,6 +1292,8 @@ def station_details(station_id):
         form_machines=form_machines,
         station=station,
         rounding_digits=rounding_digits,
+        rounding_digits_gen=rounding_digits_gen,
+        rounding_digits_gaes=rounding_digits_gaes,
         start_year=start_year,
         end_year=end_year, 
         current_year=current_year,
@@ -1098,15 +1305,18 @@ def station_details(station_id):
         energy_system_types=energy_system_type_list,
         station_logs=station_logs_formatted,
         can_edit=can_edit,
+        can_save_machines_all_versions=can_save_machines_all_versions,
         can_add_equipment_group=can_add_equipment_group,
         initial_machines_tbody_html=initial_machines_tbody_html,
         year_features=year_features,
-        format_station_energy_for_display=format_station_energy_for_display,
+        format_station_energy_gen_display=format_station_energy_gen_display,
+        format_station_energy_gaes_display=format_station_energy_gaes_display,
         is_gaes_station=is_gaes_station,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
         res_auto_map=res_auto_map,
         station_prospective_place_tep_links=station_prospective_place_tep_links,
+        filter_year_list=filter_year_list,
     )
 
     after_render_at = time.perf_counter()
@@ -1152,26 +1362,17 @@ def station_logs(station_id):
     def _station_query():
         return Station.query.filter_by(id=station_id)
 
-    station, _ = _load_station_with_version(_station_query, current_version_id)
+    station, _ = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
     if not station:
         abort(404)
-    
+
     # Получаем параметр offset для пагинации
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
     
-    # Используем только entity_type + entity_id (индексированные поля).
-    # Log.details.ilike("%station_id=...") вызывает полное сканирование таблицы.
-    logs_filter = and_(
-        Log.entity_type == "station",
-        Log.entity_id == station.id,
-    )
-    logs_query = (
-        db.session.query(Log)
-        .filter(logs_filter)
-        .filter(~Log.action.ilike("%Открыта страница  электростанции%"))
-        .order_by(Log.timestamp.desc())
-    )
+    logs_query = _station_logs_base_query(station)
     
     # Получаем общее количество
     total_count = logs_query.count()
@@ -1262,6 +1463,10 @@ def rename_station_equipment_group_v2(station_id, equipment_group_id):
         )
 
     if all_versions:
+        if block_all_versions_without_role_admin(current_user):
+            return redirect(
+                url_for("station_bp.station_details", station_id=station_id, **request.args)
+            )
         station_external_code = (station.external_code or "").strip()
         if not station_external_code:
             flash("У электростанции отсутствует external_code, невозможно применить изменения во всех версиях.", "warning")
@@ -1440,7 +1645,8 @@ def station_details_tbody(station_id):
     
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
     end_year = request.args.get("end_year", get_filter_end_year(), type=int)
-    rounding_digits = request.args.get("rounding_digits", 0, type=int)
+    rd_tb = _station_rounding_from_args("rounding_digits")
+    rounding_digits = rd_tb if rd_tb is not None else 1
 
     # Проверяем права пользователя (включая generation-admin, generation-editor)
     edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor']
@@ -1486,7 +1692,7 @@ def station_details_station_energy_row(station_id):
     """HTML одной строки таблицы выработки электроэнергии (для обновления при смене округления)."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
     end_year = request.args.get("end_year", get_filter_end_year(), type=int)
-    rounding_digits = request.args.get("rounding_digits", 0, type=int)
+    rounding_digits = _rounding_for_station_energy_fragment("rounding_digits_gen")
     edit_roles = [
         "admin",
         "generation-admin",
@@ -1502,7 +1708,9 @@ def station_details_station_energy_row(station_id):
     def _station_query():
         return db.session.query(Station).filter_by(id=station_id)
 
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
     if not station:
         abort(404)
 
@@ -1523,7 +1731,7 @@ def station_details_station_energy_row(station_id):
 
     from app.common.services.help_services import format_decimal_for_display
 
-    def format_station_energy_for_display(val):
+    def format_station_energy_gen_display(val):
         return format_decimal_for_display(val, digits=rounding_digits)
 
     html = render_template(
@@ -1532,7 +1740,7 @@ def station_details_station_energy_row(station_id):
         start_year=start_year,
         end_year=end_year,
         can_edit=can_edit,
-        format_station_energy_for_display=format_station_energy_for_display,
+        format_station_energy_gen_display=format_station_energy_gen_display,
     )
     resp = make_response(html)
     resp.headers["Cache-Control"] = "no-store" if can_edit else "public, max-age=120"
@@ -1545,7 +1753,7 @@ def station_details_station_gaes_charge_row(station_id):
     """HTML строки таблицы потребления ГАЭС на заряд (обновление при смене округления)."""
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
     end_year = request.args.get("end_year", get_filter_end_year(), type=int)
-    rounding_digits = request.args.get("rounding_digits", 0, type=int)
+    rounding_digits = _rounding_for_station_energy_fragment("rounding_digits_gaes")
     edit_roles = [
         "admin",
         "generation-admin",
@@ -1565,7 +1773,9 @@ def station_details_station_gaes_charge_row(station_id):
             .filter_by(id=station_id)
         )
 
-    station, station_version_id = _load_station_with_version(_station_query, current_version_id)
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
     if not station:
         abort(404)
     if not _is_gaes_station(station):
@@ -1588,7 +1798,7 @@ def station_details_station_gaes_charge_row(station_id):
 
     from app.common.services.help_services import format_decimal_for_display
 
-    def format_station_energy_for_display(val):
+    def format_station_energy_gaes_display(val):
         return format_decimal_for_display(val, digits=rounding_digits)
 
     html = render_template(
@@ -1597,7 +1807,7 @@ def station_details_station_gaes_charge_row(station_id):
         start_year=start_year,
         end_year=end_year,
         can_edit=can_edit,
-        format_station_energy_for_display=format_station_energy_for_display,
+        format_station_energy_gaes_display=format_station_energy_gaes_display,
     )
     resp = make_response(html)
     resp.headers["Cache-Control"] = "no-store" if can_edit else "public, max-age=120"
@@ -1657,7 +1867,9 @@ def _render_machines_tbody(
             .filter_by(id=station_id)
         )
 
-    station, station_version_id = _load_station_with_version(_station_tbody_query, version_id)
+    station, station_version_id = _load_station_with_version(
+        _station_tbody_query, version_id, station_id=station_id
+    )
     if not station:
         abort(404)
 

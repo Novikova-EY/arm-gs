@@ -4,8 +4,9 @@
         Выработка<br>электроэнергии,<br>млн кВт·ч
     </td>
     {% for year in range(start_year, end_year + 1) %}
-    <td class="text-center align-middle">
-        {% set v = station.station_energy_by_year.get(year) %}
+    {% set v = station.station_energy_by_year.get(year) %}
+    {% set v_full = (v | format_decimal(0)) if v is not none else '' %}
+    <td class="text-center align-middle"{% if v_full %} title="{{ v_full | e }}"{% endif %}>
         {% if can_edit %}
             {% if v is none %}
             <input type="hidden" name="st_gen_{{ year }}_orig" value="">
@@ -17,7 +18,7 @@
                    value=""
                    style="min-width: 6rem;">
             {% else %}
-            {% set disp = format_station_energy_for_display(v) %}
+            {% set disp = format_station_energy_gen_display(v) %}
             <input type="hidden" name="st_gen_{{ year }}_orig" value="{{ disp }}">
             <input type="text"
                    class="form-control text-center"
@@ -29,7 +30,7 @@
             {% endif %}
         {% else %}
             {% if v is not none %}
-                {{ format_station_energy_for_display(v) }}
+                {{ format_station_energy_gen_display(v) }}
             {% else %}
                 —
             {% endif %}

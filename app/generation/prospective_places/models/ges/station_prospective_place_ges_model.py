@@ -58,7 +58,7 @@ class StationProspectivePlaceGES(db.Model, AuditMixin):
     # Географическое расположение площадки (кадастровый номер земельного участка или координаты)
     geo_location = db.Column(db.String(500), nullable=True)
 
-    # Планируемая установленная генерирующая мощность ГЭС, МВт
+    # Планируемая установленная мощность ГЭС, МВт
     planned_capacity_mw = db.Column(db.Integer, nullable=True)
 
     # Инициатор проекта
@@ -70,10 +70,10 @@ class StationProspectivePlaceGES(db.Model, AuditMixin):
     # Вид регулирования
     regulation_type = db.Column(db.String(500), nullable=True)
 
-    # Период ввода в эксплуатацию по Генеральной схеме до 2042 г.
+    # Генеральная схема до 2042 года (Период ввода в эксплуатацию). Распоряжение Правительства от 30.12.2024 №4153-р
     general_scheme_commissioning_period = db.Column(db.String(255), nullable=True)
 
-    # Срок строительства, лет (до одного знака после запятой)
+    # Срок строительства по Протоколу Минэнерго от 25.05.2022 №РГ/07-0003пр (без учета срока выполнения ПИР- 2 года), лет
     construction_period_years = db.Column(db.Numeric(12, 1), nullable=True)
 
     id_prospective_place_type_ges = db.Column(

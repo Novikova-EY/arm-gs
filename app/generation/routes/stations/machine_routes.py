@@ -3,8 +3,8 @@ from app.generation.routes.stations import station_bp
 from app.extensions import db
 from urllib.parse import urlencode
 
-from flask import render_template, request, session, flash, redirect, url_for
-from flask_login import login_required
+from flask import render_template, request, session, flash, redirect, url_for, abort, current_app
+from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import time
 from app.auth.routes import roles_required
@@ -33,7 +33,8 @@ from app.logs.models.log_model import Log
 from app.logs.services.log_display_utils import format_logs_for_display as _format_logs_for_display
 from sqlalchemy import or_
 from app.common.middleware import handle_stale_data
-from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
+from app.generation.services.station_services.station_services import get_station_by_id
+from app.logs.services.logging_service import log_to_db
 
 
 def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
@@ -47,6 +48,16 @@ def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int
     return start_year, end_year
 
 
+def _machine_log_entity_ids(machine_id: int) -> list[int]:
+    """Все id агрегата по версиям БД (external_code) для журнала изменений."""
+    from app.generation.models.machine.machine_model import Machine
+    from app.common.services.version_entity_resolve_services import (
+        entity_log_ids_by_external_code,
+    )
+
+    return entity_log_ids_by_external_code(Machine, machine_id)
+
+
 def _query_machine_logs_fast(machine_id: int, machine_number: int | None, limit: int = 20):
     """Возвращает последние `limit` логов для агрегата, приоритизируя быстрые фильтры.
 
@@ -54,9 +65,12 @@ def _query_machine_logs_fast(machine_id: int, machine_number: int | None, limit:
     индексы и выполняется мгновенно. Если записей меньше, добираем по старому шаблону из details,
     где агрегат упоминается только текстом.
     """
+    machine_entity_ids = _machine_log_entity_ids(machine_id)
     primary_query = (
         db.session.query(Log)
-        .filter((Log.entity_type == 'machine') & (Log.entity_id == machine_id))
+        .filter(
+            (Log.entity_type == "machine") & (Log.entity_id.in_(machine_entity_ids))
+        )
         .order_by(Log.timestamp.desc())
     )
 
@@ -115,12 +129,32 @@ def _query_machine_logs_fast(machine_id: int, machine_number: int | None, limit:
     return combined[:limit]
 
 
+def _resolved_station_id_for_current_version(station_id: int) -> int | None:
+    """ID станции в выбранной версии БД, если исходный URL указывает на ее копию."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import load_by_id_with_version
+    from app.generation.models.station.station_model import Station
+
+    station = load_by_id_with_version(
+        Station,
+        station_id,
+        get_current_db_version_id(),
+    )
+    return station.id if station else None
+
+
 @station_bp.route("/machine_logs/<int:station_id>/<int:machine_id>", methods=["GET"])
 @login_required
 def machine_logs(station_id, machine_id):
     """AJAX endpoint для загрузки всех логов агрегата."""
     from flask import jsonify
-    
+    from app.common.services.version_entity_resolve_services import resolve_machine_details_ids
+
+    resolved = resolve_machine_details_ids(station_id, machine_id)
+    if not resolved:
+        return jsonify({'error': 'Machine not found'}), 404
+    _, machine_id = resolved
+
     machine = get_machine_by_id(machine_id)
     if not machine:
         return jsonify({'error': 'Machine not found'}), 404
@@ -129,13 +163,14 @@ def machine_logs(station_id, machine_id):
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)
     
+    machine_entity_ids = _machine_log_entity_ids(machine_id)
     logs_query = (
         db.session.query(Log)
         .filter(
             or_(
-                (Log.entity_type == 'machine') & (Log.entity_id == machine_id),
+                (Log.entity_type == "machine") & (Log.entity_id.in_(machine_entity_ids)),
                 Log.details.ilike(f"%machine_id={machine_id}%"),
-                Log.details.ilike(f"%агрегата №{machine.machine_number}%")
+                Log.details.ilike(f"%агрегата №{machine.machine_number}%"),
             )
         )
         .order_by(Log.timestamp.desc())
@@ -181,6 +216,44 @@ def machine_details(station_id, machine_id):
         return redirect(f"{target}?{urlencode(q)}")
     start_year, end_year = nsy, ney
 
+    from app.common.services.version_entity_resolve_services import resolve_machine_details_ids
+
+    resolved = resolve_machine_details_ids(station_id, machine_id)
+    if not resolved:
+        if request.method == "GET" and machine_id != 0:
+            resolved_station_id = _resolved_station_id_for_current_version(station_id)
+            if resolved_station_id is not None:
+                flash(
+                    "Агрегат отсутствует в выбранной версии БД. "
+                    "Открыта карточка электростанции в текущей версии.",
+                    "warning",
+                )
+                q = request.args.to_dict(flat=True)
+                q["start_year"] = start_year
+                q["end_year"] = end_year
+                return redirect(
+                    url_for(
+                        "station_bp.station_details",
+                        station_id=resolved_station_id,
+                        **q,
+                    )
+                )
+        abort(404)
+    resolved_station_id, resolved_machine_id = resolved
+    if request.method == "GET" and (
+        resolved_station_id != station_id or resolved_machine_id != machine_id
+    ):
+        q = request.args.to_dict(flat=True)
+        q["start_year"] = start_year
+        q["end_year"] = end_year
+        target = url_for(
+            "station_bp.machine_details",
+            station_id=resolved_station_id,
+            machine_id=resolved_machine_id,
+        )
+        return redirect(f"{target}?{urlencode(q)}")
+    station_id, machine_id = resolved_station_id, resolved_machine_id
+
     if request.method == "POST":
         result = handle_machine_post(
             station_id=station_id,
@@ -216,6 +289,11 @@ def machine_details(station_id, machine_id):
             logs_elapsed = 0.0
 
         render_start = time.perf_counter()
+        can_save_machine_all_versions = (
+            current_user.is_authenticated
+            and getattr(current_user, "is_admin", False)
+            and machine_obj is not None
+        )
         response = render_template(
             "generation/stations/machine_details.html",
             main_form=result['main_form'],
@@ -233,6 +311,7 @@ def machine_details(station_id, machine_id):
             machine_logs=machine_logs,
             all_documents=result['all_documents'],
             fallback_gen_company=result.get('fallback_gen_company'),
+            can_save_machine_all_versions=can_save_machine_all_versions,
         )
         render_elapsed = time.perf_counter() - render_start
         total_elapsed = time.perf_counter() - start_time

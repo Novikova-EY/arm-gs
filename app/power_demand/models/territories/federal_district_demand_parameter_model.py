@@ -39,7 +39,7 @@ class FederalDistrictDemandParameter(db.Model, AuditMixin):
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Максимальное потребление мощности, МВт
-    max_power_consumption_mw = db.Column(Numeric(25, 16), nullable=True)
+    max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Дата и время максимального потребления мощности, МВт
     peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -47,8 +47,8 @@ class FederalDistrictDemandParameter(db.Model, AuditMixin):
     # Средняя дневная температура воздуха, °C
     avg_daily_air_temp_c = db.Column(Numeric(10, 2), nullable=True)
 
-    # Совмещенный максимум на централизованную зону, МВт
-    combined_on_cz = db.Column(Numeric(25, 16), nullable=True)
+    # Совмещенный максимум на ЦЗ России, МВт
+    combined_on_cz = db.Column(Numeric(25, 3), nullable=True)
     
     # Примечание
     note = db.Column(db.Text, nullable=True)

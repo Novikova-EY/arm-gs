@@ -5,10 +5,11 @@ from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_ENERGY_CONSUMPTION, SCHEMA_REFDATA
 
 
-class FederalDistrictEnergyConsumptionParameter(db.Model, AuditMixin):
+class FederalDistrictEnergyConsumptionParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     __tablename__ = "gs_ec_federal_district_consumption_params"
     __table_args__ = {"schema": SCHEMA_ENERGY_CONSUMPTION}
 

@@ -50,7 +50,7 @@ class RegionalEnergySystemDemandParameter(db.Model, AuditMixin):
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Максимальное потребление мощности, МВт
-    max_power_consumption_mw = db.Column(Numeric(25, 16), nullable=True)
+    max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Дата и время максимального потребления мощности, МВт
     peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -59,17 +59,23 @@ class RegionalEnergySystemDemandParameter(db.Model, AuditMixin):
     avg_daily_air_temp_c = db.Column(Numeric(10, 2), nullable=True)
 
     # Совмещенный максимум на ОЭС, МВт
-    combined_on_oes = db.Column(Numeric(25, 16), nullable=True)
+    combined_on_oes = db.Column(Numeric(25, 3), nullable=True)
 
     # Совмещенный максимум на ЕЭС, МВт
-    combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
+    combined_on_ees = db.Column(Numeric(25, 3), nullable=True)
 
     # Совмещенный максимум на энергозону, МВт
-    combined_on_ez = db.Column(Numeric(25, 16), nullable=True)
+    combined_on_ez = db.Column(Numeric(25, 3), nullable=True)
+
+    # Совмещенный максимум на ФО, МВт
+    combined_on_fo = db.Column(Numeric(25, 3), nullable=True)
+
+    # Совмещенный максимум на ЦЗ России, МВт
+    combined_on_cz = db.Column(Numeric(25, 3), nullable=True)
 
     # Коэффициенты k (безразмерные), сохранённые по году для среднесрочного периода / плана
-    coeff_k_combined_on_oes = db.Column(Numeric(25, 16), nullable=True)
-    coeff_k_combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
+    coeff_k_combined_on_oes = db.Column(Numeric(25, 6), nullable=True)
+    coeff_k_combined_on_ees = db.Column(Numeric(25, 6), nullable=True)
 
     # Примечание
     note = db.Column(db.Text, nullable=True)

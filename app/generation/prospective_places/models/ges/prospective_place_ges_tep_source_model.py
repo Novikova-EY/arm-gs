@@ -101,15 +101,15 @@ class ProspectivePlaceGesTepSource(db.Model, AuditMixin):
     )
 
     # Среднемноголетняя выработка электроэнергии, млн кВт·ч
-    generation_average_multiyear_billion_kwh = db.Column(db.String(100), nullable=True)
+    generation_average_multiyear_million_kwh = db.Column(db.String(100), nullable=True)
 
     # Выработка электроэнергии при среднем уровне воды, млн кВт·ч
-    generation_medium_water_50pct_billion_kwh = db.Column(db.String(100), nullable=True)
+    generation_medium_water_50pct_million_kwh = db.Column(db.String(100), nullable=True)
     # Год управления уровнем воды при среднем уровне воды
     generation_medium_water_management_year = db.Column(db.String(255), nullable=True)
 
     # Выработка электроэнергии при низком уровне воды, млн кВт·ч
-    generation_low_water_95pct_billion_kwh = db.Column(db.String(100), nullable=True)
+    generation_low_water_95pct_million_kwh = db.Column(db.String(100), nullable=True)
     # Год управления уровнем воды при низком уровне воды
     generation_low_water_management_year = db.Column(db.String(255), nullable=True)
 

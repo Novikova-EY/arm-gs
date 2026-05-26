@@ -28,9 +28,8 @@ def get_regional_energy_system_choices():
     ).all()
 
 
-@lru_cache(maxsize=1)
 def get_regional_energy_system_list_full():
-    """Получает полный список региональных энергосистем с загруженными связями."""
+    """Полный список РЭС с связями. Без LRU-кэша: иначе ORM-объекты «зависают» после закрытия сессии (DetachedInstanceError)."""
     current_version = get_current_version()
     query = RegionalEnergySystem.query
     

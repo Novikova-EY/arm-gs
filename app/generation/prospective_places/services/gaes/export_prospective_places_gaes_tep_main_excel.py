@@ -238,7 +238,7 @@ def _write_gaes_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) -
         ]
         vals.extend(
             [
-                tf["generation_average_multiyear_billion_kwh"],
+                tf["generation_average_multiyear_million_kwh"],
                 tf["generation_average_multiyear_million_kwh_stage_1"],
                 tf["generation_average_multiyear_million_kwh_stage_2"],
                 tf["annual_charging_electricity_consumption_million_kwh"],
@@ -551,7 +551,7 @@ def _write_gaes_tep_main_sheet_source_prices(ws, tep_groups: list[dict]) -> None
         ]
         vals.extend(
             [
-                tf["generation_average_multiyear_billion_kwh"],
+                tf["generation_average_multiyear_million_kwh"],
                 tf["generation_average_multiyear_million_kwh_stage_1"],
                 tf["generation_average_multiyear_million_kwh_stage_2"],
                 tf["annual_charging_electricity_consumption_million_kwh"],

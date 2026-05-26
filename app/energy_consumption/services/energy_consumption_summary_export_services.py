@@ -1,12 +1,35 @@
 """Выгрузка сводных таблиц потребления в Excel (в духе экранной таблицы: шапка, подписи к годам, заливки)."""
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+
+
+def _excel_numeric_display_to_decimal(raw: Any) -> Decimal | None:
+    if raw in (None, ""):
+        return None
+    s = str(raw).strip().replace("\xa0", " ").replace(" ", "").replace(",", ".")
+    if not s or s == "—":
+        return None
+    try:
+        return Decimal(s)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _verification_export_year_font(display: Any) -> Font:
+    """Курсив; ненулевые значения — красным (как на экране сводки)."""
+    d = _excel_numeric_display_to_decimal(display)
+    if d is None:
+        return Font(size=11, italic=True)
+    if d == 0:
+        return Font(size=11, italic=True)
+    return Font(size=11, italic=True, color="FF0000")
 
 
 def build_demand_summary_excel_stream(
@@ -69,7 +92,7 @@ def build_demand_summary_excel_stream(
     def body_fills(entity_kind: str, stripe: bool) -> tuple[PatternFill, PatternFill]:
         if entity_kind in ("group", "group-root"):
             return fill_group_param, fill_group_param
-        if entity_kind == "child":
+        if entity_kind in ("child", "res_subject_sum_check"):
             return fill_child_param, fill_child_param
         param_fill = fill_cell_stripe if stripe else fill_cell_white
         return param_fill, param_fill
@@ -79,6 +102,7 @@ def build_demand_summary_excel_stream(
         entity_kind = str(row.get("entity_kind") or "default")
         stripe = bool(bi % 2)
         param_fill, year_fill = body_fills(entity_kind, stripe)
+        verification_row = str(row.get("entity_label") or "").startswith("Проверка ")
 
         entity_cell = ""
         if row.get("show_entity_cell"):
@@ -90,13 +114,13 @@ def build_demand_summary_excel_stream(
         ws.cell(row=excel_row, column=2, value=row.get("parameter_label") or "")
 
         c1 = ws.cell(row=excel_row, column=1)
-        c1.font = entity_font
+        c1.font = Font(bold=True, size=11, italic=True) if verification_row else entity_font
         c1.fill = entity_fill
         c1.alignment = entity_align
         c1.border = cell_border
 
         c2 = ws.cell(row=excel_row, column=2)
-        c2.font = base_font
+        c2.font = Font(size=11, italic=True) if verification_row else base_font
         c2.fill = param_fill
         c2.alignment = left_wrap
         c2.border = cell_border
@@ -106,7 +130,7 @@ def build_demand_summary_excel_stream(
             v = yvals[i] if i < len(yvals) else "—"
             disp = v if v is not None and v != "" else "—"
             c = ws.cell(row=excel_row, column=3 + i, value=disp)
-            c.font = base_font
+            c.font = _verification_export_year_font(disp) if verification_row else base_font
             c.fill = year_fill
             c.alignment = center_wrap
             c.border = cell_border

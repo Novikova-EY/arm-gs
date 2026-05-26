@@ -160,9 +160,9 @@ def clear_aggregation_cache():
     # Импортируем функции по отдельности для лучшей диагностики ошибок
     try:
         from app.common.services.get_services.energy_systems.energy_unit_get_services import (
-            get_energy_unit_list_full, get_energy_unit_list
+            get_energy_unit_list,
         )
-        cache_functions.extend([get_energy_unit_list_full, get_energy_unit_list])
+        cache_functions.extend([get_energy_unit_list])
     except Exception as e:
         print(f"[LRU CACHE CLEAR ERROR] Ошибка импорта energy_unit_get_services: {e}")
     

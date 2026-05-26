@@ -108,22 +108,22 @@ class ProspectivePlaceGaesTepSource(db.Model, AuditMixin):
         foreign_keys=[id_year_specific_semifixed_operating_costs],
     )
 
-    # Годовая выработка электроэнергии (млрд кВт·ч)
-    generation_average_multiyear_billion_kwh = db.Column(db.String(100), nullable=True)
-    # Годовая выработка электроэнергии — 1 очередь (млн кВт·ч)
+    # Годовая выработка электроэнергии, млн кВт·ч
+    generation_average_multiyear_million_kwh = db.Column(db.String(100), nullable=True)
+    # Годовая выработка электроэнергии — 1 очередь, млн кВт·ч
     generation_average_multiyear_million_kwh_stage_1 = db.Column(db.String(100), nullable=True)
-    # Годовая выработка электроэнергии — 2 очередь (млн кВт·ч)
+    # Годовая выработка электроэнергии — 2 очередь, млн кВт·ч
     generation_average_multiyear_million_kwh_stage_2 = db.Column(db.String(100), nullable=True)
 
-    # Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду)
-    generation_medium_water_50pct_billion_kwh = db.Column(db.String(100), nullable=True)
+    # Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВт·ч
+    generation_medium_water_50pct_million_kwh = db.Column(db.String(100), nullable=True)
 
-    # Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду)
-    generation_low_water_95pct_billion_kwh = db.Column(db.String(100), nullable=True)
+    # Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВт·ч
+    generation_low_water_95pct_million_kwh = db.Column(db.String(100), nullable=True)
 
-    # Годовое потребление электрической энергии ГАЭС на заряд (млн кВт·ч)
+    # Годовое потребление электрической энергии ГАЭС на заряд, млн кВт·ч
     annual_charging_electricity_consumption_million_kwh = db.Column(db.String(100), nullable=True)
-    # Годовое потребление электрической энергии ГАЭС на заряд (млн кВт·ч) — по очередям
+    # Годовое потребление электрической энергии ГАЭС на заряд, млн кВт·ч — по очередям
     annual_charging_electricity_consumption_million_kwh_stage_1 = db.Column(db.String(100), nullable=True)
     annual_charging_electricity_consumption_million_kwh_stage_2 = db.Column(db.String(100), nullable=True)
 

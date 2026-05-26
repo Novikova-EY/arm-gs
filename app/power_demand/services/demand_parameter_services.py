@@ -158,14 +158,23 @@ def filter_demand_by_version(query, demand_model):
     return query
 
 
-def get_demand_rows(demand_model, fk_column_name: Optional[str], parent_id: Optional[int]):
+def get_demand_rows(
+    demand_model,
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+    *,
+    perimeter_variant_code: str | None = None,
+):
     """
     Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
     """
+    from app.common.perimeter_variant.registry import filter_query_by_perimeter_variant
+
     q = demand_model.query
     q = filter_demand_by_version(q, demand_model)
     if fk_column_name is not None and parent_id is not None:
         q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
+    q = filter_query_by_perimeter_variant(q, demand_model, perimeter_variant_code)
     rows = q.order_by(
         demand_model.is_historical_maximum.desc(),
         demand_model.year_number.asc().nullsfirst(),
@@ -362,6 +371,7 @@ def save_demand_rows_from_post(
     *,
     require_combined_oe_ees: bool = True,
     require_combined_on_ez: bool = False,
+    perimeter_variant_code: str | None = None,
 ) -> tuple[int, int]:
     """
     Обрабатывает POST с полями row_id[], slice_year[], p_max[], dt[], tnv[], oes[], ees[], es[], ez[], del[].
@@ -473,6 +483,8 @@ def save_demand_rows_from_post(
         if "combined_on_ez" in demand_model.__table__.columns and ez_mode:
             row.combined_on_ez = ez_val
         row.modified_by = user
+        if perimeter_variant_code is not None and hasattr(row, "perimeter_variant_code"):
+            row.perimeter_variant_code = perimeter_variant_code
 
         saved += 1
 
@@ -493,9 +505,6 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
     )
     from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
         EesRussiaDemandParameter,
-    )
-    from app.power_demand.models.energy_systems.ees_russia_with_nt_demand_parameter_model import (
-        EesRussiaWithNtDemandParameter,
     )
     from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
         EnergySystemTypeDemandParameter,
@@ -524,15 +533,13 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
     from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
         RussiaFederationDemandParameter,
     )
-    from app.power_demand.models.territories.russia_federation_with_nt_demand_parameter_model import (
-        RussiaFederationWithNtDemandParameter,
-    )
 
     mapping: dict[str, Type[Any]] = {
         "CentralizedZoneDemandParameter": CentralizedZoneDemandParameter,
         "EesDemandParameter": EesDemandParameter,
         "EesRussiaDemandParameter": EesRussiaDemandParameter,
-        "EesRussiaWithNtDemandParameter": EesRussiaWithNtDemandParameter,
+        # Устаревшие имена классов (отдельные таблицы *_with_nt_*): одна модель + perimeter_variant_code.
+        "EesRussiaWithNtDemandParameter": EesRussiaDemandParameter,
         "EnergySystemTypeDemandParameter": EnergySystemTypeDemandParameter,
         "EnergyUnitDemandParameter": EnergyUnitDemandParameter,
         "EnergyZoneDemandParameter": EnergyZoneDemandParameter,
@@ -542,7 +549,7 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
         "FederalDistrictDemandParameter": FederalDistrictDemandParameter,
         "RegionalDistrictDemandParameter": RegionalDistrictDemandParameter,
         "RussiaFederationDemandParameter": RussiaFederationDemandParameter,
-        "RussiaFederationWithNtDemandParameter": RussiaFederationWithNtDemandParameter,
+        "RussiaFederationWithNtDemandParameter": RussiaFederationDemandParameter,
     }
     cls = mapping.get(name)
     if cls is None:

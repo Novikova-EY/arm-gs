@@ -189,6 +189,11 @@ from app.fuel.services.equipment_groups.equipment_group_machines_services import
 from app.fuel.services.equipment_groups.equipment_group_merge_services import (
     update_equipment_group_all_versions,
 )
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_all_versions_services import (
+    log_equipment_group_fuel_param_changes,
+    update_equipment_group_fuel_params_all_versions_from_form,
+)
+from app.refdata.routes.refdata_all_versions_guard import block_all_versions_without_admin
 from app.fuel.services.fuel_imports.import_fuel_refdata_services import (
     import_union_energy_system_mappings_from_excel,
     import_federal_district_mappings_from_excel,
@@ -3353,7 +3358,28 @@ def equipment_group_edit(equipment_group_id):
     """Страница редактирования группы оборудования (EquipmentGroup).
     Редактирование доступно только роли admin.
     Включает таблицы топливных параметров (из equipment_group_details)."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import load_by_id_with_version
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
     can_edit = current_user.is_authenticated and current_user.has_admin
+
+    resolved_group = load_by_id_with_version(
+        EquipmentGroup,
+        equipment_group_id,
+        get_current_db_version_id(),
+    )
+    if not resolved_group:
+        abort(404, description="Группа оборудования не найдена")
+    if request.method == "GET" and resolved_group.id != equipment_group_id:
+        return redirect(
+            url_for(
+                "fuel_bp.equipment_group_edit",
+                equipment_group_id=resolved_group.id,
+                **request.args,
+            )
+        )
+    equipment_group_id = resolved_group.id
 
     start_year = request.values.get("start_year", get_filter_start_year(), type=int)
     end_year = request.values.get("end_year", get_filter_end_year(), type=int)
@@ -3373,116 +3399,133 @@ def equipment_group_edit(equipment_group_id):
         if not can_edit:
             flash("Редактирование доступно только администраторам.", "warning")
         else:
-            messages = []
-            all_change_details = []
-            try:
-                success, msg, details = update_equipment_group_fuel_params_from_form(
-                    equipment_group_id, request.form, start_year, end_year,
-                    rounding_digits_table1=rounding_digits_table1,
-                    rounding_digits_table2=rounding_digits_table2,
+            fuel_all_versions = request.values.get("all_versions") == "1"
+            if fuel_all_versions and block_all_versions_without_admin(current_user):
+                pass
+            elif fuel_all_versions and request.values.get("all_versions_confirm") != "1":
+                flash(
+                    "Сохранение параметров топлива во всех версиях БД отменено: "
+                    "не пройдено подтверждение.",
+                    "warning",
                 )
-                if success and msg != "Изменений нет.":
-                    messages.append(msg)
-                if details:
-                    all_change_details.extend(details)
-                success, sub_msgs, details = update_equipment_group_all_details_params(
-                    equipment_group_id,
-                    request.form,
-                    start_year,
-                    end_year,
-                    rounding_digits_table3=rounding_digits_table3,
-                    rounding_digits_table4=rounding_digits_table4,
+                log_to_db(
+                    current_user,
+                    "Отклонено сохранение топливных параметров группы оборудования "
+                    "во всех версиях БД: отсутствует подтверждение all_versions_confirm",
+                    entity_type="equipment_group",
+                    entity_id=equipment_group_id,
                 )
-                if success:
-                    messages.extend(sub_msgs)
-                if details:
-                    all_change_details.extend(details)
+            else:
+                messages = []
+                all_change_details = []
+                request_meta = {
+                    "path": request.path,
+                    "query": (
+                        request.query_string.decode("utf-8", errors="replace")[:500]
+                        if request.query_string
+                        else ""
+                    ),
+                    "remote_addr": request.remote_addr,
+                    "user_agent": (request.headers.get("User-Agent") or "")[:300],
+                    "all_versions": fuel_all_versions,
+                }
+                try:
+                    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+                    from app.fuel.services.equipment_groups.equipment_group_fuel_params_all_versions_services import (
+                        _apply_fuel_form_side_fields,
+                        _save_fuel_params_for_group,
+                    )
 
-                from app.fuel.models.fue_equipment_group_model import EquipmentGroup
-
-                # «Тип группы оборудования» в верхней форме; кнопка «Сохранить параметры топлива» шлёт только fuelParamsForm
-                if "equipment_group_type_id" in request.form:
-                    egt_raw = request.form.get("equipment_group_type_id")
-                    if egt_raw is not None and str(egt_raw).strip():
-                        try:
-                            new_egt_id = int(str(egt_raw).strip())
-                        except (TypeError, ValueError):
-                            new_egt_id = None
-                    else:
-                        new_egt_id = None
-                    if new_egt_id is not None:
-                        eg_for_ver = EquipmentGroup.query.get(equipment_group_id)
-                        egt_err = _apply_equipment_group_type_change_from_form(
-                            equipment_group_id,
-                            new_egt_id,
-                            _effective_group_database_version_id(eg_for_ver),
+                    if fuel_all_versions:
+                        result = update_equipment_group_fuel_params_all_versions_from_form(
+                            user=current_user,
+                            equipment_group_id=equipment_group_id,
+                            form_data=dict(request.form),
+                            start_year=start_year,
+                            end_year=end_year,
+                            rounding_digits_table1=rounding_digits_table1,
+                            rounding_digits_table2=rounding_digits_table2,
+                            rounding_digits_table3=rounding_digits_table3,
+                            rounding_digits_table4=rounding_digits_table4,
+                            request_meta=request_meta,
                         )
-                        if egt_err:
-                            raise ValueError(egt_err)
-
-                eg_for_grouping = EquipmentGroup.query.get(equipment_group_id)
-                if eg_for_grouping:
-                    gerr = persist_equipment_group_grouping_station_if_in_form(
-                        eg_for_grouping, dict(request.form)
-                    )
-                    if gerr:
-                        raise ValueError(gerr)
-
-                should_commit = bool(messages) or bool(db.session.dirty)
-                if should_commit:
-                    db.session.commit()
-                    if messages:
-                        flash("; ".join(messages), "success")
-                    else:
-                        flash("Данные успешно сохранены", "success")
-                    group = EquipmentGroup.query.get(equipment_group_id)
-                    group_name = (
-                        (group.name or group.name_ext or "—") if group else "—"
-                    )
-                    # Отдельная запись в журнал для каждого типа таблицы (модели)
-                    if messages:
-                        _LOG_ACTIONS_BY_TABLE = {
-                            "Параметры группы оборудования": "Редактирование параметров группы оборудования (EquipmentGroupFuelParam)",
-                            "Основные параметры": "Редактирование основных параметров (EquipmentGroupFuelParam)",
-                            "Основные параметры топлива": "Редактирование основных параметров топлива (EquipmentGroupFuelParam)",
-                            "Дополнительные параметры топлива": "Редактирование дополнительных параметров топлива (EquipmentGroupExtraFuelParam)",
-                            "Удельные показатели": "Редактирование удельных показателей (EquipmentGroupSpecificFuelConsumption)",
-                            "Стоимость": "Редактирование стоимости (EquipmentGroupSpecificFuelCost)",
-                            "Цена": "Редактирование цены (EquipmentGroupSpecificFuelPrice)",
-                        }
-                        by_table = {}
-                        for table_name, year, attr, old_val, new_val in all_change_details:
-                            by_table.setdefault(table_name, []).append(
-                                (year, attr, old_val, new_val)
-                            )
-                        for table_name, items in by_table.items():
-                            action = _LOG_ACTIONS_BY_TABLE.get(
-                                table_name,
-                                f"Редактирование таблицы «{table_name}»",
-                            )
-                            log_lines = [
-                                f"Группа id={equipment_group_id} ({group_name}):"
-                            ]
-                            for year, attr, old_val, new_val in items:
-                                log_lines.append(
-                                    f"  Год {year}, параметр {attr}: было {old_val} → стало {new_val}"
+                        err = result.get("error")
+                        if err:
+                            flash(err, "danger")
+                        elif result.get("warning"):
+                            flash(result["warning"], "warning")
+                        elif result.get("no_changes"):
+                            flash("Изменений для синхронизации во всех версиях нет.", "info")
+                        else:
+                            vt = result.get("versions_touched", 0)
+                            ug = result.get("updated_groups", 0)
+                            if result.get("fallback_single"):
+                                flash("Топливные параметры сохранены (только текущая версия: нет external_code).", "success")
+                            else:
+                                flash(
+                                    f"Топливные параметры применены во всех версиях БД: "
+                                    f"затронуто версий {vt}, групп {ug}.",
+                                    "success",
                                 )
-                            log_to_db(
-                                current_user,
-                                action,
-                                details="\n".join(log_lines),
-                                entity_type="equipment_group",
-                                entity_id=equipment_group_id,
+                    else:
+                        msgs, details = _save_fuel_params_for_group(
+                            equipment_group_id,
+                            dict(request.form),
+                            start_year,
+                            end_year,
+                            rounding_digits_table1=rounding_digits_table1,
+                            rounding_digits_table2=rounding_digits_table2,
+                            rounding_digits_table3=rounding_digits_table3,
+                            rounding_digits_table4=rounding_digits_table4,
+                        )
+                        messages.extend(msgs)
+                        all_change_details.extend(details)
+                        _apply_fuel_form_side_fields(equipment_group_id, dict(request.form))
+
+                        should_commit = bool(messages) or bool(all_change_details) or bool(db.session.dirty)
+                        if should_commit:
+                            db.session.commit()
+                            if messages:
+                                flash("; ".join(messages), "success")
+                            else:
+                                flash("Данные успешно сохранены", "success")
+                            group = EquipmentGroup.query.get(equipment_group_id)
+                            group_name = (
+                                (group.name or group.name_ext or "—") if group else "—"
                             )
-                else:
-                    flash("Изменений нет.", "info")
-            except Exception as e:
-                db.session.rollback()
-                flash(str(e), "danger")
+                            if all_change_details:
+                                header = [
+                                    f"Сохранение топливных параметров (текущая версия БД).",
+                                    f"Мета запроса: {request_meta}",
+                                ]
+                                log_equipment_group_fuel_param_changes(
+                                    current_user,
+                                    equipment_group_id,
+                                    group_name,
+                                    all_change_details,
+                                    header_lines=header,
+                                )
+                        else:
+                            flash("Изменений нет.", "info")
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.exception(
+                        "[equipment_group_edit] fuel params save failed group_id=%s",
+                        equipment_group_id,
+                    )
+                    flash(str(e), "danger")
         redirect_args = {
             k: v
             for k, v in list(request.args.items()) + list(request.form.items())
-            if k not in ("csrf_token", "start_year", "end_year")
+            if k
+            not in (
+                "csrf_token",
+                "start_year",
+                "end_year",
+                "all_versions",
+                "all_versions_confirm",
+                "save_fuel_params",
+            )
             and not (isinstance(k, str) and any(k.startswith(p) for p in _fuel_form_prefixes))
         }
         redirect_args["start_year"] = start_year
@@ -3585,6 +3628,33 @@ def equipment_group_edit(equipment_group_id):
                 )
         all_versions = request.values.get("all_versions") == "1"
         if all_versions:
+            if block_all_versions_without_admin(current_user):
+                return redirect(
+                    url_for(
+                        "fuel_bp.equipment_group_edit",
+                        equipment_group_id=equipment_group_id,
+                        **request.args,
+                    )
+                )
+            if request.values.get("all_versions_confirm") != "1":
+                flash(
+                    "Сохранение во всех версиях БД отменено: не пройдено подтверждение.",
+                    "warning",
+                )
+                log_to_db(
+                    current_user,
+                    "Отклонено сохранение группы оборудования во всех версиях БД: "
+                    "отсутствует подтверждение all_versions_confirm",
+                    entity_type="equipment_group",
+                    entity_id=equipment_group_id,
+                )
+                return redirect(
+                    url_for(
+                        "fuel_bp.equipment_group_edit",
+                        equipment_group_id=equipment_group_id,
+                        **request.args,
+                    )
+                )
             result = update_equipment_group_all_versions(
                 equipment_group_id=equipment_group_id,
                 form_data=dict(request.form),
@@ -3600,6 +3670,18 @@ def equipment_group_edit(equipment_group_id):
                     )
                 )
             try:
+                from app.common.services.tranzaction_services import quick_fix_seq
+                from config import SCHEMA_FUEL
+
+                for seq_table in (
+                    "gs_fue_equipment_groups",
+                    "gs_fue_equipment_group_sets",
+                    "gs_fue_equipment_group_type_stations",
+                ):
+                    try:
+                        quick_fix_seq(SCHEMA_FUEL, seq_table, "id")
+                    except Exception:
+                        pass
                 db.session.commit()
                 vt = result.get("versions_touched", 0)
                 uc = result.get("updated_count", 0)
@@ -3613,11 +3695,27 @@ def equipment_group_edit(equipment_group_id):
                         "success",
                     )
                     change_details = result.get("change_details", [])
+                    request_meta_hdr = {
+                        "path": request.path,
+                        "query": (
+                            request.query_string.decode("utf-8", errors="replace")[:500]
+                            if request.query_string
+                            else ""
+                        ),
+                        "remote_addr": request.remote_addr,
+                        "user_agent": (request.headers.get("User-Agent") or "")[:300],
+                    }
                     log_lines = [
+                        "Синхронизация карточки группы оборудования во всех версиях БД.",
                         f"Группа id={equipment_group_id}; затронуто версий: {vt}, обновлено групп: {uc}",
+                        f"Мета запроса: {request_meta_hdr}",
                     ]
                     for label, old_val, new_val in change_details:
                         log_lines.append(f"  {label}: было {old_val} → стало {new_val}")
+                    egt_skips_log = result.get("equipment_group_type_skip_warnings") or []
+                    if egt_skips_log:
+                        log_lines.append("Предупреждения:")
+                        log_lines.extend(f"  ! {w}" for w in egt_skips_log)
                     log_to_db(
                         current_user,
                         "Редактирование группы оборудования во всех версиях БД",
@@ -3666,7 +3764,21 @@ def equipment_group_edit(equipment_group_id):
             )
             if success:
                 effective_group_id = target_group_id or equipment_group_id
-                log_lines = [f"Группа id={effective_group_id}: {message}"]
+                request_meta_single = {
+                    "path": request.path,
+                    "query": (
+                        request.query_string.decode("utf-8", errors="replace")[:500]
+                        if request.query_string
+                        else ""
+                    ),
+                    "remote_addr": request.remote_addr,
+                    "user_agent": (request.headers.get("User-Agent") or "")[:300],
+                }
+                log_lines = [
+                    f"Редактирование карточки группы оборудования (текущая версия БД).",
+                    f"Группа id={effective_group_id}: {message}",
+                    f"Мета запроса: {request_meta_single}",
+                ]
                 for label, old_val, new_val in (change_details or []):
                     log_lines.append(f"  {label}: было {old_val} → стало {new_val}")
                 log_to_db(
@@ -3697,13 +3809,20 @@ def equipment_group_edit(equipment_group_id):
         EquipmentGroupSetStation,
     )
 
-    logs_filter = and_(
-        Log.entity_type == "equipment_group",
-        Log.entity_id == equipment_group_id,
+    from app.common.services.version_entity_resolve_services import (
+        entity_log_ids_by_external_code,
+    )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    group_log_ids = entity_log_ids_by_external_code(
+        EquipmentGroup, ctx["equipment_group"].id
     )
     equipment_group_logs_raw = (
         db.session.query(Log)
-        .filter(logs_filter)
+        .filter(
+            Log.entity_type == "equipment_group",
+            Log.entity_id.in_(group_log_ids),
+        )
         .order_by(Log.timestamp.desc())
         .limit(20)
         .all()
@@ -4044,6 +4163,7 @@ def equipment_group_machines_tbody(equipment_group_id):
     ctx = get_equipment_group_edit_context(equipment_group_id)
     if not ctx:
         abort(404, description="Группа оборудования не найдена")
+    equipment_group_id = ctx["equipment_group"].id
 
     stations_with_machines = get_equipment_group_machines_data(
         equipment_group_id, start_year, end_year
@@ -4104,17 +4224,25 @@ def equipment_group_logs(equipment_group_id):
     ctx = get_equipment_group_edit_context(equipment_group_id)
     if not ctx:
         abort(404, description="Группа оборудования не найдена")
+    equipment_group_id = ctx["equipment_group"].id
 
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)
 
-    logs_filter = and_(
-        Log.entity_type == "equipment_group",
-        Log.entity_id == equipment_group_id,
+    from app.common.services.version_entity_resolve_services import (
+        entity_log_ids_by_external_code,
+    )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    group_log_ids = entity_log_ids_by_external_code(
+        EquipmentGroup, equipment_group_id
     )
     logs_query = (
         db.session.query(Log)
-        .filter(logs_filter)
+        .filter(
+            Log.entity_type == "equipment_group",
+            Log.entity_id.in_(group_log_ids),
+        )
         .order_by(Log.timestamp.desc())
     )
     total_count = logs_query.count()
@@ -4139,11 +4267,18 @@ def equipment_group_logs(equipment_group_id):
 def equipment_group_details(equipment_group_id):
     """Перенаправление на equipment_group_edit (страницы объединены).
     Раньше: карточка группы оборудования с топливными параметрами."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import load_by_id_with_version
     from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 
-    group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
+    group = load_by_id_with_version(
+        EquipmentGroup,
+        equipment_group_id,
+        get_current_db_version_id(),
+    )
     if not group:
         abort(404, description="Группа оборудования не найдена")
+    equipment_group_id = group.id
 
     can_edit = current_user.is_authenticated and current_user.has_admin
     start_year = request.values.get("start_year", get_filter_start_year(), type=int)

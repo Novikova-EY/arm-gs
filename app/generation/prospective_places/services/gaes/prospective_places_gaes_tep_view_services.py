@@ -194,8 +194,8 @@ def fmt_tep_source_row_full(r: ProspectivePlaceGaesTepSource) -> dict[str, str]:
             r.capital_cost_wo_pir_svm_million_rub
         ),
         "year_capital_cost_wo_pir_svm": _fmt_year_ref(r.year_capital_cost_wo_pir_svm),
-        "generation_average_multiyear_billion_kwh": _fmt_excel_like(
-            r.generation_average_multiyear_billion_kwh or "—"
+        "generation_average_multiyear_million_kwh": _fmt_excel_like(
+            r.generation_average_multiyear_million_kwh or "—"
         ),
         "generation_average_multiyear_million_kwh_stage_1": _fmt_excel_like(
             r.generation_average_multiyear_million_kwh_stage_1 or "—"
@@ -203,11 +203,11 @@ def fmt_tep_source_row_full(r: ProspectivePlaceGaesTepSource) -> dict[str, str]:
         "generation_average_multiyear_million_kwh_stage_2": _fmt_excel_like(
             r.generation_average_multiyear_million_kwh_stage_2 or "—"
         ),
-        "generation_medium_water_50pct_billion_kwh": _fmt_excel_like(
-            r.generation_medium_water_50pct_billion_kwh or "—"
+        "generation_medium_water_50pct_million_kwh": _fmt_excel_like(
+            r.generation_medium_water_50pct_million_kwh or "—"
         ),
-        "generation_low_water_95pct_billion_kwh": _fmt_excel_like(
-            r.generation_low_water_95pct_billion_kwh or "—"
+        "generation_low_water_95pct_million_kwh": _fmt_excel_like(
+            r.generation_low_water_95pct_million_kwh or "—"
         ),
         "annual_charging_electricity_consumption_million_kwh": _fmt_excel_like(
             r.annual_charging_electricity_consumption_million_kwh or "—"

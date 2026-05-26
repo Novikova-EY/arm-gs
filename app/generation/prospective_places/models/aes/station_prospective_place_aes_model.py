@@ -56,10 +56,13 @@ class StationProspectivePlaceAES(db.Model, AuditMixin):
     )
     # Географическое расположение площадки (кадастровый номер земельного участка или координаты)
     geo_location = db.Column(db.String(500), nullable=True)
+
     # Планируемая установленная генерирующая мощность АЭС, МВт
     planned_capacity_mw = db.Column(db.Integer, nullable=True)
+    
     # Планируемая единичная мощность энергоблока, МВт
     planned_unit_capacity_mw = db.Column(db.Integer, nullable=True)
+
     # Фактор отбора
     selection_factor = db.Column(db.String(255), nullable=True)
 

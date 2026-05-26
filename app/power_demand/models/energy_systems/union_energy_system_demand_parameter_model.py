@@ -5,10 +5,11 @@ from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_POWER_DEMAND, SCHEMA_REFDATA
 
 
-class UnionEnergySystemDemandParameter(db.Model, AuditMixin):
+class UnionEnergySystemDemandParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     __tablename__ = "gs_pd_union_energy_system_demand_params"
     __table_args__ = (
         CheckConstraint(
@@ -39,7 +40,7 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin):
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Максимальное потребление мощности, МВт
-    max_power_consumption_mw = db.Column(Numeric(25, 16), nullable=True)
+    max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Дата и время максимального потребления мощности, МВт
     peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -48,22 +49,21 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin):
     avg_daily_air_temp_c = db.Column(Numeric(10, 2), nullable=True)
 
     # Совмещенный максимум на ЕЭС, МВт
-    combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
+    combined_on_ees = db.Column(Numeric(25, 3), nullable=True)
 
     # Расчетный максимум ОЭС, МВт
-    calculated_max_power_mw = db.Column(Numeric(25, 16), nullable=True)
+    calculated_max_power_mw = db.Column(Numeric(25, 3), nullable=True)
 
-    # Расчетный совмещенный на ЕЭС, МВт
-    calculated_combined_on_ees_mw = db.Column(Numeric(25, 16), nullable=True)
+    # Расчетный совмещенный максимум на ЕЭС, МВт
+    calculated_combined_on_ees_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Коэффициенты k (безразмерные) по году для среднесрочного периода / признака «План»
-    coeff_k_calculated_max_power_mw = db.Column(Numeric(25, 16), nullable=True)
-    coeff_k_combined_on_ees = db.Column(Numeric(25, 16), nullable=True)
-    coeff_k_calculated_combined_on_ees_mw = db.Column(Numeric(25, 16), nullable=True)
+    coeff_k_calculated_max_power_mw = db.Column(Numeric(25, 6), nullable=True)
+    coeff_k_combined_on_ees = db.Column(Numeric(25, 6), nullable=True)
+    coeff_k_calculated_combined_on_ees_mw = db.Column(Numeric(25, 6), nullable=True)
 
     # Примечание
     note = db.Column(db.Text, nullable=True)
-
 
     created_at = db.Column(
         db.DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -85,5 +85,6 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin):
         return (
             f"<UnionEnergySystemDemandParameter id={self.id} "
             f"union_energy_system_id={self.id_union_energy_system} "
+            f"perimeter_variant={self.perimeter_variant_code} "
             f"hist={self.is_historical_maximum} year={self.year_number}>"
         )

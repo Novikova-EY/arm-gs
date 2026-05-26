@@ -34,6 +34,20 @@ def get_year_list_full():
     return query.order_by(Year.number.asc()).all()
 
 
+def get_year_numbers_sorted_for_current_db_version() -> list[int]:
+    """
+    Все календарные годы (Year.number) из справочника Year для текущей версии БД,
+    по возрастанию, без дубликатов.
+
+    При отсутствии привязки к версии (get_current_version() is None) — все годы в таблице.
+    """
+    current_version = get_current_version()
+    q = db.session.query(Year.number)
+    if current_version is not None:
+        q = q.filter(Year.database_version_id == current_version)
+    return sorted({int(n) for (n,) in q.all() if n is not None})
+
+
 def get_current_year():
     """Получает текущий год."""
     current_version = get_current_version()

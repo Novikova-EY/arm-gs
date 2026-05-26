@@ -17,6 +17,10 @@ from app.extensions import db
 from app.logs.services.logging_service import log_to_db
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    FUEL_PARAM_LABELS,
+    MAIN_PARAM_LABELS,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_write_services import (
     normalize_fuel_param_external_mapping_value,
     sanitize_equipment_group_fuel_param_foreign_keys,
@@ -75,6 +79,8 @@ NUMERIC_FIELDS = frozenset([
 COLUMN_ALIASES = {
     "numb1120": ["numb1120", "num1120", "номер1120", "numb", "ном1120", "agr_numb1120", "topl_agr_numb1120"],
     "ved_cyrillic": ["вед", "ved_cyrillic"],
+    "sn_t": ["sn_t", "snt", "sn t"],
+    "snk": ["snk"],
     "equipment_group_id": ["equipment_group_id", "eq_group_id", "id_equipment_group"],
     "equipment_group_set_station_id": [
         "equipment_group_set_station_id", "eq_group_station_id", "link_id", "linkid",
@@ -94,6 +100,10 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
             alias_to_canonical[_normalize_column_name(a)] = canonical
     for field in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS:
         alias_to_canonical[_normalize_column_name(field)] = field
+    # Заголовки экспорта (русские подписи) — как в export_stations_equipment_group_fuel_params
+    for field, label in {**MAIN_PARAM_LABELS, **FUEL_PARAM_LABELS}.items():
+        if field in EQUIPMENT_GROUP_FUEL_PARAM_FIELDS:
+            alias_to_canonical[_normalize_column_name(label)] = field
 
     rename_map = {}
     for col in df.columns:

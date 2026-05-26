@@ -10,9 +10,8 @@ from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_energy_zone_list_full():
-    """Получает полный список энергозон."""
+    """Полный список энергозон. Без LRU-кэша: иначе ORM-объекты после закрытия сессии отвязываются (DetachedInstanceError)."""
     current_version = get_current_version()
     query = EnergyZone.query
     

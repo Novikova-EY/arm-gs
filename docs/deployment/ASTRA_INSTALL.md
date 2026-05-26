@@ -173,7 +173,7 @@ sudo journalctl -u generation-app -f
 ```powershell
 # Полный деплой с указанной версией
 cd C:\arm_gs
-.\scripts\deploy.ps1 -Version 1.0.182
+.\scripts\deploy.ps1 -Version 1.0.236
 
 # Версия из git describe (тег или коммит)
 .\scripts\deploy.ps1

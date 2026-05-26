@@ -93,28 +93,60 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         perf_segments.append((stage, now - perf_last))
         perf_last = now
 
-    # Оптимизированная загрузка электростанции с связанными данными
-    station = Station.query.options(
-        db.joinedload(Station.regional_district)
-    ).get_or_404(station_id)
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import (
+        load_by_id_with_version,
+    )
+
+    current_version_id = get_current_db_version_id()
+
+    station = load_by_id_with_version(
+        Station,
+        station_id,
+        current_version_id,
+        query_factory=lambda: Station.query.options(
+            db.joinedload(Station.regional_district)
+        ).filter_by(id=station_id),
+    )
+    if not station:
+        from flask import abort
+        abort(404)
     perf_mark("station_load")
-    
+
     # Проверяем, создается ли новый агрегат
     if machine_id == 0:
         machine = None
     else:
-        # Загружаем только "узкие" связи агрегата; тяжелые коллекции подгружаем отдельными
-        # отфильтрованными запросами ниже.
-        machine = Machine.query.options(
-            db.joinedload(Machine.condition_type),
-            db.joinedload(Machine.gen_company),
-            db.joinedload(Machine.machine_type),
-            db.joinedload(Machine.tes_machine_type),
-            db.joinedload(Machine.equipment_group),
-            db.joinedload(Machine.machine_fuel_param).joinedload(
-                MachineFuelParam.equipment_group
-            ),
-        ).get_or_404(machine_id)
+        machine = load_by_id_with_version(
+            Machine,
+            machine_id,
+            current_version_id,
+            query_factory=lambda: Machine.query.options(
+                db.joinedload(Machine.condition_type),
+                db.joinedload(Machine.gen_company),
+                db.joinedload(Machine.machine_type),
+                db.joinedload(Machine.tes_machine_type),
+                db.joinedload(Machine.equipment_group),
+                db.joinedload(Machine.machine_fuel_param).joinedload(
+                    MachineFuelParam.equipment_group
+                ),
+            ).filter_by(id=machine_id),
+        )
+        if not machine:
+            from flask import abort
+            abort(404)
+        if machine.id_station != station.id:
+            station = load_by_id_with_version(
+                Station,
+                machine.id_station,
+                current_version_id,
+                query_factory=lambda: Station.query.options(
+                    db.joinedload(Station.regional_district)
+                ).filter_by(id=machine.id_station),
+            )
+            if not station:
+                from flask import abort
+                abort(404)
     perf_mark("machine_load")
 
     # Легкая инициализация годов: вместо тяжелого get_year_list_full()
@@ -396,6 +428,743 @@ def _validate_power_ranges(advanced_form, formdata):
     return not has_errors
 
 
+def _persist_target_version_id(machine) -> int | None:
+    """Версия БД, в которую сохраняется агрегат (для разрешения FK)."""
+    from flask import g
+
+    from app.common.services.database_version_filter import get_current_db_version_id
+
+    version_id = getattr(g, "current_db_version", None)
+    if version_id is None:
+        version_id = getattr(machine, "database_version_id", None) or get_current_db_version_id()
+    return version_id
+
+
+def _resolve_fk_for_machine_persist(model_cls, anchor_id, version_id):
+    """
+    Сопоставляет id справочника с целевой версией БД.
+    Возвращает (resolved_id, ok). ok=False — поле не менять (нет соответствия в версии).
+    """
+    if anchor_id in (None, 0, ""):
+        return None, True
+    from app.common.services.version_entity_resolve_services import (
+        resolve_entity_id_by_external_code_for_version,
+        resolve_gen_company_id_for_version,
+        resolve_refdata_fk_id_for_version,
+    )
+
+    anchor_int = int(anchor_id)
+    if model_cls is GenCompany:
+        resolved = resolve_gen_company_id_for_version(anchor_int, version_id)
+    else:
+        resolved = resolve_refdata_fk_id_for_version(model_cls, anchor_int, version_id)
+        if resolved is None:
+            resolved = resolve_entity_id_by_external_code_for_version(
+                model_cls, anchor_int, version_id
+            )
+
+    if resolved is not None:
+        return resolved, True
+    src = db.session.get(model_cls, anchor_int)
+    if src and getattr(src, "database_version_id", None) == version_id:
+        return anchor_int, True
+    return None, False
+
+
+@no_autoflush
+def persist_machine_details_from_validated_forms(
+    station,
+    machine,
+    *,
+    main_form,
+    advanced_form,
+    pgu_machines_form,
+    normalized,
+    user,
+    start_year: int,
+    end_year: int,
+    can_edit_fuel: bool,
+    can_edit_generation: bool,
+    is_pgu_action: bool,
+    year_features,
+    skip_pgu: bool = False,
+) -> tuple[list, list]:
+    """Apply validated machine_details forms to one machine (no commit)."""
+    from sqlalchemy.orm.attributes import flag_modified
+    is_new = False
+    station_id = station.id
+    machine_id = machine.id
+    changes, pgu_changes = [], []
+    pgu_machine = None
+    # Определяем тип электростанции для логики обработки названий
+    try:
+        st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
+    except Exception:
+        st_name = ''
+    is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
+
+    # Получаем кэшированные справочники для логирования
+    condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
+    gen_companies = dict(choices_cache.get_choices(GenCompany, GenCompany.id))
+    machine_types = dict(choices_cache.get_choices(MachineType, MachineType.id))
+    tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
+    equipment_groups = dict(choices_cache.get_choices(EquipmentGroupType, EquipmentGroupType.id))
+
+    field_map = {
+        "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
+        "id_gen_company": lambda x: gen_companies.get(x, "не указано") if x else "не указано",
+        "id_machine_type": lambda x: machine_types.get(x, "не указано") if x else "не указано",
+        "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
+        "id_equipment_group": lambda x: equipment_groups.get(x, "не указано") if x else "не указано",
+        "machine_number": str,
+        "machine_name": str,
+        "note": lambda x: x or "не указано",
+        "change_document": lambda x: x or "не указано",
+        "relabing_outcome": lambda x: x or "не указано",
+        "machine_group": str,
+    }
+
+    # Список полей, которые являются внешними ключами и должны конвертировать 0 в None
+    fk_fields = {
+        'id_condition_type',
+        'id_gen_company',
+        'id_machine_type',
+        'id_tes_machine_type',
+        'id_equipment_group',
+    }
+    
+    for fld, to_str in field_map.items():
+        if fld in ("id_tes_machine_type", "id_equipment_group") and not can_edit_fuel:
+            continue
+        if fld not in ("id_tes_machine_type", "id_equipment_group") and not can_edit_generation:
+            continue
+        old_v = getattr(machine, fld) if not is_new else None
+        if is_tes_or_ges and fld == "machine_name":
+            # Для ТЭС/ГЭС/ГАЭС название агрегата формируется из machine_names
+            # и не должно обновлять Machine.machine_name из формы.
+            continue
+
+        new_v = getattr(main_form, fld).data
+
+        # Конвертируем 0 в None для полей внешних ключей
+        if fld in fk_fields and choices_cache.is_empty_value(new_v):
+            new_v = None
+
+        if fld in fk_fields and new_v:
+            version_id = _persist_target_version_id(machine)
+            fk_models = {
+                "id_condition_type": ConditionType,
+                "id_gen_company": GenCompany,
+                "id_machine_type": MachineType,
+                "id_tes_machine_type": TesMachineType,
+                "id_equipment_group": EquipmentGroupType,
+            }
+            resolved, ok = _resolve_fk_for_machine_persist(
+                fk_models[fld], new_v, version_id
+            )
+            if not ok:
+                continue
+            new_v = resolved
+
+        if is_new:
+            # Для нового агрегата пропускаем поля, которые уже установлены при создании
+            if fld in ('machine_number', 'machine_name'):
+                # Поля уже установлены, только логируем
+                if new_v:
+                    changes.append(f"{fld}: {to_str(new_v)}")
+            else:
+                # Для остальных полей устанавливаем значения
+                if new_v:
+                    changes.append(f"{fld}: {to_str(new_v)}")
+                setattr(machine, fld, new_v)
+        else:
+            # Для существующего агрегата проверяем изменения
+            old_v_str = to_str(old_v)
+            new_v_str = to_str(new_v)
+            # Логируем только если строковые представления различаются
+            if old_v_str != new_v_str:
+                changes.append(f"{fld}: {old_v_str} → {new_v_str}")
+                setattr(machine, fld, new_v)
+            elif old_v != new_v:
+                # Если строки одинаковы, но значения разные, просто обновляем без логирования
+                setattr(machine, fld, new_v)
+
+    date_fields = [
+        "date_exploitation",
+        "date_exploitation_expected",
+        "date_commission_fact",
+        "date_joining_expected",
+        "date_joining_fact",
+        "date_detatchment_fact",
+        "date_decompressing_expected",
+        "date_decompressing_fact",
+        "date_modernization_power_change_expected",
+        "date_modernization_no_power_change_expected",
+        "date_relabing_fact",
+        "date_update_fact",
+    ]
+
+    # Годы диапазона текущей версии БД — нужны для ограничений по ожидаемому году вывода
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
+
+    if can_edit_generation:
+        for fld in date_fields:
+            raw_form_value = getattr(main_form, fld).data
+
+            # Если указана фактическая дата вывода из эксплуатации, ожидаемый год вывода должен быть пустым
+            if fld == "date_decompressing_expected" and main_form.date_decompressing_fact.data:
+                raw_form_value = None
+
+            if fld in {
+                "date_exploitation",
+                "date_exploitation_expected",
+                "date_decompressing_expected",
+                "date_modernization_power_change_expected",
+                "date_modernization_no_power_change_expected",
+            }:
+                new_val = int(raw_form_value) if raw_form_value else None
+            elif fld in {"date_relabing_fact", "date_update_fact"}:
+                # Для полей с несколькими датами нормализуем список дат в единый формат
+                new_val = normalize_date_list(raw_form_value) if raw_form_value else None
+            else:
+                new_val = convert_to_date(raw_form_value)
+
+            # Ограничение: ожидаемый год вывода из эксплуатации не может быть > последнего года версии БД
+            if (
+                fld == "date_decompressing_expected"
+                and isinstance(new_val, int)
+                and version_year_end is not None
+                and new_val > version_year_end
+            ):
+                new_val = None
+
+            old_val = getattr(machine, fld) if not is_new else None
+            if isinstance(old_val, (date, datetime)):
+                old_val_str = old_val.strftime("%Y-%m-%d")
+            else:
+                old_val_str = str(old_val) if old_val is not None else None
+
+            if isinstance(new_val, (date, datetime)):
+                new_val_str = new_val.strftime("%Y-%m-%d")
+            else:
+                new_val_str = str(new_val) if new_val is not None else None
+
+            if is_new:
+                # Для нового агрегата просто устанавливаем значения
+                if new_val:
+                    changes.append(f"{fld}: {new_val_str}")
+                setattr(machine, fld, new_val)
+            else:
+                # Для существующего агрегата проверяем изменения
+                if old_val_str != new_val_str:
+                    changes.append(f"{fld}: {old_val_str} → {new_val_str}")
+                    setattr(machine, fld, new_val)
+
+        # Отдельная обработка поля year-ввода в работу (целое число, не дата)
+        raw_commission_year = main_form.date_commission_year.data
+        new_commission_year = int(raw_commission_year) if raw_commission_year else None
+        old_commission_year = getattr(machine, "date_commission_year", None) if not is_new else None
+        old_commission_year_str = str(old_commission_year) if old_commission_year is not None else None
+        new_commission_year_str = str(new_commission_year) if new_commission_year is not None else None
+
+        if is_new:
+            if new_commission_year is not None:
+                changes.append(f"date_commission_year: {new_commission_year_str}")
+            setattr(machine, "date_commission_year", new_commission_year)
+        else:
+            if old_commission_year_str != new_commission_year_str:
+                changes.append(f"date_commission_year: {old_commission_year_str} → {new_commission_year_str}")
+                setattr(machine, "date_commission_year", new_commission_year)
+
+    # Для нового агрегата нужно flush, чтобы получить machine.id
+    if is_new:
+        db.session.flush()
+
+    # При изменении типа группы оборудования или планового года ввода
+    # синхронизируем конкретную fuel-группу агрегата (обычная / "(нов)").
+    version_id = getattr(machine, "database_version_id", None) or get_current_db_version_id()
+
+    old_fuel_eg_id = None
+    if machine.id:
+        mfp_before = _get_machine_fuel_param_for_version(machine.id, version_id)
+        if mfp_before:
+            old_fuel_eg_id = mfp_before.equipment_group_id
+
+    sync_machine_fuel_equipment_group(
+        machine,
+        version_id=version_id,
+    )
+
+    if can_edit_fuel and st_name == "тэс":
+        raw_fuel_eg = main_form.id_fuel_equipment_group.data
+        if not choices_cache.is_empty_value(raw_fuel_eg):
+            from app.fuel.models.fue_equipment_group_model import EquipmentGroup as FuelEquipmentGroup
+
+            version_id = _persist_target_version_id(machine)
+            resolved_eg, ok = _resolve_fk_for_machine_persist(
+                FuelEquipmentGroup, raw_fuel_eg, version_id
+            )
+            if ok and resolved_eg is not None:
+                allowed_ids = {
+                    gid
+                    for gid, _ in get_station_fuel_equipment_group_choice_tuples(
+                        station.id, version_id
+                    )
+                }
+                if resolved_eg in allowed_ids:
+                    mfp = _get_machine_fuel_param_for_version(machine.id, version_id)
+                    if mfp is None:
+                        mfp = MachineFuelParam(machine_id=machine.id)
+                        if version_id is not None:
+                            mfp.database_version_id = version_id
+                        elif get_current_db_version_id() is not None:
+                            set_db_version_on_create(mfp)
+                        db.session.add(mfp)
+                        db.session.flush()
+                    if mfp.equipment_group_id != resolved_eg:
+                        mfp.equipment_group_id = resolved_eg
+                        db.session.add(mfp)
+
+    mfp_after = _get_machine_fuel_param_for_version(machine.id, version_id)
+    new_fuel_eg_id = mfp_after.equipment_group_id if mfp_after else None
+    if old_fuel_eg_id != new_fuel_eg_id:
+        def _eg_label(eg_id):
+            if not eg_id:
+                return "—"
+            eg = EquipmentGroup.query.get(eg_id)
+            return (eg.name if eg else None) or f"id={eg_id}"
+
+        changes.append(
+            f"Группа оборудования (топливный модуль): {_eg_label(old_fuel_eg_id)} → {_eg_label(new_fuel_eg_id)}"
+        )
+
+    if st_name == "тэс" and machine.id and can_edit_fuel:
+        raw_th = main_form.thermal_power_gcalh.data
+        new_nt = None
+        if raw_th is not None and str(raw_th).strip() not in ("",):
+            try:
+                new_nt = raw_th if isinstance(raw_th, Decimal) else Decimal(str(raw_th).replace(",", "."))
+            except (InvalidOperation, ValueError):
+                new_nt = None
+        if new_nt is not None:
+            new_nt = new_nt.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+        def _nt_to_dec(v):
+            if v is None:
+                return None
+            if isinstance(v, Decimal):
+                return v.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+            return Decimal(str(v)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+        mfp_nt = _get_machine_fuel_param_for_version(machine.id, version_id)
+        old_nt = _nt_to_dec(mfp_nt.nt) if mfp_nt and mfp_nt.nt is not None else None
+        if mfp_nt is None and new_nt is not None:
+            mfp_nt = MachineFuelParam(machine_id=machine.id)
+            if version_id is not None:
+                mfp_nt.database_version_id = version_id
+            elif get_current_db_version_id() is not None:
+                set_db_version_on_create(mfp_nt)
+            db.session.add(mfp_nt)
+            db.session.flush()
+        if mfp_nt is not None and old_nt != new_nt:
+            mfp_nt.nt = new_nt
+            db.session.add(mfp_nt)
+            _old_l = "—" if old_nt is None else format_decimal_trim_for_display(old_nt, digits=0)
+            _new_l = "—" if new_nt is None else format_decimal_trim_for_display(new_nt, digits=0)
+            changes.append(f"Тепловая мощность, Гкал/ч: {_old_l} → {_new_l}")
+
+    # Фильтруем записи с None.year для предотвращения AttributeError
+    powers_map = {mp.year.number: mp for mp in machine.machine_powers if mp.year is not None}
+    tes_map = {mt.year.number: mt for mt in machine.machine_tes_types if mt.year is not None}
+    fuel_map = {mf.year.number: mf for mf in machine.machine_fuels if mf.year is not None}
+    names_map = {mn.year_number: mn for mn in machine.machine_names if mn.year_number is not None}
+    
+    # Флаг для отслеживания изменений в связанных сущностях
+    related_entities_changed = False
+    
+    # Получаем объекты Year для создания связанных записей
+    years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
+    year_dict = {y.number: y for y in years}
+
+    # Определяем тип электростанции и "текущий год" версии БД
+    try:
+        st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
+    except Exception:
+        st_name = ''
+    is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
+    current_year_for_version = version_year_end
+    # Последнее ненулевое "эффективное" название для автозаполнения (как для мощностей)
+    last_effective_name = None
+
+    for i, year_num in enumerate(range(start_year, end_year + 1)):
+        # Проверяем только powers, так как это основная таблица для всех типов станций
+        # tes_types и fuels могут быть пустыми для не-ТЭС станций
+        if i >= len(advanced_form.powers):
+            continue
+
+        # Создаем записи, если их нет (для нового агрегата или недостающих годов)
+        y_obj = year_dict.get(year_num)
+        
+        if year_num not in powers_map:
+            mp = MachinePower(id_machine=machine.id, year=y_obj, year_number=year_num)
+            set_db_version_on_create(mp)
+            db.session.add(mp)
+            powers_map[year_num] = mp
+        
+        if year_num not in tes_map:
+            mt = MachineTesType(id_machine=machine.id, year=y_obj, year_number=year_num)
+            set_db_version_on_create(mt)
+            db.session.add(mt)
+            tes_map[year_num] = mt
+        
+        if year_num not in fuel_map:
+            mf = MachineFuel(id_machine=machine.id, year=y_obj, year_number=year_num)
+            set_db_version_on_create(mf)
+            db.session.add(mf)
+            fuel_map[year_num] = mf
+
+        if year_num not in names_map:
+            mn_obj = MachineName(id_machine=machine.id, year_number=year_num)
+            set_db_version_on_create(mn_obj)
+            db.session.add(mn_obj)
+            names_map[year_num] = mn_obj
+
+        mp, mt, mf = powers_map[year_num], tes_map[year_num], fuel_map[year_num]
+        mn_obj = names_map[year_num]
+
+        if can_edit_generation:
+            # Получаем raw значения из формы для определения, были ли поля изменены пользователем
+            p_ust_raw = advanced_form.powers[i].p_ust.data
+            p_ogr_raw = advanced_form.powers[i].p_ogr.data
+            p_rasp_raw = advanced_form.powers[i].p_rasp.data
+            # Сырые значения из формы и *_orig для защиты от перезаписи при правке других полей
+            p_ust_form_raw = normalized.get(advanced_form.powers[i].p_ust.name)
+            p_ogr_form_raw = normalized.get(advanced_form.powers[i].p_ogr.name)
+            p_rasp_form_raw = normalized.get(advanced_form.powers[i].p_rasp.name)
+            p_ust_orig_raw = normalized.get(f"{advanced_form.powers[i].p_ust.name}_orig")
+            p_ogr_orig_raw = normalized.get(f"{advanced_form.powers[i].p_ogr.name}_orig")
+            p_rasp_orig_raw = normalized.get(f"{advanced_form.powers[i].p_rasp.name}_orig")
+            
+            # Конвертируем значения (пустые строки и специальные символы → None)
+            p_ust_new = to_decimal(p_ust_raw)
+            p_ogr_new = to_decimal(p_ogr_raw)
+            p_rasp_new = to_decimal(p_rasp_raw)
+            
+            # Определяем, изменил ли пользователь поля мощности относительно *_orig
+            # Если *_orig отсутствует, считаем поле измененным только при наличии ввода.
+            def _power_field_changed(raw_value, orig_value):
+                if orig_value in (None, '', '—', '-'):
+                    return raw_value not in (None, '', '—', '-')
+                return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
+
+            power_fields_changed = (
+                _power_field_changed(p_ust_form_raw, p_ust_orig_raw)
+                or _power_field_changed(p_ogr_form_raw, p_ogr_orig_raw)
+                or _power_field_changed(p_rasp_form_raw, p_rasp_orig_raw)
+            )
+            # Сохраняем прежнюю логику автозаполнения:
+            # если пользователь не трогал мощности, ничего не пересчитываем.
+            user_modified_p_ogr = p_ogr_raw not in (None, '', '—', '-')
+            user_modified_p_rasp = p_rasp_raw not in (None, '', '—', '-')
+            
+            # Для нового агрегата всегда используем значения из формы
+            # Для существующего агрегата: если поле не изменено, оставляем старое значение
+            if is_new:
+                # Для нового агрегата используем значения из формы или 0
+                p_ust = p_ust_new if p_ust_new is not None else Decimal(0)
+                p_ogr = p_ogr_new if p_ogr_new is not None else Decimal(0)
+                p_rasp = p_rasp_new if p_rasp_new is not None else Decimal(0)
+            else:
+                # Для существующего агрегата
+                if not power_fields_changed:
+                    # Не трогаем мощности, если пользователь их не менял
+                    p_ust = mp.p_ust
+                    p_ogr = mp.p_ogr
+                    p_rasp = mp.p_rasp
+                    skip_ogr = True
+                    skip_rasp = True
+                else:
+                    p_ust = p_ust_new if p_ust_new is not None else (mp.p_ust if mp.p_ust else Decimal(0))
+                    if user_modified_p_ogr:
+                        p_ogr = p_ogr_new if p_ogr_new is not None else Decimal(0)
+                    else:
+                        p_ogr = mp.p_ogr if mp.p_ogr is not None else Decimal(0)
+                    if user_modified_p_rasp:
+                        p_rasp = p_rasp_new if p_rasp_new is not None else Decimal(0)
+                    else:
+                        p_rasp = mp.p_rasp if mp.p_rasp is not None else Decimal(0)
+                    skip_ogr = user_modified_p_ogr
+                    skip_rasp = user_modified_p_rasp
+
+            # Передаем флаги в автозаполнение, чтобы не перезаписывать значения, введенные пользователем
+            if is_new:
+                skip_ogr = user_modified_p_ogr
+                skip_rasp = user_modified_p_rasp
+            p_ust, p_ogr, p_rasp = autofill_powers_if_possible_decimal(
+                p_ust, p_ogr, p_rasp, year_num,
+                skip_ogr=skip_ogr,
+                skip_rasp=skip_rasp
+            )
+
+            for attr, val in (("p_ust", p_ust), ("p_ogr", p_ogr), ("p_rasp", p_rasp)):
+                old_val = getattr(mp, attr)
+                
+                # Для нового агрегата всегда записываем значения
+                if is_new:
+                    setattr(mp, attr, val)
+                    flag_modified(mp, attr)
+                    if val and val > 0:  # Логируем только ненулевые значения
+                        changes.append(f"{attr}: {year_num} год - {format_decimal_for_display(val)}")
+                    related_entities_changed = True
+                else:
+                    # Для существующего агрегата проверяем изменения
+                    if not is_same_decimal(old_val, val):
+                        setattr(mp, attr, val)
+                        flag_modified(mp, attr)
+                        changes.append(f"{attr}: {year_num} год - {format_decimal_for_display(old_val)} → {format_decimal_for_display(val)}")
+                        related_entities_changed = True
+
+        # Получаем значения типов ТЭС и топлива только если формы существуют
+        # Для не-ТЭС станций эти формы могут быть пустыми
+        new_tt = None
+        new_fuel = None
+        
+        if i < len(advanced_form.tes_types):
+            new_tt = advanced_form.tes_types[i].tes_type.data
+            if choices_cache.is_empty_value(new_tt):
+                new_tt = None
+            elif new_tt is not None:
+                resolved_tt, ok = _resolve_fk_for_machine_persist(
+                    TesType, new_tt, _persist_target_version_id(machine)
+                )
+                if not ok:
+                    new_tt = mt.id_tes_type
+                else:
+                    new_tt = resolved_tt
+                
+        if i < len(advanced_form.fuels):
+            new_fuel = advanced_form.fuels[i].fuel_type.data
+            if choices_cache.is_empty_value(new_fuel):
+                new_fuel = None
+            elif new_fuel is not None:
+                resolved_fuel, ok = _resolve_fk_for_machine_persist(
+                    Fuel, new_fuel, _persist_target_version_id(machine)
+                )
+                if not ok:
+                    new_fuel = mf.id_fuel
+                else:
+                    new_fuel = resolved_fuel
+
+        # Обрабатываем типы ТЭС и топливо только для ТЭС станций
+        # Распознаем тип электростанции по названию
+        try:
+            st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
+        except Exception:
+            st_name = ''
+        is_tes_station = (st_name == 'тэс')
+        if is_tes_station and can_edit_fuel:
+            # Получаем кэшированные справочники для ТЭС
+            tes_types = dict(choices_cache.get_choices(TesType, TesType.id))
+            fuels = dict(choices_cache.get_choices(Fuel, Fuel.id))
+            
+            if is_new:
+                # Для нового агрегата просто устанавливаем значения
+                mt.id_tes_type = new_tt
+                if new_tt is not None:
+                    new_tes_name = tes_types.get(new_tt, f"[{new_tt}]")
+                    changes.append(f"Тип ТЭС: {year_num} год - {new_tes_name}")
+                
+                mf.id_fuel = new_fuel
+                if new_fuel is not None:
+                    new_fuel_name = fuels.get(new_fuel, f"[{new_fuel}]")
+                    changes.append(f"Топливо: {year_num} год - {new_fuel_name}")
+                
+                related_entities_changed = True
+            else:
+                # Для существующего агрегата проверяем изменения
+                if new_tt is not None and mt.id_tes_type != new_tt:
+                    old_tes_name = tes_types.get(mt.id_tes_type, "не указано") if mt.id_tes_type else "не указано"
+                    new_tes_name = tes_types.get(new_tt, "не указано") if new_tt else "не указано"
+                    # Логируем только реальные изменения (исключаем не указано → не указано и идентичные названия)
+                    if (old_tes_name or '').strip().lower() != (new_tes_name or '').strip().lower():
+                        changes.append(f"Тип ТЭС: {year_num} год - {old_tes_name} → {new_tes_name}")
+                    mt.id_tes_type = new_tt
+                    related_entities_changed = True
+
+                if new_fuel is not None and mf.id_fuel != new_fuel:
+                    old_fuel_name = fuels.get(mf.id_fuel, "не указано") if mf.id_fuel else "не указано"
+                    new_fuel_name = fuels.get(new_fuel, "не указано") if new_fuel else "не указано"
+                    # Логируем только реальные изменения (исключаем не указано → не указано и идентичные названия)
+                    if (old_fuel_name or '').strip().lower() != (new_fuel_name or '').strip().lower():
+                        changes.append(f"Топливо: {year_num} год - {old_fuel_name} → {new_fuel_name}")
+                    mf.id_fuel = new_fuel
+                    related_entities_changed = True
+
+        # Название по году (machine_names)
+        if can_edit_generation and i < len(advanced_form.machine_names):
+            raw_name = (advanced_form.machine_names[i].year_name.data or "").strip() or None
+
+            # Для нового агрегата ТЭС/ГЭС, если для "текущего года" название по годам не задано,
+            # автоматически подставляем общее machine_name
+            if (
+                is_new
+                and is_tes_or_ges
+                and current_year_for_version is not None
+                and year_num == current_year_for_version
+                and not raw_name
+            ):
+                raw_name = (machine.machine_name or "").strip() or None
+
+            # Логика как для мощности:
+            # - если пользователь ввел новое название в каком‑то году, протягиваем его на все последующие годы;
+            # - значения для годов > текущего года версии БД не сохраняем.
+            if is_tes_or_ges and current_year_for_version is not None:
+                if year_num > current_year_for_version:
+                    effective_name = None
+                else:
+                    if raw_name:
+                        last_effective_name = raw_name
+                    effective_name = last_effective_name if last_effective_name else raw_name
+            else:
+                # Для остальных типов станций — без автоподстановки, по году
+                effective_name = raw_name
+
+            old_name = mn_obj.name if mn_obj.name else None
+            if old_name != effective_name:
+                mn_obj.name = effective_name
+                flag_modified(mn_obj, "name")
+                if is_new and effective_name:
+                    changes.append(f"Название по году {year_num}: {effective_name}")
+                elif not is_new:
+                    changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
+                related_entities_changed = True
+
+    # Для ТЭС/ГЭС/ГАЭС: поле "Название агрегата" (текущее + в скобках перспективное)
+    # проверяем с Machine.machine_name и при несовпадении сохраняем в Machine.machine_name.
+    if is_tes_or_ges and can_edit_generation:
+        # Берем значение из формы (то, что отображалось пользователю)
+        form_display_name = (main_form.machine_name.data or "").strip() or None
+        version_year_for_base = version_year_start if version_year_start is not None else version_year_end
+        if not form_display_name and (version_year_for_base is not None or version_year_end is not None):
+            # Fallback: пересчитываем из machine_names, если в форме пусто
+            base_name = None
+            if version_year_for_base is not None:
+                mn_current = names_map.get(version_year_for_base) if names_map else None
+                if mn_current and mn_current.name:
+                    base_name = mn_current.name.strip()
+            if not base_name and version_year_end is not None:
+                mn_current = names_map.get(version_year_end) if names_map else None
+                if mn_current and mn_current.name:
+                    base_name = mn_current.name.strip()
+            if not base_name and machine.machine_name:
+                base_name = machine.machine_name.strip()
+            form_display_name = base_name
+            if base_name and year_features:
+                for y in sorted(names_map.keys()):
+                    label = year_features.get(y)
+                    if not label or "план" not in str(label).strip().lower():
+                        continue
+                    mn_plan = names_map.get(y)
+                    if not mn_plan or not mn_plan.name:
+                        continue
+                    plan_name = mn_plan.name.strip()
+                    if plan_name and plan_name.lower() != base_name.lower():
+                        form_display_name = f"{base_name} ({plan_name})"
+                        break
+
+        if form_display_name and form_display_name != (machine.machine_name or None):
+            changes.append(
+                f"machine_name: {(machine.machine_name or '—')} → {form_display_name}"
+            )
+            machine.machine_name = form_display_name
+
+    # Если изменились связанные сущности, обновляем Machine для инкремента version
+    if related_entities_changed:
+        from sqlalchemy.sql import func
+        machine.updated_at = func.now()
+        flag_modified(machine, 'updated_at')
+
+    if not skip_pgu and is_pgu_action and can_edit_generation and pgu_machines_form.id_pgu_machine.data:
+        pgu_machine = PGUMachine.query.get(pgu_machines_form.id_pgu_machine.data)
+        if pgu_machine:
+            # Получаем кэшированные справочники для ПГУ
+            condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
+            tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
+            machines = dict(choices_cache.get_choices(Machine, Machine.machine_name, name_field='machine_name'))
+            
+            # Список полей внешних ключей ПГУ, которые должны конвертировать 0 в None
+            pgu_fk_fields_inline = {'id_condition_type', 'id_tes_machine_type', 'id_parent_machine'}
+            pgu_fk_models = {
+                'id_condition_type': ConditionType,
+                'id_tes_machine_type': TesMachineType,
+                'id_parent_machine': Machine,
+            }
+            
+            for fld, to_str in {
+                "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
+                "id_parent_machine": lambda x: machines.get(x, "не указано") if x else "не указано",
+                "machine_number": str,
+                "machine_name": str,
+                "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
+                "note": lambda x: x or "не указано",
+            }.items():
+                old_val = getattr(pgu_machine, fld)
+                new_val = getattr(pgu_machines_form, fld).data
+                
+                # Конвертируем 0 в None для полей внешних ключей
+                if fld in pgu_fk_fields_inline and choices_cache.is_empty_value(new_val):
+                    new_val = None
+
+                if fld in pgu_fk_models and new_val:
+                    resolved, ok = _resolve_fk_for_machine_persist(
+                        pgu_fk_models[fld], new_val, _persist_target_version_id(machine)
+                    )
+                    if not ok:
+                        continue
+                    new_val = resolved
+                
+                old_val_str = to_str(old_val)
+                new_val_str = to_str(new_val)
+                # Логируем только если строковые представления различаются
+                if old_val_str != new_val_str:
+                    pgu_changes.append(f"ПГУ {fld}: {old_val_str} → {new_val_str}")
+                    setattr(pgu_machine, fld, new_val)
+                elif old_val != new_val:
+                    # Если строки одинаковы, но значения разные, просто обновляем без логирования
+                    setattr(pgu_machine, fld, new_val)
+
+            for fld in date_fields:
+                old_val = getattr(pgu_machine, fld)
+                raw_val = getattr(pgu_machines_form, fld).data
+                new_val = int(raw_val) if raw_val and fld in {
+                    "date_exploitation",
+                    "date_decompressing_expected",
+                    "date_modernization_power_change_expected",
+                    "date_modernization_no_power_change_expected",
+                } else convert_to_date(raw_val)
+                if str(old_val) != str(new_val):
+                    pgu_changes.append(f"ПГУ {fld}: {old_val} → {new_val}")
+                    setattr(pgu_machine, fld, new_val)
+
+    # Вызываем важные функции для всех агрегатов, а не только для ПГУ
+    autofill_tes_and_fuel_chain(
+        machine,
+        station,
+        advanced_form,
+        changes,
+        start_year,
+        end_year,
+        powers_map=powers_map,
+        tes_map=tes_map,
+        fuel_map=fuel_map,
+        names_map=names_map,
+        can_edit_fuel=can_edit_fuel,
+        can_edit_generation=can_edit_generation,
+    )
+    return changes, pgu_changes
+
+
 @no_autoflush
 def handle_machine_post(station_id, machine_id, form_data, user, start_year, end_year, rounding_digits):
     from werkzeug.datastructures import MultiDict
@@ -593,9 +1362,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         )
 
     try:
-        changes, pgu_changes = [], []
-
-        # Создаем новый агрегат, если это новая запись
         if is_new and not can_edit_generation:
             flash("Создание агрегата доступно только ролям модуля «Генерация».", "danger")
             return redirect(
@@ -610,666 +1376,162 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             )
 
         if is_new:
-            # Получаем обязательные поля из формы
             machine_number = main_form.machine_number.data or ""
             machine_name = main_form.machine_name.data or "Без названия"
-            
             machine = Machine(
                 id_station=station_id,
                 machine_number=machine_number,
-                machine_name=machine_name
+                machine_name=machine_name,
             )
             set_db_version_on_create(machine)
             db.session.add(machine)
-            db.session.flush()  # Получаем ID для новой записи
-
-        # Определяем тип электростанции для логики обработки названий
-        try:
-            st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
-        except Exception:
-            st_name = ''
-        is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
-
-        # Получаем кэшированные справочники для логирования
-        condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
-        gen_companies = dict(choices_cache.get_choices(GenCompany, GenCompany.id))
-        machine_types = dict(choices_cache.get_choices(MachineType, MachineType.id))
-        tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
-        equipment_groups = dict(choices_cache.get_choices(EquipmentGroupType, EquipmentGroupType.id))
-
-        field_map = {
-            "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
-            "id_gen_company": lambda x: gen_companies.get(x, "не указано") if x else "не указано",
-            "id_machine_type": lambda x: machine_types.get(x, "не указано") if x else "не указано",
-            "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
-            "id_equipment_group": lambda x: equipment_groups.get(x, "не указано") if x else "не указано",
-            "machine_number": str,
-            "machine_name": str,
-            "note": lambda x: x or "не указано",
-            "change_document": lambda x: x or "не указано",
-            "relabing_outcome": lambda x: x or "не указано",
-            "machine_group": str,
-        }
-
-        # Список полей, которые являются внешними ключами и должны конвертировать 0 в None
-        fk_fields = {
-            'id_condition_type',
-            'id_gen_company',
-            'id_machine_type',
-            'id_tes_machine_type',
-            'id_equipment_group',
-        }
-        
-        for fld, to_str in field_map.items():
-            if fld in ("id_tes_machine_type", "id_equipment_group") and not can_edit_fuel:
-                continue
-            if fld not in ("id_tes_machine_type", "id_equipment_group") and not can_edit_generation:
-                continue
-            old_v = getattr(machine, fld) if not is_new else None
-            if is_tes_or_ges and fld == "machine_name":
-                # Для ТЭС/ГЭС/ГАЭС название агрегата формируется из machine_names
-                # и не должно обновлять Machine.machine_name из формы.
-                continue
-
-            new_v = getattr(main_form, fld).data
-            
-            # Конвертируем 0 в None для полей внешних ключей
-            if fld in fk_fields and choices_cache.is_empty_value(new_v):
-                new_v = None
-            
-            if is_new:
-                # Для нового агрегата пропускаем поля, которые уже установлены при создании
-                if fld in ('machine_number', 'machine_name'):
-                    # Поля уже установлены, только логируем
-                    if new_v:
-                        changes.append(f"{fld}: {to_str(new_v)}")
-                else:
-                    # Для остальных полей устанавливаем значения
-                    if new_v:
-                        changes.append(f"{fld}: {to_str(new_v)}")
-                    setattr(machine, fld, new_v)
-            else:
-                # Для существующего агрегата проверяем изменения
-                old_v_str = to_str(old_v)
-                new_v_str = to_str(new_v)
-                # Логируем только если строковые представления различаются
-                if old_v_str != new_v_str:
-                    changes.append(f"{fld}: {old_v_str} → {new_v_str}")
-                    setattr(machine, fld, new_v)
-                elif old_v != new_v:
-                    # Если строки одинаковы, но значения разные, просто обновляем без логирования
-                    setattr(machine, fld, new_v)
-
-        date_fields = [
-            "date_exploitation",
-            "date_exploitation_expected",
-            "date_commission_fact",
-            "date_joining_expected",
-            "date_joining_fact",
-            "date_detatchment_fact",
-            "date_decompressing_expected",
-            "date_decompressing_fact",
-            "date_modernization_power_change_expected",
-            "date_modernization_no_power_change_expected",
-            "date_relabing_fact",
-            "date_update_fact",
-        ]
-
-        # Годы диапазона текущей версии БД — нужны для ограничений по ожидаемому году вывода
-        version_year_start, version_year_end = get_current_version_year_range_from_name()
-
-        if can_edit_generation:
-            for fld in date_fields:
-                raw_form_value = getattr(main_form, fld).data
-
-                # Если указана фактическая дата вывода из эксплуатации, ожидаемый год вывода должен быть пустым
-                if fld == "date_decompressing_expected" and main_form.date_decompressing_fact.data:
-                    raw_form_value = None
-
-                if fld in {
-                    "date_exploitation",
-                    "date_exploitation_expected",
-                    "date_decompressing_expected",
-                    "date_modernization_power_change_expected",
-                    "date_modernization_no_power_change_expected",
-                }:
-                    new_val = int(raw_form_value) if raw_form_value else None
-                elif fld in {"date_relabing_fact", "date_update_fact"}:
-                    # Для полей с несколькими датами нормализуем список дат в единый формат
-                    new_val = normalize_date_list(raw_form_value) if raw_form_value else None
-                else:
-                    new_val = convert_to_date(raw_form_value)
-
-                # Ограничение: ожидаемый год вывода из эксплуатации не может быть > последнего года версии БД
-                if (
-                    fld == "date_decompressing_expected"
-                    and isinstance(new_val, int)
-                    and version_year_end is not None
-                    and new_val > version_year_end
-                ):
-                    new_val = None
-
-                old_val = getattr(machine, fld) if not is_new else None
-                if isinstance(old_val, (date, datetime)):
-                    old_val_str = old_val.strftime("%Y-%m-%d")
-                else:
-                    old_val_str = str(old_val) if old_val is not None else None
-
-                if isinstance(new_val, (date, datetime)):
-                    new_val_str = new_val.strftime("%Y-%m-%d")
-                else:
-                    new_val_str = str(new_val) if new_val is not None else None
-
-                if is_new:
-                    # Для нового агрегата просто устанавливаем значения
-                    if new_val:
-                        changes.append(f"{fld}: {new_val_str}")
-                    setattr(machine, fld, new_val)
-                else:
-                    # Для существующего агрегата проверяем изменения
-                    if old_val_str != new_val_str:
-                        changes.append(f"{fld}: {old_val_str} → {new_val_str}")
-                        setattr(machine, fld, new_val)
-
-            # Отдельная обработка поля year-ввода в работу (целое число, не дата)
-            raw_commission_year = main_form.date_commission_year.data
-            new_commission_year = int(raw_commission_year) if raw_commission_year else None
-            old_commission_year = getattr(machine, "date_commission_year", None) if not is_new else None
-            old_commission_year_str = str(old_commission_year) if old_commission_year is not None else None
-            new_commission_year_str = str(new_commission_year) if new_commission_year is not None else None
-
-            if is_new:
-                if new_commission_year is not None:
-                    changes.append(f"date_commission_year: {new_commission_year_str}")
-                setattr(machine, "date_commission_year", new_commission_year)
-            else:
-                if old_commission_year_str != new_commission_year_str:
-                    changes.append(f"date_commission_year: {old_commission_year_str} → {new_commission_year_str}")
-                    setattr(machine, "date_commission_year", new_commission_year)
-
-        # Для нового агрегата нужно flush, чтобы получить machine.id
-        if is_new:
             db.session.flush()
 
-        # При изменении типа группы оборудования или планового года ввода
-        # синхронизируем конкретную fuel-группу агрегата (обычная / "(нов)").
-        version_id = getattr(machine, "database_version_id", None) or get_current_db_version_id()
-
-        old_fuel_eg_id = None
-        if machine.id:
-            mfp_before = _get_machine_fuel_param_for_version(machine.id, version_id)
-            if mfp_before:
-                old_fuel_eg_id = mfp_before.equipment_group_id
-
-        sync_machine_fuel_equipment_group(
-            machine,
-            version_id=version_id,
-        )
-
-        if can_edit_fuel:
-            raw_fuel_eg = main_form.id_fuel_equipment_group.data
-            if not choices_cache.is_empty_value(raw_fuel_eg):
-                allowed_ids = {gid for gid, _ in get_station_fuel_equipment_group_choice_tuples(
-                    station.id, version_id
-                )}
-                if raw_fuel_eg in allowed_ids:
-                    mfp = _get_machine_fuel_param_for_version(machine.id, version_id)
-                    if mfp is None:
-                        mfp = MachineFuelParam(machine_id=machine.id)
-                        if version_id is not None:
-                            mfp.database_version_id = version_id
-                        elif get_current_db_version_id() is not None:
-                            set_db_version_on_create(mfp)
-                        db.session.add(mfp)
-                        db.session.flush()
-                    if mfp.equipment_group_id != raw_fuel_eg:
-                        mfp.equipment_group_id = raw_fuel_eg
-                        db.session.add(mfp)
-
-        mfp_after = _get_machine_fuel_param_for_version(machine.id, version_id)
-        new_fuel_eg_id = mfp_after.equipment_group_id if mfp_after else None
-        if old_fuel_eg_id != new_fuel_eg_id:
-            def _eg_label(eg_id):
-                if not eg_id:
-                    return "—"
-                eg = EquipmentGroup.query.get(eg_id)
-                return (eg.name if eg else None) or f"id={eg_id}"
-
-            changes.append(
-                f"Группа оборудования (топливный модуль): {_eg_label(old_fuel_eg_id)} → {_eg_label(new_fuel_eg_id)}"
+        if request.values.get("all_versions") == "1" and is_new:
+            flash("Сохранение во всех версиях недоступно для нового агрегата.", "warning")
+            return redirect(
+                url_for(
+                    "station_bp.machine_details",
+                    station_id=station_id,
+                    machine_id=0,
+                    start_year=start_year,
+                    end_year=end_year,
+                    rounding_digits=rounding_digits,
+                )
             )
 
-        if st_name == "тэс" and machine.id and can_edit_fuel:
-            raw_th = main_form.thermal_power_gcalh.data
-            new_nt = None
-            if raw_th is not None and str(raw_th).strip() not in ("",):
-                try:
-                    new_nt = raw_th if isinstance(raw_th, Decimal) else Decimal(str(raw_th).replace(",", "."))
-                except (InvalidOperation, ValueError):
-                    new_nt = None
-            if new_nt is not None:
-                new_nt = new_nt.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+        if request.values.get("all_versions") == "1" and not is_new:
+            from app.refdata.routes.refdata_all_versions_guard import (
+                block_all_versions_without_role_admin,
+            )
+            from app.generation.services.machine_services.machine_details_all_versions_services import (
+                save_machine_details_across_versions,
+            )
 
-            def _nt_to_dec(v):
-                if v is None:
-                    return None
-                if isinstance(v, Decimal):
-                    return v.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-                return Decimal(str(v)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-
-            mfp_nt = _get_machine_fuel_param_for_version(machine.id, version_id)
-            old_nt = _nt_to_dec(mfp_nt.nt) if mfp_nt and mfp_nt.nt is not None else None
-            if mfp_nt is None and new_nt is not None:
-                mfp_nt = MachineFuelParam(machine_id=machine.id)
-                if version_id is not None:
-                    mfp_nt.database_version_id = version_id
-                elif get_current_db_version_id() is not None:
-                    set_db_version_on_create(mfp_nt)
-                db.session.add(mfp_nt)
-                db.session.flush()
-            if mfp_nt is not None and old_nt != new_nt:
-                mfp_nt.nt = new_nt
-                db.session.add(mfp_nt)
-                _old_l = "—" if old_nt is None else format_decimal_trim_for_display(old_nt, digits=0)
-                _new_l = "—" if new_nt is None else format_decimal_trim_for_display(new_nt, digits=0)
-                changes.append(f"Тепловая мощность, Гкал/ч: {_old_l} → {_new_l}")
-
-        # Фильтруем записи с None.year для предотвращения AttributeError
-        powers_map = {mp.year.number: mp for mp in machine.machine_powers if mp.year is not None}
-        tes_map = {mt.year.number: mt for mt in machine.machine_tes_types if mt.year is not None}
-        fuel_map = {mf.year.number: mf for mf in machine.machine_fuels if mf.year is not None}
-        names_map = {mn.year_number: mn for mn in machine.machine_names if mn.year_number is not None}
-        
-        # Флаг для отслеживания изменений в связанных сущностях
-        related_entities_changed = False
-        
-        # Получаем объекты Year для создания связанных записей
-        years = Year.query.filter(Year.number >= start_year, Year.number <= end_year).all()
-        year_dict = {y.number: y for y in years}
-
-        # Определяем тип электростанции и "текущий год" версии БД
-        try:
-            st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
-        except Exception:
-            st_name = ''
-        is_tes_or_ges = st_name in ('тэс', 'гэс', 'гаэс')
-        version_year_start, version_year_end = get_current_version_year_range_from_name()
-        current_year_for_version = version_year_end
-        # Последнее ненулевое "эффективное" название для автозаполнения (как для мощностей)
-        last_effective_name = None
-
-        for i, year_num in enumerate(range(start_year, end_year + 1)):
-            # Проверяем только powers, так как это основная таблица для всех типов станций
-            # tes_types и fuels могут быть пустыми для не-ТЭС станций
-            if i >= len(advanced_form.powers):
-                continue
-
-            # Создаем записи, если их нет (для нового агрегата или недостающих годов)
-            y_obj = year_dict.get(year_num)
-            
-            if year_num not in powers_map:
-                mp = MachinePower(id_machine=machine.id, year=y_obj, year_number=year_num)
-                set_db_version_on_create(mp)
-                db.session.add(mp)
-                powers_map[year_num] = mp
-            
-            if year_num not in tes_map:
-                mt = MachineTesType(id_machine=machine.id, year=y_obj, year_number=year_num)
-                set_db_version_on_create(mt)
-                db.session.add(mt)
-                tes_map[year_num] = mt
-            
-            if year_num not in fuel_map:
-                mf = MachineFuel(id_machine=machine.id, year=y_obj, year_number=year_num)
-                set_db_version_on_create(mf)
-                db.session.add(mf)
-                fuel_map[year_num] = mf
-
-            if year_num not in names_map:
-                mn_obj = MachineName(id_machine=machine.id, year_number=year_num)
-                set_db_version_on_create(mn_obj)
-                db.session.add(mn_obj)
-                names_map[year_num] = mn_obj
-
-            mp, mt, mf = powers_map[year_num], tes_map[year_num], fuel_map[year_num]
-            mn_obj = names_map[year_num]
-
-            if can_edit_generation:
-                # Получаем raw значения из формы для определения, были ли поля изменены пользователем
-                p_ust_raw = advanced_form.powers[i].p_ust.data
-                p_ogr_raw = advanced_form.powers[i].p_ogr.data
-                p_rasp_raw = advanced_form.powers[i].p_rasp.data
-                # Сырые значения из формы и *_orig для защиты от перезаписи при правке других полей
-                p_ust_form_raw = normalized.get(advanced_form.powers[i].p_ust.name)
-                p_ogr_form_raw = normalized.get(advanced_form.powers[i].p_ogr.name)
-                p_rasp_form_raw = normalized.get(advanced_form.powers[i].p_rasp.name)
-                p_ust_orig_raw = normalized.get(f"{advanced_form.powers[i].p_ust.name}_orig")
-                p_ogr_orig_raw = normalized.get(f"{advanced_form.powers[i].p_ogr.name}_orig")
-                p_rasp_orig_raw = normalized.get(f"{advanced_form.powers[i].p_rasp.name}_orig")
-                
-                # Конвертируем значения (пустые строки и специальные символы → None)
-                p_ust_new = to_decimal(p_ust_raw)
-                p_ogr_new = to_decimal(p_ogr_raw)
-                p_rasp_new = to_decimal(p_rasp_raw)
-                
-                # Определяем, изменил ли пользователь поля мощности относительно *_orig
-                # Если *_orig отсутствует, считаем поле измененным только при наличии ввода.
-                def _power_field_changed(raw_value, orig_value):
-                    if orig_value in (None, '', '—', '-'):
-                        return raw_value not in (None, '', '—', '-')
-                    return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
-
-                power_fields_changed = (
-                    _power_field_changed(p_ust_form_raw, p_ust_orig_raw)
-                    or _power_field_changed(p_ogr_form_raw, p_ogr_orig_raw)
-                    or _power_field_changed(p_rasp_form_raw, p_rasp_orig_raw)
+            if block_all_versions_without_role_admin(current_user):
+                return redirect(
+                    url_for(
+                        "station_bp.machine_details",
+                        station_id=station.id,
+                        machine_id=machine.id,
+                        **redirect_args,
+                    )
                 )
-                # Сохраняем прежнюю логику автозаполнения:
-                # если пользователь не трогал мощности, ничего не пересчитываем.
-                user_modified_p_ogr = p_ogr_raw not in (None, '', '—', '-')
-                user_modified_p_rasp = p_rasp_raw not in (None, '', '—', '-')
-                
-                # Для нового агрегата всегда используем значения из формы
-                # Для существующего агрегата: если поле не изменено, оставляем старое значение
-                if is_new:
-                    # Для нового агрегата используем значения из формы или 0
-                    p_ust = p_ust_new if p_ust_new is not None else Decimal(0)
-                    p_ogr = p_ogr_new if p_ogr_new is not None else Decimal(0)
-                    p_rasp = p_rasp_new if p_rasp_new is not None else Decimal(0)
-                else:
-                    # Для существующего агрегата
-                    if not power_fields_changed:
-                        # Не трогаем мощности, если пользователь их не менял
-                        p_ust = mp.p_ust
-                        p_ogr = mp.p_ogr
-                        p_rasp = mp.p_rasp
-                        skip_ogr = True
-                        skip_rasp = True
-                    else:
-                        p_ust = p_ust_new if p_ust_new is not None else (mp.p_ust if mp.p_ust else Decimal(0))
-                        if user_modified_p_ogr:
-                            p_ogr = p_ogr_new if p_ogr_new is not None else Decimal(0)
-                        else:
-                            p_ogr = mp.p_ogr if mp.p_ogr is not None else Decimal(0)
-                        if user_modified_p_rasp:
-                            p_rasp = p_rasp_new if p_rasp_new is not None else Decimal(0)
-                        else:
-                            p_rasp = mp.p_rasp if mp.p_rasp is not None else Decimal(0)
-                        skip_ogr = user_modified_p_ogr
-                        skip_rasp = user_modified_p_rasp
-
-                # Передаем флаги в автозаполнение, чтобы не перезаписывать значения, введенные пользователем
-                if is_new:
-                    skip_ogr = user_modified_p_ogr
-                    skip_rasp = user_modified_p_rasp
-                p_ust, p_ogr, p_rasp = autofill_powers_if_possible_decimal(
-                    p_ust, p_ogr, p_rasp, year_num,
-                    skip_ogr=skip_ogr,
-                    skip_rasp=skip_rasp
+            if request.values.get("all_versions_confirm") != "1":
+                flash(
+                    "Сохранение во всех версиях БД отменено: не пройдено подтверждение.",
+                    "warning",
                 )
-
-                for attr, val in (("p_ust", p_ust), ("p_ogr", p_ogr), ("p_rasp", p_rasp)):
-                    old_val = getattr(mp, attr)
-                    
-                    # Для нового агрегата всегда записываем значения
-                    if is_new:
-                        setattr(mp, attr, val)
-                        flag_modified(mp, attr)
-                        if val and val > 0:  # Логируем только ненулевые значения
-                            changes.append(f"{attr}: {year_num} год - {format_decimal_for_display(val)}")
-                        related_entities_changed = True
-                    else:
-                        # Для существующего агрегата проверяем изменения
-                        if not is_same_decimal(old_val, val):
-                            setattr(mp, attr, val)
-                            flag_modified(mp, attr)
-                            changes.append(f"{attr}: {year_num} год - {format_decimal_for_display(old_val)} → {format_decimal_for_display(val)}")
-                            related_entities_changed = True
-
-            # Получаем значения типов ТЭС и топлива только если формы существуют
-            # Для не-ТЭС станций эти формы могут быть пустыми
-            new_tt = None
-            new_fuel = None
-            
-            if i < len(advanced_form.tes_types):
-                new_tt = advanced_form.tes_types[i].tes_type.data
-                if choices_cache.is_empty_value(new_tt):
-                    new_tt = None
-                    
-            if i < len(advanced_form.fuels):
-                new_fuel = advanced_form.fuels[i].fuel_type.data
-                if choices_cache.is_empty_value(new_fuel):
-                    new_fuel = None
-
-            # Обрабатываем типы ТЭС и топливо только для ТЭС станций
-            # Распознаем тип электростанции по названию
-            try:
-                st_name = (station.station_type.name or '').strip().lower() if station.station_type else ''
-            except Exception:
-                st_name = ''
-            is_tes_station = (st_name == 'тэс')
-            if is_tes_station and can_edit_fuel:
-                # Получаем кэшированные справочники для ТЭС
-                tes_types = dict(choices_cache.get_choices(TesType, TesType.id))
-                fuels = dict(choices_cache.get_choices(Fuel, Fuel.id))
-                
-                if is_new:
-                    # Для нового агрегата просто устанавливаем значения
-                    mt.id_tes_type = new_tt
-                    if new_tt is not None:
-                        new_tes_name = tes_types.get(new_tt, f"[{new_tt}]")
-                        changes.append(f"Тип ТЭС: {year_num} год - {new_tes_name}")
-                    
-                    mf.id_fuel = new_fuel
-                    if new_fuel is not None:
-                        new_fuel_name = fuels.get(new_fuel, f"[{new_fuel}]")
-                        changes.append(f"Топливо: {year_num} год - {new_fuel_name}")
-                    
-                    related_entities_changed = True
-                else:
-                    # Для существующего агрегата проверяем изменения
-                    if new_tt is not None and mt.id_tes_type != new_tt:
-                        old_tes_name = tes_types.get(mt.id_tes_type, "не указано") if mt.id_tes_type else "не указано"
-                        new_tes_name = tes_types.get(new_tt, "не указано") if new_tt else "не указано"
-                        # Логируем только реальные изменения (исключаем не указано → не указано и идентичные названия)
-                        if (old_tes_name or '').strip().lower() != (new_tes_name or '').strip().lower():
-                            changes.append(f"Тип ТЭС: {year_num} год - {old_tes_name} → {new_tes_name}")
-                        mt.id_tes_type = new_tt
-                        related_entities_changed = True
-
-                    if new_fuel is not None and mf.id_fuel != new_fuel:
-                        old_fuel_name = fuels.get(mf.id_fuel, "не указано") if mf.id_fuel else "не указано"
-                        new_fuel_name = fuels.get(new_fuel, "не указано") if new_fuel else "не указано"
-                        # Логируем только реальные изменения (исключаем не указано → не указано и идентичные названия)
-                        if (old_fuel_name or '').strip().lower() != (new_fuel_name or '').strip().lower():
-                            changes.append(f"Топливо: {year_num} год - {old_fuel_name} → {new_fuel_name}")
-                        mf.id_fuel = new_fuel
-                        related_entities_changed = True
-
-            # Название по году (machine_names)
-            if can_edit_generation and i < len(advanced_form.machine_names):
-                raw_name = (advanced_form.machine_names[i].year_name.data or "").strip() or None
-
-                # Для нового агрегата ТЭС/ГЭС, если для "текущего года" название по годам не задано,
-                # автоматически подставляем общее machine_name
-                if (
-                    is_new
-                    and is_tes_or_ges
-                    and current_year_for_version is not None
-                    and year_num == current_year_for_version
-                    and not raw_name
-                ):
-                    raw_name = (machine.machine_name or "").strip() or None
-
-                # Логика как для мощности:
-                # - если пользователь ввел новое название в каком‑то году, протягиваем его на все последующие годы;
-                # - значения для годов > текущего года версии БД не сохраняем.
-                if is_tes_or_ges and current_year_for_version is not None:
-                    if year_num > current_year_for_version:
-                        effective_name = None
-                    else:
-                        if raw_name:
-                            last_effective_name = raw_name
-                        effective_name = last_effective_name if last_effective_name else raw_name
-                else:
-                    # Для остальных типов станций — без автоподстановки, по году
-                    effective_name = raw_name
-
-                old_name = mn_obj.name if mn_obj.name else None
-                if old_name != effective_name:
-                    mn_obj.name = effective_name
-                    flag_modified(mn_obj, "name")
-                    if is_new and effective_name:
-                        changes.append(f"Название по году {year_num}: {effective_name}")
-                    elif not is_new:
-                        changes.append(f"Название по году {year_num}: {old_name or '—'} → {effective_name or '—'}")
-                    related_entities_changed = True
-
-        # Для ТЭС/ГЭС/ГАЭС: поле "Название агрегата" (текущее + в скобках перспективное)
-        # проверяем с Machine.machine_name и при несовпадении сохраняем в Machine.machine_name.
-        if is_tes_or_ges and can_edit_generation:
-            # Берем значение из формы (то, что отображалось пользователю)
-            form_display_name = (main_form.machine_name.data or "").strip() or None
-            version_year_for_base = version_year_start if version_year_start is not None else version_year_end
-            if not form_display_name and (version_year_for_base is not None or version_year_end is not None):
-                # Fallback: пересчитываем из machine_names, если в форме пусто
-                base_name = None
-                if version_year_for_base is not None:
-                    mn_current = names_map.get(version_year_for_base) if names_map else None
-                    if mn_current and mn_current.name:
-                        base_name = mn_current.name.strip()
-                if not base_name and version_year_end is not None:
-                    mn_current = names_map.get(version_year_end) if names_map else None
-                    if mn_current and mn_current.name:
-                        base_name = mn_current.name.strip()
-                if not base_name and machine.machine_name:
-                    base_name = machine.machine_name.strip()
-                form_display_name = base_name
-                if base_name and year_features:
-                    for y in sorted(names_map.keys()):
-                        label = year_features.get(y)
-                        if not label or "план" not in str(label).strip().lower():
-                            continue
-                        mn_plan = names_map.get(y)
-                        if not mn_plan or not mn_plan.name:
-                            continue
-                        plan_name = mn_plan.name.strip()
-                        if plan_name and plan_name.lower() != base_name.lower():
-                            form_display_name = f"{base_name} ({plan_name})"
-                            break
-
-            if form_display_name and form_display_name != (machine.machine_name or None):
-                changes.append(
-                    f"machine_name: {(machine.machine_name or '—')} → {form_display_name}"
+                log_to_db(
+                    user,
+                    "Отклонено сохранение machine_details во всех версиях БД: "
+                    "отсутствует подтверждение all_versions_confirm",
+                    entity_type="machine",
+                    entity_id=machine.id,
                 )
-                machine.machine_name = form_display_name
+                return redirect(
+                    url_for(
+                        "station_bp.machine_details",
+                        station_id=station.id,
+                        machine_id=machine.id,
+                        **redirect_args,
+                    )
+                )
+            return save_machine_details_across_versions(
+                user=user,
+                anchor_station_id=station.id,
+                anchor_machine_id=machine.id,
+                main_form=main_form,
+                advanced_form=advanced_form,
+                pgu_machines_form=pgu_machines_form,
+                normalized=normalized,
+                start_year=start_year,
+                end_year=end_year,
+                redirect_args=redirect_args,
+                can_edit_fuel=can_edit_fuel,
+                can_edit_generation=can_edit_generation,
+                is_pgu_action=is_pgu_action,
+                year_features=year_features,
+                anchor_station=station,
+                anchor_machine=machine,
+            )
 
-        # Если изменились связанные сущности, обновляем Machine для инкремента version
-        if related_entities_changed:
-            from sqlalchemy.sql import func
-            machine.updated_at = func.now()
-            flag_modified(machine, 'updated_at')
-
-        if is_pgu_action and can_edit_generation and pgu_machines_form.id_pgu_machine.data:
-            pgu_machine = PGUMachine.query.get(pgu_machines_form.id_pgu_machine.data)
-            if pgu_machine:
-                # Получаем кэшированные справочники для ПГУ
-                condition_types = dict(choices_cache.get_choices(ConditionType, ConditionType.id))
-                tes_machine_types = dict(choices_cache.get_choices(TesMachineType, TesMachineType.id))
-                machines = dict(choices_cache.get_choices(Machine, Machine.machine_name, name_field='machine_name'))
-                
-                # Список полей внешних ключей ПГУ, которые должны конвертировать 0 в None
-                pgu_fk_fields_inline = {'id_condition_type', 'id_tes_machine_type'}
-                
-                for fld, to_str in {
-                    "id_condition_type": lambda x: condition_types.get(x, "не указано") if x else "не указано",
-                    "id_parent_machine": lambda x: machines.get(x, "не указано") if x else "не указано",
-                    "machine_number": str,
-                    "machine_name": str,
-                    "id_tes_machine_type": lambda x: tes_machine_types.get(x, "не указано") if x else "не указано",
-                    "note": lambda x: x or "не указано",
-                }.items():
-                    old_val = getattr(pgu_machine, fld)
-                    new_val = getattr(pgu_machines_form, fld).data
-                    
-                    # Конвертируем 0 в None для полей внешних ключей
-                    if fld in pgu_fk_fields_inline and choices_cache.is_empty_value(new_val):
-                        new_val = None
-                    
-                    old_val_str = to_str(old_val)
-                    new_val_str = to_str(new_val)
-                    # Логируем только если строковые представления различаются
-                    if old_val_str != new_val_str:
-                        pgu_changes.append(f"ПГУ {fld}: {old_val_str} → {new_val_str}")
-                        setattr(pgu_machine, fld, new_val)
-                    elif old_val != new_val:
-                        # Если строки одинаковы, но значения разные, просто обновляем без логирования
-                        setattr(pgu_machine, fld, new_val)
-
-                for fld in date_fields:
-                    old_val = getattr(pgu_machine, fld)
-                    raw_val = getattr(pgu_machines_form, fld).data
-                    new_val = int(raw_val) if raw_val and fld in {
-                        "date_exploitation",
-                        "date_decompressing_expected",
-                        "date_modernization_power_change_expected",
-                        "date_modernization_no_power_change_expected",
-                    } else convert_to_date(raw_val)
-                    if str(old_val) != str(new_val):
-                        pgu_changes.append(f"ПГУ {fld}: {old_val} → {new_val}")
-                        setattr(pgu_machine, fld, new_val)
-
-        # Вызываем важные функции для всех агрегатов, а не только для ПГУ
-        autofill_tes_and_fuel_chain(
-            machine,
+        changes, pgu_changes = persist_machine_details_from_validated_forms(
             station,
-            advanced_form,
-            changes,
-            start_year,
-            end_year,
-            powers_map=powers_map,
-            tes_map=tes_map,
-            fuel_map=fuel_map,
-            names_map=names_map,
+            machine,
+            main_form=main_form,
+            advanced_form=advanced_form,
+            pgu_machines_form=pgu_machines_form,
+            normalized=normalized,
+            user=user,
+            start_year=start_year,
+            end_year=end_year,
             can_edit_fuel=can_edit_fuel,
             can_edit_generation=can_edit_generation,
+            is_pgu_action=is_pgu_action,
+            year_features=year_features,
         )
+
         recalculate_station_power(station, start_year, end_year)
         if can_edit_generation:
             recalculate_machine_years_by_p_ust(machine, changes, year_features)
 
         _commit_with_retry()
-        # ВАЖНО: изменения Machine/его мощностей/топлива/ПГУ влияют на агрегации и кэш сортировки/страниц
         clear_station_aggregation_cache("after machine save")
-        
-        # Инвалидация кэша после успешного обновления
-        from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
+
+        from app.common.services.cache_decorator import (
+            invalidate_cache,
+            invalidate_cache_pattern,
+        )
+
         if changes or pgu_changes:
-            invalidate_cache('machine', machine_id=machine.id)
-            invalidate_cache('station_full', station_id=station.id)
-            invalidate_cache_pattern('station_list:*')
-            # Очищаем кэш choices при изменении данных
+            invalidate_cache("machine", machine_id=machine.id)
+            invalidate_cache("station_full", station_id=station.id)
+            invalidate_cache_pattern("station_list:*")
             clear_machine_choices_cache()
 
         if pgu_changes:
-            log_to_db(user, f"Изменения по ПГУ агрегату {pgu_machine.machine_name} электростанции {station.name}", details="; ".join(pgu_changes))
+            log_to_db(
+                user,
+                f"Изменения по ПГУ агрегату {pgu_machines_form.machine_name.data or 'ПГУ'} "
+                f"электростанции {station.name}",
+                details="; ".join(pgu_changes),
+            )
             flash("Данные ПГУ агрегата успешно обновлены!", "success")
 
         if changes:
             if is_new:
-                log_to_db(user, f"Создан новый агрегат на электростанции {station.name} ({station.regional_district.name})", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
+                log_to_db(
+                    user,
+                    f"Создан новый агрегат на электростанции {station.name} "
+                    f"({station.regional_district.name})",
+                    details="; ".join(changes),
+                    entity_type="machine",
+                    entity_id=machine.id,
+                )
                 flash("Новый агрегат успешно создан!", "success")
             else:
-                log_to_db(user, f"Изменения в электростанции {station.name} ({station.regional_district.name}), агрегат №{machine.machine_number}", details="; ".join(changes), entity_type="machine", entity_id=machine.id)
+                log_to_db(
+                    user,
+                    f"Изменения в электростанции {station.name} "
+                    f"({station.regional_district.name}), агрегат №{machine.machine_number}",
+                    details="; ".join(changes),
+                    entity_type="machine",
+                    entity_id=machine.id,
+                )
                 flash("Данные агрегата успешно обновлены!", "success")
 
         if not changes and not pgu_changes and not is_new:
             flash("Изменений не обнаружено", "info")
 
-        return redirect(url_for("station_bp.machine_details",
-                                station_id=station.id,
-                                machine_id=machine.id,
-                                **redirect_args))
+        return redirect(
+            url_for(
+                "station_bp.machine_details",
+                station_id=station.id,
+                machine_id=machine.id,
+                **redirect_args,
+            )
+        )
 
     except Exception as exc:
         db.session.rollback()
@@ -2121,23 +2383,27 @@ def autofill_powers_if_possible_decimal(p_ust, p_ogr, p_rasp, year_num=None, ski
         skip_rasp: Если True, не автозаполнять Ррасп (пользователь ввел значение явно)
     """
     try:
-        if p_ust > 0:
-            if not is_empty(p_rasp) and is_empty(p_ogr) and not skip_ogr:
-                calculated = p_ust - p_rasp
-                if rounded_decimal(p_ogr, 6) != rounded_decimal(calculated, 6):
+        p_ust_d = _coerce_decimal(p_ust)
+        p_ogr_d = _coerce_decimal(p_ogr)
+        p_rasp_d = _coerce_decimal(p_rasp)
+
+        if p_ust_d is not None and p_ust_d > 0:
+            if not is_empty(p_rasp_d) and is_empty(p_ogr_d) and not skip_ogr:
+                calculated = p_ust_d - p_rasp_d
+                if rounded_decimal(p_ogr_d, 6) != rounded_decimal(calculated, 6):
                     if year_num is not None:
                         flash(f"🧠 {year_num} год: автозаполнено Рогр = {calculated} (из Руст − Ррасп)", "info")
-                    return p_ust, calculated, p_rasp
-            elif not is_empty(p_ogr) and is_empty(p_rasp) and not skip_rasp:
-                calculated = p_ust - p_ogr
-                if rounded_decimal(p_rasp, 6) != rounded_decimal(calculated, 6):
+                    return p_ust_d, calculated, p_rasp_d
+            elif not is_empty(p_ogr_d) and is_empty(p_rasp_d) and not skip_rasp:
+                calculated = p_ust_d - p_ogr_d
+                if rounded_decimal(p_rasp_d, 6) != rounded_decimal(calculated, 6):
                     if year_num is not None:
                         flash(f"🧠 {year_num} год: автозаполнено Ррасп = {calculated} (из Руст − Рогр)", "info")
-                    return p_ust, p_ogr, calculated
-            elif is_empty(p_ogr) and is_empty(p_rasp) and not skip_ogr and not skip_rasp:
+                    return p_ust_d, p_ogr_d, calculated
+            elif is_empty(p_ogr_d) and is_empty(p_rasp_d) and not skip_ogr and not skip_rasp:
                 if year_num is not None:
-                    flash(f"🧠 {year_num} год: автозаполнено Ррасп = 0 и Рогр = {p_ust}", "info")
-                return p_ust, p_ust, Decimal(0)
+                    flash(f"🧠 {year_num} год: автозаполнено Ррасп = 0 и Рогр = {p_ust_d}", "info")
+                return p_ust_d, p_ust_d, Decimal(0)
         return p_ust, p_ogr, p_rasp
 
     except (InvalidOperation, TypeError) as e:

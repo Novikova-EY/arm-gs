@@ -155,7 +155,7 @@
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '—' }}</td>
                             <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{% if station.gaes_planned_capacity_display_html %}{{ station.gaes_planned_capacity_display_html|safe }}{% else %}—{% endif %}</td>
                             {% endif %}
-                            <td class="text-center">{{ (tr.generation_average_multiyear_billion_kwh or '—')|replace('.', ',') }}</td>
+                            <td class="text-center">{{ (tr.generation_average_multiyear_million_kwh or '—')|replace('.', ',') }}</td>
                             {% if loop.first %}
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>

@@ -63,7 +63,7 @@
 <div class="container-fluid mt-4 equipment-group-edit-page">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Группы оборудования</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5"> электростанции</a>
+        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
     <body>
@@ -253,7 +253,12 @@
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
-                        <button type="submit" name="all_versions" value="1" class="btn btn-outline-success fs-5" title="Применить изменения во всех версиях БД">Сохранить во всех версиях</button>
+                        <button type="submit"
+                                name="all_versions"
+                                value="1"
+                                class="btn btn-outline-success fs-5"
+                                title="Применить изменения карточки группы оборудования во всех версиях БД (по external_code)"
+                                onclick="return confirmEquipmentGroupHeaderSaveAllVersions(this);">Сохранить во всех версиях</button>
                         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
                     </div>
                 </div>
@@ -710,9 +715,16 @@
         </div>
 
         {% if can_edit %}
-        <div class="d-flex justify-content-end gap-2 mt-3 mb-3">
+        <div class="d-flex justify-content-end gap-2 mt-3 mb-3 flex-wrap">
             <input type="hidden" name="save_fuel_params" value="1">
             <button type="submit" class="btn btn-outline-primary fs-5" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
+            <button type="submit"
+                    name="all_versions"
+                    value="1"
+                    class="btn btn-outline-success fs-5"
+                    title="Применить топливные параметры, удельные показатели, стоимость и цену во всех версиях БД (по external_code)"
+                    onclick="return confirmEquipmentGroupFuelParamsSaveAllVersions(this);">Сохранить параметры топлива во всех версиях</button>
+            <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
         </div>
         </form>
         {% endif %}
@@ -1229,6 +1241,47 @@ document.addEventListener('DOMContentLoaded', function() {
 .equipment-group-edit-page .equipment-group-tables-numeric tbody td { font-size: 1.25rem; }
 .equipment-group-edit-page .equipment-group-tables-numeric .form-control { font-size: 1.25rem; }
 </style>
+
+<script>
+function _setAllVersionsConfirm(form) {
+    if (!form) return;
+    var confirmInput = form.querySelector('input[name="all_versions_confirm"]');
+    if (!confirmInput) {
+        confirmInput = document.createElement('input');
+        confirmInput.type = 'hidden';
+        confirmInput.name = 'all_versions_confirm';
+        form.appendChild(confirmInput);
+    }
+    confirmInput.value = '1';
+}
+
+window.confirmEquipmentGroupHeaderSaveAllVersions = function (btn) {
+    var form = btn && btn.form ? btn.form : document.getElementById('equipmentGroupHeaderForm');
+    if (!form) return false;
+    var msg1 = 'Сохранить карточку группы оборудования во ВСЕХ версиях базы данных?\n\n'
+        + 'Будут синхронизированы поля карточки (наименование, субъект РФ, РЭС, тип группы и др.).';
+    if (!confirm(msg1)) return false;
+    var msg2 = 'ПОДТВЕРЖДЕНИЕ: вы уверены, что хотите перезаписать эти данные во всех версиях БД?\n\n'
+        + 'Это действие нельзя отменить автоматически.';
+    if (!confirm(msg2)) return false;
+    _setAllVersionsConfirm(form);
+    return true;
+};
+
+window.confirmEquipmentGroupFuelParamsSaveAllVersions = function (btn) {
+    var form = btn && btn.form ? btn.form : document.getElementById('fuelParamsForm');
+    if (!form) return false;
+    var msg1 = 'Сохранить топливные параметры во ВСЕХ версиях базы данных?\n\n'
+        + 'Будут синхронизированы: параметры группы оборудования, доп. параметры, '
+        + 'удельные показатели, стоимость и цена.';
+    if (!confirm(msg1)) return false;
+    var msg2 = 'ПОДТВЕРЖДЕНИЕ: вы уверены, что хотите перезаписать топливные параметры во всех версиях БД?\n\n'
+        + 'Это действие нельзя отменить автоматически.';
+    if (!confirm(msg2)) return false;
+    _setAllVersionsConfirm(form);
+    return true;
+};
+</script>
 
 {% endif %}
 {% endblock %}

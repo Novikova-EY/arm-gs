@@ -152,6 +152,27 @@ tfoot {
     z-index: 48;
 }
 
+/* Сводка потребления / спроса: липкая панель (кнопки, фильтры, годы) над таблицей внутри .page-table-scroll */
+.page-table-scroll .pd-ec-summary-sticky-stack {
+    position: sticky;
+    top: 0;
+    /* Выше липких углов шапки coeff-таблицы (1050–1051), ниже выпадающих фильтров/Select2 (1054) и модалок Bootstrap (1055) */
+    z-index: 1052;
+}
+
+/* Сдвиг липкой шапки только у основной сводной таблицы (.power-demand-summary-scroll), не у журнала и др. */
+.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(1) th {
+    top: var(--pd-summary-controls-sticky-height, 0px);
+}
+
+.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(2) th {
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row1-height, 0px));
+}
+
+.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(3) th {
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row3-offset, 0px));
+}
+
 /* Контейнер со скроллом для очень больших таблиц (список станций) */
 #stationsTableContainer {
     /* Fallback: если высота фильтров меняется, можно подправить константу */
@@ -183,6 +204,7 @@ tr {
     align-items: center;
     z-index: 9999;
     backdrop-filter: blur(2px); /* дополнительный эффект "замутнения", по желанию */
+    --loader-size: 5rem;
 }
 
 #preloader.fade-out {

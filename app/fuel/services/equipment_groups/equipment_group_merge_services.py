@@ -728,50 +728,11 @@ def _resolve_equipment_group_type_id_for_version(
     anchor_type_id: int, version_id: Optional[int]
 ) -> Optional[int]:
     """ID типа группы в справочнике для версии vid по ref_uuid или имени якорной записи."""
-    from sqlalchemy import func as sa_func
-
-    from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
-        EquipmentGroupType,
+    from app.common.services.version_entity_resolve_services import (
+        resolve_equipment_group_type_id_for_version,
     )
-    from app.common.services.database_version_filter import filter_by_explicit_db_version
 
-    anchor = EquipmentGroupType.query.get(anchor_type_id)
-    if not anchor:
-        return None
-
-    anchor_vid = getattr(anchor, "database_version_id", None)
-    if (anchor_vid is None and version_id is None) or (anchor_vid == version_id):
-        return anchor.id
-
-    def _in_version(q):
-        return filter_by_explicit_db_version(q, EquipmentGroupType, version_id)
-
-    type_ref_uuid = getattr(anchor, "ref_uuid", None)
-    type_name = (anchor.name or "").strip()
-
-    if type_ref_uuid:
-        t = _in_version(
-            EquipmentGroupType.query.filter(EquipmentGroupType.ref_uuid == type_ref_uuid)
-        ).first()
-        if t:
-            return t.id
-
-    if type_name:
-        t = _in_version(
-            EquipmentGroupType.query.filter(EquipmentGroupType.name == type_name)
-        ).first()
-        if t:
-            return t.id
-        t = _in_version(
-            EquipmentGroupType.query.filter(
-                sa_func.lower(sa_func.trim(EquipmentGroupType.name))
-                == type_name.lower()
-            )
-        ).first()
-        if t:
-            return t.id
-
-    return None
+    return resolve_equipment_group_type_id_for_version(anchor_type_id, version_id)
 
 
 def _database_version_label(version_id: Optional[int]) -> str:
@@ -882,6 +843,10 @@ def update_equipment_group_all_versions(
     """
     from app.common.models.database_version_model import DatabaseVersion
     from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.common.services.version_entity_resolve_services import (
+        resolve_entity_id_by_external_code_for_version,
+        resolve_refdata_fk_id_for_version,
+    )
     from app.fuel.services.equipment_groups.equipment_group_edit_services import (
         _apply_grouping_station_on_type_station_links,
         _effective_group_database_version_id,
@@ -958,31 +923,14 @@ def update_equipment_group_all_versions(
         if "grouping_station_id" not in form_data:
             return {"versions_touched": 0, "updated_count": 0}
 
-    # ref_uuid для разрешения regional_district_id/regional_energy_system_id по версиям
-    # (в main path ID из формы — для текущей версии, в других версиях нужен свой id)
+    # ID из формы — для текущей версии; в других версиях ищем соответствие по ref_uuid / external_code
     new_grouping_station_id = _parse_int_form_val(form_data.get("grouping_station_id"))
     new_rd_id = _parse_int_form_val(form_data.get("regional_district_id"))
     new_res_id = _parse_int_form_val(form_data.get("regional_energy_system_id"))
-    grouping_station_external_code = None
-    rd_ref_uuid = None
-    res_ref_uuid = None
-    if "grouping_station_id" in form_data:
-        if new_grouping_station_id:
-            station = Station.query.get(new_grouping_station_id)
-            if station:
-                grouping_station_external_code = getattr(station, "external_code", None)
-    if "regional_district_id" in form_data:
-        if new_rd_id:
-            from app.refdata.models.territories.regional_district_model import RegionalDistrict
-            rd = RegionalDistrict.query.get(new_rd_id)
-            if rd:
-                rd_ref_uuid = getattr(rd, "ref_uuid", None)
-    if "regional_energy_system_id" in form_data:
-        if new_res_id:
-            from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
-            res = RegionalEnergySystem.query.get(new_res_id)
-            if res:
-                res_ref_uuid = getattr(res, "ref_uuid", None)
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.energy_systems.regional_energy_system_model import (
+        RegionalEnergySystem,
+    )
 
     def _submitted_grouping_station_matches_version(vid: Optional[int]) -> bool:
         if not new_grouping_station_id:
@@ -991,58 +939,32 @@ def update_equipment_group_all_versions(
         return bool(station and getattr(station, "database_version_id", None) == vid)
 
     def _resolve_grouping_station_id_for_version(vid: Optional[int]) -> Optional[int]:
-        if not grouping_station_external_code:
-            return (
-                new_grouping_station_id
-                if _submitted_grouping_station_matches_version(vid)
-                else None
-            )
-        q = Station.query.filter(Station.external_code == grouping_station_external_code)
-        q = filter_by_explicit_db_version(q, Station, vid)
-        station = q.first()
-        if station:
-            return station.id
+        if not new_grouping_station_id:
+            return None
+        resolved = resolve_entity_id_by_external_code_for_version(
+            Station, new_grouping_station_id, vid
+        )
+        if resolved is not None:
+            return resolved
         return (
             new_grouping_station_id
             if _submitted_grouping_station_matches_version(vid)
             else None
         )
 
-    def _submitted_rd_id_matches_version(vid: Optional[int]) -> bool:
-        if not new_rd_id:
-            return False
-        from app.refdata.models.territories.regional_district_model import RegionalDistrict
-        rd = RegionalDistrict.query.get(new_rd_id)
-        return bool(rd and getattr(rd, "database_version_id", None) == vid)
-
-    def _submitted_res_id_matches_version(vid: Optional[int]) -> bool:
-        if not new_res_id:
-            return False
-        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
-        res = RegionalEnergySystem.query.get(new_res_id)
-        return bool(res and getattr(res, "database_version_id", None) == vid)
-
     def _resolve_rd_id_for_version(vid: Optional[int]) -> Optional[int]:
-        if not rd_ref_uuid:
-            return new_rd_id if _submitted_rd_id_matches_version(vid) else None
-        from app.refdata.models.territories.regional_district_model import RegionalDistrict
-        q = RegionalDistrict.query.filter(RegionalDistrict.ref_uuid == rd_ref_uuid)
-        q = filter_by_explicit_db_version(q, RegionalDistrict, vid)
-        r = q.first()
-        if r:
-            return r.id
-        return new_rd_id if _submitted_rd_id_matches_version(vid) else None
+        if not new_rd_id:
+            return None
+        return resolve_refdata_fk_id_for_version(
+            RegionalDistrict, new_rd_id, vid
+        )
 
     def _resolve_res_id_for_version(vid: Optional[int]) -> Optional[int]:
-        if not res_ref_uuid:
-            return new_res_id if _submitted_res_id_matches_version(vid) else None
-        from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
-        q = RegionalEnergySystem.query.filter(RegionalEnergySystem.ref_uuid == res_ref_uuid)
-        q = filter_by_explicit_db_version(q, RegionalEnergySystem, vid)
-        r = q.first()
-        if r:
-            return r.id
-        return new_res_id if _submitted_res_id_matches_version(vid) else None
+        if not new_res_id:
+            return None
+        return resolve_refdata_fk_id_for_version(
+            RegionalEnergySystem, new_res_id, vid
+        )
 
     def _apply_values_to_group(
         group: EquipmentGroup, values_to_apply: dict | None = None
@@ -1124,6 +1046,19 @@ def update_equipment_group_all_versions(
     change_details: list[tuple[str, str, str]] = []  # (field_label, old_val, new_val)
     equipment_group_type_skip_warnings: list[str] = []
 
+    from app.common.services.tranzaction_services import quick_fix_seq
+    from config import SCHEMA_FUEL
+
+    for seq_table in (
+        "gs_fue_equipment_groups",
+        "gs_fue_equipment_group_sets",
+        "gs_fue_equipment_group_type_stations",
+    ):
+        try:
+            quick_fix_seq(SCHEMA_FUEL, seq_table, "id")
+        except Exception:
+            pass
+
     # Для каждой версии: ищем группы ТОЛЬКО по external_code
     for version_id in version_ids:
         eg_version_filter = (
@@ -1155,15 +1090,23 @@ def update_equipment_group_all_versions(
 
         values_to_apply = dict(values)
         if "regional_district_id" in form_data:
-            resolved_rd_id = _resolve_rd_id_for_version(version_id)
-            values_to_apply["regional_district_id"] = (
-                resolved_rd_id if resolved_rd_id is not None else new_rd_id
-            )
+            if new_rd_id is None:
+                values_to_apply["regional_district_id"] = None
+            else:
+                resolved_rd_id = _resolve_rd_id_for_version(version_id)
+                if resolved_rd_id is not None:
+                    values_to_apply["regional_district_id"] = resolved_rd_id
+                else:
+                    values_to_apply.pop("regional_district_id", None)
         if "regional_energy_system_id" in form_data:
-            resolved_res_id = _resolve_res_id_for_version(version_id)
-            values_to_apply["regional_energy_system_id"] = (
-                resolved_res_id if resolved_res_id is not None else new_res_id
-            )
+            if new_res_id is None:
+                values_to_apply["regional_energy_system_id"] = None
+            else:
+                resolved_res_id = _resolve_res_id_for_version(version_id)
+                if resolved_res_id is not None:
+                    values_to_apply["regional_energy_system_id"] = resolved_res_id
+                else:
+                    values_to_apply.pop("regional_energy_system_id", None)
 
         version_changed = False
         field_changed_ids: set[int] = set()
@@ -1250,15 +1193,23 @@ def update_equipment_group_all_versions(
             eff_u = _effective_group_database_version_id(user_group)
             values_to_apply = dict(values)
             if "regional_district_id" in form_data:
-                resolved_rd_id = _resolve_rd_id_for_version(vid)
-                values_to_apply["regional_district_id"] = (
-                    resolved_rd_id if resolved_rd_id is not None else new_rd_id
-                )
+                if new_rd_id is None:
+                    values_to_apply["regional_district_id"] = None
+                else:
+                    resolved_rd_id = _resolve_rd_id_for_version(vid)
+                    if resolved_rd_id is not None:
+                        values_to_apply["regional_district_id"] = resolved_rd_id
+                    else:
+                        values_to_apply.pop("regional_district_id", None)
             if "regional_energy_system_id" in form_data:
-                resolved_res_id = _resolve_res_id_for_version(vid)
-                values_to_apply["regional_energy_system_id"] = (
-                    resolved_res_id if resolved_res_id is not None else new_res_id
-                )
+                if new_res_id is None:
+                    values_to_apply["regional_energy_system_id"] = None
+                else:
+                    resolved_res_id = _resolve_res_id_for_version(vid)
+                    if resolved_res_id is not None:
+                        values_to_apply["regional_energy_system_id"] = resolved_res_id
+                    else:
+                        values_to_apply.pop("regional_energy_system_id", None)
             matched_any = True
             changed, changes = _apply_values_to_group(user_group, values_to_apply)
             grouping_changed_u = False

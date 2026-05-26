@@ -451,15 +451,6 @@ SQLALCHEMY_POOL_SIZE=20
 SQLALCHEMY_MAX_OVERFLOW=40
 ```
 
-### Высокая нагрузка (200+ одновременных пользователей)
-
-```env
-GUNICORN_WORKERS=17
-GUNICORN_WORKER_CONNECTIONS=2000
-SQLALCHEMY_POOL_SIZE=40
-SQLALCHEMY_MAX_OVERFLOW=80
-```
-
 При необходимости использовать несколько серверов за load balancer.
 
 ---

@@ -21,3 +21,19 @@ def block_all_versions_without_admin(current_user) -> bool:
         "danger",
     )
     return True
+
+
+def block_all_versions_without_role_admin(current_user) -> bool:
+    """
+    True — запрос следует заблокировать (нужен redirect и flash).
+    Только роль admin (не generation-admin, fuel-admin и т.п.).
+    """
+    if not all_versions_requested():
+        return False
+    if getattr(current_user, "is_admin", False):
+        return False
+    flash(
+        "Операции во всех версиях базы данных доступны только пользователям с ролью admin.",
+        "danger",
+    )
+    return True

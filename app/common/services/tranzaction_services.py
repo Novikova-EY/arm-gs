@@ -88,6 +88,8 @@ def no_autoflush(func):
 def quick_fix_seq(schema: str, table: str, col: str = "id"):
     """
     Быстро выравнивает sequence под MAX(id) для указанной таблицы.
+    Пустая таблица (MAX = 0): setval(..., 1, false), чтобы следующий nextval вернул 1
+    (в PostgreSQL setval(..., 0, ...) для обычной последовательности недопустим).
     """
     with db.engine.begin() as conn:
         seq = conn.execute(
@@ -99,7 +101,9 @@ def quick_fix_seq(schema: str, table: str, col: str = "id"):
         max_id = conn.execute(
             text(f"SELECT COALESCE(MAX({col}), 0) FROM {schema}.{table}")
         ).scalar()
+        mid = int(max_id)
 
-        conn.execute(
-            text(f"SELECT setval('{seq}', {int(max_id)}, true)")
-        )
+        if mid <= 0:
+            conn.execute(text(f"SELECT setval('{seq}', 1, false)"))
+        else:
+            conn.execute(text(f"SELECT setval('{seq}', {mid}, true)"))

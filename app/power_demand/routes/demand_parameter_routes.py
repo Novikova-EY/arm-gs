@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Маршруты ведения параметров нагрузки (demand) по типам справочников."""
 from __future__ import annotations
 
@@ -41,20 +41,15 @@ from app.power_demand.models.territories.federal_district_demand_parameter_model
 from app.power_demand.models.territories.regional_district_demand_parameter_model import (
     RegionalDistrictDemandParameter,
 )
+from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
 from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
     RussiaFederationDemandParameter,
-)
-from app.power_demand.models.territories.russia_federation_with_nt_demand_parameter_model import (
-    RussiaFederationWithNtDemandParameter,
 )
 from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
     EesDemandParameter,
 )
 from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
     EesRussiaDemandParameter,
-)
-from app.power_demand.models.energy_systems.ees_russia_with_nt_demand_parameter_model import (
-    EesRussiaWithNtDemandParameter,
 )
 
 # Родительские справочники
@@ -67,14 +62,14 @@ from app.refdata.models.energy_systems.union_energy_system_model import UnionEne
 from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+    synchronous_area_display_order_sort_key,
+)
 
 
 def _synchronous_area_by_display_order(sa: SynchronousArea) -> tuple:
-    """Карточки синхронных зон: display_order по возрастанию, NULL в конце, затем name, id."""
-    d = getattr(sa, "display_order", None)
-    if d is not None:
-        return (0, int(d), (getattr(sa, "name", None) or "").casefold(), sa.id)
-    return (1, 0, (getattr(sa, "name", None) or "").casefold(), sa.id)
+    """Карточки синхронных зон: как :func:`synchronous_area_display_order_sort_key`."""
+    return synchronous_area_display_order_sort_key(sa)
 
 
 def _csrf():
@@ -114,7 +109,7 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @power_demand_bp.route("/")
 @login_required
 def hub():
-    return render_template("power_demand/power_demand_start.html")
+    return render_template("perimeter_variants/power_demand_start.html")
 
 
 # --- Россия (без родителя) ---
@@ -133,19 +128,25 @@ def russia_demand():
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITHOUT_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("power_demand_bp.russia_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationDemandParameter, None, None)
+    rows = dps.get_demand_rows(
+        RussiaFederationDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITHOUT_NT,
+    )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/power_demand_edit.html",
+        "perimeter_variants/power_demand_edit.html",
         form=form,
-        page_title="Нагрузки: Россия (без НТ)",
-        parent_label="Россия (без НТ)",
+        page_title="Нагрузки: Россия без НТ",
+        parent_label="Россия без НТ",
         back_url=url_for("power_demand_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -168,21 +169,27 @@ def russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                RussiaFederationWithNtDemandParameter,
+                RussiaFederationDemandParameter,
                 None,
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITH_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("power_demand_bp.russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(RussiaFederationWithNtDemandParameter, None, None)
+    rows = dps.get_demand_rows(
+        RussiaFederationDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITH_NT,
+    )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/power_demand_edit.html",
+        "perimeter_variants/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: Россия (с НТ)",
         parent_label="Россия (с НТ)",
@@ -213,19 +220,25 @@ def ees_russia_demand():
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITHOUT_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("power_demand_bp.ees_russia_demand")
 
-    rows = dps.get_demand_rows(EesRussiaDemandParameter, None, None)
+    rows = dps.get_demand_rows(
+        EesRussiaDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITHOUT_NT,
+    )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/power_demand_edit.html",
+        "perimeter_variants/power_demand_edit.html",
         form=form,
-        page_title="Нагрузки: ЕЭС России (без НТ)",
-        parent_label="ЕЭС России (без НТ)",
+        page_title="Нагрузки: ЕЭС России без НТ",
+        parent_label="ЕЭС России без НТ",
         back_url=url_for("power_demand_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -248,21 +261,27 @@ def ees_russia_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesRussiaWithNtDemandParameter,
+                EesRussiaDemandParameter,
                 None,
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITH_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("power_demand_bp.ees_russia_with_nt_demand")
 
-    rows = dps.get_demand_rows(EesRussiaWithNtDemandParameter, None, None)
+    rows = dps.get_demand_rows(
+        EesRussiaDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITH_NT,
+    )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/power_demand_edit.html",
+        "perimeter_variants/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (с НТ)",
         parent_label="ЕЭС России (с НТ)",
@@ -302,7 +321,7 @@ def ees_demand():
     rows = dps.get_demand_rows(EesDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "power_demand/power_demand_edit.html",
+        "perimeter_variants/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЭЭС",
         parent_label="ЭЭС",
@@ -325,7 +344,7 @@ def _parent_list(
     demand_endpoint,
     label_fn,
     *order_columns,
-    template_name: str = "power_demand/power_demand_parent_list.html",
+    template_name: str = "perimeter_variants/power_demand_parent_list.html",
     exclude_names: tuple[str, ...] = (),
     custom_order_by: tuple[Any, ...] | None = None,
     post_sort_key: Callable[[Any], tuple] | None = None,
@@ -375,6 +394,7 @@ def _demand_detail(
     show_combined_oess_eess: bool | None = None,
     show_combined_on_es: bool = False,
     show_combined_on_ez: bool = False,
+    perimeter_variant_code: str | None = None,
 ):
     form = _csrf()
     parent_model.query.get_or_404(parent_id)
@@ -391,13 +411,24 @@ def _demand_detail(
                 require_combined_oe_ees=show_combined_oess_eess is not False
                 and not show_combined_on_ez,
                 require_combined_on_ez=show_combined_on_ez,
+                perimeter_variant_code=perimeter_variant_code,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
-        return _redirect_preserving_rounding(request.endpoint, parent_id=parent_id)
+        extra: dict[str, Any] = {}
+        if perimeter_variant_code:
+            extra["perimeter_variant"] = perimeter_variant_code
+        return _redirect_preserving_rounding(
+            request.endpoint, parent_id=parent_id, **extra
+        )
 
-    rows = dps.get_demand_rows(demand_model, fk_column, parent_id)
+    rows = dps.get_demand_rows(
+        demand_model,
+        fk_column,
+        parent_id,
+        perimeter_variant_code=perimeter_variant_code,
+    )
     rd = _parse_power_demand_rounding_digits()
     ctx = dict(
         form=form,
@@ -414,7 +445,7 @@ def _demand_detail(
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess
     ctx["show_combined_on_ez"] = show_combined_on_ez
-    return render_template("power_demand/power_demand_edit.html", **ctx)
+    return render_template("perimeter_variants/power_demand_edit.html", **ctx)
 
 
 # Региональные энергосистемы
@@ -494,7 +525,7 @@ def federal_district_list():
             FederalDistrict.name.asc(),
             FederalDistrict.id.asc(),
         ),
-        template_name="power_demand/power_demand_parent_list_cards.html",
+        template_name="perimeter_variants/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -617,7 +648,7 @@ def synchronous_area_list():
         "power_demand_bp.synchronous_area_demand",
         lambda o: o.name,
         SynchronousArea.id,
-        template_name="power_demand/power_demand_parent_list_cards.html",
+        template_name="perimeter_variants/power_demand_parent_list_cards.html",
         exclude_names=("не указано",),
         post_sort_key=_synchronous_area_by_display_order,
     )
@@ -654,7 +685,7 @@ def union_energy_system_list():
             UnionEnergySystem.name.asc(),
             UnionEnergySystem.id.asc(),
         ),
-        template_name="power_demand/power_demand_parent_list_cards.html",
+        template_name="perimeter_variants/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -662,16 +693,40 @@ def union_energy_system_list():
 @power_demand_bp.route("/union-energy-systems/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def union_energy_system_demand(parent_id: int):
+    from app.common.perimeter_variant.registry import (
+        perimeter_variant_definitions,
+        resolve_entity_perimeter_variants,
+        variant_label_for_entity,
+    )
+
     p = UnionEnergySystem.query.get_or_404(parent_id)
+    binding = resolve_entity_perimeter_variants("union_energy_system", p.name)
+    spv = (
+        request.args.get("perimeter_variant")
+        or request.args.get("south_variant")
+        or ""
+    ).strip()
+    if binding is not None:
+        allowed = [v.code for v in binding.variants]
+        if spv not in allowed:
+            spv = allowed[0] if allowed else ""
+        suffix = ""
+        pdefs = perimeter_variant_definitions()
+        if spv and spv in pdefs:
+            suffix = f" — {variant_label_for_entity(binding, pdefs[spv])}"
+    else:
+        spv = ""
+        suffix = ""
     return _demand_detail(
         UnionEnergySystemDemandParameter,
         "id_union_energy_system",
         UnionEnergySystem,
         parent_id,
-        "Нагрузки: ОЭС",
+        f"Нагрузки: ОЭС{suffix}",
         p.name,
         "power_demand_bp.union_energy_system_list",
         show_combined_oess_eess=False,
+        perimeter_variant_code=(spv or None) if binding else None,
     )
 
 
@@ -688,7 +743,7 @@ def energy_system_type_list():
         q = q.filter(EnergySystemType.name.ilike(f"%{search}%"))
     items = q.all()
     return render_template(
-        "power_demand/power_demand_parent_list.html",
+        "perimeter_variants/power_demand_parent_list.html",
         form=_csrf(),
         page_title="Нагрузки: типы энергосистем",
         items=items,

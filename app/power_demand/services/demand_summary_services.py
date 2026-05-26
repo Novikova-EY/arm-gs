@@ -16,11 +16,9 @@ from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
 from app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model import (
     CentralizedZoneDemandParameter,
 )
+from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
 from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
     EesRussiaDemandParameter,
-)
-from app.power_demand.models.energy_systems.ees_russia_with_nt_demand_parameter_model import (
-    EesRussiaWithNtDemandParameter,
 )
 from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
     EnergySystemTypeDemandParameter,
@@ -45,9 +43,6 @@ from app.power_demand.models.territories.regional_district_demand_parameter_mode
 )
 from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
     RussiaFederationDemandParameter,
-)
-from app.power_demand.models.territories.russia_federation_with_nt_demand_parameter_model import (
-    RussiaFederationWithNtDemandParameter,
 )
 from app.power_demand.services import demand_parameter_services as dps
 from app.power_demand.models.energy_systems.energy_zone_demand_parameter_model import (
@@ -162,6 +157,7 @@ class SummaryEntity:
     id_federal_district: int | None = None
     id_energy_zone: int | None = None
     id_synchronous_area: int | None = None
+    perimeter_variant_code: str | None = None
 
 
 def _synchronous_area_display_label(sa: SynchronousArea) -> str:
@@ -287,15 +283,17 @@ def _build_oes_raw_entities(
     entities: list[SummaryEntity] = [
         _standalone_entity(
             "Россия (с НТ)",
-            RussiaFederationWithNtDemandParameter,
+            RussiaFederationDemandParameter,
             BASE_PARAMETERS,
             entity_kind="oes_top_aggregate",
+            perimeter_variant_code=CODE_WITH_NT,
         ),
         _standalone_entity(
             "Россия (без НТ)",
             RussiaFederationDemandParameter,
             BASE_PARAMETERS,
             entity_kind="oes_top_aggregate",
+            perimeter_variant_code=CODE_WITHOUT_NT,
         ),
         _standalone_entity(
             "ЭЭС",
@@ -305,9 +303,10 @@ def _build_oes_raw_entities(
         ),
         _standalone_entity(
             "ЕЭС России (с НТ)",
-            EesRussiaWithNtDemandParameter,
+            EesRussiaDemandParameter,
             BASE_PARAMETERS,
             entity_kind="oes_top_aggregate",
+            perimeter_variant_code=CODE_WITH_NT,
         ),
     ]
 
@@ -316,6 +315,7 @@ def _build_oes_raw_entities(
         EesRussiaDemandParameter,
         BASE_PARAMETERS,
         entity_kind="group-root",
+        perimeter_variant_code=CODE_WITHOUT_NT,
     )
     ees_without_nt.children = (
         _build_synchronous_area_entities(depth=1)
@@ -413,6 +413,7 @@ def build_oes_summary_context(
             filter_year_list=filter_year_list,
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
+        _finalize_power_demand_summary_rows(summary_rows)
         ctx["summary_rows"] = summary_rows
         return ctx
 
@@ -532,6 +533,7 @@ def build_energy_zones_summary_context(
         summary_rows = _flatten_entities(
             ent, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
         )
+        _finalize_power_demand_summary_rows(summary_rows)
         ctx = _build_summary_context(
             entities=[],
             page_title="Максимумы потребления мощности по энергозонам",
@@ -638,11 +640,13 @@ def _build_summary_context(
         year_is_plan[y] = (
             str(nm).strip().lower().replace(" ", "") == "план" if nm is not None else False
         )
+    summary_rows = _flatten_entities(
+        entities, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
+    )
+    _finalize_power_demand_summary_rows(summary_rows)
     return {
         "page_title": page_title,
-        "summary_rows": _flatten_entities(
-            entities, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
-        ),
+        "summary_rows": summary_rows,
         "years": years,
         "year_features": _yf,
         "year_is_plan": year_is_plan,
@@ -684,6 +688,151 @@ EZ_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
         "combined_on_ees",
     }
 )
+FO_COEFF_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(FO_EXPORT_PARAMETER_KEYS)
+
+_NT_EXTRA_ENTITY_LABELS_CF = frozenset(
+    {
+        "россия (с нт)",
+        "еэс россии (с нт)",
+    }
+)
+_NT_ENTITY_LABEL_COMPACT: dict[str, str] = {
+    "россия (без нт)": "Россия",
+    "еэс россии (без нт)": "ЕЭС России",
+}
+_TERRITORY_DETAIL_DEMAND_MODELS = frozenset(
+    {
+        "RegionalEnergySystemDemandParameter",
+        "RegionalDistrictDemandParameter",
+        "EnergyUnitDemandParameter",
+    }
+)
+
+
+def _finalize_power_demand_summary_rows(summary_rows: list[dict[str, Any]]) -> None:
+    tag_power_demand_summary_rows_for_nt_toggle(summary_rows)
+    tag_power_demand_summary_rows_for_territory_compact(summary_rows)
+
+
+def tag_power_demand_summary_rows_for_nt_toggle(summary_rows: list[dict[str, Any]]) -> None:
+    """Метки для кнопки «+ НТ» на сводках ОЭС/ФО/ЭЗ."""
+    for row in summary_rows:
+        label_cf = (row.get("entity_label") or "").strip().casefold()
+        pvc = row.get("perimeter_variant_code")
+        if pvc == CODE_WITH_NT or label_cf in _NT_EXTRA_ENTITY_LABELS_CF:
+            row["pd_pd_nt_extra_row"] = True
+            continue
+        if row.get("show_entity_cell"):
+            compact = _NT_ENTITY_LABEL_COMPACT.get(label_cf)
+            if compact:
+                row["pd_pd_entity_label_compact_nt"] = compact
+
+
+def tag_power_demand_summary_rows_for_territory_compact(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """Метки детализирующих территориальных строк (РЭС, субъект, энергорайон)."""
+    for row in summary_rows:
+        if row.get("entity_kind") == "perimeter_variant":
+            row["pd_pd_territory_detail_row"] = True
+            continue
+        dm = row.get("demand_model_name") or ""
+        if dm in _TERRITORY_DETAIL_DEMAND_MODELS and int(row.get("entity_depth") or 0) > 0:
+            row["pd_pd_territory_detail_row"] = True
+
+
+def parse_power_demand_export_nt_detail() -> bool:
+    from flask import request
+
+    return str(request.args.get("export_nt_detail") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def parse_power_demand_export_territory_compact() -> bool:
+    from flask import request
+
+    return str(request.args.get("export_territory_compact") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def apply_power_demand_oes_summary_nt_export_ui(
+    summary_rows: list[dict[str, Any]],
+    *,
+    nt_detail_on: bool,
+) -> list[dict[str, Any]]:
+    if nt_detail_on:
+        return list(summary_rows)
+    out: list[dict[str, Any]] = []
+    for row in summary_rows:
+        if row.get("pd_pd_nt_extra_row"):
+            continue
+        rc = dict(row)
+        if rc.get("show_entity_cell") and rc.get("pd_pd_entity_label_compact_nt"):
+            rc["entity_label"] = rc["pd_pd_entity_label_compact_nt"]
+        out.append(rc)
+    return out
+
+
+def apply_power_demand_summary_territory_compact_export_ui(
+    summary_rows: list[dict[str, Any]],
+    *,
+    territory_compact_on: bool,
+) -> list[dict[str, Any]]:
+    if not territory_compact_on:
+        return list(summary_rows)
+    out: list[dict[str, Any]] = []
+    for row in summary_rows:
+        if row.get("pd_pd_territory_detail_row") and not row.get("pd_pd_nt_extra_row"):
+            continue
+        out.append(row)
+    return out
+
+
+def slice_power_demand_summary_context_for_export_years(
+    context: dict[str, Any],
+    export_years: list[int],
+) -> dict[str, Any]:
+    """Ограничить годовые столбцы списком лет с экрана (видимые колонки)."""
+    full_years = list(context.get("years") or [])
+    if not export_years or not full_years:
+        return context
+    if export_years == full_years:
+        return context
+    idx_map = [full_years.index(y) for y in export_years if y in full_years]
+    if len(idx_map) != len(export_years):
+        return context
+    new_context = dict(context)
+    yf_all = context.get("year_features") or {}
+    yip_all = context.get("year_is_plan") or {}
+    new_context["years"] = list(export_years)
+    new_context["year_features"] = {y: yf_all.get(y) for y in export_years}
+    new_context["year_is_plan"] = {y: yip_all.get(y, False) for y in export_years}
+    list_keys = (
+        "year_values",
+        "year_row_ids",
+        "year_numeric_tooltips",
+        "year_k_values",
+        "year_k_full_tooltips",
+        "year_coeff_k_stored",
+    )
+    new_rows: list[dict[str, Any]] = []
+    for row in context.get("summary_rows") or []:
+        rc = dict(row)
+        for lk in list_keys:
+            old = row.get(lk)
+            if isinstance(old, list):
+                rc[lk] = [old[i] for i in idx_map if i < len(old)]
+        new_rows.append(rc)
+    new_context["summary_rows"] = new_rows
+    return new_context
 
 
 def filter_summary_rows_for_parameter_keys(
@@ -1297,6 +1446,7 @@ def _flatten_entity(
                 "entity_note_text": entity_note_text,
                 "entity_note_row_id": entity_note_rid,
                 "show_entity_note_cell": index == 0,
+                "perimeter_variant_code": getattr(entity, "perimeter_variant_code", None),
             }
         )
 
@@ -1456,16 +1606,23 @@ def _standalone_entity(
     parameters: tuple[tuple[str, str], ...],
     *,
     entity_kind: str = "default",
+    perimeter_variant_code: str | None = None,
 ) -> SummaryEntity:
     return SummaryEntity(
         label=label,
         depth=0,
         parameters=parameters,
-        demand_rows=dps.get_demand_rows(demand_model, None, None),
+        demand_rows=dps.get_demand_rows(
+            demand_model,
+            None,
+            None,
+            perimeter_variant_code=perimeter_variant_code,
+        ),
         entity_kind=entity_kind,
         demand_model_name=demand_model.__name__,
         parent_fk_column=None,
         parent_id=None,
+        perimeter_variant_code=perimeter_variant_code,
     )
 
 

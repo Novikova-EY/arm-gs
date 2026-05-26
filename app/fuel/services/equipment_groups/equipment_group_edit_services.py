@@ -108,9 +108,17 @@ def get_equipment_group_edit_context(equipment_group_id):
     Загружает EquipmentGroup и справочники для выпадающих списков.
     Возвращает dict с equipment_group и choices для каждого FK-поля.
     """
-    group = EquipmentGroup.query.filter_by(id=equipment_group_id).first()
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.common.services.version_entity_resolve_services import load_by_id_with_version
+
+    group = load_by_id_with_version(
+        EquipmentGroup,
+        equipment_group_id,
+        get_current_db_version_id(),
+    )
     if not group:
         return None
+    equipment_group_id = group.id
 
     # При первом открытии формы для части групп regional_district_id / regional_energy_system_id
     # могут еще не быть сохранены в БД (они вычисляются по связям или по obl).
@@ -671,14 +679,54 @@ def _get_station_id_for_equipment_group(equipment_group_id: int):
     return 0
 
 
+def _resolve_grouping_station_id_for_db_version(
+    anchor_station_id: int | None,
+    version_id,
+) -> int | None:
+    """
+    ID станции для группировки в версии version_id.
+    Якорь — id из формы (обычно текущая версия); в других версиях — по external_code.
+  """
+    if anchor_station_id is None:
+        return None
+    anchor = Station.query.get(anchor_station_id)
+    if not anchor:
+        return None
+    anchor_vid = getattr(anchor, "database_version_id", None)
+    if (anchor_vid is None and version_id is None) or (anchor_vid == version_id):
+        return anchor_station_id
+    external_code = (getattr(anchor, "external_code", None) or "").strip()
+    if external_code:
+        q = filter_by_explicit_db_version(
+            Station.query.filter(Station.external_code == external_code),
+            Station,
+            version_id,
+        )
+        found = q.first()
+        if found:
+            return found.id
+        return None
+    station_obj = filter_by_explicit_db_version(
+        Station.query,
+        Station,
+        version_id,
+    ).filter(Station.id == anchor_station_id).first()
+    return anchor_station_id if station_obj else None
+
+
 def persist_equipment_group_grouping_station_if_in_form(
     target_group: EquipmentGroup,
     form_data,
+    *,
+    version_id=None,
 ) -> str | None:
     """
     Если в form_data есть ключ grouping_station_id — валидирует станцию и обновляет
     gs_fue_equipment_group_type_stations.station_id (через связи EquipmentGroupSet).
     Иначе ничего не делает. Возвращает текст ошибки или None.
+
+    version_id — версия БД целевой группы (для «сохранить во всех версиях»);
+    станция из формы разрешается по external_code, как в update_equipment_group_all_versions.
     """
     if "grouping_station_id" not in form_data:
         return None
@@ -692,17 +740,20 @@ def persist_equipment_group_grouping_station_if_in_form(
             return None
 
     grouping_station_val = form_data.get("grouping_station_id")
-    new_grouping_station_id = _parse_int(grouping_station_val)
-    group_version_id = getattr(target_group, "database_version_id", None)
-    effective_vid = _effective_group_database_version_id(target_group)
+    anchor_grouping_station_id = _parse_int(grouping_station_val)
+    effective_vid = (
+        version_id
+        if version_id is not None
+        else _effective_group_database_version_id(target_group)
+    )
+    new_grouping_station_id = _resolve_grouping_station_id_for_db_version(
+        anchor_grouping_station_id, effective_vid
+    )
 
-    if grouping_station_val is not None and new_grouping_station_id is not None:
-        station_obj = filter_by_explicit_db_version(
-            Station.query,
-            Station,
-            effective_vid,
-        ).filter(Station.id == new_grouping_station_id).first()
-        if station_obj is None:
+    if grouping_station_val is not None and anchor_grouping_station_id is not None:
+        if new_grouping_station_id is None:
+            if version_id is not None:
+                return None
             return "Выбранная станция для группировки не найдена в текущей версии БД."
 
     target_id = target_group.id

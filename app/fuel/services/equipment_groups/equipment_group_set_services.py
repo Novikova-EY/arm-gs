@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 
 from app.extensions import db
+from app.common.services.tranzaction_services import quick_fix_seq
 from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
@@ -23,6 +24,7 @@ from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
+from config import SCHEMA_FUEL
 
 
 NEW_EQUIPMENT_GROUP_SUFFIX = " (нов)"
@@ -57,6 +59,18 @@ EQUIPMENT_GROUP_CONTEXT_COPY_FIELDS = (
     "gk",
     "gkf",
 )
+
+
+def _quick_fix_equipment_group_seqs() -> None:
+    for table in (
+        "gs_fue_equipment_groups",
+        "gs_fue_equipment_group_sets",
+        "gs_fue_equipment_group_type_stations",
+    ):
+        try:
+            quick_fix_seq(SCHEMA_FUEL, table, "id")
+        except Exception:
+            pass
 
 
 def _generate_stable_external_code_equipment_group(
@@ -240,6 +254,7 @@ def ensure_equipment_group_set_variant_for_station(
     link = link_query.first()
 
     if not link:
+        _quick_fix_equipment_group_seqs()
         link = EquipmentGroupSetStation(
             station_id=station_id,
             equipment_group_type_id=equipment_group_type_id,
@@ -295,6 +310,7 @@ def ensure_equipment_group_set_variant_for_station(
         version_id,
     )
     if equipment_group is None:
+        _quick_fix_equipment_group_seqs()
         equipment_group = EquipmentGroup(
             name=_compose_equipment_group_name(
                 station,
@@ -315,6 +331,7 @@ def ensure_equipment_group_set_variant_for_station(
         station,
     )
 
+    _quick_fix_equipment_group_seqs()
     set_v2 = EquipmentGroupSet(
         equipment_group_id=equipment_group.id,
         equipment_group_set_station_id=link.id,

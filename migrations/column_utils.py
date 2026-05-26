@@ -18,6 +18,25 @@ def table_exists(conn: Connection, schema: str, table: str) -> bool:
     return row is not None
 
 
+def incoming_foreign_key_count(conn: Connection, schema: str, table: str) -> int:
+    """Число FK в других таблицах, ссылающихся на эту (confrelid)."""
+    row = conn.execute(
+        text(
+            """
+            select count(*)::int
+            from pg_constraint c
+            inner join pg_class cl on cl.oid = c.confrelid
+            inner join pg_namespace n on n.oid = cl.relnamespace
+            where c.contype = 'f'
+              and n.nspname = :schema
+              and cl.relname = :table
+            """
+        ),
+        {"schema": schema, "table": table},
+    ).scalar()
+    return int(row or 0)
+
+
 def refdata_table_name(conn: Connection, schema: str, table: str) -> str | None:
     """Имя справочника в gs_sys до/после b8c9d0e1f2a3.
 

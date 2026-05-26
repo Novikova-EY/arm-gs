@@ -15,6 +15,13 @@ def _excel_hide_plan_year_cell(
     """Пустые «план»-столбцы для всех строк, кроме max_power, РЭС «Совмещенный на ОЭС/ЕЭС» (среднесрочный) и расчётных строк УЭС в отчётном/среднесрочном интервале."""
     if not year_is_plan or not year_is_plan.get(y):
         return False
+    pk = str(pk or "")
+    if pk in (
+        "cz_total_sum_fo_max_power",
+        "cz_total_sum_res_combined_cz",
+        "cz_total_imbalance_mw",
+    ):
+        return False
     if pk == "max_power":
         return False
     if (

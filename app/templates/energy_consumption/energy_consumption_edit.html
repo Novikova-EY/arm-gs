@@ -4,7 +4,7 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-{% set view_ncols_readonly = 4 %}
+{% set view_ncols_readonly = 5 if show_perimeter_variant_column else 4 %}
 {% set rd = rounding_digits if rounding_digits is defined else 1 %}
 {% set hub_href = url_for('energy_consumption_bp.hub') %}
 {% set _ez_ec_auto = fk_column is defined and fk_column == 'id_energy_zone' %}
@@ -51,6 +51,9 @@
             <table id="power-demand-edit-table" class="table power-demand-params-table table-hover table-striped table-bordered align-middle">
                 <thead>
                     <tr class="table-success" style="word-wrap: break-word;">
+                        {% if show_perimeter_variant_column %}
+                        <th class="text-center align-middle">Вариант<br>периметра</th>
+                        {% endif %}
                         <th class="text-center align-middle">Год</th>
                         <th class="text-center align-middle">Потребление электрической энергии,<br>млн кВт·ч</th>
                         <th class="text-center align-middle">Потребление (СиПР),<br>млн кВт·ч</th>
@@ -61,6 +64,17 @@
                 <tbody id="demand-rows">
                     {% for row in rows %}
                     <tr>
+                        {% if show_perimeter_variant_column %}
+                        <td class="text-center align-middle">
+                            {% if fixed_perimeter_variant_code is defined %}
+                            <span class="text-nowrap">{{ perimeter_variant_display_label(fixed_perimeter_variant_code) }}</span>
+                            <input type="hidden" name="perimeter_variant_code[]" value="{{ fixed_perimeter_variant_code or '' }}">
+                            {% else %}
+                            <span class="text-nowrap">{{ perimeter_variant_display_label(row.perimeter_variant_code) }}</span>
+                            <input type="hidden" name="perimeter_variant_code[]" value="{{ row.perimeter_variant_code or '' }}">
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td class="text-center align-middle">
                             <select name="slice_year[]" class="form-select form-select-sm text-center">
                                 <option value="" {% if row.year_number is none %}selected{% endif %}>—</option>
@@ -95,6 +109,20 @@
                     </tr>
                     {% endfor %}
                     <tr class="table-light">
+                        {% if show_perimeter_variant_column %}
+                        <td class="text-center align-middle">
+                            {% if fixed_perimeter_variant_code is defined %}
+                            <span class="text-muted">{{ perimeter_variant_display_label(fixed_perimeter_variant_code) }}</span>
+                            <input type="hidden" name="perimeter_variant_code[]" value="{{ fixed_perimeter_variant_code or '' }}">
+                            {% else %}
+                            <select name="perimeter_variant_code[]" class="form-select form-select-sm text-center">
+                                {% for opt in perimeter_variant_options %}
+                                <option value="{{ opt.code }}">{{ opt.label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td class="text-center align-middle">
                             <select name="slice_year[]" class="form-select form-select-sm text-center">
                                 <option value="" selected>—</option>
@@ -133,6 +161,9 @@
         <table id="power-demand-view-table" class="table power-demand-params-table table-bordered">
             <thead>
                 <tr class="table-success">
+                    {% if show_perimeter_variant_column %}
+                    <th class="text-center align-middle">Вариант периметра</th>
+                    {% endif %}
                     <th class="text-center align-middle">Год</th>
                     <th class="text-center align-middle">Потребление электрической энергии, млн кВт·ч</th>
                     <th class="text-center align-middle">Потребление (СиПР), млн кВт·ч</th>
@@ -142,6 +173,9 @@
             <tbody>
                 {% for row in rows %}
                 <tr>
+                    {% if show_perimeter_variant_column %}
+                    <td class="text-center align-middle text-nowrap">{{ perimeter_variant_display_label(row.perimeter_variant_code) }}</td>
+                    {% endif %}
                     <td class="text-center align-middle">{{ row.year_number if row.year_number is not none else '—' }}</td>
                     <td class="text-center align-middle" {% if row.energy_consumption_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}>{{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) if row.energy_consumption_mln_kvt_ch is not none else '—' }}</td>
                     <td class="text-center align-middle" {% if row.energy_consumption_sipr_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}>{{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) if row.energy_consumption_sipr_mln_kvt_ch is not none else '—' }}</td>

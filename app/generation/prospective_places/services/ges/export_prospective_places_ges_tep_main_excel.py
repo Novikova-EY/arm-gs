@@ -228,10 +228,10 @@ def _write_ges_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) ->
             tf["unit_capacity_mw"],
             tf["hydro_turbine_type"],
             tf["construction_period_years"],
-            tf["generation_average_multiyear_billion_kwh"],
-            tf["generation_medium_water_50pct_billion_kwh"],
+            tf["generation_average_multiyear_million_kwh"],
+            tf["generation_medium_water_50pct_million_kwh"],
             tf["generation_medium_water_management_year"],
-            tf["generation_low_water_95pct_billion_kwh"],
+            tf["generation_low_water_95pct_million_kwh"],
             tf["generation_low_water_management_year"],
         ]
         for i in range(1, 13):
@@ -513,10 +513,10 @@ def _write_ges_tep_main_sheet_source_prices(ws, tep_groups: list[dict]) -> None:
             tf["unit_capacity_mw"],
             tf["hydro_turbine_type"],
             tf["construction_period_years"],
-            tf["generation_average_multiyear_billion_kwh"],
-            tf["generation_medium_water_50pct_billion_kwh"],
+            tf["generation_average_multiyear_million_kwh"],
+            tf["generation_medium_water_50pct_million_kwh"],
             tf["generation_medium_water_management_year"],
-            tf["generation_low_water_95pct_billion_kwh"],
+            tf["generation_low_water_95pct_million_kwh"],
             tf["generation_low_water_management_year"],
         ]
         for i in range(1, 13):
