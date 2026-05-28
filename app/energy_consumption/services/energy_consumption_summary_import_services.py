@@ -136,7 +136,16 @@ def _norm_space(s: str) -> str:
 def _normalize_import_label_typos(label: str) -> str:
     """Исправляет типичные опечатки Excel: латинская «c» перед «НТ» и т.п."""
     s = _norm_space(str(label).replace("\xa0", " "))
-    s = re.sub(r"(?i)(?<=\s)c(?=\s+[нn][тt]\b)", "с", s)
+    s = re.sub(r"(?i)(?<=\s)c(?=\s*[нn][тt]\b)", "с", s)
+    # В сводных Excel встречаются слитные подписи вроде «ЕЭС России сНТ с зарядом ГАЭС».
+    # Нормализуем их в канонический вид до разбора суффиксов варианта периметра.
+    s = re.sub(r"(?i)(?<=\S)\s*[сc]\s*[нn]\s*[тt]\b", " с НТ", s)
+    s = re.sub(r"(?i)(?<=\S)\s*без\s*[нn]\s*[тt]\b", " без НТ", s)
+    s = re.sub(r"(?i)(?<=\S)\s*[сc]\s*зарядом\s*гаэс\b", " с зарядом ГАЭС", s)
+    s = re.sub(r"(?i)(?<=\S)\s*[сc]\s*гаэс\b", " с ГАЭС", s)
+    s = re.sub(r"(?i)(?<=\S)\s*без\s*заряда\s*гаэс\b", " без заряда ГАЭС", s)
+    s = re.sub(r"(?i)(?<=\S)\s*без\s*гаэс\b", " без ГАЭС", s)
+    s = _norm_space(s)
     return s
 
 
@@ -356,7 +365,9 @@ def _parse_optional_variant_cell(raw: Any) -> Optional[str]:
 
 def _strip_import_variant_suffixes_from_label(label: str) -> str:
     """Базовое имя сущности без суффиксов НТ/ГАЭС/Калининграда из подписи Excel."""
-    base, _kal_suffix = _split_kaliningrad_suffix_from_label(label)
+    base, _kal_suffix = _split_kaliningrad_suffix_from_label(
+        _normalize_import_label_typos(label)
+    )
     changed = True
     while changed:
         changed = False
@@ -376,7 +387,7 @@ def _strip_import_variant_suffixes_from_label(label: str) -> str:
 
 
 def _split_kaliningrad_suffix_from_label(label: str) -> tuple[str, str | None]:
-    s = _norm_space(label)
+    s = _normalize_import_label_typos(_norm_space(label))
     for suffix in (_KALININGRAD_ES_LABEL_SUFFIX_WITH, " без ЭС Калининградской области"):
         parenthesized = f"({suffix.strip()})"
         if s.endswith(parenthesized):
@@ -515,17 +526,145 @@ def _is_ees_russia_aggregate_import_label(label: str) -> bool:
     return _norm_entity_label(base) in _EES_RUSSIA_AGGREGATE_IMPORT_LABELS_CF
 
 
+def _label_denotes_ees_russia_gaes_aggregate(label: str) -> bool:
+    """Подпись «ЕЭС России … с зарядом ГАЭС» в старом шаблоне без колонки вариантов."""
+    label_n = _norm_entity_label(label)
+    if "without_gaes" in label_n or "без заряда" in label_n:
+        return False
+    if not any(
+        marker in label_n
+        for marker in (
+            _norm_entity_label(_GAES_WITH_CHARGE_LABEL_SUFFIX),
+            " с зарядом гаэс",
+            " с гаэс",
+        )
+    ):
+        return False
+    base = _strip_import_variant_suffixes_from_label(label)
+    return _is_ees_russia_aggregate_import_label(base)
+
+
+def _is_ees_russia_gaes_aggregate_import_row(
+    label: str,
+    perimeter_variant_code: str | None,
+) -> bool:
+    """Строка агрегата «ЕЭС России … с зарядом ГАЭС» (с/без НТ)."""
+    code = str(perimeter_variant_code or "").strip()
+    if code:
+        if "with_gaes" not in code or "without_gaes" in code:
+            return False
+        return _is_ees_russia_aggregate_import_label(label)
+    return _label_denotes_ees_russia_gaes_aggregate(label)
+
+
+def _import_row_year_numeric_pairs(
+    row: tuple[Any, ...],
+    year_cols: dict[int, int],
+    *,
+    label: str,
+    row_variant: str | None,
+    variant_column_mode: bool,
+) -> list[tuple[int, Decimal]]:
+    """Пары (год, значение) для строки листа.
+
+    Для «ЕЭС России … с зарядом ГАЭС» (``with_nt_with_gaes`` / ``without_nt_with_gaes``)
+    числа в шаблоне часто стоят правее, чем у «Россия» / «ЕЭС России» без НТ (пустые
+    ячейки в начале блока годов). Разреженные строки привязываем к последним N годам
+    сетки; плотный блок со сдвигом — сдвигаем влево на ширину «пустого хвоста».
+    """
+    del variant_column_mode  # выравнивание одинаково для обоих форматов шаблона
+    year_col_indices = sorted(year_cols.keys())
+    if not year_col_indices:
+        return []
+
+    parsed: list[tuple[int, Decimal]] = []
+    for ci in year_col_indices:
+        if ci >= len(row):
+            continue
+        num = _parse_numeric_cell(row[ci])
+        if num is None:
+            continue
+        parsed.append((ci, num))
+    if not parsed:
+        return []
+
+    first_year_ci = year_col_indices[0]
+    first_val_ci = parsed[0][0]
+    values = [val for _, val in parsed]
+    if (
+        first_val_ci > first_year_ci
+        and _is_ees_russia_gaes_aggregate_import_row(label, row_variant)
+    ):
+        gap = first_val_ci - first_year_ci
+        if len(values) == len(year_col_indices):
+            shifted: list[tuple[int, Decimal]] = []
+            for ci, val in parsed:
+                target_ci = ci - gap
+                if target_ci in year_cols:
+                    shifted.append((year_cols[target_ci], val))
+            if len(shifted) == len(values):
+                return shifted
+        if len(values) < len(year_col_indices):
+            target_cols = year_col_indices[-len(values) :]
+            return [(year_cols[ci], val) for ci, val in zip(target_cols, values)]
+
+    return [(year_cols[ci], val) for ci, val in parsed]
+
+
+def _import_row_has_leading_empty_year_cells(
+    row: tuple[Any, ...],
+    year_cols: dict[int, int],
+) -> bool:
+    year_col_indices = sorted(year_cols.keys())
+    if not year_col_indices:
+        return False
+    first_year_ci = year_col_indices[0]
+    for ci in year_col_indices:
+        if ci >= len(row):
+            continue
+        if _parse_numeric_cell(row[ci]) is not None:
+            return ci > first_year_ci
+    return False
+
+
+def _ees_russia_gaes_import_perimeter_variant_from_excel(
+    label: str,
+    perimeter_variant_code: str | None,
+    *,
+    row: tuple[Any, ...],
+    year_cols: dict[int, int],
+) -> str | None:
+    """В шаблоне «млн. кВт·ч» строка «ЕЭС России … с зарядом ГАЭС» иногда помечена ``without_nt`` / ``with_nt``."""
+    if not _is_ees_russia_aggregate_import_label(
+        _strip_import_variant_suffixes_from_label(label)
+    ):
+        return perimeter_variant_code
+    if not _import_row_has_leading_empty_year_cells(row, year_cols):
+        return perimeter_variant_code
+    code = str(perimeter_variant_code or "").strip()
+    if code == CODE_WITHOUT_NT:
+        return CODE_WITHOUT_NT_WITH_GAES
+    if code == CODE_WITH_NT:
+        return CODE_WITH_NT_WITH_GAES
+    return perimeter_variant_code
+
+
+def _is_kaliningrad_sync_zone_import_label(label: str) -> bool:
+    """«Синхронная зона Калининградской области» — расчётная строка сводки, не из Excel."""
+    label_n = _norm_entity_label(label)
+    return label_n.startswith("синхронная зона") and "калин" in label_n
+
+
 def _is_import_skipped_row_label(label: str) -> bool:
     """Строки, исключённые из импорта (устаревший шаблон Excel)."""
     if _is_calculated_ees_russia_import_label(label):
+        return True
+    if _is_kaliningrad_sync_zone_import_label(label):
         return True
     label_n = _norm_entity_label(label)
     if label_n in _IMPORT_SKIPPED_ROW_LABELS:
         return True
     if "вторая синхронная" in label_n:
-        return True
-    # «Синхронная зона Калининградской области» (не путать с первой СЗ «… (с ЭС …)»).
-    if label_n.startswith("синхронная зона") and "калин" in label_n:
         return True
     return False
 
@@ -740,6 +879,8 @@ def _resolve_row_binding(
     perimeter_variant_code: str | None = None,
     variant_column_mode: bool = False,
 ) -> Optional[_ImportBind]:
+    if _is_kaliningrad_sync_zone_import_label(label):
+        return None
     if not variant_column_mode and _is_import_skipped_row_label(label):
         return None
 
@@ -928,9 +1069,17 @@ def _aggregate_sheet_labels(
                 raw_variant_cell,
                 variant_column_mode=True,
             )
+            row_variant = _ees_russia_gaes_import_perimeter_variant_from_excel(
+                label,
+                row_variant,
+                row=row,
+                year_cols=year_cols,
+            )
         else:
             row_variant = None
 
+        if _is_kaliningrad_sync_zone_import_label(label):
+            continue
         if _is_calculated_ees_russia_import_label(label):
             if not (
                 variant_column_mode
@@ -941,17 +1090,18 @@ def _aggregate_sheet_labels(
         elif not variant_column_mode and _is_import_skipped_row_label(label):
             continue
 
-        for ci, year_n in year_cols.items():
-            if ci >= len(row):
-                continue
-            num = _parse_numeric_cell(row[ci])
-            if num is None:
-                continue
-            aggregate_bind = _resolve_aggregate_energy_consumption_binding(
-                label,
-                perimeter_variant_code=row_variant,
-                variant_column_mode=variant_column_mode,
-            )
+        aggregate_bind = _resolve_aggregate_energy_consumption_binding(
+            label,
+            perimeter_variant_code=row_variant,
+            variant_column_mode=variant_column_mode,
+        )
+        for year_n, num in _import_row_year_numeric_pairs(
+            row,
+            year_cols,
+            label=label,
+            row_variant=row_variant,
+            variant_column_mode=variant_column_mode,
+        ):
             if (
                 aggregate_bind is not None
                 and aggregate_bind.fk_column == _FK_AGGREGATE_NO_PARENT
@@ -1252,6 +1402,7 @@ def persist_summary_table_formula_rows_after_import(
     database_version_id: int,
     years: list[int],
     rounding_digits: int = 1,
+    skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
 ) -> int:
     """После импорта Excel: пересчитать формулы сводной таблицы и записать в БД."""
     from app.energy_consumption.services.energy_consumption_summary_services import (
@@ -1269,6 +1420,7 @@ def persist_summary_table_formula_rows_after_import(
     if not summary_rows:
         return 0
 
+    skip_by_field = skip_accumulator_keys_by_field or {}
     touched = 0
     for field_name in _FORMULA_ROW_PERSIST_PARAMETER_KEYS:
         acc = _accumulator_from_formula_summary_rows(
@@ -1276,6 +1428,10 @@ def persist_summary_table_formula_rows_after_import(
             years,
             field_name=field_name,
         )
+        skip_keys = skip_by_field.get(field_name) or frozenset()
+        if skip_keys:
+            for skip_key in skip_keys:
+                acc.pop(skip_key, None)
         if not acc:
             continue
         touched += _apply_accumulator_for_version(
@@ -1362,7 +1518,11 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
         matrix_s,
         sheet_title=SHEET_SIPR,
     )
-    variant_column_mode = variant_column_mode_m or variant_column_mode_s
+    # Важно: режим наличия колонки вариантов периметра может отличаться между листами.
+    # Нельзя "склеивать" их через OR, иначе наличие колонки на одном листе заставит другой лист
+    # трактоваться как variant-column-mode, что приводит к ошибкам валидации (например, для СЗ).
+    variant_column_mode_mln = bool(variant_column_mode_m)
+    variant_column_mode_sipr = bool(variant_column_mode_s)
 
     mln_skipped = (
         ws_m is not None
@@ -1372,11 +1532,17 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
     )
     labels_mln = {(lbl, pvc) for lbl, _, pvc in acc_mln_labels.keys()}
     labels_sipr = {(lbl, pvc) for lbl, _, pvc in acc_sipr_labels.keys()}
-    matched_any = _labels_matched_in_any_version(
-        labels_mln | labels_sipr,
+    matched_any_mln = _labels_matched_in_any_version(
+        labels_mln,
         version_ids,
-        variant_column_mode=variant_column_mode,
+        variant_column_mode=variant_column_mode_mln,
     )
+    matched_any_sipr = _labels_matched_in_any_version(
+        labels_sipr,
+        version_ids,
+        variant_column_mode=variant_column_mode_sipr,
+    )
+    matched_any = matched_any_mln | matched_any_sipr
 
     def _format_unmatched_label(label: str, pvc: str | None) -> str:
         if pvc:
@@ -1396,7 +1562,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                 acc_mln_labels,
                 ctx=ctx,
                 years_ok=years_ok,
-                variant_column_mode=variant_column_mode,
+                variant_column_mode=variant_column_mode_mln,
             )
             _mirror_res_accumulator_rows_to_single_district_rd(
                 acc_m,
@@ -1407,7 +1573,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                 acc_sipr_labels,
                 ctx=ctx,
                 years_ok=years_ok,
-                variant_column_mode=variant_column_mode,
+                variant_column_mode=variant_column_mode_sipr,
             )
             _mirror_res_accumulator_rows_to_single_district_rd(
                 acc_s,
@@ -1429,6 +1595,10 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
             n_formula += persist_summary_table_formula_rows_after_import(
                 database_version_id=vid,
                 years=sorted(years_ok),
+                skip_accumulator_keys_by_field={
+                    "energy_consumption_mln_kvt_ch": frozenset(acc_m.keys()),
+                    "energy_consumption_sipr_mln_kvt_ch": frozenset(acc_s.keys()),
+                },
             )
             db.session.flush()
         db.session.commit()
@@ -1462,7 +1632,9 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
         "mln_sheet_skipped_no_data_grid": mln_skipped,
         "mln_sheet_absent": ws_m is None,
         "sipr_sheet_absent": ws_s is None,
-        "variant_column_mode": variant_column_mode,
+        "variant_column_mode_mln": variant_column_mode_mln,
+        "variant_column_mode_sipr": variant_column_mode_sipr,
+        "variant_column_mode": variant_column_mode_mln or variant_column_mode_sipr,
     }
     try:
         from app.energy_consumption.services.energy_consumption_summary_logging import (

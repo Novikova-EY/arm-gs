@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from flask import jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
@@ -220,7 +220,7 @@ def _parse_oes_territory_ordered() -> tuple[list[int], list[int], list[int], lis
 def _parse_fo_filter_sets() -> tuple[frozenset[int], frozenset[int]]:
     return (
         frozenset(_parse_ordered_unique_int_ids("ds_fd")),
-        frozenset(_parse_ordered_unique_int_ids("ds_rd")),
+        frozenset(_parse_ordered_unique_int_ids("ds_res")),
     )
 
 
@@ -362,6 +362,7 @@ def demand_summary_federal_districts_export():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
+        fo_aggregate_by_res=True,
     )
     sub_years = _parse_export_years_list(list(context.get("years") or []))
     if sub_years is not None:
@@ -625,7 +626,7 @@ def demand_summary_oes():
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/energy-zones/")
@@ -655,7 +656,7 @@ def demand_summary_energy_zones():
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/federal-districts/")
@@ -668,7 +669,7 @@ def demand_summary_federal_districts():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_rd = fo_sets
+    f_fd, f_res = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
         start_year=sy,
@@ -677,15 +678,16 @@ def demand_summary_federal_districts():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
+        fo_aggregate_by_res=True,
     )
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_rd)
+    context["has_active_summary_filters"] = bool(f_fd or f_res)
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/oes/")
@@ -717,7 +719,7 @@ def demand_summary_oes_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/federal-districts/")
@@ -726,7 +728,7 @@ def demand_summary_federal_districts_coeff():
     coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
     coeff_include_long = _parse_coeff_include_long()
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_rd = fo_sets
+    f_fd, f_res = fo_sets
     rd = _parse_rounding_digits()
     context = build_federal_district_summary_context_coeff(
         rd,
@@ -739,7 +741,7 @@ def demand_summary_federal_districts_coeff():
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_rd)
+    context["has_active_summary_filters"] = bool(f_fd or f_res)
     context["summary_route_variant"] = "coeff"
     context["coeff_base_year"] = coeff_n
     context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
@@ -749,7 +751,7 @@ def demand_summary_federal_districts_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)
 
 
 @power_demand_bp.route("/summary/coeff/energy-zones/")
@@ -781,4 +783,4 @@ def demand_summary_energy_zones_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
-    return render_template("perimeter_variants/power_demand_summary.html", **context)
+    return render_template("power_demand/power_demand_summary.html", **context)

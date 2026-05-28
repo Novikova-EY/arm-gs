@@ -10,15 +10,39 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, Optional, Type
 
 from flask import session
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.common.services.database_version_filter import filter_by_explicit_db_version
 from app.common.services.database_version_services import get_current_version
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
+from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import (
+    regional_district_regional_energy_system,
+)
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
+from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
+from app.refdata.services.refdata_all_versions_common import (
+    all_database_version_ids_for_refdata,
+    fk_id_for_version,
+)
 from app.common.services.get_services.years.year_feature_services import (
     get_year_feature_dict,
 )
 from app.common.services.get_services.years.years_get_services import get_year_list_full
 from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.perimeter_variant.registry import (
+    filter_query_by_perimeter_variant,
+    model_supports_perimeter_variant,
+    normalize_perimeter_variant_code,
+)
+
+_UNSET = object()
 
 
 def _username() -> str:
@@ -158,23 +182,139 @@ def filter_demand_by_version(query, demand_model):
     return query
 
 
+_REFDATA_MODEL_BY_PARENT_FK: dict[str, Type[Any]] = {
+    "id_union_energy_system": UnionEnergySystem,
+    "id_regional_energy_system": RegionalEnergySystem,
+    "id_regional_district": RegionalDistrict,
+    "id_federal_district": FederalDistrict,
+    "id_energy_zone": EnergyZone,
+    "id_synchronous_area": SynchronousArea,
+    "id_energy_system_type": EnergySystemType,
+    "id_energy_unit": EnergyUnit,
+}
+
+
+def _resolve_summary_parent_id_for_version(
+    parent_fk_column: Optional[str],
+    anchor_parent_id: Optional[int],
+    target_version_id: int,
+) -> Optional[int]:
+    if parent_fk_column is None or anchor_parent_id is None:
+        return None
+    ref_cls = _REFDATA_MODEL_BY_PARENT_FK.get(parent_fk_column)
+    if ref_cls is None:
+        raise ValueError(f"Неизвестная колонка привязки сводки: {parent_fk_column}")
+    return fk_id_for_version(ref_cls, int(anchor_parent_id), int(target_version_id))
+
+
+def _single_regional_district_id_for_res(
+    regional_energy_system_id: int,
+    *,
+    database_version_id: int,
+) -> Optional[int]:
+    """Один субъект РФ у РЭС — id субъекта в указанной версии справочника, иначе None."""
+    stmt = select(regional_district_regional_energy_system.c.regional_district_id).where(
+        regional_district_regional_energy_system.c.regional_energy_system_id
+        == regional_energy_system_id
+    )
+    rows = db.session.execute(stmt).all()
+    rd_ids = {int(r[0]) for r in rows if r[0] is not None}
+    if len(rd_ids) != 1:
+        return None
+    rd_id = next(iter(rd_ids))
+    rq = RegionalDistrict.query.filter(RegionalDistrict.id == rd_id)
+    rq = filter_by_explicit_db_version(rq, RegionalDistrict, database_version_id)
+    return rd_id if rq.first() is not None else None
+
+
+def _map_res_parameter_key_for_single_rd_mirror(parameter_key: str) -> Optional[str]:
+    """Поле RegionalEnergySystemDemandParameter → колонка RegionalDistrictDemandParameter."""
+    pk = str(parameter_key or "")
+    if pk.startswith("coeff_k_"):
+        return None
+    if pk == "entity_note":
+        return "note"
+    if pk == "combined_on_ez":
+        return "combined_on_es"
+    if pk in (
+        "max_power",
+        "peak_datetime",
+        "avg_temp",
+        "combined_on_oes",
+        "combined_on_ees",
+    ):
+        return pk
+    return None
+
+
+def _mirror_res_demand_to_single_rd(
+    *,
+    res_parent_id_v: int,
+    parameter_key: str,
+    raw_value: Any,
+    rounding_digits: int,
+    is_hist: bool,
+    year_n: Optional[int],
+    database_version_id: int,
+) -> None:
+    from app.power_demand.models.territories.regional_district_demand_parameter_model import (
+        RegionalDistrictDemandParameter,
+    )
+
+    rd_field = _map_res_parameter_key_for_single_rd_mirror(parameter_key)
+    if rd_field is None:
+        return
+    rd_id = _single_regional_district_id_for_res(
+        int(res_parent_id_v),
+        database_version_id=int(database_version_id),
+    )
+    if rd_id is None:
+        return
+    rd_model = RegionalDistrictDemandParameter
+    rd_row = find_demand_row_for_summary_slice(
+        rd_model,
+        parent_fk_column="id_regional_district",
+        parent_id=int(rd_id),
+        is_hist=is_hist,
+        year_n=year_n,
+        database_version_id=database_version_id,
+    )
+    if rd_row is None:
+        if not str(raw_value or "").strip():
+            return
+        rd_row = create_demand_row_for_summary_slice(
+            rd_model,
+            parent_fk_column="id_regional_district",
+            parent_id=int(rd_id),
+            is_hist=is_hist,
+            year_n=year_n,
+            database_version_id=database_version_id,
+        )
+    _apply_summary_field_to_row(
+        rd_row, rd_field, raw_value, rounding_digits=rounding_digits
+    )
+    rd_row.modified_by = _username()
+
+
 def get_demand_rows(
     demand_model,
     fk_column_name: Optional[str],
     parent_id: Optional[int],
     *,
-    perimeter_variant_code: str | None = None,
+    perimeter_variant_code: Any = _UNSET,
 ):
     """
     Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
-    """
-    from app.common.perimeter_variant.registry import filter_query_by_perimeter_variant
 
+    perimeter_variant_code: для моделей с PerimeterVariantColumnMixin — None (базовый периметр)
+    или код из app.common.perimeter_variant.registry.
+    """
     q = demand_model.query
     q = filter_demand_by_version(q, demand_model)
     if fk_column_name is not None and parent_id is not None:
         q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
-    q = filter_query_by_perimeter_variant(q, demand_model, perimeter_variant_code)
+    if perimeter_variant_code is not _UNSET:
+        q = filter_query_by_perimeter_variant(q, demand_model, perimeter_variant_code)
     rows = q.order_by(
         demand_model.is_historical_maximum.desc(),
         demand_model.year_number.asc().nullsfirst(),
@@ -371,7 +511,7 @@ def save_demand_rows_from_post(
     *,
     require_combined_oe_ees: bool = True,
     require_combined_on_ez: bool = False,
-    perimeter_variant_code: str | None = None,
+    perimeter_variant_code: Any = _UNSET,
 ) -> tuple[int, int]:
     """
     Обрабатывает POST с полями row_id[], slice_year[], p_max[], dt[], tnv[], oes[], ees[], es[], ez[], del[].
@@ -385,6 +525,11 @@ def save_demand_rows_from_post(
     )
 
     rd_save = rounding_digits_from_form(form_data)
+    pvc = perimeter_variant_code
+    if pvc is not _UNSET:
+        pvc = normalize_perimeter_variant_code(pvc) if pvc not in (None, "") else None
+    else:
+        pvc = _UNSET
 
     ids = form_data.getlist("row_id[]")
     slice_years = form_data.getlist("slice_year[]")
@@ -417,6 +562,9 @@ def save_demand_rows_from_post(
                     continue
             elif fk_column_name is not None:
                 continue
+            if pvc is not _UNSET and model_supports_perimeter_variant(demand_model):
+                if getattr(row, "perimeter_variant_code", None) != pvc:
+                    continue
             db.session.delete(row)
             deleted_n += 1
 
@@ -463,10 +611,15 @@ def save_demand_rows_from_post(
             if fk_column_name is not None and parent_id is not None:
                 if getattr(row, fk_column_name) != parent_id:
                     continue
+            if pvc is not _UNSET and model_supports_perimeter_variant(demand_model):
+                if getattr(row, "perimeter_variant_code", None) != pvc:
+                    continue
         else:
             row = demand_model()
             if fk_column_name is not None and parent_id is not None:
                 setattr(row, fk_column_name, parent_id)
+            if pvc is not _UNSET and model_supports_perimeter_variant(demand_model):
+                row.perimeter_variant_code = pvc
             apply_version_to_row(row, demand_model)
             row.created_by = user
             db.session.add(row)
@@ -483,8 +636,6 @@ def save_demand_rows_from_post(
         if "combined_on_ez" in demand_model.__table__.columns and ez_mode:
             row.combined_on_ez = ez_val
         row.modified_by = user
-        if perimeter_variant_code is not None and hasattr(row, "perimeter_variant_code"):
-            row.perimeter_variant_code = perimeter_variant_code
 
         saved += 1
 
@@ -533,13 +684,10 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
     from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
         RussiaFederationDemandParameter,
     )
-
     mapping: dict[str, Type[Any]] = {
         "CentralizedZoneDemandParameter": CentralizedZoneDemandParameter,
         "EesDemandParameter": EesDemandParameter,
         "EesRussiaDemandParameter": EesRussiaDemandParameter,
-        # Устаревшие имена классов (отдельные таблицы *_with_nt_*): одна модель + perimeter_variant_code.
-        "EesRussiaWithNtDemandParameter": EesRussiaDemandParameter,
         "EnergySystemTypeDemandParameter": EnergySystemTypeDemandParameter,
         "EnergyUnitDemandParameter": EnergyUnitDemandParameter,
         "EnergyZoneDemandParameter": EnergyZoneDemandParameter,
@@ -549,7 +697,6 @@ def _summary_demand_model_class(name: str) -> Type[Any]:
         "FederalDistrictDemandParameter": FederalDistrictDemandParameter,
         "RegionalDistrictDemandParameter": RegionalDistrictDemandParameter,
         "RussiaFederationDemandParameter": RussiaFederationDemandParameter,
-        "RussiaFederationWithNtDemandParameter": RussiaFederationDemandParameter,
     }
     cls = mapping.get(name)
     if cls is None:
@@ -612,9 +759,7 @@ _SUMMARY_STANDALONE_DEMAND_MODELS = frozenset(
         "CentralizedZoneDemandParameter",
         "EesDemandParameter",
         "EesRussiaDemandParameter",
-        "EesRussiaWithNtDemandParameter",
         "RussiaFederationDemandParameter",
-        "RussiaFederationWithNtDemandParameter",
     }
 )
 
@@ -652,13 +797,21 @@ def find_demand_row_for_summary_slice(
     parent_id: Optional[int],
     is_hist: bool,
     year_n: Optional[int],
+    database_version_id: Optional[int] = None,
+    perimeter_variant_code: Any = _UNSET,
 ) -> Any:
     q = model.query
-    q = filter_demand_by_version(q, model)
+    vid = database_version_id
+    if vid is None and hasattr(model, "database_version_id"):
+        vid = get_current_version()
+    if vid is not None and hasattr(model, "database_version_id"):
+        q = q.filter(model.database_version_id == vid)
     if parent_fk_column is not None:
         if parent_id is None:
             return None
         q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    if perimeter_variant_code is not _UNSET:
+        q = filter_query_by_perimeter_variant(q, model, perimeter_variant_code)
     q = q.filter(model.is_historical_maximum == is_hist)
     if is_hist:
         q = q.filter(model.year_number.is_(None))
@@ -676,11 +829,19 @@ def create_demand_row_for_summary_slice(
     parent_id: Optional[int],
     is_hist: bool,
     year_n: Optional[int],
+    database_version_id: Optional[int] = None,
+    perimeter_variant_code: Any = _UNSET,
 ) -> Any:
     row = model()
     if parent_fk_column is not None:
         setattr(row, parent_fk_column, parent_id)
-    apply_version_to_row(row, model)
+    if perimeter_variant_code is not _UNSET and model_supports_perimeter_variant(model):
+        row.perimeter_variant_code = perimeter_variant_code
+    vid = database_version_id
+    if vid is None:
+        vid = get_current_version()
+    if hasattr(model, "database_version_id"):
+        row.database_version_id = vid
     row.is_historical_maximum = is_hist
     row.year_number = None if is_hist else year_n
     row.created_by = _username()
@@ -889,6 +1050,12 @@ def _assert_plan_year_only_max_power_editable(
         )
 
 
+def _resolve_perimeter_variant_for_save(raw: Any) -> Any:
+    if raw in (None, "", _UNSET):
+        return _UNSET
+    return normalize_perimeter_variant_code(raw)
+
+
 def save_demand_summary_cell(
     demand_model_name: str,
     parameter_key: str,
@@ -899,11 +1066,12 @@ def save_demand_summary_cell(
     slice_key: Any = None,
     parent_fk_column: Optional[str] = None,
     parent_id: Optional[int] = None,
+    perimeter_variant_code: Any = _UNSET,
 ) -> str:
     """
     Создаёт или обновляет одно поле строки параметров нагрузки (сводная таблица).
-    Если row_id не передан — ищет или создаёт строку по срезу и привязке к объекту.
-    Возвращает отформатированное значение для отображения.
+    Запись выполняется во всех версиях БД (по ref_uuid справочников).
+    Для РЭС с одним субъектом РФ дублирует показатель в параметры этого субъекта.
     """
     allowed = {
         "max_power",
@@ -924,76 +1092,131 @@ def save_demand_summary_cell(
     if parameter_key not in allowed:
         raise ValueError("Неизвестный параметр.")
 
+    pvc = _resolve_perimeter_variant_for_save(perimeter_variant_code)
+
+    version_ids = all_database_version_ids_for_refdata()
+    if not version_ids:
+        raise ValueError(
+            "В системе нет зарегистрированных версий БД — сохранение сводки невозможно."
+        )
+    anchor_vid = get_current_version()
+    display_vid = anchor_vid if anchor_vid in version_ids else version_ids[0]
+    user = _username()
+
     if parameter_key == "entity_note":
         model = _summary_demand_model_class(demand_model_name)
         _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
-        vid = get_current_version()
-        user = _username()
         if parent_fk_column and not hasattr(model, parent_fk_column):
             raise ValueError("Некорректная привязка к объекту.")
-        erow: Any = None
+        anchor_parent_id = parent_id
         if row_id is not None and row_id > 0:
-            erow = model.query.get(row_id)
-            if erow is None:
+            erow0 = model.query.get(row_id)
+            if erow0 is None:
                 raise ValueError("Строка не найдена.")
-            if vid is not None and getattr(erow, "database_version_id", None) != vid:
+            if anchor_vid is not None and getattr(erow0, "database_version_id", None) != anchor_vid:
                 raise ValueError("Данные относятся к другой версии БД. Обновите страницу.")
             if parent_fk_column is not None and parent_id is not None:
-                if getattr(erow, parent_fk_column, None) != parent_id:
+                if getattr(erow0, parent_fk_column, None) != parent_id:
                     raise ValueError("Строка не соответствует выбранному объекту.")
-            if not getattr(erow, "is_historical_maximum", False):
+            if pvc is not _UNSET and hasattr(erow0, "perimeter_variant_code"):
+                row_pvc = getattr(erow0, "perimeter_variant_code", None)
+                if row_pvc != pvc:
+                    raise ValueError("Строка не соответствует выбранному варианту периметра.")
+            if not getattr(erow0, "is_historical_maximum", False):
                 raise ValueError("Примечание сводки привязано к строке исторического максимума.")
-        else:
+            if parent_fk_column is not None:
+                anchor_parent_id = getattr(erow0, parent_fk_column, None)
+            if pvc is _UNSET and hasattr(erow0, "perimeter_variant_code"):
+                pvc = getattr(erow0, "perimeter_variant_code", None)
+        display_row: Any = None
+        for vid in version_ids:
+            parent_id_v: Optional[int] = None
+            if demand_model_name not in _SUMMARY_STANDALONE_DEMAND_MODELS:
+                parent_id_v = _resolve_summary_parent_id_for_version(
+                    parent_fk_column, anchor_parent_id, vid
+                )
             erow = find_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
-                parent_id=parent_id,
+                parent_id=parent_id_v,
                 is_hist=True,
                 year_n=None,
+                database_version_id=vid,
+                perimeter_variant_code=pvc,
             )
             if erow is None:
                 if not str(raw_value or "").strip():
-                    return ""
+                    continue
                 erow = create_demand_row_for_summary_slice(
                     model,
                     parent_fk_column=parent_fk_column,
-                    parent_id=parent_id,
+                    parent_id=parent_id_v,
                     is_hist=True,
                     year_n=None,
+                    database_version_id=vid,
+                    perimeter_variant_code=pvc,
                 )
-        _apply_summary_field_to_row(erow, "note", raw_value, rounding_digits=rounding_digits)
-        erow.modified_by = user
+            _apply_summary_field_to_row(erow, "note", raw_value, rounding_digits=rounding_digits)
+            erow.modified_by = user
+            if (
+                demand_model_name == "RegionalEnergySystemDemandParameter"
+                and parent_fk_column == "id_regional_energy_system"
+                and parent_id_v is not None
+            ):
+                _mirror_res_demand_to_single_rd(
+                    res_parent_id_v=int(parent_id_v),
+                    parameter_key="entity_note",
+                    raw_value=raw_value,
+                    rounding_digits=rounding_digits,
+                    is_hist=True,
+                    year_n=None,
+                    database_version_id=int(vid),
+                )
+            if vid == display_vid:
+                display_row = erow
         try:
             db.session.commit()
-            db.session.refresh(erow)
+            if display_row is not None:
+                db.session.refresh(display_row)
         except IntegrityError:
             db.session.rollback()
             raise ValueError("Не удалось сохранить (конфликт данных).") from None
-        return summary_cell_display_value(erow, "entity_note", rounding_digits)
+        if display_row is None:
+            return ""
+        return summary_cell_display_value(display_row, "entity_note", rounding_digits)
 
     model = _summary_demand_model_class(demand_model_name)
     _validate_summary_parent_binding(demand_model_name, parent_fk_column, parent_id)
 
-    vid = get_current_version()
-    user = _username()
-
     if parent_fk_column and not hasattr(model, parent_fk_column):
         raise ValueError("Некорректная привязка к объекту.")
 
-    row: Any = None
+    anchor_parent_id = parent_id
+    is_hist: bool
+    year_n: Optional[int]
 
     if row_id is not None and row_id > 0:
-        row = model.query.get(row_id)
-        if row is None:
+        row0 = model.query.get(row_id)
+        if row0 is None:
             raise ValueError("Строка не найдена.")
-        if vid is not None and getattr(row, "database_version_id", None) != vid:
+        if anchor_vid is not None and getattr(row0, "database_version_id", None) != anchor_vid:
             raise ValueError("Данные относятся к другой версии БД. Обновите страницу.")
         if parent_fk_column is not None and parent_id is not None:
-            if getattr(row, parent_fk_column, None) != parent_id:
+            if getattr(row0, parent_fk_column, None) != parent_id:
                 raise ValueError("Строка не соответствует выбранному объекту.")
+        if pvc is not _UNSET and hasattr(row0, "perimeter_variant_code"):
+            row_pvc = getattr(row0, "perimeter_variant_code", None)
+            if row_pvc != pvc:
+                raise ValueError("Строка не соответствует выбранному варианту периметра ОЭС Юга.")
+        if parent_fk_column is not None:
+            anchor_parent_id = getattr(row0, parent_fk_column, None)
+        is_hist = bool(row0.is_historical_maximum)
+        year_n = row0.year_number if not is_hist else None
+        if pvc is _UNSET and hasattr(row0, "perimeter_variant_code"):
+            pvc = getattr(row0, "perimeter_variant_code", None)
         _assert_plan_year_only_max_power_editable(
-            getattr(row, "year_number", None),
-            bool(getattr(row, "is_historical_maximum", False)),
+            getattr(row0, "year_number", None),
+            is_hist,
             parameter_key,
             demand_model_name=demand_model_name,
         )
@@ -1002,32 +1225,69 @@ def save_demand_summary_cell(
         _assert_plan_year_only_max_power_editable(
             year_n, is_hist, parameter_key, demand_model_name=demand_model_name
         )
+        if (
+            pvc is _UNSET
+            and demand_model_name == "UnionEnergySystemDemandParameter"
+            and parent_fk_column == "id_union_energy_system"
+        ):
+            pvc = None
+
+    display_row_main: Any = None
+    for vid in version_ids:
+        parent_id_v: Optional[int] = None
+        if demand_model_name not in _SUMMARY_STANDALONE_DEMAND_MODELS:
+            parent_id_v = _resolve_summary_parent_id_for_version(
+                parent_fk_column, anchor_parent_id, vid
+            )
         row = find_demand_row_for_summary_slice(
             model,
             parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
+            parent_id=parent_id_v,
             is_hist=is_hist,
             year_n=year_n,
+            database_version_id=vid,
+            perimeter_variant_code=pvc,
         )
         if row is None:
             if not str(raw_value or "").strip():
-                return "—"
+                continue
             row = create_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
-                parent_id=parent_id,
+                parent_id=parent_id_v,
                 is_hist=is_hist,
                 year_n=year_n,
+                database_version_id=vid,
+                perimeter_variant_code=pvc,
             )
-
-    _apply_summary_field_to_row(row, parameter_key, raw_value, rounding_digits=rounding_digits)
-    row.modified_by = user
+        _apply_summary_field_to_row(row, parameter_key, raw_value, rounding_digits=rounding_digits)
+        row.modified_by = user
+        if (
+            demand_model_name == "RegionalEnergySystemDemandParameter"
+            and parent_fk_column == "id_regional_energy_system"
+            and parent_id_v is not None
+        ):
+            _mirror_res_demand_to_single_rd(
+                res_parent_id_v=int(parent_id_v),
+                parameter_key=parameter_key,
+                raw_value=raw_value,
+                rounding_digits=rounding_digits,
+                is_hist=is_hist,
+                year_n=year_n,
+                database_version_id=int(vid),
+            )
+        if vid == display_vid:
+            display_row_main = row
 
     try:
         db.session.commit()
-        db.session.refresh(row)
+        if display_row_main is not None:
+            db.session.refresh(display_row_main)
     except IntegrityError:
         db.session.rollback()
         raise ValueError("Не удалось сохранить (конфликт данных).") from None
 
-    return summary_cell_display_value(row, parameter_key, rounding_digits)
+    if display_row_main is None:
+        return "—"
+
+    return summary_cell_display_value(display_row_main, parameter_key, rounding_digits)

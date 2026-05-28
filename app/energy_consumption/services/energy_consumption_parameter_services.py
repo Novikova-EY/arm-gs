@@ -19,6 +19,8 @@ from app.common.perimeter_variant.registry import (
     model_supports_perimeter_variant,
     normalize_perimeter_variant_code,
     perimeter_entity_context_for_model,
+    perimeter_variant_applies_to_year_code,
+    perimeter_variant_year_bounds_for_code,
     validate_perimeter_variant_for_entity,
 )
 from app.common.services.database_version_filter import filter_by_explicit_db_version
@@ -59,6 +61,26 @@ def _resolve_perimeter_variant_for_save(raw: object) -> str | None:
     if raw is _UNSET:
         return _UNSET  # type: ignore[return-value]
     return normalize_perimeter_variant_code(raw, known_only=True)
+
+
+def _assert_perimeter_variant_year_allowed(
+    perimeter_variant_code: str | None | _UnsetType,
+    year_n: int | None,
+) -> None:
+    if perimeter_variant_code in (_UNSET, None) or year_n is None:
+        return
+    code = str(perimeter_variant_code)
+    if not perimeter_variant_applies_to_year_code(code, int(year_n)):
+        fy, ty = perimeter_variant_year_bounds_for_code(code)
+        parts: list[str] = []
+        if fy is not None:
+            parts.append(f"с {fy}")
+        if ty is not None:
+            parts.append(f"по {ty}")
+        period = " ".join(parts) if parts else "не задан"
+        raise ValueError(
+            f"Год {year_n} вне периода действия варианта периметра ({period})."
+        )
 
 
 def _resolve_perimeter_variant_for_context(
@@ -996,6 +1018,7 @@ _FIRST_SA_FORMULA_PERIMETER_VARIANT_CODES = frozenset(
         "with_nt_with_gaes_with_kaliningrad_es",
         "with_nt_without_gaes_without_kaliningrad_es",
         "without_nt_with_gaes_without_kaliningrad_es",
+        "without_nt_without_gaes_with_kaliningrad_es",
         "without_nt_without_gaes_without_kaliningrad_es",
     }
 )
@@ -1067,15 +1090,16 @@ def _assert_summary_formula_row_editable(
 
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
     """Строка для отображения ячейки сводки после сохранения."""
+    display_digits = rounding_digits
     if parameter_key == "energy_consumption_mln_kvt_ch":
         v = getattr(row, "energy_consumption_mln_kvt_ch", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
     if parameter_key == "energy_consumption_sipr_mln_kvt_ch":
         v = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
     if parameter_key == _GAES_CHARGE_PARAMETER_KEY:
         v = getattr(row, "charge_consumption", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
     return "—"
@@ -1646,6 +1670,10 @@ def save_demand_summary_cell(
             parent_id=parent_id,
             perimeter_variant_code=getattr(row, "perimeter_variant_code", pvc_resolved),
         )
+        _assert_perimeter_variant_year_allowed(
+            getattr(row, "perimeter_variant_code", pvc_resolved),
+            getattr(row, "year_number", None),
+        )
         _assert_plan_year_only_max_power_editable(
             getattr(row, "year_number", None),
             bool(getattr(row, "is_historical_maximum", False)),
@@ -1663,6 +1691,7 @@ def save_demand_summary_cell(
             parent_id=parent_id,
             perimeter_variant_code=pvc_resolved,
         )
+        _assert_perimeter_variant_year_allowed(pvc_resolved, year_n)
         row = find_demand_row_for_summary_slice(
             model,
             parent_fk_column=parent_fk_column,

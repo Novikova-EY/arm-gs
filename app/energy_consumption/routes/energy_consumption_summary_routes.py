@@ -37,6 +37,9 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     build_oes_summary_context,
     finalize_summary_rows_for_excel_export,
     filter_summary_rows_for_summary_table_page,
+    filter_oes_summary_hidden_tites_union_energy_system_rows,
+    filter_summary_table_gaes_charge_aggregate_rows,
+    keep_centralized_zone_rows_in_territory_compact,
     get_demand_summary_filter_refdata,
     get_energy_consumption_ez_filter_cascade_data,
     get_energy_consumption_fo_filter_cascade_data,
@@ -46,15 +49,24 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     apply_federal_district_formula_to_summary_rows,
     apply_gaes_without_charge_formula_to_summary_rows,
     inject_federal_district_without_gaes_summary_rows,
-    inject_regional_district_without_gaes_summary_rows,
+    inject_fo_summary_verification_rows,
+    inject_union_energy_system_without_gaes_summary_rows,
+    inject_oes_territory_detail_without_gaes_summary_rows,
     apply_fo_rd_gaes_territory_entity_labels,
+    apply_union_energy_system_gaes_entity_labels,
+    apply_oes_territory_detail_gaes_entity_labels,
     apply_summary_table_formula_calculations,
+    apply_oes_tites_root_formula_to_summary_rows,
     apply_summary_table_russia_federation_row_rules,
     inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows,
+    inject_oes_summary_verification_rows,
+    inject_oes_tites_aggregate_verification_row,
     inject_south_ues_new_territories_summary_rows,
+    inject_south_fd_new_territories_summary_rows,
     slice_energy_consumption_summary_context_for_export_years,
     tag_energy_consumption_summary_rows_for_territory_compact,
     tag_energy_consumption_summary_rows_perimeter_variant_labels,
+    mask_summary_rows_perimeter_variant_year_display,
 )
 
 
@@ -179,7 +191,7 @@ def _parse_oes_territory_ordered() -> tuple[list[int], list[int], list[int], lis
 def _parse_fo_filter_sets() -> tuple[frozenset[int], frozenset[int]]:
     return (
         frozenset(_parse_ordered_unique_int_ids("ds_fd")),
-        frozenset(_parse_ordered_unique_int_ids("ds_rd")),
+        frozenset(_parse_ordered_unique_int_ids("ds_res")),
     )
 
 
@@ -277,8 +289,10 @@ def _convert_context_to_summary_table_page(
     context: dict,
     *,
     keep_gaes_charge_territory_rows: bool = False,
+    hide_gaes_charge_aggregate_rows: bool = True,
 ) -> dict:
     summary_rows = list(context.get("summary_rows") or [])
+    source_summary_rows = list(summary_rows)
     tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
     context["summary_rows"] = filter_summary_rows_for_summary_table_page(
         summary_rows,
@@ -287,6 +301,11 @@ def _convert_context_to_summary_table_page(
     apply_energy_consumption_summary_table_variant_toggle_rows(context["summary_rows"])
     if context.get("active_summary") == "fo":
         apply_federal_district_formula_to_summary_rows(
+            context["summary_rows"],
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        inject_south_fd_new_territories_summary_rows(
             context["summary_rows"],
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
@@ -301,12 +320,26 @@ def _convert_context_to_summary_table_page(
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
+        fo_res_sum_source_rows = list(source_summary_rows)
+        inject_fo_summary_verification_rows(
+            context["summary_rows"],
+            source_rows=list(context["summary_rows"]),
+            fo_res_sum_source_rows=fo_res_sum_source_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
     if context.get("active_summary") == "oes":
         apply_summary_table_russia_federation_row_rules(context["summary_rows"])
         apply_summary_table_formula_calculations(
             context["summary_rows"],
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        apply_oes_tites_root_formula_to_summary_rows(
+            context["summary_rows"],
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+            eu_source_rows=source_summary_rows,
         )
         inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
             context["summary_rows"],
@@ -318,10 +351,52 @@ def _convert_context_to_summary_table_page(
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
+        # РЭС скрыты compact-фильтром, но нужны для суммы в «Проверка для …».
+        ues_res_sum_source_rows = list(source_summary_rows)
+        inject_union_energy_system_without_gaes_summary_rows(
+            context["summary_rows"],
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        inject_oes_territory_detail_without_gaes_summary_rows(
+            context["summary_rows"],
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        verification_source_rows = list(context["summary_rows"])
+        inject_oes_summary_verification_rows(
+            context["summary_rows"],
+            source_rows=verification_source_rows,
+            ues_res_sum_source_rows=ues_res_sum_source_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        context["summary_rows"] = filter_oes_summary_hidden_tites_union_energy_system_rows(
+            context["summary_rows"]
+        )
+        inject_oes_tites_aggregate_verification_row(
+            context["summary_rows"],
+            source_rows=source_summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
     tag_energy_consumption_summary_rows_perimeter_variant_labels(context["summary_rows"])
+    mask_summary_rows_perimeter_variant_year_display(
+        context["summary_rows"],
+        list(context.get("years") or []),
+    )
     if context.get("active_summary") == "fo":
         apply_fo_rd_gaes_territory_entity_labels(context["summary_rows"])
+        apply_oes_territory_detail_gaes_entity_labels(context["summary_rows"])
+    if context.get("active_summary") == "oes":
+        apply_union_energy_system_gaes_entity_labels(context["summary_rows"])
+        apply_oes_territory_detail_gaes_entity_labels(context["summary_rows"])
+    if hide_gaes_charge_aggregate_rows and context.get("active_summary") == "oes":
+        context["summary_rows"] = filter_summary_table_gaes_charge_aggregate_rows(
+            context["summary_rows"]
+        )
     context["summary_table_standalone"] = True
+    context["summary_variant_toggle_default_off"] = False
     context["summary_table_hide_toggle"] = True
     context["summary_table_force_compact_mode"] = True
     context["summary_hub_endpoint"] = "energy_consumption_bp.summary_table_start"
@@ -336,10 +411,16 @@ def _convert_context_to_summary_table_page(
 def _apply_summary_table_variant_behaviour_to_summary_page(context: dict) -> dict:
     """Варианты периметра и переключатели НТ/ГАЭС на обычных страницах сводки."""
     summary_rows = list(context.get("summary_rows") or [])
-    tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
     apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
+    if context.get("active_summary") == "oes":
+        apply_summary_table_russia_federation_row_rules(summary_rows)
     if context.get("active_summary") == "fo":
         apply_federal_district_formula_to_summary_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        inject_south_fd_new_territories_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
@@ -349,7 +430,7 @@ def _apply_summary_table_variant_behaviour_to_summary_page(context: dict) -> dic
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-        inject_regional_district_without_gaes_summary_rows(
+        inject_oes_territory_detail_without_gaes_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
@@ -359,8 +440,19 @@ def _apply_summary_table_variant_behaviour_to_summary_page(context: dict) -> dic
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
+        inject_fo_summary_verification_rows(
+            summary_rows,
+            source_rows=list(summary_rows),
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
     if context.get("active_summary") == "oes":
         apply_summary_table_formula_calculations(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        apply_oes_tites_root_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
@@ -375,9 +467,48 @@ def _apply_summary_table_variant_behaviour_to_summary_page(context: dict) -> dic
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
+        ues_res_sum_source_rows = list(summary_rows)
+        inject_union_energy_system_without_gaes_summary_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        inject_oes_territory_detail_without_gaes_summary_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        source_summary_rows = list(summary_rows)
+        inject_oes_summary_verification_rows(
+            summary_rows,
+            source_rows=source_summary_rows,
+            ues_res_sum_source_rows=ues_res_sum_source_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        summary_rows = filter_oes_summary_hidden_tites_union_energy_system_rows(
+            summary_rows
+        )
+        inject_oes_tites_aggregate_verification_row(
+            summary_rows,
+            source_rows=ues_res_sum_source_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
     tag_energy_consumption_summary_rows_perimeter_variant_labels(summary_rows)
+    mask_summary_rows_perimeter_variant_year_display(
+        summary_rows,
+        list(context.get("years") or []),
+    )
     if context.get("active_summary") == "fo":
         apply_fo_rd_gaes_territory_entity_labels(summary_rows)
+        apply_oes_territory_detail_gaes_entity_labels(summary_rows)
+    if context.get("active_summary") == "oes":
+        apply_union_energy_system_gaes_entity_labels(summary_rows)
+        apply_oes_territory_detail_gaes_entity_labels(summary_rows)
+    tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
+    if context.get("active_summary") in ("oes", "fo"):
+        keep_centralized_zone_rows_in_territory_compact(summary_rows)
     context = dict(context)
     context["summary_rows"] = summary_rows
     context["summary_variant_toggle_default_off"] = True
@@ -958,6 +1089,7 @@ def demand_summary_oes():
         summary_table_top_order=True,
     )
     context = _apply_summary_table_variant_behaviour_to_summary_page(context)
+    context["summary_variant_toggle_default_off"] = False
     context.update(get_demand_summary_filter_refdata())
     context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
@@ -1012,7 +1144,7 @@ def demand_summary_federal_districts():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_rd = fo_sets
+    f_fd, f_res = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
         start_year=sy,
@@ -1027,7 +1159,7 @@ def demand_summary_federal_districts():
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_rd)
+    context["has_active_summary_filters"] = bool(f_fd or f_res)
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
@@ -1079,7 +1211,7 @@ def demand_summary_federal_districts_gaes_charge():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_rd = fo_sets
+    f_fd, f_res = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
         start_year=sy,
@@ -1092,7 +1224,7 @@ def demand_summary_federal_districts_gaes_charge():
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_rd)
+    context["has_active_summary_filters"] = bool(f_fd or f_res)
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
@@ -1195,6 +1327,7 @@ def demand_summary_table_oes_gaes_charge():
     context = _convert_context_to_summary_table_page(
         context,
         keep_gaes_charge_territory_rows=True,
+        hide_gaes_charge_aggregate_rows=False,
     )
     context.update(get_demand_summary_filter_refdata())
     context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
@@ -1219,7 +1352,7 @@ def demand_summary_table_federal_districts():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, _f_rd = fo_sets
+    f_fd, _f_res = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
         start_year=sy,
@@ -1252,7 +1385,7 @@ def demand_summary_table_federal_districts_gaes_charge():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, _f_rd = fo_sets
+    f_fd, _f_res = fo_sets
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
         start_year=sy,
@@ -1266,6 +1399,7 @@ def demand_summary_table_federal_districts_gaes_charge():
     context = _convert_context_to_summary_table_page(
         context,
         keep_gaes_charge_territory_rows=True,
+        hide_gaes_charge_aggregate_rows=False,
     )
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
@@ -1303,6 +1437,7 @@ def demand_summary_table_energy_zones_gaes_charge():
     context = _convert_context_to_summary_table_page(
         context,
         keep_gaes_charge_territory_rows=True,
+        hide_gaes_charge_aggregate_rows=False,
     )
     context.update(get_demand_summary_filter_refdata())
     context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()

@@ -589,7 +589,7 @@
                                                     <div class="d-flex gap-1 flex-shrink-0">
                                                         <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="btn btn-outline-success btn-sm">Открыть</a>
                                                         <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить</button>
-                                                        {% if can_save_machines_all_versions %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>{% endif %}
+                                                        {% if can_save_equipment_group_all_versions %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>{% endif %}
                                                     </div>
                                                 </form>
                                                 {% if missing_eg_name_row and can_add_equipment_group %}
@@ -908,7 +908,7 @@
                                     name="all_versions"
                                     value="1"
                                     class="btn btn-outline-success fs-5"
-                                    title="Применить общую информацию, агрегаты, выработку и заряд ГАЭС во всех версиях БД (по external_code)"
+                                    title="Применить только таблицу «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции)"
                                     onclick="return confirmStationMachinesSaveAllVersions(this);">Сохранить во всех версиях</button>
                             {% endif %}
                             <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
@@ -1807,10 +1807,10 @@ window.confirmStationMachinesSaveAllVersions = function (btn) {
     var form = btn && btn.form ? btn.form : document.getElementById('stationUnifiedSaveForm');
     if (!form) return false;
 
-    var msg1 = 'Сохранить данные страницы во ВСЕХ версиях базы данных?\n\n'
-        + 'Будут синхронизированы: общая информация и местоположение станции, '
-        + 'агрегаты (топливо, собственник, примечание), выработка электроэнергии '
-        + 'и потребление ГАЭС на заряд (для ГАЭС).'
+    var msg1 = 'Сохранить таблицу заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
+        + 'Будет синхронизирована только таблица «Потребление ГАЭС на заряд» '
+        + 'для всех копий электростанции с тем же external_code в каждой версии БД.\n\n'
+        + 'Общая информация, агрегаты и выработка не изменяются.';
     if (!confirm(msg1)) {
         return false;
     }

@@ -291,7 +291,7 @@ def machine_details(station_id, machine_id):
         render_start = time.perf_counter()
         can_save_machine_all_versions = (
             current_user.is_authenticated
-            and getattr(current_user, "is_admin", False)
+            and getattr(current_user, "has_admin", False)
             and machine_obj is not None
         )
         response = render_template(

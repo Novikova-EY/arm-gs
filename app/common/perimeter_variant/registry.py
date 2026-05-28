@@ -50,6 +50,8 @@ __all__ = [
     "is_o1_perimeter_variant_code",
     "normalize_perimeter_variant_code",
     "perimeter_variant_applies_to_year",
+    "perimeter_variant_applies_to_year_code",
+    "perimeter_variant_year_bounds_for_code",
     "resolve_catalog_o1_perimeter_variant_code",
     "perimeter_variant_definitions",
     "resolve_entity_perimeter_variants",
@@ -238,12 +240,48 @@ def perimeter_variant_display_label_for_entity(
     return perimeter_variant_display_label(s)
 
 
+def perimeter_variant_year_bounds_for_code(
+    code: str | None,
+) -> tuple[int | None, int | None]:
+    """Год с / год по варианта периметра (из справочника, с fallback из constants)."""
+    if code is None:
+        return None, None
+    s = str(code).strip()
+    if not s:
+        return None, None
+    vdef = _catalog().variants_by_code.get(s)
+    fb = FALLBACK_PERIMETER_VARIANT_BY_CODE.get(s)
+    if vdef is None:
+        if fb is None:
+            return None, None
+        return fb.effective_from_year, fb.effective_to_year
+    from_year = vdef.effective_from_year
+    to_year = vdef.effective_to_year
+    if from_year is None and to_year is None and fb is not None:
+        from_year = fb.effective_from_year
+        to_year = fb.effective_to_year
+    return from_year, to_year
+
+
 def perimeter_variant_applies_to_year(variant: PerimeterVariantDefinition, year: int) -> bool:
     if variant.effective_from_year is not None and year < variant.effective_from_year:
         return False
     if variant.effective_to_year is not None and year > variant.effective_to_year:
         return False
     return True
+
+
+def perimeter_variant_applies_to_year_code(code: str | None, year: int) -> bool:
+    """True, если год попадает в период действия варианта (или границы не заданы)."""
+    if code is None:
+        return True
+    s = str(code).strip()
+    if not s:
+        return True
+    vdef = _catalog().variants_by_code.get(s)
+    if vdef is None:
+        return True
+    return perimeter_variant_applies_to_year(vdef, int(year))
 
 
 def model_supports_perimeter_variant(model: type) -> bool:

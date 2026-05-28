@@ -12,6 +12,13 @@ from app.common.perimeter_variant.registry import CODE_WITHOUT_NT, CODE_WITH_NT
 
 SOUTH_UES_ENTITY_KIND = "union_energy_system"
 SOUTH_UES_NAME_CF = "оэс юга"
+URAL_UES_NAME_CF = "оэс урала"
+MIDDLE_VOLGA_UES_NAME_CF = "оэс средней волги"
+SOUTH_CRIMEA_SEV_RES_BASE_LABEL_CF = "эс республики крым и г. севастополя"
+SOUTH_UES_VERIFICATION_EXCLUDE_CRIMEA_SEV_THROUGH_YEAR = 2016
+TITES_EAST_UES_NAME_CF = "титэс востока"
+TITES_SIBERIA_UES_NAME_CF = "титэс сибири"
+TITES_EAST_VERIFICATION_FROM_YEAR = 2019
 SOUTH_FD_ENTITY_KIND = "federal_district"
 SOUTH_FD_NAME_CF = "южный фо"
 EES_RUSSIA_ENTITY_KIND = ENTITY_KIND_EES_RUSSIA

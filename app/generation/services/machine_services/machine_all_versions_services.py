@@ -477,6 +477,7 @@ def update_station_machines_all_versions_from_form(
     sync_station_energy: bool = False,
     sync_station_gaes_charge: bool = False,
     sync_station_general_info: bool = False,
+    sync_machines: bool = True,
     request_meta: Optional[dict] = None,
 ) -> dict:
     """
@@ -490,7 +491,7 @@ def update_station_machines_all_versions_from_form(
     if start_year > end_year:
         start_year, end_year = end_year, start_year
 
-    anchor_machine_ids = _machine_ids_from_form(form_data)
+    anchor_machine_ids = _machine_ids_from_form(form_data) if sync_machines else []
     has_machine_form = bool(anchor_machine_ids)
     has_energy_form = bool(sync_station_energy)
     has_gaes_form = bool(sync_station_gaes_charge)

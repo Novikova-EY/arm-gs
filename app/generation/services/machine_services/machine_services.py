@@ -12,6 +12,7 @@ from app.common.services.tranzaction_services import (
     _commit_with_retry,
     _locked_get,
     no_autoflush,
+    quick_fix_machine_details_related_seqs,
 )
 from app.generation.models.station.station_model import Station
 from app.generation.models.machine.machine_model import Machine
@@ -469,6 +470,125 @@ def _resolve_fk_for_machine_persist(model_cls, anchor_id, version_id):
     if src and getattr(src, "database_version_id", None) == version_id:
         return anchor_int, True
     return None, False
+
+
+def _station_type_name_lower(station) -> str:
+    try:
+        return (station.station_type.name or "").strip().lower() if station.station_type else ""
+    except Exception:
+        return ""
+
+
+@no_autoflush
+def persist_machine_details_all_versions_subset(
+    station,
+    machine,
+    *,
+    main_form,
+    advanced_form,
+    start_year: int,
+    end_year: int,
+    can_edit_fuel: bool,
+) -> tuple[list, list]:
+    """
+    Сохранение machine_details во всех версиях БД: только «Группа оборудования»
+    и «Тип группы оборудования».
+    """
+    changes: list[str] = []
+    related_entities_changed = False
+
+    equipment_groups = dict(
+        choices_cache.get_choices(EquipmentGroupType, EquipmentGroupType.id)
+    )
+
+    if can_edit_fuel:
+        old_v = machine.id_equipment_group
+        new_v = main_form.id_equipment_group.data
+        if choices_cache.is_empty_value(new_v):
+            new_v = None
+        elif new_v:
+            version_id = _persist_target_version_id(machine)
+            resolved, ok = _resolve_fk_for_machine_persist(
+                EquipmentGroupType, new_v, version_id
+            )
+            if not ok:
+                new_v = old_v
+            else:
+                new_v = resolved
+
+        def _eg_type_label(val):
+            if not val:
+                return "не указано"
+            return equipment_groups.get(val, "не указано")
+
+        old_v_str = _eg_type_label(old_v)
+        new_v_str = _eg_type_label(new_v)
+        if old_v_str != new_v_str:
+            changes.append(f"id_equipment_group: {old_v_str} → {new_v_str}")
+            machine.id_equipment_group = new_v
+        elif old_v != new_v:
+            machine.id_equipment_group = new_v
+
+    version_id = getattr(machine, "database_version_id", None) or get_current_db_version_id()
+
+    old_fuel_eg_id = None
+    if machine.id:
+        mfp_before = _get_machine_fuel_param_for_version(machine.id, version_id)
+        if mfp_before:
+            old_fuel_eg_id = mfp_before.equipment_group_id
+
+    sync_machine_fuel_equipment_group(machine, version_id=version_id)
+
+    if can_edit_fuel:
+        raw_fuel_eg = main_form.id_fuel_equipment_group.data
+        if not choices_cache.is_empty_value(raw_fuel_eg):
+            version_id = _persist_target_version_id(machine)
+            resolved_eg, ok = _resolve_fk_for_machine_persist(
+                EquipmentGroup, raw_fuel_eg, version_id
+            )
+            if ok and resolved_eg is not None:
+                allowed_ids = {
+                    gid
+                    for gid, _ in get_station_fuel_equipment_group_choice_tuples(
+                        station.id, version_id
+                    )
+                }
+                if resolved_eg in allowed_ids:
+                    mfp = _get_machine_fuel_param_for_version(machine.id, version_id)
+                    if mfp is None:
+                        mfp = MachineFuelParam(machine_id=machine.id)
+                        if version_id is not None:
+                            mfp.database_version_id = version_id
+                        elif get_current_db_version_id() is not None:
+                            set_db_version_on_create(mfp)
+                        db.session.add(mfp)
+                        db.session.flush()
+                    if mfp.equipment_group_id != resolved_eg:
+                        mfp.equipment_group_id = resolved_eg
+                        db.session.add(mfp)
+
+    mfp_after = _get_machine_fuel_param_for_version(machine.id, version_id)
+    new_fuel_eg_id = mfp_after.equipment_group_id if mfp_after else None
+    if old_fuel_eg_id != new_fuel_eg_id:
+        def _eg_label(eg_id):
+            if not eg_id:
+                return "—"
+            eg = EquipmentGroup.query.get(eg_id)
+            return (eg.name if eg else None) or f"id={eg_id}"
+
+        changes.append(
+            "Группа оборудования (топливный модуль): "
+            f"{_eg_label(old_fuel_eg_id)} → {_eg_label(new_fuel_eg_id)}"
+        )
+        related_entities_changed = True
+
+    if related_entities_changed or changes:
+        from sqlalchemy.sql import func
+
+        machine.updated_at = func.now()
+        flag_modified(machine, "updated_at")
+
+    return changes, []
 
 
 @no_autoflush
@@ -1362,6 +1482,8 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         )
 
     try:
+        quick_fix_machine_details_related_seqs()
+
         if is_new and not can_edit_generation:
             flash("Создание агрегата доступно только ролям модуля «Генерация».", "danger")
             return redirect(
@@ -1402,13 +1524,13 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
 
         if request.values.get("all_versions") == "1" and not is_new:
             from app.refdata.routes.refdata_all_versions_guard import (
-                block_all_versions_without_role_admin,
+                block_all_versions_without_admin,
             )
             from app.generation.services.machine_services.machine_details_all_versions_services import (
                 save_machine_details_across_versions,
             )
 
-            if block_all_versions_without_role_admin(current_user):
+            if block_all_versions_without_admin(current_user):
                 return redirect(
                     url_for(
                         "station_bp.machine_details",

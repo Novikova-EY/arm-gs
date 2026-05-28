@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Сохранение данных формы machine_details во всех версиях БД (как «Сохранить» в текущей версии).
+Сохранение данных формы machine_details во всех версиях БД:
+только «Группа оборудования» и «Тип группы оборудования».
 """
 from __future__ import annotations
 
@@ -16,21 +17,21 @@ from app.common.services.database_version_services import (
     build_database_version_numbers_by_id,
     database_version_log_prefix,
 )
-from app.common.services.tranzaction_services import _commit_with_retry, quick_fix_seq
+from app.common.services.tranzaction_services import (
+    _commit_with_retry,
+    quick_fix_machine_details_related_seqs,
+)
 from app.common.services.version_entity_resolve_services import resolve_machine_details_ids
 from app.extensions import db
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_model import Station
 from app.generation.services.machine_services.machine_services import (
-    persist_machine_details_from_validated_forms,
+    persist_machine_details_all_versions_subset,
 )
 from app.generation.services.station_services.station_services import (
     clear_station_aggregation_cache,
-    recalculate_station_power,
 )
 from app.logs.services.logging_service import log_to_db
-from config import SCHEMA_FUEL, SCHEMA_GENERATION
-
 logger = logging.getLogger(__name__)
 
 
@@ -41,23 +42,6 @@ def _all_database_version_ids() -> list[Optional[int]]:
             version_ids.append(dv.id)
     return version_ids
 
-
-def _quick_fix_machine_details_seqs() -> None:
-    for schema, table in (
-        (SCHEMA_GENERATION, "gs_gen_machines"),
-        (SCHEMA_GENERATION, "gs_gen_machine_powers"),
-        (SCHEMA_GENERATION, "gs_gen_machine_fuels"),
-        (SCHEMA_GENERATION, "gs_gen_machine_tes_types"),
-        (SCHEMA_GENERATION, "gs_gen_machine_names"),
-        # Автоопределение топливной группы может создавать эти записи из machine_details.
-        (SCHEMA_FUEL, "gs_fue_equipment_groups"),
-        (SCHEMA_FUEL, "gs_fue_equipment_group_sets"),
-        (SCHEMA_FUEL, "gs_fue_equipment_group_type_stations"),
-    ):
-        try:
-            quick_fix_seq(schema, table, "id")
-        except Exception:
-            pass
 
 def save_machine_details_across_versions(
     *,
@@ -79,8 +63,9 @@ def save_machine_details_across_versions(
     anchor_machine: Machine,
 ) -> Any:
     """
-    Применяет провалидированные формы machine_details ко всем копиям агрегата (external_code).
-  """
+    Применяет поля «Группа оборудования» и «Тип группы оборудования»
+    ко всем копиям агрегата (external_code).
+    """
     external_code = (getattr(anchor_machine, "external_code", None) or "").strip()
     if not external_code:
         flash(
@@ -101,10 +86,9 @@ def save_machine_details_across_versions(
     warnings: list[str] = []
     versions_touched: set[Optional[int]] = set()
     all_change_lines: list[str] = []
-    stations_to_recalc: set[tuple[int, int, int]] = set()
 
     old_db_version = getattr(g, "current_db_version", None)
-    _quick_fix_machine_details_seqs()
+    quick_fix_machine_details_related_seqs()
 
     try:
         with db.session.no_autoflush:
@@ -135,21 +119,14 @@ def save_machine_details_across_versions(
                     pass
 
                 try:
-                    changes, pgu_changes = persist_machine_details_from_validated_forms(
+                    changes, pgu_changes = persist_machine_details_all_versions_subset(
                         target_station,
                         target_machine,
                         main_form=main_form,
                         advanced_form=advanced_form,
-                        pgu_machines_form=pgu_machines_form,
-                        normalized=normalized,
-                        user=user,
                         start_year=start_year,
                         end_year=end_year,
                         can_edit_fuel=can_edit_fuel,
-                        can_edit_generation=can_edit_generation,
-                        is_pgu_action=is_pgu_action and version_id == old_db_version,
-                        year_features=year_features,
-                        skip_pgu=(version_id != old_db_version),
                     )
                 except Exception as exc:
                     logger.exception(
@@ -172,14 +149,6 @@ def save_machine_details_across_versions(
                         f"агрегат id={target_machine_id} "
                         f"(№{target_machine.machine_number}): {len(changes)} измен."
                     )
-                    stations_to_recalc.add(
-                        (target_station_id, start_year, end_year)
-                    )
-
-        for st_id, sy, ey in stations_to_recalc:
-            st = db.session.get(Station, st_id)
-            if st:
-                recalculate_station_power(st, sy, ey)
 
         _commit_with_retry()
         clear_station_aggregation_cache(
@@ -216,7 +185,7 @@ def save_machine_details_across_versions(
             flash(msg, "warning")
     else:
         flash(
-            f"Данные агрегата применены во всех версиях БД "
+            f"Группа и тип группы оборудования агрегата применены во всех версиях БД "
             f"(затронуто версий: {len(versions_touched)}).",
             "success",
         )
@@ -224,7 +193,7 @@ def save_machine_details_across_versions(
             flash(msg, "warning")
 
     log_lines = [
-        "Синхронизация machine_details во всех версиях БД.",
+        "Синхронизация групп оборудования агрегата во всех версиях БД (machine_details).",
         f"Электростанция: {anchor_station.name} (id={anchor_station.id})",
         f"Агрегат: №{anchor_machine.machine_number} (id={anchor_machine.id}, "
         f"external_code={external_code})",
@@ -242,7 +211,7 @@ def save_machine_details_across_versions(
 
     log_to_db(
         user,
-        "Синхронизация данных агрегата во всех версиях БД (machine_details)",
+        "Синхронизация групп оборудования агрегата во всех версиях БД (machine_details)",
         details="\n".join(log_lines),
         entity_type="machine",
         entity_id=anchor_machine_id,

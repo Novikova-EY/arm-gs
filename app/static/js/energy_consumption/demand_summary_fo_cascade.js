@@ -1,12 +1,13 @@
 /**
- * Каскадные фильтры сводки по ФО: ФО ↔ субъект РФ (как get_territorial_filter_reference_data / Excel).
+ * Каскадные фильтры сводки по ФО: ФО ↔ РЭС,
+ * логика как при построении дерева сводки (РЭС входит в ФО, если есть субъект округа в составе РЭС).
  *
- * Поведение таблицы (сервер по ds_fd / ds_rd):
- * — только выбранные ФО в URL → строки по этим ФО и по всем субъектам внутри них;
- * — к выбранным ФО добавлены субъекты в выпадающем списке → в URL попадает ds_rd:
- *   под ФО, из которых отмечены субъекты, — только они; под остальными выбранными ФО —
- *   все субъекты этих округов;
- * — только субъекты без ds_fd → плоский список по субъектам (без строки ФО).
+ * Поведение таблицы (сервер по ds_fd / ds_res):
+ * — только выбранные ФО в URL → строки по этим ФО и по всем РЭС внутри них;
+ * — к выбранным ФО добавлены РЭС в выпадающем списке → в URL попадает ds_res:
+ *   под ФО, из которых отмечены РЭС, — только они; под остальными выбранными ФО —
+ *   все РЭС этих округов;
+ * — только РЭС без ds_fd → плоский список по РЭС (без строки ФО).
  */
 (function () {
     const dataEl = document.getElementById("pd-fo-filters-data");
@@ -25,9 +26,9 @@
     }
 
     const allFd = filtersData.federal_district_list || [];
-    const allRd = filtersData.regional_district_list || [];
-    const fdToRd = filtersData.fd_to_rd_mapping || {};
-    const rdToFd = filtersData.rd_to_fd_mapping_one || {};
+    const allRes = filtersData.regional_energy_system_list || [];
+    const fdToRes = filtersData.fd_to_res_mapping || {};
+    const resToFd = filtersData.res_to_fd_mapping || {};
 
     let isUpdating = false;
 
@@ -59,18 +60,6 @@
         return allowed;
     }
 
-    function getAllowedIdsFromOneToOne(selectedIds, mapping) {
-        if (!selectedIds || selectedIds.length === 0) return null;
-        const allowed = new Set();
-        selectedIds.forEach(function (id) {
-            const mappedId = mapping[String(id)] || mapping[Number(id)];
-            if (mappedId !== null && mappedId !== undefined) {
-                allowed.add(Number(mappedId));
-            }
-        });
-        return allowed;
-    }
-
     function combineAllowedIds() {
         const sets = Array.prototype.slice.call(arguments).filter(function (s) {
             return s !== null && s !== undefined;
@@ -88,10 +77,6 @@
         return result;
     }
 
-    /**
-     * Уже выбранные id оставляем в multiselect (как на сводке по ОЭС): обратная связь
-     * «субъект → один ФО» не должна убирать второй выбранный ФО из списка.
-     */
     function unionAllowedWithCurrentSelection(allowedIds, currentSelectedIds) {
         if (!currentSelectedIds || currentSelectedIds.length === 0) {
             return allowedIds;
@@ -109,22 +94,26 @@
         return s;
     }
 
-    /** Все субъекты, входящие в ФО выбранных субъектов (для списка «Субъект» при выборе только субъектов). */
-    function expandRdClusterForSelectedRd(currentRd, fdToRdMap, rdToFdMap) {
-        if (!currentRd || currentRd.length === 0) return null;
+    /** Все РЭС тех же ФО, что и у выбранных РЭС (кластер по округам). */
+    function expandResClusterForSelectedRes(currentRes, fdToResMap, resToFdMap) {
+        if (!currentRes || currentRes.length === 0) return null;
         const fdSet = new Set();
-        currentRd.forEach(function (rid) {
-            const fd = rdToFdMap[String(rid)] ?? rdToFdMap[Number(rid)];
-            if (fd !== null && fd !== undefined) {
-                fdSet.add(Number(fd));
+        currentRes.forEach(function (resId) {
+            const fds = resToFdMap[String(resId)] || resToFdMap[Number(resId)] || [];
+            if (Array.isArray(fds)) {
+                fds.forEach(function (fid) {
+                    if (fid !== null && fid !== undefined) {
+                        fdSet.add(Number(fid));
+                    }
+                });
             }
         });
         if (fdSet.size === 0) return new Set();
         const out = new Set();
-        fdSet.forEach(function (fid) {
-            const rds = fdToRdMap[String(fid)] || fdToRdMap[Number(fid)] || [];
-            if (Array.isArray(rds)) {
-                rds.forEach(function (x) {
+        fdSet.forEach(function (fdid) {
+            const ress = fdToResMap[String(fdid)] || fdToResMap[Number(fdid)] || [];
+            if (Array.isArray(ress)) {
+                ress.forEach(function (x) {
                     out.add(Number(x));
                 });
             }
@@ -213,32 +202,31 @@
         const form = document.querySelector("#filtersCollapse form.pd-summary-filters-form");
         try {
             const currentFd = getSelectValues("#ds_fd");
-            const currentRd = getSelectValues("#ds_rd_fo");
+            const currentRes = getSelectValues("#ds_res_fo");
 
-            const rdFromFd = getAllowedIds(currentFd, fdToRd);
-            const rdCluster = expandRdClusterForSelectedRd(currentRd, fdToRd, rdToFd);
-            /** При выбранных ФО список субъектов = все субъекты этих ФО (для сужения таблицы пользователь отмечает субъектов и отправляет форму). */
-            let rdAllowed =
+            const resFromFd = getAllowedIds(currentFd, fdToRes);
+            const resCluster = expandResClusterForSelectedRes(currentRes, fdToRes, resToFd);
+            let resAllowed =
                 currentFd && currentFd.length > 0
-                    ? rdFromFd
-                    : combineAllowedIds(rdFromFd, rdCluster);
-            rdAllowed = unionAllowedWithCurrentSelection(rdAllowed, currentRd);
+                    ? resFromFd
+                    : combineAllowedIds(resFromFd, resCluster);
+            resAllowed = unionAllowedWithCurrentSelection(resAllowed, currentRes);
 
-            const fdFromRd = getAllowedIdsFromOneToOne(currentRd, rdToFd);
-            let fdAllowed = combineAllowedIds(fdFromRd);
+            const fdFromRes = getAllowedIds(currentRes, resToFd);
+            let fdAllowed = combineAllowedIds(fdFromRes);
             fdAllowed = unionAllowedWithCurrentSelection(fdAllowed, currentFd);
 
             if (form) {
                 form.setAttribute("data-pd-cascade-silent", "1");
             }
             updateSelectOptions("#ds_fd", allFd, fdAllowed, currentFd, true);
-            updateSelectOptions("#ds_rd_fo", allRd, rdAllowed, currentRd, true);
+            updateSelectOptions("#ds_res_fo", allRes, resAllowed, currentRes, true);
             if (form) {
                 form.removeAttribute("data-pd-cascade-silent");
             }
 
             refreshPdDropdown("#ds_fd");
-            refreshPdDropdown("#ds_rd_fo");
+            refreshPdDropdown("#ds_res_fo");
         } finally {
             isUpdating = false;
         }
@@ -249,7 +237,7 @@
     document.getElementById("ds_fd")?.addEventListener("change", function () {
         updatePdFoCascadeFilters();
     });
-    document.getElementById("ds_rd_fo")?.addEventListener("change", function () {
+    document.getElementById("ds_res_fo")?.addEventListener("change", function () {
         updatePdFoCascadeFilters();
     });
 

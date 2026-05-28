@@ -2720,6 +2720,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         visible[y] = true;
                     }
                 }
+                if (!isNaN(formSy) && !isNaN(formEy) && Object.keys(visible).length > 0) {
+                    var formLo = Math.min(formSy, formEy);
+                    var formHi = Math.max(formSy, formEy);
+                    Object.keys(visible).forEach(function (key) {
+                        var yr = parseInt(key, 10);
+                        if (yr < formLo || yr > formHi) {
+                            delete visible[key];
+                        }
+                    });
+                }
                 table.querySelectorAll("[data-ec-summary-col-year]").forEach(function (el) {
                     var raw = el.getAttribute("data-ec-summary-col-year");
                     var yr = parseInt(raw || "", 10);

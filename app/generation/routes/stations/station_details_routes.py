@@ -171,7 +171,7 @@ from app.common.services.cache_services import CacheService
 from app.common.middleware import handle_stale_data
 from app.common.services.cache_decorator import invalidate_cache, invalidate_cache_pattern
 from app.refdata.routes.refdata_all_versions_guard import (
-    block_all_versions_without_role_admin,
+    block_all_versions_without_admin,
 )
 from app.generation.services.machine_services.machine_all_versions_services import (
     update_station_machines_all_versions_from_form,
@@ -187,13 +187,13 @@ def _handle_station_machines_all_versions_save(
     is_gaes_station: bool,
 ) -> bool:
     """
-    Синхронизация данных station_details во всех версиях БД.
+    Синхронизация таблицы заряда ГАЭС station_details во всех версиях БД.
     Возвращает True, если запрос был с all_versions=1 (вызвавший обработку или отказ).
     """
     if request.values.get("all_versions") != "1":
         return False
 
-    if block_all_versions_without_role_admin(current_user):
+    if block_all_versions_without_admin(current_user):
         return True
 
     if request.values.get("all_versions_confirm") != "1":
@@ -210,35 +210,17 @@ def _handle_station_machines_all_versions_save(
         )
         return True
 
-    form_keys = set(request.form.keys())
-    is_unified_page_save = request.form.get("station_details_unified_save") == "1"
-    sync_station_general_info = is_unified_page_save or any(
-        k
-        in {
-            "name",
-            "id_condition_type",
-            "id_station_type",
-            "id_station_group",
-            "id_energy_unit",
-            "id_regional_energy_system",
-            "id_regional_district",
-            "location",
-            "note",
-        }
-        for k in form_keys
-    )
-    sync_station_energy = (
-        is_unified_page_save
-        or request.form.get("station_energy_generation_submit") == "1"
-        or request.form.get("station_gaes_combined_energy_submit") == "1"
-        or any(isinstance(k, str) and k.startswith("st_gen_") for k in form_keys)
-    )
-    sync_station_gaes_charge = is_gaes_station and (
-        is_unified_page_save
-        or request.form.get("station_gaes_charge_submit") == "1"
-        or request.form.get("station_gaes_combined_energy_submit") == "1"
-        or any(isinstance(k, str) and k.startswith("st_gaes_charge_") for k in form_keys)
-    )
+    if not is_gaes_station:
+        flash(
+            "Сохранение во всех версиях БД доступно только для таблицы заряда ГАЭС "
+            "на электростанциях типа ГАЭС.",
+            "warning",
+        )
+        return True
+
+    sync_station_general_info = False
+    sync_station_energy = False
+    sync_station_gaes_charge = True
 
     request_meta = {
         "path": request.path,
@@ -256,12 +238,10 @@ def _handle_station_machines_all_versions_save(
             sync_station_energy=sync_station_energy,
             sync_station_gaes_charge=sync_station_gaes_charge,
             sync_station_general_info=sync_station_general_info,
+            sync_machines=False,
             request_meta=request_meta,
         )
         vt = result.get("versions_touched", 0)
-        uc = result.get("updated_machines", 0)
-        us = result.get("updated_stations", 0)
-        ue = result.get("updated_energy_rows", 0)
         ug = result.get("updated_gaes_rows", 0)
         warnings = result.get("warnings") or []
 
@@ -273,16 +253,12 @@ def _handle_station_machines_all_versions_save(
         else:
             parts = [
                 f"затронуто версий БД: {vt}",
-                f"агрегатов: {uc}",
+                f"строк заряда ГАЭС: {ug}",
             ]
-            if sync_station_general_info:
-                parts.append(f"станций (общая информация): {us}")
-            if sync_station_energy:
-                parts.append(f"строк выработки: {ue}")
-            if sync_station_gaes_charge:
-                parts.append(f"строк заряда ГАЭС: {ug}")
             flash(
-                "Данные применены во всех версиях БД (" + ", ".join(parts) + ").",
+                "Таблица заряда ГАЭС применена во всех версиях БД ("
+                + ", ".join(parts)
+                + ").",
                 "success",
             )
             for msg in warnings:
@@ -1211,7 +1187,10 @@ def station_details(station_id):
         current_user, "has_admin", False
     )
     can_save_machines_all_versions = current_user.is_authenticated and getattr(
-        current_user, "is_admin", False
+        current_user, "has_admin", False
+    )
+    can_save_equipment_group_all_versions = current_user.is_authenticated and getattr(
+        current_user, "has_admin", False
     )
 
     # Группы оборудования электростанции (по версии) — только для ТЭС
@@ -1306,6 +1285,7 @@ def station_details(station_id):
         station_logs=station_logs_formatted,
         can_edit=can_edit,
         can_save_machines_all_versions=can_save_machines_all_versions,
+        can_save_equipment_group_all_versions=can_save_equipment_group_all_versions,
         can_add_equipment_group=can_add_equipment_group,
         initial_machines_tbody_html=initial_machines_tbody_html,
         year_features=year_features,
@@ -1463,7 +1443,7 @@ def rename_station_equipment_group_v2(station_id, equipment_group_id):
         )
 
     if all_versions:
-        if block_all_versions_without_role_admin(current_user):
+        if block_all_versions_without_admin(current_user):
             return redirect(
                 url_for("station_bp.station_details", station_id=station_id, **request.args)
             )

@@ -7,14 +7,8 @@
     <input type="hidden" name="machine_version_{{ machine.id }}" value="{{ machine.version }}">
     {% endif %}
     
-    {% set machine_powers_by_year = {} %}
+    {% set machine_powers_by_year = machine.powers_by_year or {} %}
     {% set machine_fuels_by_year = {} %}
-
-    {% for mp in machine.machine_powers %}
-        {% if mp.year_number and start_year <= mp.year_number <= end_year %}
-            {% set _ = machine_powers_by_year.update({mp.year_number: mp}) %}
-        {% endif %}
-    {% endfor %}
 
     {% for mf in machine.machine_fuels %}
         {% if mf.year_number and start_year <= mf.year_number <= end_year %}
@@ -69,11 +63,12 @@
 
         <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
-        {% set mp = machine_powers_by_year.get(year) %}
-        {% set p_ust_full = mp.p_ust | format_decimal(0) if mp and mp.p_ust and mp.p_ust != 0 else '' %}
+        {% set mp = machine_powers_by_year.get(year, {}) %}
+        {% set p_ust_value = mp.get("p_ust") %}
+        {% set p_ust_full = p_ust_value | format_decimal(0) if p_ust_value is not none and p_ust_value != 0 else '' %}
         <td class="text-center power-column" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
-            {% if mp and mp.p_ust and mp.p_ust != 0 %}
-                {{ mp.p_ust | format_decimal }}
+            {% if p_ust_value is not none and p_ust_value != 0 %}
+                {{ p_ust_value | format_decimal }}
             {% else %}
                 &mdash;
             {% endif %}
@@ -115,11 +110,12 @@
     <tr class="text-center p-ogr-row" style="font-size: 1.15rem;">
         <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
         {% for year in range(start_year, end_year + 1) %}
-        {% set mp = machine_powers_by_year.get(year) %}
-        {% set p_ogr_full = mp.p_ogr | format_decimal(0) if mp and mp.p_ogr and mp.p_ogr != 0 else '' %}
+        {% set mp = machine_powers_by_year.get(year, {}) %}
+        {% set p_ogr_value = mp.get("p_ogr") %}
+        {% set p_ogr_full = p_ogr_value | format_decimal(0) if p_ogr_value is not none and p_ogr_value != 0 else '' %}
         <td class="power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
-            {% if mp and mp.p_ogr and mp.p_ogr != 0 %}
-                {{ mp.p_ogr | format_decimal }}
+            {% if p_ogr_value is not none and p_ogr_value != 0 %}
+                {{ p_ogr_value | format_decimal }}
             {% else %}
                 &mdash;
             {% endif %}
@@ -130,11 +126,12 @@
     <tr class="text-center p-rasp-row" style="font-size: 1.15rem;">
         <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}
-            {% set mp = machine_powers_by_year.get(year) %}
-            {% set p_rasp_full = mp.p_rasp | format_decimal(0) if mp and mp.p_rasp and mp.p_rasp != 0 else '' %}
+        {% set mp = machine_powers_by_year.get(year, {}) %}
+        {% set p_rasp_value = mp.get("p_rasp") %}
+        {% set p_rasp_full = p_rasp_value | format_decimal(0) if p_rasp_value is not none and p_rasp_value != 0 else '' %}
             <td class="power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
-                {% if mp and mp.p_rasp and mp.p_rasp != 0 %}
-                    {{ mp.p_rasp | format_decimal }}
+            {% if p_rasp_value is not none and p_rasp_value != 0 %}
+                {{ p_rasp_value | format_decimal }}
                 {% else %}
                     &mdash;
                 {% endif %}
@@ -189,11 +186,12 @@
 
             <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
             {% for year in range(start_year, end_year + 1) %}
-            {% set mp = machine_powers_by_year.get(year) %}
-            {% set p_ust_full = mp.p_ust | format_decimal(0) if mp and mp.p_ust and mp.p_ust != 0 else '' %}
+            {% set mp = machine_powers_by_year.get(year, {}) %}
+            {% set p_ust_value = mp.get("p_ust") %}
+            {% set p_ust_full = p_ust_value | format_decimal(0) if p_ust_value is not none and p_ust_value != 0 else '' %}
             <td class="text-center power-column" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
-                {% if mp and mp.p_ust and mp.p_ust != 0 %}
-                    {{ mp.p_ust | format_decimal }}
+                {% if p_ust_value is not none and p_ust_value != 0 %}
+                    {{ p_ust_value | format_decimal }}
                 {% else %}
                     &mdash;
                 {% endif %}
@@ -282,11 +280,12 @@
         <td></td>
         <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
         {% for year in range(start_year, end_year + 1) %}
-        {% set mp = machine_powers_by_year.get(year) %}
-        {% set p_ogr_full = mp.p_ogr | format_decimal(0) if mp and mp.p_ogr and mp.p_ogr != 0 else '' %}
+        {% set mp = machine_powers_by_year.get(year, {}) %}
+        {% set p_ogr_value = mp.get("p_ogr") %}
+        {% set p_ogr_full = p_ogr_value | format_decimal(0) if p_ogr_value is not none and p_ogr_value != 0 else '' %}
         <td class="power-column" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
-            {% if mp and mp.p_ogr and mp.p_ogr != 0 %}
-                {{ mp.p_ogr | format_decimal }}
+            {% if p_ogr_value is not none and p_ogr_value != 0 %}
+                {{ p_ogr_value | format_decimal }}
             {% else %}
                 &mdash;
             {% endif %}
@@ -303,11 +302,12 @@
         <td></td>
         <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
         {% for year in range(start_year, end_year + 1) %}
-        {% set mp = machine_powers_by_year.get(year) %}
-        {% set p_rasp_full = mp.p_rasp | format_decimal(0) if mp and mp.p_rasp and mp.p_rasp != 0 else '' %}
+        {% set mp = machine_powers_by_year.get(year, {}) %}
+        {% set p_rasp_value = mp.get("p_rasp") %}
+        {% set p_rasp_full = p_rasp_value | format_decimal(0) if p_rasp_value is not none and p_rasp_value != 0 else '' %}
         <td class="power-column" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
-            {% if mp and mp.p_rasp and mp.p_rasp != 0 %}
-                {{ mp.p_rasp | format_decimal }}
+            {% if p_rasp_value is not none and p_rasp_value != 0 %}
+                {{ p_rasp_value | format_decimal }}
             {% else %}
                 &mdash;
             {% endif %}

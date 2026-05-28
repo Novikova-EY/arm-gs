@@ -88,13 +88,15 @@ def no_autoflush(func):
 def quick_fix_seq(schema: str, table: str, col: str = "id"):
     """
     Быстро выравнивает sequence под MAX(id) для указанной таблицы.
-    Пустая таблица (MAX = 0): setval(..., 1, false), чтобы следующий nextval вернул 1
-    (в PostgreSQL setval(..., 0, ...) для обычной последовательности недопустим).
+
+    Sequence никогда не уменьшается: в длинной транзакции (например, сохранение
+    machine_details во всех версиях БД) уже выданные, но ещё не закоммиченные id
+    не видны в MAX(id), и откат sequence приводил к UniqueViolation по PK.
     """
     with db.engine.begin() as conn:
         seq = conn.execute(
             text("SELECT pg_get_serial_sequence(:tbl, :col)"),
-            {"tbl": f"{schema}.{table}", "col": col}
+            {"tbl": f"{schema}.{table}", "col": col},
         ).scalar()
         if not seq:
             return
@@ -103,7 +105,40 @@ def quick_fix_seq(schema: str, table: str, col: str = "id"):
         ).scalar()
         mid = int(max_id)
 
+        seq_state = conn.execute(
+            text(f"SELECT last_value, is_called FROM {seq}")
+        ).fetchone()
+        if not seq_state:
+            return
+        last_value, is_called = int(seq_state[0]), bool(seq_state[1])
+        seq_next = last_value + 1 if is_called else last_value
+
         if mid <= 0:
-            conn.execute(text(f"SELECT setval('{seq}', 1, false)"))
+            target_next = max(1, seq_next)
         else:
-            conn.execute(text(f"SELECT setval('{seq}', {mid}, true)"))
+            target_next = max(mid + 1, seq_next)
+
+        conn.execute(
+            text(f"SELECT setval('{seq}', :target_next, false)"),
+            {"target_next": target_next},
+        )
+
+
+def quick_fix_machine_details_related_seqs() -> None:
+    """Выравнивает sequences таблиц, которые создаются при сохранении machine_details."""
+    from config import SCHEMA_FUEL, SCHEMA_GENERATION
+
+    for schema, table in (
+        (SCHEMA_GENERATION, "gs_gen_machines"),
+        (SCHEMA_GENERATION, "gs_gen_machine_powers"),
+        (SCHEMA_GENERATION, "gs_gen_machine_fuels"),
+        (SCHEMA_GENERATION, "gs_gen_machine_tes_types"),
+        (SCHEMA_GENERATION, "gs_gen_machine_names"),
+        (SCHEMA_FUEL, "gs_fue_equipment_groups"),
+        (SCHEMA_FUEL, "gs_fue_equipment_group_sets"),
+        (SCHEMA_FUEL, "gs_fue_equipment_group_type_stations"),
+    ):
+        try:
+            quick_fix_seq(schema, table, "id")
+        except Exception:
+            pass

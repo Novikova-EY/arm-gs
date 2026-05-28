@@ -3,6 +3,8 @@
 from typing import Union, List
 from functools import lru_cache
 
+from sqlalchemy import or_
+
 # Модели
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 
@@ -16,7 +18,13 @@ def get_energy_unit_list_full():
     query = EnergyUnit.query
     
     if current_version:
-        query = query.filter(EnergyUnit.database_version_id == current_version)
+        # Для справочников допускаем "общие" записи без версии (NULL).
+        query = query.filter(
+            or_(
+                EnergyUnit.database_version_id == current_version,
+                EnergyUnit.database_version_id.is_(None),
+            )
+        )
     
     return (
         query
@@ -35,7 +43,12 @@ def get_energy_unit_list():
     query = EnergyUnit.query
     
     if current_version:
-        query = query.filter(EnergyUnit.database_version_id == current_version)
+        query = query.filter(
+            or_(
+                EnergyUnit.database_version_id == current_version,
+                EnergyUnit.database_version_id.is_(None),
+            )
+        )
     
     return (
         query

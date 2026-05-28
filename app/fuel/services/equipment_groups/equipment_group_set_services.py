@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy.exc import IntegrityError
+
 from app.extensions import db
 from app.common.services.tranzaction_services import quick_fix_seq
 from app.common.services.database_version_filter import (
@@ -71,6 +73,69 @@ def _quick_fix_equipment_group_seqs() -> None:
             quick_fix_seq(SCHEMA_FUEL, table, "id")
         except Exception:
             pass
+
+
+def _find_equipment_group_set_link(
+    equipment_group_id: int,
+    equipment_group_set_station_id: int,
+) -> EquipmentGroupSet | None:
+    return (
+        EquipmentGroupSet.query
+        .filter_by(
+            equipment_group_id=equipment_group_id,
+            equipment_group_set_station_id=equipment_group_set_station_id,
+        )
+        .first()
+    )
+
+
+def _create_equipment_group_set_with_retry(
+    equipment_group_id: int,
+    equipment_group_set_station_id: int,
+) -> EquipmentGroupSet:
+    """
+    Возвращает существующую или создаёт новую связку EquipmentGroupSet.
+    При рассинхронизации sequence (UniqueViolation по PK) повторяет insert
+    после выравнивания sequence; при дубликате бизнес-ключа возвращает запись.
+    """
+    existing = _find_equipment_group_set_link(
+        equipment_group_id,
+        equipment_group_set_station_id,
+    )
+    if existing:
+        return existing
+
+    last_exc: Exception | None = None
+    for _attempt in range(3):
+        _quick_fix_equipment_group_seqs()
+        existing = _find_equipment_group_set_link(
+            equipment_group_id,
+            equipment_group_set_station_id,
+        )
+        if existing:
+            return existing
+
+        set_v2 = EquipmentGroupSet(
+            equipment_group_id=equipment_group_id,
+            equipment_group_set_station_id=equipment_group_set_station_id,
+        )
+        try:
+            with db.session.begin_nested():
+                db.session.add(set_v2)
+                db.session.flush()
+            return set_v2
+        except IntegrityError as exc:
+            last_exc = exc
+            existing = _find_equipment_group_set_link(
+                equipment_group_id,
+                equipment_group_set_station_id,
+            )
+            if existing:
+                return existing
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Не удалось создать EquipmentGroupSet")
 
 
 def _generate_stable_external_code_equipment_group(
@@ -331,14 +396,10 @@ def ensure_equipment_group_set_variant_for_station(
         station,
     )
 
-    _quick_fix_equipment_group_seqs()
-    set_v2 = EquipmentGroupSet(
-        equipment_group_id=equipment_group.id,
-        equipment_group_set_station_id=link.id,
+    return _create_equipment_group_set_with_retry(
+        equipment_group.id,
+        link.id,
     )
-    db.session.add(set_v2)
-    db.session.flush()
-    return set_v2
 
 
 def get_station_fuel_equipment_group_choice_tuples(

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Маршруты ведения параметров нагрузки (demand) по типам справочников."""
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @power_demand_bp.route("/")
 @login_required
 def hub():
-    return render_template("perimeter_variants/power_demand_start.html")
+    return render_template("power_demand/power_demand_start.html")
 
 
 # --- Россия (без родителя) ---
@@ -143,7 +143,7 @@ def russia_demand():
     )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "perimeter_variants/power_demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: Россия без НТ",
         parent_label="Россия без НТ",
@@ -189,7 +189,7 @@ def russia_with_nt_demand():
     )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "perimeter_variants/power_demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: Россия (с НТ)",
         parent_label="Россия (с НТ)",
@@ -235,7 +235,7 @@ def ees_russia_demand():
     )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "perimeter_variants/power_demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России без НТ",
         parent_label="ЕЭС России без НТ",
@@ -281,7 +281,7 @@ def ees_russia_with_nt_demand():
     )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "perimeter_variants/power_demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЕЭС России (с НТ)",
         parent_label="ЕЭС России (с НТ)",
@@ -321,7 +321,7 @@ def ees_demand():
     rows = dps.get_demand_rows(EesDemandParameter, None, None)
     rd = _parse_power_demand_rounding_digits()
     return render_template(
-        "perimeter_variants/power_demand_edit.html",
+        "power_demand/power_demand_edit.html",
         form=form,
         page_title="Нагрузки: ЭЭС",
         parent_label="ЭЭС",
@@ -344,7 +344,7 @@ def _parent_list(
     demand_endpoint,
     label_fn,
     *order_columns,
-    template_name: str = "perimeter_variants/power_demand_parent_list.html",
+    template_name: str = "power_demand/power_demand_parent_list.html",
     exclude_names: tuple[str, ...] = (),
     custom_order_by: tuple[Any, ...] | None = None,
     post_sort_key: Callable[[Any], tuple] | None = None,
@@ -445,7 +445,7 @@ def _demand_detail(
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess
     ctx["show_combined_on_ez"] = show_combined_on_ez
-    return render_template("perimeter_variants/power_demand_edit.html", **ctx)
+    return render_template("power_demand/power_demand_edit.html", **ctx)
 
 
 # Региональные энергосистемы
@@ -525,7 +525,7 @@ def federal_district_list():
             FederalDistrict.name.asc(),
             FederalDistrict.id.asc(),
         ),
-        template_name="perimeter_variants/power_demand_parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -648,7 +648,7 @@ def synchronous_area_list():
         "power_demand_bp.synchronous_area_demand",
         lambda o: o.name,
         SynchronousArea.id,
-        template_name="perimeter_variants/power_demand_parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано",),
         post_sort_key=_synchronous_area_by_display_order,
     )
@@ -685,7 +685,7 @@ def union_energy_system_list():
             UnionEnergySystem.name.asc(),
             UnionEnergySystem.id.asc(),
         ),
-        template_name="perimeter_variants/power_demand_parent_list_cards.html",
+        template_name="power_demand/power_demand_parent_list_cards.html",
         exclude_names=("не указано", "не указано2"),
     )
 
@@ -707,9 +707,9 @@ def union_energy_system_demand(parent_id: int):
         or ""
     ).strip()
     if binding is not None:
-        allowed = [v.code for v in binding.variants]
+        allowed = {v.code for v in binding.variants}
         if spv not in allowed:
-            spv = allowed[0] if allowed else ""
+            spv = binding.variants[0].code if binding.variants else ""
         suffix = ""
         pdefs = perimeter_variant_definitions()
         if spv and spv in pdefs:
@@ -743,7 +743,7 @@ def energy_system_type_list():
         q = q.filter(EnergySystemType.name.ilike(f"%{search}%"))
     items = q.all()
     return render_template(
-        "perimeter_variants/power_demand_parent_list.html",
+        "power_demand/power_demand_parent_list.html",
         form=_csrf(),
         page_title="Нагрузки: типы энергосистем",
         items=items,

@@ -3189,15 +3189,20 @@ def recalculate_station_powers_by_filtered_machines(stations, start_year, end_ye
         powers_by_year = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
 
         for machine in station.machines:
-            for mp in machine.machine_powers:
-                if start_year <= mp.year_number <= end_year:
-                    year = mp.year_number
-                    if mp.p_ust is not None:
-                        powers_by_year[year]["p_ust"] += Decimal(mp.p_ust)
-                    if mp.p_ogr is not None:
-                        powers_by_year[year]["p_ogr"] += Decimal(mp.p_ogr)
-                    if mp.p_rasp is not None:
-                        powers_by_year[year]["p_rasp"] += Decimal(mp.p_rasp)
+            # Важно: считаем итоги из machine.powers_by_year (нормализовано до 1 записи на год),
+            # иначе при дублях MachinePower за один год сумма "по станции" разойдётся с таблицей.
+            mp_map = getattr(machine, "powers_by_year", None) or {}
+            for year in range(start_year, end_year + 1):
+                mp = mp_map.get(year) or {}
+                p_ust = mp.get("p_ust")
+                p_ogr = mp.get("p_ogr")
+                p_rasp = mp.get("p_rasp")
+                if p_ust is not None:
+                    powers_by_year[year]["p_ust"] += Decimal(p_ust)
+                if p_ogr is not None:
+                    powers_by_year[year]["p_ogr"] += Decimal(p_ogr)
+                if p_rasp is not None:
+                    powers_by_year[year]["p_rasp"] += Decimal(p_rasp)
 
         # Округляем
         for year_data in powers_by_year.values():
@@ -3208,14 +3213,27 @@ def recalculate_station_powers_by_filtered_machines(stations, start_year, end_ye
 
 
 def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits):
-    machine.powers_by_year = {}
-    for mp in machine.machine_powers:
-        if not (start_year <= mp.year_number <= end_year):
+    # Нормализуем мощности до 1 записи на год.
+    # В БД могут встречаться дубли MachinePower на один год; для отображения и итогов
+    # важно выбирать детерминированно одну запись (берём с максимальным id).
+    by_year_best = {}
+    for mp in getattr(machine, "machine_powers", []) or []:
+        y = getattr(mp, "year_number", None)
+        if y is None or not (start_year <= y <= end_year):
             continue
-        machine.powers_by_year.setdefault(mp.year_number, {})
-        machine.powers_by_year[mp.year_number]["p_ust"] = mp.p_ust
-        machine.powers_by_year[mp.year_number]["p_ogr"] = mp.p_ogr
-        machine.powers_by_year[mp.year_number]["p_rasp"] = mp.p_rasp
+        mp_id = getattr(mp, "id", 0) or 0
+        prev = by_year_best.get(y)
+        prev_id = getattr(prev, "id", 0) or 0
+        if prev is None or mp_id >= prev_id:
+            by_year_best[y] = mp
+
+    machine.powers_by_year = {}
+    for y, mp in by_year_best.items():
+        machine.powers_by_year[y] = {
+            "p_ust": getattr(mp, "p_ust", None),
+            "p_ogr": getattr(mp, "p_ogr", None),
+            "p_rasp": getattr(mp, "p_rasp", None),
+        }
 
         # fuel_type_by_year вычисляется автоматически через @property в модели Machine
 
