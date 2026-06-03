@@ -17,3 +17,6 @@ from app.energy_consumption.models.territories import (  # noqa: F401
     regional_district_energy_consumption_parameter_model,
     russia_federation_energy_consumption_parameter_model,
 )
+from app.energy_consumption.models import (  # noqa: F401
+    energy_consumption_summary_formula_text_model,
+)

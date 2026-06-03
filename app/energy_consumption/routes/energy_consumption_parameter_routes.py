@@ -5,13 +5,19 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from flask import flash, redirect, render_template, request, url_for
-from flask_login import login_required
+from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import asc, not_
 
 from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
+from app.energy_consumption.services.energy_consumption_summary_formula_text_services import (
+    list_formulas_for_admin,
+    reset_formula_text_override,
+    save_formula_text_override,
+)
+from app.extensions import db
 
 # Модели demand
 from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
@@ -110,6 +116,52 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @login_required
 def hub():
     return render_template("energy_consumption/energy_consumption_start.html")
+
+
+@energy_consumption_bp.route("/summary-formulas/")
+@login_required
+def energy_consumption_summary_formulas():
+    if not getattr(current_user, "has_admin", False):
+        flash("Недостаточно прав для редактирования текстов формул.", "danger")
+        return redirect(url_for("energy_consumption_bp.hub"))
+    return render_template(
+        "energy_consumption/energy_consumption_summary_formulas.html",
+        page_title="Тексты формул сводок потребления электрической энергии",
+        formula_rows=list_formulas_for_admin(),
+        has_active_summary_filters=False,
+    )
+
+
+@energy_consumption_bp.route("/summary-formulas/save", methods=["POST"])
+@login_required
+def energy_consumption_summary_formulas_save():
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        save_formula_text_override(
+            formula_key=str(data.get("formula_key") or ""),
+            formula_text=str(data.get("formula_text") or ""),
+        )
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(exc)), 400
+    return jsonify(ok=True)
+
+
+@energy_consumption_bp.route("/summary-formulas/reset", methods=["POST"])
+@login_required
+def energy_consumption_summary_formulas_reset():
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    key = str(data.get("formula_key") or "").strip()
+    if not key:
+        return jsonify(ok=False, error="Не указан ключ формулы."), 400
+    reset_formula_text_override(key)
+    db.session.commit()
+    return jsonify(ok=True)
 
 
 # --- Россия (без родителя) ---

@@ -13,7 +13,21 @@ from app.power_demand.routes.power_demand_bp import power_demand_bp
 from app.power_demand.services.demand_summary_export_services import (
     build_demand_summary_excel_stream,
 )
+from app.common.services.database_version_services import get_current_version
+from app.logs.services.log_display_utils import format_logs_for_display
 from app.power_demand.services import demand_parameter_services as dps
+from app.power_demand.services.demand_summary_logging import (
+    count_pd_summary_logs,
+    load_formatted_pd_summary_logs,
+    load_pd_summary_logs_raw,
+)
+from app.power_demand.services.pd_summary_formula_template_vars import (
+    inject_pd_formula_template_variables,
+)
+from app.power_demand.services.power_demand_summary_formula_text_services import (
+    apply_row_formula_text_overrides,
+    build_pd_formula_texts_map,
+)
 from app.power_demand.services.demand_summary_services import (
     EZ_EXPORT_PARAMETER_KEYS,
     FO_COEFF_EXPORT_PARAMETER_KEYS,
@@ -40,6 +54,26 @@ from app.power_demand.services.demand_summary_services import (
 )
 
 
+DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS = 3
+
+
+def _attach_pd_summary_logs(context: dict) -> None:
+    scope = context.get("active_summary")
+    if scope not in ("oes", "fo", "ez"):
+        return
+    vid = get_current_version()
+    context["pd_summary_logs_formatted"] = load_formatted_pd_summary_logs(
+        str(scope), vid, limit=50
+    )
+
+
+def _attach_pd_summary_formula_texts(context: dict) -> None:
+    formula_texts = build_pd_formula_texts_map()
+    context["pd_formula_texts"] = formula_texts
+    inject_pd_formula_template_variables(context, formula_texts)
+    apply_row_formula_text_overrides(context.get("summary_rows"))
+
+
 def _parse_rounding_digits() -> int:
     raw = request.args.get("rounding_digits")
     if raw is None or str(raw).strip() == "":
@@ -56,7 +90,7 @@ def _parse_rounding_digits() -> int:
 
 
 def _parse_rounding_digits_k(*, fallback: int | None = None) -> int:
-    """Округление строк k на сводках «Коэффициенты…»; без параметра — как rounding_digits."""
+    """Округление строк k на сводках «Коэффициенты…»; без параметра — fallback (на coeff-страницах 3 знака)."""
     raw = request.args.get("rounding_digits_k")
     if raw is None or str(raw).strip() == "":
         return _parse_rounding_digits() if fallback is None else fallback
@@ -436,7 +470,9 @@ def demand_summary_oes_export_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     visible = _parse_oes_export_visible_keys()
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -469,7 +505,9 @@ def demand_summary_federal_districts_export_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     visible = _parse_summary_export_visible_keys(FO_COEFF_EXPORT_PARAMETER_KEYS)
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -502,7 +540,9 @@ def demand_summary_energy_zones_export_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     visible = _parse_summary_export_visible_keys(EZ_EXPORT_PARAMETER_KEYS)
     if visible is not None:
         context["summary_rows"] = filter_summary_rows_for_parameter_keys(
@@ -582,6 +622,13 @@ def demand_summary_save_cell():
         str(pvc_raw).strip() if pvc_raw not in (None, "") else None
     )
 
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
+
     try:
         display = dps.save_demand_summary_cell(
             demand_model_name,
@@ -593,10 +640,49 @@ def demand_summary_save_cell():
             parent_fk_column=parent_fk_column,
             parent_id=parent_id,
             perimeter_variant_code=perimeter_variant_code,
+            summary_log_scope=summary_log_scope,
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
     return jsonify(ok=True, display_value=display)
+
+
+@power_demand_bp.route("/summary/logs/<scope>", methods=["GET"])
+@login_required
+def demand_summary_scope_logs(scope: str):
+    """AJAX: журнал изменений сводки нагрузок (ОЭС / ФО / энергозоны) для текущей версии БД."""
+    if scope not in ("oes", "fo", "ez"):
+        return jsonify(ok=False, error="Неверная область журнала."), 400
+    offset = request.args.get("offset", 0, type=int) or 0
+    limit = request.args.get("limit", 150, type=int)
+    vid = get_current_version()
+    if limit == 0:
+        total = count_pd_summary_logs(scope, vid)
+        return jsonify(
+            ok=True,
+            logs=[],
+            offset=0,
+            limit=0,
+            count=0,
+            total=total,
+            has_more=False,
+        )
+    if limit is None:
+        limit = 150
+    limit = max(1, min(int(limit), 500))
+    rows = load_pd_summary_logs_raw(scope, vid, limit=limit, offset=offset)
+    formatted = format_logs_for_display(rows)
+    total = count_pd_summary_logs(scope, vid)
+    n = len(formatted)
+    return jsonify(
+        ok=True,
+        logs=formatted,
+        offset=offset,
+        limit=limit,
+        count=n,
+        total=total,
+        has_more=(offset + n) < total,
+    )
 
 
 @power_demand_bp.route("/summary/oes/")
@@ -626,6 +712,8 @@ def demand_summary_oes():
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -656,6 +744,8 @@ def demand_summary_energy_zones():
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -687,6 +777,8 @@ def demand_summary_federal_districts():
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
     context["summary_include_medium_years"] = include_medium
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -705,7 +797,9 @@ def demand_summary_oes_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     context.update(get_demand_summary_filter_refdata())
     context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
@@ -719,6 +813,8 @@ def demand_summary_oes_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -737,7 +833,9 @@ def demand_summary_federal_districts_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
@@ -751,6 +849,8 @@ def demand_summary_federal_districts_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -769,7 +869,9 @@ def demand_summary_energy_zones_coeff():
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(fallback=rd)
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
     context.update(get_demand_summary_filter_refdata())
     context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
     context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
@@ -783,4 +885,6 @@ def demand_summary_energy_zones_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _attach_pd_summary_logs(context)
+    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)

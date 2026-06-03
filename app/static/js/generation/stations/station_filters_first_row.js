@@ -85,6 +85,7 @@ function initializeStationFilters() {
                 Array.from(selectEl.options).forEach(opt => { opt.selected = false; });
                 setButtonText();
                 selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                scheduleFiltersFormSubmit();
                 renderMenu();
             });
 
@@ -131,6 +132,7 @@ function initializeStationFilters() {
                     if (found) found.selected = cb.checked;
                     setButtonText();
                     selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    scheduleFiltersFormSubmit();
                 });
 
                 const text = document.createElement('span');
@@ -171,6 +173,24 @@ function initializeStationFilters() {
         if (typeof el._multiDropdownRender === 'function') {
             el._multiDropdownRender();
         }
+    }
+
+    function scheduleFiltersFormSubmit() {
+        const filtersForm =
+            document.querySelector('#filtersCollapse form') ||
+            document.querySelector('#distributionFiltersCollapse form');
+        if (!filtersForm) return;
+        if (filtersForm._submitTimer) {
+            clearTimeout(filtersForm._submitTimer);
+        }
+        filtersForm._submitTimer = setTimeout(() => {
+            filtersForm._submitTimer = null;
+            if (typeof filtersForm.requestSubmit === 'function') {
+                filtersForm.requestSubmit();
+            } else {
+                filtersForm.submit();
+            }
+        }, 150);
     }
 
     function initializeSelect2IfAvailable(selector, placeholder) {
@@ -566,9 +586,7 @@ function initializeStationFilters() {
         filterSelectors.forEach(sel => {
             document.querySelectorAll(sel).forEach(el => {
                 if (el.form !== filtersForm) return;
-                el.addEventListener('change', () => {
-                    setTimeout(() => filtersForm.submit(), 150);
-                });
+                el.addEventListener('change', scheduleFiltersFormSubmit);
             });
         });
     }

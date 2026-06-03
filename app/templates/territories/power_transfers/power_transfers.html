@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<style>
+.power-transfers-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.power-transfers-table .col-energy-unit,
+.power-transfers-table .col-regional-district,
+.power-transfers-table .col-direction {
+    width: 15%;
+}
+</style>
+{% macro power_transfer_year_th(year) %}
+<th class="align-middle text-center" style="width: 50px;">
+    {{ year }}
+    <div class="text-wrap" style="word-wrap: break-word; white-space: normal;">
+        {% if year_features.get(year) %}
+            {{ year_features.get(year) }}
+        {% endif %}
+    </div>
+</th>
+{% endmacro %}
+<div class="container-fluid mt-2 px-3">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('territories_bp.territories_start') }}" class="btn btn-secondary fs-5">
+            <i class="bi bi-gear-wide-connected"></i> Модуль «Характеристики территорий»
+        </a>
+    </div>
+
+    <h1 class="text-center mb-4">{{ page_title }}</h1>
+
+    <form method="GET"
+        action="{{ url_for('territories_bp.power_transfers') }}"
+        class="mb-3"
+        id="filterForm">
+        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap w-100">
+            <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                <div style="min-width: 220px; max-width: 420px;">
+                    {{ form.power_transfer_filter(
+                        class="form-control",
+                        value=power_transfer_filter,
+                        placeholder="Поиск по энергоузлу, субъекту РФ, направлению"
+                    ) }}
+                </div>
+
+                <button type="submit"
+                        class="btn btn-outline-primary flex-shrink-0"
+                        onclick="this.form.page.value=1">
+                        Поиск
+                </button>
+
+                <a href="{{ url_for('territories_bp.power_transfers') }}"
+                        class="btn btn-outline-danger flex-shrink-0"
+                        data-no-preloader>
+                        Сбросить
+                </a>
+            </div>
+
+            {% if current_user.has_admin %}
+            <div class="d-flex gap-2 flex-shrink-0">
+                <button type="submit"
+                        form="powerTransfersEditForm"
+                        class="btn btn-outline-primary">
+                    Сохранить изменения
+                </button>
+
+                <a href="{{ url_for('territories_bp.add_power_transfer',
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    power_transfer_filter=power_transfer_filter,
+                                    start_year=start_year,
+                                    end_year=end_year,
+                                    ) }}"
+                   class="btn btn-primary">
+                    Добавить новую запись
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <input type="hidden" name="page" value="1">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+    </form>
+
+    {% set year_col_count = display_years|length %}
+    {% include 'territories/power_transfers/power_transfers_year_filters.html' %}
+
+    {% if current_user.has_admin %}
+        <form method="POST"
+              id="powerTransfersEditForm"
+              action="{{ url_for('territories_bp.power_transfers') }}">
+            {{ form.csrf_token }}
+
+            <input type="hidden" name="page" value="{{ pagination.page }}">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            <input type="hidden" name="power_transfer_filter" value="{{ power_transfer_filter }}">
+            <input type="hidden" name="start_year" value="{{ start_year }}">
+            <input type="hidden" name="end_year" value="{{ end_year }}">
+
+            <div class="table-responsive mt-3">
+                <table class="table table-hover table-striped table-bordered power-transfers-table">
+                    <thead>
+                        <tr class="table-success" style="word-wrap: break-word;">
+                            <th class="align-middle text-center" rowspan="2">№</th>
+                            <th class="align-middle text-center" colspan="1">Откуда</th>
+                            <th class="align-middle text-center" colspan="2">Куда</th>
+                            {% if year_col_count > 0 %}
+                            <th class="align-middle text-center" colspan="{{ year_col_count }}">
+                                Переток электроэнергии в смежные энергосистемы, млн кВт·ч
+                            </th>
+                            {% endif %}
+                            <th class="align-middle text-center" rowspan="2">Удалить</th>
+                        </tr>
+                        <tr class="table-success" style="word-wrap: break-word;">
+                            <th class="align-middle text-center col-energy-unit">
+                                <a href="{{ url_for('territories_bp.power_transfers',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    power_transfer_filter=power_transfer_filter,
+                                                    sort_by='energy_unit',
+                                                    sort_dir='asc' if sort_by != 'energy_unit' or sort_dir == 'desc' else 'desc',
+                                                    start_year=start_year,
+                                                    end_year=end_year) }}"
+                                    class="text-black">
+                                    Энергоузел
+                                    {% if sort_by == 'energy_unit' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="align-middle text-center col-regional-district">
+                                <a href="{{ url_for('territories_bp.power_transfers',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    power_transfer_filter=power_transfer_filter,
+                                                    sort_by='regional_district',
+                                                    sort_dir='asc' if sort_by != 'regional_district' or sort_dir == 'desc' else 'desc',
+                                                    start_year=start_year,
+                                                    end_year=end_year) }}"
+                                    class="text-black">
+                                    Субъект РФ
+                                    {% if sort_by == 'regional_district' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th class="align-middle text-center col-direction">
+                                <a href="{{ url_for('territories_bp.power_transfers',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    power_transfer_filter=power_transfer_filter,
+                                                    sort_by='direction',
+                                                    sort_dir='asc' if sort_by != 'direction' or sort_dir == 'desc' else 'desc',
+                                                    start_year=start_year,
+                                                    end_year=end_year) }}"
+                                    class="text-black">
+                                    Направление
+                                    {% if sort_by == 'direction' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            {% for year in display_years %}
+                            {{ power_transfer_year_th(year) }}
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in power_transfer_list %}
+                            <tr>
+                                <td class="text-center align-middle">
+                                    {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                    <input type="hidden" name="power_transfer_ids[]" value="{{ item.id }}">
+                                </td>
+                                <td class="col-energy-unit">
+                                    <select name="id_energy_units[]" class="form-select">
+                                        {% for eu_id, eu_name in energy_unit_list %}
+                                        <option value="{{ eu_id }}"
+                                            {% if eu_id == item.id_energy_unit %}selected{% endif %}>
+                                            {{ eu_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="col-regional-district">
+                                    <select name="id_regional_districts[]" class="form-select">
+                                        {% for rd_id, rd_name in regional_district_list %}
+                                        <option value="{{ rd_id }}"
+                                            {% if rd_id == item.id_regional_district %}selected{% endif %}>
+                                            {{ rd_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="col-direction">
+                                    <input type="text" name="directions[]" class="form-control"
+                                           value="{{ item.direction or '' }}">
+                                </td>
+                                {% for year in display_years %}
+                                {% set yval = power_transfer_year_values.get(item.id, {}).get(year) %}
+                                <td class="text-center align-middle">
+                                    <input type="text"
+                                           name="{{ power_transfer_year_field_name(item.id, year) }}"
+                                           class="form-control form-control-sm text-center"
+                                           inputmode="decimal"
+                                           autocomplete="off"
+                                           value="{% if yval is not none %}{{ yval|format_decimal_trim(1) }}{% endif %}">
+                                </td>
+                                {% endfor %}
+                                <td class="text-center align-middle">
+                                    <input type="checkbox" name="power_transfer_delete[]"
+                                           value="{{ item.id }}" class="form-check-input">
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="{{ 5 + year_col_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered power-transfers-table">
+                <thead>
+                    <tr class="table-success" style="word-wrap: break-word;">
+                        <th class="align-middle text-center" rowspan="2">№</th>
+                        <th class="align-middle text-center" colspan="1">Откуда</th>
+                        <th class="align-middle text-center" colspan="2">Куда</th>
+                        {% if year_col_count > 0 %}
+                        <th class="align-middle text-center" colspan="{{ year_col_count }}">
+                            Переток электроэнергии в смежные энергосистемы, млн кВт·ч
+                        </th>
+                        {% endif %}
+                    </tr>
+                    <tr class="table-success" style="word-wrap: break-word;">
+                        <th class="align-middle text-center col-energy-unit">
+                            <a href="{{ url_for('territories_bp.power_transfers',
+                                                page=pagination.page,
+                                                per_page=per_page,
+                                                power_transfer_filter=power_transfer_filter,
+                                                sort_by='energy_unit',
+                                                sort_dir='asc' if sort_by != 'energy_unit' or sort_dir == 'desc' else 'desc',
+                                                start_year=start_year,
+                                                end_year=end_year) }}"
+                                class="text-black">
+                                Энергоузел
+                                {% if sort_by == 'energy_unit' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="align-middle text-center col-regional-district">
+                            <a href="{{ url_for('territories_bp.power_transfers',
+                                                page=pagination.page,
+                                                per_page=per_page,
+                                                power_transfer_filter=power_transfer_filter,
+                                                sort_by='regional_district',
+                                                sort_dir='asc' if sort_by != 'regional_district' or sort_dir == 'desc' else 'desc',
+                                                start_year=start_year,
+                                                end_year=end_year) }}"
+                                class="text-black">
+                                Субъект РФ
+                                {% if sort_by == 'regional_district' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="align-middle text-center col-direction">
+                            <a href="{{ url_for('territories_bp.power_transfers',
+                                                page=pagination.page,
+                                                per_page=per_page,
+                                                power_transfer_filter=power_transfer_filter,
+                                                sort_by='direction',
+                                                sort_dir='asc' if sort_by != 'direction' or sort_dir == 'desc' else 'desc',
+                                                start_year=start_year,
+                                                end_year=end_year) }}"
+                                class="text-black">
+                                Направление
+                                {% if sort_by == 'direction' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        {% for year in display_years %}
+                        {{ power_transfer_year_th(year) }}
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in power_transfer_list %}
+                        <tr>
+                            <td class="text-center align-middle">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                            </td>
+                            <td class="col-energy-unit">{{ item.energy_unit.name if item.energy_unit else '—' }}</td>
+                            <td class="col-regional-district">{{ item.regional_district.name if item.regional_district else '—' }}</td>
+                            <td class="col-direction">{{ item.direction or '—' }}</td>
+                            {% for year in display_years %}
+                            {% set yval = power_transfer_year_values.get(item.id, {}).get(year) %}
+                            <td class="text-center align-middle">
+                                {% if yval is not none %}{{ yval|format_decimal_trim(1) }}{% else %}—{% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ 4 + year_col_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div>
+        {% include 'territories/power_transfers/power_transfers_pagination.html' %}
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

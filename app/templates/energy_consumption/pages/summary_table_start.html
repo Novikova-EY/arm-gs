@@ -1,0 +1,52 @@
+﻿{# Отдельный шаблон /energy_consumption/summary-table/start/ #}
+{% extends 'base.html' %}
+
+{% block title %}РЎРІРѕРґРЅР°СЏ С‚Р°Р±Р»РёС†Р°{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="container content-start-container">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                <h2 class="text-center align-middle mb-0 flex-grow-1">РЎРІРѕРґРЅР°СЏ С‚Р°Р±Р»РёС†Р°</h2>
+                <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-secondary">
+                    <i class="bi bi-gear-wide-connected"></i> РњРѕРґСѓР»СЊ В«РЎРїСЂРѕСЃВ»
+                </a>
+            </div>
+
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.summary_table_hub') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                РџРѕС‚СЂРµР±Р»РµРЅРёРµ СЌР»РµРєС‚СЂРёС‡РµСЃРєРѕР№ СЌРЅРµСЂРіРёРё<br>РїРѕ СЌРЅРµСЂРіРѕСЃРёСЃС‚РµРјР°Рј
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.demand_summary_table_federal_districts') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                РџРѕС‚СЂРµР±Р»РµРЅРёРµ СЌР»РµРєС‚СЂРёС‡РµСЃРєРѕР№ СЌРЅРµСЂРіРёРё<br>РїРѕ С„РµРґРµСЂР°Р»СЊРЅС‹Рј РѕРєСЂСѓРіР°Рј
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('energy_consumption_bp.demand_summary_table_energy_zones') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                РџРѕС‚СЂРµР±Р»РµРЅРёРµ СЌР»РµРєС‚СЂРёС‡РµСЃРєРѕР№ СЌРЅРµСЂРіРёРё<br>РїРѕ СЌРЅРµСЂРіРѕР·РѕРЅР°Рј
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+

@@ -1,4 +1,7 @@
-"""Выгрузка сводных таблиц потребления в Excel (в духе экранной таблицы: шапка, подписи к годам, заливки)."""
+"""Выгрузка сводных таблиц потребления в Excel (в духе экранной таблицы: шапка, подписи к годам, заливки).
+
+Дополнительно в книгу добавляются листы «млн. кВт.ч» и «СиПР» в формате, совместимом с импортом сводки.
+"""
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -6,6 +9,11 @@ from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
+
+from app.energy_consumption.services.energy_consumption_summary_import_services import (
+    SHEET_MLN_KVTCH,
+    SHEET_SIPR,
+)
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -20,6 +28,78 @@ def _excel_numeric_display_to_decimal(raw: Any) -> Decimal | None:
         return Decimal(s)
     except (InvalidOperation, ValueError):
         return None
+
+
+_IMPORT_PARAMETER_KEYS = (
+    "energy_consumption_mln_kvt_ch",
+    "energy_consumption_sipr_mln_kvt_ch",
+)
+
+
+def _import_cell_value(display: Any) -> Any:
+    """Число для листа импорта; пустые и «—» остаются пустыми."""
+    d = _excel_numeric_display_to_decimal(display)
+    if d is None:
+        return None
+    return float(d)
+
+
+def _build_import_format_matrix(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    *,
+    parameter_key: str,
+) -> list[list[Any]]:
+    """Строки листа «млн. кВт.ч» / «СиПР» из тех же summary_rows, что и экранный экспорт."""
+    data_rows: list[tuple[str, str | None, list[Any]]] = []
+    has_variant = False
+    for row in summary_rows:
+        if str(row.get("parameter_key") or "") != parameter_key:
+            continue
+        label = str(row.get("entity_label") or "").strip()
+        if not label or label.startswith("Проверка "):
+            continue
+        pvc = row.get("perimeter_variant_code")
+        if pvc not in (None, ""):
+            has_variant = True
+        yvals = list(row.get("year_values") or [])
+        data_rows.append((label, str(pvc) if pvc not in (None, "") else None, yvals))
+
+    header: list[Any] = (
+        ["perimeter-variants", "Наименование", *years]
+        if has_variant
+        else ["", "Наименование", *years]
+    )
+    matrix: list[list[Any]] = [header]
+    for label, pvc, yvals in data_rows:
+        body: list[Any] = [pvc or "", label] if has_variant else ["", label]
+        for i, _y in enumerate(years):
+            v = yvals[i] if i < len(yvals) else None
+            body.append(_import_cell_value(v))
+        matrix.append(body)
+    return matrix
+
+
+def _append_ec_summary_import_sheets(
+    wb: Workbook,
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+) -> None:
+    """Листы для повторного импорта (редактирование и «Импорт из Excel»)."""
+    mln = _build_import_format_matrix(
+        summary_rows, years, parameter_key=_IMPORT_PARAMETER_KEYS[0]
+    )
+    sipr = _build_import_format_matrix(
+        summary_rows, years, parameter_key=_IMPORT_PARAMETER_KEYS[1]
+    )
+    if len(mln) > 1:
+        ws_m = wb.create_sheet(SHEET_MLN_KVTCH)
+        for row in mln:
+            ws_m.append(row)
+    if len(sipr) > 1:
+        ws_s = wb.create_sheet(SHEET_SIPR)
+        for row in sipr:
+            ws_s.append(row)
 
 
 def _verification_export_year_font(display: Any) -> Font:
@@ -143,6 +223,8 @@ def build_demand_summary_excel_stream(
             ws.column_dimensions[letter].width = 52
         else:
             ws.column_dimensions[letter].width = 14
+
+    _append_ec_summary_import_sheets(wb, summary_rows, years)
 
     bio = BytesIO()
     wb.save(bio)

@@ -9,20 +9,77 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_numbers_sorted_for_current_db_version,
 )
 from app.common.services.database_version_services import get_current_version
+from app.extensions import db
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services.energy_consumption_summary_export_services import (
     build_demand_summary_excel_stream,
 )
 from app.energy_consumption.services.energy_consumption_summary_import_services import (
     import_energy_consumption_summary_from_xlsx_bytes,
+    persist_all_energy_consumption_summary_computed_rows,
 )
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
 from app.energy_consumption.services.energy_consumption_summary_logging import (
     count_ec_summary_logs,
     load_ec_summary_logs_raw,
-    load_formatted_ec_summary_logs,
 )
 from app.logs.services.log_display_utils import format_logs_for_display
+from app.energy_consumption.pages.summary_ez_page_services import (
+    PAGE_TEMPLATE as SUMMARY_EZ_PAGE_TEMPLATE,
+    build_summary_ez_page_context,
+)
+from app.energy_consumption.pages.summary_fo_page_services import (
+    PAGE_TEMPLATE as SUMMARY_FO_PAGE_TEMPLATE,
+    build_summary_fo_page_context,
+)
+from app.energy_consumption.pages.summary_oes_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_OES_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_oes_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_oes_page_services import (
+    PAGE_TEMPLATE as SUMMARY_OES_PAGE_TEMPLATE,
+    build_summary_oes_page_context,
+)
+from app.energy_consumption.pages.summary_ez_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_EZ_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_ez_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_fo_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_FO_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_fo_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_table_ez_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_EZ_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_table_ez_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_table_ez_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_EZ_PAGE_TEMPLATE,
+    build_summary_table_ez_page_context,
+)
+from app.energy_consumption.pages.summary_table_fo_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_FO_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_table_fo_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_table_fo_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_FO_PAGE_TEMPLATE,
+    build_summary_table_fo_page_context,
+)
+from app.energy_consumption.pages.summary_table_hub_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_HUB_PAGE_TEMPLATE,
+    build_summary_table_hub_page_context,
+)
+from app.energy_consumption.pages.summary_table_oes_gaes_charge_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_OES_GAES_CHARGE_PAGE_TEMPLATE,
+    build_summary_table_oes_gaes_charge_page_context,
+)
+from app.energy_consumption.pages.summary_table_oes_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_OES_PAGE_TEMPLATE,
+    build_summary_table_oes_page_context,
+)
+from app.energy_consumption.pages._summary_page_common import finalize_ec_summary_page_context
+from app.energy_consumption.pages.summary_table_start_page_services import (
+    PAGE_TEMPLATE as SUMMARY_TABLE_START_PAGE_TEMPLATE,
+)
 from app.energy_consumption.services.energy_consumption_gaes_charge_summary_services import (
     build_energy_consumption_gaes_charge_only_context,
     remove_oes_and_subject_rows_from_gaes_charge_context,
@@ -32,42 +89,15 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     FO_EXPORT_PARAMETER_KEYS,
     GAES_CHARGE_PARAMETER_KEY,
     OES_EXPORT_PARAMETER_KEYS,
-    build_energy_zones_summary_context,
-    build_federal_district_summary_context,
     build_oes_summary_context,
     finalize_summary_rows_for_excel_export,
-    filter_summary_rows_for_summary_table_page,
-    filter_oes_summary_hidden_tites_union_energy_system_rows,
-    filter_summary_table_gaes_charge_aggregate_rows,
-    keep_centralized_zone_rows_in_territory_compact,
-    get_demand_summary_filter_refdata,
-    get_energy_consumption_ez_filter_cascade_data,
-    get_energy_consumption_fo_filter_cascade_data,
-    get_energy_consumption_oes_filter_cascade_data,
     parse_energy_consumption_export_ui_options,
-    apply_energy_consumption_summary_table_variant_toggle_rows,
-    apply_federal_district_formula_to_summary_rows,
-    apply_gaes_without_charge_formula_to_summary_rows,
-    inject_federal_district_without_gaes_summary_rows,
-    inject_fo_summary_verification_rows,
-    inject_union_energy_system_without_gaes_summary_rows,
-    inject_oes_territory_detail_without_gaes_summary_rows,
-    apply_fo_rd_gaes_territory_entity_labels,
-    apply_union_energy_system_gaes_entity_labels,
-    apply_oes_territory_detail_gaes_entity_labels,
-    apply_summary_table_formula_calculations,
-    apply_oes_tites_root_formula_to_summary_rows,
-    apply_summary_table_russia_federation_row_rules,
-    inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows,
-    inject_oes_summary_verification_rows,
-    inject_oes_tites_aggregate_verification_row,
-    inject_south_ues_new_territories_summary_rows,
-    inject_south_fd_new_territories_summary_rows,
     slice_energy_consumption_summary_context_for_export_years,
-    tag_energy_consumption_summary_rows_for_territory_compact,
-    tag_energy_consumption_summary_rows_perimeter_variant_labels,
-    mask_summary_rows_perimeter_variant_year_display,
 )
+
+
+def _render_ec_summary_page(template: str, context: dict):
+    return render_template(template, **finalize_ec_summary_page_context(context))
 
 
 def _parse_rounding_digits() -> int:
@@ -125,6 +155,43 @@ def _expand_summary_years_for_period_segments(
     if eff_sy > eff_ey:
         eff_sy, eff_ey = eff_ey, eff_sy
     return eff_sy, eff_ey
+
+
+def _extend_form_end_year_for_medium_period(
+    end_year: int, base_year_n: int, *, include_medium_years: bool
+) -> int:
+    """Год конца в форме фильтра: при pd_medium=1 не уже N+6, иначе JS скрывает среднесрочные столбцы."""
+    if not include_medium_years:
+        return end_year
+    bounds = _filter_year_list_for_summary()
+    cap_ey = base_year_n + 6
+    if bounds:
+        cap_ey = min(cap_ey, bounds[-1])
+    return max(end_year, cap_ey)
+
+
+def _ec_summary_common_page_kwargs(*, summary_table_page: bool) -> dict:
+    """Общие GET-параметры страницы сводки и выгрузки Excel (одинаковый диапазон лет)."""
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    include_medium = _parse_summary_include_medium_years()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
+        sy, ey, n, include_medium_years=include_medium
+    )
+    if summary_table_page:
+        ey = _extend_form_end_year_for_medium_period(
+            ey, n, include_medium_years=include_medium
+        )
+    return {
+        "rounding_digits": _parse_rounding_digits(),
+        "start_year": sy,
+        "end_year": ey,
+        "data_start_year": eff_sy,
+        "data_end_year": eff_ey,
+        "filter_year_list": _filter_year_list_for_summary(),
+        "coeff_base_year": n,
+        "include_medium_years": include_medium,
+    }
 
 
 def _parse_summary_year_range() -> tuple[int, int]:
@@ -272,274 +339,29 @@ def _apply_ec_summary_export_filters(
         visible_parameter_keys=visible,
         ui_opts=ui_opts,
     )
-    return context
-
-
-def _attach_ec_summary_logs(context: dict) -> None:
-    scope = context.get("active_summary")
-    if scope not in ("oes", "fo", "ez"):
-        return
-    vid = get_current_version()
-    context["ec_summary_logs_formatted"] = load_formatted_ec_summary_logs(
-        str(scope), vid, limit=50
-    )
-
-
-def _convert_context_to_summary_table_page(
-    context: dict,
-    *,
-    keep_gaes_charge_territory_rows: bool = False,
-    hide_gaes_charge_aggregate_rows: bool = True,
-) -> dict:
-    summary_rows = list(context.get("summary_rows") or [])
-    source_summary_rows = list(summary_rows)
-    tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
-    context["summary_rows"] = filter_summary_rows_for_summary_table_page(
-        summary_rows,
-        keep_gaes_charge_territory_rows=keep_gaes_charge_territory_rows,
-    )
-    apply_energy_consumption_summary_table_variant_toggle_rows(context["summary_rows"])
-    if context.get("active_summary") == "fo":
-        apply_federal_district_formula_to_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_south_fd_new_territories_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_federal_district_without_gaes_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        apply_gaes_without_charge_formula_to_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        fo_res_sum_source_rows = list(source_summary_rows)
-        inject_fo_summary_verification_rows(
-            context["summary_rows"],
-            source_rows=list(context["summary_rows"]),
-            fo_res_sum_source_rows=fo_res_sum_source_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-    if context.get("active_summary") == "oes":
-        apply_summary_table_russia_federation_row_rules(context["summary_rows"])
-        apply_summary_table_formula_calculations(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        apply_oes_tites_root_formula_to_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-            eu_source_rows=source_summary_rows,
-        )
-        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_south_ues_new_territories_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        # РЭС скрыты compact-фильтром, но нужны для суммы в «Проверка для …».
-        ues_res_sum_source_rows = list(source_summary_rows)
-        inject_union_energy_system_without_gaes_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_oes_territory_detail_without_gaes_summary_rows(
-            context["summary_rows"],
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        verification_source_rows = list(context["summary_rows"])
-        inject_oes_summary_verification_rows(
-            context["summary_rows"],
-            source_rows=verification_source_rows,
-            ues_res_sum_source_rows=ues_res_sum_source_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        context["summary_rows"] = filter_oes_summary_hidden_tites_union_energy_system_rows(
-            context["summary_rows"]
-        )
-        inject_oes_tites_aggregate_verification_row(
-            context["summary_rows"],
-            source_rows=source_summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-    tag_energy_consumption_summary_rows_perimeter_variant_labels(context["summary_rows"])
-    mask_summary_rows_perimeter_variant_year_display(
-        context["summary_rows"],
-        list(context.get("years") or []),
-    )
-    if context.get("active_summary") == "fo":
-        apply_fo_rd_gaes_territory_entity_labels(context["summary_rows"])
-        apply_oes_territory_detail_gaes_entity_labels(context["summary_rows"])
-    if context.get("active_summary") == "oes":
-        apply_union_energy_system_gaes_entity_labels(context["summary_rows"])
-        apply_oes_territory_detail_gaes_entity_labels(context["summary_rows"])
-    if hide_gaes_charge_aggregate_rows and context.get("active_summary") == "oes":
-        context["summary_rows"] = filter_summary_table_gaes_charge_aggregate_rows(
-            context["summary_rows"]
-        )
-    context["summary_table_standalone"] = True
-    context["summary_variant_toggle_default_off"] = False
-    context["summary_table_hide_toggle"] = True
-    context["summary_table_force_compact_mode"] = True
-    context["summary_hub_endpoint"] = "energy_consumption_bp.summary_table_start"
-    context["summary_oes_endpoint"] = "energy_consumption_bp.demand_summary_oes"
-    context["summary_fo_endpoint"] = "energy_consumption_bp.demand_summary_federal_districts"
-    context["summary_ez_endpoint"] = "energy_consumption_bp.demand_summary_energy_zones"
-    if context.get("active_summary") == "oes":
-        context["page_title"] = "Сводная информация по потреблению электрической энергии"
-    return context
-
-
-def _apply_summary_table_variant_behaviour_to_summary_page(context: dict) -> dict:
-    """Варианты периметра и переключатели НТ/ГАЭС на обычных страницах сводки."""
-    summary_rows = list(context.get("summary_rows") or [])
-    apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
-    if context.get("active_summary") == "oes":
-        apply_summary_table_russia_federation_row_rules(summary_rows)
-    if context.get("active_summary") == "fo":
-        apply_federal_district_formula_to_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_south_fd_new_territories_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_federal_district_without_gaes_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_oes_territory_detail_without_gaes_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        apply_gaes_without_charge_formula_to_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_fo_summary_verification_rows(
-            summary_rows,
-            source_rows=list(summary_rows),
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-    if context.get("active_summary") == "oes":
-        apply_summary_table_formula_calculations(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        apply_oes_tites_root_formula_to_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_south_ues_new_territories_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        ues_res_sum_source_rows = list(summary_rows)
-        inject_union_energy_system_without_gaes_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        inject_oes_territory_detail_without_gaes_summary_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        source_summary_rows = list(summary_rows)
-        inject_oes_summary_verification_rows(
-            summary_rows,
-            source_rows=source_summary_rows,
-            ues_res_sum_source_rows=ues_res_sum_source_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-        summary_rows = filter_oes_summary_hidden_tites_union_energy_system_rows(
-            summary_rows
-        )
-        inject_oes_tites_aggregate_verification_row(
-            summary_rows,
-            source_rows=ues_res_sum_source_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
-    tag_energy_consumption_summary_rows_perimeter_variant_labels(summary_rows)
-    mask_summary_rows_perimeter_variant_year_display(
-        summary_rows,
-        list(context.get("years") or []),
-    )
-    if context.get("active_summary") == "fo":
-        apply_fo_rd_gaes_territory_entity_labels(summary_rows)
-        apply_oes_territory_detail_gaes_entity_labels(summary_rows)
-    if context.get("active_summary") == "oes":
-        apply_union_energy_system_gaes_entity_labels(summary_rows)
-        apply_oes_territory_detail_gaes_entity_labels(summary_rows)
-    tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
-    if context.get("active_summary") in ("oes", "fo"):
-        keep_centralized_zone_rows_in_territory_compact(summary_rows)
-    context = dict(context)
-    context["summary_rows"] = summary_rows
-    context["summary_variant_toggle_default_off"] = True
-    return context
+    return finalize_ec_summary_page_context(context)
 
 
 @energy_consumption_bp.route("/summary-table/start/")
 @login_required
 def summary_table_start():
     """Выбор разреза (ОЭС / ФО / ЭЗ) для сводной таблицы без строк РЭС и субъектов."""
-    return render_template("energy_consumption/energy_consumption_summary_start.html")
+    return render_template(SUMMARY_TABLE_START_PAGE_TEMPLATE)
 
 
 @energy_consumption_bp.route("/summary-table/")
 @login_required
 def summary_table_hub():
     """Корень сводной таблицы: ОЭС без строк РЭС/субъектов; синхронные зоны — как на /summary-table/oes/."""
-    return demand_summary_table_oes()
-
-
-@energy_consumption_bp.route("/summary/oes/export.xlsx")
-@login_required
-def demand_summary_oes_export():
     sy, ey = _parse_summary_year_range()
     n = _summary_period_base_year_n()
     include_medium = _parse_summary_include_medium_years()
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     oes_ordered = _parse_oes_territory_ordered()
-    context = build_oes_summary_context(
+    context = build_summary_table_hub_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -547,15 +369,22 @@ def demand_summary_oes_export():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
-        ees_top_from_db=True,
-        russia_country_summary_ec_divisor=1,
-        include_ees_russia_rows=False,
-        include_synchronous_area_rows=False,
-        include_oes_summary_table_sync_sa_ees_verification=False,
-        expand_south_ues_perimeter_variants=True,
-        summary_table_top_order=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
+    return _render_ec_summary_page(SUMMARY_TABLE_HUB_PAGE_TEMPLATE, context)
+
+
+@energy_consumption_bp.route("/summary/oes/export.xlsx")
+@login_required
+def demand_summary_oes_export():
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+    context = build_summary_oes_page_context(
+        oes_territory_ordered=_parse_oes_territory_ordered(),
+        can_edit_summary_cells=False,
+        **page_kw,
+    )
     context = _apply_ec_summary_export_filters(context, OES_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "energy_consumption_svodka_oes")
 
@@ -563,24 +392,12 @@ def demand_summary_oes_export():
 @energy_consumption_bp.route("/summary/federal-districts/export.xlsx")
 @login_required
 def demand_summary_federal_districts_export():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+    context = build_summary_fo_page_context(
+        fo_filter_sets=_parse_fo_filter_sets(),
+        can_edit_summary_cells=False,
+        **page_kw,
     )
-    fo_sets = _parse_fo_filter_sets()
-    context = build_federal_district_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-        expand_entity_perimeter_variants=True,
-    )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
     context = _apply_ec_summary_export_filters(context, FO_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "energy_consumption_svodka_fo")
 
@@ -588,53 +405,41 @@ def demand_summary_federal_districts_export():
 @energy_consumption_bp.route("/summary/energy-zones/export.xlsx")
 @login_required
 def demand_summary_energy_zones_export():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+    context = build_summary_ez_page_context(
+        ez_territory_ordered=_parse_ez_territory_ordered(),
+        can_edit_summary_cells=False,
+        **page_kw,
     )
-    ez_ordered = _parse_ez_territory_ordered()
-    context = build_energy_zones_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-        expand_entity_perimeter_variants=True,
-    )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
     context = _apply_ec_summary_export_filters(context, EZ_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "energy_consumption_svodka_ez")
+
+
+@energy_consumption_bp.route("/summary-table/export.xlsx")
+@login_required
+def demand_summary_table_hub_export():
+    """Выгрузка корня /summary-table/ — тот же контекст, что на экране (не /summary-table/oes/)."""
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
+    context = build_summary_table_hub_page_context(
+        oes_territory_ordered=_parse_oes_territory_ordered(),
+        can_edit_summary_cells=False,
+        **page_kw,
+    )
+    context = _apply_ec_summary_export_filters(
+        context, OES_EXPORT_PARAMETER_KEYS, summary_table_page=True
+    )
+    return _demand_summary_excel_response(context, "energy_consumption_svodka_table_hub")
 
 
 @energy_consumption_bp.route("/summary-table/oes/export.xlsx")
 @login_required
 def demand_summary_table_oes_export():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
+    context = build_summary_table_oes_page_context(
+        oes_territory_ordered=_parse_oes_territory_ordered(),
+        can_edit_summary_cells=False,
+        **page_kw,
     )
-    oes_ordered = _parse_oes_territory_ordered()
-    context = build_oes_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
-        ees_top_from_db=True,
-        russia_country_summary_ec_divisor=1,
-        include_oes_summary_table_sync_sa_ees_verification=True,
-        expand_south_ues_perimeter_variants=True,
-        summary_table_top_order=True,
-    )
-    context = _convert_context_to_summary_table_page(context)
     context = _apply_ec_summary_export_filters(
         context, OES_EXPORT_PARAMETER_KEYS, summary_table_page=True
     )
@@ -644,24 +449,12 @@ def demand_summary_table_oes_export():
 @energy_consumption_bp.route("/summary-table/federal-districts/export.xlsx")
 @login_required
 def demand_summary_table_federal_districts_export():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
+    context = build_summary_table_fo_page_context(
+        fo_filter_sets=_parse_fo_filter_sets(),
+        can_edit_summary_cells=False,
+        **page_kw,
     )
-    fo_sets = _parse_fo_filter_sets()
-    context = build_federal_district_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-        expand_entity_perimeter_variants=True,
-    )
-    context = _convert_context_to_summary_table_page(context)
     context = _apply_ec_summary_export_filters(
         context, FO_EXPORT_PARAMETER_KEYS, summary_table_page=True
     )
@@ -671,24 +464,12 @@ def demand_summary_table_federal_districts_export():
 @energy_consumption_bp.route("/summary-table/energy-zones/export.xlsx")
 @login_required
 def demand_summary_table_energy_zones_export():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
+    context = build_summary_table_ez_page_context(
+        ez_territory_ordered=_parse_ez_territory_ordered(),
+        can_edit_summary_cells=False,
+        **page_kw,
     )
-    ez_ordered = _parse_ez_territory_ordered()
-    context = build_energy_zones_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-        expand_entity_perimeter_variants=True,
-    )
-    context = _convert_context_to_summary_table_page(context)
     context = _apply_ec_summary_export_filters(
         context, EZ_EXPORT_PARAMETER_KEYS, summary_table_page=True
     )
@@ -717,6 +498,7 @@ def demand_summary_oes_gaes_charge_export():
         include_russia_top_row=False,
     )
     context = build_energy_consumption_gaes_charge_only_context(context)
+    context = remove_oes_and_subject_rows_from_gaes_charge_context(context)
     context = _apply_ec_summary_export_filters(
         context,
         frozenset({GAES_CHARGE_PARAMETER_KEY}),
@@ -877,6 +659,48 @@ def demand_summary_save_cell():
     return jsonify(ok=True, display_value=display)
 
 
+@energy_consumption_bp.route("/summary/persist-computed-rows", methods=["POST"])
+@login_required
+def demand_summary_persist_computed_rows():
+    """После сохранения ячеек: пересчитать и записать все расчётные показатели сводки в БД."""
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    rounding_digits = data.get("rounding_digits", 1)
+    try:
+        rounding_digits = int(rounding_digits)
+    except (TypeError, ValueError):
+        rounding_digits = 1
+    if rounding_digits not in (-1, 0, 1, 2, 3):
+        rounding_digits = 1
+
+    vid = get_current_version()
+    if vid is None:
+        return jsonify(ok=False, error="Не выбрана версия базы данных."), 400
+    years_ok = sorted(get_year_numbers_sorted_for_current_db_version() or [])
+    if not years_ok:
+        return jsonify(ok=False, error="В версии БД нет годов для пересчёта."), 400
+
+    try:
+        updated = persist_all_energy_consumption_summary_computed_rows(
+            database_version_id=int(vid),
+            years=years_ok,
+            rounding_digits=rounding_digits,
+        )
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "persist_all_energy_consumption_summary_computed_rows"
+        )
+        return jsonify(ok=False, error="Не удалось записать расчётные значения в БД."), 400
+
+    return jsonify(ok=True, cells_written_formula=updated)
+
+
 @energy_consumption_bp.route("/summary/perimeter-variant", methods=["POST"])
 @login_required
 def demand_summary_save_perimeter_variant():
@@ -1006,18 +830,17 @@ def demand_summary_persist_formula_block():
         rounding_digits = 3
 
     try:
-        updated = dps.persist_gaes_without_charge_formula_block(
-            demand_model_name=demand_model_name,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            source_perimeter_variant_code=data.get("source_perimeter_variant_code", dps._UNSET),
-            target_perimeter_variant_code=data.get("target_perimeter_variant_code", dps._UNSET),
-            formula_context=formula_context,
+        vid = get_current_version()
+        if vid is None:
+            raise ValueError("Не выбрана версия базы данных.")
+        updated = persist_all_energy_consumption_summary_computed_rows(
+            database_version_id=int(vid),
             years=years,
             rounding_digits=rounding_digits,
-            summary_log_scope=data.get("summary_log_scope"),
         )
+        db.session.commit()
     except ValueError as e:
+        db.session.rollback()
         return jsonify(ok=False, error=str(e)), 400
     return jsonify(ok=True, updated=updated)
 
@@ -1028,11 +851,23 @@ def demand_summary_scope_logs(scope: str):
     """AJAX: журнал изменений (ОЭС / ФО / энергозоны) для текущей версии БД."""
     if scope not in ("oes", "fo", "ez"):
         return jsonify(ok=False, error="Неверная область журнала."), 400
+    gaes_charge_only = request.args.get("gaes_charge", type=int) == 1
     offset = request.args.get("offset", 0, type=int) or 0
     limit = request.args.get("limit", 150, type=int)
+    vid = get_current_version()
+    if gaes_charge_only:
+        from app.energy_consumption.services.energy_consumption_summary_logging import (
+            count_ec_gaes_charge_logs,
+            load_ec_gaes_charge_logs_raw,
+        )
+
+        load_raw = load_ec_gaes_charge_logs_raw
+        count_logs = count_ec_gaes_charge_logs
+    else:
+        load_raw = load_ec_summary_logs_raw
+        count_logs = count_ec_summary_logs
     if limit == 0:
-        vid = get_current_version()
-        total = count_ec_summary_logs(scope, vid)
+        total = count_logs(scope, vid)
         return jsonify(
             ok=True,
             logs=[],
@@ -1045,10 +880,9 @@ def demand_summary_scope_logs(scope: str):
     if limit is None:
         limit = 150
     limit = max(1, min(int(limit), 500))
-    vid = get_current_version()
-    rows = load_ec_summary_logs_raw(scope, vid, limit=limit, offset=offset)
+    rows = load_raw(scope, vid, limit=limit, offset=offset)
     formatted = format_logs_for_display(rows)
-    total = count_ec_summary_logs(scope, vid)
+    total = count_logs(scope, vid)
     n = len(formatted)
     return jsonify(
         ok=True,
@@ -1071,8 +905,7 @@ def demand_summary_oes():
         sy, ey, n, include_medium_years=include_medium
     )
     oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context(
+    context = build_summary_oes_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1080,25 +913,11 @@ def demand_summary_oes():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
-        ees_top_from_db=True,
-        russia_country_summary_ec_divisor=1,
-        include_ees_russia_rows=False,
-        include_synchronous_area_rows=False,
-        include_oes_summary_table_sync_sa_ees_verification=False,
-        expand_south_ues_perimeter_variants=True,
-        summary_table_top_order=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
-    context["summary_variant_toggle_default_off"] = False
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_OES_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary/energy-zones/")
@@ -1111,8 +930,7 @@ def demand_summary_energy_zones():
         sy, ey, n, include_medium_years=include_medium
     )
     ez_ordered = _parse_ez_territory_ordered()
-    ez_l, res_l = ez_ordered
-    context = build_energy_zones_summary_context(
+    context = build_summary_ez_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1120,18 +938,11 @@ def demand_summary_energy_zones():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l or res_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_EZ_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary/federal-districts/")
@@ -1144,8 +955,7 @@ def demand_summary_federal_districts():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_res = fo_sets
-    context = build_federal_district_summary_context(
+    context = build_summary_fo_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1153,18 +963,11 @@ def demand_summary_federal_districts():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _apply_summary_table_variant_behaviour_to_summary_page(context)
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_res)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_FO_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary/oes/gaes-charge/")
@@ -1177,8 +980,7 @@ def demand_summary_oes_gaes_charge():
         sy, ey, n, include_medium_years=include_medium
     )
     oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context(
+    context = build_summary_oes_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1186,19 +988,11 @@ def demand_summary_oes_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
-        include_synchronous_area_rows=False,
-        include_russia_top_row=False,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary/federal-districts/gaes-charge/")
@@ -1211,8 +1005,7 @@ def demand_summary_federal_districts_gaes_charge():
         sy, ey, n, include_medium_years=include_medium
     )
     fo_sets = _parse_fo_filter_sets()
-    f_fd, f_res = fo_sets
-    context = build_federal_district_summary_context(
+    context = build_summary_fo_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1220,17 +1013,11 @@ def demand_summary_federal_districts_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_res)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary/energy-zones/gaes-charge/")
@@ -1243,8 +1030,7 @@ def demand_summary_energy_zones_gaes_charge():
         sy, ey, n, include_medium_years=include_medium
     )
     ez_ordered = _parse_ez_territory_ordered()
-    ez_l, res_l = ez_ordered
-    context = build_energy_zones_summary_context(
+    context = build_summary_ez_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1252,17 +1038,11 @@ def demand_summary_energy_zones_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l or res_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/oes/")
@@ -1274,9 +1054,9 @@ def demand_summary_table_oes():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context(
+    context = build_summary_table_oes_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1284,22 +1064,11 @@ def demand_summary_table_oes():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
-        ees_top_from_db=True,
-        russia_country_summary_ec_divisor=1,
-        include_oes_summary_table_sync_sa_ees_verification=True,
-        expand_south_ues_perimeter_variants=True,
-        summary_table_top_order=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(context)
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or eu_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_OES_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/oes/gaes-charge/")
@@ -1311,9 +1080,9 @@ def demand_summary_table_oes_gaes_charge():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context(
+    context = build_summary_table_oes_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1321,25 +1090,11 @@ def demand_summary_table_oes_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
-        include_synchronous_area_rows=False,
-        include_russia_top_row=False,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(
-        context,
-        keep_gaes_charge_territory_rows=True,
-        hide_gaes_charge_aggregate_rows=False,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    context = remove_oes_and_subject_rows_from_gaes_charge_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/federal-districts/")
@@ -1351,9 +1106,9 @@ def demand_summary_table_federal_districts():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     fo_sets = _parse_fo_filter_sets()
-    f_fd, _f_res = fo_sets
-    context = build_federal_district_summary_context(
+    context = build_summary_table_fo_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1361,18 +1116,11 @@ def demand_summary_table_federal_districts():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(context)
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_FO_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/federal-districts/gaes-charge/")
@@ -1384,9 +1132,9 @@ def demand_summary_table_federal_districts_gaes_charge():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     fo_sets = _parse_fo_filter_sets()
-    f_fd, _f_res = fo_sets
-    context = build_federal_district_summary_context(
+    context = build_summary_table_fo_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1394,23 +1142,11 @@ def demand_summary_table_federal_districts_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(
-        context,
-        keep_gaes_charge_territory_rows=True,
-        hide_gaes_charge_aggregate_rows=False,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/energy-zones/gaes-charge/")
@@ -1422,9 +1158,9 @@ def demand_summary_table_energy_zones_gaes_charge():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     ez_ordered = _parse_ez_territory_ordered()
-    ez_l, _res_l = ez_ordered
-    context = build_energy_zones_summary_context(
+    context = build_summary_table_ez_gaes_charge_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1432,23 +1168,11 @@ def demand_summary_table_energy_zones_gaes_charge():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(
-        context,
-        keep_gaes_charge_territory_rows=True,
-        hide_gaes_charge_aggregate_rows=False,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    context = build_energy_consumption_gaes_charge_only_context(context)
-    return render_template("energy_consumption/energy_consumption_gaes_charge_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
 @energy_consumption_bp.route("/summary-table/energy-zones/")
@@ -1460,9 +1184,9 @@ def demand_summary_table_energy_zones():
     eff_sy, eff_ey = _expand_summary_years_for_period_segments(
         sy, ey, n, include_medium_years=include_medium
     )
+    ey = _extend_form_end_year_for_medium_period(ey, n, include_medium_years=include_medium)
     ez_ordered = _parse_ez_territory_ordered()
-    ez_l, _res_l = ez_ordered
-    context = build_energy_zones_summary_context(
+    context = build_summary_table_ez_page_context(
         _parse_rounding_digits(),
         start_year=sy,
         end_year=ey,
@@ -1470,15 +1194,8 @@ def demand_summary_table_energy_zones():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
-        expand_entity_perimeter_variants=True,
+        coeff_base_year=n,
+        include_medium_years=include_medium,
+        can_edit_summary_cells=getattr(current_user, "has_admin", False),
     )
-    context = _convert_context_to_summary_table_page(context)
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_ec_summary_logs(context)
-    return render_template("energy_consumption/energy_consumption_summary.html", **context)
+    return _render_ec_summary_page(SUMMARY_TABLE_EZ_PAGE_TEMPLATE, context)

@@ -35,6 +35,9 @@ from sqlalchemy import or_
 from app.common.middleware import handle_stale_data
 from app.generation.services.station_services.station_services import get_station_by_id
 from app.logs.services.logging_service import log_to_db
+from app.generation.services.station_services.generation_year_filter_services import (
+    resolve_generation_year_filters_for_request,
+)
 
 
 def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
@@ -198,10 +201,15 @@ def machine_details(station_id, machine_id):
     
     user = session.get('username', 'Неизвестный пользователь')
 
-    # При POST start_year/end_year приходят в теле формы, при GET — в URL
-    start_year = request.values.get("start_year", get_filter_start_year(), type=int)
-    end_year = request.values.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.values.get("rounding_digits", 1, type=int)
+
+    if request.method == "GET":
+        start_year, end_year, year_redirect = resolve_generation_year_filters_for_request()
+        if year_redirect:
+            return year_redirect
+    else:
+        start_year = request.values.get("start_year", get_filter_start_year(), type=int)
+        end_year = request.values.get("end_year", get_filter_end_year(), type=int)
 
     nsy, ney = _normalize_start_end_years(start_year, end_year)
     if request.method == "GET" and (nsy, ney) != (start_year, end_year):

@@ -11,6 +11,7 @@ from app.refdata.services.year_management_services import (
     update_current_year,
     update_sipr_dates,
 )
+from config import Config
 
 @refdata_bp.errorhandler(403)
 def forbidden(error):
@@ -43,6 +44,7 @@ def refdata():
         "refdata/refdata.html",
         year_info=year_info,
         year_select_years=year_select_years,
+        general_scheme_end_year=Config.END_YEAR_GENERAL_SCHEME,
     )
 
 

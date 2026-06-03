@@ -24,6 +24,8 @@ def _excel_hide_plan_year_cell(
         return False
     if pk == "max_power":
         return False
+    if pk == "calculated_max_fo_mw":
+        return False
     if (
         coeff_base_year is not None
         and (coeff_base_year + 1) <= y <= (coeff_base_year + 6)

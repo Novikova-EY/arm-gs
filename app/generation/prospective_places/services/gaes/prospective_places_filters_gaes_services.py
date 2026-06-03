@@ -16,6 +16,12 @@ from app.common.services.get_services.energy_systems.regional_energy_system_get_
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
     get_est_to_rd_ids_map,
 )
+from app.generation.prospective_places.models.gaes.prospective_place_type_gaes_model import (
+    PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES,
+)
+
+# Тип «Перечень ГАЭС в соответствии с Генеральной схемой…» — порядок только по display_order площадки.
+_GENERAL_SCHEME_GAES_PLACE_TYPE_NAME = PROSPECTIVE_PLACE_TYPE_GAES_CANONICAL_NAMES[0]
 
 
 def extract_prospective_places_filters(args):
@@ -358,13 +364,59 @@ def get_prospective_places_gaes_filter_context(filters):
     }
 
 
+def _gaes_station_sort_key_by_display_order(s) -> tuple:
+    """Порядок площадки: display_order (NULLS LAST), затем site_name."""
+    st_od = s.display_order
+    name = (s.site_name or "") or ""
+    return (
+        st_od is None,
+        st_od if st_od is not None else 0,
+        name.lower(),
+    )
+
+
+def _gaes_station_sort_key_ues_then_display_order(s) -> tuple:
+    """Порядок площадки: ОЭС display_order, затем display_order площадки, затем site_name."""
+    ues_od = None
+    if s.regional_energy_system and s.regional_energy_system.union_energy_system:
+        ues_od = s.regional_energy_system.union_energy_system.display_order
+    st_od = s.display_order
+    name = (s.site_name or "") or ""
+    return (
+        ues_od is None,
+        ues_od if ues_od is not None else 0,
+        st_od is None,
+        st_od if st_od is not None else 0,
+        name.lower(),
+    )
+
+
+def _gaes_place_type_group_label(tid, sts) -> str:
+    if tid is None:
+        return "Тип площадки не указан"
+    if sts and sts[0].prospective_place_type_gaes:
+        return sts[0].prospective_place_type_gaes.name
+    return "Тип площадки не указан"
+
+
+def _gaes_sort_stations_within_place_type_group(tid, sts) -> None:
+    """Сортирует площадки внутри одной группы по типу площадки."""
+    label = _gaes_place_type_group_label(tid, sts)
+    if label == _GENERAL_SCHEME_GAES_PLACE_TYPE_NAME:
+        sts.sort(key=_gaes_station_sort_key_by_display_order)
+    else:
+        sts.sort(key=_gaes_station_sort_key_ues_then_display_order)
+
+
 def build_gaes_stations_grouped_by_place_type(stations):
     """Группирует площадки по типу площадки (карточка station).
 
-    Порядок групп: с указанным типом — по минимальному display_order ОЭС в группе,
-    затем по названию типа; группа «тип не указан» — в конце.
-    Внутри группы: UnionEnergySystem.display_order (NULLS LAST), затем
-    StationProspectivePlaceGAES.display_order (NULLS LAST), затем site_name.
+    Порядок групп: группа «тип не указан» — в начале; с указанным типом — по
+    минимальному display_order ОЭС в группе, затем по названию типа.
+    Внутри группы «Перечень ГАЭС в соответствии с Генеральной схемой…»: только
+    display_order площадки (как на карточке /gaes/<id>/), затем site_name.
+    В остальных группах: UnionEnergySystem.display_order, затем display_order
+    площадки, затем site_name.
     """
     from collections import defaultdict
 
@@ -376,24 +428,12 @@ def build_gaes_stations_grouped_by_place_type(stations):
             return s.regional_energy_system.union_energy_system.display_order
         return None
 
-    def station_sort_key(s):
-        ues_od = ues_display_order(s)
-        st_od = s.display_order
-        name = (s.site_name or "") or ""
-        return (
-            ues_od is None,
-            ues_od if ues_od is not None else 0,
-            st_od is None,
-            st_od if st_od is not None else 0,
-            name.lower(),
-        )
-
     by_type = defaultdict(list)
     for s in stations:
         by_type[s.id_prospective_place_type_gaes].append(s)
 
     for tid in by_type:
-        by_type[tid].sort(key=station_sort_key)
+        _gaes_sort_stations_within_place_type_group(tid, by_type[tid])
 
     def group_sort_key(tid):
         sts = by_type[tid]
@@ -410,7 +450,7 @@ def build_gaes_stations_grouped_by_place_type(stations):
         else:
             tlabel = ""
         return (
-            0 if tid is not None else 1,
+            1 if tid is not None else 0,
             min_od is None,
             min_od if min_od is not None else 0,
             tlabel,
@@ -421,11 +461,11 @@ def build_gaes_stations_grouped_by_place_type(stations):
     out = []
     for tid in sorted_ids:
         sts = by_type[tid]
-        if tid is None:
-            label = "Тип площадки не указан"
-        elif sts and sts[0].prospective_place_type_gaes:
-            label = sts[0].prospective_place_type_gaes.name
-        else:
-            label = "Тип площадки не указан"
-        out.append({"type_id": tid, "type_label": label, "stations": sts})
+        out.append(
+            {
+                "type_id": tid,
+                "type_label": _gaes_place_type_group_label(tid, sts),
+                "stations": sts,
+            }
+        )
     return out

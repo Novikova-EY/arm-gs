@@ -145,9 +145,6 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
     get_year_list_full,
 )
-from app.common.services.get_services.gen_companies.gen_company_get_services import (
-    get_gen_company_list_full,
-) 
 from app.generation.services.station_services.station_services import (
     get_stations_list,
     get_station_by_id, 
@@ -162,6 +159,8 @@ from app.generation.services.station_services.station_services import (
     save_station_energy_generation_service,
     save_station_gaes_charge_consumption_service,
     _apply_machine_display_names,
+    _apply_machine_gen_companies_for_version,
+    get_gen_company_choices_for_version,
 )
 from app.generation.services.station_services.import_station_services import (
     import_station_list_from_excel, 
@@ -298,6 +297,30 @@ def _station_logs_base_query(station: Station):
         )
         .filter(~Log.action.ilike("%Открыта страница  электростанции%"))
         .order_by(Log.timestamp.desc())
+    )
+
+
+def _load_station_logs_merged(station: Station, *, limit: int, offset: int = 0) -> list:
+    from app.energy_consumption.services.energy_consumption_summary_logging import (
+        load_merged_station_gaes_charge_logs_raw,
+    )
+
+    return load_merged_station_gaes_charge_logs_raw(
+        _station_log_entity_ids(station),
+        limit=limit,
+        offset=offset,
+        station_logs_query=_station_logs_base_query(station),
+    )
+
+
+def _count_station_logs_merged(station: Station) -> int:
+    from app.energy_consumption.services.energy_consumption_summary_logging import (
+        count_merged_station_gaes_charge_logs,
+    )
+
+    return count_merged_station_gaes_charge_logs(
+        _station_log_entity_ids(station),
+        station_logs_query=_station_logs_base_query(station),
     )
 
 
@@ -496,6 +519,16 @@ def station_details(station_id):
 
     user = session.get('username', 'Неизвестный пользователь')
     route_started_at = time.perf_counter()
+
+    if request.method == "GET":
+        from app.generation.services.station_services.generation_year_filter_services import (
+            resolve_generation_year_filters_for_request,
+        )
+
+        _, _, year_redirect = resolve_generation_year_filters_for_request()
+        if year_redirect:
+            return year_redirect
+
     current_version_id = get_current_db_version_id()
     
     def _station_query():
@@ -1175,7 +1208,7 @@ def station_details(station_id):
     station_logs_formatted = []
     if request.method == "GET":
         # entity_id — id станции в версии, из которой сохраняли; ищем по всем копиям (external_code).
-        station_logs_raw = _station_logs_base_query(station).limit(20).all()
+        station_logs_raw = _load_station_logs_merged(station, limit=20)
         station_logs_formatted = _format_logs_for_display(station_logs_raw)
     print(f"[DIAG] Логи: {(time.perf_counter() - t0)*1000:.0f} мс")
     
@@ -1352,13 +1385,8 @@ def station_logs(station_id):
     offset = request.args.get("offset", 0, type=int)
     limit = request.args.get("limit", 150, type=int)  # По умолчанию загружаем еще 150
     
-    logs_query = _station_logs_base_query(station)
-    
-    # Получаем общее количество
-    total_count = logs_query.count()
-    
-    # Применяем offset и limit
-    logs_raw = logs_query.offset(offset).limit(limit).all()
+    total_count = _count_station_logs_merged(station)
+    logs_raw = _load_station_logs_merged(station, limit=limit, offset=offset)
     logs_formatted = _format_logs_for_display(logs_raw)
     
     return jsonify({
@@ -1853,6 +1881,8 @@ def _render_machines_tbody(
     if not station:
         abort(404)
 
+    station.machines = _filter_items_by_version(station.machines, station_version_id)
+
     # Загружаем мощности и топливо только в нужном диапазоне лет, батчем по всем машинам
     machine_ids = [m.id for m in (station.machines or [])]
     powers_by_year = {}
@@ -1958,9 +1988,11 @@ def _render_machines_tbody(
 
     # Отображаемое название: как на machine_details — MachineName за год версии, иначе machine_name; при отличии в плане — "<текущ.> (<план>)"
     _apply_machine_display_names(station.machines)
+    _apply_machine_gen_companies_for_version(station.machines, station_version_id)
     # Прикрепляем срезы к машинам
     for m in station.machines:
         m.machine_powers = list((powers_by_machine_year.get(m.id, {}) or {}).values())
+        assign_machine_powers_by_year(m, start_year, end_year, rounding_digits)
         m.machine_fuels = list((fuels_by_machine_year.get(m.id, {}) or {}).values())
         # PGU attachments
         m.pgu_machines = pgu_by_parent.get(m.id, [])
@@ -1975,9 +2007,7 @@ def _render_machines_tbody(
     def format_decimal_with_rounding(value):
         return format_decimal_for_display(value, digits=rounding_digits)
 
-    gen_company_choices = [(0, "не указано")] + [
-        (gc.id, gc.name) for gc in get_gen_company_list_full()
-    ]
+    gen_company_choices = get_gen_company_choices_for_version(station_version_id)
 
     return render_template(
         "generation/stations/_machines_tbody.html",

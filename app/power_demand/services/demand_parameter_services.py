@@ -1002,6 +1002,242 @@ def _apply_summary_field_to_row(
         )
 
 
+_PD_SUMMARY_PARAM_LABELS: dict[str, str] = {
+    "max_power": "Максимальное потребление мощности, МВт",
+    "peak_datetime": "Дата и время, мск",
+    "avg_temp": "Среднесуточная ТНВ, °C",
+    "combined_on_oes": "Совмещенный на ОЭС, МВт",
+    "combined_on_ees": "Совмещенный на ЕЭС, МВт",
+    "combined_on_es": "Совмещенный на ЭС, МВт",
+    "combined_on_ez": "Совмещенный на энергозону, МВт",
+    "combined_on_fo": "Совмещенный на ФО, МВт",
+    "combined_on_cz": "Совмещенный на централизованную зону, МВт",
+    "entity_note": "Примечание",
+}
+
+_PD_SUMMARY_PARENT_FK_LABELS: dict[str, tuple[Type[Any], str]] = {
+    "id_regional_district": (RegionalDistrict, "субъект РФ"),
+    "id_regional_energy_system": (RegionalEnergySystem, "РЭС"),
+    "id_union_energy_system": (UnionEnergySystem, "ОЭС"),
+    "id_federal_district": (FederalDistrict, "федеральный округ"),
+    "id_energy_zone": (EnergyZone, "энергозона"),
+}
+
+
+def _pd_param_label_for_log(parameter_key: str) -> str:
+    pk = (parameter_key or "").strip()
+    if pk in _PD_SUMMARY_PARAM_LABELS:
+        return _PD_SUMMARY_PARAM_LABELS[pk]
+    if pk.startswith("coeff_k_"):
+        return f"Коэффициент ({pk})"
+    return pk or "показатель"
+
+
+def _summary_row_pd_snapshot(row: Any) -> dict[str, Any]:
+    if row is None:
+        return {}
+    snap: dict[str, Any] = {
+        "max_power": getattr(row, "max_power_consumption_mw", None),
+        "peak_datetime": getattr(row, "peak_datetime_msk", None),
+        "avg_temp": getattr(row, "avg_daily_air_temp_c", None),
+        "note": getattr(row, "note", None) if hasattr(row, "note") else None,
+    }
+    for k in (
+        "combined_on_oes",
+        "combined_on_ees",
+        "combined_on_es",
+        "combined_on_ez",
+        "combined_on_fo",
+        "combined_on_cz",
+    ):
+        if hasattr(row, k):
+            snap[k] = getattr(row, k, None)
+    if hasattr(row, "__table__"):
+        for col in row.__table__.columns:
+            name = col.name
+            if name.startswith("coeff_k_"):
+                snap[name] = getattr(row, name, None)
+    return snap
+
+
+def _fmt_pd_snap_val(
+    val: Any,
+    key: str,
+    rounding_digits: int,
+    *,
+    is_hist: bool = False,
+) -> str:
+    if val is None:
+        return "—"
+    if key == "peak_datetime":
+        s = format_peak_datetime_for_slice(val, is_hist)
+        return s if s else "—"
+    if key == "note":
+        s = str(val).strip()
+        return s if s else "—"
+    if key == "avg_temp":
+        return format_decimal_trim_for_display(val, digits=0) or "—"
+    if key.startswith("coeff_k_") or key in (
+        "max_power",
+        "combined_on_oes",
+        "combined_on_ees",
+        "combined_on_es",
+        "combined_on_ez",
+        "combined_on_fo",
+        "combined_on_cz",
+    ):
+        return format_decimal_trim_for_display(val, digits=rounding_digits) or "—"
+    s = str(val).strip()
+    return s if s else "—"
+
+
+def _pd_snap_numeric_equal(a: Any, b: Any) -> bool:
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+    try:
+        return Decimal(str(a)) == Decimal(str(b))
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+
+def _diff_pd_snap_for_log(
+    before: dict,
+    after: dict,
+    rounding_digits: int,
+    *,
+    parameter_key: str,
+    is_hist: bool = False,
+) -> list[str]:
+    pk = (parameter_key or "").strip()
+    if pk == "entity_note":
+        keys_order = ["note"]
+    elif pk in before or pk in after:
+        keys_order = [pk]
+    elif pk.startswith("coeff_k_"):
+        keys_order = [pk]
+    else:
+        keys_order = [pk] if pk else list(before.keys())
+
+    parts: list[str] = []
+    for k in keys_order:
+        if k not in before and k not in after:
+            continue
+        label = _pd_param_label_for_log("entity_note" if k == "note" else k)
+        vb, va = before.get(k), after.get(k)
+        if k not in ("peak_datetime", "note") and (
+            k.startswith("coeff_k_")
+            or k
+            in (
+                "max_power",
+                "avg_temp",
+                "combined_on_oes",
+                "combined_on_ees",
+                "combined_on_es",
+                "combined_on_ez",
+                "combined_on_fo",
+                "combined_on_cz",
+            )
+        ):
+            if _pd_snap_numeric_equal(vb, va):
+                continue
+        else:
+            fb_check = _fmt_pd_snap_val(vb, k, rounding_digits, is_hist=is_hist)
+            fa_check = _fmt_pd_snap_val(va, k, rounding_digits, is_hist=is_hist)
+            if fb_check == fa_check:
+                continue
+        fb = _fmt_pd_snap_val(vb, k, rounding_digits, is_hist=is_hist)
+        fa = _fmt_pd_snap_val(va, k, rounding_digits, is_hist=is_hist)
+        parts.append(f"{label}: {fb} → {fa}")
+    return parts
+
+
+def _parent_binding_label_for_pd_summary_log(
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    *,
+    database_version_id: Optional[int],
+) -> Optional[str]:
+    if not parent_fk_column or parent_id is None:
+        return None
+    spec = _PD_SUMMARY_PARENT_FK_LABELS.get(parent_fk_column)
+    if not spec:
+        return f"{parent_fk_column}={parent_id}"
+    model_cls, ru_short = spec
+    q = model_cls.query.filter(model_cls.id == int(parent_id))
+    if database_version_id is not None:
+        q = filter_by_explicit_db_version(q, model_cls, int(database_version_id))
+    ent = q.first()
+    pid = int(parent_id)
+    if ent is None:
+        return f"{parent_fk_column}={pid}; {ru_short}=— (нет в справочнике для версии БД)"
+    nm = getattr(ent, "name", None)
+    name_s = str(nm).strip() if nm is not None else ""
+    if name_s:
+        return f"{parent_fk_column}={pid}; {ru_short}={name_s}"
+    return f"{parent_fk_column}={pid}"
+
+
+def _maybe_log_pd_summary_cell(
+    summary_log_scope: Optional[str],
+    *,
+    demand_model_name: str,
+    parameter_key: str,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    row: Any,
+    snap_before: dict[str, Any],
+    rounding_digits: int,
+) -> None:
+    if not summary_log_scope or summary_log_scope not in ("oes", "fo", "ez") or row is None:
+        return
+    rid_log = getattr(row, "id", None)
+    if rid_log is not None:
+        model_cls = type(row)
+        fresh = model_cls.query.get(int(rid_log))
+        if fresh is not None:
+            row = fresh
+    snap_after = _summary_row_pd_snapshot(row)
+    is_hist = bool(getattr(row, "is_historical_maximum", False))
+    diff_lines = _diff_pd_snap_for_log(
+        snap_before,
+        snap_after,
+        rounding_digits,
+        parameter_key=parameter_key,
+        is_hist=is_hist,
+    )
+    if not diff_lines:
+        return
+    header_bits = [f"модель={demand_model_name}"]
+    if parent_fk_column and parent_id is not None:
+        pl = _parent_binding_label_for_pd_summary_log(
+            parent_fk_column,
+            parent_id,
+            database_version_id=getattr(row, "database_version_id", None),
+        )
+        if pl:
+            header_bits.append(pl)
+    if is_hist:
+        header_bits.append("срез=исторический максимум")
+    else:
+        yn = getattr(row, "year_number", None)
+        if yn is not None:
+            header_bits.append(f"год={yn}")
+    rid = getattr(row, "id", None)
+    if rid is not None:
+        header_bits.append(f"id_записи={rid}")
+    chunks: list[str] = [", ".join(header_bits)] + diff_lines
+    from app.power_demand.services.demand_summary_logging import log_pd_summary_cell_change
+
+    log_pd_summary_cell_change(
+        _username(),
+        summary_log_scope,
+        detail_chunks=chunks,
+        database_version_id=getattr(row, "database_version_id", None),
+    )
+
+
 def _year_number_has_plan_feature(year_number: int) -> bool:
     yf = get_year_feature_dict() or {}
     nm = yf.get(year_number)
@@ -1067,6 +1303,7 @@ def save_demand_summary_cell(
     parent_fk_column: Optional[str] = None,
     parent_id: Optional[int] = None,
     perimeter_variant_code: Any = _UNSET,
+    summary_log_scope: Optional[str] = None,
 ) -> str:
     """
     Создаёт или обновляет одно поле строки параметров нагрузки (сводная таблица).
@@ -1129,6 +1366,7 @@ def save_demand_summary_cell(
             if pvc is _UNSET and hasattr(erow0, "perimeter_variant_code"):
                 pvc = getattr(erow0, "perimeter_variant_code", None)
         display_row: Any = None
+        snap_before_note: dict[str, Any] = {}
         for vid in version_ids:
             parent_id_v: Optional[int] = None
             if demand_model_name not in _SUMMARY_STANDALONE_DEMAND_MODELS:
@@ -1156,6 +1394,8 @@ def save_demand_summary_cell(
                     database_version_id=vid,
                     perimeter_variant_code=pvc,
                 )
+            if vid == display_vid:
+                snap_before_note = _summary_row_pd_snapshot(erow)
             _apply_summary_field_to_row(erow, "note", raw_value, rounding_digits=rounding_digits)
             erow.modified_by = user
             if (
@@ -1183,6 +1423,16 @@ def save_demand_summary_cell(
             raise ValueError("Не удалось сохранить (конфликт данных).") from None
         if display_row is None:
             return ""
+        _maybe_log_pd_summary_cell(
+            summary_log_scope,
+            demand_model_name=demand_model_name,
+            parameter_key="entity_note",
+            parent_fk_column=parent_fk_column,
+            parent_id=anchor_parent_id,
+            row=display_row,
+            snap_before=snap_before_note,
+            rounding_digits=rounding_digits,
+        )
         return summary_cell_display_value(display_row, "entity_note", rounding_digits)
 
     model = _summary_demand_model_class(demand_model_name)
@@ -1233,6 +1483,7 @@ def save_demand_summary_cell(
             pvc = None
 
     display_row_main: Any = None
+    snap_before_main: dict[str, Any] = {}
     for vid in version_ids:
         parent_id_v: Optional[int] = None
         if demand_model_name not in _SUMMARY_STANDALONE_DEMAND_MODELS:
@@ -1260,6 +1511,8 @@ def save_demand_summary_cell(
                 database_version_id=vid,
                 perimeter_variant_code=pvc,
             )
+        if vid == display_vid:
+            snap_before_main = _summary_row_pd_snapshot(row)
         _apply_summary_field_to_row(row, parameter_key, raw_value, rounding_digits=rounding_digits)
         row.modified_by = user
         if (
@@ -1289,5 +1542,16 @@ def save_demand_summary_cell(
 
     if display_row_main is None:
         return "—"
+
+    _maybe_log_pd_summary_cell(
+        summary_log_scope,
+        demand_model_name=demand_model_name,
+        parameter_key=parameter_key,
+        parent_fk_column=parent_fk_column,
+        parent_id=anchor_parent_id,
+        row=display_row_main,
+        snap_before=snap_before_main,
+        rounding_digits=rounding_digits,
+    )
 
     return summary_cell_display_value(display_row_main, parameter_key, rounding_digits)

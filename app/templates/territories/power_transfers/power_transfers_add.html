@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+
+
+{% block title %}{{ page_title }}{% endblock %}
+
+
+
+{% block content %}
+
+{% if current_user.is_authenticated %}
+
+<div class="container-fluid mt-2 px-3">
+
+    <div class="d-flex justify-content-end mb-3">
+
+        <a href="{{ url_for('territories_bp.territories_start') }}" class="btn btn-secondary fs-5">
+
+            <i class="bi bi-gear-wide-connected"></i> Модуль «Характеристики территорий»
+
+        </a>
+
+    </div>
+
+</div>
+
+
+
+<div class="container mt-2">
+
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> {{ page_title }}</h2>
+
+
+
+      <form action="{{ url_for('territories_bp.add_power_transfer') }}" method="POST">
+
+        {{ form.hidden_tag() }}
+
+
+
+        <input type="hidden" name="page" value="{{ page }}">
+
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+
+        <input type="hidden" name="power_transfer_filter" value="{{ power_transfer_filter }}">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+
+
+
+        <p class="fw-bold mb-2">Откуда</p>
+
+        <div class="mb-4">
+
+            <label for="id_energy_unit" class="form-label">Энергоузел</label>
+
+            {{ form.id_energy_unit(class="form-select", id="id_energy_unit") }}
+
+            {% if form.id_energy_unit.errors %}
+
+                <div class="text-danger">{{ form.id_energy_unit.errors|join(', ') }}</div>
+
+            {% endif %}
+
+        </div>
+
+
+
+        <p class="fw-bold mb-2">Куда</p>
+
+        <div class="mb-3">
+
+            <label for="id_regional_district" class="form-label">Субъект РФ</label>
+
+            {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+
+            {% if form.id_regional_district.errors %}
+
+                <div class="text-danger">{{ form.id_regional_district.errors|join(', ') }}</div>
+
+            {% endif %}
+
+        </div>
+
+
+
+        <div class="mb-3">
+
+            <label for="direction" class="form-label">Направление</label>
+
+            {{ form.direction(class="form-control", id="direction") }}
+
+            {% if form.direction.errors %}
+
+                <div class="text-danger">{{ form.direction.errors|join(', ') }}</div>
+
+            {% endif %}
+
+        </div>
+
+
+
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
+
+            <button type="submit" class="btn btn-primary">Добавить</button>
+
+            <a href="{{ url_for('territories_bp.power_transfers',
+
+                                page=page,
+
+                                per_page=per_page,
+
+                                sort_by=sort_by,
+
+                                sort_dir=sort_dir,
+
+                                power_transfer_filter=power_transfer_filter,
+                                start_year=start_year,
+                                end_year=end_year,
+                                ) }}"
+
+               class="btn btn-outline-danger">
+
+                Отмена
+
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+

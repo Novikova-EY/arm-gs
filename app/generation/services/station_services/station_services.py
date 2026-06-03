@@ -247,6 +247,54 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
 
         # Сохраняем вычисленное имя на объекте агрегата (runtime-атрибут)
         setattr(m, "display_name", display_name)
+
+
+def _apply_machine_gen_companies_for_version(machines, version_id):
+    """
+    Подставляет GenCompany в версии станции (по ref_uuid), как при сохранении machine_details.
+    id_gen_company в Machine может ссылаться на id справочника другой версии БД.
+    """
+    if not machines:
+        return
+
+    from app.common.services.version_entity_resolve_services import (
+        resolve_gen_company_id_for_version,
+    )
+
+    resolved_by_machine = {}
+    resolved_ids = set()
+    for m in machines:
+        anchor_id = getattr(m, "id_gen_company", None)
+        if not anchor_id:
+            continue
+        resolved_id = resolve_gen_company_id_for_version(anchor_id, version_id)
+        if resolved_id:
+            resolved_by_machine[m.id] = resolved_id
+            resolved_ids.add(resolved_id)
+
+    if not resolved_ids:
+        return
+
+    gen_companies = {
+        gc.id: gc
+        for gc in GenCompany.query.filter(GenCompany.id.in_(resolved_ids)).all()
+    }
+    for m in machines:
+        resolved_id = resolved_by_machine.get(m.id)
+        if resolved_id and resolved_id in gen_companies:
+            m.gen_company = gen_companies[resolved_id]
+
+
+def get_gen_company_choices_for_version(version_id):
+    """Список (id, name) генкомпаний для указанной версии БД (для select на station_details)."""
+    query = GenCompany.query.order_by((GenCompany.id != 0), GenCompany.name.asc())
+    if version_id is None:
+        query = query.filter(GenCompany.database_version_id.is_(None))
+    else:
+        query = query.filter(GenCompany.database_version_id == version_id)
+    return [(0, "не указано")] + [(gc.id, gc.name) for gc in query.all()]
+
+
 from app.generation.services.station_services.aggregation_station_services.optimized_aggregation import (
     aggregate_all_at_once,
     )
@@ -4303,6 +4351,17 @@ def save_station_gaes_charge_consumption_service(
             details="; ".join(changes),
             entity_type="station",
             entity_id=station.id,
+        )
+        from app.energy_consumption.services.energy_consumption_summary_logging import (
+            log_gaes_charge_from_station_details,
+        )
+
+        log_gaes_charge_from_station_details(
+            user,
+            station_id=station.id,
+            station_name=station.name or "Без названия",
+            change_lines=changes,
+            database_version_id=station_version_id,
         )
         return changes
     except Exception:

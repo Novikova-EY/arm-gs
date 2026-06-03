@@ -20,6 +20,7 @@ from app.common.perimeter_variant.registry import (
     normalize_perimeter_variant_code,
     perimeter_entity_context_for_model,
     perimeter_variant_applies_to_year_code,
+    perimeter_variant_codes_for_entity,
     perimeter_variant_year_bounds_for_code,
     validate_perimeter_variant_for_entity,
 )
@@ -262,6 +263,38 @@ def filter_demand_by_version(query, demand_model):
     return query
 
 
+def resolve_demand_load_perimeter_variant_code(
+    demand_model: Type[Any],
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    *,
+    display_perimeter_variant_code: str | None = None,
+) -> str | None:
+    """Код варианта для чтения demand_rows при «базовой» строке сводки (None).
+
+    Для РЭС ДФО (Магадан, Сахалин, Чукотка и др.) в каталоге задан только О-1,
+    а импорт с листа «млн. кВт.ч» сохраняет прогноз в строках ``o1``. Без подстановки
+    на экране остаются пустые 2026+ при отображении строки без суффикса варианта.
+    """
+    if display_perimeter_variant_code is not None:
+        return display_perimeter_variant_code
+    if parent_fk_column is None or parent_id is None:
+        return None
+    if not model_supports_perimeter_variant(demand_model):
+        return None
+    entity_ctx = perimeter_entity_context_for_model(
+        demand_model.__name__,
+        parent_fk_column=parent_fk_column,
+        parent_id=int(parent_id),
+    )
+    if entity_ctx is None:
+        return None
+    allowed = perimeter_variant_codes_for_entity(*entity_ctx)
+    if len(allowed) == 1:
+        return allowed[0]
+    return None
+
+
 def get_demand_rows(
     demand_model,
     fk_column_name: Optional[str],
@@ -283,6 +316,64 @@ def get_demand_rows(
     order_parts.append(demand_model.year_number.asc().nullsfirst())
     rows = q.order_by(*order_parts).all()
     return rows
+
+
+def get_demand_rows_with_single_variant_fallback(
+    demand_model: Type[Any],
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+    *,
+    display_perimeter_variant_code: str | None = None,
+) -> list[Any]:
+    """Строки параметров: базовый вариант (None), для пустых годов — единственный вариант каталога."""
+    primary_rows = get_demand_rows(
+        demand_model,
+        fk_column_name,
+        parent_id,
+        perimeter_variant_code=display_perimeter_variant_code,
+    )
+    fallback_pvc = resolve_demand_load_perimeter_variant_code(
+        demand_model,
+        fk_column_name,
+        parent_id,
+        display_perimeter_variant_code=display_perimeter_variant_code,
+    )
+    if fallback_pvc is None or fallback_pvc == display_perimeter_variant_code:
+        return primary_rows
+    fallback_rows = get_demand_rows(
+        demand_model,
+        fk_column_name,
+        parent_id,
+        perimeter_variant_code=fallback_pvc,
+    )
+    if not fallback_rows:
+        return primary_rows
+    if not primary_rows:
+        return fallback_rows
+
+    def _row_has_numeric(row: Any) -> bool:
+        for attr in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
+            if getattr(row, attr, None) is not None:
+                return True
+        return False
+
+    by_year: dict[int, Any] = {}
+    for row in primary_rows:
+        yn = getattr(row, "year_number", None)
+        if yn is not None:
+            by_year[int(yn)] = row
+    for row in fallback_rows:
+        yn = getattr(row, "year_number", None)
+        if yn is None:
+            continue
+        year_key = int(yn)
+        primary = by_year.get(year_key)
+        if primary is None or not _row_has_numeric(primary):
+            by_year[year_key] = row
+    return sorted(by_year.values(), key=lambda r: int(getattr(r, "year_number", 0) or 0))
 
 
 def dedupe_duplicate_energy_consumption_rows_without_parent(
@@ -1425,6 +1516,7 @@ def _save_gaes_charge_summary_cell(
     row_id: Optional[int],
     slice_key: Any,
     gaes_station_id: Optional[int],
+    summary_log_scope: Optional[str] = None,
 ) -> str:
     """Сохранение заряда ГАЭС по станции из сводной таблицы."""
     from app.common.services.database_version_filter import set_db_version_on_create
@@ -1432,15 +1524,23 @@ def _save_gaes_charge_summary_cell(
         StationGaesChargeConsumption,
     )
     from app.generation.models.station.station_model import Station
+    from app.generation.services.machine_services.machine_services import (
+        is_same_decimal,
+        to_decimal,
+    )
 
     if gaes_station_id is None:
         raise ValueError("Для заряда ГАЭС укажите станцию.")
 
     vid = get_current_version()
-    station_q = Station.query.filter(Station.id == int(gaes_station_id))
+    station_q = (
+        Station.query.options(selectinload(Station.regional_district))
+        .filter(Station.id == int(gaes_station_id))
+    )
     if vid is not None:
         station_q = filter_by_explicit_db_version(station_q, Station, vid)
-    if station_q.first() is None:
+    station = station_q.first()
+    if station is None:
         raise ValueError("Станция ГАЭС не найдена для текущей версии БД.")
 
     row: Any = None
@@ -1461,6 +1561,8 @@ def _save_gaes_charge_summary_cell(
         )
         q = filter_demand_by_version(q, StationGaesChargeConsumption)
         row = q.first()
+
+    old_val = row.charge_consumption if row is not None else None
 
     s = str(raw_value or "").strip()
     if not s:
@@ -1499,6 +1601,30 @@ def _save_gaes_charge_summary_cell(
         db.session.rollback()
         raise ValueError("Не удалось сохранить (конфликт данных).") from None
 
+    year_n = getattr(row, "year_number", None)
+    if (
+        summary_log_scope in ("oes", "fo", "ez")
+        and year_n is not None
+        and not is_same_decimal(to_decimal(old_val), to_decimal(new_val))
+    ):
+        from app.energy_consumption.services.energy_consumption_summary_logging import (
+            log_gaes_charge_from_summary_table,
+        )
+
+        rd = getattr(station, "regional_district", None)
+        rd_name = rd.name if rd and getattr(rd, "name", None) else "не указано"
+        log_gaes_charge_from_summary_table(
+            _username(),
+            summary_log_scope=summary_log_scope,
+            station_id=int(gaes_station_id),
+            station_name=station.name or "Без названия",
+            rd_name=rd_name,
+            year=int(year_n),
+            old_val=old_val,
+            new_val=new_val,
+            database_version_id=getattr(row, "database_version_id", None) or vid,
+        )
+
     return summary_cell_display_value(row, _GAES_CHARGE_PARAMETER_KEY, rounding_digits)
 
 
@@ -1536,6 +1662,7 @@ def save_demand_summary_cell(
             row_id=row_id,
             slice_key=slice_key,
             gaes_station_id=gaes_station_id,
+            summary_log_scope=summary_log_scope,
         )
 
     if parameter_key == "entity_note":

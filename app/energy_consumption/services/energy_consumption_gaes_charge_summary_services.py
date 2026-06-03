@@ -109,6 +109,52 @@ def build_energy_consumption_gaes_charge_only_context(base: dict[str, Any]) -> d
     return out
 
 
+def exclude_gaes_charge_summary_rows(
+    summary_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Убирает строки ``gaes_charge_consumption_mln_kvt_ch``; пересчитывает ``entity_rowspan``."""
+    if not summary_rows:
+        return []
+    out: list[dict[str, Any]] = []
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if row.get("parameter_key") == GAES_CHARGE_PARAMETER_KEY:
+            i += 1
+            continue
+        if not row.get("show_entity_cell"):
+            out.append(dict(row))
+            i += 1
+            continue
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        block = summary_rows[i : i + block_size]
+        kept = [
+            dict(r)
+            for r in block
+            if r.get("parameter_key") != GAES_CHARGE_PARAMETER_KEY
+        ]
+        for j, r in enumerate(kept):
+            r["show_entity_cell"] = j == 0
+            r["entity_rowspan"] = len(kept)
+            if j == 0:
+                r["show_entity_note_cell"] = True
+            out.append(r)
+        i += block_size
+    return out
+
+
+def remove_gaes_charge_rows_from_summary_context(
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    """Сводка без строк заряда ГАЭС (страница /summary/energy-zones/)."""
+    out = dict(context)
+    out["summary_rows"] = exclude_gaes_charge_summary_rows(
+        list(context.get("summary_rows") or [])
+    )
+    return out
+
+
 def remove_oes_and_subject_rows_from_gaes_charge_context(
     context: dict[str, Any],
 ) -> dict[str, Any]:

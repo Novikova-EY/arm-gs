@@ -345,6 +345,8 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {
+        // Сброс: иначе после station_list в той же вкладке авто-submit фильтров не цепляется.
+        window.stationFiltersInitialized = false;
         initializeStationFilters();
     }
 });

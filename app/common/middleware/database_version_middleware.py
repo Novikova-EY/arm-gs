@@ -157,6 +157,27 @@ def set_session_version(version_id):
                 f"[VERSION_MIDDLEWARE] Ошибка при очистке кэшей агрегации: {e}"
             )
 
+        try:
+            from app.common.services.get_services.years.years_get_services import (
+                clear_planning_period_year_caches,
+            )
+            from app.generation.services.station_services.generation_year_filter_services import (
+                GENERATION_YEARS_VERSION_SESSION_KEY,
+                STATION_LIST_FILTERS_SESSION_KEY,
+            )
+
+            clear_planning_period_year_caches()
+            session.pop(GENERATION_YEARS_VERSION_SESSION_KEY, None)
+            saved_filters = session.get(STATION_LIST_FILTERS_SESSION_KEY)
+            if isinstance(saved_filters, dict):
+                for key in ("start_year", "end_year"):
+                    saved_filters.pop(key, None)
+                session[STATION_LIST_FILTERS_SESSION_KEY] = saved_filters
+        except Exception as e:
+            current_app.logger.warning(
+                f"[VERSION_MIDDLEWARE] Ошибка при сбросе годов фильтров генерации: {e}"
+            )
+
         # Дополнительная проверка: убеждаемся, что значение действительно сохранилось
         if version_id is not None and session.get('current_db_version') != version_id:
             current_app.logger.error(

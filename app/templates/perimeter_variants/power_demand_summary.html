@@ -12,7 +12,7 @@
     and coeff_base_year is defined
     and active_summary in ('oes', 'fo', 'ez')
 ) %}
-{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw') %}
+{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw') %}
 {% set show_hist_col = summary_route_variant != 'coeff' %}
 <div class="container-fluid mt-2">
     <div class="d-flex flex-wrap align-items-start gap-2 mb-3 w-100">
@@ -540,6 +540,10 @@
                             <span>Среднесуточная ТНВ, °C</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_fo_mw" checked>
+                            <span>Расчетный максимум ФО, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_cz" checked>
                             {% if summary_route_variant == 'coeff' %}
                             <span>Совмещенный на ЦЗ России, МВт</span>
@@ -716,6 +720,7 @@
             {% set _pd_oes_ues_calc_combined_ees_mw_formula = "Расчетный совмещенный на ЕЭС, МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_oes_formula = "Расчетный максимум ЕЭС (через ОЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» по всем ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_es_formula = "Расчетный максимум ЕЭС (через ЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
+            {% set _pd_fo_calc_max_mw_formula = "Расчетный максимум ФО, МВт = сумма значений «Совмещенный на ФО, МВт» всех РЭС, входящих в данный ФО" %}
             {% set _pd_coeff_k_ues_calc_max_oes = "k = Расчетный максимум ОЭС / Максимальное потребление мощности ОЭС" %}
             {% set _pd_coeff_k_ues_calc_combined_ees = "k = Расчетный совмещенный на ЕЭС / Максимальное потребление мощности ОЭС" %}
             {% set _pd_coeff_k_calculated_max_ees_via_oes = "k = Расчетный максимум ЕЭС (через ОЭС) / Максимальное потребление мощности" %}
@@ -944,6 +949,8 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name in ('EesRussiaDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif summary_route_variant == 'coeff' and active_summary == 'fo' and _cz_fo_tot %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_coeff_cz_total_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Пояснение расчёта строки"></i></span>
                         {% else %}
@@ -1811,7 +1818,7 @@ if (summaryTable) {
             applyBtnId: "powerDemandOesRowsApply"
         });
     } else if (summaryView === "fo") {
-        var foRowKeys = ["max_power", "peak_datetime", "avg_temp", "combined_on_cz", "combined_on_fo"];
+        var foRowKeys = ["max_power", "peak_datetime", "avg_temp", "calculated_max_fo_mw", "combined_on_cz", "combined_on_fo"];
         initPdSummaryRowPicker({
             rowKeys: foRowKeys,
             defaultHiddenKeys: coeffDefaultHidden,
@@ -3048,6 +3055,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var CALCULATED_MAX_ROUNDING_DIGITS = 3;
         var CALCULATED_MAX_PARAMETER_KEYS = {
             calculated_max_power_mw: true,
+            calculated_max_fo_mw: true,
             calculated_combined_on_ees_mw: true,
             calculated_max_ees_via_oes_mw: true,
             calculated_max_ees_via_es_mw: true

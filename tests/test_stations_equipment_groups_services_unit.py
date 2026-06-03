@@ -1,8 +1,12 @@
 from types import SimpleNamespace
 
+from sqlalchemy.dialects import postgresql
+
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.services.stations.stations_equipment_groups_services import (
     _merge_adjacent_group_blocks_for_display,
     _merge_adjacent_station_entries_for_display,
+    _territorial_filter_or_fk_or_obl,
 )
 
 
@@ -69,3 +73,23 @@ def test_merge_adjacent_group_blocks_for_display_uses_group_name():
     assert blocks[1]["show_merged_group_cells"] is False
     assert blocks[2]["show_merged_group_cells"] is True
     assert blocks[2]["merged_group_rowspan"] == 1
+
+
+def test_territorial_filter_with_res_fk_requires_regional_energy_system_id():
+    """Котельные с заполненным РЭС: фильтр должен учитывать regional_energy_system_id."""
+    clause = _territorial_filter_or_fk_or_obl(
+        EquipmentGroup,
+        {
+            "federal_district_filter": [92],
+            "regional_energy_system_filter": [491],
+        },
+        version_id=1,
+    )
+    assert clause is not None
+    sql = str(
+        clause.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+    assert "regional_energy_system_id" in sql

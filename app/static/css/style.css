@@ -71,11 +71,16 @@ body {
     display: block !important;
 }
 
+/* Одна вертикальная прокрутка: только .page-table-scroll, не html/body (см. base.html). */
+html.has-page-table-scroll {
+    overflow-y: hidden;
+}
+
 /* Единая логика для страниц с таблицами:
    скроллим весь контент страницы, а шапка таблицы остается sticky */
 .page-table-scroll {
-    /* высота рассчитывается относительно верхней "шапки" приложения */
-    max-height: calc(100vh - var(--app-topbar-height, 0px) - 16px);
+    /* Высота: от фактической позиции wrapper (задаётся JS), fallback — topbar + отступ */
+    max-height: calc(100vh - var(--page-table-scroll-top, var(--app-topbar-height, 0px)) - var(--page-table-scroll-bottom-gap, 8px));
     overflow-y: auto;
     /* На Windows при "always show scrollbars" любой overflow-x:auto рисует полосу даже без переполнения.
        Поэтому по умолчанию прячем горизонтальный скролл и включаем его только когда реально нужен (см. base.html JS). */
@@ -90,7 +95,8 @@ body {
 
 /* Внутри page-table-scroll вертикальный скролл должен быть один (на wrapper),
    а table-responsive используется только для горизонтального скролла */
-.page-table-scroll .table-responsive {
+.page-table-scroll .table-responsive,
+.page-table-scroll .power-demand-summary-scroll {
     max-height: none !important;
     /* Важно: overflow на промежуточном предке ломает sticky у thead/th.
        Поэтому в режиме page-table-scroll скролл (x/y) делаем только на wrapper. */
@@ -135,21 +141,43 @@ tfoot {
 /* Липкая шапка таблиц при прокрутке страницы */
 .table-responsive table thead th {
     position: sticky;
-    top: 0;
+    top: var(--sticky-thead-row1-top, 0px);
     z-index: 50; /* выше строк таблицы, ниже выпадающих меню (1050) */
-    /* фон берем из bootstrap переменных таблицы */
-    background-color: var(--bs-table-bg);
+    background-color: var(--bs-table-bg, #fff);
+    box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
 }
 
-/* Для многострочных шапок: каждая следующая строка ниже предыдущей (учёт rowspan в row1) */
+/* Цвет шапки: у striped-таблиц --bs-table-bg на <table> белый, переопределяем по thead */
+.table-responsive table thead.table-success th {
+    background-color: var(--bs-success-bg-subtle, #d1e7dd);
+}
+.table-responsive table thead.table-light th {
+    background-color: var(--bs-light-bg-subtle, #f8f9fa);
+}
+.table-responsive table thead.table-primary th {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+}
+
+/* Многострочные шапки (до 6 строк): top задаётся из base.html (--sticky-thead-rowN-top) */
 .table-responsive table thead tr:nth-child(2) th {
-    top: var(--sticky-thead-row1-height, 0px);
+    top: var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px));
     z-index: 49;
 }
-
 .table-responsive table thead tr:nth-child(3) th {
-    top: var(--sticky-thead-row3-offset, 0px);
+    top: var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px));
     z-index: 48;
+}
+.table-responsive table thead tr:nth-child(4) th {
+    top: var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px));
+    z-index: 47;
+}
+.table-responsive table thead tr:nth-child(5) th {
+    top: var(--sticky-thead-row5-top, 0px);
+    z-index: 46;
+}
+.table-responsive table thead tr:nth-child(6) th {
+    top: var(--sticky-thead-row6-top, 0px);
+    z-index: 45;
 }
 
 /* Сводка потребления / спроса: липкая панель (кнопки, фильтры, годы) над таблицей внутри .page-table-scroll */
@@ -160,17 +188,29 @@ tfoot {
     z-index: 1052;
 }
 
+/* Журнал изменений сводки нагрузок: без липкой шапки, прокрутка только у .page-table-scroll */
+.page-table-scroll #pd-summary-logs-table thead th {
+    position: static;
+    top: auto;
+    z-index: auto;
+    box-shadow: none;
+}
+
 /* Сдвиг липкой шапки только у основной сводной таблицы (.power-demand-summary-scroll), не у журнала и др. */
 .page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(1) th {
     top: var(--pd-summary-controls-sticky-height, 0px);
 }
 
 .page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(2) th {
-    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row1-height, 0px));
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
 }
 
 .page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(3) th {
-    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row3-offset, 0px));
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px)));
+}
+
+.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(4) th {
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px)));
 }
 
 /* Контейнер со скроллом для очень больших таблиц (список станций) */

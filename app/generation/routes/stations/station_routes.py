@@ -55,8 +55,10 @@ from app.generation.routes.stations.station_details_routes import _render_machin
 
 # Логирование
 from app.logs.services.logging_service import log_to_db
-
-STATION_LIST_FILTERS_SESSION_KEY = "station_list_last_query_args"
+from app.generation.services.station_services.generation_year_filter_services import (
+    STATION_LIST_FILTERS_SESSION_KEY,
+    resolve_generation_year_filters_for_request,
+)
 
 
 def _serialize_request_args_for_session(args):
@@ -92,6 +94,11 @@ def station_list():
 
     # Создание формы
     form = StationFilterForm()
+
+    if request.method == "GET":
+        _, _, year_redirect = resolve_generation_year_filters_for_request()
+        if year_redirect:
+            return year_redirect
 
     if request.method == "POST":
         return redirect(url_for("station_bp.station_list", **extract_filters_from_form(request.form)))

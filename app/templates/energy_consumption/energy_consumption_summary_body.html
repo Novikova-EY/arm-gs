@@ -1,4 +1,4 @@
-{% if current_user.is_authenticated %}
+﻿{% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
 {% set show_perimeter_variant_column = current_user.is_authenticated and current_user.has_admin %}
@@ -36,41 +36,7 @@
         {% endif %}
     {% endif %}
 {% endif %}
-{% set _pd_ec_yoy_formula = "Годовой темп прироста, % = (потребление ЭЭ за текущий год / потребление ЭЭ за предыдущий год) × 100 − 100" %}
-{% set _pd_ec_sipr_yoy_formula = "Годовой темп прироста (СиПР), % = (потребление ЭЭ за текущий год / потребление ЭЭ за предыдущий год) × 100 − 100" %}
-{% set _pd_ec_verify_for_ues_tooltip = "Проверка для ОЭС = потребление ЭЭ по ОЭС - сумма потребление ЭЭ по всем РЭС данной ОЭС" %}
-{% set _pd_ec_verify_for_fo_tooltip = "Проверка для ФО = потребление ЭЭ по ФО − сумма потребления ЭЭ по всем РЭС данного ФО (строки О-1 не учитываются)" %}
-{% set _pd_ec_verify_for_res_tooltip = "Проверка для РЭС = потребление ЭЭ РЭС - сумма потребления всех субъектов РФ этой РЭС" %}
-{% set _pd_ec_verify_for_tites_res_eu_tooltip = "Проверка для ЭС = потребление ЭЭ ЭС − сумма потребления ЭЭ энергорайонов без варианта o1, входящих в ЭС" %}
-{% set _pd_ec_verify_for_tites_aggregate_tooltip = "Проверка для ТИТЭС = потребление ТИТЭС − сумма потребления ЭЭ всех энергорайонов, входящих в ТИТЭС, − Западный энергорайон − Центральный энергорайон Республики Саха (Якутия) (строки с вариантом О-1 не учитываются)" %}
-{% set _pd_ec_verify_ees_with_nt_tooltip = "Проверка для ЕЭС России с НТ = потребление ЭЭ ЕЭС России с НТ - сумма потребления всех ОЭС (с НТ)" %}
-{% set _pd_ec_verify_ees_without_nt_tooltip = "Проверка для ЕЭС России без НТ = потребление ЭЭ ЕЭС России без НТ сумма потребления всех ОЭС (без НТ)" %}
-{% set _pd_ec_verify_south_with_nt_tooltip = "Проверка для ОЭС Юга с НТ = потребление ЭЭ ОЭС Юга (с НТ) – сумма потребления всех РЭС ОЭС Юга - потребление ЭЭ Новыми территориями" %}
-{% set _pd_ec_verify_south_without_nt_tooltip = "Проверка для ОЭС Юга без НТ = потребление ЭЭ ОЭС Юга (без НТ) – сумма потребления всех РЭС ОЭС Юга; для 2016 года и ранее из суммы РЭС исключается ЭС Республики Крым и г. Севастополя" %}
-{% set _pd_ec_ez_mln_formula = "Потребление ЭЭ энергозоны, млн кВт·ч = сумма потребления ЭЭ всех РЭС, входящих в эту энергозону" %}
-{% set _pd_ec_ez_sipr_formula = "Потребление ЭЭ энергозоны (СиПР), млн кВт·ч = сумма потребления ЭЭ (СиПР) всех РЭС, входящим в эту энергозону" %}
-{% set _pd_ec_fo_mln_formula = "Потребление ЭЭ по ФО, млн кВт·ч = сумма потребления ЭЭ всех РЭС, входящих в данный ФО" %}
-{% set _pd_ec_fo_sipr_formula = "Потребление ЭЭ по ФО (СиПР), млн кВт·ч = сумма потребления ЭЭ (СиПР) всех РЭС, входящих в данный ФО" %}
-{% set _pd_ec_fo_gaes_adj_sum_res_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление ФО − заряд ГАЭС" %}
-{% set _pd_ec_rd_gaes_adj_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление субъекта РФ − заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_fd_oes_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_ez_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_ees_russia_ez_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_ees_russia_with_nt_formula = "Потребление ЕЭС России с НТ без заряда ГАЭС, млн кВт·ч = Потребление ЕЭС России с НТ с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_ees_russia_without_nt_formula = "Потребление ЕЭС России без НТ без заряда ГАЭС, млн кВт·ч = Потребление ЕЭС России без НТ с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_sa_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_generic_formula = "Потребление электрической энергии без заряда ГАЭС, млн кВт·ч = Потребление с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_first_sa_with_nt_without_gaes_formula = "Первая синхронная зона с НТ без заряда ГАЭС, млн кВт·ч = Первая синхронная зона с НТ с зарядом ГАЭС - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_first_sa_with_nt_without_kaliningrad_without_gaes_formula = "Первая синхронная зона с НТ без заряда ГАЭС (без ЭС Калининградской области), млн кВт·ч = Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области) − заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_first_sa_without_nt_kaliningrad_without_gaes_formula = "Первая синхронная зона без НТ без заряда ГАЭС (с ЭС Калининградской области) = Первая синхронная зона без НТ с зарядом ГАЭС (с ЭС Калининградской области) - заряд ГАЭС" %}
-{% set _pd_ec_gaes_adj_first_sa_without_nt_without_kaliningrad_without_gaes_formula = "Первая синхронная зона без НТ без заряда ГАЭС (без ЭС Калининградской области) = Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области) − заряд ГАЭС" %}
-{% set _pd_ec_first_sa_with_nt_with_gaes_formula = "Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области), млн кВт·ч = сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону (в т.ч. ОЭС Северо-Запада с ЭС Калининградской области) + заряд ГАЭС + потребление ЭЭ Новыми территориями" %}
-{% set _pd_ec_first_sa_without_nt_without_kaliningrad_with_gaes_formula = "Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области), млн кВт·ч = сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону (в т.ч. ОЭС Северо-Запада с ЭС Калининградской области, ОЭС Юга и ОЭС Центра с зарядом ГAЭС), без ОЭС Востока и ОЭС «Новые территории» − потребление ЭС Калининградской области" %}
-{% set _pd_ec_ees_russia_ez_row_tooltip = _pd_ec_first_sa_with_nt_with_gaes_formula %}
-{% set _pd_ec_ees_russia_ez_with_nt_tooltip = "Потребление ЕЭС России с НТ, млн кВт·ч = сумма потребления ЭЭ всех ОЭС + потребление ЭЭ Новыми территориями" %}
-{% set _pd_ec_oes_ees_russia_without_nt_mln_tooltip = " Потребление ЕЭС России, млн кВт·ч = сумма потребления ЭЭ всех ОЭС" %}
-{% set _pd_ec_oes_ees_russia_with_nt_mln_tooltip = " Потребление ЕЭС России с НТ, млн кВт·ч = сумма потребления ЭЭ всех ОЭС + потребление ЭЭ Новыми территориями" %}
-{% set _pd_ec_oes_tites_mln_tooltip = "Потребление ТИТЭС, млн кВт·ч = сумма потребления ЭЭ всех энергорайонов, входящих в ТИТЭС, + Западный и Центральный энергорайоны ЭС Республики Саха (Якутия) (строки с вариантом О-1 не учитываются)" %}
+{% include 'energy_consumption/_ec_summary_formula_vars.html' %}
 
 {% set pd_ec_max_year_segments = (coeff_base_year is defined and active_summary in ('oes', 'fo', 'ez')) %}
 <div class="container-fluid mt-2">
@@ -636,6 +602,20 @@
         font-size: 0.95rem;
         pointer-events: none;
     }
+    /* Чукотка: Чаун-Билибинский и справочные строки — подписи слева на одном уровне (периметр / ЭС / параметр). */
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-perimeter-variant-cell,
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-entity-cell,
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-parameter-cell {
+        vertical-align: top;
+    }
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-perimeter-variant-cell {
+        text-align: left !important;
+    }
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-perimeter-variant-cell .text-wrap,
+    #powerDemandSummaryTable tbody tr[data-pd-ec-chukotka-reference-align] > td.summary-perimeter-variant-cell .pd-ec-perimeter-variant-select-label {
+        justify-content: flex-start;
+        text-align: left;
+    }
     #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-hidden,
     #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-empty-block-hidden {
         display: none !important;
@@ -878,8 +858,7 @@
                 {% endif %}
                 {% endif %}
             </colgroup>
-            {% set _pd_ec_sipr_abs_formula = "Абсолютный прирост потребления электрической энергии (СиПР) = потребление электроэнергии (СиПР) этого года — потребление электроэнергии (СиПР) прошлого года, млн кВт·ч" %}
-            {% set _pd_coeff_res_oes_k_formula = "k = Совмещенный на ОЭС / Максимальное потребление мощности" %}
+                        {% set _pd_coeff_res_oes_k_formula = "k = Совмещенный на ОЭС / Максимальное потребление мощности" %}
             {% set _pd_coeff_res_ees_k_formula = "k = Совмещенный на ЕЭС / Максимальное потребление мощности" %}
             {% set _pd_coeff_ues_calc_max_oes_mw = "Расчетный максимум ОЭС = сумма значений ячеек «Совмещенный на ОЭС, МВт» всех региональных энергосистем, входящих в эту ОЭС. k = Расчетный максимум ОЭС / Максимальное потребление мощности ОЭС." %}
             {% set _pd_coeff_ues_calc_combined_ees_mw = "Расчетный совмещенный на ЕЭС = сумма значений ячеек «Совмещенный на ЕЭС, МВт» всех региональных энергосистем, входящих в эту ОЭС. k = Расчетный совмещенный на ЕЭС / Максимальное потребление мощности ОЭС." %}
@@ -1115,7 +1094,9 @@
                     {% if row.get('pd_ec_nt_extra_row') %}data-pd-ec-nt-extra="1"{% endif %}
                     {% if row.get('pd_ec_nt_without_row') %}data-pd-ec-nt-without="1"{% endif %}
                     {% if row.get('pd_ec_skip_empty_hide_row') %}data-pd-ec-skip-empty-hide="1"{% endif %}
+                    {% if row.get('pd_ec_sipr_integer_display_row') %}data-pd-ec-sipr-integer-display="1"{% endif %}
                     {% if row.get('pd_ec_o1_form_row') %}data-pd-ec-o1-form="1"{% endif %}
+                    {% if row.get('pd_ec_chukotka_reference_align') %}data-pd-ec-chukotka-reference-align="1"{% endif %}
                     {% if row.get('pd_ec_verification_nt_split_only') %}data-pd-ec-verification-nt-only="1"{% endif %}
                     {% if row.get('pd_ec_verification_omit_sipr_abs') %}data-pd-ec-verification-omit-sipr-abs="1"{% endif %}
                     {% if row.get('pd_ec_sync_verify_nt_visibility') %}data-pd-ec-sync-verify-nt-vis="{{ row.pd_ec_sync_verify_nt_visibility|e }}"{% endif %}
@@ -1126,6 +1107,7 @@
                     {% set pd_ec_need_label_sync = row.get('pd_ec_entity_label_compact') or row.get('pd_ec_entity_label_compact_nt') or row.get('pd_ec_entity_label_compact_nt_gaes') or row.get('pd_ec_ees_verification_nt_collapsed_label') or row.get('pd_ec_sync_verify_label_matrix') %}
                     {% if pd_ec_need_label_sync %}
                     data-pd-ec-entity-label-full="{{ row.entity_label|e }}"
+                    {% if row.get('pd_ec_chersky_transfer_note') %}data-pd-ec-chersky-transfer-note="{{ row.pd_ec_chersky_transfer_note|e }}"{% endif %}
                     {% if row.get('pd_ec_entity_label_compact') %}data-pd-ec-entity-label-compact="{{ row.pd_ec_entity_label_compact|e }}"{% endif %}
                     {% if row.get('pd_ec_entity_label_compact_nt') %}data-pd-ec-entity-label-compact-nt="{{ row.pd_ec_entity_label_compact_nt|e }}"{% endif %}
                     {% if row.get('pd_ec_entity_label_compact_nt_gaes') %}data-pd-ec-entity-label-compact-both="{{ row.pd_ec_entity_label_compact_nt_gaes|e }}"{% endif %}
@@ -1178,7 +1160,10 @@
                         <div style="padding-left: {{ row.entity_depth * 1.5 }}rem;">
                             <span class="text-wrap">
                                 {{ row.entity_label }}
-                                {% if row.get('pd_ec_o1_form_row') %}
+                                {% if row.get('pd_ec_chersky_transfer_note') %}
+                                <span class="pd-ec-chersky-transfer-note ms-1">{{ row.pd_ec_chersky_transfer_note }}</span>
+                                {% endif %}
+                                {% if row.get('pd_ec_o1_form_row') or row.get('pd_ec_show_o1_badge') %}
                                 <span class="text-danger fw-black d-inline-block pd-ec-o1-form-badge"
                                       data-bs-toggle="tooltip"
                                       data-bs-placement="top"
@@ -1217,9 +1202,9 @@
                         {% elif active_summary == 'fo' and summary_route_variant != 'coeff' and (row.entity_label or '').startswith('Проверка для ') %}
                         {% set _pd_ec_fo_verify_tt = (row.pd_ec_verification_formula_tooltip if row.get('pd_ec_verification_formula_tooltip') else _pd_ec_verify_for_fo_tooltip) %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_fo_verify_tt|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается проверка"></i></span>
-                        {% elif active_summary == 'oes' and summary_route_variant != 'coeff' and row.get('pd_ec_verification_formula_tooltip') %}
+                        {% elif summary_route_variant != 'coeff' and row.get('pd_ec_verification_formula_tooltip') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_ec_verification_formula_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула проверки"></i></span>
-                        {% elif summary_route_variant != 'coeff' and row.get('pd_ec_summary_row_formula_tooltip') and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') %}
+                        {% elif summary_route_variant != 'coeff' and row.get('pd_ec_summary_row_formula_tooltip') and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') and not row.get('pd_ec_cz_o1_with_nt_manual_row') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_ec_summary_row_formula_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается строка"></i></span>
                         {% elif active_summary == 'oes' and summary_route_variant != 'coeff' and row.entity_kind == 'oes_ees_model_verification' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (_pd_ec_verify_ees_with_nt_tooltip if row.entity_label == 'Проверка ЕЭС России с НТ' else _pd_ec_verify_ees_without_nt_tooltip)|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается проверка"></i></span>
@@ -1239,7 +1224,7 @@
                         {% set _cz_ees_tt = _pd_ec_ees_russia_ez_with_nt_tooltip if row.get('centralized_zone_ez_with_nt_aggregate') else _pd_ec_ees_russia_ez_row_tooltip %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _cz_ees_tt|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается строка ЕЭС России"></i></span>
                         {% endif %}
-                        {% elif row.get('gaes_without_charge_formula_kind') %}
+                        {% elif row.get('gaes_without_charge_formula_kind') and row.parameter_key not in ('energy_consumption_yoy_growth_pct', 'energy_consumption_sipr_yoy_growth_pct', 'energy_consumption_sipr_abs_growth_mln') %}
                         {% if row.gaes_without_charge_formula_kind == 'ez' %}
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_gaes_adj_ez_formula %}
                         {% elif row.gaes_without_charge_formula_kind == 'ees_russia_with_nt_gaes_diff' %}
@@ -1340,7 +1325,7 @@
                     {% set _can_edit_slice = _demand_name_ok and (row.parent_fk_column is none or row.parent_id is not none) and (not _ec_row_is_gaes_synthetic or _ec_gaes_charge_station_editable or _ec_with_gaes_charge_db_block) %}
                     {% set _ez_auto_ec = active_summary == 'ez' and row.demand_model_name == 'EnergyZoneEnergyConsumptionParameter' and row.entity_kind == 'group' and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') %}
                     {% set _fo_auto_ec = active_summary == 'fo' and row.demand_model_name == 'FederalDistrictEnergyConsumptionParameter' and row.entity_kind == 'group' and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') %}
-                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and not row.get('pd_ec_formula_derived_row') and not _ez_auto_ec and not _fo_auto_ec and not _ec_ees_russia_composite_row %}
+                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and (not row.get('pd_ec_formula_derived_row') or row.get('pd_ec_cz_o1_with_nt_manual_row')) and not _ez_auto_ec and not _fo_auto_ec and not _ec_ees_russia_composite_row %}
                     {% set _can_edit_hist_cell = _can_edit_cell and not _ec_gaes_charge_station_editable %}
                     {% set _ues_readonly_coeff_display = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemEnergyConsumptionParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') %}
                     {% if show_hist_col %}
@@ -1506,7 +1491,7 @@
                                value="{{ _yv }}"
                                data-initial="{{ _yv|e }}"
                                data-slice="{{ _yr }}"
-                               {% if _cell_tt %}title="{{ _cell_tt|e }}" data-db-full="{{ _cell_tt|e }}"{% endif %}
+                               {% if _cell_tt %}title="{{ _cell_tt|e }}"{% if _yr_tt %} data-db-full="{{ _yr_tt|e }}"{% endif %}{% endif %}
                                {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
                                {% if row.parent_fk_column %}data-parent-fk="{{ row.parent_fk_column }}"{% endif %}
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
@@ -1519,7 +1504,7 @@
                         <input type="text" readonly tabindex="-1" lang="ru"
                                class="form-control form-control-lg text-center pd-coeff-display-mw"
                                value="{{ value }}"
-                               {% if _cell_tt %}title="{{ _cell_tt|e }}" data-db-full="{{ _cell_tt|e }}"{% endif %}
+                               {% if _cell_tt %}title="{{ _cell_tt|e }}"{% if _yr_tt %} data-db-full="{{ _yr_tt|e }}"{% endif %}{% endif %}
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, {{ _yr }} год" />
                         {% else %}
                         {{ value }}
@@ -1530,7 +1515,7 @@
                     {% if show_summary_note_col and row.show_entity_note_cell %}
                     {% set _note_rs = row.entity_rowspan - 2 if summary_route_variant == 'coeff' else row.entity_rowspan %}
                     {% set _nev = row.entity_note_text if row.entity_note_text is defined else '' %}
-                    {% set _can_note = can_edit_summary_cells and _demand_name_ok and (row.parent_fk_column is none or row.parent_id is not none) and not row.get('pd_ec_formula_derived_row') and not _ec_row_is_gaes_synthetic and not _ec_ees_russia_composite_row %}
+                    {% set _can_note = can_edit_summary_cells and _demand_name_ok and (row.parent_fk_column is none or row.parent_id is not none) and (not row.get('pd_ec_formula_derived_row') or row.get('pd_ec_cz_o1_with_nt_manual_row')) and not _ec_row_is_gaes_synthetic and not _ec_ees_russia_composite_row %}
                     <td rowspan="{{ _note_rs if _note_rs > 0 else 1 }}"
                         data-original-note-rowspan="{{ row.entity_rowspan }}"
                         class="summary-entity-note-cell align-middle text-start">
@@ -1702,6 +1687,11 @@ var PD_EC_YOY_ROW_KEYS = {
     energy_consumption_yoy_growth_pct: true,
     energy_consumption_sipr_yoy_growth_pct: true
 };
+var PD_EC_SIPR_INTEGER_ROW_KEYS = {
+    energy_consumption_sipr_mln_kvt_ch: true,
+    energy_consumption_sipr_abs_growth_mln: true,
+    gaes_charge_consumption_mln_kvt_ch: true
+};
 
 function pdEcParseRuDecimalToNumber(raw) {
     var s = String(raw || "").trim().replace(/\s/g, "").replace(",", ".");
@@ -1709,7 +1699,18 @@ function pdEcParseRuDecimalToNumber(raw) {
         return null;
     }
     var n = Number(s);
-    return isFinite(n) ? n : null;
+    if (isFinite(n)) {
+        return n;
+    }
+    var colon = s.lastIndexOf(":");
+    if (colon >= 0) {
+        n = Number(s.slice(colon + 1));
+        if (isFinite(n)) {
+            return n;
+        }
+    }
+    var m = s.match(/-?\d+(?:\.\d+)?/);
+    return m ? Number(m[0]) : null;
 }
 
 function pdEcRoundHalfUpToInt(n) {
@@ -1739,11 +1740,8 @@ function pdEcSummaryYearCellDisplayTarget(cell) {
     return { el: cell, isInput: false };
 }
 
-/** Сводная таблица: в режиме СиПР — целые значения, кроме строк «Годовой темп прироста». */
+/** В режиме СиПР — целые значения (сводная таблица целиком; иначе строки с data-pd-ec-sipr-integer-display). */
 function syncPdEcSummaryTableSiprIntegerDisplay() {
-    if (typeof pdEcSummaryTableStandalone === "undefined" || !pdEcSummaryTableStandalone) {
-        return;
-    }
     var summaryTable = document.getElementById("powerDemandSummaryTable");
     if (!summaryTable) {
         return;
@@ -1754,6 +1752,8 @@ function syncPdEcSummaryTableSiprIntegerDisplay() {
         summaryTable.getAttribute("data-pd-rounding-digits") ||
         "1";
     var roundingDigits = parseInt(roundingRaw, 10);
+    var applyToAllRows =
+        typeof pdEcSummaryTableStandalone !== "undefined" && pdEcSummaryTableStandalone;
     var tbody = summaryTable.querySelector("tbody");
     if (!tbody) {
         return;
@@ -1764,6 +1764,12 @@ function syncPdEcSummaryTableSiprIntegerDisplay() {
         }
         var pk = tr.getAttribute("data-parameter-key") || "";
         if (PD_EC_YOY_ROW_KEYS[pk]) {
+            return;
+        }
+        var applyInteger =
+            (applyToAllRows && PD_EC_SIPR_INTEGER_ROW_KEYS[pk]) ||
+            tr.getAttribute("data-pd-ec-sipr-integer-display") === "1";
+        if (!applyInteger) {
             return;
         }
         tr.querySelectorAll("td.summary-year-cell").forEach(function (cell) {
@@ -2051,8 +2057,7 @@ if (summaryTable) {
             var blockIsCzRussiaWithoutNt = blockRows.some(function (tr) {
                 return (
                     tr.classList.contains("summary-kind-centralized_zone") &&
-                    tr.getAttribute("data-pd-ec-nt-without") === "1" &&
-                    tr.getAttribute("data-pd-ec-o1-form") !== "1"
+                    tr.getAttribute("data-pd-ec-nt-without") === "1"
                 );
             });
             blockRows.forEach(function (tr) {
@@ -2111,6 +2116,32 @@ if (summaryTable) {
             });
             blockParity += 1;
         });
+    }
+
+    /**
+     * Подпись о перетоке в Черский (Чаун-Билибинский энергорайон), перед меткой О-1.
+     */
+    function syncPdEcCherskyTransferNote(tr, container) {
+        if (!container) {
+            return;
+        }
+        var existing = container.querySelector(".pd-ec-chersky-transfer-note");
+        if (existing) {
+            existing.remove();
+        }
+        var note = tr.getAttribute("data-pd-ec-chersky-transfer-note");
+        if (!note) {
+            return;
+        }
+        var span = document.createElement("span");
+        span.className = "pd-ec-chersky-transfer-note ms-1";
+        span.textContent = note;
+        var badge = container.querySelector(".pd-ec-o1-form-badge");
+        if (badge) {
+            container.insertBefore(span, badge);
+        } else {
+            container.appendChild(span);
+        }
     }
 
     /**
@@ -2203,6 +2234,7 @@ if (summaryTable) {
             }
             var labelWrap = wrap.querySelector(".text-wrap") || wrap;
             labelWrap.textContent = text;
+            syncPdEcCherskyTransferNote(tr, labelWrap);
             syncPdEcO1FormBadge(tr, labelWrap);
         });
         tbody.querySelectorAll("td.summary-entity-cell").forEach(function (cell) {
@@ -2211,6 +2243,7 @@ if (summaryTable) {
                 return;
             }
             var labelWrap = cell.querySelector(".text-wrap") || cell.querySelector("div");
+            syncPdEcCherskyTransferNote(tr, labelWrap);
             syncPdEcO1FormBadge(tr, labelWrap);
         });
         syncPdEcPerimeterVariantSelectLabels(summaryTable);
@@ -3573,6 +3606,10 @@ if (summaryTable) {
     }
 </style>
 
+{% if pd_ec_max_year_segments %}
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}"></script>
+{% endif %}
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     /* Мультивыбор без «вечно раскрытого» списка: как station_filters_first_row.js (без Select2) */
@@ -3804,146 +3841,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (useEcMax) {
-            var STORAGE_KEY = "energyConsumptionSummaryMaxYearSegVisibleV3";
-            var serverMediumLoaded = table.getAttribute("data-pd-server-medium-loaded") === "1";
-
-            function readEc() {
-                if (serverMediumLoaded) {
-                    return { reporting: true, medium: true };
-                }
-                try {
-                    var raw = sessionStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        var p = JSON.parse(raw);
-                        return {
-                            reporting: typeof p.reporting === "boolean" ? p.reporting : true,
-                            /* Без pd_medium=1 среднесрочных столбцов в DOM нет — не восстанавливаем medium из sessionStorage. */
-                            medium: false
-                        };
-                    }
-                } catch (e) { /* */ }
-                return { reporting: true, medium: false };
+            if (typeof initEcMaxYearPeriodMode === "function") {
+                initEcMaxYearPeriodMode();
             }
-
-            function writeEc(v) {
-                try {
-                    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(v));
-                } catch (e2) { /* */ }
-            }
-
-            function applyEcYearVisibility(v) {
-                var n = parseInt(table.getAttribute("data-coeff-base-year") || "", 10);
-                if (!n || isNaN(n)) {
-                    return;
-                }
-                var sySel = document.getElementById("start_year");
-                var eySel = document.getElementById("end_year");
-                var formSy = sySel ? parseInt(sySel.value, 10) : NaN;
-                var formEy = eySel ? parseInt(eySel.value, 10) : NaN;
-                var visible = {};
-                var y;
-                if (v.reporting && v.medium) {
-                    for (y = n - 9; y <= n + 6; y++) {
-                        visible[y] = true;
-                    }
-                } else if (v.reporting) {
-                    for (y = n - 9; y <= n; y++) {
-                        visible[y] = true;
-                    }
-                } else if (v.medium) {
-                    for (y = n + 1; y <= n + 6; y++) {
-                        visible[y] = true;
-                    }
-                } else if (!isNaN(formSy) && !isNaN(formEy)) {
-                    var lo = Math.min(formSy, formEy);
-                    var hi = Math.max(formSy, formEy);
-                    for (y = lo; y <= hi; y++) {
-                        visible[y] = true;
-                    }
-                }
-                if (!isNaN(formSy) && !isNaN(formEy) && Object.keys(visible).length > 0) {
-                    var formLo = Math.min(formSy, formEy);
-                    var formHi = Math.max(formSy, formEy);
-                    Object.keys(visible).forEach(function (key) {
-                        var yr = parseInt(key, 10);
-                        if (yr < formLo || yr > formHi) {
-                            delete visible[key];
-                        }
-                    });
-                }
-                table.querySelectorAll("[data-ec-summary-col-year]").forEach(function (el) {
-                    var raw = el.getAttribute("data-ec-summary-col-year");
-                    var yr = parseInt(raw || "", 10);
-                    var show = Object.prototype.hasOwnProperty.call(visible, yr);
-                    el.classList.toggle("pd-ec-year-col-hidden", !show);
-                });
-            }
-
-            function syncEcButtons(v) {
-                bar.querySelectorAll("button[data-coeff-seg]").forEach(function (btn) {
-                    var seg = btn.getAttribute("data-coeff-seg");
-                    if (seg !== "reporting" && seg !== "medium") {
-                        return;
-                    }
-                    var on = v[seg] !== false;
-                    btn.classList.toggle("btn-warning", on);
-                    btn.classList.toggle("btn-outline-warning", !on);
-                    btn.setAttribute("aria-pressed", on ? "true" : "false");
-                });
-            }
-
-            function applyEc(v) {
-                applyEcYearVisibility(v);
-                syncEcButtons(v);
-            }
-
-            var stateEc = readEc();
-            applyEc(stateEc);
-
-            var syEl = document.getElementById("start_year");
-            var eyEl = document.getElementById("end_year");
-            [syEl, eyEl].forEach(function (sel) {
-                if (!sel) {
-                    return;
-                }
-                sel.addEventListener("change", function () {
-                    applyEc(stateEc);
-                });
-            });
-
-            bar.addEventListener("click", function (e) {
-                var btn = e.target.closest("button[data-coeff-seg]");
-                if (!btn) {
-                    return;
-                }
-                var seg = btn.getAttribute("data-coeff-seg");
-                if (seg !== "reporting" && seg !== "medium") {
-                    return;
-                }
-                if (seg === "medium" && !stateEc.medium && !serverMediumLoaded) {
-                    try {
-                        var u = new URL(window.location.href);
-                        u.searchParams.set("pd_medium", "1");
-                        window.location.href = u.toString();
-                    } catch (eNav) { /* */ }
-                    return;
-                }
-                stateEc[seg] = !stateEc[seg];
-                if (seg === "medium" && !stateEc.medium) {
-                    try {
-                        var u2 = new URL(window.location.href);
-                        if (u2.searchParams.has("pd_medium")) {
-                            u2.searchParams.delete("pd_medium");
-                            var qs = u2.searchParams.toString();
-                            window.history.replaceState(window.history.state, "", u2.pathname + (qs ? "?" + qs : "") + u2.hash);
-                        }
-                    } catch (eRm) { /* */ }
-                }
-                writeEc(stateEc);
-                applyEc(stateEc);
-            });
             return;
         }
+
 
         var longLoaded = table.getAttribute("data-coeff-long-loaded") === "1";
         var STORAGE_KEY = "powerDemandSummaryCoeffYearSegVisible";

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Характеристики территорий{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+
+<div class="container content-start-container">
+    <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">{{ module_title }}</h2>
+        <div class="row g-4 justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('territories_bp.power_transfers') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Перетоки электроэнергии в смежные энергосистемы
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endif %}
+{% endblock %}

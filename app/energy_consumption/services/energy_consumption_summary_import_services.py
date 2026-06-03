@@ -687,6 +687,27 @@ def _aggregate_model_requires_perimeter_variant(model_cls: Type[Any]) -> bool:
     return bool(perimeter_variant_codes_for_entity(*ctx))
 
 
+def _normalize_russia_federation_import_perimeter_variant(
+    label: str,
+    perimeter_variant_code: str | None,
+) -> str | None:
+    """Вариант периметра для ``RussiaFederationEnergyConsumptionParameter`` при импорте сводки.
+
+    На листе «млн. кВт.ч» строка «Россия» часто помечена ``with_nt`` в колонке perimeter-variants
+    (как в дереве сводки), но в БД базовые значения «млн кВт·ч» хранятся с ``without_nt``
+    (страница «Россия без НТ»). Явная подпись «Россия с НТ» → ``with_nt``.
+    """
+    label_n = _norm_entity_label(_normalize_import_label_typos(label))
+    if label_n == _norm_entity_label("Россия с НТ"):
+        return CODE_WITH_NT
+    if label_n in (
+        _norm_entity_label("Россия"),
+        _norm_entity_label("Россия без НТ"),
+    ):
+        return CODE_WITHOUT_NT
+    return perimeter_variant_code
+
+
 def _resolve_aggregate_energy_consumption_binding(
     label: str,
     *,
@@ -700,6 +721,10 @@ def _resolve_aggregate_energy_consumption_binding(
         if model_cls is None:
             model_cls = _AGGREGATE_MODEL_BY_BASE_LABEL.get(_norm_entity_label(label))
         if model_cls is not None:
+            if model_cls is RussiaFederationEnergyConsumptionParameter:
+                perimeter_variant_code = _normalize_russia_federation_import_perimeter_variant(
+                    label, perimeter_variant_code
+                )
             if (
                 perimeter_variant_code is None
                 and _aggregate_model_requires_perimeter_variant(model_cls)
@@ -1022,6 +1047,119 @@ def _resolve_row_binding(
 # Лист-заглушка «млн. кВт.ч» (несколько строк без сетки годов) — не считаем ошибкой при разборе.
 _OPTIONAL_GRID_MAX_ROWS = 6
 
+_SCREEN_EXPORT_ENTITY_HEADER = "энергосистема"
+_SCREEN_EXPORT_PARAM_HEADER = "наименование параметров"
+
+
+def _classify_screen_export_parameter_label(param_label: str) -> str | None:
+    """«mln» / «sipr» для строк отчётного листа; формулы и приросты пропускаем."""
+    s = _norm_space(param_label).casefold().replace("ё", "е")
+    if not s or "прирост" in s or "темп" in s:
+        return None
+    if "(сипр)" in s and "млн" in s:
+        return "sipr"
+    if "потребление" in s and "млн" in s and "(сипр)" not in s:
+        return "mln"
+    return None
+
+
+def _merge_perimeter_variant_duplicate_year_values(
+    acc: defaultdict[tuple[str, int, str | None], Decimal],
+) -> defaultdict[tuple[str, int, str | None], Decimal]:
+    """Сводит дубли одного наименования с пустым вариантом и o1 по каждому году.
+
+    На листе «млн. кВт.ч» для части лет данные в строке с кодом варианта, для других —
+    в строке с пустой ячейкой варианта (o1 с нулями — заглушка). Для листа «СиПР» при
+    наличии ненулевого значения в строке с явным вариантом оно имеет приоритет.
+    """
+    by_label_year: dict[tuple[str, int], dict[str | None, Decimal]] = defaultdict(dict)
+    for (label, year_n, pvc), total in acc.items():
+        bucket = by_label_year[(label, year_n)]
+        bucket[pvc] = bucket.get(pvc, Decimal("0")) + total
+
+    merged: defaultdict[tuple[str, int, str | None], Decimal] = defaultdict(
+        lambda: Decimal("0")
+    )
+    for (label, year_n), variants in by_label_year.items():
+        base = variants.get(None)
+        explicit_items = [(pvc, val) for pvc, val in variants.items() if pvc is not None]
+        explicit_nonzero = [(pvc, val) for pvc, val in explicit_items if val != 0]
+        if explicit_nonzero:
+            for pvc, val in explicit_nonzero:
+                merged[(label, year_n, pvc)] += val
+        elif base is not None:
+            merged[(label, year_n, None)] += base
+        else:
+            for pvc, val in explicit_items:
+                merged[(label, year_n, pvc)] += val
+    return merged
+
+
+def _aggregate_from_screen_export_matrix(
+    matrix: list[tuple[Any, ...]],
+) -> tuple[
+    defaultdict[tuple[str, int, str | None], Decimal],
+    defaultdict[tuple[str, int, str | None], Decimal],
+]:
+    """Разбор листа «Экспорт в Excel» (колонки Энергосистема / Наименование параметров / годы)."""
+    acc_mln: defaultdict[tuple[str, int, str | None], Decimal] = defaultdict(
+        lambda: Decimal("0")
+    )
+    acc_sipr: defaultdict[tuple[str, int, str | None], Decimal] = defaultdict(
+        lambda: Decimal("0")
+    )
+    if not matrix:
+        return acc_mln, acc_sipr
+
+    header_row_idx: int | None = None
+    entity_ci = 0
+    param_ci = 1
+    for ri, row in enumerate(matrix[:8]):
+        if len(row) < 2:
+            continue
+        c0 = _norm_space(_cell_as_text(row[0])).casefold().replace("ё", "е")
+        c1 = _norm_space(_cell_as_text(row[1])).casefold().replace("ё", "е")
+        if _SCREEN_EXPORT_ENTITY_HEADER in c0 and _SCREEN_EXPORT_PARAM_HEADER in c1:
+            header_row_idx = ri
+            break
+    if header_row_idx is None:
+        return acc_mln, acc_sipr
+
+    yr_row, year_cols = _detect_year_row(matrix)
+    if yr_row != header_row_idx:
+        year_cols = {}
+        for ci, val in enumerate(matrix[header_row_idx]):
+            y = _coerce_cell_to_year_number(val)
+            if y is not None:
+                year_cols[ci] = y
+    if len(year_cols) < 2:
+        return acc_mln, acc_sipr
+
+    current_entity = ""
+    for ri in range(header_row_idx + 1, len(matrix)):
+        row = matrix[ri]
+        if entity_ci < len(row):
+            ent_raw = _norm_space(_cell_as_text(row[entity_ci]))
+            if ent_raw:
+                current_entity = _normalize_import_label_typos(ent_raw.strip())
+        if not current_entity or param_ci >= len(row):
+            continue
+        kind = _classify_screen_export_parameter_label(
+            _cell_as_text(row[param_ci])
+        )
+        if kind is None:
+            continue
+        target = acc_mln if kind == "mln" else acc_sipr
+        for year_n, num in _import_row_year_numeric_pairs(
+            row,
+            year_cols,
+            label=current_entity,
+            row_variant=None,
+            variant_column_mode=False,
+        ):
+            target[(current_entity, year_n, None)] += num
+    return acc_mln, acc_sipr
+
 
 def _aggregate_sheet_labels(
     matrix: list[tuple[Any, ...]],
@@ -1075,6 +1213,14 @@ def _aggregate_sheet_labels(
                 row=row,
                 year_cols=year_cols,
             )
+            base_label = _strip_import_variant_suffixes_from_label(label)
+            if (
+                _AGGREGATE_MODEL_BY_BASE_LABEL.get(_norm_entity_label(base_label))
+                is RussiaFederationEnergyConsumptionParameter
+            ):
+                row_variant = _normalize_russia_federation_import_perimeter_variant(
+                    label, row_variant
+                )
         else:
             row_variant = None
 
@@ -1122,6 +1268,8 @@ def _aggregate_sheet_labels(
                     "выбрать правильное значение."
                 )
             acc[(label, year_n, row_variant)] += num
+    if variant_column_mode and acc:
+        acc = _merge_perimeter_variant_duplicate_year_values(acc)
     return acc, variant_column_mode
 
 
@@ -1209,7 +1357,35 @@ def _collapse_labels_to_bind_keys(
         )
         if bind is None:
             continue
-        key = (bind.demand_model, bind.fk_column, bind.parent_id, year_n, bind.perimeter_variant_code)
+        effective_pvc = bind.perimeter_variant_code
+        if (
+            effective_pvc is None
+            and pvc is None
+            and not variant_column_mode
+            and model_supports_perimeter_variant(bind.demand_model)
+        ):
+            entity_ctx = perimeter_entity_context_for_model(
+                bind.demand_model.__name__,
+                parent_fk_column=bind.fk_column,
+                parent_id=int(bind.parent_id),
+            )
+            if entity_ctx is not None:
+                allowed = perimeter_variant_codes_for_entity(*entity_ctx)
+                if len(allowed) == 1:
+                    effective_pvc = allowed[0]
+                    bind = _ImportBind(
+                        bind.demand_model,
+                        bind.fk_column,
+                        bind.parent_id,
+                        effective_pvc,
+                    )
+        key = (
+            bind.demand_model,
+            bind.fk_column,
+            bind.parent_id,
+            year_n,
+            bind.perimeter_variant_code,
+        )
         acc[key] += total
         if bind.demand_model is rd_model:
             explicit_rd_subject_years.add((int(bind.parent_id), int(year_n)))
@@ -1263,6 +1439,7 @@ def _apply_accumulator_for_version(
     *,
     field_name: str,
     version_id: int,
+    preserve_excel_empty_perimeter_variant: bool = False,
 ) -> int:
     from app.common.perimeter_variant.registry import model_supports_perimeter_variant
 
@@ -1308,15 +1485,21 @@ def _apply_accumulator_for_version(
     ) -> None:
         nonlocal touched
         if model_supports_perimeter_variant(model):
-            validation_parent_id = None if write_fk == _FK_AGGREGATE_NO_PARENT else parent_id
-            perimeter_variant_code = ecps._resolve_perimeter_variant_for_context(
-                perimeter_variant_code,
-                model,
-                None if write_fk == _FK_AGGREGATE_NO_PARENT else write_fk,
-                validation_parent_id,
-            )
-            if perimeter_variant_code is ecps._UNSET:
-                perimeter_variant_code = None
+            if not (
+                preserve_excel_empty_perimeter_variant
+                and perimeter_variant_code is None
+            ):
+                validation_parent_id = (
+                    None if write_fk == _FK_AGGREGATE_NO_PARENT else parent_id
+                )
+                perimeter_variant_code = ecps._resolve_perimeter_variant_for_context(
+                    perimeter_variant_code,
+                    model,
+                    None if write_fk == _FK_AGGREGATE_NO_PARENT else write_fk,
+                    validation_parent_id,
+                )
+                if perimeter_variant_code is ecps._UNSET:
+                    perimeter_variant_code = None
         row = _find_existing_parameter_row(
             model,
             write_fk,
@@ -1397,29 +1580,15 @@ def _accumulator_from_formula_summary_rows(
     return acc
 
 
-def persist_summary_table_formula_rows_after_import(
+def _persist_formula_summary_rows(
+    summary_rows: list[dict[str, Any]],
     *,
     database_version_id: int,
     years: list[int],
-    rounding_digits: int = 1,
     skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
 ) -> int:
-    """После импорта Excel: пересчитать формулы сводной таблицы и записать в БД."""
-    from app.energy_consumption.services.energy_consumption_summary_services import (
-        build_summary_table_rows_with_formulas_for_version,
-    )
-
-    if not years:
+    if not summary_rows or not years:
         return 0
-
-    summary_rows = build_summary_table_rows_with_formulas_for_version(
-        database_version_id=database_version_id,
-        years=years,
-        rounding_digits=rounding_digits,
-    )
-    if not summary_rows:
-        return 0
-
     skip_by_field = skip_accumulator_keys_by_field or {}
     touched = 0
     for field_name in _FORMULA_ROW_PERSIST_PARAMETER_KEYS:
@@ -1440,6 +1609,57 @@ def persist_summary_table_formula_rows_after_import(
             version_id=database_version_id,
         )
     return touched
+
+
+def persist_all_energy_consumption_summary_computed_rows(
+    *,
+    database_version_id: int,
+    years: list[int],
+    rounding_digits: int = 1,
+    skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
+) -> int:
+    """Синхронизация агрегатов ЭЗ/ФО и запись всех расчётных строк сводки в БД."""
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        build_all_formula_summary_rows_for_version,
+    )
+
+    if not years:
+        return 0
+
+    ecps.sync_energy_zone_consumption_aggregates(database_version_id=database_version_id)
+    db.session.flush()
+    ecps.sync_federal_district_consumption_aggregates(
+        database_version_id=database_version_id
+    )
+    db.session.flush()
+
+    summary_rows = build_all_formula_summary_rows_for_version(
+        database_version_id=database_version_id,
+        years=years,
+        rounding_digits=rounding_digits,
+    )
+    return _persist_formula_summary_rows(
+        summary_rows,
+        database_version_id=database_version_id,
+        years=years,
+        skip_accumulator_keys_by_field=skip_accumulator_keys_by_field,
+    )
+
+
+def persist_summary_table_formula_rows_after_import(
+    *,
+    database_version_id: int,
+    years: list[int],
+    rounding_digits: int = 1,
+    skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
+) -> int:
+    """После импорта Excel: пересчитать формулы сводной таблицы и записать в БД."""
+    return persist_all_energy_consumption_summary_computed_rows(
+        database_version_id=database_version_id,
+        years=years,
+        rounding_digits=rounding_digits,
+        skip_accumulator_keys_by_field=skip_accumulator_keys_by_field,
+    )
 
 
 def _labels_matched_in_any_version(
@@ -1467,7 +1687,8 @@ def _labels_matched_in_any_version(
 def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
     """
     Читает листы «млн. кВт.ч» и/или «СиПР» (какие есть в книге), сопоставляет наименования
-    («Россия» → ``RussiaFederationEnergyConsumptionParameter`` с ``without_nt`` (базовый вариант);
+    («Россия» / «Россия без НТ» → ``RussiaFederationEnergyConsumptionParameter`` с ``without_nt``,
+    даже если в колонке perimeter-variants указан ``with_nt``; «Россия с НТ» → ``with_nt``);
     «ЕЭС России с НТ с зарядом ГАЭС» → ``EesRussiaEnergyConsumptionParameter`` с ``with_nt_with_gaes``;
     «ЕЭС России без НТ с зарядом ГАЭС» → ``EesRussiaEnergyConsumptionParameter`` с ``without_nt_with_gaes``;
     «ОЭС Юга с НТ с ГАЭС» / «… с зарядом ГАЭС» → ``UnionEnergySystemEnergyConsumptionParameter`` с ``with_nt_with_gaes``;
@@ -1497,27 +1718,50 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
         raise ValueError("Не найдено ни одной версии базы данных для записи импорта.")
 
     wb = _load_summary_workbook_from_bytes(raw)
+    screen_export_mln: defaultdict[tuple[str, int, str | None], Decimal] | None = None
+    screen_export_sipr: defaultdict[tuple[str, int, str | None], Decimal] | None = None
     try:
         ws_m = _find_sheet_title_optional(wb, SHEET_MLN_KVTCH)
         ws_s = _find_sheet_title_optional(wb, SHEET_SIPR)
-        if ws_m is None and ws_s is None:
-            raise ValueError(
-                f'В книге нет ни листа «{SHEET_MLN_KVTCH}», ни листа «{SHEET_SIPR}».'
-            )
         matrix_m = _sheet_matrix(ws_m) if ws_m is not None else []
         matrix_s = _sheet_matrix(ws_s) if ws_s is not None else []
+        if ws_m is None and ws_s is None:
+            for title in wb.sheetnames:
+                matrix_screen = _sheet_matrix(wb[title])
+                mln_part, sipr_part = _aggregate_from_screen_export_matrix(matrix_screen)
+                if mln_part or sipr_part:
+                    screen_export_mln = mln_part
+                    screen_export_sipr = sipr_part
+                    break
+            if screen_export_mln is None and screen_export_sipr is None:
+                raise ValueError(
+                    f'В книге нет листов «{SHEET_MLN_KVTCH}» и «{SHEET_SIPR}» для импорта. '
+                    "Если файл получен кнопкой «Экспорт в Excel» со старой версии приложения, "
+                    "выгрузите его заново (в книге появятся листы для импорта) или используйте "
+                    "шаблон СиПР с листами «млн. кВт.ч» и/или «СиПР»."
+                )
     finally:
         wb.close()
 
-    acc_mln_labels, variant_column_mode_m = _aggregate_sheet_labels(
-        matrix_m,
-        sheet_title=SHEET_MLN_KVTCH,
-        allow_empty_short_sheet_without_year_grid=(ws_m is not None),
-    )
-    acc_sipr_labels, variant_column_mode_s = _aggregate_sheet_labels(
-        matrix_s,
-        sheet_title=SHEET_SIPR,
-    )
+    if screen_export_mln is not None or screen_export_sipr is not None:
+        acc_mln_labels = screen_export_mln or defaultdict(lambda: Decimal("0"))
+        acc_sipr_labels = screen_export_sipr or defaultdict(lambda: Decimal("0"))
+        variant_column_mode_m = False
+        variant_column_mode_s = False
+        ws_m = None
+        ws_s = None
+        matrix_m = []
+        matrix_s = []
+    else:
+        acc_mln_labels, variant_column_mode_m = _aggregate_sheet_labels(
+            matrix_m,
+            sheet_title=SHEET_MLN_KVTCH,
+            allow_empty_short_sheet_without_year_grid=(ws_m is not None),
+        )
+        acc_sipr_labels, variant_column_mode_s = _aggregate_sheet_labels(
+            matrix_s,
+            sheet_title=SHEET_SIPR,
+        )
     # Важно: режим наличия колонки вариантов периметра может отличаться между листами.
     # Нельзя "склеивать" их через OR, иначе наличие колонки на одном листе заставит другой лист
     # трактоваться как variant-column-mode, что приводит к ошибкам валидации (например, для СЗ).
@@ -1581,20 +1825,23 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                 explicit_rd_subject_year_pairs=explicit_rd_sipr,
             )
             n_mln += _apply_accumulator_for_version(
-                acc_m, field_name="energy_consumption_mln_kvt_ch", version_id=vid
+                acc_m,
+                field_name="energy_consumption_mln_kvt_ch",
+                version_id=vid,
+                preserve_excel_empty_perimeter_variant=variant_column_mode_mln,
             )
             db.session.flush()
             n_sipr += _apply_accumulator_for_version(
-                acc_s, field_name="energy_consumption_sipr_mln_kvt_ch", version_id=vid
+                acc_s,
+                field_name="energy_consumption_sipr_mln_kvt_ch",
+                version_id=vid,
+                preserve_excel_empty_perimeter_variant=variant_column_mode_sipr,
             )
             db.session.flush()
-            ecps.sync_energy_zone_consumption_aggregates(database_version_id=vid)
-            db.session.flush()
-            ecps.sync_federal_district_consumption_aggregates(database_version_id=vid)
-            db.session.flush()
-            n_formula += persist_summary_table_formula_rows_after_import(
+            n_formula += persist_all_energy_consumption_summary_computed_rows(
                 database_version_id=vid,
                 years=sorted(years_ok),
+                rounding_digits=1,
                 skip_accumulator_keys_by_field={
                     "energy_consumption_mln_kvt_ch": frozenset(acc_m.keys()),
                     "energy_consumption_sipr_mln_kvt_ch": frozenset(acc_s.keys()),

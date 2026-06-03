@@ -113,6 +113,11 @@ document.addEventListener("DOMContentLoaded", function() {
         radios.forEach(function (r) {
             r.addEventListener("change", function () {
                 if (this.checked) applyView(this.value);
+                if (window.armGsApplyStickyTheadOffsets) {
+                    requestAnimationFrame(function () {
+                        window.armGsApplyStickyTheadOffsets();
+                    });
+                }
             });
         });
         const checked = document.querySelector('input[name="tepMainTableView"]:checked');

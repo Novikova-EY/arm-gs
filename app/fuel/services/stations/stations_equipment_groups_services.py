@@ -202,6 +202,8 @@ def _territorial_obl_mapping_match_exists(eg, filters, version_id):
             )
         )
     if fd_ids:
+        # correlate_except: иначе cast(eg.fo) тянет gs_fue_equipment_groups во FROM
+        # вложенного EXISTS (cross join) и фильтр ФО пропускает все группы.
         fd_mapping_match = exists(
             select(1)
             .select_from(FDEM)
@@ -214,6 +216,7 @@ def _territorial_obl_mapping_match_exists(eg, filters, version_id):
                 FD.id.in_(fd_ids),
                 fd_ver,
             )
+            .correlate_except(FDEM, FD)
         )
         stmt = stmt.where(
             or_(
@@ -256,6 +259,84 @@ def _territorial_obl_mapping_match_exists(eg, filters, version_id):
     return exists(stmt)
 
 
+def _res_fk_matches_federal_district(eg, fd_ids, version_id):
+    """РЭС группы (FK) связана хотя бы с одним субъектом выбранного ФО."""
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import (
+        regional_district_regional_energy_system,
+    )
+
+    RD = RegionalDistrict
+    rd_ver = (
+        RD.database_version_id.is_(None)
+        if version_id is None
+        else RD.database_version_id == version_id
+    )
+    return exists(
+        select(1)
+        .select_from(regional_district_regional_energy_system)
+        .join(RD, RD.id == regional_district_regional_energy_system.c.regional_district_id)
+        .where(
+            regional_district_regional_energy_system.c.regional_energy_system_id
+            == eg.regional_energy_system_id,
+            RD.id_federal_district.in_(fd_ids),
+            rd_ver,
+        )
+    )
+
+
+def _res_fk_matches_regional_district(eg, rd_ids, version_id):
+    """Субъект группы (FK) или субъект из M2M выбранной РЭС."""
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+    from app.refdata.models.energy_systems.regional_district_regional_energy_system_model import (
+        regional_district_regional_energy_system,
+    )
+
+    RD = RegionalDistrict
+    rd_ver = (
+        RD.database_version_id.is_(None)
+        if version_id is None
+        else RD.database_version_id == version_id
+    )
+    m2m_match = exists(
+        select(1)
+        .select_from(regional_district_regional_energy_system)
+        .join(RD, RD.id == regional_district_regional_energy_system.c.regional_district_id)
+        .where(
+            regional_district_regional_energy_system.c.regional_energy_system_id
+            == eg.regional_energy_system_id,
+            regional_district_regional_energy_system.c.regional_district_id.in_(rd_ids),
+            rd_ver,
+        )
+    )
+    return or_(eg.regional_district_id.in_(rd_ids), m2m_match)
+
+
+def _territorial_strict_when_res_fk_set(eg, filters, version_id):
+    """
+    Котельные с заполненным regional_energy_system_id: фильтр по РЭС/ФО/субъекту
+    по полю группы, без «обхода» через obl-маппинг.
+    """
+    res_ids = filters.get("regional_energy_system_filter") or None
+    fd_ids = filters.get("federal_district_filter") or None
+    rd_ids = filters.get("regional_district_filter") or None
+    if not (res_ids or fd_ids or rd_ids):
+        return None
+
+    fk_constraints = []
+    if res_ids:
+        fk_constraints.append(eg.regional_energy_system_id.in_(res_ids))
+    if fd_ids:
+        fk_constraints.append(_res_fk_matches_federal_district(eg, fd_ids, version_id))
+    if rd_ids:
+        fk_constraints.append(_res_fk_matches_regional_district(eg, rd_ids, version_id))
+
+    return or_(
+        eg.regional_energy_system_id.is_(None),
+        and_(*fk_constraints),
+    )
+
+
 def _territorial_filter_or_fk_or_obl(eg, filters, version_id):
     """ФО / субъект / РЭС: прямой FK ИЛИ маппинг по obl (котельные без заполненных FK)."""
     need = (
@@ -268,8 +349,16 @@ def _territorial_filter_or_fk_or_obl(eg, filters, version_id):
     direct = _territorial_direct_match_clause(eg, filters, version_id)
     obl_ex = _territorial_obl_mapping_match_exists(eg, filters, version_id)
     if direct is not None and obl_ex is not None:
-        return or_(direct, obl_ex)
-    return direct if direct is not None else obl_ex
+        loose = or_(direct, obl_ex)
+    else:
+        loose = direct if direct is not None else obl_ex
+
+    fk_strict = _territorial_strict_when_res_fk_set(eg, filters, version_id)
+    if fk_strict is None:
+        return loose
+    if loose is None:
+        return fk_strict
+    return and_(loose, fk_strict)
 
 
 def get_standalone_equipment_group_ids(version_id=None, strict_version=False):

@@ -28,10 +28,11 @@
             </a>
         </td>
         <td class="rowspan-td col-owner" rowspan="3" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+            {% set owner_gc_id = machine.gen_company.id if machine.gen_company else 0 %}
             {% if can_edit %}
                 <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
                     {% for gid, gname in gen_company_choices %}
-                        <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% elif not machine.gen_company and gname|lower == 'не указано' %}selected{% endif %}>{{ gname or 'не указано' }}</option>
+                        <option value="{{ gid }}" {% if owner_gc_id == gid %}selected{% elif not owner_gc_id and gname|lower == 'не указано' %}selected{% endif %}>{{ gname or 'не указано' }}</option>
                     {% endfor %}
                 </select>
             {% else %}
@@ -151,10 +152,11 @@
                 </a>
             </td>
             <td class="rowspan-td col-owner" rowspan="{{ 1 + (machine.pgu_machines|length) }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% set owner_gc_id = machine.gen_company.id if machine.gen_company else 0 %}
                 {% if can_edit %}
                     <select name="id_gen_company_{{ machine.id }}" class="form-select gen-company-select" style="max-width: 100%;">
                         {% for gid, gname in gen_company_choices %}
-                            <option value="{{ gid }}" {% if machine.gen_company and machine.gen_company.id == gid %}selected{% elif not machine.gen_company and gname|lower == 'не указано' %}selected{% endif %}>{{ gname }}</option>
+                            <option value="{{ gid }}" {% if owner_gc_id == gid %}selected{% elif not owner_gc_id and gname|lower == 'не указано' %}selected{% endif %}>{{ gname }}</option>
                         {% endfor %}
                     </select>
                 {% else %}

@@ -187,18 +187,12 @@ def update_current_year(version_id, new_year, user):
             )
             from app.common.services.get_services.years.years_get_services import (
                 get_year_list_full,
-                _get_filter_start_year_for_version,
-                _get_filter_end_year_for_version,
-                _get_sipr_start_year_for_version,
-                _get_sipr_end_year_for_version,
+                clear_planning_period_year_caches,
             )
 
             get_year_feature_dict_for_version.cache_clear()
             get_year_list_full.cache_clear()
-            _get_filter_start_year_for_version.cache_clear()
-            _get_filter_end_year_for_version.cache_clear()
-            _get_sipr_start_year_for_version.cache_clear()
-            _get_sipr_end_year_for_version.cache_clear()
+            clear_planning_period_year_caches()
         except Exception:
             # Кэш — оптимизация, не должен ломать основную операцию
             pass
@@ -273,15 +267,9 @@ def update_sipr_years(version_id, sipr_start, sipr_end, user):
         # Сбрасываем кэш вычисления стартового года для фильтров
         try:
             from app.common.services.get_services.years.years_get_services import (
-                _get_filter_start_year_for_version,
-                _get_filter_end_year_for_version,
-                _get_sipr_start_year_for_version,
-                _get_sipr_end_year_for_version,
+                clear_planning_period_year_caches,
             )
-            _get_filter_start_year_for_version.cache_clear()
-            _get_filter_end_year_for_version.cache_clear()
-            _get_sipr_start_year_for_version.cache_clear()
-            _get_sipr_end_year_for_version.cache_clear()
+            clear_planning_period_year_caches()
         except Exception:
             pass
         
