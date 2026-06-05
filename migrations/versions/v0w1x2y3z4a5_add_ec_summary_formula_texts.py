@@ -5,8 +5,16 @@ Revision ID: v0w1x2y3z4a5
 Revises: u9v0w1x2y3z4
 Create Date: 2026-06-02
 """
+import os
+import sys
+
 from alembic import op
 import sqlalchemy as sa
+
+_MIGRATIONS = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _MIGRATIONS not in sys.path:
+    sys.path.insert(0, _MIGRATIONS)
+import column_utils  # noqa: E402
 
 revision = "v0w1x2y3z4a5"
 down_revision = "u9v0w1x2y3z4"
@@ -15,9 +23,22 @@ depends_on = None
 
 SCHEMA = "gs_ec"
 TABLE = "gs_ec_summary_formula_texts"
+IX_FORMULA_KEY = f"ix_{TABLE}_formula_key"
 
 
 def upgrade():
+    conn = op.get_bind()
+    if column_utils.table_exists(conn, SCHEMA, TABLE):
+        if not column_utils.index_exists(conn, SCHEMA, IX_FORMULA_KEY):
+            op.create_index(
+                IX_FORMULA_KEY,
+                TABLE,
+                ["formula_key"],
+                unique=False,
+                schema=SCHEMA,
+            )
+        return
+
     op.create_table(
         TABLE,
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -42,7 +63,7 @@ def upgrade():
         schema=SCHEMA,
     )
     op.create_index(
-        f"ix_{TABLE}_formula_key",
+        IX_FORMULA_KEY,
         TABLE,
         ["formula_key"],
         unique=False,
@@ -51,5 +72,8 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(f"ix_{TABLE}_formula_key", table_name=TABLE, schema=SCHEMA)
-    op.drop_table(TABLE, schema=SCHEMA)
+    conn = op.get_bind()
+    if column_utils.index_exists(conn, SCHEMA, IX_FORMULA_KEY):
+        op.drop_index(IX_FORMULA_KEY, table_name=TABLE, schema=SCHEMA)
+    if column_utils.table_exists(conn, SCHEMA, TABLE):
+        op.drop_table(TABLE, schema=SCHEMA)

@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Экономика{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="container content-start-container">
+        <div class="container-fluid">
+            <h2 class="text-center align-middle mb-4">Модуль «Экономика»</h2>
+
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.ved_consumption') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Потребление по ВЭД
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4 border-secondary border-2 opacity-50">
+
+            <div class="row g-4 justify-content-center">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.accum_fixed_capital') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Накопленные инвестиции в основной капитал
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.product_output') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Выпуск продукции
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 justify-content-center mt-0">
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.population') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Численность населения
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="card shadow-sm w-100">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.accum_monetary_income') }}" class="btn btn-primary fs-4 w-100 py-4">
+                                Накопленные денежные доходы населения
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if current_user.has_admin %}
+            <hr class="my-4 border-secondary border-2 opacity-50">
+            <div class="row g-4 justify-content-center pb-4">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="card shadow-sm w-100 border-secondary">
+                        <div class="card-body text-center">
+                            <a href="{{ url_for('economics_bp.economics_formulas') }}"
+                               class="btn btn-outline-secondary fs-5 w-100 py-3">
+                                Текстовое описание для подсказок «i» формул
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

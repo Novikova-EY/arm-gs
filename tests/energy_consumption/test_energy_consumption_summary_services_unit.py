@@ -1992,6 +1992,16 @@ def test_inject_summary_table_decentralized_zone_row_after_russia():
     assert service._SUMMARY_TABLE_DECENTRALIZED_ZONE_FORMULA_TOOLTIP in str(
         dz_ec.get("pd_ec_summary_row_formula_tooltip") or ""
     )
+    for compact_key in (
+        "pd_ec_entity_label_compact",
+        "pd_ec_entity_label_compact_nt",
+        "pd_ec_entity_label_compact_nt_gaes",
+    ):
+        assert dz_ec[compact_key] == service._SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL
+    assert service.export_entity_label_for_summary_row(
+        dz_ec,
+        service.EnergyConsumptionExportUiOptions(nt_detail_on=False, gaes_detail_on=True),
+    ) == service._SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL
 
 
 def test_inject_summary_table_decentralized_zone_row_is_idempotent():

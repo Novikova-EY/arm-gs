@@ -9047,9 +9047,14 @@ def inject_summary_table_decentralized_zone_row(
         row = dict(template_row)
         row.pop("pd_ec_perimeter_entity_kind", None)
         row.pop("pd_ec_perimeter_entity_name", None)
+        row.pop("pd_ec_nt_extra_row", None)
+        row.pop("pd_ec_nt_without_row", None)
         row.update(
             {
                 "entity_label": _SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL,
+                "pd_ec_entity_label_compact": _SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL,
+                "pd_ec_entity_label_compact_nt": _SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL,
+                "pd_ec_entity_label_compact_nt_gaes": _SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL,
                 "entity_rowspan": entity_rowspan,
                 "entity_depth": entity_depth,
                 "entity_kind": "summary_table_decentralized_zone",

@@ -22,6 +22,7 @@ branch_labels = None
 depends_on = None
 
 SCHEMA_EC = "gs_ec"
+CODE_WITHOUT_NT = "without_nt"
 
 # (table, fk_column_or_None, index_prefix, pvc_index_name)
 TABLE_SPECS: tuple[tuple[str, str | None, str, str], ...] = (
@@ -101,6 +102,64 @@ def _table_exists(conn, schema: str, table: str) -> bool:
         {"schema": schema, "table": table},
     )
     return r.fetchone() is not None
+
+
+def _dedupe_ec_rows(conn, table: str, fk_col: str | None = None) -> None:
+    fk_part = f"{fk_col}, " if fk_col else ""
+    conn.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY {fk_part}year_number,
+                            COALESCE(database_version_id, 0),
+                            COALESCE(perimeter_variant_code, '')
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table}
+                WHERE year_number IS NOT NULL
+            )
+            DELETE FROM {SCHEMA_EC}.{table} t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+    conn.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY {fk_part}COALESCE(database_version_id, 0),
+                            COALESCE(perimeter_variant_code, '')
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table}
+                WHERE year_number IS NULL
+            )
+            DELETE FROM {SCHEMA_EC}.{table} t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+
+
+def _set_default_without_nt(conn, table: str) -> None:
+    conn.execute(
+        text(
+            f"""
+            UPDATE {SCHEMA_EC}.{table}
+            SET perimeter_variant_code = :code
+            WHERE perimeter_variant_code IS NULL
+            """
+        ),
+        {"code": CODE_WITHOUT_NT},
+    )
 
 
 def _drop_ec_unique_indexes(conn, pfx: str) -> None:
@@ -191,6 +250,8 @@ def upgrade():
             continue
         _drop_ec_unique_indexes(conn, pfx)
         _add_pvc_column(conn, table, ix_name)
+        _set_default_without_nt(conn, table)
+        _dedupe_ec_rows(conn, table, fk_col)
         if fk_col:
             _rebuild_fk_indexes(conn, table, fk_col, pfx)
         else:

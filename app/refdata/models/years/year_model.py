@@ -55,6 +55,49 @@ class Year(db.Model, AuditMixin, VersionedModelMixin):
     machine_tes_types = db.relationship('MachineTesType', back_populates='year')
     machine_names = db.relationship('MachineName', back_populates='year')
     pgu_machine_names = db.relationship('PGUMachineName', back_populates='year')
+    fd_economic_activity_consumption_parameters = db.relationship(
+        'FederalDistrictEATConsumptionParameter', back_populates='year'
+    )
+    rf_economic_activity_consumption_parameters = db.relationship(
+        'RussiaFederationConsumptionParameter', back_populates='year'
+    )
+    fd_economic_activity_accum_fixed_capital_parameters = db.relationship(
+        'FederalDistrictAccumFixedCapitalParameter', back_populates='year'
+    )
+    rf_economic_activity_accum_fixed_capital_parameters = db.relationship(
+        'RussiaFederationAccumFixedCapitalParameter', back_populates='year'
+    )
+    fd_economic_activity_product_output_parameters = db.relationship(
+        'FederalDistrictProductOutputParameter',
+        back_populates='year',
+        primaryjoin=(
+            "and_(Year.number==FederalDistrictProductOutputParameter.year_number, "
+            "Year.database_version_id==FederalDistrictProductOutputParameter.database_version_id)"
+        ),
+    )
+    rf_economic_activity_product_output_parameters = db.relationship(
+        'RussiaFederationProductOutputParameter',
+        back_populates='year',
+        primaryjoin=(
+            "and_(Year.number==RussiaFederationProductOutputParameter.year_number, "
+            "Year.database_version_id==RussiaFederationProductOutputParameter.database_version_id)"
+        ),
+    )
+    fd_electrical_intensity_year_parameters = db.relationship(
+        'FederalDistrictElectricalIntensityYearParameter', back_populates='year'
+    )
+    rf_electrical_intensity_year_parameters = db.relationship(
+        'RussiaFederationElectricalIntensityYearParameter', back_populates='year'
+    )
+    fd_population_parameters = db.relationship(
+        'FederalDistrictPopulationParameter', back_populates='year'
+    )
+    fd_accum_monetary_income_parameters = db.relationship(
+        'FederalDistrictAccumMonetaryIncomeParameter', back_populates='year'
+    )
+    fd_population_consumption_year_parameters = db.relationship(
+        'FederalDistrictPopulationConsumptionYearParameter', back_populates='year'
+    )
 
     def __repr__(self) -> str:
         return f"<Year id={self.id} number={self.number}>"

@@ -9,6 +9,7 @@ from app.generation.models.machine import machine_tes_type_model
 from app.refdata.models.refdata_for_stations.machine import machine_type_model, pgu_tes_machine_type_model, tes_machine_type_model, tes_type_model
 from app.refdata.models.refdata_for_stations.station import station_type_model
 from app.refdata.models.refdata_for_stations.technologies import equipment_group_model, technology_availability_model, technology_type_model
+from app.refdata.models.economic_activity import economic_activity_type_model
 from app.common.models.database_version_model import DatabaseVersion
 from config import SECRET_KEY, DEBUG
 from flask import Flask, redirect, request, url_for, flash, g, render_template
@@ -302,6 +303,7 @@ def create_app():
         from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F401
         from app.fuel.models import external_mapping
         importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
+        importlib.import_module("app.economics.models")  # noqa: F401 — таблицы «Экономика» (gs_ekp)
         importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
         importlib.import_module("app.territories.models")  # noqa: F401 — таблицы gs_ter
 
@@ -724,6 +726,8 @@ def create_app():
     from app.history.routes import history_bp
     from app.power_demand.routes import power_demand_bp
     from app.energy_consumption.routes import energy_consumption_bp
+    from app.economics.routes import economics_bp
+    from app.energy_consumption.long_term_consumption.routes import long_term_consumption_bp
     from app.territories.routes import territories_bp
     from app.common.perimeter_variant.admin_routes import perimeter_variant_bp
 
@@ -742,6 +746,36 @@ def create_app():
     app.register_blueprint(history_bp, url_prefix="/history")
     app.register_blueprint(power_demand_bp, url_prefix="/power_demand")
     app.register_blueprint(energy_consumption_bp, url_prefix="/energy_consumption")
+    app.register_blueprint(economics_bp, url_prefix="/economics")
+    app.register_blueprint(long_term_consumption_bp, url_prefix="/energy_consumption")
+
+    @app.route("/long_term_consumption")
+    @app.route("/long_term_consumption/", defaults={"path": ""})
+    @app.route("/long_term_consumption/<path:path>")
+    def redirect_long_term_consumption_legacy(path=""):
+        """Редирект со старого URL модуля."""
+        from flask import redirect
+
+        if path.startswith("electrical-intensity"):
+            target = (
+                "/energy_consumption/electrical-intensity/"
+                if path == "electrical-intensity"
+                else f"/energy_consumption/{path}"
+            )
+        else:
+            target = "/economics/" if not path else f"/economics/{path}"
+        return redirect(target, code=301)
+
+    @app.route("/economics/electrical-intensity", defaults={"subpath": ""})
+    @app.route("/economics/electrical-intensity/", defaults={"subpath": ""})
+    @app.route("/economics/electrical-intensity/<path:subpath>")
+    def redirect_economics_electrical_intensity_to_demand(subpath=""):
+        """Электроёмкость перенесена в модуль спроса."""
+        from flask import redirect
+
+        base = "/energy_consumption/electrical-intensity"
+        target = base if not subpath else f"{base}/{subpath}"
+        return redirect(target, code=301)
     app.register_blueprint(territories_bp, url_prefix="/territories")
 
     # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
@@ -824,7 +858,7 @@ def create_app():
         if app.debug:
             return f"<pre>{traceback.format_exc()}</pre>", 500
         else:
-            return "An error occurred. Please try again later.", 500
+            return render_template("errors/500.html"), 500
 
     return app
 

@@ -40,6 +40,7 @@ def build_summary_fo_page_context(
         expand_entity_perimeter_variants=True,
     )
     context = apply_max_summary_page_variant_behaviour(context)
+    context["page_title"] = "Потребление ЭЭ по ФО"
     context["summary_variant_toggle_default_off"] = False
     context.update(get_demand_summary_filter_refdata())
     context["pd_fo_filters_cascade"] = get_energy_consumption_fo_filter_cascade_data()

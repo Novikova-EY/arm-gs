@@ -6,11 +6,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+    EI_POP_CALCULATED_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_X_FORMULA_TOOLTIP,
+    EI_POP_DELTA_FORMULA_TOOLTIP,
+    EI_POP_GRAPH_POINT_FORMULA_TOOLTIP,
+    EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
+    EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
+    POP_REF_ROW_LABEL_BY_KIND,
+    POP_ROW_LABEL_BY_KIND,
+    REF_ROW_ACCUM_MONETARY_INCOME,
+    REF_ROW_HOUSEHOLD_CONSUMPTION,
+    REF_ROW_POPULATION,
+    ROW_KIND_CALCULATED,
+    ROW_KIND_DELTA,
+    ROW_KIND_GRAPH_POINT,
+    ROW_KIND_INTENSITY,
+)
+
 PAGE_SUMMARY_TABLE = "summary_table"
 PAGE_OES = "oes"
 PAGE_FO = "fo"
 PAGE_EZ = "ez"
 PAGE_OES_GAES_CHARGE = "oes_gaes_charge"
+PAGE_ELECTRICAL_INTENSITY = "electrical_intensity"
 
 ALL_SUMMARY_PAGES = frozenset(
     {
@@ -28,6 +51,7 @@ PAGE_LABELS: dict[str, str] = {
     PAGE_FO: "По федеральным округам (/summary/federal-districts/)",
     PAGE_EZ: "По энергозонам (/summary/energy-zones/)",
     PAGE_OES_GAES_CHARGE: "ГАЭС на заряд (/summary/oes/gaes-charge/)",
+    PAGE_ELECTRICAL_INTENSITY: "Электроёмкость (/energy_consumption/electrical-intensity/)",
 }
 
 
@@ -779,6 +803,253 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
             "сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
             "(в т.ч. ОЭС Северо-Запада с ЭС Калининградской области), без ОЭС Востока "
         ),
+    ),
+    _def(
+        "ei_intensity",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Строка таблицы",
+        cell_name="Электроемкость",
+        default_text=(
+            "Электроёмкость, кВт·ч/тыс. руб., по каждому году (не позже года "
+            "с признаком «текущий» включительно) = Потребление ээ / Выпуск продукции × 1000 "
+            "(потребление — млн кВт·ч, выпуск — млн руб.)."
+        ),
+    ),
+    _def(
+        "ei_graph_point",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Строка таблицы",
+        cell_name="Характерные точки графика",
+        default_text=(
+            "Характерные точки графика по каждому году (не позже года с признаком «текущий» "
+            "включительно) = LOG(Электроёмкость_Y / Электроёмкость_{Y−1}; "
+            "Накопленные инвестиции_Y / Накопленные инвестиции_{Y−1}) "
+            "(электроёмкость — кВт·ч/тыс. руб. из потребления и выпуска; "
+            "накопленные инвестиции — млн руб.)."
+        ),
+    ),
+    _def(
+        "ei_calculated",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Строка таблицы",
+        cell_name="Электроемкость (расчетная)",
+        default_text=(
+            "Электроёмкость (расчётная), кВт·ч/тыс. руб., по каждому году (не позже года "
+            "с признаком «текущий» включительно) = коэффициент A × "
+            "(Инвестиции в основной капитал)^коэффициент X "
+            "(инвестиции — млн руб.)."
+        ),
+    ),
+    _def(
+        "ei_delta",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Строка таблицы",
+        cell_name="Δ для электроемкости",
+        default_text=(
+            "Δ для электроёмкости по каждому году (не позже года с признаком «текущий» "
+            "включительно) = Электроёмкость − Электроёмкость (расчётная), "
+            "кВт·ч/тыс. руб."
+        ),
+    ),
+    _def(
+        "ei_coefficient_a",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Коэффициент",
+        cell_name="Коэффициент A",
+        default_text=(
+            "Коэффициент A вводится вручную; используется для строки «Электроёмкость (расчётная)» "
+            "и линии «Расчётная» на графике."
+        ),
+    ),
+    _def(
+        "ei_coefficient_a_computed",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Коэффициент",
+        cell_name="Коэффициент Арасч.",
+        default_text=(
+            "«Арасч.» = EXP(СРЗНАЧ( LN(Yi) − X × LN(Ii) ) ), "
+            "где Yi — фактическая электроёмкость, Ii — накопленные инвестиции по годам "
+            "2010…N (N — год с признаком «текущий»), X — коэффициент X; "
+            "LN и EXP — натуральный логарифм и экспонента (как в Excel); "
+            "годы с неполными или неположительными Yi, Ii в среднее не входят — "
+            "только подсказка, в расчёт строки не входит."
+        ),
+    ),
+    _def(
+        "ei_coefficient_x",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Коэффициент",
+        cell_name="Коэффициент X",
+        default_text=(
+            "Коэффициент X = среднее арифметическое значений строки «Характерные точки графика» "
+            "по годам 2010…N включительно (N — год с признаком «текущий»; "
+            "пустые ячейки в среднее не входят)."
+        ),
+    ),
+    _def(
+        "ei_industrial_product_output",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Промышленное производство (ФО)",
+        cell_name="Выпуск продукции",
+        default_text=(
+            "Выпуск продукции = Обрабатывающие производства + Добывающие производства + "
+            "Производство и распределение электроэнергии, газа и воды "
+            "(сумма строк «Выпуск продукции» по указанным ВЭД), млн руб."
+        ),
+    ),
+    _def(
+        "ei_industrial_consumption",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Промышленное производство (ФО)",
+        cell_name="Потребление ээ",
+        default_text=(
+            "Потребление ээ = Обрабатывающие производства + Добывающие производства + "
+            "Производство и распределение электроэнергии, газа и воды "
+            "(сумма строк «Потребление ээ» по указанным ВЭД), млн кВт·ч."
+        ),
+    ),
+    _def(
+        "ei_industrial_accum_fixed_capital",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Промышленное производство (ФО)",
+        cell_name="Накопленные инвестиции в основной капитал",
+        default_text=(
+            "Накопленные инвестиции в основной капитал = Обрабатывающие производства + "
+            "Добывающие производства + Производство и распределение электроэнергии, "
+            "газа и воды (сумма строк «Накопленные инвестиции в основной капитал» "
+            "по указанным ВЭД), млн руб."
+        ),
+    ),
+    _def(
+        "ei_fd_total_vrp",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="ВРП",
+        default_text=(
+            "ВРП = сумма строк «Выпуск продукции» по всем ВЭД федерального округа, млн руб."
+        ),
+    ),
+    _def(
+        "ei_fd_total_consumption",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="Потребление ээ",
+        default_text=(
+            "Потребление ээ = Потребление ээ ВЭД + Потери в сетях + С.н. электростанций "
+            "(сумма соответствующих строк блока «Всего»), млрд кВт·ч."
+        ),
+    ),
+    _def(
+        "ei_fd_total_ved_consumption",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="Потребление ээ ВЭД",
+        default_text=(
+            "Потребление ээ ВЭД = сумма строк «Потребление ээ» по всем ВЭД федерального "
+            "округа / 1000, млрд кВт·ч."
+        ),
+    ),
+    _def(
+        "ei_fd_total_network_losses",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="Потери в сетях",
+        default_text=(
+            "Потери в сетях = значение строки «Потери в сетях» со страницы «Потребление ЭЭ по ВЭД» "
+            "для соответствующего федерального округа / 1000, млрд кВт·ч."
+        ),
+    ),
+    _def(
+        "ei_fd_total_power_station",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="С.н. электростанций",
+        default_text=(
+            "С.н. электростанций = значение строки «С.н. электростанций» со страницы "
+            "«Потребление ЭЭ по ВЭД» для соответствующего федерального округа / 1000, "
+            "млрд кВт·ч."
+        ),
+    ),
+    _def(
+        "ei_fd_total_accum_fixed_capital",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="Накопленные инвестиции в основной капитал",
+        default_text=(
+            "Накопленные инвестиции в основной капитал = сумма строк "
+            "«Накопленные инвестиции в основной капитал» по всем ВЭД федерального "
+            "округа, млн руб."
+        ),
+    ),
+    _def(
+        "ei_pop_ref_population",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_POPULATION],
+        default_text=EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_ref_household_consumption",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_ref_accum_monetary_income",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_MONETARY_INCOME],
+        default_text=EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_per_capita",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_ROW_LABEL_BY_KIND[ROW_KIND_INTENSITY],
+        default_text=EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_graph_point",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_ROW_LABEL_BY_KIND[ROW_KIND_GRAPH_POINT],
+        default_text=EI_POP_GRAPH_POINT_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_calculated",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_ROW_LABEL_BY_KIND[ROW_KIND_CALCULATED],
+        default_text=EI_POP_CALCULATED_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_delta",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_ROW_LABEL_BY_KIND[ROW_KIND_DELTA],
+        default_text=EI_POP_DELTA_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_coefficient_a",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name="Коэффициент A",
+        default_text=EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_coefficient_a_computed",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name="Коэффициент Арасч.",
+        default_text=EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    ),
+    _def(
+        "ei_pop_coefficient_x",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name="Коэффициент X",
+        default_text=EI_POP_COEFFICIENT_X_FORMULA_TOOLTIP,
     ),
 )
 

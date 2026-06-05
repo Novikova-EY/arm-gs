@@ -95,12 +95,41 @@ html.has-page-table-scroll {
 
 /* Внутри page-table-scroll вертикальный скролл должен быть один (на wrapper),
    а table-responsive используется только для горизонтального скролла */
-.page-table-scroll .table-responsive,
-.page-table-scroll .power-demand-summary-scroll {
+.page-table-scroll .table-responsive:not(.pd-coeff-summary-scroll-wrap),
+.page-table-scroll .power-demand-summary-scroll:not(.pd-coeff-summary-scroll-wrap) {
     max-height: none !important;
     /* Важно: overflow на промежуточном предке ломает sticky у thead/th.
        Поэтому в режиме page-table-scroll скролл (x/y) делаем только на wrapper. */
     overflow: visible !important;
+}
+
+/* Горизонтальный скролл только у сводной таблицы: панель над шапкой не уезжает вбок.
+   Вертикальная прокрутка остаётся на .page-table-scroll; липкая шапка — top от wrapper, left — от host. */
+.page-table-scroll:has(.pd-summary-table-x-scroll-host),
+.page-table-scroll:has(.pd-coeff-summary-scroll-wrap) {
+    overflow-x: hidden !important;
+}
+.page-table-scroll:has(.pd-summary-table-x-scroll-host).has-x-scroll,
+.page-table-scroll:has(.pd-coeff-summary-scroll-wrap).has-x-scroll {
+    overflow-x: hidden !important;
+}
+.page-table-scroll .pd-summary-table-x-scroll-host {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+}
+.page-table-scroll .pd-summary-table-x-scroll-host.has-x-scroll {
+    overflow-x: auto !important;
+}
+
+/* Коэффициенты: скролл (X и Y) только у таблицы; max-height задаётся JS (см. updatePdCoeffTableHostMaxHeight) */
+.page-table-scroll .pd-coeff-summary-scroll-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Страницы, где раньше был отдельный внутренний скролл таблицы:
@@ -197,20 +226,34 @@ tfoot {
 }
 
 /* Сдвиг липкой шапки только у основной сводной таблицы (.power-demand-summary-scroll), не у журнала и др. */
-.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(1) th {
+.page-table-scroll .power-demand-summary-scroll.table-responsive:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(1) th {
     top: var(--pd-summary-controls-sticky-height, 0px);
 }
 
-.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(2) th {
+.page-table-scroll .power-demand-summary-scroll.table-responsive:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(2) th {
     top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
 }
 
-.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(3) th {
+.page-table-scroll .power-demand-summary-scroll.table-responsive:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(3) th {
     top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px)));
 }
 
-.page-table-scroll .power-demand-summary-scroll.table-responsive table thead tr:nth-child(4) th {
+.page-table-scroll .power-demand-summary-scroll.table-responsive:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(4) th {
     top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px)));
+}
+
+/* Коэффициенты: шапка липнет к верху scroll-host (панель фильтров — снаружи) */
+.page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(1) th {
+    top: var(--sticky-thead-row1-top, 0px);
+}
+.page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(2) th {
+    top: var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px));
+}
+.page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(3) th {
+    top: var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px));
+}
+.page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(4) th {
+    top: var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px));
 }
 
 /* Контейнер со скроллом для очень больших таблиц (список станций) */

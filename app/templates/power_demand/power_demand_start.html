@@ -75,13 +75,12 @@
         {% if current_user.has_admin %}
         <hr class="my-4 border-secondary border-2 opacity-50">
         <div class="row g-4 justify-content-center pb-4">
-            <div class="col-12 col-md-8">
+            <div class="col-12 col-md-8 col-lg-6">
                 <div class="card shadow-sm w-100 border-secondary">
                     <div class="card-body text-center">
                         <a href="{{ url_for('power_demand_bp.power_demand_summary_formulas') }}"
                            class="btn btn-outline-secondary fs-5 w-100 py-3">
-                            Тексты формул сводок<br>
-                            <span class="fs-6 text-muted">(подсказки «i» на страницах сводной информации)</span>
+                            Текстовое описание для подсказок «i» формул
                         </a>
                     </div>
                 </div>

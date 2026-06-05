@@ -845,11 +845,9 @@
                     <th class="text-center align-middle summary-year-col summary-year-mw-col"
                         data-coeff-year-segment="{% if year >= coeff_base_year - 9 and year <= coeff_base_year %}reporting{% elif year >= coeff_base_year + 1 and year <= coeff_base_year + 6 %}medium{% else %}long{% endif %}">
                         {{ year }}
-                        <div class="text-wrap power-demand-year-feature-caption" style="word-wrap: break-word; white-space: normal;">
-                            {% if year in year_features %}
-                            {{ year_features[year] }}
-                            {% endif %}
-                        </div>
+                        {% if year in year_features %}
+                        <div class="power-demand-year-feature-caption">{{ year_features[year] }}</div>
+                        {% endif %}
                     </th>
                     {% endfor %}
                 </tr>
@@ -1461,6 +1459,21 @@ const powerDemandSummaryLoaderShell = document.getElementById("powerDemandSummar
 const powerDemandSummaryLoadingOverlay = document.getElementById("powerDemandSummaryLoadingOverlay");
 const powerDemandSummaryScrollWrap = document.getElementById("powerDemandSummaryScrollWrap");
 
+function refreshPowerDemandSummaryLayout() {
+    if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+        window.armGsUpdatePdSummaryControlsStickyHeight();
+    }
+    if (typeof window.armGsUpdatePdCoeffTableHostMaxHeight === "function") {
+        window.armGsUpdatePdCoeffTableHostMaxHeight();
+    }
+    if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+        window.armGsApplyStickyTheadOffsets();
+    }
+    if (typeof window.armGsUpdateHorizontalScrollFlags === "function") {
+        window.armGsUpdateHorizontalScrollFlags();
+    }
+}
+
 function finishPowerDemandSummaryInitialRender() {
     if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
         return;
@@ -1475,6 +1488,10 @@ function finishPowerDemandSummaryInitialRender() {
                 powerDemandSummaryLoadingOverlay.style.display = "none";
             }
             powerDemandSummaryLoaderShell.setAttribute("aria-busy", "false");
+            refreshPowerDemandSummaryLayout();
+            window.requestAnimationFrame(function () {
+                refreshPowerDemandSummaryLayout();
+            });
         });
     });
 }
@@ -2319,7 +2336,7 @@ if (summaryTable) {
     }
     .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-year-mw {
         width: auto;
-        min-width: 5.5rem;
+        min-width: 6.25rem;
         max-width: none;
         box-sizing: border-box;
     }
@@ -2329,10 +2346,10 @@ if (summaryTable) {
         max-width: {{ summary_entity_col_w }};
         box-sizing: border-box;
     }
-    /* Горизонтальный скролл у нижней кромки блока; «Энергосистема» и «Наименование параметров» не смещаются */
+    /* Горизонтальный скролл — только здесь (см. style.css .has-x-scroll); панель над шапкой не скроллится */
     .pd-coeff-summary-scroll-wrap {
-        overflow-x: auto;
-        overflow-y: visible;
+        width: 100%;
+        max-width: 100%;
     }
     .pd-coeff-year-seg-table th.summary-entity-col,
     .pd-coeff-year-seg-table td.summary-entity-cell {
@@ -2391,11 +2408,11 @@ if (summaryTable) {
         background-color: #ccd4e0;
     }
     {% endif %}
-    .pd-coeff-year-seg-table {
-        /* 100% — заполняет экран при узком наборе годов (напр. только среднесрочный период); min-width — шире viewport при многих столбцах и гориз. скролл */
-        table-layout: fixed;
-        width: 100%;
-        min-width: max(100%, max-content);
+    .power-demand-summary-table.pd-coeff-year-seg-table {
+        /* auto — столбцы годов по содержимому; min-width — горизонтальный скролл при широкой таблице */
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
         max-width: none;
     }
     .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th,
@@ -2432,11 +2449,23 @@ if (summaryTable) {
     .pd-coeff-year-seg-table .pd-coeff-k-inline-stack.summary-year-k-cell,
     .pd-coeff-year-seg-table td.summary-year-cell {
         box-sizing: border-box;
-        min-width: 5.5rem;
-        white-space: normal;
-        word-break: break-word;
-        overflow-wrap: break-word;
+        min-width: 6.25rem;
+        white-space: nowrap;
+        word-break: normal;
+        overflow-wrap: normal;
         vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table th.summary-year-col .power-demand-year-feature-caption {
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-display-k,
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-display-mw,
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-medium-k-input {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .pd-coeff-year-seg-table > thead th {
         font-size: 1.1rem;
@@ -2508,6 +2537,12 @@ if (summaryTable) {
         min-width: 0;
         overflow-wrap: anywhere;
         word-break: break-word;
+    }
+    .pd-coeff-year-seg-table .summary-year-cell {
+        min-width: 6.25rem;
+        overflow-wrap: normal;
+        word-break: normal;
+        white-space: nowrap;
     }
     .summary-year-cell.summary-plan-empty {
         min-height: 2.5rem;
@@ -3125,6 +3160,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     btn.setAttribute("aria-pressed", on ? "true" : "false");
                 });
             }
+            refreshPowerDemandSummaryLayout();
         }
 
         var state = read();

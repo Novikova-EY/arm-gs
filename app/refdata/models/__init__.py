@@ -26,6 +26,7 @@ from app.refdata.models.refdata_for_stations.machine.machine_type_model import M
 from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model import PGUTesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.economic_activity.economic_activity_type_model import EconomicActivityType
 
 # --- Годы ---
 from app.refdata.models.years.year_model import Year

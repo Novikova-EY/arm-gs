@@ -9,6 +9,7 @@ from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
+from app.generation.models.common.version_year_unique_index import version_year_unique_index
 
 
 class PGUMachineName(db.Model, AuditMixin):
@@ -17,6 +18,7 @@ class PGUMachineName(db.Model, AuditMixin):
         Index('ix_pgu_machine_name_id_pgu_machine', 'id_pgu_machine'),
         Index('ix_pgu_machine_name_year_number', 'year_number'),
         Index('ix_pgu_machine_names_pgu_machine_year', 'id_pgu_machine', 'year_number'),
+        version_year_unique_index('uq_pgu_machine_names_machine_year_ver', 'id_pgu_machine'),
         {"schema": SCHEMA_GENERATION},
     )
     __mapper_args__ = {"confirm_deleted_rows": False}

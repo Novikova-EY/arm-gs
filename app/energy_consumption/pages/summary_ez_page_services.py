@@ -44,6 +44,7 @@ def build_summary_ez_page_context(
         expand_entity_perimeter_variants=True,
     )
     context = apply_max_summary_page_variant_behaviour(context)
+    context["page_title"] = "Потребление ЭЭ по ЭЗ"
     context = remove_gaes_charge_rows_from_summary_context(context)
     out = dict(context)
     out["summary_rows"] = exclude_centralized_zone_russia_o1_summary_rows(

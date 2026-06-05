@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/loaders.css') }}">
-
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="container-fluid mt-2">
@@ -199,6 +199,29 @@
             }
 
             window.armGsUpdatePdSummaryControlsStickyHeight = updatePdSummaryControlsStickyHeight;
+            window.armGsUpdateHorizontalScrollFlags = updateHorizontalScrollFlags;
+
+            /** Высота viewport для блока таблицы коэффициентов: скролл и полосы — у #powerDemandSummaryScrollWrap. */
+            function updatePdCoeffTableHostMaxHeight() {
+                document.querySelectorAll('.page-table-scroll .pd-coeff-summary-scroll-wrap').forEach(function (host) {
+                    if (host.style.visibility === 'hidden') {
+                        return;
+                    }
+                    var wrap = host.closest('.page-table-scroll');
+                    var stack = wrap && wrap.querySelector('.pd-ec-summary-sticky-stack');
+                    var top = stack
+                        ? Math.ceil(stack.getBoundingClientRect().bottom)
+                        : Math.max(0, Math.ceil(host.getBoundingClientRect().top));
+                    var gap = 12;
+                    var maxH = window.innerHeight - top - gap;
+                    if (maxH < 160) {
+                        maxH = 160;
+                    }
+                    host.style.maxHeight = maxH + 'px';
+                });
+            }
+
+            window.armGsUpdatePdCoeffTableHostMaxHeight = updatePdCoeffTableHostMaxHeight;
 
             /** Фактический top wrapper → --page-table-scroll-top; убирает второй скролл у html/body. */
             function updatePageTableScrollMaxHeight() {
@@ -221,6 +244,7 @@
                 if (!pdSummaryStickyResizeObserver) {
                     pdSummaryStickyResizeObserver = new ResizeObserver(function () {
                         updatePdSummaryControlsStickyHeight();
+                        updatePdCoeffTableHostMaxHeight();
                         applyStickyTheadOffsets();
                     });
                 }
@@ -233,6 +257,22 @@
             // Иначе на Windows при настройке "always show scrollbars" полоса рисуется "везде".
             function updateHorizontalScrollFlags() {
                 document.querySelectorAll('.page-table-scroll').forEach(function (wrapper) {
+                    const xHosts = wrapper.querySelectorAll(
+                        '.pd-summary-table-x-scroll-host, .pd-coeff-summary-scroll-wrap'
+                    );
+                    if (xHosts.length) {
+                        wrapper.classList.remove('has-x-scroll');
+                        xHosts.forEach(function (host) {
+                            const table = host.querySelector(':scope > table, table');
+                            const contentW = table && table.scrollWidth
+                                ? table.scrollWidth
+                                : host.scrollWidth;
+                            const needsX = (contentW - host.clientWidth) > 1;
+                            host.classList.toggle('has-x-scroll', needsX);
+                        });
+                        return;
+                    }
+
                     // Важно: внутри wrapper часто есть bootstrap `.row` с отрицательными margin'ами,
                     // из-за которых wrapper.scrollWidth становится чуть шире, хотя таблица помещается.
                     // Поэтому определяем потребность в X-скролле по реальной ширине таблиц.
@@ -255,7 +295,7 @@
                 // Для страниц справочников/обычных таблиц, где используется bootstrap `.table-responsive`
                 // (там тоже overflow-x:auto и может появляться "пустая" полоса).
                 document.querySelectorAll('.table-responsive').forEach(function (el) {
-                    // если таблица уже живет внутри page-table-scroll — x-скролл управляется wrapper'ом
+                    // если таблица уже живет внутри page-table-scroll — x-скролл управляется wrapper'ом или host'ом
                     if (el.closest('.page-table-scroll')) return;
                     const needsX = (el.scrollWidth - el.clientWidth) > 1;
                     el.classList.toggle('has-x-scroll', needsX);
@@ -289,6 +329,7 @@
                 setTopbarHeightVar();
                 updatePageTableScrollMaxHeight();
                 updatePdSummaryControlsStickyHeight();
+                updatePdCoeffTableHostMaxHeight();
                 applyStickyTheadOffsets();
                 updateHorizontalScrollFlags();
             }

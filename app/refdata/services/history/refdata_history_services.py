@@ -45,6 +45,9 @@ from app.refdata.models.refdata_for_stations.technologies.technology_availabilit
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import (
     TechnologyType,
 )
+from app.refdata.models.economic_activity.economic_activity_type_model import (
+    EconomicActivityType,
+)
 from app.refdata.models.territories.federal_district_model import FederalDistrict
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.years.year_feature_model import YearFeature
@@ -333,6 +336,13 @@ def _technology_type_payload(tech_type: TechnologyType) -> dict[str, Any]:
     }
 
 
+def _economic_activity_type_payload(activity_type: EconomicActivityType) -> dict[str, Any]:
+    return {
+        "name": activity_type.name,
+        "display_order": activity_type.display_order,
+    }
+
+
 def _technology_availability_payload(availability: TechnologyAvailability) -> dict[str, Any]:
     return {
         "name": availability.name,
@@ -391,6 +401,7 @@ REFDATA_HISTORY_MAPPINGS = {
     TesMachineType: ("tes_machine_type", _tes_machine_type_payload),
     PGUTesMachineType: ("pgu_tes_machine_type", _pgu_tes_machine_type_payload),
     TechnologyType: ("technology_type", _technology_type_payload),
+    EconomicActivityType: ("economic_activity_type", _economic_activity_type_payload),
     TechnologyAvailability: ("technology_availability", _technology_availability_payload),
     EquipmentGroupType: ("equipment_group", _equipment_group_payload),
     FuelCategory: ("fuel_category", _fuel_category_payload),

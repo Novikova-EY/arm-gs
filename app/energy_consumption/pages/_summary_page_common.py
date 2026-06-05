@@ -8,7 +8,7 @@ from app.common.services.database_version_services import get_current_version
 from app.energy_consumption.services.ec_summary_formula_template_vars import (
     inject_ec_formula_template_variables,
 )
-from app.energy_consumption.services.energy_consumption_summary_formula_text_services import (
+from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
     apply_row_formula_text_overrides,
     build_ec_formula_texts_map,
 )

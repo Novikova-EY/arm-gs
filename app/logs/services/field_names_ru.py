@@ -147,6 +147,12 @@ TECHNOLOGY_TYPE_FIELDS = {
     "name": "Тип технологии",
 }
 
+ECONOMIC_ACTIVITY_TYPE_FIELDS = {
+    "name": "Вид экономической деятельности",
+    "name_2": "Вид экономической деятельности_2",
+    "display_order": "Порядок отображения",
+}
+
 TECHNOLOGY_AVAILABILITY_FIELDS = {
     "name": "Доступность технологии",
 }
@@ -207,6 +213,7 @@ ALL_FIELDS = {
     **PGU_TES_MACHINE_TYPE_FIELDS,
     **EQUIPMENT_GROUP_FIELDS,
     **TECHNOLOGY_TYPE_FIELDS,
+    **ECONOMIC_ACTIVITY_TYPE_FIELDS,
     **TECHNOLOGY_AVAILABILITY_FIELDS,
     **DOCUMENT_FIELDS,
     **USER_FIELDS,
@@ -242,6 +249,7 @@ def get_field_name_ru(field_name: str, entity_type: str = None) -> str:
             "pgu_tes_machine_type": PGU_TES_MACHINE_TYPE_FIELDS,
             "equipment_group": EQUIPMENT_GROUP_FIELDS,
             "technology_type": TECHNOLOGY_TYPE_FIELDS,
+            "economic_activity_type": ECONOMIC_ACTIVITY_TYPE_FIELDS,
             "technology_availability": TECHNOLOGY_AVAILABILITY_FIELDS,
             "document": DOCUMENT_FIELDS,
             "user": USER_FIELDS,

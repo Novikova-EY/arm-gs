@@ -63,7 +63,8 @@ class MachineProspectivePlaceAES(db.Model, AuditMixin):
     unit_capacity_mw = db.Column(db.String(100), nullable=True)
     # Предельное годовое число часов использования мощности энергоблока, час
     max_annual_operating_hours = db.Column(db.String(100), nullable=True)
-    # Удельная топливная составляющая эксплуатационных затрат в ценах текущего года, тыс. руб./кВт
+
+    # Удельная топливная составляющая эксплуатационных затрат в ценах текущего года, руб./кВтч
     specific_fuel_cost_rub_per_kwh = db.Column(db.String(100), nullable=True)
     id_year_specific_fuel_cost = db.Column(
         db.Integer,
@@ -76,7 +77,7 @@ class MachineProspectivePlaceAES(db.Model, AuditMixin):
         foreign_keys=[id_year_specific_fuel_cost],
     )
 
-    # Удельные условно постоянные эксплуатационные затраты (без амортизационных отчислений), тыс. руб. в ценах текущего года г./кВт
+    # Удельные условно постоянные эксплуатационные затраты (без амортизационных отчислений), тыс. руб. /кВт
     specific_fixed_operating_costs_thous_rub_per_kw = db.Column(db.String(100), nullable=True)
     id_year_specific_fixed_operating_costs = db.Column(
         db.Integer,

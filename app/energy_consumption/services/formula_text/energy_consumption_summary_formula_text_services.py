@@ -6,9 +6,9 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from flask import g
+from flask import g, has_request_context
 
-from app.energy_consumption.models.energy_consumption_summary_formula_text_model import (
+from app.energy_consumption.models.formula_text.energy_consumption_summary_formula_text_model import (
     EnergyConsumptionSummaryFormulaText,
 )
 from app.energy_consumption.services.energy_consumption_summary_formula_registry import (
@@ -21,6 +21,51 @@ from app.energy_consumption.services.energy_consumption_summary_formula_registry
 from app.extensions import db
 
 _OVERRIDE_CACHE_KEY = "ec_summary_formula_text_overrides"
+_LEGACY_EI_MIGRATED_KEY = "ec_legacy_ei_formula_texts_migrated"
+_LEGACY_EI_MIGRATED_DONE = False
+
+
+def migrate_legacy_electrical_intensity_formula_texts() -> None:
+    """Перенос переопределений из gs_ec_electrical_intensity_formula_texts."""
+    global _LEGACY_EI_MIGRATED_DONE
+    if has_request_context():
+        if getattr(g, _LEGACY_EI_MIGRATED_KEY, False):
+            return
+        setattr(g, _LEGACY_EI_MIGRATED_KEY, True)
+    elif _LEGACY_EI_MIGRATED_DONE:
+        return
+    try:
+        from app.energy_consumption.long_term_consumption.models.formula_text.electrical_intensity_formula_text_model import (
+            ElectricalIntensityFormulaText,
+        )
+
+        legacy_rows = ElectricalIntensityFormulaText.query.all()
+        if not legacy_rows:
+            return
+        keys = [str(r.formula_key) for r in legacy_rows if get_formula_def(str(r.formula_key))]
+        if not keys:
+            return
+        existing = {
+            str(r.formula_key)
+            for r in EnergyConsumptionSummaryFormulaText.query.filter(
+                EnergyConsumptionSummaryFormulaText.formula_key.in_(keys)
+            ).all()
+        }
+        for legacy in legacy_rows:
+            key = str(legacy.formula_key)
+            if key in existing or not get_formula_def(key):
+                continue
+            text = str(legacy.formula_text or "").strip()
+            if not text:
+                continue
+            db.session.add(
+                EnergyConsumptionSummaryFormulaText(formula_key=key, formula_text=text)
+            )
+        db.session.commit()
+        clear_formula_text_override_cache()
+        _LEGACY_EI_MIGRATED_DONE = True
+    except Exception:
+        db.session.rollback()
 
 
 def _load_overrides_from_db() -> dict[str, str]:
@@ -34,6 +79,7 @@ def clear_formula_text_override_cache() -> None:
 
 
 def get_formula_text_overrides() -> dict[str, str]:
+    migrate_legacy_electrical_intensity_formula_texts()
     cached = getattr(g, _OVERRIDE_CACHE_KEY, None)
     if cached is not None:
         return cached

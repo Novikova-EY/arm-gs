@@ -9,7 +9,7 @@ from typing import Any
 from flask import g
 
 from app.extensions import db
-from app.power_demand.models.power_demand_summary_formula_text_model import (
+from app.power_demand.models.formula_text.power_demand_summary_formula_text_model import (
     PowerDemandSummaryFormulaText,
 )
 from app.power_demand.services.power_demand_summary_formula_registry import (

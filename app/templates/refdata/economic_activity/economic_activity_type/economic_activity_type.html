@@ -1,0 +1,362 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Виды экономической деятельности{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container mt-2">
+
+    <h1 class="text-center mb-4">Список видов экономической деятельности</h1>
+
+    <form method="GET"
+        action="{{ url_for('refdata_bp.economic_activity_type_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <!-- ЛЕВАЯ СТОРОНА: поиск + кнопки -->
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.economic_activity_type_filter(
+                            class="form-control",
+                            value=economic_activity_type_filter or '',
+                            placeholder="Поиск по видам экономической деятельности"
+                        ) }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('refdata_bp.economic_activity_type_list') }}"
+                            class="btn btn-outline-danger"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
+            <div class="col-12 col-lg-4 text-lg-end">
+                <!-- Экспорт данных таблицы с фильтрами в Excel-->
+                <a class="btn btn-warning fw-bold"
+                    href="{{ url_for('refdata_bp.export_economic_activity_type',
+                                        economic_activity_type_filter=economic_activity_type_filter or '',
+                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    target="_blank" rel="noopener">
+                    Экспорт в Excel
+                </a>
+
+                <select name="per_page"
+                        class="form-select d-inline-block w-auto"
+                        onchange="this.form.page.value=1; this.form.submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+        </div>
+
+        {# скрытые параметры для сохранения фильтров/сортировки/страницы #}
+        <input type="hidden" name="page"                    value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by"                 value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir"                value="{{ sort_dir }}">
+        <input type="hidden" name="economic_activity_type_filter"  value="{{ economic_activity_type_filter or '' }}">
+    </form>
+
+    <!-- Таблица данных -->
+     {% if current_user.has_admin %}
+        <form method="POST" action="{{ url_for('refdata_bp.economic_activity_type_list') }}">
+            {{ form.csrf_token }}
+            
+            <input type="hidden" name="page"                value="{{ pagination.page }}">
+            <input type="hidden" name="per_page"            value="{{ per_page }}">
+            <input type="hidden" name="sort_by"             value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir"            value="{{ sort_dir }}">
+            <input type="hidden" name="economic_activity_type_filter"    value="{{ economic_activity_type_filter or '' }}">
+
+            <!-- Кнопки сохранения изменений и добавления новой записи -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <!-- Кнопка сохранения изменений -->
+                    <button type="submit" class="btn btn-outline-primary">Сохранить изменения</button>
+                    {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-success" title="Применить изменения ко всем версиям БД">Сохранить во всех версиях</button>{% endif %}
+                </div>
+
+                <!-- Кнопка добавления новой записи -->
+                <a href="{{ url_for('refdata_bp.add_economic_activity_type', 
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    economic_activity_type_filter=economic_activity_type_filter,
+                                ) }}" class="btn btn-primary">
+                    Добавить новую запись
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead class="table-success">
+                        <tr>
+                            <!-- Шапка таблицы. Столбец "№" (не путать с порядком отображения в справочнике) -->
+                            <th class="text-center align-middle"
+                                title="Порядковый номер строки на странице (зависит от сортировки и страницы). Это не поле «Порядок отображения».">
+                                <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            economic_activity_type_filter=economic_activity_type_filter,
+                                            sort_by='number', 
+                                            sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    №
+                                    {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <!-- Порядок в справочнике; уникален в пределах текущей версии БД -->
+                            <th class="text-center align-middle"
+                                title="Число для сортировки в справочнике; должно быть уникальным среди видов экономической деятельности текущей версии БД (в т.ч. на других страницах списка).">
+                                <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            economic_activity_type_filter=economic_activity_type_filter,
+                                            sort_by='display_order', 
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                        <!-- Шапка таблицы. Столбец "Вид экономической деятельности" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='name', 
+                                        sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Вид экономической деятельности
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='name_2', 
+                                        sort_dir='asc' if sort_by != 'name_2' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Вид экономической деятельности_2
+                                {% if sort_by == 'name_2' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                            <!-- Шапка таблицы. Столбец "Удалить" -->
+                            <th class="text-center align-middle">Удалить</th>
+                        </tr>
+                    </thead>
+
+                    <!-- Данные таблицы-->
+                    <tbody>
+                        {% for economic_activity_type in economic_activity_type_list %}
+                        <tr>
+                            <!-- Строки таблицы. Столбец "№" -->
+                            <td class="text-center align-middle">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                <input type="hidden" name="economic_activity_ids[]" value="{{ economic_activity_type.id }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                            <td>
+                                <input type="number"
+                                    name="display_orders[]"
+                                    class="form-control text-center"
+                                    value="{{ economic_activity_type.display_order if economic_activity_type.display_order is not none else '' }}"
+                                    style="width: 100%;"
+                                    min="0" step="1" placeholder="">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Вид экономической деятельности" -->
+                            <td>
+                                <input type="text" name="economic_activity_type_names[]" class="form-control" value="{{ economic_activity_type.name }}">
+                            </td>
+
+                            <td>
+                                <input type="text" name="economic_activity_type_names_2[]" class="form-control" value="{{ economic_activity_type.name_2 or '' }}">
+                            </td>
+
+                            <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
+                            <td class="text-center align-middle">
+                                <input type="checkbox" name="economic_activity_type_delete[]" value="{{ economic_activity_type.id }}" class="form-check-input">
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+        <!-- Таблица с данными для чтения -->
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+                <thead class="table-success">
+                    <tr>
+                        <th class="text-center align-middle"
+                            title="Порядковый номер строки на странице; не равен полю «Порядок отображения».">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='number', 
+                                        sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                            <!-- Шапка таблицы. Столбец "Порядок отображения" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='display_order', 
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <!-- Шапка таблицы. Столбец "Вид экономической деятельности" -->
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='name', 
+                                        sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Вид экономической деятельности
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
+                                        page=pagination.page, 
+                                        per_page=per_page, 
+                                        economic_activity_type_filter=economic_activity_type_filter,
+                                        sort_by='name_2', 
+                                        sort_dir='asc' if sort_by != 'name_2' or sort_dir == 'desc' else 'desc') }}" 
+                                        class="text-black">
+                                Вид экономической деятельности_2
+                                {% if sort_by == 'name_2' %}
+                                    {% if sort_dir == 'asc' %}
+                                        ▲
+                                    {% else %}
+                                        ▼
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+
+                <!-- Данные таблицы-->
+                <tbody>
+                    {% for economic_activity_type in economic_activity_type_list %}
+                    <tr class= "align-middle">
+                        <!-- Строки таблицы. Столбец "№" -->
+                        <td class="text-center">
+                            {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                        </td>
+
+                        <!-- Строки таблицы. Столбец "Порядок отображения" -->
+                        <td class="text-center">
+                            {{ economic_activity_type.display_order if economic_activity_type.display_order is not none else '—' }}
+                        </td>
+
+                        <!-- Строки таблицы. Столбец "Вид экономической деятельности" -->
+                        <td> {{ economic_activity_type.name }} </td>
+
+                        <td> {{ economic_activity_type.name_2 or '—' }} </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+    
+    <!-- Пагинация -->
+    <div>
+        {% include 'refdata/economic_activity/economic_activity_type/economic_activity_type_pagination.html' %}
+    </div>
+
+</div>
+
+<!-- Скрипт подстройки высоты строк под содержимое ячеек -->
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}

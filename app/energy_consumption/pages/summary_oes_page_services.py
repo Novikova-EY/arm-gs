@@ -48,6 +48,7 @@ def build_summary_oes_page_context(
         summary_table_top_order=True,
     )
     context = apply_max_summary_page_variant_behaviour(context)
+    context["page_title"] = "Потребление ЭЭ по ЭС"
     context["summary_rows"] = filter_oes_max_summary_page_hidden_rows(
         list(context.get("summary_rows") or [])
     )

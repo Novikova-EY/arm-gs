@@ -57,6 +57,7 @@ def build_summary_table_hub_page_context(
         summary_table_top_order=True,
     )
     context = convert_context_to_summary_table_page(context)
+    context["page_title"] = "Потребление ЭЭ (свод)"
     append_summary_table_hub_energy_zone_footer_rows(
         context["summary_rows"],
         rounding_digits=rounding_digits,

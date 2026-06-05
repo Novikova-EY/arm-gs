@@ -67,10 +67,11 @@ SCHEMA_POWER_DEMAND = _normalize_schema_name(os.getenv("SCHEMA_POWER_DEMAND"), "
 SCHEMA_ENERGY_CONSUMPTION = _normalize_schema_name(
     os.getenv("SCHEMA_ENERGY_CONSUMPTION"), "gs_ec"
 )
+SCHEMA_ECONOMICS = _normalize_schema_name(os.getenv("SCHEMA_ECONOMICS"), "gs_ekp")
 SCHEMA_TERRITORIES = _normalize_schema_name(os.getenv("SCHEMA_TERRITORIES"), "gs_ter")
 DB_SEARCH_PATH = _normalize_search_path(
     os.getenv("DB_SEARCH_PATH"),
-    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em,gs_pd,gs_ec,gs_ter",
+    "gs_auth,gs_logs,gs_sys,gs_gen,gs_fue,gs_fue_em,gs_pd,gs_ec,gs_ekp,gs_ter",
 )
 STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
     os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")
@@ -122,10 +123,11 @@ class Config:
     SCHEMA_ENERGY_CONSUMPTION = _normalize_schema_name(
         os.getenv("SCHEMA_ENERGY_CONSUMPTION"), "gs_ec"
     )
+    SCHEMA_ECONOMICS = _normalize_schema_name(os.getenv("SCHEMA_ECONOMICS"), "gs_ekp")
     SCHEMA_TERRITORIES = _normalize_schema_name(os.getenv("SCHEMA_TERRITORIES"), "gs_ter")
     DB_SEARCH_PATH = _normalize_search_path(
         os.getenv("DB_SEARCH_PATH"),
-        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},{SCHEMA_POWER_DEMAND},{SCHEMA_ENERGY_CONSUMPTION},{SCHEMA_TERRITORIES},public",
+        f"{SCHEMA_AUTH},{SCHEMA_LOGS},{SCHEMA_REFDATA},{SCHEMA_GENERATION},{SCHEMA_FUEL},{SCHEMA_FUE_EM},{SCHEMA_POWER_DEMAND},{SCHEMA_ENERGY_CONSUMPTION},{SCHEMA_ECONOMICS},{SCHEMA_TERRITORIES},public",
     )
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS = _parse_int_set(
         os.getenv("STATION_UNIQUE_EXCLUDED_DISTRICT_IDS", "")

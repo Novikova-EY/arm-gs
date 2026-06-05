@@ -24,7 +24,7 @@ from app.power_demand.services.demand_summary_logging import (
 from app.power_demand.services.pd_summary_formula_template_vars import (
     inject_pd_formula_template_variables,
 )
-from app.power_demand.services.power_demand_summary_formula_text_services import (
+from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
     apply_row_formula_text_overrides,
     build_pd_formula_texts_map,
 )

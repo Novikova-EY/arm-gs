@@ -17,6 +17,6 @@ from app.power_demand.models.territories import (  # noqa: F401
     regional_district_demand_parameter_model,
     russia_federation_demand_parameter_model,
 )
-from app.power_demand.models import (  # noqa: F401
+from app.power_demand.models.formula_text import (  # noqa: F401
     power_demand_summary_formula_text_model,
 )

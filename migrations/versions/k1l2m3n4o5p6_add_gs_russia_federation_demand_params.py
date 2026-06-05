@@ -37,7 +37,52 @@ def _schema_exists(connection, schema: str) -> bool:
     return r.fetchone() is not None
 
 
+def _remove_duplicate_rows(connection, table_name: str) -> None:
+    """Удаляет дубликаты перед частичными UNIQUE INDEX (данные могли появиться до индексов)."""
+    fq = SCHEMA_PD.replace('"', '""')
+    tbl = table_name.replace('"', '""')
+    connection.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY COALESCE(database_version_id, 0)
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM "{fq}"."{tbl}"
+                WHERE is_historical_maximum = true
+            )
+            DELETE FROM "{fq}"."{tbl}" t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+    connection.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY year_number, COALESCE(database_version_id, 0)
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM "{fq}"."{tbl}"
+                WHERE is_historical_maximum = false
+            )
+            DELETE FROM "{fq}"."{tbl}" t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+
+
 def _ensure_indexes(connection, table_name: str) -> None:
+    _remove_duplicate_rows(connection, table_name)
     ix_year = f"ix_{TABLE}_year_number"
     if not column_utils.index_exists(connection, SCHEMA_PD, ix_year):
         op.create_index(ix_year, table_name, ["year_number"], unique=False, schema=SCHEMA_PD)

@@ -1,0 +1,1409 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% macro lt_ei_year_col_class(y) -%}
+{%- if lt_ei_year_segments is defined and lt_ei_year_segments and lt_ei_initial_visible_years is defined and y not in lt_ei_initial_visible_years %} pd-ec-year-col-hidden{%- endif -%}
+{%- endmacro %}
+
+{% macro lt_ei_formula_info_icon(tooltip, aria_label='Как считается строка') -%}
+<i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ tooltip|e }}" style="cursor: help; font-size: 0.9em; flex-shrink: 0;" aria-label="{{ aria_label }}"></i>
+{%- endmacro %}
+
+{% macro lt_ei_coef_controls(territory_kind, territory_id, ved_id, coef_a_manual_display, coef_a_computed_display, coef_x_display, coef_a_manual_tooltip, coef_a_computed_tooltip, coef_x_tooltip, indent, section_formula_hints=none) -%}
+{% set _coef_hints = section_formula_hints if section_formula_hints is not none else formula_hints %}
+<div class="lt-ei-coef-inline{% if indent %} lt-ei-coef-inline--indented{% endif %}">
+    <span class="lt-ei-coef-label">A</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a, 'Коэффициент A') }}
+    {% if can_edit %}
+    <input type="hidden" name="coef_territory_kind[]" value="{{ territory_kind }}">
+    <input type="hidden" name="coef_territory_id[]" value="{{ territory_id if territory_id is not none else '' }}">
+    <input type="hidden" name="coef_ved_id[]" value="{{ ved_id if ved_id is not none else '' }}">
+    <input type="text" name="coef_a[]" class="text-center fuel-param-input lt-ei-coef-input"
+           inputmode="decimal" autocomplete="off"
+           value="{% if coef_a_manual_display != '—' %}{{ coef_a_manual_display }}{% endif %}"
+           {% if coef_a_manual_tooltip %}title="{{ coef_a_manual_tooltip|e }}" data-db-full="{{ coef_a_manual_tooltip|e }}"{% endif %}>
+    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч.</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч.') }}
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
+          {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
+    <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-x-computed"
+          {% if coef_x_tooltip %}title="{{ coef_x_tooltip|e }}"{% endif %}>{{ coef_x_display }}</span>
+    {% else %}
+    <span class="lt-ei-coef-readonly-val">{{ coef_a_manual_display }}</span>
+    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч.</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч.') }}
+    <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
+          {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
+    <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
+    <span class="lt-ei-coef-readonly-val">{{ coef_x_display }}</span>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% block extra_head %}
+<style>
+    .page-table-scroll #electrical-intensity-logs-table thead th {
+        position: static;
+        top: auto;
+        z-index: auto;
+        box-shadow: none;
+    }
+    #electrical-intensity-logs-table td:nth-child(4) div, #electrical-intensity-logs-table td:nth-child(6) div { white-space: pre-wrap; }
+    #electrical-intensity-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+    /* Панель и заголовок не уезжают вбок при горизонтальном скролле .page-table-scroll */
+    .page-table-scroll .lt-ei-page-fixed-header,
+    .page-table-scroll .pd-ec-summary-sticky-stack {
+        position: sticky;
+        left: 0;
+    }
+    .page-table-scroll .lt-ei-page-fixed-header {
+        z-index: 1052;
+        background-color: var(--bs-body-bg, #fff);
+    }
+    #powerDemandSummaryScrollWrap.power-demand-summary-scroll {
+        width: 100%;
+        max-width: 100%;
+        -webkit-overflow-scrolling: touch;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table {
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+        table-layout: auto;
+        font-size: 1.15rem;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table col.summary-col-year {
+        width: auto;
+        min-width: 4.75rem;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table thead th {
+        font-size: 1.28rem;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table thead th.summary-year-col {
+        min-width: 4.75rem;
+    }
+    .power-demand-summary-table .lt-ei-label-col,
+    .power-demand-summary-table td.summary-parameter-cell {
+        width: 24rem;
+        min-width: 24rem;
+        max-width: 24rem;
+        box-sizing: border-box;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        vertical-align: middle;
+        line-height: 1.3;
+    }
+    .power-demand-summary-table .lt-ei-unit-col,
+    .power-demand-summary-table td.summary-unit-cell {
+        width: 6.5rem;
+        min-width: 6.5rem;
+        max-width: 6.5rem;
+        box-sizing: border-box;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        vertical-align: middle;
+        line-height: 1.3;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-year-cell,
+    #powerDemandSummaryScrollWrap .power-demand-summary-table th.summary-year-col {
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table .lt-ei-unit-col,
+    #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-unit-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-parameter-cell,
+    #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-unit-cell {
+        text-align: center;
+    }
+    .power-demand-summary-table .lt-ei-entity-sticky-center.summary-entity-cell {
+        font-size: 1.15rem;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    #powerDemandSummaryScrollWrap .summary-year-col,
+    #powerDemandSummaryScrollWrap .summary-year-cell {
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        min-width: 4.75rem;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-year-feature-caption {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+        white-space: nowrap;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table td.summary-year-cell .fuel-param-input {
+        width: auto;
+        min-width: 4.25rem;
+        max-width: none;
+    }
+    /* Диагностика: подозрительные значения «Характерные точки графика» */
+    #powerDemandSummaryTable td.summary-year-cell.lt-ei-graph-point-flagged,
+    #powerDemandSummaryTable td.summary-year-cell.lt-ei-graph-point-flagged .fuel-param-input {
+        color: #b02a37 !important;
+    }
+    /* Липкие левые столбцы при горизонтальном скролле (.page-table-scroll) */
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols {
+        --lt-ei-label-col-w: 24rem;
+        --lt-ei-unit-col-w: 6.5rem;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols th.lt-ei-label-col,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-parameter-cell {
+        position: sticky;
+        left: 0;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols th.lt-ei-unit-col,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-unit-cell {
+        position: sticky;
+        left: var(--lt-ei-label-col-w);
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols thead th.lt-ei-label-col {
+        z-index: 1051;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols thead th.lt-ei-unit-col {
+        z-index: 1050;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    }
+    /* Липкие ячейки: тот же фон, что у столбцов годов в строке (ниже — перекрытие полосатости). */
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols tbody td.summary-parameter-cell {
+        z-index: 22;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols tbody td.summary-unit-cell {
+        z-index: 21;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(odd):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning) > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(odd):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning) > td.summary-unit-cell {
+        background-color: #f8f9fa;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(even):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.lt-ei-coef-row):not(.table-warning) > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(even):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.lt-ei-coef-row):not(.table-warning) > td.summary-unit-cell {
+        background-color: var(--bs-body-bg, #fff);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover:not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover:not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-unit-cell {
+        background-color: var(--bs-table-hover-bg, #e9ecef);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped.table-hover > tbody > tr:hover:not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning):not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped.table-hover > tbody > tr:hover:not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning):not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-unit-cell {
+        background-color: var(--bs-table-hover-bg, #e9ecef);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols tr.lt-ei-coef-row > td.lt-ei-coef-cell {
+        background: transparent;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-coef-row > td.lt-ei-coef-cell {
+        background: transparent;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols tr.lt-ei-coef-row > td.lt-ei-coef-cell .lt-ei-coef-inline {
+        background-color: #f8f9fa;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-row-intensity > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-row-intensity > td.summary-unit-cell {
+        background-color: #cfe2ff;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-row-graph-point > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-row-graph-point > td.summary-unit-cell {
+        background-color: #f0eaf7;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-product-output > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-product-output > td.summary-unit-cell {
+        background-color: #fce4e4;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-consumption > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-consumption > td.summary-unit-cell {
+        background-color: #d1e7dd;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-accum-capital > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.lt-ei-ref-accum-capital > td.summary-unit-cell {
+        background-color: #e2e8f0;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.table-warning > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.table-warning > td.summary-unit-cell {
+        background-color: var(--bs-warning-bg-subtle, #fff3cd);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.table-warning:hover > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.table-warning:hover > td.summary-unit-cell {
+        background-color: #ffecb5;
+    }
+    .pd-ec-max-year-visibility-table col[data-ec-summary-col-year].pd-ec-year-col-hidden,
+    .pd-ec-max-year-visibility-table th[data-ec-summary-col-year].pd-ec-year-col-hidden,
+    .pd-ec-max-year-visibility-table td[data-ec-summary-col-year].pd-ec-year-col-hidden {
+        display: none !important;
+    }
+    .power-demand-import-export-collapse {
+        overflow: visible !important;
+    }
+    #powerDemandCoeffSegToggles .btn-outline-warning {
+        color: inherit;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(> input.fuel-param-input) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable tr.lt-ei-row-intensity > td {
+        background-color: #cfe2ff;
+    }
+    #powerDemandSummaryTable tr.lt-ei-row-graph-point > td {
+        background-color: #f0eaf7;
+    }
+    #powerDemandSummaryTable .lt-ei-graph-point-row-calc {
+        font-size: 1.3125rem;
+        line-height: 1;
+        padding: 0 0.1rem !important;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable .lt-ei-graph-point-row-calc .bi-calculator {
+        font-size: 1em;
+    }
+    /* Строки коэффициентов: липнут слева при горизонтальном скролле (как левые столбцы) */
+    #powerDemandSummaryScrollWrap tr.lt-ei-coef-row > td.lt-ei-coef-cell {
+        padding: 0;
+        vertical-align: middle;
+        background: transparent;
+        border-left: 0;
+        border-right: 0;
+        overflow: visible;
+        white-space: nowrap;
+        text-align: left;
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+    #powerDemandSummaryScrollWrap tr.lt-ei-coef-row > td.lt-ei-coef-cell .lt-ei-coef-inline,
+    #powerDemandSummaryTable tr.lt-ei-coef-row > td.lt-ei-coef-cell .lt-ei-coef-inline {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.35rem;
+        width: max-content;
+        min-width: calc(var(--lt-ei-label-col-w, 24rem) + var(--lt-ei-unit-col-w, 6.5rem));
+        white-space: nowrap;
+        box-sizing: border-box;
+        position: sticky;
+        left: 0;
+        z-index: 23;
+        background-color: #f8f9fa;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+        padding: 0.35rem 0.5rem;
+    }
+    .lt-ei-coef-inline {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 0.35rem;
+        max-width: 100%;
+        white-space: nowrap;
+    }
+    .lt-ei-coef-inline--indented {
+        padding-left: 1.5rem;
+    }
+    .lt-ei-param-inline {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+    .lt-ei-param-inline--indented {
+        padding-left: 1.5rem;
+    }
+    .lt-ei-coef-inline .lt-ei-coef-label {
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+    .lt-ei-coef-inline .lt-ei-coef-label-calc,
+    .lt-ei-coef-inline .lt-ei-coef-label-x {
+        margin-left: 0.5rem;
+    }
+    .lt-ei-coef-inline .lt-ei-coef-a-computed {
+        min-width: 5rem;
+        padding: 0.15rem 0.35rem;
+        line-height: 1.5;
+        border: 1px solid #dee2e6;
+        border-radius: 0.2rem;
+        background-color: #e9ecef;
+        color: #495057;
+        cursor: default;
+        user-select: text;
+        box-sizing: border-box;
+    }
+    .lt-ei-coef-inline .lt-ei-coef-readonly-val {
+        display: inline-block;
+        min-width: 5rem;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .lt-ei-coef-inline .lt-ei-coef-x-computed {
+        min-width: 7rem;
+        padding: 0.15rem 0.35rem;
+        line-height: 1.5;
+        border: 1px solid #dee2e6;
+        border-radius: 0.2rem;
+        background-color: #e9ecef;
+        color: #495057;
+        cursor: default;
+        user-select: text;
+        box-sizing: border-box;
+    }
+    /* График по центру видимой области при горизонтальном скролле по годам */
+    #powerDemandSummaryScrollWrap .lt-ei-chart-row > td {
+        padding: 0;
+        vertical-align: top;
+        background: transparent;
+        border-left: 0;
+        border-right: 0;
+        overflow: visible;
+    }
+    #powerDemandSummaryScrollWrap .lt-ei-chart-sticky-center {
+        position: sticky;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80rem;
+        max-width: min(80rem, calc(100vw - 2.5rem));
+        z-index: 30;
+        margin: 0.75rem 0 1rem;
+        box-sizing: border-box;
+        pointer-events: none;
+    }
+    #powerDemandSummaryScrollWrap .lt-ei-chart-sticky-center .lt-ei-scatter-chart-host {
+        pointer-events: auto;
+    }
+    /* Заголовки ФО/ВЭД: по центру видимой области при горизонтальном скролле (как график) */
+    #powerDemandSummaryScrollWrap tr.lt-ei-territory-header-row > td {
+        padding: 0;
+        vertical-align: middle;
+        background-color: #339af0;
+        border-left: 0;
+        border-right: 0;
+        overflow: visible;
+    }
+    #powerDemandSummaryScrollWrap tr.lt-ei-ved-header-row > td {
+        padding: 0;
+        vertical-align: middle;
+        background-color: #ffd8a8;
+        border-left: 0;
+        border-right: 0;
+        overflow: visible;
+    }
+    #powerDemandSummaryScrollWrap .lt-ei-entity-sticky-center {
+        position: sticky;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: min(80rem, calc(100vw - 2.5rem));
+        z-index: 29;
+        padding: 0.5rem 1rem;
+        box-sizing: border-box;
+    }
+    #powerDemandSummaryScrollWrap .lt-ei-entity-sticky-center.lt-ei-territory-header-label {
+        font-weight: 700;
+        color: #fff;
+        background-color: transparent;
+    }
+    #powerDemandSummaryScrollWrap .lt-ei-entity-sticky-center.lt-ei-ved-header-label {
+        font-weight: 600;
+        background-color: transparent;
+    }
+    .lt-ei-scatter-chart-host {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 80rem;
+        margin: 0;
+        height: 34rem;
+        position: relative;
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 2px;
+        padding: 0.35rem 0.5rem 0.25rem;
+        box-sizing: border-box;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    }
+    .lt-ei-scatter-chart-host .lt-ei-chart-caption {
+        flex: 0 0 auto;
+        font-size: 1.9rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 0.35rem;
+        color: #495057;
+    }
+    .lt-ei-scatter-chart-host .lt-ei-chart-plot {
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+        width: 100%;
+    }
+    #powerDemandSummaryTable tr.lt-ei-coef-row input.lt-ei-coef-input.fuel-param-input {
+        display: inline-block;
+        width: 7rem;
+        min-width: 7rem;
+        max-width: 7rem;
+        min-height: 0;
+        height: auto;
+        flex-shrink: 0;
+        margin: 0;
+        padding: 0.15rem 0.35rem;
+        font-size: inherit;
+        line-height: 1.5;
+        border: 1px solid #adb5bd !important;
+        border-radius: 0.2rem;
+        box-shadow: none;
+        background-color: #fff;
+        vertical-align: middle;
+        box-sizing: border-box;
+    }
+    #powerDemandSummaryTable tr.lt-ei-coef-row input.lt-ei-coef-input.fuel-param-input:focus {
+        border-color: #86b7fe !important;
+        outline: 0;
+        box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.2);
+    }
+    #powerDemandSummaryTable tr.lt-ei-ref-product-output > td {
+        background-color: #fce4e4;
+    }
+    #powerDemandSummaryTable tr.lt-ei-ref-consumption > td {
+        background-color: #d1e7dd;
+    }
+    #powerDemandSummaryTable tr.lt-ei-ref-accum-capital > td {
+        background-color: #e2e8f0;
+    }
+    #powerDemandSummaryTable tr.lt-ei-ved-separator-row > td {
+        background-color: #e2d4f0;
+        height: 0.35rem;
+        padding: 0;
+        border-top-width: 0;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+</style>
+{% if lt_ei_year_segments %}
+<script>
+window.__ltEiYearSegBoot = {
+    n: {{ coeff_base_year }},
+    years: {{ years|list|tojson }},
+    startYear: {{ start_year }},
+    endYear: {{ end_year }},
+    serverMediumLoaded: {% if summary_include_medium_years %}1{% else %}0{% endif %},
+    serverLongLoaded: {% if summary_include_long_years %}1{% else %}0{% endif %}
+};
+</script>
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}"></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set rd = rounding_digits if rounding_digits is defined else 1 %}
+<div class="container-fluid mt-2">
+    <div class="lt-ei-page-fixed-header">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
+        <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-secondary fs-5">
+            <i class="bi bi-graph-up-arrow"></i> Экономика
+        </a>
+        <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">На главную</a>
+    </div>
+
+    <h1 class="text-center mb-4">{{ page_title }}</h1>
+    </div>
+
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+        <div class="col-12 mb-2">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex gap-2 align-items-center">
+                    <button id="ltEiFiltersToggleBtn"
+                            class="btn {% if has_active_filters %}btn-warning text-dark{% else %}btn-primary text-white{% endif %}"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#ltEiFiltersCollapse"
+                            aria-expanded="{% if has_active_filters %}true{% else %}false{% endif %}"
+                            aria-controls="ltEiFiltersCollapse">
+                        {% if has_active_filters %}<i class="bi bi-funnel-fill"></i>{% else %}🔍{% endif %} Фильтры / Поиск
+                    </button>
+                    <button id="ltEiImportExportToggleBtn"
+                            class="btn btn-outline-secondary text-dark"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#ltEiImportExportCollapse"
+                            aria-expanded="false"
+                            aria-controls="ltEiImportExportCollapse">
+                        📁 Импорт / Экспорт
+                    </button>
+                </div>
+                {% if can_edit %}
+                <button type="submit" form="electrical-intensity-form" class="btn btn-outline-primary flex-shrink-0">Сохранить</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-12 mb-2">
+            <div class="collapse mt-2{% if has_active_filters %} show{% endif %} power-demand-filters-collapse" id="ltEiFiltersCollapse">
+                <form method="GET" action="{{ url_for('long_term_consumption_bp.electrical_intensity') }}"
+                      class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
+                    {% for key, values in request.args.lists() %}
+                        {% if key != 'ds_fd' and key != 'ds_ved' %}
+                            {% for value in values %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="pd-summary-filter-field">
+                        <select id="ds_fd" name="ds_fd" class="form-select pd-ds-ms" multiple
+                                data-pd-placeholder="Федеральный округ" aria-label="Федеральный округ">
+                            {% for row in federal_district_list %}
+                            <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_fd')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="pd-summary-filter-field">
+                        <select id="ds_ved" name="ds_ved" class="form-select pd-ds-ms" multiple
+                                data-pd-placeholder="ВЭД" aria-label="Вид экономической деятельности">
+                            {% for row in economic_activity_type_list %}
+                            <option value="{{ row.id }}" {% if row.id|string in request.args.getlist('ds_ved')|map('string') %}selected{% endif %}>{{ row.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="pd-summary-filter-field pd-summary-filter-actions">
+                        <button type="submit" class="btn btn-outline-primary">Поиск</button>
+                    </div>
+                    <div class="pd-summary-filter-field pd-summary-filter-actions">
+                        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-12 mb-2">
+            <div class="collapse mt-2 power-demand-import-export-collapse" id="ltEiImportExportCollapse">
+                <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                    <form method="GET"
+                          action="{{ url_for('long_term_consumption_bp.electrical_intensity_export_xlsx') }}"
+                          class="d-inline m-0">
+                        {% for key, values in request.args.lists() %}
+                            {% for value in values %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endfor %}
+                        <button type="submit"
+                                class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                                style="white-space: nowrap;">
+                            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                        </button>
+                    </form>
+                    {% if can_edit %}
+                    <div id="ltEiConsumptionImportWrap"
+                         class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0"
+                         data-import-url="{{ url_for('long_term_consumption_bp.electrical_intensity_import_xlsx') }}"
+                         data-csrf-token="{{ csrf_token }}">
+                        <input type="file"
+                               id="ltEiConsumptionImportFile"
+                               class="d-none"
+                               accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12">
+                        <button type="button"
+                                class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+                                id="ltEiConsumptionImportBtn"
+                                style="white-space: nowrap;">
+                            <i class="bi bi-upload"></i> Импорт из Excel
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 mb-2">
+            <div class="d-flex align-items-center flex-wrap gap-2 w-100">
+                <form method="GET" action="{{ url_for('long_term_consumption_bp.electrical_intensity') }}"
+                      class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
+                      id="powerDemandSummaryYearForm"
+                      {% if lt_ei_year_segments and filter_year_list %}data-pd-filter-year-min="{{ filter_year_list[0] }}" data-pd-filter-year-max="{{ filter_year_list[-1] }}"{% endif %}>
+                    {% for key, values in request.args.lists() %}
+                        {% if key != 'start_year' and key != 'end_year' %}
+                            {% for value in values %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+                        {% for year in filter_year_list %}
+                        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+                        {% for year in filter_year_list %}
+                        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-success">Применить</button>
+                    <a href="{{ url_for('long_term_consumption_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
+                </form>
+                {% if lt_ei_year_segments %}
+                {% set lt_ei_seg = lt_ei_year_seg_state if lt_ei_year_seg_state is defined else {'mode': 'segments', 'reporting': true, 'medium': true, 'long': true} %}
+                {% set lt_ei_seg_on = lt_ei_seg.mode == 'segments' %}
+                <div id="powerDemandCoeffSegToggles" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1 justify-content-center justify-content-md-start" role="toolbar" aria-label="Периоды по годам">
+                    <button type="button" class="btn {% if lt_ei_seg_on and lt_ei_seg.reporting %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="reporting" aria-pressed="{{ 'true' if lt_ei_seg_on and lt_ei_seg.reporting else 'false' }}" title="Показать или скрыть отчетный период">Отчетный период</button>
+                    <button type="button" class="btn {% if lt_ei_seg_on and lt_ei_seg.medium %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="medium" aria-pressed="{{ 'true' if lt_ei_seg_on and lt_ei_seg.medium else 'false' }}" title="Показать или скрыть среднесрочный период">Среднесрочный период</button>
+                    <button type="button" class="btn {% if lt_ei_seg_on and lt_ei_seg.long %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="long" aria-pressed="{{ 'true' if lt_ei_seg_on and lt_ei_seg.long else 'false' }}" title="Показать или скрыть долгосрочный период (текущий год + 17 лет)">Долгосрочный период</button>
+                </div>
+                {% endif %}
+                <div class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    {% if can_edit %}
+                    <form method="POST"
+                          action="{{ url_for('long_term_consumption_bp.electrical_intensity_calculate_graph_points') }}"
+                          class="d-inline m-0"
+                          id="ltEiCalculateGraphPointsForm">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" name="preserve_qs" value="{{ request.query_string.decode() }}">
+                        <input type="hidden" name="rounding_digits" value="{{ rd }}">
+                        <button type="submit"
+                                class="btn btn-outline-primary text-nowrap"
+                                id="ltEiCalculateGraphPointsBtn"
+                                title="Рассчитать характерные точки графика для всех территорий и ВЭД (годы не позже текущего) и сохранить в БД">
+                            Рассчитать точки графика
+                        </button>
+                    </form>
+                    <div id="ltEiGraphPointCalcMeta" class="d-none"
+                         data-row-calc-url="{{ url_for('long_term_consumption_bp.electrical_intensity_calculate_graph_points_row') }}"
+                         data-page-query="{{ request.query_string.decode() }}"
+                         data-csrf-token="{{ csrf_token }}"></div>
+                    {% endif %}
+                    <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
+                    <select id="rounding_digits" class="form-select" style="min-width: 150px; width: auto;">
+                        <option value="0" {% if rd == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rd == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rd == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rd == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rd == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div><!-- /.pd-ec-summary-sticky-stack -->
+
+    {% if can_edit %}
+    <form method="POST" id="electrical-intensity-form">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="preserve_qs" value="{{ request.query_string.decode() }}">
+        <input type="hidden" name="rounding_digits" id="rounding_digits_hidden" value="{{ rd }}">
+    {% endif %}
+
+    {% set lt_ei_label_col_w = "24rem" %}
+    {% set lt_ei_unit_col_w = "6.5rem" %}
+    {% set lt_ei_fixed_cols = 2 %}
+    <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll">
+        <table id="powerDemandSummaryTable"
+               class="table table-bordered table-striped align-middle power-demand-summary-table lt-ei-sticky-lead-cols{% if can_edit %} table-hover fuel-params-edit-table{% endif %}{% if lt_ei_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
+               data-rounding-digits="{{ rd }}"
+               data-lt-ei-preformatted="1"
+               {% if lt_ei_year_segments %}
+               data-ec-max-year-segments="1"
+               data-coeff-base-year="{{ coeff_base_year }}"
+               data-coeff-long-loaded="{% if summary_include_long_years %}1{% else %}0{% endif %}"
+               data-pd-server-medium-loaded="{% if summary_include_medium_years %}1{% else %}0{% endif %}"
+               data-pd-server-long-loaded="{% if summary_include_long_years %}1{% else %}0{% endif %}"
+               {% endif %}>
+            <colgroup>
+                <col class="summary-col-parameter" style="width: {{ lt_ei_label_col_w }}; min-width: {{ lt_ei_label_col_w }}; max-width: {{ lt_ei_label_col_w }}; box-sizing: border-box;">
+                <col class="summary-col-unit" style="width: {{ lt_ei_unit_col_w }}; min-width: {{ lt_ei_unit_col_w }}; max-width: {{ lt_ei_unit_col_w }}; box-sizing: border-box;">
+                {% for y in years %}
+                <col class="summary-col-year{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}">
+                {% endfor %}
+            </colgroup>
+            <thead class="table-success">
+                <tr>
+                    <th class="text-center align-middle summary-parameter-col lt-ei-label-col">Территория / ВЭД / показатель</th>
+                    <th class="text-center align-middle summary-unit-col lt-ei-unit-col">ед.изм.</th>
+                    {% for y in years %}
+                    <th class="text-center align-middle summary-year-col{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}">
+                        {{ y }}
+                        <div class="power-demand-year-feature-caption">
+                            {% if y in year_features %}
+                            {{ year_features[y] }}
+                            {% endif %}
+                        </div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for block in territory_blocks %}
+                <tr class="lt-ei-territory-header-row">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}">
+                        <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-territory-header-label">{{ block.abbr }} — {{ block.label }}</div>
+                    </td>
+                </tr>
+                {% if block.layout != 'ved_sections' %}
+                <tr class="lt-ei-coef-row">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}" class="align-middle summary-entity-cell lt-ei-coef-cell">
+                        {{ lt_ei_coef_controls(block.territory_kind, block.territory_id, none, block.coefficient_a_manual_display, block.coefficient_a_computed_display, block.coefficient_x_display, block.coefficient_a_manual_tooltip, block.coefficient_a_computed_tooltip, block.coefficient_x_tooltip, false) }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% if block.fd_summary %}
+                {% for ref_row in block.fd_summary.reference_rows %}
+                <tr class="{{ ref_row.row_css }}">
+                    <td class="text-center align-middle summary-parameter-cell">
+                        <div class="lt-ei-param-inline">
+                            <span>{{ ref_row.row_label }}</span>
+                            {% if ref_row.formula_hint %}{{ lt_ei_formula_info_icon(ref_row.formula_hint) }}{% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center align-middle summary-unit-cell">{{ ref_row.unit_label or '' }}</td>
+                    {% for y in years %}
+                    {% set disp = ref_row.cells_display.get(y, '—') if ref_row.cells_display is defined else '—' %}
+                    {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
+                    <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% if block.fd_summary.has_ei_intensity_block %}
+                {% for row in block.fd_summary.rows %}
+                {% if row.row_kind == 'intensity' %}
+                <tr class="{{ row.row_css }}">
+                    <td class="text-center align-middle summary-parameter-cell">
+                        <div class="lt-ei-param-inline">
+                            <span>{{ row.row_label }}</span>
+                            {% if row.formula_hint %}{{ lt_ei_formula_info_icon(row.formula_hint) }}{% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center align-middle summary-unit-cell">{{ unit_label }}</td>
+                    {% for y in years %}
+                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
+                    <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+                {% if block.fd_summary.scatter_chart is defined and block.fd_summary.scatter_chart %}
+                <tr class="lt-ei-chart-row">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}">
+                        <div class="lt-ei-chart-sticky-center">
+                            <div class="lt-ei-scatter-chart-host" data-lt-ei-chart-host="1"
+                                 data-lt-ei-chart-key="{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}|fd_summary">
+                                <div class="lt-ei-chart-caption">{{ block.abbr }} — {{ block.label }}</div>
+                                <div class="lt-ei-chart-plot">
+                                    <script type="application/json" class="lt-ei-chart-data">{{ block.fd_summary.scatter_chart | tojson }}</script>
+                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроёмкости: {{ block.label|e }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                {% if block.layout == 'ved_sections' and block.ved_sections %}
+                {% for section in block.ved_sections %}
+                <tr class="lt-ei-ved-header-row">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}">
+                        <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-ved-header-label">{{ section.ved_name }}</div>
+                    </td>
+                </tr>
+                {% if section.has_ei_model_block %}
+                <tr class="lt-ei-coef-row"{% if section.scatter_chart is defined and section.scatter_chart %} data-lt-ei-coef-chart="1" data-lt-ei-chart-key="{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}|{{ section.ved_id }}"{% endif %}>
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}" class="align-middle summary-entity-cell lt-ei-coef-cell">
+                        {{ lt_ei_coef_controls(block.territory_kind, block.territory_id, section.ved_id, section.coefficient_a_manual_display, section.coefficient_a_computed_display, section.coefficient_x_display, section.coefficient_a_manual_tooltip, section.coefficient_a_computed_tooltip, section.coefficient_x_tooltip, true, section.formula_hints if section.formula_hints is defined else none) }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% for ref_row in section.reference_rows %}
+                <tr class="{{ ref_row.row_css }}">
+                    <td class="text-center align-middle summary-parameter-cell">
+                        <div class="lt-ei-param-inline lt-ei-param-inline--indented">
+                            <span>{{ ref_row.row_label }}</span>
+                            {% if ref_row.formula_hint %}{{ lt_ei_formula_info_icon(ref_row.formula_hint) }}{% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center align-middle summary-unit-cell">{{ ref_row.unit_label or '' }}</td>
+                    {% for y in years %}
+                    {% set disp = ref_row.cells_display.get(y, '—') if ref_row.cells_display is defined else '—' %}
+                    {% set _yr_tt = (ref_row.cell_tooltips|default({})).get(y, '') if ref_row.cell_tooltips is defined else '' %}
+                    <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}" data-ec-summary-col-year="{{ y }}"
+                        {% if _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>{{ disp }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% if section.has_ei_block %}
+                {% for row in section.rows %}
+                {% if (section.has_ei_intensity_block and row.row_kind == 'intensity') or (section.has_ei_model_block and row.row_kind != 'intensity') %}
+                <tr class="{{ row.row_css }}"
+                    {% if row.row_kind == 'graph_point' %}data-lt-ei-graph-point-row="1"{% endif %}>
+                    <td class="text-center align-middle summary-parameter-cell">
+                        <div class="lt-ei-param-inline lt-ei-param-inline--indented">
+                            <span>{{ row.row_label }}</span>
+                            {% if row.formula_hint %}{{ lt_ei_formula_info_icon(row.formula_hint) }}{% endif %}
+                            {% if row.row_kind == 'graph_point' and can_edit %}
+                            <button type="button"
+                                    class="btn btn-link btn-sm p-0 lt-ei-graph-point-row-calc"
+                                    title="Рассчитать эту строку без сохранения в БД"
+                                    aria-label="Рассчитать строку характерных точек графика"
+                                    data-territory-kind="{{ block.territory_kind }}"
+                                    data-territory-id="{{ block.territory_id if block.territory_id is not none else '' }}"
+                                    data-ved-id="{{ section.ved_id }}"><i class="bi bi-calculator" aria-hidden="true"></i></button>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center align-middle summary-unit-cell">{{ section.unit_label if section.unit_label is defined else unit_label }}</td>
+                    {% for y in years %}
+                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
+                    {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
+                    <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
+                        {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
+                        {% if row.is_computed or (row.computed_years is defined and y in row.computed_years and not row.allows_manual_edit) %}
+                        {{ disp }}
+                        {% elif can_edit %}
+                        <input type="hidden" name="territory_kind[]" value="{{ block.territory_kind }}">
+                        <input type="hidden" name="territory_id[]" value="{{ block.territory_id }}">
+                        <input type="hidden" name="cell_ved_id[]" value="{{ section.ved_id if section.ved_id is not none else '' }}">
+                        <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
+                        <input type="hidden" name="cell_year[]" value="{{ y }}">
+                        <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
+                               inputmode="decimal" autocomplete="off"
+                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
+                        {% else %}
+                        {{ disp }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endif %}
+                {% endfor %}
+                {% if section.scatter_chart is defined and section.scatter_chart %}
+                <tr class="lt-ei-chart-row">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}">
+                        <div class="lt-ei-chart-sticky-center">
+                            <div class="lt-ei-scatter-chart-host" data-lt-ei-chart-host="1"
+                                 data-lt-ei-chart-key="{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}|{{ section.ved_id }}">
+                                <div class="lt-ei-chart-caption">{{ section.ved_name }}</div>
+                                <div class="lt-ei-chart-plot">
+                                    <script type="application/json" class="lt-ei-chart-data">{{ section.scatter_chart | tojson }}</script>
+                                    <canvas class="lt-ei-scatter-chart-canvas" role="img" aria-label="График электроёмкости: {{ section.ved_name|e }}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                <tr class="lt-ei-ved-separator-row" aria-hidden="true">
+                    <td colspan="{{ years|length + lt_ei_fixed_cols }}"></td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
+                {% if block.layout != 'ved_sections' %}
+                {% for row in block.rows %}
+                <tr class="{{ row.row_css }}"
+                    {% if row.row_kind == 'graph_point' %}data-lt-ei-graph-point-row="1"{% endif %}>
+                    <td class="text-center align-middle summary-parameter-cell">
+                        <div class="lt-ei-param-inline">
+                            <span>{{ row.row_label }}</span>
+                            {% if row.formula_hint %}{{ lt_ei_formula_info_icon(row.formula_hint) }}{% endif %}
+                            {% if row.row_kind == 'graph_point' and can_edit %}
+                            <button type="button"
+                                    class="btn btn-link btn-sm p-0 lt-ei-graph-point-row-calc"
+                                    title="Рассчитать эту строку без сохранения в БД"
+                                    aria-label="Рассчитать строку характерных точек графика"
+                                    data-territory-kind="{{ block.territory_kind }}"
+                                    data-territory-id="{{ block.territory_id if block.territory_id is not none else '' }}"
+                                    data-ved-id=""><i class="bi bi-calculator" aria-hidden="true"></i></button>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="text-center align-middle summary-unit-cell">{{ unit_label }}</td>
+                    {% for y in years %}
+                    {% set disp = row.cells_display.get(y, '—') if row.cells_display is defined else '—' %}
+                    {% set _yr_tt = (row.cell_tooltips|default({})).get(y, '') if row.cell_tooltips is defined else '' %}
+                    {% set _diag_tt = (row.cell_diagnostic_notes|default({})).get(y, '') if row.row_kind == 'graph_point' and row.cell_diagnostic_notes is defined else '' %}
+                    <td class="text-center align-middle summary-year-cell{{ lt_ei_year_col_class(y) }}{% if _diag_tt %} lt-ei-graph-point-flagged{% endif %}" data-ec-summary-col-year="{{ y }}"
+                        {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}"{% endif %}>
+                        {% if row.is_computed or (row.computed_years is defined and y in row.computed_years and not row.allows_manual_edit) %}
+                        {{ disp }}
+                        {% elif can_edit %}
+                        <input type="hidden" name="territory_kind[]" value="{{ block.territory_kind }}">
+                        <input type="hidden" name="territory_id[]" value="{{ block.territory_id if block.territory_id is not none else '' }}">
+                        <input type="hidden" name="cell_ved_id[]" value="">
+                        <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
+                        <input type="hidden" name="cell_year[]" value="{{ y }}">
+                        <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
+                               inputmode="decimal" autocomplete="off"
+                               value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
+                        {% else %}
+                        {{ disp }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if can_edit %}
+    </form>
+    {% endif %}
+
+{% if electrical_intensity_logs_formatted is defined %}
+<h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
+<div class="container-fluid mt-3 px-0">
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered" id="electrical-intensity-logs-table"
+                   data-ei-logs-base-url="{{ url_for('long_term_consumption_bp.electrical_intensity_logs') }}">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ec-log-col-date" style="width:140px;">Дата</th>
+                        <th class="ec-log-col-time" style="width:120px;">Время</th>
+                        <th class="ec-log-col-user" style="width:260px;">Пользователь</th>
+                        <th class="ec-log-col-action">Действие</th>
+                        <th class="ec-log-col-ver" style="width:150px;">Версия базы данных</th>
+                        <th class="ec-log-col-details">Информация</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if electrical_intensity_logs_formatted and electrical_intensity_logs_formatted|length > 0 %}
+                        {% for log in electrical_intensity_logs_formatted %}
+                            <tr>
+                                <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
+                                <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
+                                <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+        {% if electrical_intensity_logs_formatted and electrical_intensity_logs_formatted|length > 0 %}
+        <div class="card-footer text-center">
+            <div class="mb-2">
+                <small class="text-muted">
+                    Показано: <span id="electrical-intensity-logs-shown">{{ electrical_intensity_logs_formatted|length }}</span> из <span id="electrical-intensity-logs-total">?</span>
+                </small>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="electrical-intensity-load-more-logs"
+                    data-offset="{{ electrical_intensity_logs_formatted|length }}"
+                    style="display: none;">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                Загрузить еще
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    <div class="my-3"></div>
+</div>
+{% endif %}
+
+</div>
+
+{% if electrical_intensity_logs_formatted is defined %}
+<script>
+(function () {
+    var tbl = document.getElementById("electrical-intensity-logs-table");
+    if (!tbl) return;
+    var base = tbl.getAttribute("data-ei-logs-base-url");
+    if (!base) return;
+    var moreBtn = document.getElementById("electrical-intensity-load-more-logs");
+    var shownEl = document.getElementById("electrical-intensity-logs-shown");
+    var totalEl = document.getElementById("electrical-intensity-logs-total");
+    function rowFromLog(log) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+            '<td data-date="' + (log.date || "") + '">' + (log.date || "") + "</td>" +
+            '<td data-time="' + (log.time || "") + '">' + (log.time || "") + "</td>" +
+            '<td data-user="' + (log.username_lower || "") + '">' + (log.username || "") + "</td>" +
+            '<td><div data-action="' + (log.action_lower || "") + '">' + (log.action || "") + "</div></td>" +
+            '<td data-database-version="' + String(log.database_version || "").toLowerCase() + '">' + (log.database_version || "") + "</td>" +
+            '<td>' + (log.details
+                ? '<div data-details="' + (log.details_lower || "") + '" style="white-space: pre-wrap;"></div>'
+                : "") + "</td>";
+        if (log.details) {
+            tr.cells[5].querySelector("div").textContent = log.details;
+        }
+        return tr;
+    }
+    fetch(base + "?offset=0&limit=0", { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data || !data.ok || !totalEl) return;
+            totalEl.textContent = data.total;
+            if (moreBtn && shownEl && data.total > parseInt(shownEl.textContent || "0", 10)) {
+                moreBtn.style.display = "";
+            }
+        })
+        .catch(function () { /* */ });
+    if (moreBtn) {
+        moreBtn.addEventListener("click", function () {
+            var off = parseInt(moreBtn.getAttribute("data-offset") || "0", 10);
+            var sp = moreBtn.querySelector(".spinner-border");
+            if (sp) sp.style.display = "";
+            moreBtn.disabled = true;
+            fetch(base + "?offset=" + off + "&limit=150", { credentials: "same-origin" })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (sp) sp.style.display = "none";
+                    moreBtn.disabled = false;
+                    if (!data || !data.ok || !data.logs) return;
+                    var tb = tbl.tBodies[0];
+                    data.logs.forEach(function (log) { tb.appendChild(rowFromLog(log)); });
+                    off += data.logs.length;
+                    moreBtn.setAttribute("data-offset", String(off));
+                    if (shownEl) shownEl.textContent = String(off);
+                    if (!data.has_more) moreBtn.style.display = "none";
+                })
+                .catch(function () {
+                    if (sp) sp.style.display = "none";
+                    moreBtn.disabled = false;
+                });
+        });
+    }
+})();
+</script>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/electrical_intensity_charts.js') }}" defer></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (typeof initEcMaxYearPeriodMode === "function") {
+        initEcMaxYearPeriodMode();
+    }
+
+    function refreshLtEiSummaryTableLayout() {
+        if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+            window.armGsUpdatePdSummaryControlsStickyHeight();
+        }
+        if (typeof window.armGsUpdateHorizontalScrollFlags === "function") {
+            window.armGsUpdateHorizontalScrollFlags();
+        }
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+    }
+    refreshLtEiSummaryTableLayout();
+    setTimeout(refreshLtEiSummaryTableLayout, 50);
+    setTimeout(refreshLtEiSummaryTableLayout, 250);
+    var segBar = document.getElementById("powerDemandCoeffSegToggles");
+    if (segBar) {
+        segBar.addEventListener("click", function () {
+            setTimeout(refreshLtEiSummaryTableLayout, 0);
+        });
+    }
+
+    if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+        document.querySelectorAll(
+            "#powerDemandSummaryTable [data-bs-toggle=\"tooltip\"], " +
+            "#ltEiImportExportCollapse [data-bs-toggle=\"tooltip\"]"
+        ).forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+    }
+
+    var roundingSel = document.getElementById("rounding_digits");
+    var roundingHidden = document.getElementById("rounding_digits_hidden");
+    if (roundingSel) {
+        roundingSel.addEventListener("change", function () {
+            var rd = roundingSel.value;
+            if (roundingHidden) roundingHidden.value = rd;
+            var url = new URL(window.location.href);
+            url.searchParams.set("rounding_digits", rd);
+            window.location.href = url.toString();
+        });
+    }
+
+    function ltEiCsrfToken() {
+        var meta = document.getElementById("ltEiGraphPointCalcMeta");
+        if (meta) {
+            var t = (meta.getAttribute("data-csrf-token") || "").trim();
+            if (t) return t;
+        }
+        var imp = document.getElementById("ltEiConsumptionImportWrap");
+        return imp ? (imp.getAttribute("data-csrf-token") || "").trim() : "";
+    }
+
+    var gpCalcMeta = document.getElementById("ltEiGraphPointCalcMeta");
+    if (gpCalcMeta) {
+        var rowCalcUrl = gpCalcMeta.getAttribute("data-row-calc-url") || "";
+        var pageQuery = (gpCalcMeta.getAttribute("data-page-query") || "").trim();
+        if (!pageQuery && window.location.search) {
+            pageQuery = window.location.search.charAt(0) === "?"
+                ? window.location.search.slice(1)
+                : window.location.search;
+        }
+        if (pageQuery && rowCalcUrl.indexOf("?") < 0) {
+            rowCalcUrl += "?" + pageQuery;
+        }
+        document.querySelectorAll(".lt-ei-graph-point-row-calc").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                if (!rowCalcUrl) return;
+                var tr = btn.closest("tr[data-lt-ei-graph-point-row]");
+                if (!tr) return;
+                var gpCsrf = ltEiCsrfToken();
+                var fd = new FormData();
+                if (gpCsrf) fd.append("csrf_token", gpCsrf);
+                fd.append("territory_kind", btn.getAttribute("data-territory-kind") || "");
+                fd.append("territory_id", btn.getAttribute("data-territory-id") || "");
+                fd.append("ved_id", btn.getAttribute("data-ved-id") || "");
+                if (pageQuery) fd.append("preserve_qs", pageQuery);
+                var rdSel = document.getElementById("rounding_digits");
+                if (rdSel) fd.append("rounding_digits", rdSel.value);
+                var prevHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                var fetchHeaders = { "X-Requested-With": "XMLHttpRequest" };
+                if (gpCsrf) {
+                    fetchHeaders["X-CSRF-Token"] = gpCsrf;
+                    fetchHeaders["X-CSRFToken"] = gpCsrf;
+                }
+                fetch(rowCalcUrl, {
+                    method: "POST",
+                    body: fd,
+                    credentials: "same-origin",
+                    headers: fetchHeaders
+                })
+                    .then(function (resp) {
+                        return resp.json().catch(function () { return null; }).then(function (j) {
+                            return { resp: resp, data: j };
+                        });
+                    })
+                    .then(function (pack) {
+                        btn.disabled = false;
+                        btn.innerHTML = prevHtml;
+                        var data = pack.data;
+                        if (!pack.resp.ok || !data || !data.ok) {
+                            alert((data && data.error) ? data.error : "Не удалось рассчитать строку.");
+                            return;
+                        }
+                        var display = data.cells_display || {};
+                        var tooltips = data.cell_tooltips || {};
+                        var diagNotes = data.cell_diagnostic_notes || {};
+                        tr.querySelectorAll("td.summary-year-cell[data-ec-summary-col-year]").forEach(function (td) {
+                            var yearKey = td.getAttribute("data-ec-summary-col-year");
+                            if (!yearKey) return;
+                            var diag = diagNotes[yearKey] || "";
+                            td.classList.toggle("lt-ei-graph-point-flagged", !!diag);
+                            if (!Object.prototype.hasOwnProperty.call(display, yearKey)) {
+                                if (!diag) {
+                                    td.removeAttribute("title");
+                                } else {
+                                    td.title = diag;
+                                }
+                                return;
+                            }
+                            var disp = display[yearKey];
+                            var tt = tooltips[yearKey] || "";
+                            var titleText = diag || tt || "";
+                            var inp = td.querySelector('input[name="cell_value[]"]');
+                            if (inp) {
+                                inp.value = (disp && disp !== "—") ? disp : "";
+                                if (titleText) {
+                                    inp.title = titleText;
+                                    if (tt) inp.setAttribute("data-db-full", tt);
+                                    else inp.removeAttribute("data-db-full");
+                                } else {
+                                    inp.removeAttribute("title");
+                                    inp.removeAttribute("data-db-full");
+                                }
+                            } else if (disp !== undefined) {
+                                td.textContent = disp || "—";
+                            }
+                            if (titleText) {
+                                td.title = titleText;
+                            } else {
+                                td.removeAttribute("title");
+                            }
+                        });
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        btn.innerHTML = prevHtml;
+                        alert("Не удалось получить ответ сервера при расчёте строки.");
+                    });
+            });
+        });
+    }
+
+    var gpCalcAllForm = document.getElementById("ltEiCalculateGraphPointsForm");
+    if (gpCalcAllForm) {
+        gpCalcAllForm.addEventListener("submit", function (e) {
+            if (!window.confirm(
+                "Рассчитать характерные точки графика для всех территорий и ВЭД "
+                + "(годы не позже текущего) и сохранить в базу данных?"
+            )) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    function initLtEiFilterDropdowns() {
+        function ensureDropdownMultiSelectFromEl(selectEl) {
+            if (!selectEl || selectEl.dataset.multiDropdownInit === "1") return;
+            var placeholder = (selectEl.getAttribute("data-pd-placeholder") || "").trim() || "Выберите";
+            selectEl.dataset.multiDropdownInit = "1";
+            var wrapper = document.createElement("div");
+            wrapper.className = "dropdown";
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "form-select text-start";
+            btn.setAttribute("data-bs-toggle", "dropdown");
+            btn.setAttribute("data-bs-auto-close", "outside");
+            var menu = document.createElement("div");
+            menu.className = "dropdown-menu p-2 filter-dropdown-menu";
+            selectEl.classList.add("d-none");
+            var parent = selectEl.parentNode;
+            if (!parent) return;
+            parent.replaceChild(wrapper, selectEl);
+            wrapper.appendChild(btn);
+            wrapper.appendChild(menu);
+            wrapper.appendChild(selectEl);
+            function setButtonText() {
+                var selected = Array.from(selectEl.selectedOptions || [])
+                    .map(function (o) { return (o.textContent || "").trim(); })
+                    .filter(Boolean);
+                if (!selected.length) { btn.textContent = placeholder; return; }
+                var preview = selected.slice(0, 1).join(", ");
+                var suffix = selected.length > 1 ? " (+" + (selected.length - 1) + ")" : "";
+                btn.textContent = preview + suffix;
+            }
+            function renderMenu() {
+                menu.innerHTML = "";
+                var list = document.createElement("div");
+                list.className = "d-flex flex-column gap-1";
+                Array.from(selectEl.options).forEach(function (opt) {
+                    var value = (opt.value != null ? String(opt.value) : "").trim();
+                    if (value === "") return;
+                    var item = document.createElement("label");
+                    item.className = "dropdown-item d-flex align-items-center gap-2";
+                    var cb = document.createElement("input");
+                    cb.type = "checkbox";
+                    cb.checked = !!opt.selected;
+                    cb.addEventListener("change", function (e) {
+                        e.stopPropagation();
+                        var found = Array.from(selectEl.options).find(function (o) {
+                            return String(o.value) === value;
+                        });
+                        if (found) found.selected = cb.checked;
+                        setButtonText();
+                        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+                    });
+                    var text = document.createElement("span");
+                    text.textContent = (opt.textContent || "").trim();
+                    item.appendChild(cb);
+                    item.appendChild(text);
+                    list.appendChild(item);
+                });
+                menu.appendChild(list);
+                setButtonText();
+            }
+            renderMenu();
+        }
+        document.querySelectorAll("#ltEiFiltersCollapse select.pd-ds-ms[multiple]").forEach(ensureDropdownMultiSelectFromEl);
+    }
+    setTimeout(initLtEiFilterDropdowns, 100);
+
+    setTimeout(function () {
+        var filterForm = document.querySelector("#ltEiFiltersCollapse form.pd-summary-filters-form");
+        if (!filterForm || filterForm.dataset.pdAutoSubmitBound === "1") return;
+        filterForm.dataset.pdAutoSubmitBound = "1";
+        filterForm.addEventListener("change", function (e) {
+            var t = e.target;
+            if (!t || typeof t.matches !== "function" || !t.matches("select.pd-ds-ms")) return;
+            setTimeout(function () { filterForm.submit(); }, 150);
+        });
+    }, 250);
+
+    var wrap = document.getElementById("ltEiConsumptionImportWrap");
+    if (!wrap) return;
+    var inp = document.getElementById("ltEiConsumptionImportFile");
+    var btn = document.getElementById("ltEiConsumptionImportBtn");
+    var importUrl = wrap.dataset.importUrl || "";
+    var csrf = wrap.dataset.csrfToken || "";
+    if (!inp || !btn || !importUrl) return;
+    btn.addEventListener("click", function () { inp.click(); });
+    inp.addEventListener("change", function () {
+        if (!inp.files || inp.files.length === 0) return;
+        var fd = new FormData();
+        fd.append("file", inp.files[0]);
+        fd.append("csrf_token", csrf);
+        var prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
+        fetch(importUrl, {
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        })
+            .then(function (resp) {
+                return resp.json().catch(function () { return null; }).then(function (j) {
+                    return { resp: resp, data: j };
+                });
+            })
+            .then(function (pack) {
+                btn.disabled = false;
+                btn.innerHTML = prevHtml;
+                inp.value = "";
+                var data = pack.data;
+                if (!pack.resp.ok || !data || !data.ok) {
+                    alert((data && data.error) ? data.error : "Не удалось выполнить импорт.");
+                    return;
+                }
+                var msg = data.message || "Готово.";
+                var hints = data.hints || [];
+                if (hints.length) msg += "\n\n" + hints.join("\n\n");
+                alert(msg);
+                window.location.reload();
+            })
+            .catch(function (err) {
+                btn.disabled = false;
+                btn.innerHTML = prevHtml;
+                inp.value = "";
+                alert("Не удалось получить ответ сервера при импорте." + (err && err.message ? "\n" + err.message : ""));
+            });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

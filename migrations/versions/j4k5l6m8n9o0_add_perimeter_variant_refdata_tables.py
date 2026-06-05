@@ -7,6 +7,7 @@ Create Date: 2026-05-20
 """
 import os
 import sys
+import uuid
 
 from alembic import op
 import sqlalchemy as sa
@@ -53,6 +54,128 @@ def _table_exists(conn, schema: str, table: str) -> bool:
         {"schema": schema, "table": table},
     )
     return r.fetchone() is not None
+
+
+def _has_global_code_unique(conn) -> bool:
+    r = conn.execute(
+        text(
+            "SELECT 1 FROM pg_constraint c "
+            "JOIN pg_class t ON t.oid = c.conrelid "
+            "JOIN pg_namespace n ON n.oid = t.relnamespace "
+            "WHERE n.nspname = :schema AND t.relname = :table "
+            "AND c.conname = 'uq_gs_sys_perimeter_variants_code'"
+        ),
+        {"schema": SCHEMA_REF, "table": TABLE_VARIANTS},
+    )
+    return r.fetchone() is not None
+
+
+def _has_global_binding_unique(conn) -> bool:
+    r = conn.execute(
+        text(
+            "SELECT 1 FROM pg_constraint c "
+            "JOIN pg_class t ON t.oid = c.conrelid "
+            "JOIN pg_namespace n ON n.oid = t.relnamespace "
+            "WHERE n.nspname = :schema AND t.relname = :table "
+            "AND c.conname = 'uq_gs_sys_entity_perimeter_bindings_entity_variant'"
+        ),
+        {"schema": SCHEMA_REF, "table": TABLE_BINDINGS},
+    )
+    return r.fetchone() is not None
+
+
+def _get_variant_id(conn, code: str, vid: int) -> int | None:
+    rows = conn.execute(
+        text(
+            f"SELECT id, database_version_id FROM {SCHEMA_REF}.{TABLE_VARIANTS} "
+            "WHERE code = :code ORDER BY id"
+        ),
+        {"code": code},
+    ).fetchall()
+    if not rows:
+        return None
+    if _has_global_code_unique(conn):
+        return int(rows[0][0])
+    for rid, dbvid in rows:
+        if dbvid == vid:
+            return int(rid)
+    return None
+
+
+def _ensure_variant(
+    conn,
+    *,
+    code: str,
+    lbl: str,
+    yf: int | None,
+    yt: int | None,
+    base: bool,
+    ord_: int,
+    vid: int,
+    ruuid: str,
+) -> int:
+    existing = _get_variant_id(conn, code, vid)
+    if existing is not None:
+        return existing
+    rid = conn.execute(
+        text(
+            f"""
+            INSERT INTO {SCHEMA_REF}.{TABLE_VARIANTS}
+            (code, label_suffix, effective_from_year, effective_to_year,
+             is_territorial_base, display_order, ref_uuid, version, database_version_id,
+             created_by, modified_by)
+            VALUES (:code, :lbl, :yf, :yt, :base, :ord, :ruuid, 1, :vid, 'migration', 'migration')
+            RETURNING id
+            """
+        ),
+        {
+            "code": code,
+            "lbl": lbl,
+            "yf": yf,
+            "yt": yt,
+            "base": base,
+            "ord": ord_,
+            "ruuid": ruuid,
+            "vid": vid,
+        },
+    ).scalar()
+    return int(rid)
+
+
+def _binding_exists(
+    conn,
+    entity_kind: str,
+    entity_name: str,
+    variant_id: int,
+    database_version_id: int,
+) -> bool:
+    if _has_global_binding_unique(conn):
+        row = conn.execute(
+            text(
+                f"SELECT 1 FROM {SCHEMA_REF}.{TABLE_BINDINGS} "
+                "WHERE entity_kind = :ek AND entity_name = :en "
+                "AND id_perimeter_variant = :pvid "
+                "LIMIT 1"
+            ),
+            {"ek": entity_kind, "en": entity_name, "pvid": variant_id},
+        ).fetchone()
+        return row is not None
+    row = conn.execute(
+        text(
+            f"SELECT 1 FROM {SCHEMA_REF}.{TABLE_BINDINGS} "
+            "WHERE entity_kind = :ek AND entity_name = :en "
+            "AND id_perimeter_variant = :pvid "
+            "AND database_version_id IS NOT DISTINCT FROM :dbvid "
+            "LIMIT 1"
+        ),
+        {
+            "ek": entity_kind,
+            "en": entity_name,
+            "pvid": variant_id,
+            "dbvid": database_version_id,
+        },
+    ).fetchone()
+    return row is not None
 
 
 def upgrade():
@@ -142,50 +265,30 @@ def upgrade():
             ondelete="SET NULL",
         )
 
-    # Seed для каждой версии БД (только если ещё нет вариантов)
+    # Seed для каждой версии БД (идемпотентно: пропуск существующих code и привязок)
     versions = conn.execute(text(f"SELECT id FROM {SCHEMA_REF}.gs_database_versions")).fetchall()
-    import uuid
 
     for (vid_row,) in versions:
         vid = int(vid_row)
-        exists = conn.execute(
-            text(
-                f"SELECT 1 FROM {SCHEMA_REF}.{TABLE_VARIANTS} "
-                "WHERE database_version_id = :vid LIMIT 1"
-            ),
-            {"vid": vid},
-        ).fetchone()
-        if exists:
-            continue
         code_to_id: dict[str, int] = {}
         for code, lbl, yf, yt, base, ord_ in SEED_VARIANTS:
-            rid = conn.execute(
-                text(
-                    f"""
-                    INSERT INTO {SCHEMA_REF}.{TABLE_VARIANTS}
-                    (code, label_suffix, effective_from_year, effective_to_year,
-                     is_territorial_base, display_order, ref_uuid, version, database_version_id,
-                     created_by, modified_by)
-                    VALUES (:code, :lbl, :yf, :yt, :base, :ord, :ruuid, 1, :vid, 'migration', 'migration')
-                    RETURNING id
-                    """
-                ),
-                {
-                    "code": code,
-                    "lbl": lbl,
-                    "yf": yf,
-                    "yt": yt,
-                    "base": base,
-                    "ord": ord_,
-                    "ruuid": str(uuid.uuid4()),
-                    "vid": vid,
-                },
-            ).scalar()
-            code_to_id[code] = int(rid)
+            code_to_id[code] = _ensure_variant(
+                conn,
+                code=code,
+                lbl=lbl,
+                yf=yf,
+                yt=yt,
+                base=base,
+                ord_=ord_,
+                vid=vid,
+                ruuid=str(uuid.uuid4()),
+            )
 
         for ek, en, prefix, vcode, sort_o in SEED_BINDINGS:
             vid_var = code_to_id.get(vcode)
             if vid_var is None:
+                continue
+            if _binding_exists(conn, ek, en, vid_var, vid):
                 continue
             conn.execute(
                 text(

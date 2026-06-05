@@ -8,6 +8,7 @@ from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
+from app.generation.models.common.version_year_unique_index import version_year_unique_index
 
 class MachineTesType(db.Model, AuditMixin):
     __tablename__ = 'gs_gen_machine_tes_types'
@@ -15,6 +16,7 @@ class MachineTesType(db.Model, AuditMixin):
         Index('ix_machine_tes_type_id_machine', 'id_machine'),
         Index('ix_machine_tes_type_id_tes_type', 'id_tes_type'),
         Index('ix_machine_tes_type_year_number', 'year_number'),
+        version_year_unique_index('uq_machine_tes_types_machine_year_ver', 'id_machine'),
         {"schema": SCHEMA_GENERATION},
     )
     __mapper_args__ = {"confirm_deleted_rows": False}

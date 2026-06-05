@@ -12,7 +12,7 @@ from sqlalchemy import asc, not_
 from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
-from app.energy_consumption.services.energy_consumption_summary_formula_text_services import (
+from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
     list_formulas_for_admin,
     reset_formula_text_override,
     save_formula_text_override,
@@ -126,7 +126,7 @@ def energy_consumption_summary_formulas():
         return redirect(url_for("energy_consumption_bp.hub"))
     return render_template(
         "energy_consumption/energy_consumption_summary_formulas.html",
-        page_title="Тексты формул сводок потребления электрической энергии",
+        page_title="Тексты формул сводок потребления ЭЭ и электроёмкости",
         formula_rows=list_formulas_for_admin(),
         has_active_summary_filters=False,
     )

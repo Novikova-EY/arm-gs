@@ -17,6 +17,27 @@ from app.energy_consumption.models.territories import (  # noqa: F401
     regional_district_energy_consumption_parameter_model,
     russia_federation_energy_consumption_parameter_model,
 )
-from app.energy_consumption.models import (  # noqa: F401
+from app.energy_consumption.models.formula_text import (  # noqa: F401
     energy_consumption_summary_formula_text_model,
+)
+from app.economics.models import (  # noqa: F401 — таблицы «Экономика»
+    federal_district_eat_consumption_parameter_model,
+    russia_federation_consumption_parameter_model,
+    consumption_formula_text_model,
+    federal_district_accum_fixed_capital_parameter_model,
+    russia_federation_accum_fixed_capital_parameter_model,
+    accum_fixed_capital_formula_text_model,
+    federal_district_product_output_parameter_model,
+    russia_federation_product_output_parameter_model,
+    product_output_formula_text_model,
+    federal_district_population_parameter_model,
+)
+from app.energy_consumption.long_term_consumption.models import (  # noqa: F401 — электроёмкость
+    federal_district_electrical_intensity_year_parameter_model,
+    russia_federation_electrical_intensity_year_parameter_model,
+    federal_district_electrical_intensity_coefficient_model,
+    russia_federation_electrical_intensity_coefficient_model,
+    federal_district_population_consumption_coefficient_model,
+    federal_district_population_consumption_year_parameter_model,
+    electrical_intensity_formula_text_model,
 )

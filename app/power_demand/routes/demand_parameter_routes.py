@@ -13,7 +13,7 @@ from app.extensions import db
 from app.power_demand.forms.demand_parameter_forms import EmptyCSRFForm
 from app.power_demand.routes.power_demand_bp import power_demand_bp
 from app.power_demand.services import demand_parameter_services as dps
-from app.power_demand.services.power_demand_summary_formula_text_services import (
+from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
     list_formulas_for_admin,
     reset_formula_text_override,
     save_formula_text_override,

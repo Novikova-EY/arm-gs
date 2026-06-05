@@ -83,6 +83,12 @@ REFDATA_SECTIONS = [
             ("technology_availability", "Доступность технологии"),
         ],
     },
+    {
+        "title": "Справочники видов экономической деятельности (ВЭД)",
+        "items": [
+            ("economic_activity_type", "ВЭД"),
+        ],
+    },
 ]
 
 REFDATA_LABELS = {item[0]: item[1] for section in REFDATA_SECTIONS for item in section["items"]}

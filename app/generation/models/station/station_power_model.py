@@ -9,6 +9,7 @@ from sqlalchemy.schema import Index
 from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
+from app.generation.models.common.version_year_unique_index import version_year_unique_index
 
 class StationPower(db.Model, AuditMixin):
     __tablename__ = 'gs_gen_station_powers'
@@ -17,6 +18,7 @@ class StationPower(db.Model, AuditMixin):
         Index('ix_station_power_year_number', 'year_number'),
         # Составной индекс для оптимизации запросов по электростанции и году
         Index('ix_station_powers_station_year', 'id_station', 'year_number'),
+        version_year_unique_index('uq_station_powers_station_year_ver', 'id_station'),
         {"schema": SCHEMA_GENERATION},
     )
 

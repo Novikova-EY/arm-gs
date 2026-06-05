@@ -336,7 +336,27 @@ sudo ss -tulpn | grep 8000
 sudo ss -tulpn | grep :80
 ```
 
-## 11. Частые проблемы
+## 11. Страница «технические работы» вместо 502 Bad Gateway
+
+При перезапуске или сбое Gunicorn nginx показывает стандартную страницу **502 Bad Gateway**. Чтобы выводить понятное сообщение на русском, добавьте в конфигурацию `server` (рядом с `proxy_pass`) блок из `/usr/share/generation-app/nginx-static.conf.example`:
+
+```nginx
+error_page 502 503 504 =503 /errors/maintenance.html;
+
+location = /errors/maintenance.html {
+    alias /usr/share/generation-app/static/errors/maintenance.html;
+    default_type text/html;
+    internal;
+}
+```
+
+После правки: `sudo nginx -t && sudo systemctl reload nginx`.
+
+Файл `maintenance.html` попадает на сервер при сборке deb (каталог `app/static/errors/`). После деплоя новой версии пакета достаточно один раз обновить конфиг nginx.
+
+---
+
+## 12. Частые проблемы
 
 - **`cd: $'/tmp\r': Нет такого файла или каталога`**, **`Error: No such command 'upgrade\r'`**, **`Invalid unit name "generation-app\x0d"`** — скрипт деплоя содержал Windows-переносы (CRLF). Обновите `scripts/deploy.ps1` до версии с нормализацией переносов. При необходимости выполните `git pull` и перезапустите деплой.
 - **`/etc/generation-app/app.env: строка N: область,Еврейская: команда не найдена`** — в `app.env` есть значения с запятыми без кавычек. При `source` bash исполняет их как команды. 

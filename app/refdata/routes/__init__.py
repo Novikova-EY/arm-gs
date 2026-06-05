@@ -21,6 +21,7 @@ from .refdata_for_stations.condition_type_routes import *
 from .refdata_for_stations.technologies.equipment_group_routes import *
 from .refdata_for_stations.technologies.technology_availability_routes import *
 from .refdata_for_stations.technologies.technology_type_routes import *
+from .economic_activity.economic_activity_type_routes import *
 from .refdata_for_stations.machines.machine_type_routes import *
 from .refdata_for_stations.machines.pgu_tes_machine_type_routes import *
 from .refdata_for_stations.machines.tes_machine_type_routes import *

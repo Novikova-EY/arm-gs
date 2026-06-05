@@ -91,6 +91,154 @@ def _add_pvc_column(conn, table: str, index_name: str) -> None:
         )
 
 
+def _dedupe_ec_rows(conn, table: str, fk_col: str | None = None) -> None:
+    """Удаляет дубликаты перед UNIQUE INDEX (данные могли существовать до индексов или после слияния)."""
+    fk_part = f"{fk_col}, " if fk_col else ""
+    conn.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY {fk_part}year_number,
+                            COALESCE(database_version_id, 0),
+                            COALESCE(perimeter_variant_code, '')
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table}
+                WHERE year_number IS NOT NULL
+            )
+            DELETE FROM {SCHEMA_EC}.{table} t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+    conn.execute(
+        text(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    id,
+                    row_number() OVER (
+                        PARTITION BY {fk_part}COALESCE(database_version_id, 0),
+                            COALESCE(perimeter_variant_code, '')
+                        ORDER BY id DESC
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table}
+                WHERE year_number IS NULL
+            )
+            DELETE FROM {SCHEMA_EC}.{table} t
+            USING ranked r
+            WHERE t.id = r.id AND r.rn > 1
+            """
+        )
+    )
+
+
+def _assign_south_entity_perimeter_codes(
+    conn,
+    table: str,
+    fk_col: str,
+    ref_table: str,
+    south_name: str,
+) -> None:
+    """Южные сущности: две строки на год без колонки → without_nt и with_nt (не обе without_nt)."""
+    conn.execute(
+        text(
+            f"""
+            WITH south_rows AS (
+                SELECT
+                    p.id,
+                    row_number() OVER (
+                        PARTITION BY p.{fk_col},
+                            COALESCE(p.year_number, -1),
+                            COALESCE(p.database_version_id, 0)
+                        ORDER BY p.id
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table} AS p
+                INNER JOIN {SCHEMA_REF}.{ref_table} AS r ON p.{fk_col} = r.id
+                WHERE lower(trim(r.name)) = lower(:south_name)
+                  AND p.perimeter_variant_code IS NULL
+            )
+            UPDATE {SCHEMA_EC}.{table} AS t
+            SET perimeter_variant_code = CASE
+                WHEN s.rn = 1 THEN :without_nt
+                WHEN s.rn = 2 THEN :with_nt
+                ELSE :without_nt
+            END
+            FROM south_rows AS s
+            WHERE t.id = s.id
+            """
+        ),
+        {
+            "south_name": south_name,
+            "without_nt": CODE_WITHOUT_NT,
+            "with_nt": CODE_WITH_NT,
+        },
+    )
+
+
+def _reconcile_south_collapsed_variants(
+    conn,
+    table: str,
+    fk_col: str,
+    ref_table: str,
+    south_name: str,
+) -> None:
+    """Повторный прогон: две строки с одним without_nt → вторая становится with_nt."""
+    conn.execute(
+        text(
+            f"""
+            WITH south_rows AS (
+                SELECT
+                    p.id,
+                    count(*) OVER (
+                        PARTITION BY p.{fk_col},
+                            COALESCE(p.year_number, -1),
+                            COALESCE(p.database_version_id, 0)
+                    ) AS grp_cnt,
+                    row_number() OVER (
+                        PARTITION BY p.{fk_col},
+                            COALESCE(p.year_number, -1),
+                            COALESCE(p.database_version_id, 0)
+                        ORDER BY p.id
+                    ) AS rn
+                FROM {SCHEMA_EC}.{table} AS p
+                INNER JOIN {SCHEMA_REF}.{ref_table} AS r ON p.{fk_col} = r.id
+                WHERE lower(trim(r.name)) = lower(:south_name)
+            )
+            UPDATE {SCHEMA_EC}.{table} AS t
+            SET perimeter_variant_code = :with_nt
+            FROM south_rows AS s
+            WHERE t.id = s.id
+              AND s.grp_cnt > 1
+              AND s.rn = 2
+              AND COALESCE(t.perimeter_variant_code, '') = :without_nt
+            """
+        ),
+        {
+            "south_name": south_name,
+            "with_nt": CODE_WITH_NT,
+            "without_nt": CODE_WITHOUT_NT,
+        },
+    )
+
+
+def _set_default_without_nt(conn, table: str) -> None:
+    conn.execute(
+        text(
+            f"""
+            UPDATE {SCHEMA_EC}.{table}
+            SET perimeter_variant_code = :code
+            WHERE perimeter_variant_code IS NULL
+            """
+        ),
+        {"code": CODE_WITHOUT_NT},
+    )
+
+
 def _merge_nt_table(conn, main_table: str, nt_table: str) -> None:
     if not _table_exists(conn, SCHEMA_EC, main_table):
         return
@@ -261,42 +409,49 @@ def upgrade():
         _drop_ec_unique_indexes(conn, table)
         _add_pvc_column(conn, table, f"ix_gs_ec_{pfx}_pvc")
         _merge_nt_table(conn, table, nt_table)
+        _dedupe_ec_rows(conn, table)
         _rebuild_no_fk_indexes(conn, table, pfx)
 
     if _table_exists(conn, SCHEMA_EC, TABLE_UES):
         _drop_ec_unique_indexes(conn, TABLE_UES)
         _add_pvc_column(conn, TABLE_UES, "ix_gs_ec_union_energy_system_pvc")
-        conn.execute(
-            text(
-                f"""
-                UPDATE {SCHEMA_EC}.{TABLE_UES} AS p
-                SET perimeter_variant_code = :variant
-                FROM {SCHEMA_REF}.{UES_TABLE} AS u
-                WHERE p.id_union_energy_system = u.id
-                  AND lower(trim(u.name)) = lower(:south_name)
-                  AND p.perimeter_variant_code IS NULL
-                """
-            ),
-            {"variant": CODE_WITHOUT_NT, "south_name": SOUTH_UES_NAME},
+        _assign_south_entity_perimeter_codes(
+            conn,
+            TABLE_UES,
+            "id_union_energy_system",
+            UES_TABLE,
+            SOUTH_UES_NAME,
         )
+        _set_default_without_nt(conn, TABLE_UES)
+        _reconcile_south_collapsed_variants(
+            conn,
+            TABLE_UES,
+            "id_union_energy_system",
+            UES_TABLE,
+            SOUTH_UES_NAME,
+        )
+        _dedupe_ec_rows(conn, TABLE_UES, "id_union_energy_system")
         _rebuild_fk_indexes(conn, TABLE_UES, "id_union_energy_system", "union_energy_system")
 
     if _table_exists(conn, SCHEMA_EC, TABLE_FD):
         _drop_ec_unique_indexes(conn, TABLE_FD)
         _add_pvc_column(conn, TABLE_FD, "ix_gs_ec_federal_district_pvc")
-        conn.execute(
-            text(
-                f"""
-                UPDATE {SCHEMA_EC}.{TABLE_FD} AS p
-                SET perimeter_variant_code = :variant
-                FROM {SCHEMA_REF}.{FD_TABLE} AS f
-                WHERE p.id_federal_district = f.id
-                  AND lower(trim(f.name)) = lower(:south_name)
-                  AND p.perimeter_variant_code IS NULL
-                """
-            ),
-            {"variant": CODE_WITHOUT_NT, "south_name": SOUTH_FD_NAME},
+        _assign_south_entity_perimeter_codes(
+            conn,
+            TABLE_FD,
+            "id_federal_district",
+            FD_TABLE,
+            SOUTH_FD_NAME,
         )
+        _set_default_without_nt(conn, TABLE_FD)
+        _reconcile_south_collapsed_variants(
+            conn,
+            TABLE_FD,
+            "id_federal_district",
+            FD_TABLE,
+            SOUTH_FD_NAME,
+        )
+        _dedupe_ec_rows(conn, TABLE_FD, "id_federal_district")
         _rebuild_fk_indexes(conn, TABLE_FD, "id_federal_district", "federal_district")
 
     _seed_bindings(conn)
