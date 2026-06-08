@@ -9,7 +9,10 @@ from typing import Any
 from flask import session
 from sqlalchemy import and_
 from app.common.services.database_version_services import get_current_version
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list,
@@ -53,6 +56,12 @@ def _normalize_label(text: str | None) -> str:
     return " ".join(str(text or "").split()).strip().lower()
 
 
+def _ved_display_name(ved: EconomicActivityType) -> str | None:
+    """Подпись строки ВЭД на странице выпуска продукции (поле name_2 справочника /refdata/ved)."""
+    name_2 = (getattr(ved, "name_2", None) or "").strip()
+    return name_2 or None
+
+
 def _federal_district_name_key(name: str | None) -> str:
     cf = (name or "").strip().casefold()
     for prefix in ("фо - ", "фо — "):
@@ -64,7 +73,7 @@ def _federal_district_name_key(name: str | None) -> str:
 
 
 def _is_federal_district_excluded_from_po(fd: FederalDistrict) -> bool:
-    """Скрыть служебные ФО (как на /energy_consumption/summary/federal-districts/)."""
+    """Скрыть служебные ФО (как на /energy_consumption/summary/federal_districts/)."""
     for attr in ("name", "name_abr", "name_full"):
         key = _federal_district_name_key(getattr(fd, attr, None))
         if not key:
@@ -83,7 +92,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _cell_tooltips_for_years(
@@ -96,7 +105,7 @@ def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
         return "—"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return shown if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
 def _attach_cells_display(
@@ -133,6 +142,31 @@ def _po_types_for_version(version_id: int | None) -> list[EconomicActivityType]:
             EconomicActivityType.id.asc(),
         ).all()
     )
+
+
+def _aggregate_fd_values_for_rf(
+    *,
+    version_id: int | None,
+    fd_filter_ids: frozenset[int],
+) -> dict[tuple[int, int], Decimal | None]:
+    """Сумма значений по ВЭД и годам по всем федеральным округам для блока РФ."""
+    result: dict[tuple[int, int], Decimal | None] = {}
+    for fd in _federal_districts_for_po_page():
+        if fd_filter_ids and fd.id not in fd_filter_ids:
+            continue
+        fd_values = _load_values_map(
+            version_id=version_id,
+            model=FederalDistrictProductOutputParameter,
+            territory_filter=FederalDistrictProductOutputParameter.id_federal_district
+            == fd.id,
+        )
+        for (ved_id, year), val in fd_values.items():
+            if val is None:
+                continue
+            key = (ved_id, year)
+            prev = result.get(key)
+            result[key] = val if prev is None else prev + val
+    return result
 
 
 def _load_values_map(
@@ -176,9 +210,9 @@ def build_product_output_page_context(
 
     territory_blocks: list[dict[str, Any]] = []
 
-    rf_values = _load_values_map(
+    rf_values = _aggregate_fd_values_for_rf(
         version_id=version_id,
-        model=RussiaFederationProductOutputParameter,
+        fd_filter_ids=fd_filter_ids,
     )
     territory_blocks.append(
         _territory_block(
@@ -221,9 +255,9 @@ def build_product_output_page_context(
         if not _is_federal_district_excluded_from_po(x)
     ]
     economic_activity_type_list = [
-        {"id": v.id, "name": v.name or ""}
+        {"id": v.id, "name": display_name}
         for v in _po_types_for_version(version_id)
-        if v.name
+        if (display_name := _ved_display_name(v))
     ]
 
     return {
@@ -278,6 +312,39 @@ def _find_total_po(
     return _find_ved_by_target(ved_types, TOTAL_PRODUCT_OUTPUT_NAME)
 
 
+def _formula_hint_for_computed_row(
+    row: dict[str, Any], *, territory_kind: str
+) -> str:
+    if territory_kind == "rf":
+        if row.get("is_industrial_group"):
+            return po_formula_text("po_rf_industrial_group")
+        if row.get("is_total"):
+            return po_formula_text("po_rf_total_row")
+        return po_formula_text("po_rf_ved_row")
+    if row.get("is_industrial_group"):
+        return po_formula_text("po_industrial_group")
+    if row.get("is_total"):
+        return po_formula_text("po_total_row")
+    return ""
+
+
+def _attach_formula_hints_to_computed_rows(
+    rows: list[dict[str, Any]], *, territory_kind: str
+) -> None:
+    for row in rows:
+        if not row.get("is_computed"):
+            continue
+        row["formula_hint"] = _formula_hint_for_computed_row(
+            row, territory_kind=territory_kind
+        )
+
+
+def _mark_rf_rows_computed(rows: list[dict[str, Any]]) -> None:
+    for row in rows:
+        row["is_computed"] = True
+        row["formula_hint"] = _formula_hint_for_computed_row(row, territory_kind="rf")
+
+
 def _append_computed_total_row_at_end(
     rows: list[dict[str, Any]],
     *,
@@ -287,6 +354,7 @@ def _append_computed_total_row_at_end(
     display_years: list[int],
     rounding_digits: int,
     mark_as_total: bool = True,
+    territory_kind: str = "fd",
 ) -> list[dict[str, Any]]:
     if total_ved_id is None:
         return rows
@@ -303,6 +371,9 @@ def _append_computed_total_row_at_end(
         "cell_tooltips": _cell_tooltips_for_years(total_cells, display_years),
     }
     _attach_cells_display(total_row, display_years, rounding_digits)
+    total_row["formula_hint"] = _formula_hint_for_computed_row(
+        total_row, territory_kind=territory_kind
+    )
     return [*without_total, total_row]
 
 
@@ -337,7 +408,7 @@ def _ved_row(
         cells[year] = values_by_ved_year.get((ved.id, year))
     row = {
         "ved_id": ved.id,
-        "ved_name": ved.name,
+        "ved_name": _ved_display_name(ved) or ved.name,
         "is_total": _normalize_label(ved.name) == _normalize_label(TOTAL_PRODUCT_OUTPUT_NAME),
         "is_industrial_group": False,
         "is_industrial_component": False,
@@ -371,7 +442,7 @@ def _rows_in_ved_order(
     return [
         row_by_id[ved.id]
         for ved in ved_types
-        if ved.name and ved.id in row_by_id
+        if _ved_display_name(ved) and ved.id in row_by_id
     ]
 
 
@@ -400,7 +471,7 @@ def _build_territory_rows(
     def _finish_rows(
         rows: list[dict[str, Any]], *, total_sum_rows: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        return _append_computed_total_row_at_end(
+        finished = _append_computed_total_row_at_end(
             rows,
             total_ved_id=total_ved_id,
             total_label=TOTAL_PRODUCT_OUTPUT_NAME,
@@ -408,7 +479,15 @@ def _build_territory_rows(
             display_years=display_years,
             rounding_digits=rounding_digits,
             mark_as_total=True,
+            territory_kind=territory_kind,
         )
+        if territory_kind == "rf":
+            _mark_rf_rows_computed(finished)
+        else:
+            _attach_formula_hints_to_computed_rows(
+                finished, territory_kind=territory_kind
+            )
+        return finished
 
     component_veds: list[EconomicActivityType] = []
     for target in INDUSTRIAL_COMPONENT_VED_TARGETS:
@@ -416,7 +495,7 @@ def _build_territory_rows(
         if ved is None or ved.id not in row_by_id:
             ordered = _rows_in_ved_order(ved_types, row_by_id)
             without_total = [r for r in ordered if r.get("ved_id") != total_ved_id]
-            return _append_computed_total_row_at_end(
+            finished = _append_computed_total_row_at_end(
                 without_total,
                 total_ved_id=total_ved_id,
                 total_label=TOTAL_PRODUCT_OUTPUT_NAME,
@@ -424,18 +503,32 @@ def _build_territory_rows(
                 display_years=display_years,
                 rounding_digits=rounding_digits,
                 mark_as_total=True,
+                territory_kind=territory_kind,
             )
+            if territory_kind == "rf":
+                _mark_rf_rows_computed(finished)
+            else:
+                _attach_formula_hints_to_computed_rows(
+                    finished, territory_kind=territory_kind
+                )
+            return finished
         component_veds.append(ved)
 
     component_rows: list[dict[str, Any]] = []
     component_ids: set[int] = set()
+    all_component_rows: list[dict[str, Any]] = []
     for ved in component_veds:
+        if ved.id not in row_by_id:
+            continue
         row = row_by_id[ved.id]
+        all_component_rows.append(row)
+        if not _ved_display_name(ved):
+            continue
         row["is_industrial_component"] = True
         component_rows.append(row)
         component_ids.add(ved.id)
 
-    industrial_cells = _sum_industrial_group_cells(component_rows, display_years)
+    industrial_cells = _sum_industrial_group_cells(all_component_rows, display_years)
     industrial_row: dict[str, Any] = {
         "ved_id": None,
         "ved_name": INDUSTRIAL_GROUP_LABEL,
@@ -447,10 +540,13 @@ def _build_territory_rows(
         "cell_tooltips": _cell_tooltips_for_years(industrial_cells, display_years),
     }
     _attach_cells_display(industrial_row, display_years, rounding_digits)
+    industrial_row["formula_hint"] = _formula_hint_for_computed_row(
+        industrial_row, territory_kind=territory_kind
+    )
 
     other_rows: list[dict[str, Any]] = []
     for ved in ved_types:
-        if not ved.name or ved.id not in row_by_id:
+        if not _ved_display_name(ved) or ved.id not in row_by_id:
             continue
         if ved.id in component_ids or _is_parent_industrial_ved_name(ved.name):
             continue

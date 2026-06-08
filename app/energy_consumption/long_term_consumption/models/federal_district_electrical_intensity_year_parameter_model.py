@@ -47,6 +47,7 @@ class FederalDistrictElectricalIntensityYearParameter(db.Model, AuditMixin):
         foreign_keys=[id_economic_activity_type],
     )
 
+    # Тип строки показателя (intensity, graph_point, calculated, delta)
     row_kind = db.Column(String(32), nullable=False, index=True)
     year_number = db.Column(db.Integer, nullable=True, index=True)
     year = db.relationship(
@@ -54,6 +55,7 @@ class FederalDistrictElectricalIntensityYearParameter(db.Model, AuditMixin):
         back_populates="fd_electrical_intensity_year_parameters",
         lazy="noload",
     )
+    # Значение показателя за год (кВт·ч/тыс. руб., зависит от row_kind)
     parameter_value = db.Column(Numeric(25, 10), nullable=True)
     note = db.Column(db.Text, nullable=True)
 

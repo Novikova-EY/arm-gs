@@ -209,7 +209,7 @@ def prospective_places_ges():
     )
 
 
-@prospective_places_bp.route("/ges/tep-main/")
+@prospective_places_bp.route("/ges/tep_main/")
 @login_required
 def prospective_places_ges_tep_main():
     """Перечень исходных ТЭП по всем площадкам ГЭС (как список, полная таблица)."""
@@ -268,7 +268,7 @@ def prospective_places_ges_tep_main():
     )
 
 
-@prospective_places_bp.route("/ges/tep-price-conversion-coefficients/", methods=["GET", "POST"])
+@prospective_places_bp.route("/ges/tep_price_conversion_coefficients/", methods=["GET", "POST"])
 @login_required
 def ges_tep_price_conversion_coefficients_json():
     """JSON: коэффициенты перевода цен и справочник годов; POST — новая запись (редакторы)."""
@@ -298,7 +298,7 @@ def ges_tep_price_conversion_coefficients_json():
     return jsonify(out)
 
 
-@prospective_places_bp.route("/ges/tep-price-conversion-coefficients/<int:row_id>/", methods=["PUT", "DELETE"])
+@prospective_places_bp.route("/ges/tep_price_conversion_coefficients/<int:row_id>/", methods=["PUT", "DELETE"])
 @login_required
 def ges_tep_price_conversion_coefficients_item(row_id: int):
     """Изменение или удаление строки коэффициента (редакторы)."""
@@ -332,7 +332,7 @@ def ges_tep_price_conversion_coefficients_item(row_id: int):
     return jsonify(out)
 
 
-@prospective_places_bp.route("/ges/tep-reserve/")
+@prospective_places_bp.route("/ges/tep_reserve/")
 @login_required
 def prospective_places_ges_tep_reserve():
     """Старый URL: перечень ТЭП единый для всех площадок ГЭС."""
@@ -566,7 +566,7 @@ def prospective_place_ges_details(id):
     )
 
 
-@prospective_places_bp.route("/ges/<int:id>/link-station/", methods=["POST"])
+@prospective_places_bp.route("/ges/<int:id>/link_station/", methods=["POST"])
 @login_required
 def prospective_place_ges_link_station(id):
     from app.generation.prospective_places.models import StationProspectivePlaceGES
@@ -611,7 +611,7 @@ def prospective_place_ges_link_station(id):
     return redirect(url_for("prospective_places_bp.prospective_place_ges_details", id=id))
 
 
-@prospective_places_bp.route("/ges/<int:id>/go-station/", methods=["GET"])
+@prospective_places_bp.route("/ges/<int:id>/go_station/", methods=["GET"])
 @login_required
 def prospective_place_ges_go_station(id):
     from app.generation.prospective_places.models import StationProspectivePlaceGES

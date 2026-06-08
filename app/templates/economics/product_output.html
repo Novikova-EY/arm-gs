@@ -222,7 +222,7 @@
                 <tr class="{% if row.is_total %}table-warning{% elif row.is_industrial_group %}table-light{% endif %}{% if _lt_ved_is_total_row %} fw-bold{% endif %}">
                     <td class="summary-parameter-cell{% if _lt_ved_is_total_row %} fw-bold{% elif row.is_industrial_group %} fw-semibold{% endif %}">
                         <div style="padding-left: {{ _lt_ved_label_depth * 1.5 }}rem;">
-                            <span class="text-wrap">{{ row.ved_name }}{% if row.is_total or row.ved_name == total_ved_name %}{{ lt_ved_formula_info_icon(formula_hints.total) }}{% elif row.is_industrial_group %}{{ lt_ved_formula_info_icon(formula_hints.industrial) }}{% endif %}</span>
+                            <span class="text-wrap">{{ row.ved_name }}{% if row.formula_hint %}{{ lt_ved_formula_info_icon(row.formula_hint) }}{% elif row.is_total or row.ved_name == total_ved_name %}{{ lt_ved_formula_info_icon(formula_hints.total) }}{% elif row.is_industrial_group %}{{ lt_ved_formula_info_icon(formula_hints.industrial) }}{% endif %}</span>
                         </div>
                     </td>
                     {% for y in years %}

@@ -142,7 +142,7 @@ def hub():
     return render_template("economics/economics_start.html")
 
 
-@economics_bp.route("/ved-consumption/", methods=["GET", "POST"])
+@economics_bp.route("/ved_consumption/", methods=["GET", "POST"])
 @login_required
 def ved_consumption():
     form = _csrf()
@@ -177,7 +177,7 @@ def ved_consumption():
     return render_template("economics/ved_consumption.html", **context)
 
 
-@economics_bp.route("/ved-consumption/logs", methods=["GET"])
+@economics_bp.route("/ved_consumption/logs", methods=["GET"])
 @login_required
 def ved_consumption_logs():
     """AJAX: журнал изменений потребления по ВЭД для текущей версии БД."""
@@ -211,7 +211,7 @@ def ved_consumption_logs():
     )
 
 
-@economics_bp.route("/ved-consumption/export.xlsx")
+@economics_bp.route("/ved_consumption/export.xlsx")
 @login_required
 def ved_consumption_export_xlsx():
     rd = _parse_rounding_digits()
@@ -228,7 +228,7 @@ def ved_consumption_export_xlsx():
     )
 
 
-@economics_bp.route("/ved-consumption/import.xlsx", methods=["POST"])
+@economics_bp.route("/ved_consumption/import.xlsx", methods=["POST"])
 @login_required
 def ved_consumption_import_xlsx():
     if not getattr(current_user, "has_admin", False):
@@ -328,25 +328,25 @@ def economics_formulas_reset():
     return jsonify(ok=True)
 
 
-@economics_bp.route("/ved-consumption-formulas/")
+@economics_bp.route("/ved_consumption_formulas/")
 @login_required
 def ved_consumption_formulas():
     return redirect(url_for("economics_bp.economics_formulas"))
 
 
-@economics_bp.route("/ved-consumption-formulas/save", methods=["POST"])
+@economics_bp.route("/ved_consumption_formulas/save", methods=["POST"])
 @login_required
 def ved_consumption_formulas_save():
     return economics_formulas_save()
 
 
-@economics_bp.route("/ved-consumption-formulas/reset", methods=["POST"])
+@economics_bp.route("/ved_consumption_formulas/reset", methods=["POST"])
 @login_required
 def ved_consumption_formulas_reset():
     return economics_formulas_reset()
 
 
-@economics_bp.route("/accum-fixed-capital/", methods=["GET", "POST"])
+@economics_bp.route("/accum_fixed_capital/", methods=["GET", "POST"])
 @login_required
 def accum_fixed_capital():
     form = _csrf()
@@ -387,7 +387,7 @@ def accum_fixed_capital():
     return render_template("economics/accum_fixed_capital.html", **context)
 
 
-@economics_bp.route("/accum-fixed-capital/logs", methods=["GET"])
+@economics_bp.route("/accum_fixed_capital/logs", methods=["GET"])
 @login_required
 def accum_fixed_capital_logs():
     """AJAX: журнал изменений накопленных инвестиций для текущей версии БД."""
@@ -421,7 +421,7 @@ def accum_fixed_capital_logs():
     )
 
 
-@economics_bp.route("/accum-fixed-capital/export.xlsx")
+@economics_bp.route("/accum_fixed_capital/export.xlsx")
 @login_required
 def accum_fixed_capital_export_xlsx():
     rd = _parse_rounding_digits()
@@ -438,7 +438,7 @@ def accum_fixed_capital_export_xlsx():
     )
 
 
-@economics_bp.route("/accum-fixed-capital/import.xlsx", methods=["POST"])
+@economics_bp.route("/accum_fixed_capital/import.xlsx", methods=["POST"])
 @login_required
 def accum_fixed_capital_import_xlsx():
     if not getattr(current_user, "has_admin", False):
@@ -489,25 +489,25 @@ def accum_fixed_capital_import_xlsx():
     return jsonify(ok=True, message=msg, hints=hints, **stats)
 
 
-@economics_bp.route("/accum-fixed-capital-formulas/")
+@economics_bp.route("/accum_fixed_capital_formulas/")
 @login_required
 def accum_fixed_capital_formulas():
     return redirect(url_for("economics_bp.economics_formulas"))
 
 
-@economics_bp.route("/accum-fixed-capital-formulas/save", methods=["POST"])
+@economics_bp.route("/accum_fixed_capital_formulas/save", methods=["POST"])
 @login_required
 def accum_fixed_capital_formulas_save():
     return economics_formulas_save()
 
 
-@economics_bp.route("/accum-fixed-capital-formulas/reset", methods=["POST"])
+@economics_bp.route("/accum_fixed_capital_formulas/reset", methods=["POST"])
 @login_required
 def accum_fixed_capital_formulas_reset():
     return economics_formulas_reset()
 
 
-@economics_bp.route("/product-output/", methods=["GET", "POST"])
+@economics_bp.route("/product_output/", methods=["GET", "POST"])
 @login_required
 def product_output():
     form = _csrf()
@@ -548,7 +548,7 @@ def product_output():
     return render_template("economics/product_output.html", **context)
 
 
-@economics_bp.route("/product-output/logs", methods=["GET"])
+@economics_bp.route("/product_output/logs", methods=["GET"])
 @login_required
 def product_output_logs():
     """AJAX: журнал изменений выпуска продукции для текущей версии БД."""
@@ -582,7 +582,7 @@ def product_output_logs():
     )
 
 
-@economics_bp.route("/product-output/export.xlsx")
+@economics_bp.route("/product_output/export.xlsx")
 @login_required
 def product_output_export_xlsx():
     rd = _parse_rounding_digits()
@@ -599,7 +599,7 @@ def product_output_export_xlsx():
     )
 
 
-@economics_bp.route("/product-output/import.xlsx", methods=["POST"])
+@economics_bp.route("/product_output/import.xlsx", methods=["POST"])
 @login_required
 def product_output_import_xlsx():
     if not getattr(current_user, "has_admin", False):
@@ -650,19 +650,19 @@ def product_output_import_xlsx():
     return jsonify(ok=True, message=msg, hints=hints, **stats)
 
 
-@economics_bp.route("/product-output-formulas/")
+@economics_bp.route("/product_output_formulas/")
 @login_required
 def product_output_formulas():
     return redirect(url_for("economics_bp.economics_formulas"))
 
 
-@economics_bp.route("/product-output-formulas/save", methods=["POST"])
+@economics_bp.route("/product_output_formulas/save", methods=["POST"])
 @login_required
 def product_output_formulas_save():
     return economics_formulas_save()
 
 
-@economics_bp.route("/product-output-formulas/reset", methods=["POST"])
+@economics_bp.route("/product_output_formulas/reset", methods=["POST"])
 @login_required
 def product_output_formulas_reset():
     return economics_formulas_reset()
@@ -817,7 +817,7 @@ def population_import_xlsx():
     return jsonify(ok=True, message=msg, hints=hints, **stats)
 
 
-@economics_bp.route("/accum-monetary-income/", methods=["GET", "POST"])
+@economics_bp.route("/accum_monetary_income/", methods=["GET", "POST"])
 @login_required
 def accum_monetary_income():
     form = _csrf()
@@ -858,7 +858,7 @@ def accum_monetary_income():
     return render_template("economics/accum_monetary_income.html", **context)
 
 
-@economics_bp.route("/accum-monetary-income/logs", methods=["GET"])
+@economics_bp.route("/accum_monetary_income/logs", methods=["GET"])
 @login_required
 def accum_monetary_income_logs():
     """AJAX: журнал изменений накопленных денежных доходов населения."""
@@ -892,7 +892,7 @@ def accum_monetary_income_logs():
     )
 
 
-@economics_bp.route("/accum-monetary-income/export.xlsx")
+@economics_bp.route("/accum_monetary_income/export.xlsx")
 @login_required
 def accum_monetary_income_export_xlsx():
     rd = _parse_rounding_digits()
@@ -909,7 +909,7 @@ def accum_monetary_income_export_xlsx():
     )
 
 
-@economics_bp.route("/accum-monetary-income/import.xlsx", methods=["POST"])
+@economics_bp.route("/accum_monetary_income/import.xlsx", methods=["POST"])
 @login_required
 def accum_monetary_income_import_xlsx():
     if not getattr(current_user, "has_admin", False):

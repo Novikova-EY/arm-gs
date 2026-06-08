@@ -36,6 +36,7 @@ class FederalDistrictPopulationConsumptionYearParameter(db.Model, AuditMixin):
         foreign_keys=[id_federal_district],
     )
 
+    # Тип строки показателя (intensity, graph_point, calculated, delta)
     row_kind = db.Column(String(32), nullable=False, index=True)
     year_number = db.Column(db.Integer, nullable=True, index=True)
     year = db.relationship(
@@ -43,6 +44,7 @@ class FederalDistrictPopulationConsumptionYearParameter(db.Model, AuditMixin):
         back_populates="fd_population_consumption_year_parameters",
         lazy="noload",
     )
+    # Значение показателя за год (кВт·ч/чел., зависит от row_kind)
     parameter_value = db.Column(Numeric(25, 10), nullable=True)
     note = db.Column(db.Text, nullable=True)
 

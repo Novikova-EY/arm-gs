@@ -45,8 +45,7 @@ class EquipmentGroupSpecificFuelPrice(db.Model):
     year_number = db.Column(db.Integer, nullable=True, index=True)  # Year
     obl = db.Column(db.String(80), nullable=True)  # OBL
 
-    # Ценовые поля (Numeric) — рассчитываются по формулам xxx_c = cost.xxx / quantity.
-    # quantity из EquipmentGroupFuelParam (FROM_EQUIPMENT_GROUP) или EquipmentGroupExtraFuelParam (FROM_EXTRA_FUEL).
+    # Цена, газ (всего)
     gaz_c = db.Column(db.Numeric(36, 16), nullable=True)
     gazpp_c = db.Column(db.Numeric(36, 16), nullable=True)
     gaz_prir_c = db.Column(db.Numeric(36, 16), nullable=True)

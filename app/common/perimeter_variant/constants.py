@@ -41,7 +41,7 @@ CYRILLIC_O1_VARIANT_CODE = "\u043e1"
 # Служебные привязки: какой вариант периметра у блока строк на сводке потребления (не для дерева ОЭС).
 EC_SUMMARY_BLOCK_ENTITY_KIND = "ec_summary_block"
 
-# --- entity_kind для привязок периметра (страница /perimeter-variants/) ---
+# --- entity_kind для привязок периметра (страница /perimeter_variants/) ---
 # Агрегаты без строки в refdata (префиксы моделей/таблиц gs_*_russia_federation_*, gs_*_ees_russia_*, gs_*_centralized_zone_*).
 ENTITY_KIND_EES_RUSSIA = "ees_russia"
 ENTITY_KIND_RUSSIA_FEDERATION = "russia_federation"

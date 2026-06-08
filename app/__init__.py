@@ -756,25 +756,26 @@ def create_app():
         """Редирект со старого URL модуля."""
         from flask import redirect
 
-        if path.startswith("electrical-intensity"):
-            target = (
-                "/energy_consumption/electrical-intensity/"
-                if path == "electrical-intensity"
-                else f"/energy_consumption/{path}"
-            )
+        if path.startswith("electrical_intensity"):
+            if path == "electrical_intensity":
+                target = "/energy_consumption/electrical_intensity_fo/"
+            elif path.startswith("electrical_intensity/"):
+                target = f"/energy_consumption/electrical_intensity_fo/{path[len('electrical_intensity/'):]}"
+            else:
+                target = f"/energy_consumption/{path}"
         else:
             target = "/economics/" if not path else f"/economics/{path}"
         return redirect(target, code=301)
 
-    @app.route("/economics/electrical-intensity", defaults={"subpath": ""})
-    @app.route("/economics/electrical-intensity/", defaults={"subpath": ""})
-    @app.route("/economics/electrical-intensity/<path:subpath>")
+    @app.route("/economics/electrical_intensity", defaults={"subpath": ""})
+    @app.route("/economics/electrical_intensity/", defaults={"subpath": ""})
+    @app.route("/economics/electrical_intensity/<path:subpath>")
     def redirect_economics_electrical_intensity_to_demand(subpath=""):
         """Электроёмкость перенесена в модуль спроса."""
         from flask import redirect
 
-        base = "/energy_consumption/electrical-intensity"
-        target = base if not subpath else f"{base}/{subpath}"
+        base = "/energy_consumption/electrical_intensity_fo"
+        target = f"{base}/" if not subpath else f"{base}/{subpath}"
         return redirect(target, code=301)
     app.register_blueprint(territories_bp, url_prefix="/territories")
 

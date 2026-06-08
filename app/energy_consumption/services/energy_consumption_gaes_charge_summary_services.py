@@ -147,7 +147,7 @@ def exclude_gaes_charge_summary_rows(
 def remove_gaes_charge_rows_from_summary_context(
     context: dict[str, Any],
 ) -> dict[str, Any]:
-    """Сводка без строк заряда ГАЭС (страница /summary/energy-zones/)."""
+    """Сводка без строк заряда ГАЭС (страница /summary/energy_zones/)."""
     out = dict(context)
     out["summary_rows"] = exclude_gaes_charge_summary_rows(
         list(context.get("summary_rows") or [])

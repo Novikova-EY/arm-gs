@@ -103,18 +103,6 @@ def build_electrical_intensity_excel_stream(context: dict[str, Any]) -> BytesIO:
         title = f"{block.get('abbr', '')} — {block.get('label', '')}"
         ws.cell(row=row_idx, column=1, value=title).font = Font(bold=True)
         row_idx += 1
-        if block.get("layout") != "ved_sections":
-            ws.cell(
-                row=row_idx,
-                column=1,
-                value=(
-                    f"A = {block.get('coefficient_a_manual_display', block.get('coefficient_a_display', '—'))}; "
-                    f"Арасч. = {block.get('coefficient_a_computed_display', '—')}; "
-                    f"X = {block.get('coefficient_x_display', '—')}"
-                ),
-            )
-            ws.cell(row=row_idx, column=2, value="")
-            row_idx += 1
         fd_summary = block.get("fd_summary") or {}
         for ref_row in fd_summary.get("reference_rows") or []:
             ws.cell(row=row_idx, column=1, value=ref_row.get("row_label") or "")
@@ -141,6 +129,18 @@ def build_electrical_intensity_excel_stream(context: dict[str, Any]) -> BytesIO:
                         )
                         ws.cell(row=row_idx, column=col_idx, value=disp)
                 row_idx += 1
+        if block.get("layout") != "ved_sections" and block.get("has_ei_model_block", True):
+            ws.cell(
+                row=row_idx,
+                column=1,
+                value=(
+                    f"A = {block.get('coefficient_a_manual_display', block.get('coefficient_a_display', '—'))}; "
+                    f"Арасч. = {block.get('coefficient_a_computed_display', '—')}; "
+                    f"X = {block.get('coefficient_x_display', '—')}"
+                ),
+            )
+            ws.cell(row=row_idx, column=2, value="")
+            row_idx += 1
         for section in block.get("ved_sections") or []:
             ws.cell(row=row_idx, column=1, value=section.get("ved_name") or "").font = Font(bold=True)
             row_idx += 1
@@ -191,7 +191,7 @@ def build_electrical_intensity_excel_stream(context: dict[str, Any]) -> BytesIO:
                             _investment_cells_from_section(section),
                         )
                     row_idx += 1
-        if block.get("layout") != "ved_sections":
+        if block.get("layout") != "ved_sections" and block.get("has_ei_model_block", True):
             for data_row in block.get("rows") or []:
                 rk = data_row.get("row_kind") or ""
                 ws.cell(row=row_idx, column=1, value=data_row.get("row_label") or "")

@@ -31,7 +31,7 @@ def build_accum_fixed_capital_excel_stream(context: dict[str, Any]) -> BytesIO:
     ws.cell(
         row=1,
         column=1,
-        value="Накопленные инвестиции в основной капитал",
+        value="Территория / Накопленные инвестиции в основной капитал, млн руб",
     ).font = Font(bold=True)
     for col_idx, year in enumerate(years, start=2):
         cell = ws.cell(row=1, column=col_idx, value=year_header_cell(year))

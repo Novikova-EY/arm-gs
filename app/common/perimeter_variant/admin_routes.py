@@ -16,7 +16,7 @@ def _require_admin():
     return True
 
 
-@perimeter_variant_bp.route("/perimeter-variants/", methods=["GET", "POST"])
+@perimeter_variant_bp.route("/perimeter_variants/", methods=["GET", "POST"])
 @login_required
 def perimeter_variants_admin():
     if not _require_admin():

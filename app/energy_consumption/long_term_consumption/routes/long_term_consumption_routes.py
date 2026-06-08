@@ -31,9 +31,10 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
 )
 from app.common.services.database_version_services import get_current_version
 from app.logs.services.log_display_utils import format_logs_for_display
-from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
-    reset_formula_text_override,
-    save_formula_text_override,
+from app.energy_consumption.long_term_consumption.services.formula_text.long_term_consumption_formula_text_services import (
+    list_formulas_for_admin as list_electrical_intensity_formulas_for_admin,
+    reset_formula_text_override as reset_electrical_intensity_formula_text_override,
+    save_formula_text_override as save_electrical_intensity_formula_text_override,
 )
 
 
@@ -83,7 +84,27 @@ def _parse_rounding_digits() -> int:
     return 1
 
 
-@long_term_consumption_bp.route("/electrical-intensity/", methods=["GET", "POST"])
+@long_term_consumption_bp.route("/electrical_intensity_start/")
+@login_required
+def electrical_intensity_start():
+    return render_template(
+        "energy_consumption/long_term_consumption/electrical_intensity_start.html",
+    )
+
+
+@long_term_consumption_bp.route("/electrical_intensity/", methods=["GET", "POST"])
+@long_term_consumption_bp.route("/electrical_intensity", defaults={"subpath": ""}, methods=["GET", "POST"])
+@long_term_consumption_bp.route("/electrical_intensity/<path:subpath>")
+def electrical_intensity_legacy_redirect(subpath=""):
+    qs = request.query_string.decode()
+    base = "/energy_consumption/electrical_intensity_fo"
+    target = f"{base}/{subpath}" if subpath else f"{base}/"
+    if qs:
+        target = f"{target}?{qs}"
+    return redirect(target, code=301)
+
+
+@long_term_consumption_bp.route("/electrical_intensity_fo/", methods=["GET", "POST"])
 @login_required
 def electrical_intensity():
     form = _csrf()
@@ -131,7 +152,7 @@ def electrical_intensity():
 
 
 @long_term_consumption_bp.route(
-    "/electrical-intensity/calculate-graph-points", methods=["POST"]
+    "/electrical_intensity_fo/calculate_graph_points", methods=["POST"]
 )
 @login_required
 def electrical_intensity_calculate_graph_points():
@@ -175,7 +196,7 @@ def electrical_intensity_calculate_graph_points():
 
 
 @long_term_consumption_bp.route(
-    "/electrical-intensity/calculate-graph-points-row", methods=["POST"]
+    "/electrical_intensity_fo/calculate_graph_points_row", methods=["POST"]
 )
 @login_required
 def electrical_intensity_calculate_graph_points_row():
@@ -224,7 +245,7 @@ def electrical_intensity_calculate_graph_points_row():
     return jsonify(ok=True, **result)
 
 
-@long_term_consumption_bp.route("/electrical-intensity/logs", methods=["GET"])
+@long_term_consumption_bp.route("/electrical_intensity_fo/logs", methods=["GET"])
 @login_required
 def electrical_intensity_logs():
     """AJAX: журнал изменений электроёмкости для текущей версии БД."""
@@ -258,7 +279,7 @@ def electrical_intensity_logs():
     )
 
 
-@long_term_consumption_bp.route("/electrical-intensity/export.xlsx")
+@long_term_consumption_bp.route("/electrical_intensity_fo/export.xlsx")
 @login_required
 def electrical_intensity_export_xlsx():
     rd = _parse_rounding_digits()
@@ -277,7 +298,7 @@ def electrical_intensity_export_xlsx():
     )
 
 
-@long_term_consumption_bp.route("/electrical-intensity/import.xlsx", methods=["POST"])
+@long_term_consumption_bp.route("/electrical_intensity_fo/import.xlsx", methods=["POST"])
 @login_required
 def electrical_intensity_import_xlsx():
     if not getattr(current_user, "has_admin", False):
@@ -325,19 +346,31 @@ def electrical_intensity_import_xlsx():
     return jsonify(ok=True, message=msg, hints=hints, **stats)
 
 
-@long_term_consumption_bp.route("/electrical-intensity-formulas/")
+def _render_electrical_intensity_formulas_page():
+    if not getattr(current_user, "has_admin", False):
+        flash("Недостаточно прав для редактирования текстов формул.", "danger")
+        return redirect(url_for("long_term_consumption_bp.electrical_intensity_start"))
+    return render_template(
+        "energy_consumption/long_term_consumption/electrical_intensity_formulas.html",
+        page_title="Тексты формул электроёмкости",
+        formula_rows=list_electrical_intensity_formulas_for_admin(),
+        has_active_summary_filters=False,
+    )
+
+
+@long_term_consumption_bp.route("/electrical_intensity_formulas/")
 @login_required
 def electrical_intensity_formulas():
-    return redirect(url_for("energy_consumption_bp.energy_consumption_summary_formulas"))
+    return _render_electrical_intensity_formulas_page()
 
 
-@long_term_consumption_bp.route("/electrical-intensity-formulas/save", methods=["POST"])
+@long_term_consumption_bp.route("/electrical_intensity_formulas/save", methods=["POST"])
 @login_required
 def electrical_intensity_formulas_save():
     return _electrical_intensity_formulas_api_save()
 
 
-@long_term_consumption_bp.route("/electrical-intensity-formulas/reset", methods=["POST"])
+@long_term_consumption_bp.route("/electrical_intensity_formulas/reset", methods=["POST"])
 @login_required
 def electrical_intensity_formulas_reset():
     return _electrical_intensity_formulas_api_reset()
@@ -346,7 +379,7 @@ def electrical_intensity_formulas_reset():
 @long_term_consumption_bp.route("/formulas/")
 @login_required
 def electrical_intensity_formulas_page():
-    return redirect(url_for("energy_consumption_bp.energy_consumption_summary_formulas"))
+    return _render_electrical_intensity_formulas_page()
 
 
 @long_term_consumption_bp.route("/formulas/save", methods=["POST"])
@@ -366,7 +399,7 @@ def _electrical_intensity_formulas_api_save():
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     try:
-        save_formula_text_override(
+        save_electrical_intensity_formula_text_override(
             formula_key=str(data.get("formula_key") or ""),
             formula_text=str(data.get("formula_text") or ""),
         )
@@ -384,6 +417,6 @@ def _electrical_intensity_formulas_api_reset():
     key = str(data.get("formula_key") or "").strip()
     if not key:
         return jsonify(ok=False, error="Не указан ключ формулы."), 400
-    reset_formula_text_override(key)
+    reset_electrical_intensity_formula_text_override(key)
     db.session.commit()
     return jsonify(ok=True)

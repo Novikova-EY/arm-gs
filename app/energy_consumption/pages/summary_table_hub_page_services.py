@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary-table/ (сводная таблица, корень — разрез ОЭС)."""
+"""Страница /energy_consumption/summary_table/ (сводная таблица, корень — разрез ОЭС)."""
 
 from __future__ import annotations
 

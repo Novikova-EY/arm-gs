@@ -45,7 +45,11 @@ from app.common.perimeter_variant.registry import (
 )
 from app.common.perimeter_variant.registry_types import EntityPerimeterBinding, PerimeterVariantDefinition
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
-from app.common.services.help_services import format_decimal_for_display, format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_for_display,
+    format_decimal_trim_for_display,
+)
 from app.extensions import db
 from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
     EesEnergyConsumptionParameter,
@@ -2164,7 +2168,7 @@ def inject_siberia_energy_zone_summary_rows(
     if not summary_rows or not years:
         return
 
-    # Не дублировать при повторных применениях (напр. в summary-table пайплайне).
+    # Не дублировать при повторных применениях (напр. в summary_table пайплайне).
     if any(str(r.get("entity_label") or "").strip() == "Энергозона Сибири" for r in summary_rows):
         return
 
@@ -2358,9 +2362,9 @@ def append_summary_table_hub_energy_zone_footer_rows(
     data_end_year: int,
     filter_year_list: list[int],
 ) -> None:
-    """Добавляет в конец /summary-table/ строки энергозон Сибири и Востока без дерева.
+    """Добавляет в конец /summary_table/ строки энергозон Сибири и Востока без дерева.
 
-    Расчёт и подписи — как на /summary/energy-zones/ (без строк заряда ГАЭС).
+    Расчёт и подписи — как на /summary/energy_zones/ (без строк заряда ГАЭС).
     """
     missing_labels = _summary_table_hub_missing_energy_zone_footer_labels(summary_rows)
     if not missing_labels:
@@ -3299,7 +3303,7 @@ def reorder_centralized_zone_russia_variant_blocks_in_summary_rows(
 def exclude_centralized_zone_russia_o1_summary_rows(
     summary_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Убирает строки «ЦЗ России … О-1»; пересчитывает ``entity_rowspan`` (страница /summary/energy-zones/)."""
+    """Убирает строки «ЦЗ России … О-1»; пересчитывает ``entity_rowspan`` (страница /summary/energy_zones/)."""
     if not summary_rows:
         return []
     out: list[dict[str, Any]] = []
@@ -3501,7 +3505,7 @@ def filter_summary_table_gaes_charge_aggregate_rows(
 def keep_centralized_zone_rows_in_territory_compact(
     summary_rows: list[dict[str, Any]],
 ) -> None:
-    """Строки «ЦЗ России» остаются видимыми в режиме «Сводная таблица» на /summary/oes/ и /summary/federal-districts/."""
+    """Строки «ЦЗ России» остаются видимыми в режиме «Сводная таблица» на /summary/oes/ и /summary/federal_districts/."""
     for row in summary_rows:
         if _is_centralized_zone_russia_summary_row(row):
             row.pop("pd_ec_territory_compact_hide_row", None)
@@ -3579,7 +3583,7 @@ def _is_oes_max_summary_page_hidden_row(row: dict[str, Any]) -> bool:
 def filter_oes_max_summary_page_hidden_rows(
     summary_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """На /summary/oes/ (не summary-table): без «ЦЗ России», «Россия с НТ», «Заряд ГАЭС»."""
+    """На /summary/oes/ (не summary_table): без «ЦЗ России», «Россия с НТ», «Заряд ГАЭС»."""
     if not summary_rows:
         return []
     out: list[dict[str, Any]] = []
@@ -3625,7 +3629,7 @@ _SUMMARY_TABLE_HUB_HIDDEN_OES_TITES_VERIFICATION_KINDS = frozenset(
 def _is_summary_table_hub_hidden_oes_or_tites_verification_row(
     row: dict[str, Any],
 ) -> bool:
-    """Строки «Проверка для …» по ОЭС/ТИТЭС — не показываем на /summary-table/ (корень)."""
+    """Строки «Проверка для …» по ОЭС/ТИТЭС — не показываем на /summary_table/ (корень)."""
     if _is_oes_summary_hidden_tites_verification_row(row):
         return True
     ek = str(row.get("entity_kind") or "")
@@ -3637,7 +3641,7 @@ def _is_summary_table_hub_hidden_oes_or_tites_verification_row(
 def filter_summary_table_hub_oes_and_tites_verification_rows(
     summary_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """На /energy_consumption/summary-table/ убирает «Проверка для …» по ОЭС и ТИТЭС."""
+    """На /energy_consumption/summary_table/ убирает «Проверка для …» по ОЭС и ТИТЭС."""
     if not summary_rows:
         return []
     return [
@@ -4946,7 +4950,7 @@ def apply_energy_consumption_summary_table_variant_toggle_rows(
     reorder_centralized_zone_russia_variant_blocks_in_summary_rows(rows)
     # Если у сущности в данных присутствует только вариант «с НТ» (без «без НТ»),
     # то скрывать его при выключенной кнопке «+НТ» нельзя — иначе на экране не останется ни одной строки.
-    # Такое возможно при настройке привязок вариантов периметра на странице /perimeter-variants/.
+    # Такое возможно при настройке привязок вариантов периметра на странице /perimeter_variants/.
     nt_groups_by_entity: dict[tuple[Any, ...], set[str]] = {}
     for r in rows:
         code0 = str(r.get("perimeter_variant_code") or "")
@@ -8671,7 +8675,7 @@ def build_summary_table_hub_centralized_zone_reference_summary_rows(
     data_end_year: int | None = None,
     oes_territory_ordered: tuple[list[int], list[int], list[int], list[int]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Строки «ЦЗ России» после пайплайна /energy_consumption/summary-table/ (корень, разрез ОЭС)."""
+    """Строки «ЦЗ России» после пайплайна /energy_consumption/summary_table/ (корень, разрез ОЭС)."""
     from app.energy_consumption.pages._summary_page_transforms import (
         convert_context_to_summary_table_page,
     )
@@ -8729,7 +8733,7 @@ def apply_federal_district_centralized_zone_values_from_summary_table_hub(
     data_start_year: int | None = None,
     data_end_year: int | None = None,
 ) -> None:
-    """На /summary/federal-districts/: значения «ЦЗ России …» как на /summary-table/."""
+    """На /summary/federal_districts/: значения «ЦЗ России …» как на /summary_table/."""
     if not summary_rows or not years:
         return
     if not any(_is_centralized_zone_russia_summary_row(row) for row in summary_rows):
@@ -8813,7 +8817,7 @@ def inject_summary_table_cz_new_territories_reference_row(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Сводная таблица (/summary-table/): справочная строка перед «Россия с НТ»."""
+    """Сводная таблица (/summary_table/): справочная строка перед «Россия с НТ»."""
     if not summary_rows or not years:
         return
     if any(
@@ -8974,7 +8978,7 @@ def inject_summary_table_decentralized_zone_row(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Сводная таблица (/summary-table/): расчётная строка после «Россия с НТ»."""
+    """Сводная таблица (/summary_table/): расчётная строка после «Россия с НТ»."""
     if not summary_rows or not years:
         return
     if any(
@@ -9281,7 +9285,7 @@ def apply_summary_table_formula_calculations(
     *,
     eu_source_rows_for_tites: list[dict[str, Any]] | None = None,
 ) -> None:
-    """Пересчёт строк сводной таблицы с формулами (как на /summary-table/)."""
+    """Пересчёт строк сводной таблицы с формулами (как на /summary_table/)."""
     if not summary_rows or not years:
         return
 
@@ -10602,7 +10606,7 @@ def inject_fo_summary_verification_rows(
             r["pd_ec_gaes_without_row"] = True
         return out
 
-    # Требование страницы /summary/federal-districts/: показываем только проверки соответствия
+    # Требование страницы /summary/federal_districts/: показываем только проверки соответствия
     # «ОЭС Юга» сумме ФО (Южный ФО + Северо-Кавказский ФО) и «ОЭС Урала»
     # (Уральский ФО + Приволжский ФО − ОЭС Урала − ОЭС Средней Волги). Все прочие строки
     # «Проверка …» по ФО здесь не добавляем.
@@ -12213,7 +12217,7 @@ def build_fo_summary_formula_rows_for_version(
     years: list[int],
     rounding_digits: int = 1,
 ) -> list[dict[str, Any]]:
-    """Строки сводки по ФО с формулами (как на /summary/federal-districts/) для записи в БД."""
+    """Строки сводки по ФО с формулами (как на /summary/federal_districts/) для записи в БД."""
     from flask import g
 
     from app.energy_consumption.pages._summary_page_transforms import (
@@ -13212,7 +13216,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _build_parameter_maps(
@@ -13301,7 +13305,8 @@ def _build_parameter_maps(
 
 
 def _format_numeric(value: Any, digits: int) -> str:
-    return _dash(format_decimal_trim_for_display(value, digits=digits))
+    shown = format_decimal_trim_for_display(value, digits=digits)
+    return _dash(apply_thousand_grouping_to_display(shown) if shown else shown)
 
 
 def _format_summary_parameter_value(
@@ -13318,7 +13323,7 @@ def _format_yoy_pct_for_display(value: Any) -> str:
     if value is None:
         return "—"
     s = format_decimal_for_display(value, digits=_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS)
-    return s if s else "—"
+    return apply_thousand_grouping_to_display(s) if s else "—"
 
 
 def _dash(value: Any) -> str:

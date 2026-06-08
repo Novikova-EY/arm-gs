@@ -157,7 +157,7 @@ def format_decimal_for_display(value, digits=None):
     # digits == -1 → округление до целого
     if digits == -1:
         value = value.to_integral_value(rounding=ROUND_HALF_UP)
-        return str(value).replace('.', ',')
+        return apply_thousand_grouping_to_display(str(value).replace(".", ","))
 
     # digits is None → округляем до 1 знака по умолчанию
     if digits is None:
@@ -168,14 +168,16 @@ def format_decimal_for_display(value, digits=None):
         s = format(value, "f")
         if "." in s:
             s = s.rstrip("0").rstrip(".")
-        return s.replace(".", ",")
+        return apply_thousand_grouping_to_display(s.replace(".", ","))
 
     # digits > 0 → округление с нужной точностью
     with localcontext() as ctx:
         ctx.rounding = ROUND_HALF_UP
         quant = Decimal('1.' + '0' * digits)
         value = value.quantize(quant)
-        return format(value, f'.{digits}f').replace('.', ',')
+        return apply_thousand_grouping_to_display(
+            format(value, f'.{digits}f').replace(".", ",")
+        )
 
 
 def strip_trailing_fraction_zeros_comma(s: str) -> str:
@@ -185,6 +187,25 @@ def strip_trailing_fraction_zeros_comma(s: str) -> str:
     int_part, frac = s.split(",", 1)
     frac = frac.rstrip("0")
     return int_part if frac == "" else f"{int_part},{frac}"
+
+
+def apply_thousand_grouping_to_display(s: str) -> str:
+    """Пробел между каждыми тремя цифрами целой части (как в Excel, ru-RU)."""
+    if not s or s == "—":
+        return s
+    sign = ""
+    if s.startswith("-"):
+        sign = "-"
+        s = s[1:]
+    if "," in s:
+        int_part, frac_part = s.split(",", 1)
+    else:
+        int_part, frac_part = s, None
+    int_part = int_part.replace(" ", "").replace("\u00a0", "")
+    if int_part:
+        int_part = re.sub(r"(?<=\d)(?=(\d{3})+(?!\d))", " ", int_part)
+    result = f"{int_part},{frac_part}" if frac_part is not None else int_part
+    return sign + result
 
 
 def format_decimal_trim_for_display(value, digits=None) -> str:

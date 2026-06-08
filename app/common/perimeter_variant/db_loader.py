@@ -143,7 +143,7 @@ def _load_bindings_from_db(
 
 
 def list_perimeter_variant_ui_options() -> list[dict[str, str]]:
-    """Опции для select: все коды справочника (та же выборка, что на /perimeter-variants/)."""
+    """Опции для select: все коды справочника (та же выборка, что на /perimeter_variants/)."""
     opts: list[dict[str, str]] = []
     try:
         from app.common.models.perimeter_variant import PerimeterVariant

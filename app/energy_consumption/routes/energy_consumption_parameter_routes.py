@@ -118,7 +118,7 @@ def hub():
     return render_template("energy_consumption/energy_consumption_start.html")
 
 
-@energy_consumption_bp.route("/summary-formulas/")
+@energy_consumption_bp.route("/summary_formulas/")
 @login_required
 def energy_consumption_summary_formulas():
     if not getattr(current_user, "has_admin", False):
@@ -132,7 +132,7 @@ def energy_consumption_summary_formulas():
     )
 
 
-@energy_consumption_bp.route("/summary-formulas/save", methods=["POST"])
+@energy_consumption_bp.route("/summary_formulas/save", methods=["POST"])
 @login_required
 def energy_consumption_summary_formulas_save():
     if not getattr(current_user, "has_admin", False):
@@ -150,7 +150,7 @@ def energy_consumption_summary_formulas_save():
     return jsonify(ok=True)
 
 
-@energy_consumption_bp.route("/summary-formulas/reset", methods=["POST"])
+@energy_consumption_bp.route("/summary_formulas/reset", methods=["POST"])
 @login_required
 def energy_consumption_summary_formulas_reset():
     if not getattr(current_user, "has_admin", False):
@@ -212,7 +212,7 @@ def russia_demand():
     )
 
 
-@energy_consumption_bp.route("/russia-with-nt/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/russia_with_nt/", methods=["GET", "POST"])
 @login_required
 def russia_with_nt_demand():
     """Россия с НТ — те же поля, что у /russia/, вариант периметра with_nt."""
@@ -260,7 +260,7 @@ def russia_with_nt_demand():
     )
 
 
-@energy_consumption_bp.route("/ees-russia/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/ees_russia/", methods=["GET", "POST"])
 @login_required
 def ees_russia_demand():
     """ЕЭС России без НТ — отдельная таблица параметров нагрузки."""
@@ -308,7 +308,7 @@ def ees_russia_demand():
     )
 
 
-@energy_consumption_bp.route("/ees-russia-with-nt/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/ees_russia_with_nt/", methods=["GET", "POST"])
 @login_required
 def ees_russia_with_nt_demand():
     """ЕЭС России с НТ — вариант периметра with_nt в общей таблице."""
@@ -507,7 +507,7 @@ def _demand_detail(
 
 
 # Региональные энергосистемы
-@energy_consumption_bp.route("/regional-energy-systems/")
+@energy_consumption_bp.route("/regional_energy_systems/")
 @login_required
 def regional_energy_system_list():
     return _parent_list(
@@ -521,7 +521,7 @@ def regional_energy_system_list():
     )
 
 
-@energy_consumption_bp.route("/regional-energy-systems/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/regional_energy_systems/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def regional_energy_system_demand(parent_id: int):
     p = RegionalEnergySystem.query.get_or_404(parent_id)
@@ -539,7 +539,7 @@ def regional_energy_system_demand(parent_id: int):
 
 
 # Энергоузлы
-@energy_consumption_bp.route("/energy-areas/")
+@energy_consumption_bp.route("/energy_areas/")
 @login_required
 def energy_area_list():
     return _parent_list(
@@ -553,7 +553,7 @@ def energy_area_list():
     )
 
 
-@energy_consumption_bp.route("/energy-areas/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/energy_areas/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def energy_area_demand(parent_id: int):
     p = EnergyArea.query.get_or_404(parent_id)
@@ -569,7 +569,7 @@ def energy_area_demand(parent_id: int):
 
 
 # Федеральные округа
-@energy_consumption_bp.route("/federal-districts/")
+@energy_consumption_bp.route("/federal_districts/")
 @login_required
 def federal_district_list():
     return _parent_list(
@@ -588,7 +588,7 @@ def federal_district_list():
     )
 
 
-@energy_consumption_bp.route("/federal-districts/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/federal_districts/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def federal_district_demand(parent_id: int):
     p = FederalDistrict.query.get_or_404(parent_id)
@@ -605,7 +605,7 @@ def federal_district_demand(parent_id: int):
 
 
 # Энергорайоны
-@energy_consumption_bp.route("/energy-units/")
+@energy_consumption_bp.route("/energy_units/")
 @login_required
 def energy_unit_list():
     return _parent_list(
@@ -619,7 +619,7 @@ def energy_unit_list():
     )
 
 
-@energy_consumption_bp.route("/energy-units/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/energy_units/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def energy_unit_demand(parent_id: int):
     p = EnergyUnit.query.get_or_404(parent_id)
@@ -635,7 +635,7 @@ def energy_unit_demand(parent_id: int):
 
 
 # Энергозоны
-@energy_consumption_bp.route("/energy-zones/")
+@energy_consumption_bp.route("/energy_zones/")
 @login_required
 def energy_zone_list():
     return _parent_list(
@@ -649,7 +649,7 @@ def energy_zone_list():
     )
 
 
-@energy_consumption_bp.route("/energy-zones/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/energy_zones/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def energy_zone_demand(parent_id: int):
     p = EnergyZone.query.get_or_404(parent_id)
@@ -665,7 +665,7 @@ def energy_zone_demand(parent_id: int):
 
 
 # Субъекты РФ
-@energy_consumption_bp.route("/regional-districts/")
+@energy_consumption_bp.route("/regional_districts/")
 @login_required
 def regional_district_list():
     return _parent_list(
@@ -679,7 +679,7 @@ def regional_district_list():
     )
 
 
-@energy_consumption_bp.route("/regional-districts/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/regional_districts/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def regional_district_demand(parent_id: int):
     p = RegionalDistrict.query.get_or_404(parent_id)
@@ -696,7 +696,7 @@ def regional_district_demand(parent_id: int):
 
 
 # Синхронные зоны
-@energy_consumption_bp.route("/synchronous-areas/")
+@energy_consumption_bp.route("/synchronous_areas/")
 @login_required
 def synchronous_area_list():
     return _parent_list(
@@ -712,7 +712,7 @@ def synchronous_area_list():
     )
 
 
-@energy_consumption_bp.route("/synchronous-areas/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/synchronous_areas/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def synchronous_area_demand(parent_id: int):
     p = SynchronousArea.query.get_or_404(parent_id)
@@ -729,7 +729,7 @@ def synchronous_area_demand(parent_id: int):
 
 
 # ОЭС
-@energy_consumption_bp.route("/union-energy-systems/")
+@energy_consumption_bp.route("/union_energy_systems/")
 @login_required
 def union_energy_system_list():
     return _parent_list(
@@ -748,7 +748,7 @@ def union_energy_system_list():
     )
 
 
-@energy_consumption_bp.route("/union-energy-systems/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/union_energy_systems/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def union_energy_system_demand(parent_id: int):
     p = UnionEnergySystem.query.get_or_404(parent_id)
@@ -765,7 +765,7 @@ def union_energy_system_demand(parent_id: int):
 
 
 # Тип энергосистемы
-@energy_consumption_bp.route("/energy-system-types/")
+@energy_consumption_bp.route("/energy_system_types/")
 @login_required
 def energy_system_type_list():
     q = EnergySystemType.query
@@ -789,7 +789,7 @@ def energy_system_type_list():
     )
 
 
-@energy_consumption_bp.route("/energy-system-types/<int:parent_id>/", methods=["GET", "POST"])
+@energy_consumption_bp.route("/energy_system_types/<int:parent_id>/", methods=["GET", "POST"])
 @login_required
 def energy_system_type_demand(parent_id: int):
     p = EnergySystemType.query.get_or_404(parent_id)

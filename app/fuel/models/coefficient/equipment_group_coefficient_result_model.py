@@ -81,7 +81,6 @@ class EquipmentGroupCoefficientResult(db.Model):
     doptim = db.Column(db.Numeric(20, 6), nullable=True)
     lim = db.Column(db.Numeric(20, 6), nullable=True)
 
-    # Результаты этапа Коэфф
     coeff_base = db.Column(db.Numeric(20, 6), nullable=True)
     coeff_min = db.Column(db.Numeric(20, 6), nullable=True)
     coeff_max = db.Column(db.Numeric(20, 6), nullable=True)

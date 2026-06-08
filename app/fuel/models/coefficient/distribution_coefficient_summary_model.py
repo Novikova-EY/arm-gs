@@ -25,6 +25,7 @@ class DistributionCoefficientSummary(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
+    # Параметр распределения
     distribution_parameter_id = db.Column(
         db.Integer,
         db.ForeignKey(
@@ -35,6 +36,7 @@ class DistributionCoefficientSummary(db.Model):
     )
 
     year_number = db.Column(db.Integer, nullable=False)
+    # Базовый год (номер)
     base_year = db.Column(db.Integer, nullable=True)
     database_version_id = db.Column(
         db.Integer,

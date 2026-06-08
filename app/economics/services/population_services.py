@@ -10,7 +10,10 @@ from flask import session
 from sqlalchemy import and_
 
 from app.common.services.database_version_services import get_current_version
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list,
@@ -67,14 +70,14 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
         return "—"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return shown if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
 def _parse_decimal(raw: str | None) -> Decimal | None:

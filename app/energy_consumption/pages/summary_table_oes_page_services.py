@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary-table/oes/."""
+"""Страница /energy_consumption/summary_table/oes/."""
 
 from __future__ import annotations
 

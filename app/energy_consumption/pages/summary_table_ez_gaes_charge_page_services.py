@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary-table/energy-zones/gaes-charge/."""
+"""Страница /energy_consumption/summary_table/energy_zones/gaes_charge/."""
 
 from __future__ import annotations
 

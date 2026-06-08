@@ -83,7 +83,6 @@ class MachineFuelParam(db.Model):
         index=True,
     )
 
-    # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

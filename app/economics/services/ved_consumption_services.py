@@ -9,7 +9,10 @@ from typing import Any
 from flask import session
 from sqlalchemy import and_
 from app.common.services.database_version_services import get_current_version
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list,
@@ -64,7 +67,7 @@ def _federal_district_name_key(name: str | None) -> str:
 
 
 def _is_federal_district_excluded_from_ved(fd: FederalDistrict) -> bool:
-    """Скрыть служебные ФО (как на /energy_consumption/summary/federal-districts/)."""
+    """Скрыть служебные ФО (как на /energy_consumption/summary/federal_districts/)."""
     for attr in ("name", "name_abr", "name_full"):
         key = _federal_district_name_key(getattr(fd, attr, None))
         if not key:
@@ -83,7 +86,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _cell_tooltips_for_years(
@@ -96,7 +99,7 @@ def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
         return "—"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return shown if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
 def _attach_cells_display(

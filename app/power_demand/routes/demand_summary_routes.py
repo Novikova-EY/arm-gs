@@ -379,7 +379,7 @@ def demand_summary_oes_export():
     return _demand_summary_excel_response(context, "power_demand_svodka_oes")
 
 
-@power_demand_bp.route("/summary/federal-districts/export.xlsx")
+@power_demand_bp.route("/summary/federal_districts/export.xlsx")
 @login_required
 def demand_summary_federal_districts_export():
     sy, ey = _parse_summary_year_range()
@@ -417,7 +417,7 @@ def demand_summary_federal_districts_export():
     return _demand_summary_excel_response(context, "power_demand_svodka_fo")
 
 
-@power_demand_bp.route("/summary/energy-zones/export.xlsx")
+@power_demand_bp.route("/summary/energy_zones/export.xlsx")
 @login_required
 def demand_summary_energy_zones_export():
     sy, ey = _parse_summary_year_range()
@@ -492,7 +492,7 @@ def demand_summary_oes_export_coeff():
     )
 
 
-@power_demand_bp.route("/summary/coeff/federal-districts/export.xlsx")
+@power_demand_bp.route("/summary/coeff/federal_districts/export.xlsx")
 @login_required
 def demand_summary_federal_districts_export_coeff():
     _n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -527,7 +527,7 @@ def demand_summary_federal_districts_export_coeff():
     )
 
 
-@power_demand_bp.route("/summary/coeff/energy-zones/export.xlsx")
+@power_demand_bp.route("/summary/coeff/energy_zones/export.xlsx")
 @login_required
 def demand_summary_energy_zones_export_coeff():
     _n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -717,7 +717,7 @@ def demand_summary_oes():
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
-@power_demand_bp.route("/summary/energy-zones/")
+@power_demand_bp.route("/summary/energy_zones/")
 @login_required
 def demand_summary_energy_zones():
     sy, ey = _parse_summary_year_range()
@@ -749,7 +749,7 @@ def demand_summary_energy_zones():
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
-@power_demand_bp.route("/summary/federal-districts/")
+@power_demand_bp.route("/summary/federal_districts/")
 @login_required
 def demand_summary_federal_districts():
     sy, ey = _parse_summary_year_range()
@@ -818,7 +818,7 @@ def demand_summary_oes_coeff():
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
-@power_demand_bp.route("/summary/coeff/federal-districts/")
+@power_demand_bp.route("/summary/coeff/federal_districts/")
 @login_required
 def demand_summary_federal_districts_coeff():
     coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -854,7 +854,7 @@ def demand_summary_federal_districts_coeff():
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
-@power_demand_bp.route("/summary/coeff/energy-zones/")
+@power_demand_bp.route("/summary/coeff/energy_zones/")
 @login_required
 def demand_summary_energy_zones_coeff():
     coeff_n, start_year, end_year = _parse_coeff_summary_year_range()

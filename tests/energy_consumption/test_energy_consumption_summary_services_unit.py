@@ -934,7 +934,7 @@ def test_consumption_mln_rows_respect_rounding_digits_from_url():
         rounding_digits=2,
     )
 
-    assert parameter_maps["energy_consumption_mln_kvt_ch"][2024] == "1234,6"
+    assert parameter_maps["energy_consumption_mln_kvt_ch"][2024] == "1 234,6"
     assert parameter_maps["energy_consumption_sipr_mln_kvt_ch"][2024] == "789,44"
     assert tooltips["energy_consumption_sipr_mln_kvt_ch"][2024] == "789,44"
     assert parameter_maps[service.ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][2024] == "—"
@@ -956,8 +956,8 @@ def test_sipr_consumption_display_falls_back_to_ec_when_sipr_missing():
         rounding_digits=1,
     )
 
-    assert parameter_maps["energy_consumption_sipr_mln_kvt_ch"][2024] == "1100"
-    assert tooltips["energy_consumption_sipr_mln_kvt_ch"][2024] == "1100"
+    assert parameter_maps["energy_consumption_sipr_mln_kvt_ch"][2024] == "1 100"
+    assert tooltips["energy_consumption_sipr_mln_kvt_ch"][2024] == "1 100"
     assert parameter_maps[service.ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY][2024] == "100"
     assert parameter_maps[service.ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY][2024] == "10,00"
 
@@ -1631,7 +1631,7 @@ def test_apply_centralized_zone_without_nt_sum_formula():
     service.apply_centralized_zone_without_nt_sum_formula(rows, years, rounding_digits=1)
 
     cz_row = rows[0]
-    assert cz_row["year_values"] == ["100", "280", "2800"]
+    assert cz_row["year_values"] == ["100", "280", "2 800"]
     assert cz_row.get("pd_ec_formula_derived_row") is True
     assert service._CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP in str(
         cz_row.get("pd_ec_summary_row_formula_tooltip") or ""
@@ -1980,7 +1980,7 @@ def test_inject_summary_table_decentralized_zone_row_after_russia():
         if row.get("entity_label") == service._SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL
         and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
     )
-    assert dz_ec["year_values"] == ["900", "1800", "2700"]
+    assert dz_ec["year_values"] == ["900", "1 800", "2 700"]
     dz_sipr = next(
         row
         for row in rows
@@ -2732,7 +2732,7 @@ def test_inject_fo_summary_verification_rows_adds_ural_ues_check(monkeypatch):
     )
     assert ural_check["entity_label"] == "Проверка для ОЭС Урала"
     assert ural_check["year_values"] == ["-1"]
-    assert "176175" in ural_check["pd_ec_verification_formula_tooltip"]
+    assert "Уральский ФО" in ural_check["pd_ec_verification_formula_tooltip"]
     assert rows.index(ural_check) == 4
 
 
@@ -4428,7 +4428,7 @@ def test_apply_oes_tites_root_formula_includes_sakha_yakutia_extra_energy_units(
         eu_source_rows=eu_rows,
     )
 
-    assert summary_rows[0]["year_values"] == ["4636"]
+    assert summary_rows[0]["year_values"] == ["4 636"]
 
 
 def test_apply_oes_tites_root_formula_excludes_sakha_yakutia_extra_after_2019(

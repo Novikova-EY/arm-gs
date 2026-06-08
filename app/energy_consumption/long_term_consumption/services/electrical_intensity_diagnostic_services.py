@@ -270,9 +270,10 @@ def attach_electrical_intensity_diagnostics_to_blocks(
                     current_year=current_year,
                 )
         else:
-            _attach_diagnostics_to_graph_point_row(
-                block.get("rows") or [],
-                display_years=display_years,
-                investment_cells=rf_investment_cells or {},
-                current_year=current_year,
-            )
+            if block.get("has_ei_model_block", True):
+                _attach_diagnostics_to_graph_point_row(
+                    block.get("rows") or [],
+                    display_years=display_years,
+                    investment_cells=rf_investment_cells or {},
+                    current_year=current_year,
+                )

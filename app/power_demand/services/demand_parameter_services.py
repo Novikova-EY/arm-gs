@@ -35,7 +35,10 @@ from app.common.services.get_services.years.year_feature_services import (
     get_year_feature_dict,
 )
 from app.common.services.get_services.years.years_get_services import get_year_list_full
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.perimeter_variant.registry import (
     filter_query_by_perimeter_variant,
     model_supports_perimeter_variant,
@@ -67,7 +70,7 @@ def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
 def parse_decimal(value: Any) -> Optional[Decimal]:
     if value is None:
         return None
-    s = str(value).strip().replace(",", ".")
+    s = str(value).strip().replace("\u00a0", "").replace(" ", "").replace(",", ".")
     if not s:
         return None
     try:
@@ -710,18 +713,23 @@ def _dash_summary_display(value: Any) -> str:
     return str(value)
 
 
+def _summary_numeric_display(value: Any, *, digits: int) -> str:
+    shown = format_decimal_trim_for_display(value, digits=digits)
+    return _dash_summary_display(
+        apply_thousand_grouping_to_display(shown) if shown else shown
+    )
+
+
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
     """Строка для отображения ячейки сводки после сохранения (как в demand_summary_services)."""
     if str(parameter_key or "").startswith("coeff_k_"):
         if hasattr(row, "__table__") and parameter_key in row.__table__.columns:
             v = getattr(row, parameter_key, None)
-            return _dash_summary_display(
-                format_decimal_trim_for_display(v, digits=rounding_digits)
-            )
+            return _summary_numeric_display(v, digits=rounding_digits)
         return "—"
     if parameter_key == "max_power":
         v = getattr(row, "max_power_consumption_mw", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "peak_datetime":
         s = format_peak_datetime_for_slice(
             getattr(row, "peak_datetime_msk", None),
@@ -730,25 +738,25 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
         return _dash_summary_display(s)
     if parameter_key == "avg_temp":
         v = getattr(row, "avg_daily_air_temp_c", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=0))
+        return _summary_numeric_display(v, digits=0)
     if parameter_key == "combined_on_oes":
         v = getattr(row, "combined_on_oes", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "combined_on_ees":
         v = getattr(row, "combined_on_ees", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "combined_on_es":
         v = getattr(row, "combined_on_es", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "combined_on_ez":
         v = getattr(row, "combined_on_ez", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "combined_on_fo":
         v = getattr(row, "combined_on_fo", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "combined_on_cz":
         v = getattr(row, "combined_on_cz", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=rounding_digits))
+        return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
     return "—"

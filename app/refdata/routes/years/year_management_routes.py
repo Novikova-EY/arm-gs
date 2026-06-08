@@ -19,7 +19,7 @@ from app.common.services.database_version_services import get_current_version
 year_management_bp = Blueprint('year_management', __name__)
 
 
-@year_management_bp.route("/api/current-year-info", methods=["GET"])
+@year_management_bp.route("/api/current_year_info", methods=["GET"])
 @login_required
 def get_year_info():
     """Получает информацию о текущем годе и годах СиПР для текущей версии БД."""
@@ -53,7 +53,7 @@ def get_year_info():
         }), 500
 
 
-@year_management_bp.route("/api/update-current-year", methods=["POST"])
+@year_management_bp.route("/api/update_current_year", methods=["POST"])
 @login_required
 @roles_required(["admin"])
 def update_year():
@@ -108,7 +108,7 @@ def update_year():
         }), 500
 
 
-@year_management_bp.route("/api/update-sipr-years", methods=["POST"])
+@year_management_bp.route("/api/update_sipr_years", methods=["POST"])
 @login_required
 @roles_required(["admin"])
 def update_sipr():
@@ -165,7 +165,7 @@ def update_sipr():
         }), 500
 
 
-@year_management_bp.route("/api/update-sipr-dates", methods=["POST"])
+@year_management_bp.route("/api/update_sipr_dates", methods=["POST"])
 @login_required
 @roles_required(["admin"])
 def update_sipr_dates_route():

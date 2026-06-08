@@ -22,13 +22,20 @@ class EconomicActivityType(db.Model, AuditMixin, VersionedModelMixin, RefdataUui
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    # Порядок отображения
     display_order = db.Column(db.Integer, nullable=True)
+
+    # Вид экономической деятельности
     name = db.Column(db.String(255), nullable=True, index=True)
+
+    # Вид экономической деятельности_2
     name_2 = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    # Версия базы данных (FK -> gs_sys.gs_database_versions)
     database_version_id = db.Column(
         db.Integer,
         db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),

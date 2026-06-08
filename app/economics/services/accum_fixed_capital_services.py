@@ -9,7 +9,10 @@ from typing import Any
 from flask import session
 from sqlalchemy import and_
 from app.common.services.database_version_services import get_current_version
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list,
@@ -56,6 +59,12 @@ def _normalize_label(text: str | None) -> str:
     return " ".join(str(text or "").split()).strip().lower()
 
 
+def _ved_display_name(ved: EconomicActivityType) -> str | None:
+    """Подпись строки ВЭД на странице накопленных инвестиций (поле name_2 справочника /refdata/ved)."""
+    name_2 = (getattr(ved, "name_2", None) or "").strip()
+    return name_2 or None
+
+
 def _federal_district_name_key(name: str | None) -> str:
     cf = (name or "").strip().casefold()
     for prefix in ("фо - ", "фо — "):
@@ -67,7 +76,7 @@ def _federal_district_name_key(name: str | None) -> str:
 
 
 def _is_federal_district_excluded_from_afci(fd: FederalDistrict) -> bool:
-    """Скрыть служебные ФО (как на /energy_consumption/summary/federal-districts/)."""
+    """Скрыть служебные ФО (как на /energy_consumption/summary/federal_districts/)."""
     for attr in ("name", "name_abr", "name_full"):
         key = _federal_district_name_key(getattr(fd, attr, None))
         if not key:
@@ -86,7 +95,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _cell_tooltips_for_years(
@@ -99,7 +108,7 @@ def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
         return "—"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return shown if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
 def _attach_cells_display(
@@ -241,7 +250,9 @@ def build_accum_fixed_capital_page_context(
         if not _is_federal_district_excluded_from_afci(x)
     ]
     economic_activity_type_list = [
-        {"id": v.id, "name": v.name or ""} for v in _ved_types_for_afci_page(version_id)
+        {"id": v.id, "name": display_name}
+        for v in _ved_types_for_afci_page(version_id)
+        if (display_name := _ved_display_name(v))
     ]
 
     return {
@@ -373,7 +384,7 @@ def _ved_row(
         cells[year] = values_by_ved_year.get((ved.id, year))
     row = {
         "ved_id": ved.id,
-        "ved_name": ved.name,
+        "ved_name": _ved_display_name(ved) or ved.name,
         "is_total": _normalize_label(ved.name) == _normalize_label(TOTAL_ACCUM_FIXED_CAPITAL_NAME),
         "is_industrial_group": False,
         "is_industrial_component": False,
@@ -407,7 +418,7 @@ def _rows_in_ved_order(
     return [
         row_by_id[ved.id]
         for ved in ved_types
-        if ved.name and ved.id in row_by_id
+        if _ved_display_name(ved) and ved.id in row_by_id
     ]
 
 
@@ -463,13 +474,19 @@ def _build_territory_rows(
 
     component_rows: list[dict[str, Any]] = []
     component_ids: set[int] = set()
+    all_component_rows: list[dict[str, Any]] = []
     for ved in component_veds:
+        if ved.id not in row_by_id:
+            continue
         row = row_by_id[ved.id]
+        all_component_rows.append(row)
+        if not _ved_display_name(ved):
+            continue
         row["is_industrial_component"] = True
         component_rows.append(row)
         component_ids.add(ved.id)
 
-    industrial_cells = _sum_industrial_group_cells(component_rows, display_years)
+    industrial_cells = _sum_industrial_group_cells(all_component_rows, display_years)
     industrial_row: dict[str, Any] = {
         "ved_id": None,
         "ved_name": INDUSTRIAL_GROUP_LABEL,
@@ -490,7 +507,7 @@ def _build_territory_rows(
 
     other_rows: list[dict[str, Any]] = []
     for ved in ved_types:
-        if not ved.name or ved.id not in row_by_id:
+        if not _ved_display_name(ved) or ved.id not in row_by_id:
             continue
         if _is_ved_hidden_on_afci_page(ved.name):
             continue

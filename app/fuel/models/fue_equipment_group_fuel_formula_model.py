@@ -26,6 +26,7 @@ class EquipmentGroupFuelFormula(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
+    # FK -> EquipmentGroup (итоговая группа оборудования)
     equipment_group_id = db.Column(
         db.Integer,
         db.ForeignKey(f"{SCHEMA_FUEL}.gs_fue_equipment_groups.id", ondelete="RESTRICT"),

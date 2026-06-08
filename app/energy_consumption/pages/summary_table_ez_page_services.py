@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary-table/energy-zones/."""
+"""Страница /energy_consumption/summary_table/energy_zones/."""
 
 from __future__ import annotations
 

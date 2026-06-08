@@ -183,7 +183,7 @@ def prospective_places_gaes():
     )
 
 
-@prospective_places_bp.route("/gaes/tep-main/")
+@prospective_places_bp.route("/gaes/tep_main/")
 @login_required
 def prospective_places_gaes_tep_main():
     """Перечень исходных ТЭП по всем площадкам ГАЭС (как список, полная таблица)."""
@@ -239,7 +239,7 @@ def prospective_places_gaes_tep_main():
     )
 
 
-@prospective_places_bp.route("/gaes/tep-reserve/")
+@prospective_places_bp.route("/gaes/tep_reserve/")
 @login_required
 def prospective_places_gaes_tep_reserve():
     """Старый URL: перечень ТЭП единый для всех площадок ГАЭС."""
@@ -468,7 +468,7 @@ def prospective_place_gaes_details(id):
     )
 
 
-@prospective_places_bp.route("/gaes/<int:id>/link-station/", methods=["POST"])
+@prospective_places_bp.route("/gaes/<int:id>/link_station/", methods=["POST"])
 @login_required
 def prospective_place_gaes_link_station(id):
     from app.generation.prospective_places.models import StationProspectivePlaceGAES
@@ -513,7 +513,7 @@ def prospective_place_gaes_link_station(id):
     return redirect(url_for("prospective_places_bp.prospective_place_gaes_details", id=id))
 
 
-@prospective_places_bp.route("/gaes/<int:id>/go-station/", methods=["GET"])
+@prospective_places_bp.route("/gaes/<int:id>/go_station/", methods=["GET"])
 @login_required
 def prospective_place_gaes_go_station(id):
     from app.generation.prospective_places.models import StationProspectivePlaceGAES

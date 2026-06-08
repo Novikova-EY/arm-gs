@@ -130,15 +130,16 @@ class EquipmentGroupFuelParam(db.Model):
     sah = db.Column(db.Numeric(36, 16), nullable=True)
 
     
-    # 
+    # Тепловая мощность отборов, Гкал/ч
     nt = db.Column(db.Numeric(36, 16), nullable=True)
-    # 
+    
+    # Сумма тепловых мощностей, Гкал/ч
     nt_sum = db.Column(db.Numeric(36, 16), nullable=True)  # NTsum
     
     numb1120 = db.Column(db.Integer, nullable=True)
     numb1 = db.Column(db.Integer, nullable=True)
 
-    # obor — FK -> EquipmentGroupExternalMapping.code
+    # FK -> EquipmentGroupExternalMapping.code
     obor = db.Column(
         db.Integer,
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_equipment_group.code", ondelete="SET NULL"),
@@ -153,7 +154,7 @@ class EquipmentGroupFuelParam(db.Model):
     )
     ved = db.Column(db.Integer, nullable=True)
     ved_cyrillic = db.Column(db.Integer, nullable=True, name="вед")  # вед
-    # obl — FK -> TerritoriesEnergyExternalMapping.external_id
+    # FK -> TerritoriesEnergyExternalMapping.external_id
     obl = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_territories_energy.external_id", ondelete="SET NULL"),
@@ -167,7 +168,7 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
-    # dep — FK -> DepartmentExternalMapping.external_id
+    # FK -> DepartmentExternalMapping.external_id
     dep = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_department.external_id", ondelete="SET NULL"),
@@ -181,7 +182,7 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
-    # oes — FK -> UnionEnergySystemExternalMapping.external_id
+    # FK -> UnionEnergySystemExternalMapping.external_id
     oes = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_union_energy_system.external_id", ondelete="SET NULL"),
@@ -242,7 +243,7 @@ class EquipmentGroupFuelParam(db.Model):
         return ues.id_energy_system_type if ues else None
 
     ees = db.Column(db.Integer, nullable=True)
-    # er — FK -> EconomicRegionExternalMapping.external_id
+    # FK -> EconomicRegionExternalMapping.external_id
     er = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_economic_region.external_id", ondelete="SET NULL"),
@@ -256,7 +257,7 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
-    # gk — FK -> GenCompanyExternalMapping.external_id
+    # FK -> GenCompanyExternalMapping.external_id
     gk = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_gen_company.external_id", ondelete="SET NULL"),
@@ -269,7 +270,7 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
-    # be — FK -> BusinessUnitExternalMapping.external_id
+    # FK -> BusinessUnitExternalMapping.external_id
     be = db.Column(
         db.String(80),
         db.ForeignKey(f"{SCHEMA_FUE_EM}.gs_fue_em_business_unit.external_id", ondelete="SET NULL"),
@@ -291,7 +292,6 @@ class EquipmentGroupFuelParam(db.Model):
         index=True,
     )
 
-    # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

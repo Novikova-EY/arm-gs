@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary-table/federal-districts/gaes-charge/."""
+"""Страница /energy_consumption/summary_table/federal_districts/gaes_charge/."""
 
 from __future__ import annotations
 

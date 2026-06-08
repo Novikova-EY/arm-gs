@@ -8,10 +8,13 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from flask import session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.common.services.database_version_services import get_current_version
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
 from app.common.services.get_services.territories.federal_district_get_services import (
     get_federal_district_list,
@@ -54,6 +57,12 @@ from app.energy_consumption.long_term_consumption.models.russia_federation_elect
     RussiaFederationElectricalIntensityYearParameter,
 )
 from app.extensions import db
+from app.generation.models.station.station_gaes_charge_consumption_model import (
+    StationGaesChargeConsumption,
+)
+from app.generation.models.station.station_model import Station
+from app.power_demand.services import demand_parameter_services as dps
+from app.refdata.models.years.year_model import Year
 from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
     EI_BILLION_KWH_FACTOR,
     EI_INTENSITY_UNIT_FACTOR,
@@ -78,6 +87,26 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     REF_ROW_INDUSTRIAL_FORMULA_KEY_BY_KIND,
     REF_ROW_KINDS,
     REF_ROW_PRODUCT_OUTPUT,
+    REF_ROW_RF_CSS_BY_KIND,
+    REF_ROW_RF_FORMULA_KEY_BY_KIND,
+    REF_ROW_RF_GAES,
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES,
+    REF_ROW_RF_GDP,
+    REF_ROW_RF_GDP_INTENSITY,
+    REF_ROW_RF_GROWTH_RATE,
+    REF_ROW_RF_LABEL_BY_KIND,
+    REF_ROW_RF_NETWORK_LOSSES,
+    REF_ROW_RF_POWER_STATION,
+    REF_ROW_RF_SOURCE_ENDPOINT,
+    REF_ROW_RF_SOURCE_PAGE_TITLE,
+    REF_ROW_RF_TOTAL_CONSUMPTION,
+    REF_ROW_RF_UNIT_BY_KIND,
+    REF_ROW_RF_VED_FORMULA_KEY_BY_KIND,
+    REF_ROW_RF_VED_UNIT_BY_KIND,
+    RF_VED_INTENSITY_ROW_LABEL,
+    RF_VED_REF_ROW_KINDS,
+    rf_ved_product_output_row_label,
+    REF_ROW_RF_VED_CONSUMPTION,
     REF_ROW_SOURCE_ENDPOINT,
     REF_ROW_SOURCE_PAGE_TITLE,
     REF_ROW_UNIT_BY_KIND,
@@ -98,6 +127,7 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     ROW_KINDS,
     ROW_LABEL_BY_KIND,
     ref_row_label,
+    rf_gdp_row_label,
     HOUSEHOLD_VED_TARGET,
     POPULATION_SECTION_LABEL,
     POPULATION_SECTION_MARKER,
@@ -187,7 +217,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _ei_tooltip_digits_for_row_kind(row_kind: str | None) -> int | None:
@@ -206,14 +236,14 @@ def _format_cell_tooltip(value: Any, *, row_kind: str | None = None) -> str:
     if digits is None:
         return _format_full_numeric_tooltip(value)
     s = format_decimal_trim_for_display(value, digits=digits)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _format_cell_display(value: Any, rounding_digits: int) -> str:
     if value is None:
         return "—"
     shown = format_decimal_trim_for_display(value, digits=rounding_digits)
-    return shown if shown else "—"
+    return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
 def _ei_current_year_number() -> int | None:
@@ -1546,6 +1576,341 @@ def _build_fd_territory_summary(
     return summary
 
 
+def _resolve_price_year_for_rf_labels(
+    version_id: int | None,
+    coeff_base_year: int,
+) -> int:
+    """Год цен для подписи ВВП (из product-output РФ или базовый год периода)."""
+    q = RussiaFederationProductOutputParameter.query.filter(
+        RussiaFederationProductOutputParameter.id_year_specific_product_output.isnot(
+            None
+        )
+    )
+    if version_id is not None:
+        q = q.filter(
+            RussiaFederationProductOutputParameter.database_version_id == version_id
+        )
+    row = (
+        q.join(
+            Year,
+            RussiaFederationProductOutputParameter.id_year_specific_product_output
+            == Year.id,
+        )
+        .with_entities(Year.number)
+        .first()
+    )
+    if row is not None and row[0] is not None:
+        return int(row[0])
+    ges_year = get_ges_tep_current_price_year_number()
+    if ges_year is not None:
+        return int(ges_year)
+    return int(coeff_base_year)
+
+
+def _load_rf_gaes_charge_cells(
+    *,
+    display_years: list[int],
+) -> dict[int, Decimal | None]:
+    """Суммарный заряд ГАЭС по РФ (млн кВт·ч), как строка «всего» на сводке ГАЭС."""
+    if not display_years:
+        return {}
+    q = (
+        db.session.query(
+            StationGaesChargeConsumption.year_number,
+            func.sum(StationGaesChargeConsumption.charge_consumption),
+        )
+        .select_from(StationGaesChargeConsumption)
+        .join(Station, Station.id == StationGaesChargeConsumption.id_station)
+    )
+    q = dps.filter_parents_by_version(q, StationGaesChargeConsumption)
+    q = dps.filter_parents_by_version(q, Station)
+    q = q.filter(StationGaesChargeConsumption.year_number.in_(display_years))
+    q = q.group_by(StationGaesChargeConsumption.year_number)
+    cells: dict[int, Decimal | None] = {year: None for year in display_years}
+    for year_n, total in q.all():
+        if year_n is not None and total is not None:
+            cells[int(year_n)] = total
+    return cells
+
+
+def _compute_yoy_growth_cells(
+    base_cells: dict[int, Decimal | None],
+    display_years: list[int],
+) -> dict[int, Decimal | None]:
+    cells: dict[int, Decimal | None] = {}
+    for year in display_years:
+        curr = base_cells.get(year)
+        prev = base_cells.get(year - 1)
+        if curr is not None and prev is not None and prev != 0:
+            cells[year] = (curr / prev) * Decimal(100) - Decimal(100)
+        else:
+            cells[year] = None
+    return cells
+
+
+def _subtract_cell_maps(
+    minuend: dict[int, Decimal | None],
+    subtrahend: dict[int, Decimal | None],
+    display_years: list[int],
+) -> dict[int, Decimal | None]:
+    cells: dict[int, Decimal | None] = {}
+    for year in display_years:
+        a = minuend.get(year)
+        b = subtrahend.get(year)
+        cells[year] = (a - b) if a is not None and b is not None else None
+    return cells
+
+
+def _compute_rf_gdp_intensity_cells(
+    consumption_bn_cells: dict[int, Decimal | None],
+    gdp_mln_cells: dict[int, Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+) -> dict[int, Decimal | None]:
+    cells: dict[int, Decimal | None] = {}
+    for year in display_years:
+        cons_bn = consumption_bn_cells.get(year)
+        gdp_mln = gdp_mln_cells.get(year)
+        if cons_bn is not None and gdp_mln is not None and gdp_mln != 0:
+            cons_mln = cons_bn * EI_BILLION_KWH_FACTOR
+            raw = cons_mln / gdp_mln * EI_INTENSITY_UNIT_FACTOR
+            cells[year] = _quantize_ei_value(
+                raw, rounding_digits, row_kind=ROW_KIND_INTENSITY
+            )
+        else:
+            cells[year] = None
+    return cells
+
+
+def _build_rf_summary_reference_row(
+    *,
+    ref_kind: str,
+    cells: dict[int, Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+    row_label: str | None = None,
+    source_endpoint: str = "",
+    source_page_title: str = "",
+    param_inline_class: str = "",
+    label_em: bool = False,
+) -> dict[str, Any]:
+    formula_key = REF_ROW_RF_FORMULA_KEY_BY_KIND.get(ref_kind, "")
+    display_rd = (
+        rounding_digits
+        if ref_kind != REF_ROW_RF_GDP_INTENSITY
+        else _ei_display_digits_for_row(ROW_KIND_INTENSITY, rounding_digits)
+    )
+    row: dict[str, Any] = {
+        "row_kind": ref_kind,
+        "row_label": row_label or REF_ROW_RF_LABEL_BY_KIND.get(ref_kind, ref_kind),
+        "unit_label": REF_ROW_RF_UNIT_BY_KIND.get(ref_kind, ""),
+        "row_css": REF_ROW_RF_CSS_BY_KIND.get(ref_kind, ""),
+        "is_readonly": True,
+        "is_computed": True,
+        "source_endpoint": source_endpoint,
+        "source_page_title": source_page_title,
+        "formula_hint": ei_formula_text(formula_key) if formula_key else "",
+        "cells": cells,
+        "cell_tooltips": {
+            year: _format_full_numeric_tooltip(cells.get(year))
+            for year in display_years
+        },
+        "cells_display": {
+            year: _format_cell_display(cells.get(year), display_rd)
+            for year in display_years
+        },
+    }
+    if param_inline_class:
+        row["param_inline_class"] = param_inline_class
+    if label_em:
+        row["label_em"] = True
+    return row
+
+
+def _build_rf_territory_summary(
+    *,
+    version_id: int | None,
+    ved_types: list[EconomicActivityType],
+    display_years: list[int],
+    rounding_digits: int,
+    coeff_base_year: int,
+    fd_filter_ids: frozenset[int],
+) -> dict[str, Any] | None:
+    sum_ved_ids = _ved_ids_for_fd_total_sums(ved_types)
+    if not sum_ved_ids:
+        return None
+
+    consumption_by_ved = _load_ved_consumption_values_map(
+        version_id=version_id,
+        model=RussiaFederationConsumptionParameter,
+    )
+    _, product_by_ved, _, _ = _aggregate_fd_maps_for_rf(
+        version_id=version_id,
+        ved_types=ved_types,
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+        current_year=None,
+        fd_filter_ids=fd_filter_ids,
+    )
+
+    household_ved = _find_ved_by_target(ved_types, HOUSEHOLD_VED_TARGET)
+    household_ved_id = int(household_ved.id) if household_ved is not None else None
+    sum_ved_ids_for_rf = [
+        ved_id
+        for ved_id in sum_ved_ids
+        if household_ved_id is None or ved_id != household_ved_id
+    ]
+    ved_consumption_cells = _sum_values_by_ved_year_for_veds(
+        sum_ved_ids_for_rf, consumption_by_ved, display_years
+    )
+    if household_ved_id is not None:
+        household_by_year, _ = _aggregate_rf_household_and_population_by_year(
+            version_id=version_id,
+            ved_types=ved_types,
+            display_years=display_years,
+            fd_filter_ids=fd_filter_ids,
+        )
+        ved_consumption_cells = _sum_cell_maps(
+            ved_consumption_cells,
+            household_by_year,
+            display_years=display_years,
+        )
+    gdp_mln_cells = _sum_values_by_ved_year_for_veds(
+        sum_ved_ids, product_by_ved, display_years
+    )
+
+    network_losses_ved = _find_ved_by_target(ved_types, NETWORK_LOSSES_VED_TARGET)
+    power_station_ved = _find_ved_by_target(ved_types, POWER_STATION_OWN_NEEDS_VED_TARGET)
+    network_losses_cells = (
+        {
+            year: consumption_by_ved.get((int(network_losses_ved.id), year))
+            for year in display_years
+        }
+        if network_losses_ved is not None
+        else {year: None for year in display_years}
+    )
+    power_station_cells = (
+        {
+            year: consumption_by_ved.get((int(power_station_ved.id), year))
+            for year in display_years
+        }
+        if power_station_ved is not None
+        else {year: None for year in display_years}
+    )
+
+    gaes_mln_cells = _load_rf_gaes_charge_cells(display_years=display_years)
+
+    ved_consumption_bn_cells = _scale_cells_by_factor(
+        ved_consumption_cells, factor=EI_BILLION_KWH_FACTOR
+    )
+    network_losses_bn_cells = _scale_cells_by_factor(
+        network_losses_cells, factor=EI_BILLION_KWH_FACTOR
+    )
+    power_station_bn_cells = _scale_cells_by_factor(
+        power_station_cells, factor=EI_BILLION_KWH_FACTOR
+    )
+    gaes_bn_cells = _scale_cells_by_factor(
+        gaes_mln_cells, factor=EI_BILLION_KWH_FACTOR
+    )
+    gdp_bn_cells = _scale_cells_by_factor(
+        gdp_mln_cells, factor=EI_BILLION_KWH_FACTOR
+    )
+
+    total_consumption_bn_cells = _sum_cell_maps(
+        ved_consumption_bn_cells,
+        network_losses_bn_cells,
+        power_station_bn_cells,
+        display_years=display_years,
+    )
+    growth_rate_cells = _compute_yoy_growth_cells(
+        total_consumption_bn_cells, display_years
+    )
+    consumption_without_gaes_bn_cells = _subtract_cell_maps(
+        ved_consumption_bn_cells,
+        gaes_bn_cells,
+        display_years,
+    )
+    gdp_intensity_cells = _compute_rf_gdp_intensity_cells(
+        total_consumption_bn_cells,
+        gdp_mln_cells,
+        display_years,
+        rounding_digits,
+    )
+
+    price_year = _resolve_price_year_for_rf_labels(version_id, coeff_base_year)
+
+    reference_rows = [
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_TOTAL_CONSUMPTION,
+            cells=total_consumption_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_GROWTH_RATE,
+            cells=growth_rate_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            param_inline_class="lt-ei-param-inline--indented",
+            label_em=True,
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_VED_CONSUMPTION,
+            cells=ved_consumption_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            source_endpoint=REF_ROW_RF_SOURCE_ENDPOINT[REF_ROW_RF_VED_CONSUMPTION],
+            source_page_title=REF_ROW_RF_SOURCE_PAGE_TITLE[REF_ROW_RF_VED_CONSUMPTION],
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_GAES,
+            cells=gaes_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            source_endpoint=REF_ROW_RF_SOURCE_ENDPOINT[REF_ROW_RF_GAES],
+            source_page_title=REF_ROW_RF_SOURCE_PAGE_TITLE[REF_ROW_RF_GAES],
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_CONSUMPTION_WITHOUT_GAES,
+            cells=consumption_without_gaes_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_NETWORK_LOSSES,
+            cells=network_losses_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            source_endpoint=REF_ROW_RF_SOURCE_ENDPOINT[REF_ROW_RF_NETWORK_LOSSES],
+            source_page_title=REF_ROW_RF_SOURCE_PAGE_TITLE[REF_ROW_RF_NETWORK_LOSSES],
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_POWER_STATION,
+            cells=power_station_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            source_endpoint=REF_ROW_RF_SOURCE_ENDPOINT[REF_ROW_RF_POWER_STATION],
+            source_page_title=REF_ROW_RF_SOURCE_PAGE_TITLE[REF_ROW_RF_POWER_STATION],
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_GDP,
+            cells=gdp_bn_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            row_label=rf_gdp_row_label(price_year),
+            source_endpoint=REF_ROW_RF_SOURCE_ENDPOINT[REF_ROW_RF_GDP],
+            source_page_title=REF_ROW_RF_SOURCE_PAGE_TITLE[REF_ROW_RF_GDP],
+        ),
+        _build_rf_summary_reference_row(
+            ref_kind=REF_ROW_RF_GDP_INTENSITY,
+            cells=gdp_intensity_cells,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+        ),
+    ]
+    return {"reference_rows": reference_rows}
+
+
 def _build_industrial_sum_reference_row(
     *,
     ref_kind: str,
@@ -1799,6 +2164,558 @@ def _build_ved_sections_for_fd(
     return sections
 
 
+def _merge_ved_year_maps(
+    target: dict[tuple[int, int], Decimal | None],
+    source: dict[tuple[int, int], Decimal | None],
+) -> None:
+    for key, val in source.items():
+        if val is None:
+            continue
+        prev = target.get(key)
+        target[key] = (prev or Decimal(0)) + val
+
+
+def _sum_cell_dicts(
+    *cell_dicts: dict[int, Decimal | None],
+    display_years: list[int],
+) -> dict[int, Decimal | None]:
+    cells: dict[int, Decimal | None] = {}
+    for year in display_years:
+        total: Decimal | None = None
+        has_any = False
+        for cell_dict in cell_dicts:
+            val = cell_dict.get(year)
+            if val is not None:
+                has_any = True
+                total = (total or Decimal(0)) + val
+        cells[year] = total if has_any else None
+    return cells
+
+
+def _compute_ved_intensity_cells_for_fd(
+    *,
+    ved_id: int,
+    consumption_by_ved_year: dict[tuple[int, int], Decimal | None],
+    product_output_by_ved_year: dict[tuple[int, int], Decimal | None],
+    accum_by_ved_year: dict[tuple[int, int], Decimal | None],
+    ei_year_by_ved_kind_year: dict[tuple[int, str, int], Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+    current_year: int | None,
+) -> dict[int, Decimal | None]:
+    intensity_row_def = next(
+        rd for rd in _build_row_defs() if rd["row_kind"] == ROW_KIND_INTENSITY
+    )
+    values_by_kind_year = {
+        (ROW_KIND_INTENSITY, year): ei_year_by_ved_kind_year.get(
+            (ved_id, ROW_KIND_INTENSITY, year)
+        )
+        for year in display_years
+    }
+    rows = [
+        _attach_row_cells(
+            intensity_row_def, values_by_kind_year, display_years, rounding_digits
+        )
+    ]
+    _enrich_ei_computed_rows(
+        rows,
+        ved_id=ved_id,
+        consumption_by_ved_year=consumption_by_ved_year,
+        product_output_by_ved_year=product_output_by_ved_year,
+        accum_by_ved_year=accum_by_ved_year,
+        coef_a=None,
+        coef_x=None,
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+        current_year=current_year,
+    )
+    return rows[0]["cells"]
+
+
+def _compute_industrial_intensity_cells_for_fd(
+    *,
+    component_ved_ids: list[int],
+    consumption_by_ved_year: dict[tuple[int, int], Decimal | None],
+    product_output_by_ved_year: dict[tuple[int, int], Decimal | None],
+    accum_by_ved_year: dict[tuple[int, int], Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+    current_year: int | None,
+) -> dict[int, Decimal | None]:
+    synthetic_ved_id = 0
+    cons_cells = _sum_values_by_ved_year_for_veds(
+        component_ved_ids, consumption_by_ved_year, display_years
+    )
+    prod_cells = _sum_values_by_ved_year_for_veds(
+        component_ved_ids, product_output_by_ved_year, display_years
+    )
+    accum_cells = _sum_values_by_ved_year_for_veds(
+        component_ved_ids, accum_by_ved_year, display_years
+    )
+    return _compute_ved_intensity_cells_for_fd(
+        ved_id=synthetic_ved_id,
+        consumption_by_ved_year={
+            (synthetic_ved_id, year): cons_cells.get(year) for year in display_years
+        },
+        product_output_by_ved_year={
+            (synthetic_ved_id, year): prod_cells.get(year) for year in display_years
+        },
+        accum_by_ved_year={
+            (synthetic_ved_id, year): accum_cells.get(year) for year in display_years
+        },
+        ei_year_by_ved_kind_year={},
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+        current_year=current_year,
+    )
+
+
+def _aggregate_fd_maps_for_rf(
+    *,
+    version_id: int | None,
+    ved_types: list[EconomicActivityType],
+    display_years: list[int],
+    rounding_digits: int,
+    current_year: int | None,
+    fd_filter_ids: frozenset[int],
+) -> tuple[
+    dict[tuple[int, int], Decimal | None],
+    dict[tuple[int, int], Decimal | None],
+    dict[int, dict[int, Decimal | None]],
+    dict[int, dict[int, Decimal | None]] | None,
+]:
+    """Суммы потребления/выпуска и электроёмкости по ВЭД, агрегированные по ФО."""
+    agg_consumption: dict[tuple[int, int], Decimal | None] = {}
+    agg_product: dict[tuple[int, int], Decimal | None] = {}
+    intensity_by_ved: dict[int, list[dict[int, Decimal | None]]] = {}
+    industrial_intensity_parts: list[dict[int, Decimal | None]] = []
+    component_veds = _find_industrial_component_veds(ved_types)
+    component_ved_ids = [int(v.id) for v in component_veds]
+
+    for fd in _federal_districts_for_page():
+        if fd_filter_ids and fd.id not in fd_filter_ids:
+            continue
+        fd_filter = FederalDistrictProductOutputParameter.id_federal_district == fd.id
+        product_by_ved = _load_product_output_values_map(
+            version_id=version_id,
+            model=FederalDistrictProductOutputParameter,
+            territory_filter=fd_filter,
+        )
+        consumption_by_ved = _load_ved_consumption_values_map(
+            version_id=version_id,
+            model=FederalDistrictEATConsumptionParameter,
+            territory_filter=FederalDistrictEATConsumptionParameter.id_federal_district
+            == fd.id,
+        )
+        accum_by_ved = _load_accum_fixed_capital_values_map(
+            version_id=version_id,
+            model=FederalDistrictAccumFixedCapitalParameter,
+            territory_filter=FederalDistrictAccumFixedCapitalParameter.id_federal_district
+            == fd.id,
+        )
+        ei_year_by_ved = _load_fd_ei_year_values_map(version_id=version_id, fd_id=fd.id)
+
+        _merge_ved_year_maps(agg_consumption, consumption_by_ved)
+        _merge_ved_year_maps(agg_product, product_by_ved)
+
+        for ved in ved_types:
+            if _is_parent_industrial_ved_name(ved.name):
+                continue
+            if _is_total_consumption_ved(ved):
+                continue
+            if not _ved_section_display_name(ved):
+                continue
+            ved_id = int(ved.id)
+            intensity_cells = _compute_ved_intensity_cells_for_fd(
+                ved_id=ved_id,
+                consumption_by_ved_year=consumption_by_ved,
+                product_output_by_ved_year=product_by_ved,
+                accum_by_ved_year=accum_by_ved,
+                ei_year_by_ved_kind_year=ei_year_by_ved,
+                display_years=display_years,
+                rounding_digits=rounding_digits,
+                current_year=current_year,
+            )
+            intensity_by_ved.setdefault(ved_id, []).append(intensity_cells)
+
+        if component_ved_ids:
+            industrial_intensity_parts.append(
+                _compute_industrial_intensity_cells_for_fd(
+                    component_ved_ids=component_ved_ids,
+                    consumption_by_ved_year=consumption_by_ved,
+                    product_output_by_ved_year=product_by_ved,
+                    accum_by_ved_year=accum_by_ved,
+                    display_years=display_years,
+                    rounding_digits=rounding_digits,
+                    current_year=current_year,
+                )
+            )
+
+    intensity_cells_by_ved: dict[int, dict[int, Decimal | None]] = {
+        ved_id: _sum_cell_dicts(*parts, display_years=display_years)
+        for ved_id, parts in intensity_by_ved.items()
+    }
+    industrial_intensity = (
+        _sum_cell_dicts(*industrial_intensity_parts, display_years=display_years)
+        if industrial_intensity_parts
+        else None
+    )
+    return agg_consumption, agg_product, intensity_cells_by_ved, industrial_intensity
+
+
+def _build_rf_ved_reference_row(
+    *,
+    ref_kind: str,
+    ved_id: int,
+    values_by_ved_year: dict[tuple[int, int], Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+    price_year: int,
+) -> dict[str, Any]:
+    cells = {
+        year: values_by_ved_year.get((ved_id, year)) for year in display_years
+    }
+    if ref_kind == REF_ROW_PRODUCT_OUTPUT:
+        cells = _scale_cells_by_factor(cells, factor=EI_BILLION_KWH_FACTOR)
+        row_label = rf_ved_product_output_row_label(price_year)
+        unit_label = REF_ROW_RF_VED_UNIT_BY_KIND[REF_ROW_PRODUCT_OUTPUT]
+    else:
+        row_label = ref_row_label(ref_kind)
+        unit_label = REF_ROW_RF_VED_UNIT_BY_KIND.get(
+            ref_kind, REF_ROW_UNIT_BY_KIND.get(ref_kind, "")
+        )
+    formula_key = REF_ROW_RF_VED_FORMULA_KEY_BY_KIND.get(ref_kind, "")
+    return {
+        "row_kind": ref_kind,
+        "row_label": row_label,
+        "unit_label": unit_label,
+        "row_css": REF_ROW_CSS_BY_KIND.get(ref_kind, ""),
+        "is_readonly": True,
+        "is_computed": True,
+        "source_endpoint": REF_ROW_SOURCE_ENDPOINT.get(ref_kind, ""),
+        "source_page_title": REF_ROW_SOURCE_PAGE_TITLE.get(ref_kind, ""),
+        "formula_hint": ei_formula_text(formula_key) if formula_key else "",
+        "cells": cells,
+        "cell_tooltips": {
+            year: _format_full_numeric_tooltip(cells.get(year)) for year in display_years
+        },
+        "cells_display": {
+            year: _format_cell_display(cells.get(year), rounding_digits)
+            for year in display_years
+        },
+    }
+
+
+def _build_rf_ved_intensity_row(
+    *,
+    cells: dict[int, Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+) -> dict[str, Any]:
+    intensity_row_def = next(
+        rd for rd in _build_row_defs() if rd["row_kind"] == ROW_KIND_INTENSITY
+    )
+    row_def = {
+        **intensity_row_def,
+        "row_label": RF_VED_INTENSITY_ROW_LABEL,
+        "formula_hint": ei_formula_text("ei_rf_ved_intensity"),
+        "is_computed": True,
+    }
+    out = {**row_def, "cells": cells}
+    out["cell_tooltips"] = {
+        year: _format_cell_tooltip(cells.get(year), row_kind=ROW_KIND_INTENSITY)
+        for year in display_years
+    }
+    display_rd = _ei_display_digits_for_row(ROW_KIND_INTENSITY, rounding_digits)
+    out["cells_display"] = {
+        year: _format_cell_display(cells.get(year), display_rd)
+        for year in display_years
+    }
+    return out
+
+
+def _build_rf_industrial_group_section(
+    *,
+    component_ved_ids: list[int],
+    consumption_by_ved_year: dict[tuple[int, int], Decimal | None],
+    product_output_by_ved_year: dict[tuple[int, int], Decimal | None],
+    intensity_cells: dict[int, Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+    price_year: int,
+) -> dict[str, Any]:
+    synthetic_ved_id = 0
+    cons_cells = _sum_values_by_ved_year_for_veds(
+        component_ved_ids, consumption_by_ved_year, display_years
+    )
+    prod_cells = _sum_values_by_ved_year_for_veds(
+        component_ved_ids, product_output_by_ved_year, display_years
+    )
+    synthetic_consumption = {
+        (synthetic_ved_id, year): cons_cells.get(year) for year in display_years
+    }
+    synthetic_product = {
+        (synthetic_ved_id, year): prod_cells.get(year) for year in display_years
+    }
+    reference_rows = [
+        _build_rf_ved_reference_row(
+            ref_kind=REF_ROW_CONSUMPTION,
+            ved_id=synthetic_ved_id,
+            values_by_ved_year=synthetic_consumption,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            price_year=price_year,
+        ),
+        _build_rf_ved_reference_row(
+            ref_kind=REF_ROW_PRODUCT_OUTPUT,
+            ved_id=synthetic_ved_id,
+            values_by_ved_year=synthetic_product,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            price_year=price_year,
+        ),
+    ]
+    return {
+        "ved_id": None,
+        "ved_name": INDUSTRIAL_GROUP_SECTION_LABEL,
+        "is_industrial_group": True,
+        "has_ei_block": True,
+        "has_ei_intensity_block": True,
+        "has_ei_model_block": False,
+        "reference_rows": reference_rows,
+        "rows": [
+            _build_rf_ved_intensity_row(
+                cells=intensity_cells,
+                display_years=display_years,
+                rounding_digits=rounding_digits,
+            )
+        ],
+        "unit_label": "кВт.ч./тыс.руб.",
+    }
+
+
+def _build_ved_sections_for_rf(
+    *,
+    version_id: int | None,
+    ved_types: list[EconomicActivityType],
+    display_years: list[int],
+    rounding_digits: int,
+    coeff_base_year: int,
+    current_year: int | None,
+    fd_filter_ids: frozenset[int],
+) -> list[dict[str, Any]]:
+    price_year = _resolve_price_year_for_rf_labels(version_id, coeff_base_year)
+    (
+        consumption_by_ved_year,
+        product_output_by_ved_year,
+        intensity_cells_by_ved,
+        industrial_intensity,
+    ) = _aggregate_fd_maps_for_rf(
+        version_id=version_id,
+        ved_types=ved_types,
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+        current_year=current_year,
+        fd_filter_ids=fd_filter_ids,
+    )
+
+    household_ved = _find_ved_by_target(ved_types, HOUSEHOLD_VED_TARGET)
+    household_ved_id = int(household_ved.id) if household_ved is not None else None
+    component_veds = _find_industrial_component_veds(ved_types)
+    component_ved_ids = [int(v.id) for v in component_veds]
+    sections: list[dict[str, Any]] = []
+    industrial_section: dict[str, Any] | None = None
+    if component_ved_ids and industrial_intensity is not None:
+        industrial_section = _build_rf_industrial_group_section(
+            component_ved_ids=component_ved_ids,
+            consumption_by_ved_year=consumption_by_ved_year,
+            product_output_by_ved_year=product_output_by_ved_year,
+            intensity_cells=industrial_intensity,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            price_year=price_year,
+        )
+
+    for ved in ved_types:
+        if _is_parent_industrial_ved_name(ved.name):
+            continue
+        if _is_total_consumption_ved(ved):
+            continue
+        ved_id = int(ved.id)
+        if household_ved_id is not None and ved_id == household_ved_id:
+            continue
+        ved_name = _ved_section_display_name(ved)
+        if not ved_name:
+            continue
+        reference_rows = [
+            _build_rf_ved_reference_row(
+                ref_kind=ref_kind,
+                ved_id=ved_id,
+                values_by_ved_year=(
+                    consumption_by_ved_year
+                    if ref_kind == REF_ROW_CONSUMPTION
+                    else product_output_by_ved_year
+                ),
+                display_years=display_years,
+                rounding_digits=rounding_digits,
+                price_year=price_year,
+            )
+            for ref_kind in RF_VED_REF_ROW_KINDS
+        ]
+        section: dict[str, Any] = {
+            "ved_id": ved_id,
+            "ved_name": ved_name,
+            "has_ei_block": True,
+            "has_ei_intensity_block": True,
+            "has_ei_model_block": False,
+            "reference_rows": reference_rows,
+            "rows": [
+                _build_rf_ved_intensity_row(
+                    cells=intensity_cells_by_ved.get(ved_id, {}),
+                    display_years=display_years,
+                    rounding_digits=rounding_digits,
+                )
+            ],
+            "unit_label": "кВт.ч./тыс.руб.",
+        }
+        if industrial_section is not None and ved_id in component_ved_ids:
+            sections.append(industrial_section)
+            industrial_section = None
+        sections.append(section)
+    return sections
+
+
+def _aggregate_rf_household_and_population_by_year(
+    *,
+    version_id: int | None,
+    ved_types: list[EconomicActivityType],
+    display_years: list[int],
+    fd_filter_ids: frozenset[int],
+) -> tuple[dict[int, Decimal | None], dict[int, Decimal | None]]:
+    """Суммы потребления в домашних хозяйствах и численности населения по ФО."""
+    household_ved = _find_ved_by_target(ved_types, HOUSEHOLD_VED_TARGET)
+    household_ved_id = int(household_ved.id) if household_ved is not None else None
+    household_by_year: dict[int, Decimal | None] = {
+        year: None for year in display_years
+    }
+    population_by_year: dict[int, Decimal | None] = {
+        year: None for year in display_years
+    }
+
+    for fd in _federal_districts_for_page():
+        if fd_filter_ids and fd.id not in fd_filter_ids:
+            continue
+        fd_population = _load_population_by_fd_year(version_id=version_id, fd_id=fd.id)
+        for year in display_years:
+            pop_val = fd_population.get(year)
+            if pop_val is not None:
+                prev = population_by_year.get(year)
+                population_by_year[year] = (prev or Decimal(0)) + pop_val
+
+        if household_ved_id is None:
+            continue
+        consumption_by_ved = _load_ved_consumption_values_map(
+            version_id=version_id,
+            model=FederalDistrictEATConsumptionParameter,
+            territory_filter=FederalDistrictEATConsumptionParameter.id_federal_district
+            == fd.id,
+        )
+        for year in display_years:
+            hh_val = consumption_by_ved.get((household_ved_id, year))
+            if hh_val is not None:
+                prev = household_by_year.get(year)
+                household_by_year[year] = (prev or Decimal(0)) + hh_val
+
+    return household_by_year, population_by_year
+
+
+def _build_rf_population_per_capita_row(
+    *,
+    household_by_year: dict[int, Decimal | None],
+    population_by_year: dict[int, Decimal | None],
+    display_years: list[int],
+    rounding_digits: int,
+) -> dict[str, Any]:
+    cells: dict[int, Decimal | None] = {}
+    for year in display_years:
+        raw = _compute_pop_per_capita_consumption(
+            household_by_year.get(year),
+            population_by_year.get(year),
+        )
+        cells[year] = (
+            _quantize_ei_value(raw, rounding_digits, row_kind=ROW_KIND_INTENSITY)
+            if raw is not None
+            else None
+        )
+    row_def = {
+        "row_kind": ROW_KIND_INTENSITY,
+        "row_label": POP_ROW_LABEL_BY_KIND[ROW_KIND_INTENSITY],
+        "row_css": "lt-ei-row-intensity",
+        "formula_hint": ei_formula_text("ei_rf_pop_per_capita"),
+        "is_computed": True,
+    }
+    out = {**row_def, "cells": cells}
+    out["cell_tooltips"] = {
+        year: _format_cell_tooltip(cells.get(year), row_kind=ROW_KIND_INTENSITY)
+        for year in display_years
+    }
+    display_rd = _ei_display_digits_for_row(ROW_KIND_INTENSITY, rounding_digits)
+    out["cells_display"] = {
+        year: _format_cell_display(cells.get(year), display_rd)
+        for year in display_years
+    }
+    return out
+
+
+def _build_population_section_for_rf(
+    *,
+    version_id: int | None,
+    ved_types: list[EconomicActivityType],
+    display_years: list[int],
+    rounding_digits: int,
+    fd_filter_ids: frozenset[int],
+) -> dict[str, Any]:
+    household_by_year, population_by_year = _aggregate_rf_household_and_population_by_year(
+        version_id=version_id,
+        ved_types=ved_types,
+        display_years=display_years,
+        fd_filter_ids=fd_filter_ids,
+    )
+    household_row = _build_population_reference_row(
+        ref_kind=REF_ROW_HOUSEHOLD_CONSUMPTION,
+        cells_by_year=household_by_year,
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+        is_computed=True,
+    )
+    household_row["formula_hint"] = ei_formula_text("ei_rf_pop_household_consumption")
+    population_row = _build_population_reference_row(
+        ref_kind=REF_ROW_POPULATION,
+        cells_by_year=population_by_year,
+        display_years=display_years,
+        rounding_digits=rounding_digits,
+    )
+    population_row["formula_hint"] = ei_formula_text("ei_rf_pop_population")
+    return {
+        "ved_id": POPULATION_SECTION_MARKER,
+        "ved_name": POPULATION_SECTION_LABEL,
+        "is_population_section": True,
+        "has_ei_block": True,
+        "has_ei_intensity_block": True,
+        "has_ei_model_block": False,
+        "reference_rows": [household_row, population_row],
+        "rows": [
+            _build_rf_population_per_capita_row(
+                household_by_year=household_by_year,
+                population_by_year=population_by_year,
+                display_years=display_years,
+                rounding_digits=rounding_digits,
+            )
+        ],
+        "unit_label": "тыс. кВт.ч./чел.",
+    }
+
+
 def _territory_block(
     *,
     territory_kind: str,
@@ -1862,45 +2779,57 @@ def build_electrical_intensity_page_context(
         ved_types = all_ved_types
     territory_blocks: list[dict[str, Any]] = []
 
-    rf_values = _load_year_values_map(
-        version_id=version_id,
-        model=RussiaFederationElectricalIntensityYearParameter,
+    show_rf_block = show_ved_sections or show_population_section
+    rf_summary = (
+        _build_rf_territory_summary(
+            version_id=version_id,
+            ved_types=all_ved_types,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            coeff_base_year=coeff_base_year,
+            fd_filter_ids=fd_filter_ids,
+        )
+        if show_rf_block
+        else None
     )
-    rf_a, rf_x = _load_coefficients(
-        version_id=version_id,
-        model=RussiaFederationElectricalIntensityCoefficient,
-    )
+    rf_ved_sections: list[dict[str, Any]] = []
+    if show_ved_sections:
+        rf_ved_sections = _build_ved_sections_for_rf(
+            version_id=version_id,
+            ved_types=ved_types,
+            display_years=display_years,
+            rounding_digits=rounding_digits,
+            coeff_base_year=coeff_base_year,
+            current_year=current_year,
+            fd_filter_ids=fd_filter_ids,
+        )
+    if show_rf_block:
+        rf_ved_sections.append(
+            _build_population_section_for_rf(
+                version_id=version_id,
+                ved_types=all_ved_types,
+                display_years=display_years,
+                rounding_digits=rounding_digits,
+                fd_filter_ids=fd_filter_ids,
+            )
+        )
     rf_block = _territory_block(
         territory_kind="rf",
         territory_id=None,
         label="Российская Федерация",
         abbr="РФ",
-        values_by_kind_year=rf_values,
-        coef_a=rf_a,
-        coef_x=rf_x,
+        values_by_kind_year={},
+        coef_a=None,
+        coef_x=None,
         display_years=display_years,
         rounding_digits=rounding_digits,
+        ved_sections=rf_ved_sections if show_rf_block else None,
     )
-    _enrich_rf_ei_block(
-        rf_block,
-        version_id=version_id,
-        ved_types=ved_types,
-        display_years=display_years,
-        rounding_digits=rounding_digits,
-        current_year=current_year,
-    )
-    rf_total_ved_id = _find_total_ved_id(ved_types)
-    rf_accum_cells: dict[int, Decimal | None] = {}
-    if rf_total_ved_id is not None:
-        rf_accum_by_ved = _load_accum_fixed_capital_values_map(
-            version_id=version_id,
-            model=RussiaFederationAccumFixedCapitalParameter,
-        )
-        rf_accum_cells = {
-            year: rf_accum_by_ved.get((rf_total_ved_id, year))
-            for year in display_years
-        }
-    if show_ved_sections:
+    rf_block["has_ei_model_block"] = False
+    rf_block["rows"] = []
+    if rf_summary is not None:
+        rf_block["fd_summary"] = rf_summary
+    if show_rf_block:
         territory_blocks.append(rf_block)
 
     for fd in _federal_districts_for_page():
@@ -1912,20 +2841,20 @@ def build_electrical_intensity_page_context(
             FederalDistrictProductOutputParameter.id_federal_district
             == fd.id
         )
-        # Те же таблицы и поля, что на /economics/product-output/
+        # Те же таблицы и поля, что на /economics/product_output/
         product_by_ved = _load_product_output_values_map(
             version_id=version_id,
             model=FederalDistrictProductOutputParameter,
             territory_filter=fd_filter,
         )
-        # /economics/ved-consumption/
+        # /economics/ved_consumption/
         consumption_by_ved = _load_ved_consumption_values_map(
             version_id=version_id,
             model=FederalDistrictEATConsumptionParameter,
             territory_filter=FederalDistrictEATConsumptionParameter.id_federal_district
             == fd.id,
         )
-        # /economics/accum-fixed-capital/
+        # /economics/accum_fixed_capital/
         accum_by_ved = _load_accum_fixed_capital_values_map(
             version_id=version_id,
             model=FederalDistrictAccumFixedCapitalParameter,
@@ -2014,11 +2943,10 @@ def build_electrical_intensity_page_context(
         territory_blocks,
         display_years=display_years,
         current_year=current_year,
-        rf_investment_cells=rf_accum_cells,
     )
 
     return {
-        "page_title": "Электроемкость",
+        "page_title": "Электроемкость по ФО",
         "years": display_years,
         "display_years": display_years,
         "year_features": get_year_feature_dict() or {},
@@ -2035,7 +2963,6 @@ def build_electrical_intensity_page_context(
         "has_active_filters": has_active_filters,
         "rounding_digits": rounding_digits,
         "ei_current_year": current_year,
-        "rf_investment_cells": rf_accum_cells,
         "formula_hints": {
             "coefficient_a": ei_formula_text("ei_coefficient_a"),
             "coefficient_a_computed": ei_formula_text("ei_coefficient_a_computed"),

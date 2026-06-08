@@ -27,7 +27,10 @@ from app.common.perimeter_variant.registry import (
 from app.common.services.database_version_filter import filter_by_explicit_db_version
 from app.common.services.database_version_services import get_current_version
 from app.common.services.get_services.years.years_get_services import get_year_list_full
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
@@ -148,7 +151,7 @@ def _parse_calendar_year_slice(raw: Any) -> Optional[int]:
 def parse_decimal(value: Any) -> Optional[Decimal]:
     if value is None:
         return None
-    s = str(value).strip().replace(",", ".")
+    s = str(value).strip().replace("\u00a0", "").replace(" ", "").replace(",", ".")
     if not s:
         return None
     try:
@@ -1179,18 +1182,25 @@ def _assert_summary_formula_row_editable(
         )
 
 
+def _summary_numeric_display(value: Any, *, digits: int) -> str:
+    shown = format_decimal_trim_for_display(value, digits=digits)
+    return _dash_summary_display(
+        apply_thousand_grouping_to_display(shown) if shown else shown
+    )
+
+
 def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: int) -> str:
     """Строка для отображения ячейки сводки после сохранения."""
     display_digits = rounding_digits
     if parameter_key == "energy_consumption_mln_kvt_ch":
         v = getattr(row, "energy_consumption_mln_kvt_ch", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
+        return _summary_numeric_display(v, digits=display_digits)
     if parameter_key == "energy_consumption_sipr_mln_kvt_ch":
         v = getattr(row, "energy_consumption_sipr_mln_kvt_ch", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
+        return _summary_numeric_display(v, digits=display_digits)
     if parameter_key == _GAES_CHARGE_PARAMETER_KEY:
         v = getattr(row, "charge_consumption", None)
-        return _dash_summary_display(format_decimal_trim_for_display(v, digits=display_digits))
+        return _summary_numeric_display(v, digits=display_digits)
     if parameter_key in ("note", "entity_note"):
         return _dash_summary_display(getattr(row, "note", None))
     return "—"

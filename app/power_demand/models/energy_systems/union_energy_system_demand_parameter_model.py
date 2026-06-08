@@ -54,12 +54,16 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin, PerimeterVariantCol
     # Расчетный максимум ОЭС, МВт
     calculated_max_power_mw = db.Column(Numeric(25, 3), nullable=True)
 
-    # Расчетный совмещенный максимум на ЕЭС, МВт
+    # Расчетный совмещенный на ЕЭС, МВт
     calculated_combined_on_ees_mw = db.Column(Numeric(25, 3), nullable=True)
 
-    # Коэффициенты k (безразмерные) по году для среднесрочного периода / признака «План»
+    # Коэффициент k для показателя «Расчетный максимум ОЭС, МВт»
     coeff_k_calculated_max_power_mw = db.Column(Numeric(25, 6), nullable=True)
+
+    # Коэффициент k для показателя «Совмещённый на ЕЭС, МВт»
     coeff_k_combined_on_ees = db.Column(Numeric(25, 6), nullable=True)
+
+    # Коэффициент k для показателя «Расчетный совмещенный на ЕЭС, МВт»
     coeff_k_calculated_combined_on_ees_mw = db.Column(Numeric(25, 6), nullable=True)
 
     # Примечание

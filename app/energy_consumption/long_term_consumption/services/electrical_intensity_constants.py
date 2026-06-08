@@ -433,3 +433,195 @@ EI_POP_COEFFICIENT_X_FORMULA_TOOLTIP = (
     f"по годам {EI_COEFFICIENT_X_AVG_START_YEAR}…N включительно (N — год с признаком "
     "«текущий»; пустые ячейки в среднее не входят)."
 )
+
+# Сводные строки РФ на странице электроёмкости (уровень «Российская Федерация»).
+REF_ROW_RF_TOTAL_CONSUMPTION = "rf_total_consumption"
+REF_ROW_RF_GROWTH_RATE = "rf_growth_rate"
+REF_ROW_RF_VED_CONSUMPTION = "rf_ved_consumption"
+REF_ROW_RF_GAES = "rf_gaes"
+REF_ROW_RF_CONSUMPTION_WITHOUT_GAES = "rf_consumption_without_gaes"
+REF_ROW_RF_NETWORK_LOSSES = "rf_network_losses"
+REF_ROW_RF_POWER_STATION = "rf_power_station"
+REF_ROW_RF_GDP = "rf_gdp"
+REF_ROW_RF_GDP_INTENSITY = "rf_gdp_intensity"
+
+RF_TOTAL_REF_ROW_KINDS: tuple[str, ...] = (
+    REF_ROW_RF_TOTAL_CONSUMPTION,
+    REF_ROW_RF_GROWTH_RATE,
+    REF_ROW_RF_VED_CONSUMPTION,
+    REF_ROW_RF_GAES,
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES,
+    REF_ROW_RF_NETWORK_LOSSES,
+    REF_ROW_RF_POWER_STATION,
+    REF_ROW_RF_GDP,
+    REF_ROW_RF_GDP_INTENSITY,
+)
+
+REF_ROW_RF_LABEL_BY_KIND: dict[str, str] = {
+    REF_ROW_RF_TOTAL_CONSUMPTION: "Потребление ЭЭ",
+    REF_ROW_RF_GROWTH_RATE: "Темп прироста",
+    REF_ROW_RF_VED_CONSUMPTION: "Потребление (полезное) суммарно по ВЭД",
+    REF_ROW_RF_GAES: "ГАЭС",
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES: "Потребление без ГАЭС",
+    REF_ROW_RF_NETWORK_LOSSES: "потери в сетях",
+    REF_ROW_RF_POWER_STATION: "с.н. эл.станций",
+    REF_ROW_RF_GDP: "ВВП",
+    REF_ROW_RF_GDP_INTENSITY: "Электроемкость ВВП",
+}
+
+
+def rf_gdp_row_label(price_year: int | None) -> str:
+    """Подпись строки ВВП."""
+    return REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_GDP]
+
+
+REF_ROW_RF_UNIT_BY_KIND: dict[str, str] = {
+    REF_ROW_RF_TOTAL_CONSUMPTION: "млрд кВт.ч.",
+    REF_ROW_RF_GROWTH_RATE: "%",
+    REF_ROW_RF_VED_CONSUMPTION: "млрд кВт.ч.",
+    REF_ROW_RF_GAES: "млрд кВт.ч.",
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES: "млрд кВт.ч.",
+    REF_ROW_RF_NETWORK_LOSSES: "млрд кВт.ч.",
+    REF_ROW_RF_POWER_STATION: "млрд кВт.ч.",
+    REF_ROW_RF_GDP: "млрд руб.",
+    REF_ROW_RF_GDP_INTENSITY: "кВт.ч./тыс.руб.",
+}
+
+REF_ROW_RF_CSS_BY_KIND: dict[str, str] = {
+    REF_ROW_RF_TOTAL_CONSUMPTION: "lt-ei-ref-consumption",
+    REF_ROW_RF_GROWTH_RATE: "lt-ei-rf-growth-rate",
+    REF_ROW_RF_VED_CONSUMPTION: "lt-ei-ref-consumption",
+    REF_ROW_RF_GAES: "lt-ei-ref-consumption",
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES: "lt-ei-ref-consumption",
+    REF_ROW_RF_NETWORK_LOSSES: "lt-ei-ref-consumption",
+    REF_ROW_RF_POWER_STATION: "lt-ei-ref-consumption",
+    REF_ROW_RF_GDP: "lt-ei-ref-product-output",
+    REF_ROW_RF_GDP_INTENSITY: "lt-ei-row-intensity",
+}
+
+REF_ROW_RF_FORMULA_KEY_BY_KIND: dict[str, str] = {
+    REF_ROW_RF_TOTAL_CONSUMPTION: "ei_rf_total_consumption",
+    REF_ROW_RF_GROWTH_RATE: "ei_rf_growth_rate",
+    REF_ROW_RF_VED_CONSUMPTION: "ei_rf_summary_ved_consumption",
+    REF_ROW_RF_GAES: "ei_rf_gaes",
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES: "ei_rf_consumption_without_gaes",
+    REF_ROW_RF_NETWORK_LOSSES: "ei_rf_network_losses",
+    REF_ROW_RF_POWER_STATION: "ei_rf_power_station",
+    REF_ROW_RF_GDP: "ei_rf_gdp",
+    REF_ROW_RF_GDP_INTENSITY: "ei_rf_gdp_intensity",
+}
+
+REF_ROW_RF_SOURCE_ENDPOINT: dict[str, str] = {
+    REF_ROW_RF_VED_CONSUMPTION: "economics_bp.ved_consumption",
+    REF_ROW_RF_NETWORK_LOSSES: "economics_bp.ved_consumption",
+    REF_ROW_RF_POWER_STATION: "economics_bp.ved_consumption",
+    REF_ROW_RF_GDP: "economics_bp.product_output",
+    REF_ROW_RF_GAES: "energy_consumption_bp.demand_summary_oes_gaes_charge",
+}
+
+REF_ROW_RF_SOURCE_PAGE_TITLE: dict[str, str] = {
+    REF_ROW_RF_VED_CONSUMPTION: "Потребление ЭЭ по ВЭД",
+    REF_ROW_RF_NETWORK_LOSSES: "Потребление ЭЭ по ВЭД",
+    REF_ROW_RF_POWER_STATION: "Потребление ЭЭ по ВЭД",
+    REF_ROW_RF_GDP: "Выпуск продукции",
+    REF_ROW_RF_GAES: "ГАЭС на заряд",
+}
+
+EI_RF_TOTAL_CONSUMPTION_FORMULA_TOOLTIP = (
+    "Потребление ЭЭ = Потребление (полезное) суммарно по ВЭД + потери в сетях + "
+    "с.н. эл.станций (сумма соответствующих строк блока РФ), млрд кВт·ч."
+)
+
+EI_RF_GROWTH_RATE_FORMULA_TOOLTIP = (
+    "Темп прироста, % = (Потребление ЭЭ за текущий год / Потребление ЭЭ за предыдущий год) "
+    "× 100 − 100."
+)
+
+EI_RF_SUMMARY_VED_CONSUMPTION_FORMULA_TOOLTIP = (
+    "Потребление (полезное) суммарно по ВЭД = сумма строк «Потребление ээ» по ВЭД "
+    "для РФ (включая потребление ээ в домашних хозяйствах) / 1000, млрд кВт·ч."
+)
+
+EI_RF_POP_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP = (
+    "Потребление ээ в домашних хозяйствах = сумма строк «Домашние хозяйства» "
+    "по всем федеральным округам, млн кВт·ч."
+)
+
+EI_RF_POP_POPULATION_FORMULA_TOOLTIP = (
+    "Численность населения (на начало года) = сумма значений по всем "
+    "федеральным округам, тыс. чел."
+)
+
+EI_RF_POP_PER_CAPITA_FORMULA_TOOLTIP = (
+    "Потребление ээ на душу населения, тыс. кВт·ч/чел. = Потребление ээ в домашних "
+    "хозяйствах / Численность населения (на начало года) "
+    "(потребление — млн кВт·ч, численность — тыс. чел.)."
+)
+
+EI_RF_GAES_FORMULA_TOOLTIP = (
+    "ГАЭС = значение строки «Потребление электрической энергии ГАЭС на заряд, млн кВт·ч "
+    "(всего)» со страницы «ГАЭС на заряд» / 1000, млрд кВт·ч."
+)
+
+EI_RF_CONSUMPTION_WITHOUT_GAES_FORMULA_TOOLTIP = (
+    "Потребление без ГАЭС = Потребление (полезное) суммарно по ВЭД − ГАЭС, млрд кВт·ч."
+)
+
+EI_RF_NETWORK_LOSSES_FORMULA_TOOLTIP = (
+    "потери в сетях = значение строки «Потери в сетях» для РФ со страницы "
+    "«Потребление ЭЭ по ВЭД» / 1000, млрд кВт·ч."
+)
+
+EI_RF_POWER_STATION_FORMULA_TOOLTIP = (
+    "с.н. эл.станций = значение строки «С.н. электростанций» для РФ со страницы "
+    "«Потребление ЭЭ по ВЭД» / 1000, млрд кВт·ч."
+)
+
+EI_RF_GDP_FORMULA_TOOLTIP = (
+    "ВВП = сумма строк «Выпуск продукции» по всем ВЭД "
+    "по всем федеральным округам / 1000, млрд руб."
+)
+
+EI_RF_GDP_INTENSITY_FORMULA_TOOLTIP = (
+    "Электроемкость ВВП, кВт·ч/тыс. руб. = Потребление ЭЭ / ВВП "
+    "(потребление — млрд кВт·ч, ВВП — млрд руб.; пересчёт в кВт·ч/тыс. руб. "
+    "как для строки «Электроемкость»)."
+)
+
+# Строки секций ВЭД на уровне РФ (агрегат по ФО).
+RF_VED_REF_ROW_KINDS: tuple[str, ...] = (
+    REF_ROW_CONSUMPTION,
+    REF_ROW_PRODUCT_OUTPUT,
+)
+
+RF_VED_INTENSITY_ROW_LABEL = "Электроемкость ВЭД"
+
+
+def rf_ved_product_output_row_label(price_year: int | None) -> str:
+    return REF_ROW_LABEL_BY_KIND[REF_ROW_PRODUCT_OUTPUT]
+
+
+REF_ROW_RF_VED_UNIT_BY_KIND: dict[str, str] = {
+    REF_ROW_CONSUMPTION: "млн кВт.ч.",
+    REF_ROW_PRODUCT_OUTPUT: "млрд руб.",
+}
+
+REF_ROW_RF_VED_FORMULA_KEY_BY_KIND: dict[str, str] = {
+    REF_ROW_CONSUMPTION: "ei_rf_ved_consumption",
+    REF_ROW_PRODUCT_OUTPUT: "ei_rf_ved_product_output",
+}
+
+EI_RF_VED_CONSUMPTION_FORMULA_TOOLTIP = (
+    "Потребление ээ = сумма строк «Потребление ээ» по данному ВЭД "
+    "по всем федеральным округам, млн кВт·ч."
+)
+
+EI_RF_VED_PRODUCT_OUTPUT_FORMULA_TOOLTIP = (
+    "Выпуск продукции = сумма строк «Выпуск продукции» по данному ВЭД "
+    "по всем федеральным округам / 1000, млрд руб."
+)
+
+EI_RF_VED_INTENSITY_FORMULA_TOOLTIP = (
+    "Электроемкость ВЭД, кВт·ч/тыс. руб. = сумма строк «Электроемкость» "
+    "по данному ВЭД по всем федеральным округам."
+)

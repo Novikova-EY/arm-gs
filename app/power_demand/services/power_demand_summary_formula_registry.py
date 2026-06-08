@@ -19,11 +19,11 @@ ALL_SUMMARY_PAGES = ALL_MAX_PAGES | ALL_COEFF_PAGES
 
 PAGE_LABELS: dict[str, str] = {
     PAGE_OES: "Максимумы по энергосистемам (/summary/oes/)",
-    PAGE_FO: "Максимумы по федеральным округам (/summary/federal-districts/)",
-    PAGE_EZ: "Максимумы по энергозонам (/summary/energy-zones/)",
+    PAGE_FO: "Максимумы по федеральным округам (/summary/federal_districts/)",
+    PAGE_EZ: "Максимумы по энергозонам (/summary/energy_zones/)",
     PAGE_COEFF_OES: "Коэффициенты по энергосистемам (/summary/coeff/oes/)",
-    PAGE_COEFF_FO: "Коэффициенты по ФО (/summary/coeff/federal-districts/)",
-    PAGE_COEFF_EZ: "Коэффициенты по энергозонам (/summary/coeff/energy-zones/)",
+    PAGE_COEFF_FO: "Коэффициенты по ФО (/summary/coeff/federal_districts/)",
+    PAGE_COEFF_EZ: "Коэффициенты по энергозонам (/summary/coeff/energy_zones/)",
 }
 
 

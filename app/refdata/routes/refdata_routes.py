@@ -48,7 +48,7 @@ def refdata():
     )
 
 
-@refdata_bp.route("/update-current-year", methods=["POST"])
+@refdata_bp.route("/update_current_year", methods=["POST"])
 @login_required
 @roles_required(["admin"])
 def update_current_year_refdata():
@@ -74,7 +74,7 @@ def update_current_year_refdata():
     return redirect(url_for("refdata_bp.refdata"))
 
 
-@refdata_bp.route("/update-sipr-dates", methods=["POST"])
+@refdata_bp.route("/update_sipr_dates", methods=["POST"])
 @login_required
 @roles_required(["admin"])
 def update_sipr_dates_refdata():

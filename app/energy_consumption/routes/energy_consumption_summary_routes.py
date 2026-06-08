@@ -342,17 +342,17 @@ def _apply_ec_summary_export_filters(
     return finalize_ec_summary_page_context(context)
 
 
-@energy_consumption_bp.route("/summary-table/start/")
+@energy_consumption_bp.route("/summary_table/start/")
 @login_required
 def summary_table_start():
     """Выбор разреза (ОЭС / ФО / ЭЗ) для сводной таблицы без строк РЭС и субъектов."""
     return render_template(SUMMARY_TABLE_START_PAGE_TEMPLATE)
 
 
-@energy_consumption_bp.route("/summary-table/")
+@energy_consumption_bp.route("/summary_table/")
 @login_required
 def summary_table_hub():
-    """Корень сводной таблицы: ОЭС без строк РЭС/субъектов; синхронные зоны — как на /summary-table/oes/."""
+    """Корень сводной таблицы: ОЭС без строк РЭС/субъектов; синхронные зоны — как на /summary_table/oes/."""
     sy, ey = _parse_summary_year_range()
     n = _summary_period_base_year_n()
     include_medium = _parse_summary_include_medium_years()
@@ -389,7 +389,7 @@ def demand_summary_oes_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_oes")
 
 
-@energy_consumption_bp.route("/summary/federal-districts/export.xlsx")
+@energy_consumption_bp.route("/summary/federal_districts/export.xlsx")
 @login_required
 def demand_summary_federal_districts_export():
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
@@ -402,7 +402,7 @@ def demand_summary_federal_districts_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_fo")
 
 
-@energy_consumption_bp.route("/summary/energy-zones/export.xlsx")
+@energy_consumption_bp.route("/summary/energy_zones/export.xlsx")
 @login_required
 def demand_summary_energy_zones_export():
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
@@ -415,10 +415,10 @@ def demand_summary_energy_zones_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_ez")
 
 
-@energy_consumption_bp.route("/summary-table/export.xlsx")
+@energy_consumption_bp.route("/summary_table/export.xlsx")
 @login_required
 def demand_summary_table_hub_export():
-    """Выгрузка корня /summary-table/ — тот же контекст, что на экране (не /summary-table/oes/)."""
+    """Выгрузка корня /summary_table/ — тот же контекст, что на экране (не /summary_table/oes/)."""
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
     context = build_summary_table_hub_page_context(
         oes_territory_ordered=_parse_oes_territory_ordered(),
@@ -431,7 +431,7 @@ def demand_summary_table_hub_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_table_hub")
 
 
-@energy_consumption_bp.route("/summary-table/oes/export.xlsx")
+@energy_consumption_bp.route("/summary_table/oes/export.xlsx")
 @login_required
 def demand_summary_table_oes_export():
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
@@ -446,7 +446,7 @@ def demand_summary_table_oes_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_table_oes")
 
 
-@energy_consumption_bp.route("/summary-table/federal-districts/export.xlsx")
+@energy_consumption_bp.route("/summary_table/federal_districts/export.xlsx")
 @login_required
 def demand_summary_table_federal_districts_export():
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
@@ -461,7 +461,7 @@ def demand_summary_table_federal_districts_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_table_fo")
 
 
-@energy_consumption_bp.route("/summary-table/energy-zones/export.xlsx")
+@energy_consumption_bp.route("/summary_table/energy_zones/export.xlsx")
 @login_required
 def demand_summary_table_energy_zones_export():
     page_kw = _ec_summary_common_page_kwargs(summary_table_page=True)
@@ -476,7 +476,7 @@ def demand_summary_table_energy_zones_export():
     return _demand_summary_excel_response(context, "energy_consumption_svodka_table_ez")
 
 
-@energy_consumption_bp.route("/summary/oes/gaes-charge/export.xlsx")
+@energy_consumption_bp.route("/summary/oes/gaes_charge/export.xlsx")
 @login_required
 def demand_summary_oes_gaes_charge_export():
     sy, ey = _parse_summary_year_range()
@@ -509,7 +509,7 @@ def demand_summary_oes_gaes_charge_export():
     )
 
 
-@energy_consumption_bp.route("/summary/fo-ez/import.xlsx", methods=["POST"])
+@energy_consumption_bp.route("/summary/fo_ez/import.xlsx", methods=["POST"])
 @login_required
 def demand_summary_fo_ez_import_xlsx():
     """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО — для страниц сводки по ОЭС, ФО и энергозонам.
@@ -659,7 +659,7 @@ def demand_summary_save_cell():
     return jsonify(ok=True, display_value=display)
 
 
-@energy_consumption_bp.route("/summary/persist-computed-rows", methods=["POST"])
+@energy_consumption_bp.route("/summary/persist_computed_rows", methods=["POST"])
 @login_required
 def demand_summary_persist_computed_rows():
     """После сохранения ячеек: пересчитать и записать все расчётные показатели сводки в БД."""
@@ -701,7 +701,7 @@ def demand_summary_persist_computed_rows():
     return jsonify(ok=True, cells_written_formula=updated)
 
 
-@energy_consumption_bp.route("/summary/perimeter-variant", methods=["POST"])
+@energy_consumption_bp.route("/summary/perimeter_variant", methods=["POST"])
 @login_required
 def demand_summary_save_perimeter_variant():
     if not getattr(current_user, "has_admin", False):
@@ -741,7 +741,7 @@ def demand_summary_save_perimeter_variant():
     return jsonify(ok=True, updated=updated)
 
 
-@energy_consumption_bp.route("/summary/block-variant", methods=["POST"])
+@energy_consumption_bp.route("/summary/block_variant", methods=["POST"])
 @login_required
 def demand_summary_save_block_variant():
     """Назначает вариант периметра блоку строк сводки (без переноса данных между вариантами)."""
@@ -785,7 +785,7 @@ def demand_summary_save_block_variant():
     return jsonify(ok=True)
 
 
-@energy_consumption_bp.route("/summary/persist-formula-block", methods=["POST"])
+@energy_consumption_bp.route("/summary/persist_formula_block", methods=["POST"])
 @login_required
 def demand_summary_persist_formula_block():
     if not getattr(current_user, "has_admin", False):
@@ -920,7 +920,7 @@ def demand_summary_oes():
     return _render_ec_summary_page(SUMMARY_OES_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary/energy-zones/")
+@energy_consumption_bp.route("/summary/energy_zones/")
 @login_required
 def demand_summary_energy_zones():
     sy, ey = _parse_summary_year_range()
@@ -945,7 +945,7 @@ def demand_summary_energy_zones():
     return _render_ec_summary_page(SUMMARY_EZ_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary/federal-districts/")
+@energy_consumption_bp.route("/summary/federal_districts/")
 @login_required
 def demand_summary_federal_districts():
     sy, ey = _parse_summary_year_range()
@@ -970,7 +970,7 @@ def demand_summary_federal_districts():
     return _render_ec_summary_page(SUMMARY_FO_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary/oes/gaes-charge/")
+@energy_consumption_bp.route("/summary/oes/gaes_charge/")
 @login_required
 def demand_summary_oes_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -995,7 +995,7 @@ def demand_summary_oes_gaes_charge():
     return _render_ec_summary_page(SUMMARY_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary/federal-districts/gaes-charge/")
+@energy_consumption_bp.route("/summary/federal_districts/gaes_charge/")
 @login_required
 def demand_summary_federal_districts_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -1020,7 +1020,7 @@ def demand_summary_federal_districts_gaes_charge():
     return _render_ec_summary_page(SUMMARY_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary/energy-zones/gaes-charge/")
+@energy_consumption_bp.route("/summary/energy_zones/gaes_charge/")
 @login_required
 def demand_summary_energy_zones_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -1045,7 +1045,7 @@ def demand_summary_energy_zones_gaes_charge():
     return _render_ec_summary_page(SUMMARY_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/oes/")
+@energy_consumption_bp.route("/summary_table/oes/")
 @login_required
 def demand_summary_table_oes():
     sy, ey = _parse_summary_year_range()
@@ -1071,7 +1071,7 @@ def demand_summary_table_oes():
     return _render_ec_summary_page(SUMMARY_TABLE_OES_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/oes/gaes-charge/")
+@energy_consumption_bp.route("/summary_table/oes/gaes_charge/")
 @login_required
 def demand_summary_table_oes_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -1097,7 +1097,7 @@ def demand_summary_table_oes_gaes_charge():
     return _render_ec_summary_page(SUMMARY_TABLE_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/federal-districts/")
+@energy_consumption_bp.route("/summary_table/federal_districts/")
 @login_required
 def demand_summary_table_federal_districts():
     sy, ey = _parse_summary_year_range()
@@ -1123,7 +1123,7 @@ def demand_summary_table_federal_districts():
     return _render_ec_summary_page(SUMMARY_TABLE_FO_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/federal-districts/gaes-charge/")
+@energy_consumption_bp.route("/summary_table/federal_districts/gaes_charge/")
 @login_required
 def demand_summary_table_federal_districts_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -1149,7 +1149,7 @@ def demand_summary_table_federal_districts_gaes_charge():
     return _render_ec_summary_page(SUMMARY_TABLE_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/energy-zones/gaes-charge/")
+@energy_consumption_bp.route("/summary_table/energy_zones/gaes_charge/")
 @login_required
 def demand_summary_table_energy_zones_gaes_charge():
     sy, ey = _parse_summary_year_range()
@@ -1175,7 +1175,7 @@ def demand_summary_table_energy_zones_gaes_charge():
     return _render_ec_summary_page(SUMMARY_TABLE_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
 
-@energy_consumption_bp.route("/summary-table/energy-zones/")
+@energy_consumption_bp.route("/summary_table/energy_zones/")
 @login_required
 def demand_summary_table_energy_zones():
     sy, ey = _parse_summary_year_range()

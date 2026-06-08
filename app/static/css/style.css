@@ -264,6 +264,16 @@ tfoot {
     overflow-x: auto;
 }
 
+/* Электрическая мощность по годам: число целиком в одной строке ячейки (без переноса) */
+#stationsTableContainer td.power-column {
+    white-space: nowrap;
+}
+
+/* Изменения установленной мощности: годы и «Итого» — без переноса значения в ячейке */
+#stationChangesTableContainer td.power-column {
+    white-space: nowrap;
+}
+
 tr {
     page-break-inside: avoid;
 }

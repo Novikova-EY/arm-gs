@@ -1,4 +1,4 @@
-"""Страница /energy_consumption/summary/federal-districts/."""
+"""Страница /energy_consumption/summary/federal_districts/."""
 
 from __future__ import annotations
 

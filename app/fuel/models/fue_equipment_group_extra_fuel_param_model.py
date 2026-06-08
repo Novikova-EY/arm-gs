@@ -43,7 +43,6 @@ class EquipmentGroupExtraFuelParam(db.Model):
     name = db.Column(db.String(512), nullable=True)
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
-    # Топливные поля (Numeric по аналогии с EquipmentGroupFuelParam)
     gaz_prir = db.Column(db.Numeric(36, 16), nullable=True)
     gazpp = db.Column(db.Numeric(36, 16), nullable=True)
     disel = db.Column(db.Numeric(36, 16), nullable=True)

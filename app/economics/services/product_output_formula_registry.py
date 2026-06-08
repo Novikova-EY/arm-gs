@@ -38,6 +38,32 @@ PRODUCT_OUTPUT_FORMULA_REGISTRY: tuple[ProductOutputFormulaDef, ...] = (
             "деятельность по ликвидации загрязнений."
         ),
     ),
+    ProductOutputFormulaDef(
+        key="po_rf_ved_row",
+        page="Выпуск продукции",
+        row_label="Строка по ВЭД (РФ)",
+        default_text=(
+            "Строка по ВЭД = сумма одноименных строк по всем федеральным округам, млн руб."
+        ),
+    ),
+    ProductOutputFormulaDef(
+        key="po_rf_industrial_group",
+        page="Выпуск продукции",
+        row_label="Промышленное производство, в том числе (РФ)",
+        default_text=(
+            "Промышленное производство, в том числе = сумма одноименных строк "
+            "по всем федеральным округам, млн руб."
+        ),
+    ),
+    ProductOutputFormulaDef(
+        key="po_rf_total_row",
+        page="Выпуск продукции",
+        row_label="Всего выпуск продукции (РФ)",
+        default_text=(
+            "Всего выпуск продукции = сумма одноименных строк "
+            "по всем федеральным округам, млн руб."
+        ),
+    ),
 )
 
 

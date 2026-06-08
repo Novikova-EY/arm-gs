@@ -11,7 +11,10 @@ from typing import Any
 from sqlalchemy.orm import selectinload
 
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
-from app.common.services.help_services import format_decimal_trim_for_display
+from app.common.services.help_services import (
+    apply_thousand_grouping_to_display,
+    format_decimal_trim_for_display,
+)
 from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
     EesDemandParameter,
 )
@@ -3070,7 +3073,7 @@ def _format_full_numeric_tooltip(value: Any) -> str:
     if value in (None, ""):
         return ""
     s = format_decimal_trim_for_display(value, digits=0)
-    return s if s else ""
+    return apply_thousand_grouping_to_display(s) if s else ""
 
 
 def _build_parameter_maps(
@@ -3198,7 +3201,8 @@ def _rounding_digits_for_parameter(parameter_key: str, rounding_digits: int) -> 
 
 
 def _format_numeric(value: Any, digits: int) -> str:
-    return _dash(format_decimal_trim_for_display(value, digits=digits))
+    shown = format_decimal_trim_for_display(value, digits=digits)
+    return _dash(apply_thousand_grouping_to_display(shown) if shown else shown)
 
 
 def _format_calculated_max_mw(value: Any) -> str:
